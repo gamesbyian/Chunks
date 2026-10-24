@@ -7,7 +7,8 @@ import java.util.Locale
 
 /**
  * Device-local, Chunks-owned aliases. Preference keys are fingerprints of the connected endpoint
- * and infohash, never torrent names, credentials, metainfo or remote paths.\n * The UI includes the authenticated account name in the scope so two accounts at one RPC URL\n * cannot accidentally share aliases. The scope itself is fingerprinted, not persisted directly.
+ * and infohash, never torrent names, credentials, metainfo or remote paths.
+ * The UI includes the authenticated account name in the scope so two accounts at one RPC URL\n * cannot accidentally share aliases. The scope itself is fingerprinted, not persisted directly.
  *
  * A stable server profile identifier can replace the endpoint scope once profiles are implemented.
  * Importantly, saving an alias here cannot call rTorrent or change any backing file.
