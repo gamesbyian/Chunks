@@ -18,6 +18,17 @@ jobs:
         run: python3 -m unittest discover -s tools -p 'test_public_fixture_collector.py' -q
       - name: Fetch a small licensed Commons source and derive actual torrent identity
         run: |
+          python3 - <<'PY'
+          import sys, urllib.parse
+          sys.path.insert(0,"tools")
+          import public_fixture_collector as c
+          asset=c.commons_fixture("File:Example.ogg")["asset"]["url"]
+          p=urllib.parse.urlsplit(asset)
+          print("CHUNKS_COMMONS_URL_LAYOUT: host=" + str(p.hostname) +
+                " has_query=" + str(bool(p.query)) +
+                " has_fragment=" + str(bool(p.fragment)) +
+                " query_keys=" + str(sorted(urllib.parse.parse_qs(p.query).keys())))
+          PY
           python3 tools/public_fixture_collector.py --commons-file 'File:Example.ogg' --download-commons --max-commons-mib 1 --output-dir "${RUNNER_TEMP}/commons"
           python3 - <<'PY'
           import hashlib, json, os, pathlib, sys
