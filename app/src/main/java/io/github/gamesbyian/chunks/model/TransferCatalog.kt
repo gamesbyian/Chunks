@@ -20,29 +20,38 @@ object TransferCatalog {
         displayName: (RemoteTransfer) -> String = { it.name }
     ): List<RemoteTransfer> {
         val needle = query.trim()
-        val subset = items.filter { item ->
-            val matches = needle.isEmpty() ||
-                displayName(item).contains(needle, ignoreCase = true) ||
-                item.name.contains(needle, ignoreCase = true) ||
-                item.directory.contains(needle, ignoreCase = true)
-            val passes = when (filter) {
+        // Resolve a potentially persisted alias exactly once per passing transfer.
+        // Sorting a large remote queue must not rehash/read SharedPreferences on every
+        // comparator invocation (O(N log N) alias lookups for ordinary name ordering).
+        val subset = items.asSequence().filter { item ->
+            when (filter) {
                 TransferFilter.ALL -> true
                 TransferFilter.ACTIVE -> item.started
                 TransferFilter.COMPLETE -> item.sizeBytes > 0 && item.completedBytes >= item.sizeBytes
                 TransferFilter.STOPPED -> !item.started
                 TransferFilter.NEEDS_SORTING -> Classifier.suggest(item.name).category == "Unsorted"
             }
-            matches && passes
+        }.map { item -> item to displayName(item) }.filter { (item, label) ->
+            needle.isEmpty() ||
+                label.contains(needle, ignoreCase = true) ||
+                item.name.contains(needle, ignoreCase = true) ||
+                item.directory.contains(needle, ignoreCase = true)
+        }.toList()
+
+        val ordered = when (order) {
+            TransferOrder.NAME -> subset.sortedWith(
+                compareBy(String.CASE_INSENSITIVE_ORDER) { it.second })
+            TransferOrder.PROGRESS -> subset.sortedWith(
+                compareByDescending<Pair<RemoteTransfer, String>> { it.first.fractionComplete }
+                    .thenBy(String.CASE_INSENSITIVE_ORDER) { it.second })
+            TransferOrder.SIZE -> subset.sortedWith(
+                compareByDescending<Pair<RemoteTransfer, String>> { it.first.sizeBytes }
+                    .thenBy(String.CASE_INSENSITIVE_ORDER) { it.second })
+            TransferOrder.SPEED -> subset.sortedWith(
+                compareByDescending<Pair<RemoteTransfer, String>> { it.first.downBytesPerSecond ?: 0 }
+                    .thenBy(String.CASE_INSENSITIVE_ORDER) { it.second })
         }
-        return when (order) {
-            TransferOrder.NAME -> subset.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { displayName(it) })
-            TransferOrder.PROGRESS -> subset.sortedWith(compareByDescending<RemoteTransfer> { it.fractionComplete }
-                .thenBy(String.CASE_INSENSITIVE_ORDER) { displayName(it) })
-            TransferOrder.SIZE -> subset.sortedWith(compareByDescending<RemoteTransfer> { it.sizeBytes }
-                .thenBy(String.CASE_INSENSITIVE_ORDER) { displayName(it) })
-            TransferOrder.SPEED -> subset.sortedWith(compareByDescending<RemoteTransfer> { it.downBytesPerSecond ?: 0 }
-                .thenBy(String.CASE_INSENSITIVE_ORDER) { displayName(it) })
-        }
+        return ordered.map { it.first }
     }
 
     fun places(items: List<RemoteTransfer>): List<Pair<String, Int>> =
