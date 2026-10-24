@@ -89,7 +89,22 @@ jobs:
           gradle --no-daemon :app:testDebugUnitTest --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableServerTest'
           # Only after the empty-server proof, use the same ephemeral process
           # for deliberate Add/duplicate/start/stop mutation acceptance.
-          gradle --no-daemon :app:testDebugUnitTest --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableMutationTest'
+          if ! gradle --no-daemon :app:testDebugUnitTest --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableMutationTest'; then
+            # Extract bounded nonsecret failed assertions from the disposable rig.
+            python3 - <<'PY'
+          import pathlib, xml.etree.ElementTree as ET
+          path=pathlib.Path("app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.RTorrentDisposableMutationTest.xml")
+          if path.exists():
+              root=ET.parse(path).getroot()
+              for case in root.findall(".//testcase"):
+                  failure=case.find("failure")
+                  if failure is not None:
+                      name=case.attrib.get("name","unknown")
+                      message=failure.attrib.get("message","unknown")
+                      print("CHUNKS_DISPOSABLE_FAILURE: "+name+" "+message[:500])
+          PY
+            exit 1
+          fi
       - name: Evidence summary
         if: always()
         run: |
