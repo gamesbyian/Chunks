@@ -4,7 +4,7 @@ The repository currently has a source-pinned Gradle version but no committed bin
 
 Run: gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug
 
-The workflow installs Android API 37 and uses the same successful SDK 37.0 compatibility approach adopted by Glimpse. Initial APK is a read-only rTorrent XML-RPC probe/list UI. It does not include move/rename/add torrent or local BitTorrent engine and must not be treated as a working full client. No remote server credentials are embedded or stored.
+The workflow installs Android API 37 and uses the same successful SDK 37.0 compatibility approach adopted by Glimpse. Current APK is a pre-alpha native rTorrent remote with a dashboard, challenge-negotiated Basic/Digest auth, Android SAF `.torrent` picker, explicit stopped Add review and confirmed transfer Start/Stop controls. These features compile but do not constitute accepted live Seedhost or physical-device behavior. Actual filesystem move/rename/delete-with-data and the local BitTorrent engine are not implemented. No remote server credentials are embedded or stored.
 
 Evidence: [run 40057523588](https://github.com/gamesbyian/Chunks/actions/runs/40057523588) passed 42 Gradle tasks including JVM tests and assembly against source SHA `201b53fc3d16482cf2aa1a08c9c01d9e0351174b`; its artifact is `chunks-debug-prealpha`. Subsequent source changes require new proof. Build artifacts are debug only; a successful Gradle job is not a real-server or real-device acceptance.
 
@@ -29,3 +29,7 @@ The manual-only [Disposable rTorrent protocol proof](https://github.com/gamesbyi
 ## Hosted ruTorrent URL handling
 
 [Run 40062658654](https://github.com/gamesbyian/Chunks/actions/runs/40062658654) passed `:app:testDebugUnitTest` and `:app:assembleDebug` at PR SHA `b7fc42a8b6d8307ee00309fddb256dbbca9a91c4` (merged #20). The connection form now accepts ruTorrent HTML URLs and derives a candidate `/plugins/httprpc/action.php` endpoint. This compile/test result does not confirm the endpoint works for the owner's server. Use the manual-only [Seedhost RPC smoke workflow](https://github.com/gamesbyian/Chunks/actions/workflows/seedhost-readonly-probe.yml) once the relevant Chunks repository secrets are confirmed.
+
+## Current native build evidence
+
+[CI run 40125371644](https://github.com/gamesbyian/Chunks/actions/runs/40125371644) passed `:app:testDebugUnitTest :app:assembleDebug` for the confirmed transfer lifecycle UI (#49), PR SHA `99322233b093cd9b8dd75837e7fb2fc0f5a5094e`. Artifact: `chunks-debug-prealpha`. The two-stage Add screen (#44) and exact-byte binary load (#43) were independently merged after their focused CI. Native emulator screenshot/hierarchy PRs #45/#48 are separate gates: compilation alone is not a captured screenshot or a real-device usability signoff.
