@@ -215,6 +215,23 @@ def archive_fixture(identifier, max_total_bytes):
            "nonsecret_fixture": True, "download_payload": False}
     return out, safe
 
+def clean_commons_asset_url(value):
+    """Strip only Wikimedia-supplied UTM trackers from a media CDN URL.
+
+    Never persist credentials, signed requests, passkeys or unknown queries
+    as a reusable fixture/webseed. The resulting exact media bytes are
+    verified separately before generating any BitTorrent info dictionary.
+    """
+    raw = approved_url(value)
+    p = urllib.parse.urlsplit(raw)
+    if p.hostname != "upload.wikimedia.org":
+        raise ValueError("Invalid Commons media source")
+    params = urllib.parse.parse_qsl(p.query, keep_blank_values=True)
+    recognized = {"utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"}
+    if any(key not in recognized for key, _ in params):
+        raise ValueError("Unrecognized query on Commons media URL")
+    return urllib.parse.urlunsplit((p.scheme, p.netloc, p.path, "", ""))
+
 def commons_fixture(filename):
     if not COMMONS_NAME.fullmatch(filename) or filename in (".", ".."):
         raise ValueError("Invalid Wikimedia Commons filename")
@@ -231,9 +248,7 @@ def commons_fixture(filename):
     license_name = str(extra.get("LicenseUrl", {}).get("value") or extra.get("LicenseShortName", {}).get("value") or "")
     if not license_ok(license_name):
         raise ValueError("Commons license not clearly reusable; manual review required")
-    url = approved_url(info["url"])
-    if urllib.parse.urlsplit(url).hostname != "upload.wikimedia.org":
-        raise ValueError("Invalid Commons media source")
+    url = clean_commons_asset_url(info["url"])
     size = int(info["size"])
     if size < 0:
         raise ValueError("Invalid Commons file size")
