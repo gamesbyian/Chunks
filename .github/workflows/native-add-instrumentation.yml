@@ -54,7 +54,7 @@ jobs:
           emulator-boot-timeout: 600
           disable-animations: true
           script: |
-            set -euo pipefail
+            set -eu
             adb shell wm size 1080x2400
             adb shell wm density 420
             adb shell settings put system font_scale 1.0
