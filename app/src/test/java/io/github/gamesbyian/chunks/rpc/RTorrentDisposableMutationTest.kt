@@ -89,4 +89,37 @@ class RTorrentDisposableMutationTest {
         }
         assertTrue("Real rTorrent did not return to stopped state", stopped)
     }
+    @Test fun multifileStoppedAddPreservesItsNamedRootUnderChosenParent() = runBlocking {
+        val rtorrent = temporaryRemote()
+        val target = System.getenv("CHUNKS_DISPOSABLE_TARGET_DIR").orEmpty()
+        require(target.startsWith("/") && target.contains("chunks-data")) {
+            "No disposable data root was configured"
+        }
+        val multiBytes = (
+            "d4:infod5:filesld6:lengthi5e4:pathl8:clip.txteee" +
+            "4:name13:Public Bundle12:piece lengthi16384e6:pieces20:" +
+            "01234567890123456789ee"
+        ).toByteArray(Charsets.UTF_8)
+        val hash = TorrentMetainfoReader.preview(multiBytes).infoHashV1
+        assertTrue(rtorrent.listTransfers("main").none { it.hash.equals(hash, true) })
+        val outcome = rtorrent.loadStoppedTorrentBytes(multiBytes, target)
+        assertTrue("Multi-file Add returned uncertain/error state: $outcome",
+            outcome is RemoteAddOutcome.VerifiedStopped ||
+                outcome is RemoteAddOutcome.PendingVerification)
+        val expectedRoot = target + "/Public Bundle"
+        var observed: RemoteTransfer? = null
+        for (index in 1..15) {
+            observed = rtorrent.listTransfers("main").firstOrNull { it.hash.equals(hash, true) }
+            if (observed != null) break
+            Thread.sleep(400)
+        }
+        val added = requireNotNull(observed) { "Multi-file torrent hash not visible on real engine" }
+        assertFalse("Multi-file Add must remain stopped", added.started)
+        assertEquals("The user-selected folder is a PARENT, not a replacement torrent root",
+            expectedRoot, added.directory)
+        if (outcome is RemoteAddOutcome.VerifiedStopped) {
+            assertEquals(expectedRoot, outcome.destination)
+        }
+    }
+
 }
