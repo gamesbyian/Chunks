@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
@@ -30,9 +31,13 @@ internal fun TransferAliasEditor(
     alias: String?,
     onSave: (String?) -> Boolean
 ) {
-    var editing by remember(hash) { mutableStateOf(false) }
-    var draft by remember(hash, alias) { mutableStateOf(alias.orEmpty()) }
-    var problem by remember(hash) { mutableStateOf<String?>(null) }
+    // A transfer card lives in a LazyColumn: when the user scrolls to the Save
+    // button, Compose can dispose and recreate the off-screen item's ordinary
+    // remember state. Use LazyList's SaveableStateHolder to retain an explicitly
+    // chosen name and editing mode until Save/Cancel, including after scrolling.
+    var editing by rememberSaveable(hash) { mutableStateOf(false) }
+    var draft by rememberSaveable(hash, alias) { mutableStateOf(alias.orEmpty()) }
+    var problem by rememberSaveable(hash) { mutableStateOf<String?>(null) }
     val suggestions = remember(originalName) { TransferDisplayNames.suggestions(originalName) }
 
     if (!editing) {
