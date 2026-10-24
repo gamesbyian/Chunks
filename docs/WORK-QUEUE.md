@@ -95,3 +95,7 @@ Opt-in dev Seedhost `inspect_inventory=true` will capture nonsecret torrent meta
 ## Native Android torrent file import preview candidate
 
 PR #40 adds an Android Storage Access Framework `OpenDocument` picker, bounded 2 MiB v1 `.torrent` parser, on-device original `info` dictionary SHA-1, name/file-count/size preview and explicit refusal of traversal/invalid encoding/v2. This is a **local-only Add preview**, not upload or remote Add; selected bytes are not persisted or sent to Seedhost. App/UI CI and a physical Android document picker journey remain required gates.
+
+## Verified-by-readback raw binary Add candidate
+
+PR #43 proposes `RTorrentRemote.loadStoppedTorrentBytes`, which derives the v1 SHA-1 infohash directly from locally inspected raw metainfo, validates an explicit absolute server destination, preflights main-view hashes, issues **one** `load.raw_verbose` with bounded XML-RPC base64 and `d.directory_base.set`, then checks server hash, directory-base and stopped state. This matches the independently designed manual protected Add acceptance protocol. JVM mock RPC tests are not live Seedhost acceptance; the method is not yet exposed as automatic UI Add. No implicit start, overwrite, retries, torrent deletion or physical file move.
