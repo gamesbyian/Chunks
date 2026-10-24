@@ -71,3 +71,15 @@ PR #31 [merged](https://github.com/gamesbyian/Chunks/pull/31) at `de99a6d`, [run
 ## Real-data visual QA preparation
 
 Opt-in dev Seedhost `inspect_inventory=true` will capture nonsecret torrent metadata and build a compact deterministic `qa-cases.json`/`qa-cases.md` selecting long-name, RTL/Unicode, completed, incomplete, active, stopped and destination edge cases. Run source offline regression tests on PRs; first actual snapshot artifact and true multi-viewport Compose screenshot atlas remain acceptance gates. This selection does not affect transfers.
+
+## 2026-10-24 queue handoff: new source/QA evidence
+
+- [x] Public licensed Archive/Commons fixture collector, deterministic small Commons torrent/magnet creation, malicious-input guards and manual collector: merged #29/#30; offline Python runs 40064941665 / 40065113278 **passed**.
+- [x] First Kotlin stopped destination-first RPC Add core merged #31; Android compile/JVM run 40065534962 **passed**. No app Add submission UI or live RPC Add proof.
+- [x] Confirmed single stopped Add manual-only Seedhost smoke merged #32; offline run 40065967589 **passed**. No real mutation performed by this check.
+- [x] Verified public candidate source URLs/licenses and HTML-safe attribution capture merged #34; offline run 40066367045 **passed**. Source API eligibility may vary.
+- [x] Deterministic real-data snapshot QA selection integrated into opt-in manual Seedhost inventory workflow merged #35; offline run 40066630401 **passed**. No live source snapshot or actual screenshots yet.
+- [ ] **Next proof:** manually run [licensed public fixture collection](https://github.com/gamesbyian/Chunks/actions/workflows/public-source-fixtures.yml) using a curated candidate from [PUBLIC-TORRENT-FIXTURES.md](PUBLIC-TORRENT-FIXTURES.md) and confirm manifest, hash and artifact.
+- [ ] **Next proof:** manually run [Seedhost read-only inventory capture](https://github.com/gamesbyian/Chunks/actions/workflows/seedhost-readonly-probe.yml) with `inspect_inventory=true` and verify fixture plus QA selector output.
+- [ ] **Next proof:** manually preview then hash-confirm one stopped public fixture Add via [protected Add acceptance](https://github.com/gamesbyian/Chunks/actions/workflows/seedhost-public-add-smoke.yml); verify actual server hash/path/state without retries.
+- [ ] Only after proven compatibility: wire an accessible confirmed Add action and run real Compose screenshot/hierarchy atlas at meaningful viewports, incorporating selected real snapshot cases.
