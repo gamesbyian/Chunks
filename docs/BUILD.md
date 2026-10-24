@@ -21,3 +21,7 @@ See [critical review](CRITICAL-REVIEW-2026-10-24.md) and [quality ledger](QUALIT
 ## Android magnet handoff (2026-10-24)
 
 [CI run 40060539699](https://github.com/gamesbyian/Chunks/actions/runs/40060539699) passed on PR SHA `d586f712da63ba5c56a3d275ec68e29eb8834a7b`. It produced another `chunks-debug-prealpha` artifact. The build handles Android ACTION_VIEW magnet links and ACTION_SEND text/plain into a local, unsent Add draft. No server write or actual destination verification occurs. No physical Android Sharesheet/intent observation has yet been recorded.
+
+## Reproducible real rTorrent smoke route
+
+The manual-only [Disposable rTorrent protocol proof](https://github.com/gamesbyian/Chunks/actions/workflows/disposable-rtorrent-probe.yml) installs a throwaway rTorrent 0.9.8 and nginx SCGI proxy on a GitHub runner, and tests version/probe/empty listing through Chunks' JVM adapter, with loopback access only. First completed positive evidence: [run 40060755245](https://github.com/gamesbyian/Chunks/actions/runs/40060755245), source `cd337cc8560c8c1d90c581be3de6f61176106e1c`. This is neither an app APK build nor a live seedbox acceptance. It uses no user credentials or media. It is retained manual-only to respect the shared runner budget.
