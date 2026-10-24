@@ -99,7 +99,8 @@ def markdown(data):
         "|---|---|---:|---|---|",
     ]
     def safe(text):
-        return str(text).replace("|", "\\|").replace("\n", " ")[:240]
+        return (str(text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                .replace("|", "\\|").replace("\n", " ")[:240])
     for row in data["cases"]:
         tr = row["transfer"]
         state = "started" if tr["started"] else "stopped"
