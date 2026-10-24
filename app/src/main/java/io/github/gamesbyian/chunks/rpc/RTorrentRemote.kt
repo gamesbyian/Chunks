@@ -3,7 +3,6 @@ package io.github.gamesbyian.chunks.rpc
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URI
-import java.util.Base64
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -197,43 +196,60 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
 
     private suspend fun call(method: String, params: List<Any> = emptyList()): Any? =
         withContext(Dispatchers.IO) {
-            val connection = endpoint.toURL().openConnection() as HttpURLConnection
-            connection.connectTimeout = 8_000
-            connection.readTimeout = 15_000
-            connection.instanceFollowRedirects = false
-            connection.requestMethod = "POST"
-            connection.setRequestProperty("Content-Type", "text/xml; charset=utf-8")
-            connection.setRequestProperty("Accept", "text/xml")
-            if (auth.username.isNotEmpty()) {
-                val token = Base64.getEncoder().encodeToString(
-                    "${auth.username}:${auth.password}".toByteArray(Charsets.UTF_8))
-                connection.setRequestProperty("Authorization", "Basic $token")
-            }
-            connection.doOutput = true
-            try {
-                connection.outputStream.use { stream ->
-                    stream.write(XmlRpcCodec.request(method, params).toByteArray(Charsets.UTF_8))
-                }
-                val status = connection.responseCode
-                if (status !in 200..299) {
-                    throw IOException("rTorrent gateway returned HTTP $status")
-                }
-                val length = connection.contentLengthLong
-                if (length > 4_194_304L) throw IOException("RPC response exceeded 4 MiB")
-                val xml = connection.inputStream.bufferedReader(Charsets.UTF_8).use { reader ->
-                    val chars = CharArray(4096)
-                    val sb = StringBuilder()
-                    while (true) {
-                        val read = reader.read(chars)
-                        if (read < 0) break
-                        sb.append(chars, 0, read)
-                        if (sb.length > 4_194_304) throw IOException("RPC response exceeded 4 MiB")
+            // A challenge-based credential exchange is scoped to the *same*
+            // HTTPS/loopback endpoint. Never enable redirects or set a
+            // process-global Java Authenticator that could leak credentials.
+            val request = XmlRpcCodec.request(method, params).toByteArray(Charsets.UTF_8)
+            val requestTarget = (endpoint.rawPath?.ifEmpty { "/" } ?: "/") +
+                (endpoint.rawQuery?.let { "?" + it } ?: "")
+            var authorization: String? = null
+            var attemptedChallenge = false
+            while (true) {
+                val connection = endpoint.toURL().openConnection() as HttpURLConnection
+                connection.connectTimeout = 8_000
+                connection.readTimeout = 15_000
+                connection.instanceFollowRedirects = false
+                connection.requestMethod = "POST"
+                connection.setRequestProperty("Content-Type", "text/xml; charset=utf-8")
+                connection.setRequestProperty("Accept", "text/xml")
+                if (authorization != null) connection.setRequestProperty("Authorization", authorization)
+                connection.doOutput = true
+                connection.setFixedLengthStreamingMode(request.size)
+                try {
+                    connection.outputStream.use { it.write(request) }
+                    val status = connection.responseCode
+                    if (status == HttpURLConnection.HTTP_UNAUTHORIZED &&
+                        !attemptedChallenge && auth.username.isNotEmpty()) {
+                        val challenges = connection.headerFields.entries
+                            .filter { (name, _) -> name?.equals("WWW-Authenticate", true) == true }
+                            .flatMap { it.value }
+                        authorization = HttpRpcAuthorization.fromChallenge(
+                            challenges, auth, "POST", requestTarget)
+                        attemptedChallenge = true
+                        continue
                     }
-                    sb.toString()
+                    if (status !in 200..299) {
+                        throw IOException("rTorrent gateway returned HTTP $status")
+                    }
+                    val length = connection.contentLengthLong
+                    if (length > 4_194_304L) throw IOException("RPC response exceeded 4 MiB")
+                    val xml = connection.inputStream.bufferedReader(Charsets.UTF_8).use { reader ->
+                        val chars = CharArray(4096)
+                        val sb = StringBuilder()
+                        while (true) {
+                            val read = reader.read(chars)
+                            if (read < 0) break
+                            sb.append(chars, 0, read)
+                            if (sb.length > 4_194_304) throw IOException("RPC response exceeded 4 MiB")
+                        }
+                        sb.toString()
+                    }
+                    return@withContext XmlRpcCodec.response(xml)
+                } finally {
+                    connection.disconnect()
                 }
-                XmlRpcCodec.response(xml)
-            } finally {
-                connection.disconnect()
             }
+            @Suppress("UNREACHABLE_CODE")
+            error("RPC challenge negotiation exhausted")
         }
 }
