@@ -7,12 +7,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.asAndroidBitmap
-import androidx.compose.ui.test.assertDoesNotExist
-import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.onNode
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
@@ -37,7 +35,7 @@ class VerifiedAddScreenAtlasTest {
     private val validMagnet = "magnet:?xt=urn:btih:" + "ab".repeat(20) + "&dn=Public%20test"
 
     private fun save(name: String) {
-        val image = rule.onRoot().captureToImage().asAndroidBitmap()
+        val image = rule.onNode(isRoot()).captureToImage().asAndroidBitmap()
         val folder = File(
             InstrumentationRegistry.getInstrumentation().targetContext.getExternalFilesDir(null),
             "chunks-atlas"
