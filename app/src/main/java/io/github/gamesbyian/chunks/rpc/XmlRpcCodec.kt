@@ -26,6 +26,10 @@ object XmlRpcCodec {
     }
 
     private fun encodeValue(value: Any): String = when (value) {
+        is ByteArray -> {
+            require(value.size <= 2_097_152) { "Binary RPC payload exceeds 2 MiB" }
+            "<value><base64>" + java.util.Base64.getEncoder().encodeToString(value) + "</base64></value>"
+        }
         is String -> "<value><string>${escape(value)}</string></value>"
         is Int, is Long -> "<value><i8>$value</i8></value>"
         is Boolean -> "<value><boolean>${if (value) "1" else "0"}</boolean></value>"
@@ -91,6 +95,13 @@ object XmlRpcCodec {
         val typed = children(element).firstOrNull() ?: return element.textContent.orEmpty()
         return when (typed.tagName) {
             "string", "dateTime.iso8601" -> typed.textContent.orEmpty()
+            "base64" -> {
+                val encoded = typed.textContent.filterNot { it.isWhitespace() }
+                require(encoded.length <= 2_796_204) { "Binary RPC response exceeds 2 MiB" }
+                val bytes = java.util.Base64.getDecoder().decode(encoded)
+                require(bytes.size <= 2_097_152) { "Binary RPC response exceeds 2 MiB" }
+                bytes
+            }
             "int", "i4", "i8" -> typed.textContent.trim().toLong()
             "boolean" -> when (typed.textContent.trim()) {
                 "1" -> true

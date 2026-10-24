@@ -44,3 +44,7 @@ The #14 dashboard supports selecting rTorrent read-only views, on-demand refresh
 ## Android share-entry state
 
 As of merged #17, Chunks registers for Android magnet VIEW and text/plain SEND, prepopulating the Add draft. Incoming links while the app is running use singleTop intent routing. Before a server is connected, the drafted magnet remains in ephemeral app state; it is shown after connection. Hash/path validation is local syntax only, not torrent authenticity or remote folder existence. A real Android Sharesheet, reopen/process death, browser magnet link and large-text test remains required before release.
+
+## Local .torrent intake acceptance
+
+Use standard Android OpenDocument rather than requiring a custom filesystem browser. Read at most 2 MiB; reject noncanonical bencode, v2/hybrid until supported, path traversal and malformed UTF-8; show verified v1 SHA-1 infohash, torrent name, file count and announced size. No automatic Add and no hidden path mutation. Exercise file pick, cancel, bad extensions with valid bytes, wrong file type, oversized metainfo, accessibility labels and state retention in screenshot QA. First implementation candidate #40 is a preview only and must not imply submission.
