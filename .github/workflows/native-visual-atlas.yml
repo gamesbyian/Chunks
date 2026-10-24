@@ -5,6 +5,8 @@ on:
     paths:
       - ".github/workflows/native-visual-atlas.yml"
       - "tools/native_visual_atlas.py"
+      - "tools/native_atlas_capture.sh"
+      - "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt"
   workflow_dispatch:
 
 permissions:
