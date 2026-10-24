@@ -13,13 +13,25 @@ A remote adapter must not claim parity with local Arvid libtorrent APIs. rTorren
 ## Stable identity and path semantics
 
 - Server identity: Chunks-generated server profile identifier plus verified endpoint fingerprint. Never persist passwords in a display name.
-- Transfer identity: server/engine identity plus validated v1/v2/hybrid info-hash identity as actually reported by that engine. Treat duplicate hashes on **different servers** as different Transfers.
+- Transfer identity: server/engine identity plus validated v1/v2/hybrid info-hash identity as actually reported by that engine. Treat duplicate hashes on **different servers** or authenticated accounts as different Transfers. A mutable display alias must never replace identity.
 - File identity: Transfer ID plus file index/engine-relative path and a mapping generation. Renaming is a versioned mapping change; a display alias is not a backing file.
 - Place identity: server/device ID, storage provider, accessible root and volume identity, human alias, allowed capabilities and path translation (host/container/mount). Never infer a host path from a container-visible path.
 - Collection identity: user-defined semantic group. Membership is many-to-many and does not imply relocation.
 - Published library copy: independent file object with its own path, data-integrity state, ownership, provenance and link/copy strategy.
 
 A single torrent can have multiple individually completed files, hardlinked sibling representations and outstanding operations. Neither hash nor path alone provides enough information to authorize deletion.
+
+### Non-mutating aliases and smart name proposals
+
+Keep four different values: original metainfo/server-reported torrent name (`d.name`), Chunks queue display alias, actual per-file engine path/mapping, and any published library-copy filename. In multi-file torrents, the torrent title may not be any payload filename. An alias can never be an rTorrent RPC method/parameter, remapped file path, source of transfer identity, or permission for a filesystem action.
+
+In draft [PR #69](https://github.com/gamesbyian/Chunks/pull/69), the initial design stores Chunks-only per-transfer aliases in private, non-backed-up Android SharedPreferences. Each preference key is a SHA-256 fingerprint of the endpoint, authenticated username and canonicalized infohash; this separates matching hashes on different accounts/servers without storing hostnames in keys. Such fingerprints are not encryption. A future durable server-profile/account identifier needs an explicit migration and deletion plan. Local aliases do not sync to remote rTorrent, other phones or other remote clients. Reset removes the override; account/profile deletion and orphaned aliases need a separate cleanup policy.
+
+Queue rendering resolves `alias ?: originalName`. Search must match both the alias and original torrent name, and alphabetical sorting uses the displayed value; raw snapshots remain untouched for classifier analysis, operation preflights and exact-hash Start/Stop/Remove. Alias editing is independent of remote connectivity or server filesystem capabilities once the transfer identity is known; failed local persistence must not be displayed as a saved change. Changing an alias has **zero remote mutation calls**.
+
+A clean-name recommendation is a *proposal*, not a user alias or an action. First-tier suggestions parse existing filenames offline, conservatively extracting season/episode and year tokens and removing known release noise. Unknown extensions, deceptive tokens and ambiguous input should yield no recommendation rather than a fabricated identity; guest/cast/episode titles absent from the filename must not be invented. Suggestions can prefill an editable field but are saved only after explicit confirmation. Manual aliases take priority; any future optional network enrichment must declare privacy scope, source, confidence and consent.
+
+Acceptance requires deterministic positive/negative naming tests; same-hash different-server/account isolation; refresh, restart, reset and failure tests; search by alias and original; long-name/Unicode/bidi safety; and native 200%-font, TalkBack, keyboard and accessibility inspection. Verify active download and seed data are unaffected, without confusing source absence of an RPC call with separate live-server/handset evidence. Actual backing-file rename continues to require filesystem journaling and independent safety proof.
 
 ## Capability negotiation
 
