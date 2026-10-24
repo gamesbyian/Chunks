@@ -111,3 +111,7 @@ PR #46 extends the existing localhost-only SCGI/nginx legacy rig to execute a re
 ## Destination-parent integrity correction
 
 PR #47 corrects user-selected Add destination semantics from `d.directory_base.set` to `d.directory.set`, with separate expected physical folder roots for single-/multi-file torrents, both Kotlin and protected Python readback verification, and mismatch tests. Do not treat a multi-file torrent flattened into the selected parent as successful. **Pending CI and real-engine/Seedhost evidence**. This prevents early implementation success from accidentally violating the Place contract.
+
+## Native transfer lifecycle control proposal
+
+PR #49 proposes per-transfer **confirmed** Start/Stop on the existing Transfers dashboard, using the hash-targeted `RTorrentRemote.setStarted` adapter already JVM-tested. Stale snapshots block mutation. Every action requires review of the exact torrent/hash and a second tap; results distinguish verified, pending, uncertain and errors, prevent blind repeat in the same card and refresh server state after settlement. **Not accepted until Android CI and true device/Seedhost interaction evidence.** Transfer deletion and physical relocation remain separately gated.

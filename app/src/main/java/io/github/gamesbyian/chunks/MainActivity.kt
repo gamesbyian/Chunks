@@ -218,6 +218,7 @@ private fun ChunksApp(sharedMagnet: String?) {
             }
             when (section) {
                 Section.TRANSFERS -> TransfersScreen(
+                    remote = requireNotNull(server), onLifecycleSettled = refresh,
                     list = transfers, view = currentView, loading = loading, stale = stale,
                     query = query, onQuery = { query = it },
                     filter = filter, onFilter = { filter = it },
@@ -342,6 +343,7 @@ private fun ConnectionScreen(
 
 @Composable
 private fun TransfersScreen(
+    remote: RTorrentRemote, onLifecycleSettled: () -> Unit,
     list: List<RemoteTransfer>, view: String, loading: Boolean, stale: Boolean,
     query: String, onQuery: (String) -> Unit, filter: TransferFilter,
     onFilter: (TransferFilter) -> Unit, order: TransferOrder,
@@ -415,13 +417,14 @@ private fun TransfersScreen(
         }
         items(visible, key = { it.hash }) { transfer ->
             TransferCard(
-                transfer, expanded = selectedHash == transfer.hash,
+                remote = remote, stale = stale, onLifecycleSettled = onLifecycleSettled,
+                transfer = transfer, expanded = selectedHash == transfer.hash,
                 files = files, filesLoading = filesLoading, filesError = filesError,
                 onInspect = { onInspect(transfer) }
             )
         }
         item {
-            Text("Read-only server snapshot. Transfers can keep running while Chunks is closed.",
+            Text("Server snapshot. Start/stop requires an explicit per-transfer confirmation and verified readback.",
                 style = MaterialTheme.typography.bodySmall)
         }
     }
@@ -429,6 +432,7 @@ private fun TransfersScreen(
 
 @Composable
 private fun TransferCard(
+    remote: RTorrentRemote, stale: Boolean, onLifecycleSettled: () -> Unit,
     transfer: RemoteTransfer, expanded: Boolean,
     files: List<RemoteFile>?, filesLoading: Boolean, filesError: String?,
     onInspect: () -> Unit
@@ -471,6 +475,10 @@ private fun TransferCard(
             OutlinedButton(onClick = onInspect, modifier = Modifier.height(48.dp)) {
                 Text(if (expanded) "Hide files" else "Inspect files")
             }
+            TransferLifecycleControl(
+                remote = remote, transfer = transfer, snapshotStale = stale,
+                onSettled = onLifecycleSettled
+            )
             if (expanded) {
                 if (filesLoading) Text("Reading server file list…")
                 if (filesError != null) Text(filesError, color = Color(0xFF9E3930))
