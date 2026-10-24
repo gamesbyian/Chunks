@@ -6,7 +6,7 @@ Chunks is an Android-native BitTorrent client and first-class rTorrent remote. T
 
 ## Status
 
-**Pre-alpha / research-backed foundation.** The repository originally contained only a one-line README. Neither a full local BitTorrent engine, a robust rTorrent remote, nor a verified relocation system has shipped. Current build and test claims are tracked in [the evidence ledger](docs/QUALITY-LEDGER.md); plans are not evidence.
+**Pre-alpha / Android remote dashboard prototype.** The repository originally contained only a one-line README. An Android debug APK now provides protected read-only rTorrent connection, list/search/filter/sort, file inspection, discovered Places and local-only collection suggestions, plus a destination-first magnet Add **preview**. No remote Add, pause/start, moving, renaming, durable login, or local torrent engine is shipped. No live server or handset test is accepted. Current build and test claims are tracked in [the evidence ledger](docs/QUALITY-LEDGER.md); plans are not evidence.
 
 ## Read in this order
 

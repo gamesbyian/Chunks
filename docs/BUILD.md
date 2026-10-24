@@ -13,3 +13,7 @@ Evidence: [run 40057523588](https://github.com/gamesbyian/Chunks/actions/runs/40
 Merged PR #12 provided read-only synthetic loopback RPC transport tests. [Run 40057876761](https://github.com/gamesbyian/Chunks/actions/runs/40057876761) passed `gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug` on head `5b5b75ed4abaa9f4e97ec4c7e4fa517130e8f681`. A `chunks-debug-prealpha` artifact was produced. These tests do **not** prove real rTorrent auth/proxy interoperability or Android on-device behavior.
 
 See [critical review](CRITICAL-REVIEW-2026-10-24.md) and [quality ledger](QUALITY-LEDGER.md) before extending network or filesystem capabilities.
+
+## New read-only Android dashboard (2026-10-24)
+
+[CI run 40060156362](https://github.com/gamesbyian/Chunks/actions/runs/40060156362) passed `gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug` on PR source `7a7aae0a811542d38b3b523640d05f9d24fccbd7` and published a `chunks-debug-prealpha` Actions artifact. Merge commit: `a1573a4cf7047f40e3221d4222c87650ce2937ae`. This is a debug APK, not a signed release. Connect only to a protected HTTPS rTorrent RPC endpoint; credentials are volatile. The Add destination editor previews locally but never sends an Add command. No Android handset acceptance or live rTorrent interoperability has been recorded.
