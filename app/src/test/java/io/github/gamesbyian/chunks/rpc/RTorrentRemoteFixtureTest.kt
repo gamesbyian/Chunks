@@ -30,6 +30,7 @@ class RTorrentRemoteFixtureTest {
                 val reply = handler(rpcBody, exchange.requestHeaders.getFirst("Authorization"))
                 val bytes = reply.xml.toByteArray(Charsets.UTF_8)
                 exchange.responseHeaders.set("Content-Type", "text/xml")
+                if (reply.code == 401) exchange.responseHeaders.set("WWW-Authenticate", """Basic realm="Chunks fixture" """)
                 exchange.sendResponseHeaders(reply.code, bytes.size.toLong())
                 exchange.responseBody.use { it.write(bytes) }
             }
@@ -53,8 +54,10 @@ class RTorrentRemoteFixtureTest {
             .encodeToString("demo:fixture-secret".toByteArray(Charsets.UTF_8))
         var sawAuth = false
         Fixture { request, authorization ->
-            sawAuth = authorization == expectedAuth
-            when {
+            if (authorization == null) Reply(401, "Credentials required")
+            else {
+                sawAuth = authorization == expectedAuth
+                when {
                 request.contains("<methodName>system.client_version</methodName>") ->
                     Reply(200, result("<string>0.9.8</string>"))
                 request.contains("<methodName>d.multicall2</methodName>") ->
@@ -70,6 +73,7 @@ class RTorrentRemoteFixtureTest {
                       <value><i8>1500</i8></value>
                     </data></array></value></data></array>"""))
                 else -> Reply(200, fault(404, "Unexpected RPC method"))
+                }
             }
         }.use { fixture ->
             val remote = RTorrentRemote(RemoteCredentials(fixture.endpoint, "demo", "fixture-secret"))
