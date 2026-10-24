@@ -226,6 +226,11 @@ class ChunksMainActivityAtlasTest {
         rule.onNodeWithText("It's all here.").assertExists()
         save("app-transfers-populated-real-compose")
 
+        // Identify the episodic fixture by its *original* server-reported name.
+        // The queue is name-sorted, so the first unfiltered card is not this item.
+        // Keeping this search after Save also proves the original remains searchable.
+        rule.onNodeWithText("Search names or Places").performTextInput("Public.Example")
+        rule.onNodeWithText("1 shown").assertExists()
         // An actual installed-app queue action, not only an isolated editor component.
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Change list name"))
         rule.onAllNodesWithText("Change list name").onFirst().performClick()
