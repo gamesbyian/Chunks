@@ -43,7 +43,11 @@ Three deliberately separate actions:
 2. Rename the engine-backed file only where verified supported and safely synchronized.
 3. Create a renamed library copy, preserving the original seeding file. Do not publish incomplete writable data as a stable media library asset; hardlinks are shared-inode views, not snapshots.
 
-Show actual outcome and whether the original seed path is retained. The queue should support direct alias editing and returning to the original torrent name without any filesystem capability. Offer deterministic offline suggestions that strip release clutter and preserve recognized title, year and season/episode tokens. Users can accept or modify suggestions; no auto-apply or invented episode details. Rich external identification requires separate opt-in.
+Show actual outcome and whether the original seed path is retained. A torrent's original engine-reported title, Chunks-only queue alias, backing file path and renamed exported library copy must remain separate. Queue alias editing and resetting should always be available without filesystem privileges or remote RPC writes; it must never change .torrent metainfo, actual downloaded filename, destination, pieces or seeding. Show the original title as well as the alias; allow searching by either and sort by the displayed title. Alias persistence is scoped to server/account and infohash, not mutable filename or queue position, and is device-local unless separately designed.
+
+**Smart naming outcome:** offer editable, explained offline filename-cleanup suggestions, not automatic applied names. The source `Celebrity.Jeopardy.S04E02.720p.HEVC.x265-MeGusta.mkv` can suggest `Celebrity Jeopardy S04E02` or `Celebrity Jeopardy · Season 4, Episode 2`; a user can instead type `Celeb Jeopardy s04e02` or `Celebrity Jeopardy Timothy Chalamet episode`. No tool should claim the guest is inferred when the filename has no such information. Preserve known titles and episodic tokens, remove only confident technical/release clutter, and abstain on unknown extensions or ambiguous parsing. Always keep manual labels, allow original-name reset, never auto-apply, and provide a clear explanation of why a candidate was suggested.
+
+**Delivery plan:** (A) in-card editing, local persistence, original-name search, alias-aware sort and offline suggestions: candidate [#69](https://github.com/gamesbyian/Chunks/pull/69), not merged/accepted until CI and native evidence; (B) queue-wide recommendation discovery, optional user-approved batch cleanup, preferences for naming styles, per-item review, provenance and reversible changes; (C) optional external metadata for accurate guest/episode identification with explicit opt-in, source, confidence and privacy controls. Future per-file aliases, cross-device sync and automatic application require separate decisions; **none** of these layers authorizes changing engine-backed bytes or paths.
 
 ### 5. Organize and learn with consent
 
@@ -63,7 +67,7 @@ Deterministic offline parsing should provide useful functionality without extern
 
 **First meaningful remote beta:** reliable authenticated rTorrent remote with real transfer inspection and everyday controls, including destination-aware Add. No client-side torrent engine required for that beta.
 
-**Organization beta:** non-mutating sorting suggestions, collections and approved plans; actual remote moves only behind proven filesystem capabilities and failure recovery.
+**Organization beta:** non-mutating sorting and display-name suggestions (the independent alias slice can ship earlier), collections and approved plans; actual remote moves only behind proven filesystem capabilities and failure recovery.
 
 **Standalone-client beta:** local BitTorrent engine with verified download/seeding, storage permissions and Android lifecycle behavior.
 
