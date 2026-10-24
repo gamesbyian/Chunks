@@ -15,6 +15,11 @@ Updated 2026-10-24. This ledger alone records proven gates; GitHub issues track 
 
 **Historical evidence below:** Older sections were written when some features were still unmerged candidates; treat their proposed/pending status as historical at their stated source SHA, not as a current contradiction. This summary and [WORK-QUEUE](WORK-QUEUE.md) own current disposition. Maintain exact observed distinctions rather than inferring functionality from fixture screenshots.
 
+## Latest warning and native UX acceptance update
+
+- [#87](https://github.com/gamesbyian/Chunks/pull/87) merged `b12f4b160a6f7e55d7c7d7b796adaa6c5673dd06`; Android/JVM 40142927995 passed at source `1e298a110332114c5cd658bcf902eba6bbec45a4`. Pure `StorageWarningHysteresis` now deduplicates escalation through 70/85/95/over-cap and prevents threshold jitter with a five-percentage-point reset gap. No Android warnings, settings persistence, actual device allocation or local engine enforcement.
+- [#82](https://github.com/gamesbyian/Chunks/pull/82) actual installed-app run 40142611713 at `c43f03ff25a637979b75ae994fd28db93ff6e882` retained diagnostic PNG showing an expanded **empty** alias editor after choosing a suggestion and scrolling before Save. Source proved ordinary `remember` state was lost when LazyColumn recycled the card. Candidate source `3902c8325cee9b489d6ddd886f36d1c1043c336a` uses keyed `rememberSaveable`, adds a native item-scroll-away/back regression; **new exact-head native success and full screenshots still required**. No physical handset claim.
+
 ## Historical execution register
 
 | Gate | Evidence observed | Status |
