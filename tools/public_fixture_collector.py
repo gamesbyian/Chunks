@@ -52,7 +52,8 @@ def fetch(url, cap):
 
 def attribution_text(value):
     """Keep bounded plain-text credits, never embedded HTML/JS."""
-    return " ".join(html.unescape(re.sub(r"<[^>]*>", " ", str(value or ""))).split())[:512]
+    raw = "; ".join(str(v) for v in value) if isinstance(value, list) else str(value or "")
+    return " ".join(html.unescape(re.sub(r"<[^>]*>", " ", raw)).split())[:512]
 
 def license_ok(meta):
     if isinstance(meta, list):
