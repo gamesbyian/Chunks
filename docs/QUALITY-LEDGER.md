@@ -35,3 +35,7 @@ Future evidence must record exact source SHA, server/Android build as appropriat
 ## Development server testing authorization
 
 The owner approved destructive test operations on the designated Seedhost rTorrent instance and approved publishing nonsecret inventory and visual fixture data. **Authorization is not test evidence**: no remote Add, stop/start, remove, data erase, filesystem move or rename is considered implemented or verified because this consent exists. The approved target is the development torrent population, not credentials, other FTP paths or unrelated servers. Dedicated exact-hash gates and observed outcomes remain required.
+
+## First controlled remote lifecycle mutation candidate
+
+[PR #27](https://github.com/gamesbyian/Chunks/pull/27) proposes an allowlisted exact-v1-hash start/stop adapter with state read-back and no automatic retries. It has not yet been executed against the owner-designated server; CI evidence must be recorded by exact SHA if passing. Pending/uncertain outcomes must never be displayed as verified success.
