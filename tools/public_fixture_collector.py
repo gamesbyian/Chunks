@@ -237,6 +237,37 @@ def commons_fixture(filename):
             "torrent": None, "magnet": None, "torrent_status": "no_official_torrent_claimed",
             "nonsecret_fixture": True, "download_payload": False}
 
+def create_commons_single_file_torrent(manifest, data):
+    """Build a private *test* torrent, not a claim of public tracker/seeder support.
+
+    The verified HTTPS original file is advertised as a BEP19 webseed. Its
+    availability to an individual rTorrent build must be tested separately.
+    """
+    url = manifest["asset"]["url"]
+    p = urllib.parse.urlsplit(url)
+    if p.hostname != "upload.wikimedia.org" or p.query or p.fragment:
+        raise ValueError("Commons media URL not suitable for a public webseed")
+    name = urllib.parse.unquote(p.path.rsplit("/", 1)[-1])
+    encoded = name.encode("utf-8")
+    clean_name(encoded)
+    if not data or len(data) != manifest["asset"]["bytes"]:
+        raise ValueError("Commons media length disagrees with API metadata")
+    piece_length = 65536
+    pieces = b"".join(hashlib.sha1(data[i:i + piece_length]).digest()
+                      for i in range(0, len(data), piece_length))
+    info = (b"d6:lengthi" + str(len(data)).encode() + b"e4:name" + bstr(encoded) +
+            b"12:piece lengthi65536e6:pieces" + bstr(pieces) + b"e")
+    # URL seed only, no invented public swarm or tracker. Real clients vary
+    # in whether they implement and honor webseeds.
+    raw_torrent = b"d4:info" + info + b"8:url-list" + bstr(url.encode()) + b"e"
+    _safe, summary = torrent_summary(raw_torrent, len(data))
+    manifest["asset"]["sha256"] = hashlib.sha256(data).hexdigest()
+    manifest["torrent"] = summary
+    manifest["torrent_status"] = "locally_generated_unseeded_webseed_unverified"
+    manifest["download_payload"] = True
+    manifest["asset"]["saved_name"] = name
+    return raw_torrent, name
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     group = p.add_mutually_exclusive_group(required=True)
@@ -244,22 +275,39 @@ def main():
     group.add_argument("--commons-file", help="Wikimedia Commons File: title")
     p.add_argument("--output-dir", default="public-fixture-output")
     p.add_argument("--max-total-mib", type=int, default=512)
+    p.add_argument("--download-commons", action="store_true",
+                   help="Explicitly download a small licensed Commons file and make a test torrent")
+    p.add_argument("--max-commons-mib", type=int, default=8)
     args = p.parse_args()
     if args.max_total_mib < 1 or args.max_total_mib > 8192:
         p.error("max-total-mib must be 1..8192")
+    if args.max_commons_mib < 1 or args.max_commons_mib > 16:
+        p.error("max-commons-mib must be 1..16")
+    if args.download_commons and not args.commons_file:
+        p.error("--download-commons requires --commons-file")
     output = Path(args.output_dir)
     if output.exists() and any(output.iterdir()):
         p.error("Use a new empty output directory; never overwrite fixtures")
+    payload = None
+    saved_name = None
     if args.archive_id:
         manifest, torrent = archive_fixture(args.archive_id, args.max_total_mib * 1048576)
     else:
         manifest = commons_fixture(args.commons_file)
         torrent = None
+        if args.download_commons:
+            max_bytes = args.max_commons_mib * 1048576
+            if manifest["asset"]["bytes"] > max_bytes:
+                p.error("Commons asset is larger than requested payload cap")
+            payload = fetch(manifest["asset"]["url"], max_bytes)
+            torrent, saved_name = create_commons_single_file_torrent(manifest, payload)
     output.mkdir(parents=True, exist_ok=True)
     (output / "manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     if torrent:
         (output / "source-sanitized.torrent").write_bytes(torrent)
         (output / "source.magnet").write_text(manifest["torrent"]["magnet"] + "\n", encoding="utf-8")
+    if payload is not None:
+        (output / saved_name).write_bytes(payload)
     print(json.dumps({"status": "ok", "source": manifest["source"],
                        "has_torrent": torrent is not None, "artifact_directory": str(output)}))
 
