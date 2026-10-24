@@ -2,6 +2,21 @@
 
 Updated 2026-10-24. This ledger alone records proven gates; GitHub issues track work and WORK-QUEUE.md tracks priorities. Exact CI SHA matters. Mock/fixtures cannot prove server or handset functionality.
 
+## Authoritative current acceptance summary (2026-10-24)
+
+| Capability | Exact observed receipt | Still unproven |
+|---|---|---|
+| Native local transfer aliases | [#74](https://github.com/gamesbyian/Chunks/pull/74) merged `b29ef393d5ef45bfbd7ba5a33cd19a1041a09a35`; Android/JVM 40138567056, native API35 40138566991, visual baseline 40138566967 all successful at source `cafe4505a9a2ad6c18eccf44bc771bd4bc900b5f`. Retrieved and inspected eight native PNGs from artifact 12578048936. | Physical handset/TalkBack/200% text and Seedhost populated queue behaviour |
+| Alias-aware large queue sorting | [#78](https://github.com/gamesbyian/Chunks/pull/78) merged `73f150a116a443c1be53c1f39242b15e7c8fce6f` after Android/JVM 40139600512 success on source `ec7f1efce0287baf202e3e841d991ca516466f4b`. A deterministic 500-transfer fixture checks one alias resolution per passing row. | Actual 12k-transfer server/render benchmark |
+| Storage quota advisory + cleanup dry-run model | [#73](https://github.com/gamesbyian/Chunks/pull/73) merged `bd074e731903c07c045c0ba8bb747d73f3090004`, Android/JVM run 40135559819; [#76](https://github.com/gamesbyian/Chunks/pull/76) merged `e2afb0907e4f46432874592c4dd2b479f70139b0` after Android/JVM 40138989801 passed at `db427401b0b4528d77157f8b19984443cca610ec`. | Actual allocation measurement, enforced caps, filesystem deletion, ZIP extraction and real device trials |
+| Installed MainActivity / native XML-RPC | [#77](https://github.com/gamesbyian/Chunks/pull/77) current draft tests Android's real `DocumentBuilderFactory` and a synthetic localhost populated server. Earlier failure 40139384922 revealed Android `setXIncludeAware(false)` incompatibility; later API35 showed parser fix connects to populated Transfers, but test scroll selector then failed (40139864647). | Green full task/native PNGs for latest selector fix, Seedhost/physical Android |
+| ZIP safety preflight | [#79](https://github.com/gamesbyian/Chunks/pull/79) current draft: source and adversarial JVM tests for member names and declared expansion. | Current-head CI, real ZIP hostile corpus, any output writer or Android extraction executor |
+| Protected real host | Authenticated Python HTTPS rTorrent version probe [run 40063547095](https://github.com/gamesbyian/Chunks/actions/runs/40063547095) passed; legacy 0.9.8 disposable real-engine tests separately passed. | Kotlin authenticated protected real inventory, owner Seedhost mutation, newer rTorrent, Android-to-host and physical handset |
+
+**Historical evidence below:** Older sections were written when some features were still unmerged candidates; treat their proposed/pending status as historical at their stated source SHA, not as a current contradiction. This summary and [WORK-QUEUE](WORK-QUEUE.md) own current disposition. Maintain exact observed distinctions rather than inferring functionality from fixture screenshots.
+
+## Historical execution register
+
 | Gate | Evidence observed | Status |
 |---|---|---|
 | Native baseline emulator atlas | [run 40125909320](https://github.com/gamesbyian/Chunks/actions/runs/40125909320), tested SHA `6ffd05319313a20aa9a397aa31004778ca05e9dc`: Android API 35 native APK, four connection-screen PNGs + hierarchies, artifact `chunks-native-compose-baseline-atlas`, [merged #45](https://github.com/gamesbyian/Chunks/commit/6de03f8a3aa46d9bff5be8ecb5526173bfa1d907) | **Passed baseline capture only**. No full-screen review, dynamic torrent states or physical device proof |
