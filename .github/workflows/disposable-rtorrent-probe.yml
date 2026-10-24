@@ -1,15 +1,11 @@
 name: Disposable rTorrent protocol proof
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - ".github/workflows/disposable-rtorrent-probe.yml"
-      - "app/src/test/java/io/github/gamesbyian/chunks/rpc/RTorrentDisposableServerTest.kt"
 permissions:
   contents: read
 concurrency:
   group: chunks-disposable-probe
-  cancel-in-progress: true
+  cancel-in-progress: false
 jobs:
   legacy-read-only:
     runs-on: ubuntu-latest
