@@ -8,6 +8,12 @@ Chunks is an Android-native BitTorrent client and first-class rTorrent remote. T
 
 **Pre-alpha / runnable Android remote.** The native app can connect to a ruTorrent-style HTTPS XML-RPC endpoint with challenge-negotiated Basic/Digest authentication, display, search, filter and inspect transfers, and show Places/collection suggestions. A two-step Add flow accepts a v1 magnet or Android Files `.torrent`, demands a destination and confirmation, then attempts a stopped load and distinguishes verified/pending/uncertain results. Start/Stop controls also require exact-hash confirmation and read-back. See the [evidence ledger](docs/QUALITY-LEDGER.md) for tested source SHAs. These are pre-alpha controls, **not yet a proven handset-to-Seedhost journey**. Moving/renaming actual seeding files, deletion with payload, persistent profiles, local BitTorrent engine, and release APK signing remain unfinished.
 
+## Friendly names without touching torrents
+
+Chunks is adding optional **display aliases**: show `Celebrity Jeopardy S04E02` in the queue while the original torrent title and downloaded files remain unchanged. The user can supply any reasonable display name, take an editable offline cleanup suggestion or restore the original. The original remains searchable and seeding integrity is unaffected by local label changes. Display aliases are stored on this Android device, scoped to the torrent's server/account and infohash, not automatically synchronized to rTorrent or other clients.
+
+This functionality is **under review in [draft PR #69](https://github.com/gamesbyian/Chunks/pull/69)**, not part of accepted main/release functionality. Suggestions use only the supplied filename; identifying a guest or episode title absent from it is a separate future opt-in metadata feature. Actual backing-file renames and renamed library copies require different, independently safety-tested operations. See [product](docs/PRODUCT.md), [architecture](docs/ARCHITECTURE.md), [UX](docs/UX.md) and [quality ledger](docs/QUALITY-LEDGER.md).
+
 ## Read in this order
 
 1. [Agent operating contract](AGENTS.md)
