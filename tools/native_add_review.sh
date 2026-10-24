@@ -11,7 +11,7 @@ python3 - <<'PY'
 from pathlib import Path
 import struct, os
 root=Path(os.environ["RUNNER_TEMP"])/"chunks-add-native-review"
-for name in ("add-confirmation-real-compose.png","add-invalid-path-real-compose.png","remove-confirmation-real-compose.png"):
+for name in ("add-confirmation-real-compose.png","add-invalid-path-real-compose.png","remove-confirmation-real-compose.png","add-uncertain-recheck-real-compose.png"):
     raw=(root/name).read_bytes()
     assert raw[:8]==b"\x89PNG\r\n\x1a\n", "Not a real PNG screenshot"
     assert raw[12:16]==b"IHDR"
