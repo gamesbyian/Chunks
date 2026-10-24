@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.core.view.WindowCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -70,6 +71,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // The cream Compose surface extends behind the system status bar.
+        // Use dark icons; white icons failed contrast review in actual API 35 captures.
+        WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = true
         incomingMagnet = magnetFromIntent(intent)
         setContent {
             MaterialTheme(colorScheme = lightColorScheme(
