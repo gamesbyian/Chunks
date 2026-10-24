@@ -30,6 +30,10 @@ class TransferDisplayNamesTest {
         assertEquals("Already Readable Title",
             TransferDisplayNames.suggestions("Already Readable Title.mkv").first().name)
         assertTrue(TransferDisplayNames.suggestions("file.xyz").isEmpty())
+        assertTrue(TransferDisplayNames.suggestions("unclassified.abc").isEmpty())
+        assertTrue(TransferDisplayNames.suggestions("Show.S01E02.HEVC").any {
+            it.name == "Show S01E02"
+        })
         assertTrue(TransferDisplayNames.suggestions("").isEmpty())
     }
 
