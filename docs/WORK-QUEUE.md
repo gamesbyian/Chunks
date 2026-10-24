@@ -99,3 +99,7 @@ PR #40 adds an Android Storage Access Framework `OpenDocument` picker, bounded 2
 ## Protected Kotlin adapter gate candidate
 
 PR #42 adds a trusted-main, manual-only Seedhost compatibility workflow invoking the **actual Kotlin RTorrentRemote adapter** against the authorized development server with repository credentials. It checks live authenticated version and main-view torrent decoding without state changes. PR CI will **skip** the live check if no secret environment is supplied, so only a separate manual run with explicit evidence can mark actual Seedhost Kotlin compatibility passed. This is an essential predecessor to declaring handset Add/lifecycle support.
+
+## Real disposable rTorrent write acceptance candidate
+
+PR #46 extends the existing localhost-only SCGI/nginx legacy rig to execute a real **stopped raw .torrent Add**, enforce duplicate-hash refusal, then perform verified start/stop against disposable rTorrent 0.9.8 data only. It verifies exact hash and directory, with asynchronous state polling but never repeats the Add after an uncertain outcome. The PR workflow obtains **no secrets** and never accesses the owner's Seedhost. This is a *proposal until the real rTorrent job passes*; actual Seedhost and Android/device operations remain separate.
