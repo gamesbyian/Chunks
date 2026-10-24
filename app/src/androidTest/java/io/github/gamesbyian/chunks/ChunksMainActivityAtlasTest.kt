@@ -213,6 +213,18 @@ class ChunksMainActivityAtlasTest {
         rule.onNodeWithText("It's all here.").assertExists()
         save("app-transfers-populated-real-compose")
 
+        // An actual installed-app queue action, not only an isolated editor component.
+        rule.onNode(hasScrollAction()).performScrollToNode(hasText("Change list name"))
+        rule.onAllNodesWithText("Change list name").onFirst().performClick()
+        rule.onNodeWithText("Extracted show title, season and episode from filename").assertExists()
+        rule.onNodeWithText("Public Example Long Named Archive S01E01").performClick()
+        save("app-alias-review-populated-real-compose")
+        rule.onNode(hasScrollAction()).performScrollToNode(hasText("Save name"))
+        rule.onNodeWithText("Save name").performClick()
+        rule.onNodeWithText("Original torrent: Public.Example.Long.Named.Archive.S01E01.mkv",
+            substring = true).assertExists()
+        save("app-alias-saved-populated-real-compose")
+
         rule.onNodeWithText("Places").performClick()
         rule.onNodeWithText("Everything has a place.").assertExists()
         save("app-places-populated-real-compose")
