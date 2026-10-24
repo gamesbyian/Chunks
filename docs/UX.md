@@ -40,3 +40,7 @@ Verify on actual Android handset and where appropriate tablet: TalkBack traversa
 ## Implemented preview versus unreleased journey
 
 The #14 dashboard supports selecting rTorrent read-only views, on-demand refresh, filtering/sorting, per-torrent file inspection, inferred categories/collections and server-reported Places. The Add preview checks the rough magnet/path shape and displays a non-submitting draft. The actual per-transfer destination selection and server create-folder/Add confirmation journey is **not** implemented. Refresh failures retain the last snapshot and label it stale. Visual themes are draft; no device visual acceptance has been claimed. Readable error states remain limited and need real-server review.
+
+## Android share-entry state
+
+As of merged #17, Chunks registers for Android magnet VIEW and text/plain SEND, prepopulating the Add draft. Incoming links while the app is running use singleTop intent routing. Before a server is connected, the drafted magnet remains in ephemeral app state; it is shown after connection. Hash/path validation is local syntax only, not torrent authenticity or remote folder existence. A real Android Sharesheet, reopen/process death, browser magnet link and large-text test remains required before release.

@@ -17,3 +17,7 @@ See [critical review](CRITICAL-REVIEW-2026-10-24.md) and [quality ledger](QUALIT
 ## New read-only Android dashboard (2026-10-24)
 
 [CI run 40060156362](https://github.com/gamesbyian/Chunks/actions/runs/40060156362) passed `gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug` on PR source `7a7aae0a811542d38b3b523640d05f9d24fccbd7` and published a `chunks-debug-prealpha` Actions artifact. Merge commit: `a1573a4cf7047f40e3221d4222c87650ce2937ae`. This is a debug APK, not a signed release. Connect only to a protected HTTPS rTorrent RPC endpoint; credentials are volatile. The Add destination editor previews locally but never sends an Add command. No Android handset acceptance or live rTorrent interoperability has been recorded.
+
+## Android magnet handoff (2026-10-24)
+
+[CI run 40060539699](https://github.com/gamesbyian/Chunks/actions/runs/40060539699) passed on PR SHA `d586f712da63ba5c56a3d275ec68e29eb8834a7b`. It produced another `chunks-debug-prealpha` artifact. The build handles Android ACTION_VIEW magnet links and ACTION_SEND text/plain into a local, unsent Add draft. No server write or actual destination verification occurs. No physical Android Sharesheet/intent observation has yet been recorded.

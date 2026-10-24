@@ -9,6 +9,7 @@ Updated 2026-10-24. This ledger alone records proven gates; GitHub issues track 
 | Read-only synthetic RPC gateway fixtures | merged [#12](https://github.com/gamesbyian/Chunks/pull/12), [run 40057876761](https://github.com/gamesbyian/Chunks/actions/runs/40057876761), PR SHA 5b5b75ed4abaa9f4e97ec4c7e4fa517130e8f681, Gradle test and debug assemble passed | Passed synthetic JVM fixtures only |
 | Existing relocation planner tests | Included in Android/JVM build of #11; pure decision model only | Passed decision logic, NOT filesystem execution |
 | Read-only native dashboard + new catalog/inspection fixtures | [merged #14](https://github.com/gamesbyian/Chunks/pull/14), [run 40060156362](https://github.com/gamesbyian/Chunks/actions/runs/40060156362), PR SHA `7a7aae0a811542d38b3b523640d05f9d24fccbd7`, debug artifact `chunks-debug-prealpha` | JVM tests + APK assembly passed; no server/device proof |
+| Android Share/Open With and destination-draft validation | [merged #17](https://github.com/gamesbyian/Chunks/pull/17), [run 40060539699](https://github.com/gamesbyian/Chunks/actions/runs/40060539699), PR SHA `d586f712da63ba5c56a3d275ec68e29eb8834a7b`, `chunks-debug-prealpha` | Kotlin/JVM + APK compile passed, no real device intent test |
 | Real rTorrent reachability/auth | No sanitized actual-server connection evidence | Not tested |
 | Legacy/modern rTorrent compatibility | No dual-server observations, Digest/JSON-RPC/i8 or view coverage proof | Not tested |
 | Complete large remote list and reconnect | No real fleet/performance test | Not tested |
