@@ -1,0 +1,69 @@
+name: One-time public source real fixture acceptance
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/one-time-public-source-acceptance.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  commons-real-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify source collector offline
+        run: python3 -m unittest discover -s tools -p 'test_public_fixture_collector.py' -q
+      - name: Fetch a small licensed Commons source and derive actual torrent identity
+        run: |
+          python3 tools/public_fixture_collector.py --commons-file 'File:Example.ogg' --download-commons --max-commons-mib 1 --output-dir "${RUNNER_TEMP}/commons"
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib, sys
+          sys.path.insert(0,"tools")
+          import public_fixture_collector as c
+          folder=pathlib.Path(os.environ["RUNNER_TEMP"])/"commons"
+          meta=json.loads((folder/"manifest.json").read_text())
+          source=folder/meta["asset"]["saved_name"]
+          assert source.stat().st_size==meta["asset"]["bytes"]
+          assert hashlib.sha256(source.read_bytes()).hexdigest()==meta["asset"]["sha256"]
+          torrent=(folder/"source-sanitized.torrent").read_bytes()
+          info=c.torrent_summary(torrent,2**20)[1]
+          assert info["infohash_v1"]==meta["torrent"]["infohash_v1"]
+          assert (folder/"source.magnet").read_text().strip()==meta["torrent"]["magnet"]
+          print("CHUNKS_COMMONS_REAL_SOURCE: checked license, original bytes, sha256, .torrent infohash and magnet")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: chunks-commons-real-source
+          path: ${{ runner.temp }}/commons
+          retention-days: 14
+  archive-real-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify real Internet Archive advertised metainfo and license
+        run: |
+          python3 tools/public_fixture_collector.py --archive-id BigBuckBunny_124 --max-total-mib 512 --output-dir "${RUNNER_TEMP}/archive"
+          python3 - <<'PY'
+          import json,os,pathlib,sys
+          sys.path.insert(0,"tools")
+          import public_fixture_collector as c
+          folder=pathlib.Path(os.environ["RUNNER_TEMP"])/"archive"
+          meta=json.loads((folder/"manifest.json").read_text())
+          assert meta["source"]=="internet-archive"
+          torrent=(folder/"source-sanitized.torrent").read_bytes()
+          info=c.torrent_summary(torrent,512*1048576)[1]
+          assert info["infohash_v1"]==meta["torrent"]["infohash_v1"]
+          assert (folder/"source.magnet").read_text().strip()==meta["torrent"]["magnet"]
+          print("CHUNKS_ARCHIVE_REAL_SOURCE: official metadata license, validated infohash, torrent and magnet")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: chunks-archive-real-source
+          path: ${{ runner.temp }}/archive
+          retention-days: 14
