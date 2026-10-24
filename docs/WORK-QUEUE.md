@@ -91,3 +91,7 @@ Opt-in dev Seedhost `inspect_inventory=true` will capture nonsecret torrent meta
 - [ ] Use a collected exact hash and explicit destination to perform the separate protected, manual-only **live Seedhost Add acceptance**. No real app Add or remote move proven by source collection.
 - [ ] Acquire a first opt-in real Seedhost torrent inventory to drive actual Compose/Android viewport screenshot atlas and accessibility states. QA case selection code is not an image atlas.
 - [ ] Connect actual Android runtime to protected Seedhost using its tested authentication challenge, confirm list accuracy and failure/reconnection states. PR #38 is only a source candidate until CI passes and handset/network tested.
+
+## Native Android torrent file import preview candidate
+
+PR #40 adds an Android Storage Access Framework `OpenDocument` picker, bounded 2 MiB v1 `.torrent` parser, on-device original `info` dictionary SHA-1, name/file-count/size preview and explicit refusal of traversal/invalid encoding/v2. This is a **local-only Add preview**, not upload or remote Add; selected bytes are not persisted or sent to Seedhost. App/UI CI and a physical Android document picker journey remain required gates.
