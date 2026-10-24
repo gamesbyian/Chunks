@@ -73,7 +73,7 @@ class RemoteStoppedAddTest {
         server.start()
         try {
             val remote = RTorrentRemote(RemoteCredentials(
-                "http://127.0.0.1:\${server.address.port}/RPC2", "", ""))
+                "http://127.0.0.1:${server.address.port}/RPC2", "", ""))
             val plan = StoppedRemoteAddPlan.fromMagnet(magnet, dir)
             assertEquals(RemoteAddOutcome.VerifiedStopped(hash, dir), remote.loadStopped(plan))
             assertTrue(loaded)
