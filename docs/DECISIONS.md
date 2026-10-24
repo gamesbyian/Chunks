@@ -24,6 +24,8 @@ Updated 2026-10-24 after critical review. **Owner** means explicitly requested; 
 | D18 | Open | Minimum target rTorrent version and precise supported proxy auth schemes | Actual deployed environments and tests |
 | D19 | Open | External filesystem adapters for non-installable seedboxes: SFTP/SSH/provider APIs vs companion | Managed-host capability survey |
 | D20 | Adopted | Default is no auto-uploaded logs, private torrent inventory or third-party metadata lookups | Explicit owner choice |
-| D21 | Owner | Editable per-transfer Chunks display aliases, independent of original torrent name/backing bytes; smart locally generated clean-name recommendations, editable and never automatically applied | Engineering must preserve server-scoped identity, persistence, truthful suggestion provenance and intact seeding |
+| D21 | Owner | Editable per-transfer Chunks-only display aliases independent of original torrent name, backing path/bytes and seeding; smart automatically generated *recommendations* editable and never applied without user approval | Original title remains searchable/inspectable; server+account+hash identity, persistence, reversibility and provenance tested |
+| D22 | Adopted (provisional) | Deliver deterministic local cleanup first; then queue-wide suggestion review/style rules; any external episode/guest lookup requires explicit opt-in, disclosed fields, sources/confidence, and private local fallback | Future user journey, privacy and false-positive corpus review |
+| D23 | Open | Whether to support per-file aliases, alias sync across multiple devices, or rule-driven auto-application; none are delivered by #69 | Owner request plus data-model, deletion/migration and consent designs |
 
 Historical alternatives remain in critical review and research, not in competing plan files. Track implementation in WORK-QUEUE and truth in QUALITY-LEDGER.
