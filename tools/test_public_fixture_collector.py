@@ -94,6 +94,20 @@ class CollectorTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 f.archive_fixture("test-public-example", 100)
 
+    def test_wikimedia_api_tracking_query_is_removed_before_webseed(self):
+        clean = f.clean_commons_asset_url(
+            "https://upload.wikimedia.org/wikipedia/commons/a/ab/Example.ogg"
+            "?utm_source=commons&utm_campaign=download&utm_content=audio")
+        self.assertEqual(
+            "https://upload.wikimedia.org/wikipedia/commons/a/ab/Example.ogg", clean)
+        for bad in (
+            "https://upload.wikimedia.org/wikipedia/commons/a/ab/Example.ogg?token=secret",
+            "https://upload.wikimedia.org/wikipedia/commons/a/ab/Example.ogg?utm_source=x&passkey=y",
+            "https://upload.wikimedia.org/wikipedia/commons/a/ab/Example.ogg?signature=z",
+        ):
+            with self.assertRaises(ValueError):
+                f.clean_commons_asset_url(bad)
+
     def test_wikimedia_reference_is_not_fabricated_torrent(self):
         data = {"query": {"pages": {"1": {"imageinfo": [{
             "url": "https://upload.wikimedia.org/wikipedia/commons/a/ab/Public.png",
