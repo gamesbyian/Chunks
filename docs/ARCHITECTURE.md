@@ -1,34 +1,93 @@
-# Chunks technical architecture and safety contracts
-Status: design authority for first vertical slice, not implementation acceptance.
+# Chunks architecture and behavior contracts
 
-## Modules and seams
-Android Kotlin/Jetpack Compose shell → command/application coordinator → immutable transfer/place/collection models → local engine adapter (candidate Arvid libtorrent JNI) OR remote rTorrent adapter (XML-RPC HTTPS; modern JSON-RPC opt-in after probe). Classification consumes snapshots, produces recommendations; it never owns filesystem mutations. Optional Chunks Companion is a separate least-privilege service exposing restricted file operations with verified outcomes.
+Revised after CRITICAL-REVIEW-2026-10-24.md. **A design contract, not a claim of running implementation.** Product scope: PRODUCT.md; present work order: WORK-QUEUE.md; accepted evidence: QUALITY-LEDGER.md.
 
-Start with one :app Gradle module and explicit package boundaries, not unearned microservices. Split modules when actual parallel implementation or build isolation justifies it. Room/SQLite is candidate for durable state, operation outbox, secrets references and history; never store plaintext passwords.
+## Architecture: shared semantics, independent capabilities
 
-## Typed identity
-Remote key = server UUID + canonical info hash (version-aware, avoid hash conflation). File key = torrent identity + engine-reported file index/path mapping. Physical location = Place ID + volume/path + server capability snapshot. Library copy has independent ownership and lifecycle. Classification and user labels are not file names.
+Android Compose UI and share intents → application command coordinator → Transfer / Place / Collection / Operation domain model → explicit local engine adapter OR rTorrent RPC adapter. Organization produces **proposals**, not filesystem side effects. Storage providers and the optional Companion execute only authorized, capability-proven operations.
 
-## Command/confirmation states
-New → Planned → Prepared → Executing → EngineAcknowledged → FilesystemVerified → Complete; errors may be Recoverable/Uncertain or Failed. Command IDs must be idempotent and persisted before external side effects. Timeouts imply **unknown**, never automatic "failed, resend" for a destructive action. Distinguish network acknowledgement from physical verification.
+Start with one Gradle :app module and pure domain boundaries. Split when substantial implementation or independent tests justify it. Android lifecycle, persistence, secrets, file permission grants, RPC transports and native torrent libraries must not leak into portable classification logic.
 
-## Remote rTorrent
-- v1 proof: read-only authenticated HTTPS XML-RPC commands system.client_version, system.listMethods, d.multicall2. Proxy SCGI on loopback/unix socket; never publish naked SCGI.
-- Probe commands, input/output value shapes, response limits and version; offer bounded polling rather than overwhelming servers. Do not assume JSON-RPC exists on old releases.
-- Mutations such as setting directory metadata are NOT filesystem relocation. Direct mode only exposes operations actually confirmed safe.
-- A restricted companion may execute verified rename, copy, hardlink, folder creation and transaction recovery, scoped to configured allowed roots. Never accept arbitrary shell/command fields or client-supplied unvalidated paths.
+A remote adapter must not claim parity with local Arvid libtorrent APIs. rTorrent uses the separate rakshasa libTorrent implementation. A generic RPC transport is an internal mechanism, never a user-facing arbitrary-method execution feature.
 
-## Move/rename design
-1. Validate canonical roots, no path escapes/symlink swaps, collisions, free space, permissions, linked/shared inode ownership, partial data and torrent file mapping.
-2. Commit intent in operation journal and take an exclusive per-transfer lock.
-3. Same filesystem rename when safe; cross-volume staging copy/checkpoint/resume with independent bytes verification. Active transfer may need controlled I/O pause/handoff; remote connectivity itself need not drop.
-4. Rebind engine and verify reported location plus actual bytes. For a separate library copy, preserve original seeding location.
-5. Cleanup only after confirmed commit. If observer disconnects, server-side journal continues/reconciles. Never delete source while outcome is uncertain.
+## Stable identity and path semantics
 
-Hardlinks are unsafe to treat as detached snapshots while active torrent data remains writable. Reflinks/copies also require capability checks. Never silently rewrite media tags inside hashed seeding data.
+- Server identity: Chunks-generated server profile identifier plus verified endpoint fingerprint. Never persist passwords in a display name.
+- Transfer identity: server/engine identity plus validated v1/v2/hybrid info-hash identity as actually reported by that engine. Treat duplicate hashes on **different servers** as different Transfers.
+- File identity: Transfer ID plus file index/engine-relative path and a mapping generation. Renaming is a versioned mapping change; a display alias is not a backing file.
+- Place identity: server/device ID, storage provider, accessible root and volume identity, human alias, allowed capabilities and path translation (host/container/mount). Never infer a host path from a container-visible path.
+- Collection identity: user-defined semantic group. Membership is many-to-many and does not imply relocation.
+- Published library copy: independent file object with its own path, data-integrity state, ownership, provenance and link/copy strategy.
 
-## Android storage/lifecycle
-Use SAF, document tree URI permissions and narrow scoped local files. Android 11+ excludes some tree roots; Android 15+ background rules constrain data sync. Actual background engine survival must be proven on devices; remote mode server transfer survives app death.
+A single torrent can have multiple individually completed files, hardlinked sibling representations and outstanding operations. Neither hash nor path alone provides enough information to authorize deletion.
 
-## Security
-See SECURITY.md. No TLS bypass, no generic execute RPC surface, no public secrets, no untrusted path concatenation, no remote suggestions uploaded by default. Test with fixture server and throwaway data; never destructive tests on production seedboxes.
+## Capability negotiation
+
+Each contemplated command consults an explicit capability decision:
+
+- **SUPPORTED_DIRECT**: the exact server/version/build and current connection can safely perform the operation via allowed rTorrent methods.
+- **SUPPORTED_ASSISTED**: a separately authenticated filesystem provider with matching root, volume and operation journal can perform it.
+- **PENDING_PROBE**: unknown; no mutation offered until verified.
+- **READ_ONLY**: server or storage mode cannot authorize mutation.
+- **UNSUPPORTED**: no trustworthy implementation exists. Show a concrete reason and safe alternative.
+
+Method enumeration is advisory; runtime arguments, actual response types, auth permissions, storage topology and operation-specific behavior decide support. Capabilities are scoped to server profile, version/build, RPC transport, filesystem, volume and currently authenticated principal; invalidate on restart, credential change, permission change or stale topology. Record check timestamp and distinguish lack of evidence from evidence of absence.
+
+## rTorrent transport matrix and quality
+
+Support traditional XML-RPC through authenticated, certificate-validated HTTPS proxy first, with JSON-RPC where actually available. Backward compatibility is a **matrix**, not a single version threshold. Test at least: legacy 0.9.x XML-RPC family; maintained 0.15.x or 0.16.x family; proxy/environment differences; constrained managed seedboxes. Different XML-RPC libraries differ in 64-bit integer/i8 encoding; no unconditional use of i8 for all integer requests. Inspect actual methods and encodings on real server builds.
+
+- Authentication: verify Basic, Digest or other legitimate proxy schemes as demand warrants; never auto-fallback to plaintext remote HTTP or disable TLS certificate checks. Credentials must be isolated from logs and cross-origin redirects.
+- Read-only baseline: system.client_version, optional system.listMethods, compatible d.multicall2 with explicitly checked view semantics. Main view is not guaranteed to represent all torrents on every server.
+- Enumeration: devise bounded batches/paging or view-based partitioning compatible with observed RPC behavior; mark incomplete lists clearly. Never solve a 4 MiB response cap merely by unboundedly raising it.
+- Control: allowlist individual operations, validate argument types, concurrency and observed acknowledgements, use command-specific retry policies. No unbounded command concurrency or rapid polling; apply backoff and server health information.
+- Parse: reject DTD/XXE, deep nesting, huge arrays, malformed data, excessive strings, Unicode/path oddities and unexpected integer representations; validate in Android runtime as well as JVM.
+- Secret retention: current prototype holds only volatile credentials; a durable account feature must introduce reviewed encrypted storage/Android Keystore and credential revocation before release.
+
+Remote connection alone proves nothing about directory creation or host filesystem access. An rTorrent directory-setter changes metadata; do not infer moved bytes from it.
+
+## Operation model: observed status is not command intent
+
+Persist a durable Operation with immutable ID, requesting principal, target server/Transfer, exact source snapshot and content identity, requested destination, preview/approval receipt, capability and filesystem snapshot, expected engine mapping, lock/fencing token, cleanup stage and status.
+
+States:
+
+1. **Requested**: saved user intent, no effects.
+2. **Planned**: fresh validated roots, collision, space, ownership and strategy.
+3. **Prepared**: exclusive operation lease acquired, durable journal/fsync, destination reservation, source still matches.
+4. **Copying / Repositioning**: mutation in progress; source remains protected and writes coordinated.
+5. **VerifiedStaged**: source and stage have valid bytes/metadata for the selected completeness criteria.
+6. **Committing**: engine I/O quiescence/handoff and path mapping change with reconciliation point.
+7. **VerifiedCommitted**: engine reports and reads validated location, data/resume integrity matches, torrents can continue.
+8. **Cleaning**: only now remove unused temporary/source data after ownership revalidation.
+9. **Complete**: final filesystem result and engine mapping confirmed.
+10. **Uncertain / NeedsRecovery / Refused**: explicit durable terminal-or-recovery states; never cosmetically convert timeout into failure then blind retry.
+
+Stage boundaries may not all be atomic. Copying files across mounts is not a single transaction. Every stage must have a documented crash recovery decision, idempotency key and resumption or compensation semantics. An interrupted UI connection must not cancel a server-owned journal. Cancellation is a request that may be unsafe during commit; communicate when it can be honored.
+
+## Safe relocation and seeding policy
+
+- Root and destination authority comes from server-side *openat/no-follow*-class protections or equivalent verified handle-based traversal. String-normalizing a malicious path is insufficient to defeat symlink races.
+- Check source identity and dimensions (volume, size, mtime and appropriate hashes), access permissions, concurrent writers and files referenced by other torrents. Detect foreign rTorrent/ruTorrent/scripts mutations and revalidate at commit.
+- Same filesystem: atomic rename is a candidate **only** where target/filesystem/handles and engine rebind are proven safe. Existing open file handles and memory mapping can invalidate naive assumptions.
+- Cross filesystem: stage copy/checkpoint, verify, coordinate I/O quiescence/reopen, prove correct engine mapping, then clean. If atomic handoff unavailable, defer until completion or explicitly refuse.
+- Partial transfers: stage should not publish a misleading completed media file; completed chunks, sparse allocations, priority/skipped files and resume data need separate handling.
+- Shared files and hardlinks: do not infer exclusive ownership from path. A hardlink is the same inode, not a detached copy. For library publication while the torrent is still writing, defer or produce a separate verified stable copy.
+- Rename backing data only with an actual engine mapping and verifier; display title changes alone are metadata. Never make a torrent appear to seed when it cannot read its original pieces.
+- Encryption/dedup filesystems, case-insensitive collisions, Unicode normalization, symlinks, ACL changes, hardlinks and quota limits get dedicated tests.
+
+**Supported fallback:** when live relocation cannot preserve integrity or acceptable continuity, keep current data/transfer intact and provide a scheduled move-on-completion or verified copy action, explaining the limitation. The user may still change *desired destination* immediately, but it is visibly pending, not physically complete.
+
+## Companion and independently authenticated storage
+
+Companion is an optional constrained helper for advanced operations, **not a mandatory web gateway**. It must support a fixed allowlisted command schema, narrowly scoped per-root filesystem permissions, mutual or otherwise strong authenticated identity, operation journal, bounded concurrency, per-transfer fencing and redacted audit logs. No arbitrary shell, eval or user-controlled method names. Server may be hosted in Docker or managed seedbox, with path/container translation proven rather than assumed.
+
+For hosts on which a companion cannot be deployed, investigate separately authenticated SFTP/SSH and provider filesystem APIs as alternative storage **capabilities**, but they cannot by themselves guarantee coordinated live rTorrent I/O. Any missing rebind/lock means a live move is disabled.
+
+## Android local engine and lifecycle
+
+Arvid libtorrent JNI is a candidate, not yet approved. Device APIs and SAF can grant document URIs rather than POSIX paths; storage engine integration needs an explicit file-I/O strategy. API 35+ dataSync foreground services have a total six-hour background cap; specialUse has declaration and review requirements. Background download/seeding promises require controlled physical Android 15/16/17 tests, including screen-off, Doze, networking/VPN changes, low storage, reboot and process kill. A remote engine remains active independent of the app.
+
+## Security, testing, acceptance
+
+Read SECURITY.md and QUALITY-LEDGER.md. Prove read-only real-server compatibility *before* introducing mutation methods. Then use disposable volumes and independent fault injection at every journal transition. No production seedbox operation may be used as the experiment that establishes whether an operation is safe.
