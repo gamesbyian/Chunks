@@ -1,6 +1,7 @@
 package io.github.gamesbyian.chunks
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,6 +20,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.model.Units
 import io.github.gamesbyian.chunks.rpc.RemoteFile
+import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 
 /** Bounded display slice; the file index remains the original server index. */
 internal data class FilePage(
@@ -45,11 +47,19 @@ internal object FilePages {
  * filesystem validation or a claimed local file operation.
  */
 @Composable
-internal fun TransferFilePager(hash: String, files: List<RemoteFile>) {
+internal fun TransferFilePager(
+    remote: RTorrentRemote,
+    hash: String,
+    files: List<RemoteFile>,
+    snapshotStale: Boolean,
+    mainView: Boolean,
+    onSettled: () -> Unit
+) {
     var requestedPage by remember(hash, files) { mutableIntStateOf(0) }
+    var selectedIndex by remember(hash, files) { mutableIntStateOf(-1) }
     val current = FilePages.select(files.size, requestedPage)
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("${files.size} files · read only", fontWeight = FontWeight.Bold)
+        Text("${files.size} server-reported files", fontWeight = FontWeight.Bold)
         if (files.isEmpty()) {
             Text("No files were reported for this transfer.",
                 style = MaterialTheme.typography.bodySmall)
@@ -70,6 +80,10 @@ internal fun TransferFilePager(hash: String, files: List<RemoteFile>) {
             }
             Text("Page ${current.number + 1} of ${current.count}",
                 style = MaterialTheme.typography.labelMedium)
+            if (!mainView || snapshotStale) {
+                Text("Refresh the main server view before changing file priorities.",
+                    style = MaterialTheme.typography.bodySmall)
+            }
             for (i in current.firstIndex until current.endExclusive) {
                 val file = files[i]
                 val priority = when (file.priority) {
@@ -78,12 +92,37 @@ internal fun TransferFilePager(hash: String, files: List<RemoteFile>) {
                     2 -> "High"
                     else -> "Priority unknown"
                 }
-                Text(
-                    "${i + 1}. ${file.path} · ${Units.bytes(file.sizeBytes)} · $priority",
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "${i + 1}. ${file.path} · ${Units.bytes(file.sizeBytes)} · $priority",
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    OutlinedButton(
+                        onClick = { selectedIndex = if (selectedIndex == i) -1 else i },
+                        enabled = mainView && !snapshotStale && file.priority in 0..2,
+                        modifier = Modifier.height(48.dp)
+                    ) {
+                        Text(if (selectedIndex == i) "Close" else "Priority")
+                    }
+                }
+                if (selectedIndex == i) {
+                    TransferFilePriorityControl(
+                        remote = remote,
+                        hash = hash,
+                        index = i,
+                        file = file,
+                        snapshotStale = snapshotStale,
+                        mainView = mainView,
+                        onSettled = onSettled
+                    )
+                }
             }
         }
     }
