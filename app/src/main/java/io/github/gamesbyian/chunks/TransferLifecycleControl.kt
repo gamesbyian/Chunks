@@ -16,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -39,11 +40,11 @@ fun TransferLifecycleControl(
     onSettled: () -> Unit
 ) {
     val validV1Hash = remember(transfer.hash) { Regex("[0-9a-fA-F]{40}").matches(transfer.hash) }
-    var confirming by remember(transfer.hash) { mutableStateOf(false) }
-    var attempted by remember(transfer.hash) { mutableStateOf(false) }
-    var pending by remember(transfer.hash) { mutableStateOf(false) }
+    var confirming by rememberSaveable(transfer.hash, transfer.name, transfer.directory) { mutableStateOf(false) }
+    var attempted by rememberSaveable(transfer.hash, transfer.name, transfer.directory) { mutableStateOf(false) }
+    var pending by remember(transfer.hash, transfer.name, transfer.directory) { mutableStateOf(false) }
     var feedback by remember(transfer.hash) { mutableStateOf<String?>(null) }
-    var verified by remember(transfer.hash) { mutableStateOf(false) }
+    var verified by rememberSaveable(transfer.hash, transfer.name, transfer.directory) { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val requestedStarted = !transfer.started
     val verb = if (requestedStarted) "Start" else "Stop"
