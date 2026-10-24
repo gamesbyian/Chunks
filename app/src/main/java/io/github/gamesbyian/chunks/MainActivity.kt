@@ -282,10 +282,10 @@ private fun ChunksApp(sharedMagnet: String?) {
 
 private fun readableFailure(failure: Exception): String = when (failure) {
     is java.net.UnknownHostException -> "The server hostname could not be resolved."
-    is java.net.SocketTimeoutException -> "The server did not respond before the timeout. No remote changes were attempted."
+    is java.net.SocketTimeoutException -> "The server did not respond before the timeout. If a command was submitted, its outcome must be checked before retrying."
     is java.net.ConnectException -> "The server did not accept the connection."
     is java.io.IOException -> "Network or proxy error. Check your connection and server settings."
-    else -> "The server returned an incompatible or unsupported read-only response. Check its RPC configuration."
+    else -> "The server returned an incompatible or unsupported RPC response. Check its configuration before retrying an operation."
 }
 
 @Composable
@@ -367,7 +367,7 @@ private fun TransfersScreen(
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = onAdd, modifier = Modifier.weight(1f).height(52.dp)) {
-                        Text("+ Add plan")
+                        Text("+ Add torrent")
                     }
                     OutlinedButton(onClick = onRefresh, enabled = !loading,
                         modifier = Modifier.height(52.dp)) {
@@ -586,7 +586,7 @@ private fun ServerScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
-            ColoredPanel("Your rTorrent.", "Version " + version + " · read-only session",
+            ColoredPanel("Your rTorrent.", "Version " + version + " · protected remote session",
                 if (stale) Coral else Lime)
         }
         item {
@@ -620,7 +620,7 @@ private fun ServerScreen(
             }
         }
         item {
-            Text("Credentials remain in memory only. Stopped Add is opt-in with a review step; file relocation is not yet supported.",
+            Text("Credentials remain in memory only. Stopped Add and Start/Stop require confirmation. Moving or deleting physical files is not yet supported.",
                 style = MaterialTheme.typography.bodySmall)
         }
     }
