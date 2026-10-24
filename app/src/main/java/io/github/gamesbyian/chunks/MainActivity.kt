@@ -129,6 +129,8 @@ private fun ChunksApp(sharedMagnet: String?) {
     var magnet by remember { mutableStateOf("") }
     var draftPath by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
+    val remoteFence = remember { RemoteUiRequestFence() }
+    val inspectionFence = remember { RemoteUiRequestFence() }
 
     // Incoming Android Sharesheet/VIEW links prefill a local draft. Never auto-submit.
     LaunchedEffect(sharedMagnet) {
@@ -140,20 +142,42 @@ private fun ChunksApp(sharedMagnet: String?) {
 
     val refresh: () -> Unit = {
         val remote = server
-        if (!loading && remote != null) {
-            loading = true
-            error = null
-            scope.launch {
-                try {
-                    val snapshot = remote.listTransfers(requestedView)
-                    transfers = snapshot
-                    currentView = requestedView
-                    stale = false
-                } catch (failure: Exception) {
-                    stale = true
-                    error = readableFailure(failure)
-                } finally {
-                    loading = false
+        if (remote != null) {
+            if (loading) {
+                // A mutation might settle during a manual refresh. Queue one
+                // additional read rather than silently dropping its readback.
+                remoteFence.queueRefresh()
+            } else {
+                loading = true
+                scope.launch {
+                    var again: Boolean
+                    do {
+                        val ticket = remoteFence.begin(requestedView)
+                        if (server === remote) error = null
+                        try {
+                            val snapshot = remote.listTransfers(ticket.view)
+                            if (server === remote && remoteFence.current(ticket)) {
+                                transfers = snapshot
+                                currentView = ticket.view
+                                stale = false
+                                // Previous file inspections belong to the OLD
+                                // snapshot and must not arrive after this one.
+                                inspectionFence.invalidate()
+                                expandedHash = null
+                                files = null
+                                filesError = null
+                                filesLoading = false
+                            }
+                        } catch (failure: Exception) {
+                            if (server === remote && remoteFence.current(ticket)) {
+                                stale = true
+                                error = readableFailure(failure)
+                            }
+                        }
+                        again = server === remote && remoteFence.current(ticket) &&
+                            remoteFence.consumeQueuedRefresh()
+                    } while (again)
+                    if (server === remote) loading = false
                 }
             }
         }
@@ -180,24 +204,35 @@ private fun ChunksApp(sharedMagnet: String?) {
                     if (!loading) {
                         loading = true
                         error = null
+                        val ticket = remoteFence.begin("main")
+                        // Freeze credentials for this one connection attempt.
+                        // A later edit or lifecycle reset cannot redirect it.
+                        val settings = RemoteCredentials(endpoint, username, password)
                         scope.launch {
                             try {
-                                val candidate = RTorrentRemote(RemoteCredentials(endpoint, username, password))
+                                val candidate = RTorrentRemote(settings)
                                 val v = candidate.version()
-                                val list = candidate.listTransfers()
-                                transfers = list
-                                version = v
-                                server = candidate
-                                stale = false
-                                section = if (magnet.isNotBlank()) Section.ADD else Section.TRANSFERS
-                                currentView = "main"
-                                requestedView = "main"
-                                // The input controls need not retain a plaintext password after connecting.
-                                password = ""
+                                val list = candidate.listTransfers(ticket.view)
+                                if (remoteFence.current(ticket) && server == null) {
+                                    inspectionFence.invalidate()
+                                    transfers = list
+                                    version = v
+                                    server = candidate
+                                    stale = false
+                                    section = if (magnet.isNotBlank()) Section.ADD else Section.TRANSFERS
+                                    currentView = ticket.view
+                                    requestedView = ticket.view
+                                    // Do not keep a second plaintext copy in the fields.
+                                    password = ""
+                                }
                             } catch (failure: Exception) {
-                                error = readableFailure(failure)
+                                if (remoteFence.current(ticket) && server == null)
+                                    error = readableFailure(failure)
                             } finally {
-                                loading = false
+                                if (remoteFence.current(ticket) && server == null) loading = false
+                                // On success, the session is no longer in the connection UI,
+                                // but the busy indicator must also return to idle.
+                                if (remoteFence.current(ticket) && server != null) loading = false
                             }
                         }
                     }
@@ -232,22 +267,37 @@ private fun ChunksApp(sharedMagnet: String?) {
                     filesLoading = filesLoading,
                     onInspect = { transfer ->
                         if (expandedHash == transfer.hash) {
+                            inspectionFence.invalidate()
                             expandedHash = null
+                            filesLoading = false
                         } else {
-                            expandedHash = transfer.hash
+                            val remote = server
+                            val targetHash = transfer.hash
+                            val ticket = inspectionFence.begin(currentView)
+                            expandedHash = targetHash
                             files = null
                             filesError = null
                             filesLoading = true
-                            val remote = server
-                            val targetHash = transfer.hash
                             scope.launch {
                                 try {
                                     val loaded = remote?.listFiles(targetHash)
-                                    if (expandedHash == targetHash) files = loaded
+                                    if (remote != null && server === remote &&
+                                        inspectionFence.current(ticket) &&
+                                        currentView == ticket.view && expandedHash == targetHash) {
+                                        files = loaded
+                                    }
                                 } catch (failure: Exception) {
-                                    if (expandedHash == targetHash) filesError = readableFailure(failure)
+                                    if (remote != null && server === remote &&
+                                        inspectionFence.current(ticket) &&
+                                        currentView == ticket.view && expandedHash == targetHash) {
+                                        filesError = readableFailure(failure)
+                                    }
                                 } finally {
-                                    if (expandedHash == targetHash) filesLoading = false
+                                    if (remote != null && server === remote &&
+                                        inspectionFence.current(ticket) &&
+                                        currentView == ticket.view && expandedHash == targetHash) {
+                                        filesLoading = false
+                                    }
                                 }
                             }
                         }
@@ -264,13 +314,21 @@ private fun ChunksApp(sharedMagnet: String?) {
                     loading = loading, stale = stale, count = transfers.size,
                     onRefresh = refresh,
                     onDisconnect = {
+                        // Invalidate every in-flight read before clearing UI state.
+                        remoteFence.invalidate()
+                        inspectionFence.invalidate()
                         server = null
                         version = ""
                         transfers = emptyList()
                         expandedHash = null
                         files = null
+                        filesError = null
+                        filesLoading = false
+                        loading = false
                         error = null
                         stale = false
+                        currentView = "main"
+                        requestedView = "main"
                     }
                 )
                 Section.ADD -> VerifiedAddScreen(
