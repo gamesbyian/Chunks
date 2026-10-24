@@ -152,6 +152,47 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         }
     }
 
+    /**
+     * Load exact validated v1 .torrent metadata bytes with an explicitly
+     * chosen server directory. The raw bytes are sent as XML-RPC base64,
+     * matching the manually testable Python load.raw_verbose protocol.
+     *
+     * No implicit start, automatic retry, overwrite, filesystem move or
+     * post-failure cleanup. Live Seedhost acceptance remains separate.
+     */
+    suspend fun loadStoppedTorrentBytes(
+        torrentBytes: ByteArray, destination: String
+    ): RemoteAddOutcome {
+        val inspected = TorrentMetainfoReader.preview(torrentBytes)
+        val hash = inspected.infoHashV1
+        val plan = StoppedRemoteAddPlan.fromMagnet(
+            "magnet:?xt=urn:btih:" + hash, destination)
+        if (listTransfers("main").any { it.hash.equals(hash, ignoreCase = true) }) {
+            return RemoteAddOutcome.AlreadyPresent(hash)
+        }
+        try {
+            call("load.raw_verbose", listOf("", torrentBytes,
+                "d.directory_base.set=" + plan.destination))
+        } catch (_: IOException) {
+            return RemoteAddOutcome.Uncertain(hash)
+        }
+        return try {
+            val item = listTransfers("main").find { it.hash.equals(hash, ignoreCase = true) }
+                ?: return RemoteAddOutcome.PendingVerification(hash)
+            val base = call("d.directory_base", listOf(hash)) as? String
+            val started = number(call("d.state", listOf(hash))) != 0L
+            if (!item.started && !started && base == plan.destination) {
+                RemoteAddOutcome.VerifiedStopped(hash, base)
+            } else {
+                RemoteAddOutcome.PendingVerification(hash)
+            }
+        } catch (_: IOException) {
+            RemoteAddOutcome.Uncertain(hash)
+        } catch (_: RpcFault) {
+            RemoteAddOutcome.PendingVerification(hash)
+        }
+    }
+
     /** A per-torrent read-only file inspector; never changes file priorities. */
     suspend fun listFiles(hash: String): List<RemoteFile> {
         require(Regex("[0-9a-fA-F]{40}([0-9a-fA-F]{24})?").matches(hash)) {
