@@ -26,3 +26,11 @@ Updated 2026-10-24 after critical review. **Owner** means explicitly requested; 
 | D20 | Adopted | Default is no auto-uploaded logs, private torrent inventory or third-party metadata lookups | Explicit owner choice |
 
 Historical alternatives remain in critical review and research, not in competing plan files. Track implementation in WORK-QUEUE and truth in QUALITY-LEDGER.
+
+## Owner requirements added 2026-10-24 (awaiting implementation)
+
+- **D21 | Owner:** Device storage use cap with sane adjustable warning thresholds; compact allocation and cleanup UX. Proposed 70/85/95% warnings and pausing local download writes at cap are provisional until Android device proof. Keep remote quota semantically distinct.
+- **D22 | Owner:** Explicit, comprehensible advance warning whenever chosen deletion can break a torrent, including source archive after extraction. Destructive approval is never inferred from an organization rule or extraction success.
+- **D23 | Owner:** Manual archive extraction and intuitive opt-in auto-extraction. **Adopted provisional defaults:** opt-in off, keep seeding originals, capability-tested safe formats and separate extracted output objects.
+
+See [STORAGE-AND-EXTRACTION.md](STORAGE-AND-EXTRACTION.md) and issue #70 for the comprehensive contract. These entries do not constitute implementation evidence.
