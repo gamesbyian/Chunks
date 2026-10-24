@@ -57,9 +57,10 @@ class RTorrentDisposableMutationTest {
             Thread.sleep(400)
         }
         assertNotNull("Actual rTorrent never listed loaded test hash", observed)
-        assertFalse("New test torrent must not auto-start", observed!!.started)
+        val added = requireNotNull(observed)
+        assertFalse("New test torrent must not auto-start", added.started)
         assertTrue("Existing data must not be sent to a default directory",
-            observed.directory.startsWith(target))
+            added.directory.startsWith(target))
 
         val second = rtorrent.loadStoppedTorrentBytes(bytes, target)
         assertEquals("Duplicate Add must be refused without mutation",
