@@ -55,3 +55,7 @@ With the **trusted manual-only Seedhost version probe now passing**, continue **
 - Every completed issue names exact source SHA, test/artifact, owner-observed outcome and remaining limits. No inventing a success badge from a plan.
 - Destructive code requires separate approval/recovery evidence; no cleanup without verified source ownership.
 - Keep this document current, not appended with old status essays. Historical details belong in evidence/PRs and the dated critical review.
+
+## Public Add fixture factory
+
+PR implementation: [public fixtures guide](PUBLIC-TORRENT-FIXTURES.md) with bounded Archive torrent/magnet and Commons file-reference collector, offline tests and manual collection workflow. Mark CI/offline and first live public fetch separately; fixture availability is not an implemented server Add feature.
