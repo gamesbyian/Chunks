@@ -46,3 +46,17 @@ PR #31 introduces a deliberate stopped-load API accepting validated v1 magnet li
 ## Optional protected live Add acceptance
 
 After collecting a licensed fixture, use [the Seedhost public Add workflow](https://github.com/gamesbyian/Chunks/actions/workflows/seedhost-public-add-smoke.yml) only on trusted `main`. It first runs `apply=false` to record the public source's exact v1 infohash in a receipt **without contacting Seedhost**. For a deliberately authorized stopped Add, rerun with `apply=true`, the exact same source, an explicit absolute destination and the preview's infohash in `confirm_hash`. The workflow reads `rtorrent_user`/`rtorrent_pass`, checks the main-view hashes, submits **one** `load.raw_verbose` binary metainfo request with `d.directory_base.set`, verifies the hash, chosen directory base and stopped state, then stores a nonsecret receipt. Never automatically retry an ambiguous load. A dry run, duplicate or ACK without readback is not verified new Add. The Android client needs separate compatibility and UI acceptance evidence.
+
+## Curated source candidates for the first real collection
+
+These names are taken from public source pages, not from a successful collector run. **The CI collector must still validate the currently served API metadata, license and bytes.** Preserve the license and author/attribution fields from the generated manifest alongside any media.
+
+| Source item | Why it matters | License stated by the source page | Manual collector input |
+|---|---|---|---|
+| [Wikimedia Commons Example.ogg](https://commons.wikimedia.org/wiki/File:Example.ogg) | 6-second Ogg Vorbis audio, around 102 KiB; tests real audio, MIME and synthesized test torrent | CC BY-SA 3.0; credit JesseW | `--commons-file 'File:Example.ogg' --download-commons` |
+| [Wikimedia Commons Example.jpg](https://commons.wikimedia.org/wiki/File:Example.jpg) | Very small (~9 KiB) JPEG for fast image / file picker / Add smoke | Public-domain text/example; check machine-readable rights with collector | `--commons-file 'File:Example.jpg' --download-commons` |
+| [Internet Archive Big Buck Bunny](https://archive.org/details/BigBuckBunny_124) | Official page advertises a TORRENT download; multi-file / movie-like source, roughly 421 MiB | CC BY 3.0, with Blender Institute film attribution | `--archive-id BigBuckBunny_124 --max-total-mib 512` |
+
+**Important:** Archive's page also links to a separately uploaded `blender_foundation_-_big_buck_bunny_720p.torrent`, whose infohash may differ from the Archive-generated torrent. The collector chooses only the **Archive BitTorrent** derivative and derives its infohash from actual metainfo, not from the Archive page's uploaded-source torrent fields. Do not hardcode either hash. If the candidate is too large or its API does not provide an eligible source, fail closed and select another approved item.
+
+The Commons `File:Example.ogg` has both GFDL and CC BY-SA 3.0 licensing listed on its page. The latter is used for source attribution; creation of a new test torrent does not imply a third-party public swarm exists. The generated `manifest.json` preserves source-page, license and bounded author/credit information, with HTML removed from those credit strings.
