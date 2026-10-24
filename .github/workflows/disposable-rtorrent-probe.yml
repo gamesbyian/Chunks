@@ -49,7 +49,12 @@ jobs:
             }
           }
           EOF
-          timeout 20s env HOME="$RUNNER_TEMP/chunks-home" rtorrent
+          # -n avoids depending on the runner's account home, while explicit
+          # import loads only this throwaway configuration. Run asynchronously
+          # so a foreground build cannot pin the workflow step.
+          nohup rtorrent -n -o "import=$RUNNER_TEMP/chunks-home/.rtorrent.rc" \
+            > "$RUNNER_TEMP/chunks-rtorrent.log" 2>&1 < /dev/null &
+          echo $! > "$RUNNER_TEMP/chunks-rtorrent.pid"
           sudo nginx -c "$RUNNER_TEMP/chunks-nginx.conf"
       - name: Assert read-only XML-RPC readiness
         run: |
