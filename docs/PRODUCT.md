@@ -76,3 +76,11 @@ Cross-machine migration, Plex/Sonarr/Radarr integration, large-scale background 
 ## Explicit exclusions
 
 No mandatory accounts, opaque tracker/content search, piracy promotion, unexplained AI uploads, background tracking by default, guessed file operations, or reliance on unapproved extra server privileges.
+
+## Storage budgets, cleanup and archive extraction (owner request)
+
+Chunks must offer optional per-device-volume/Place storage caps for downloaded/backing and derived data, with sensible adjustable warning thresholds, low-device-space protections, and an accessible compact usage/reclaim dashboard. Caps never authorize deleting data; when enforcement is supported, safely throttle/pause affected local download writes while preserving seeding. Remote storage quotas are advisory until a verified server-side capability exists. Clearly distinguish logical torrent size, actual allocation and independently extractable storage.
+
+Offer a compact cleanup wizard prioritizing files that can be safely reclaimed without damaging sharing; make affecting-seeding actions a clearly separated opt-in path with exact preflight impact and explicit confirmation. Deleting a torrent-backed archive after extraction typically breaks the affected torrent's pieces and seeding; warn in meaningful on-screen text. Do not automatically remove seeding originals. Session-only removal, payload deletion, extracted outputs, independent library copies and cache cleanup are separate permissions and outcomes.
+
+Provide manual **Extract now** and easy opt-in **Auto-extract when verified complete** for supported archives, with destination, expansion-space estimate, safety bounds and clear status. Auto-extraction is off by default and preserves source archives for sharing. Full behavior and release gates: [STORAGE-AND-EXTRACTION.md](STORAGE-AND-EXTRACTION.md). Tracked as [#70](https://github.com/gamesbyian/Chunks/issues/70); these are requirements, not completed features.

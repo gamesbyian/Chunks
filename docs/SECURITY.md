@@ -35,3 +35,9 @@ No default telemetry, network metadata enrichment, tracker discovery, content up
 ## Acceptance
 
 Security review must include RPC method allowlists, XXE/deep XML fuzz cases on Android, TLS/auth behavior, malicious path and symlink races, concurrent ruTorrent/external script modifications, large response exhaustion, cross-user root isolation, storage deletion semantics and failure recovery. Do not use production seedboxes for destructive fault injection. Report each tested attack surface against exact source SHA, server topology and platform version.
+
+## Storage cleanup and archive threat boundary
+
+Treat torrent file names and archive entries as untrusted. The cleanup wizard must be dry-run first; destructive changes require exact file ownership, scope, shared-reference/active-writer validation, separate confirmation of seeding loss, journal and observed postconditions. Never treat extraction success as permission to delete the original torrent-backed archive. An apparent duplicate can share an inode or torrent pieces and may release no physical bytes on removal.
+
+Extraction must bound total actual output bytes, ratio, member count, depth, CPU/time and staging space, and prevent traversal, links, Unicode/case collisions, special file writes, malicious multipart archives and decompression bombs. Android SAF roots and remote storage credentials have distinct grants; no broad arbitrary remote deletion/extraction shell. Exact requirements and adversarial QA: [STORAGE-AND-EXTRACTION.md](STORAGE-AND-EXTRACTION.md).
