@@ -46,7 +46,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 class ProtectedRpc:
-    ALLOWED = frozenset(("d.multicall2", "load.raw_verbose", "d.directory_base", "d.state"))
+    ALLOWED = frozenset(("d.multicall2", "load.raw_verbose", "d.directory", "d.is_multi_file", "d.name", "d.state"))
     def __init__(self, url, username, password):
         if not username or not password:
             raise ValueError("Missing protected repository credentials")
@@ -117,7 +117,7 @@ def execute(args, factory=ProtectedRpc):
     receipt["result"] = "outcome_uncertain"
     try:
         client.call("load.raw_verbose", "", xmlrpc.client.Binary(torrent),
-                    "d.directory_base.set=" + planned)
+                    "d.directory.set=" + planned)
     except Exception as exc:
         receipt["error_class"] = type(exc).__name__
         print("CHUNKS_PUBLIC_ADD: acknowledgement missing; inspect hash before any retry")
@@ -127,11 +127,19 @@ def execute(args, factory=ProtectedRpc):
         if expected not in main_hashes(client):
             print("CHUNKS_PUBLIC_ADD: metadata not yet visible in main view")
             return receipt
-        base = client.call("d.directory_base", expected)
+        observed = client.call("d.directory", expected)
+        multi = int(client.call("d.is_multi_file", expected)) != 0
+        torrent_name = client.call("d.name", expected)
+        valid_name = (isinstance(torrent_name, str) and torrent_name not in ("", ".", "..") and
+                      "/" not in torrent_name and "\\" not in torrent_name and
+                      all(ord(c) >= 32 for c in torrent_name))
+        expected_root = (planned + "/" + torrent_name) if multi and valid_name else planned
         state = client.call("d.state", expected)
-        if base == planned and int(state) == 0:
+        if isinstance(observed, str) and observed == expected_root and (
+                not multi or valid_name) and int(state) == 0:
             receipt["result"] = "verified_stopped_in_destination"
-            print("CHUNKS_PUBLIC_ADD: verified exact hash, chosen destination, stopped")
+            receipt["observed_directory"] = observed
+            print("CHUNKS_PUBLIC_ADD: verified exact hash, chosen parent destination, stopped")
         else:
             receipt["result"] = "readback_mismatch"
             print("CHUNKS_PUBLIC_ADD: readback mismatch, no cleanup attempted")
