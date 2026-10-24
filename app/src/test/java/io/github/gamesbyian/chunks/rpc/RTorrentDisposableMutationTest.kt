@@ -183,4 +183,52 @@ class RTorrentDisposableMutationTest {
             original, Files.readAllBytes(payload))
     }
 
+    @Test fun exactFilePriorityChangeOnRealDisposableEngine() = runBlocking {
+        val remote = temporaryRemote()
+        val destination = System.getenv("CHUNKS_DISPOSABLE_TARGET_DIR").orEmpty()
+        require(destination.startsWith("/") && destination.contains("chunks-data"))
+        val metainfo = (
+            "d4:infod5:filesld6:lengthi5e4:pathl10:sample.oggeee" +
+            "4:name15:Priority Bundle12:piece lengthi16384e6:pieces20:" +
+            "01234567890123456789ee"
+        ).toByteArray(Charsets.UTF_8)
+        val hash = TorrentMetainfoReader.preview(metainfo).infoHashV1
+        assertTrue(remote.listTransfers("main").none { it.hash.equals(hash, true) })
+        val added = remote.loadStoppedTorrentBytes(metainfo, destination)
+        assertTrue("Real Add result uncertain: $added",
+            added is RemoteAddOutcome.VerifiedStopped ||
+                added is RemoteAddOutcome.PendingVerification)
+
+        var files: List<RemoteFile> = emptyList()
+        for (attempt in 1..15) {
+            files = remote.listFiles(hash)
+            if (files.isNotEmpty()) break
+            Thread.sleep(400)
+        }
+        assertEquals("Disposable metainfo must expose exactly one stable file", 1, files.size)
+        val first = files.single()
+        assertEquals("sample.ogg", first.path)
+        assertTrue("Expected a known valid initial priority", first.priority in 0..2)
+        val requested = if (first.priority == 2) 0 else 2
+        val outcome = remote.setFilePriority(
+            hash, 0, first.path, first.sizeBytes, first.priority, requested)
+        val observedAfterWrite = remote.listFiles(hash).single().priority
+        assertTrue("Real priority update returned $outcome; observed priority " +
+            observedAfterWrite + " (previous " + first.priority + ", requested " + requested + ")",
+            outcome is FilePriorityOutcome.Verified ||
+                outcome is FilePriorityOutcome.PendingVerification)
+
+        var observed = false
+        for (attempt in 1..15) {
+            observed = remote.listFiles(hash)[0].priority == requested
+            if (observed) break
+            Thread.sleep(400)
+        }
+        assertTrue("Real rTorrent did not apply file priority", observed)
+        assertEquals("Already requested priority must issue no further writes",
+            FilePriorityOutcome.Unchanged(hash, 0, requested),
+            remote.setFilePriority(hash, 0, first.path, first.sizeBytes,
+                requested, requested))
+    }
+
 }
