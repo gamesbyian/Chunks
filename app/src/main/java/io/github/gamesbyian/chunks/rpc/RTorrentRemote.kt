@@ -24,11 +24,16 @@ data class RemoteTransfer(
     val sizeBytes: Long,
     val completedBytes: Long,
     val started: Boolean,
-    val directory: String
+    val directory: String,
+    val downBytesPerSecond: Long? = null,
+    val upBytesPerSecond: Long? = null,
+    val ratioThousandths: Long? = null
 ) {
     val fractionComplete: Float
         get() = if (sizeBytes > 0) (completedBytes.toDouble() / sizeBytes).coerceIn(0.0, 1.0).toFloat() else 0f
 }
+
+data class RemoteFile(val path: String, val sizeBytes: Long, val priority: Int)
 
 /**
  * Initial *read-only* XML-RPC adapter. No automatic retries or mutations.
@@ -61,23 +66,62 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         return RemoteProbe(serverVersion, methods)
     }
 
-    suspend fun listTransfers(): List<RemoteTransfer> {
-        val fields = listOf("d.hash=", "d.name=", "d.size_bytes=", "d.completed_bytes=", "d.state=", "d.directory=")
-        val response = call("d.multicall2", listOf("", "main") + fields)
-        val rows = response as? List<*> ?: error("Unexpected rTorrent list result")
+    /** Only server-owned view names, never XML-RPC command fragments. */
+    suspend fun listTransfers(view: String = "main"): List<RemoteTransfer> {
+        require(Regex("[A-Za-z][A-Za-z0-9_-]{0,39}").matches(view)) { "Invalid view" }
+        val minimum = listOf("d.hash=", "d.name=", "d.size_bytes=", "d.completed_bytes=",
+            "d.state=", "d.directory=")
+        val extended = minimum + listOf("d.down.rate=", "d.up.rate=", "d.ratio=")
+        // Optional fields vary across rTorrent builds. Fall back only for
+        // an explicit server-side command fault, not on timeouts or network loss.
+        val (rows, rich) = try {
+            extractRows(call("d.multicall2", listOf("", view) + extended)) to true
+        } catch (_: RpcFault) {
+            extractRows(call("d.multicall2", listOf("", view) + minimum)) to false
+        }
+        require(rows.size <= 12000) { "Unexpectedly large torrent list" }
         return rows.map { raw ->
             val row = raw as? List<*> ?: error("Invalid torrent row")
-            require(row.size == fields.size) { "Incompatible rTorrent field layout" }
+            require(row.size == if (rich) extended.size else minimum.size) {
+                "Incompatible rTorrent field layout"
+            }
+            val hash = row[0] as? String ?: error("Missing info hash")
+            require(hash.isNotBlank() && hash.length <= 128) { "Invalid info hash" }
             RemoteTransfer(
-                hash = row[0] as? String ?: error("Missing info hash"),
-                name = row[1] as? String ?: error("Missing torrent name"),
-                sizeBytes = number(row[2]),
-                completedBytes = number(row[3]),
+                hash = hash,
+                name = (row[1] as? String ?: error("Missing torrent name")).take(2048),
+                sizeBytes = number(row[2]).coerceAtLeast(0),
+                completedBytes = number(row[3]).coerceAtLeast(0),
                 started = number(row[4]) != 0L,
-                directory = row[5] as? String ?: error("Missing server path")
+                directory = (row[5] as? String ?: error("Missing server path")).take(4096),
+                downBytesPerSecond = if (rich) number(row[6]).coerceAtLeast(0) else null,
+                upBytesPerSecond = if (rich) number(row[7]).coerceAtLeast(0) else null,
+                ratioThousandths = if (rich) number(row[8]).coerceAtLeast(0) else null
             )
         }
     }
+
+    /** A per-torrent read-only file inspector; never changes file priorities. */
+    suspend fun listFiles(hash: String): List<RemoteFile> {
+        require(Regex("[0-9a-fA-F]{40}([0-9a-fA-F]{24})?").matches(hash)) {
+            "Invalid info hash"
+        }
+        val response = call("f.multicall", listOf(hash, "", "f.path=", "f.size_bytes=", "f.priority="))
+        val rows = extractRows(response)
+        require(rows.size <= 12000) { "Too many files in torrent" }
+        return rows.map { item ->
+            val columns = item as? List<*> ?: error("Invalid remote file")
+            require(columns.size == 3) { "Invalid remote file fields" }
+            RemoteFile(
+                path = (columns[0] as? String ?: error("Missing file path")).take(4096),
+                sizeBytes = number(columns[1]).coerceAtLeast(0),
+                priority = number(columns[2]).toInt()
+            )
+        }
+    }
+
+    private fun extractRows(response: Any?): List<*> =
+        response as? List<*> ?: error("Unexpected rTorrent array reply")
 
     private fun number(value: Any?): Long =
         (value as? Number)?.toLong() ?: error("Expected numeric rTorrent value")

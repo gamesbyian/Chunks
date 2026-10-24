@@ -65,6 +65,9 @@ class RTorrentRemoteFixtureTest {
                       <value><i8>70</i8></value>
                       <value><int>1</int></value>
                       <value><string>/test/tv</string></value>
+                      <value><i8>2048</i8></value>
+                      <value><i8>1024</i8></value>
+                      <value><i8>1500</i8></value>
                     </data></array></value></data></array>"""))
                 else -> Reply(200, fault(404, "Unexpected RPC method"))
             }
@@ -76,6 +79,8 @@ class RTorrentRemoteFixtureTest {
             assertEquals("ABCDEF", listed.single().hash)
             assertEquals("/test/tv", listed.single().directory)
             assertEquals(0.7f, listed.single().fractionComplete, 0.0001f)
+            assertEquals(2048L, listed.single().downBytesPerSecond)
+            assertEquals(1500L, listed.single().ratioThousandths)
             assertTrue(sawAuth)
             assertTrue(fixture.methods.all { it.contains("system.client_version") || it.contains("d.multicall2") })
         }
@@ -133,4 +138,59 @@ class RTorrentRemoteFixtureTest {
             assertTrue(expected.message.orEmpty().contains("HTTPS"))
         }
     }
+    @Test fun optionalRatesFaultFallsBackToMinimumFields() = runBlocking {
+        var triedExtended = false
+        Fixture { request, _ ->
+            if (request.contains("d.down.rate=")) {
+                triedExtended = true
+                Reply(200, fault(-32601, "d.down.rate missing"))
+            } else Reply(200, result("""<array><data><value><array><data>
+                <value><string>ABCDEF</string></value>
+                <value><string>Old server sample</string></value>
+                <value><i8>100</i8></value>
+                <value><i8>70</i8></value>
+                <value><int>1</int></value>
+                <value><string>/data</string></value>
+            </data></array></value></data></array>"""))
+        }.use { fixture ->
+            val items = RTorrentRemote(RemoteCredentials(fixture.endpoint, "", "")).listTransfers()
+            assertTrue(triedExtended)
+            assertEquals(1, items.size)
+            assertNull(items.single().downBytesPerSecond)
+            assertEquals("Old server sample", items.single().name)
+        }
+    }
+
+    @Test fun readOnlyFileInspectionUsesValidHash() = runBlocking {
+        Fixture { request, _ ->
+            assertTrue(request.contains("f.multicall"))
+            Reply(200, result("""<array><data><value><array><data>
+                <value><string>Season 01/Episode 01.mkv</string></value>
+                <value><i8>2048</i8></value>
+                <value><int>1</int></value>
+            </data></array></value></data></array>"""))
+        }.use { fixture ->
+            val files = RTorrentRemote(RemoteCredentials(fixture.endpoint, "", ""))
+                .listFiles("A".repeat(40))
+            assertEquals(1, files.size)
+            assertEquals(2048L, files.first().sizeBytes)
+            assertEquals("Season 01/Episode 01.mkv", files.first().path)
+        }
+    }
+
+    @Test fun rejectsArbitraryViewAndInvalidFileHashBeforeRpc() = runBlocking {
+        Fixture { _, _ -> Reply(200, result("<string>unneeded</string>")) }.use { fixture ->
+            val remote = RTorrentRemote(RemoteCredentials(fixture.endpoint, "", ""))
+            try {
+                remote.listTransfers("main,d.stop=")
+                fail("Invalid view must not reach server")
+            } catch (_: IllegalArgumentException) { }
+            try {
+                remote.listFiles("../unsafe")
+                fail("Invalid hash must not reach server")
+            } catch (_: IllegalArgumentException) { }
+            assertTrue(fixture.methods.isEmpty())
+        }
+    }
+
 }
