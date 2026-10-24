@@ -11,6 +11,29 @@ class XmlRpcCodecTest {
         assertEquals(4, "<param>".toRegex().findAll(request).count())
     }
 
+    @Test fun requestSerializesActualBinaryTorrentBytesNotUtf8Text() {
+        val bytes = byteArrayOf(0, 1, 2, -1, -128, 65)
+        val xml = XmlRpcCodec.request("load.raw_verbose", listOf("", bytes, "d.directory_base.set=/tmp"))
+        val base64 = Regex("<base64>([^<]+)</base64>").find(xml)!!.groupValues[1]
+        assertArrayEquals(bytes, java.util.Base64.getDecoder().decode(base64))
+        assertTrue(xml.contains("<methodName>load.raw_verbose</methodName>"))
+        assertTrue(xml.contains("d.directory_base.set=/tmp"))
+    }
+
+    @Test fun responseDecodesBinaryAndRejectsMalformedOrOversizedPayloads() {
+        val xml = "<methodResponse><params><param><value><base64>AAEC/w==</base64></value></param></params></methodResponse>"
+        assertArrayEquals(byteArrayOf(0, 1, 2, -1), XmlRpcCodec.response(xml) as ByteArray)
+        val bad = xml.replace("AAEC/w==", "not-valid%")
+        try {
+            XmlRpcCodec.response(bad)
+            fail("Must refuse non-base64 binary data")
+        } catch (_: IllegalArgumentException) { }
+        try {
+            XmlRpcCodec.request("load.raw_verbose", listOf(ByteArray(2_097_153)))
+            fail("Must refuse oversized torrent metainfo")
+        } catch (_: IllegalArgumentException) { }
+    }
+
     @Test fun responseReadsMulticallRows() {
         val xml = """<methodResponse><params><param><value><array><data>
             <value><array><data>
