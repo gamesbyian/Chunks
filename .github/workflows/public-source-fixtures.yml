@@ -1,0 +1,69 @@
+name: Public torrent and Wikimedia fixture collector
+
+on:
+  pull_request:
+    paths:
+      - "tools/public_fixture_collector.py"
+      - "tools/test_public_fixture_collector.py"
+      - ".github/workflows/public-source-fixtures.yml"
+  workflow_dispatch:
+    inputs:
+      source_kind:
+        description: "Public fixture provider"
+        type: choice
+        options:
+          - archive
+          - commons
+        required: true
+      source_id:
+        description: "Internet Archive identifier OR Commons File: title"
+        type: string
+        required: true
+      max_total_mib:
+        description: "Maximum announced torrent size MiB, no payload downloads"
+        type: number
+        default: 512
+        required: true
+
+permissions:
+  contents: read
+concurrency:
+  group: chunks-public-fixtures-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  offline-fixture-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test provenance, torrent identity and malicious metadata
+        run: python3 -m unittest discover -s tools -p 'test_public_fixture_collector.py' -v
+
+  collect-public-metadata:
+    if: github.event_name == 'workflow_dispatch'
+    needs: offline-fixture-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Collect public metadata only
+        env:
+          SOURCE_KIND: ${{ inputs.source_kind }}
+          SOURCE_ID: ${{ inputs.source_id }}
+          MAX_TOTAL_MIB: ${{ inputs.max_total_mib }}
+        run: |
+          set -euo pipefail
+          if [ "$SOURCE_KIND" = "archive" ]; then
+            python3 tools/public_fixture_collector.py --archive-id "$SOURCE_ID" --max-total-mib "$MAX_TOTAL_MIB" --output-dir "$RUNNER_TEMP/chunks-public-fixture"
+          elif [ "$SOURCE_KIND" = "commons" ]; then
+            python3 tools/public_fixture_collector.py --commons-file "$SOURCE_ID" --output-dir "$RUNNER_TEMP/chunks-public-fixture"
+          else
+            echo "Invalid provider"; exit 2
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chunks-public-source-fixture
+          path: ${{ runner.temp }}/chunks-public-fixture
+          retention-days: 14
+          if-no-files-found: error
