@@ -207,13 +207,15 @@ private fun ChunksApp() {
                             filesError = null
                             filesLoading = true
                             val remote = server
+                            val targetHash = transfer.hash
                             scope.launch {
                                 try {
-                                    files = remote?.listFiles(transfer.hash)
+                                    val loaded = remote?.listFiles(targetHash)
+                                    if (expandedHash == targetHash) files = loaded
                                 } catch (failure: Exception) {
-                                    filesError = readableFailure(failure)
+                                    if (expandedHash == targetHash) filesError = readableFailure(failure)
                                 } finally {
-                                    filesLoading = false
+                                    if (expandedHash == targetHash) filesLoading = false
                                 }
                             }
                         }

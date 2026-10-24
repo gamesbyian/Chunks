@@ -74,14 +74,10 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         val extended = minimum + listOf("d.down.rate=", "d.up.rate=", "d.ratio=")
         // Optional fields vary across rTorrent builds. Fall back only for
         // an explicit server-side command fault, not on timeouts or network loss.
-        val rows: List<*> 
-        val rich: Boolean
-        try {
-            rows = extractRows(call("d.multicall2", listOf("", view) + extended))
-            rich = true
+        val (rows, rich) = try {
+            extractRows(call("d.multicall2", listOf("", view) + extended)) to true
         } catch (_: RpcFault) {
-            rows = extractRows(call("d.multicall2", listOf("", view) + minimum))
-            rich = false
+            extractRows(call("d.multicall2", listOf("", view) + minimum)) to false
         }
         require(rows.size <= 12000) { "Unexpectedly large torrent list" }
         return rows.map { raw ->
