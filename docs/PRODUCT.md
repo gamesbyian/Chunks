@@ -15,7 +15,7 @@ A torrent client is a data-integrity tool: none of its charm is worth lost bytes
 - **Transfer**: one engine-managed BitTorrent download/seed, scoped to a specific engine and server/device. Its torrent info hash does not equal a physical file path.
 - **Place**: a physical destination as accessible to a particular local engine or rTorrent server, not an arbitrary pathname string. Includes capability, volume, allowed root and human display alias.
 - **Collection**: user-recognizable semantic relationship such as Star Trek, Spider-Man, a season, franchise, music, comics or ebooks. Many-to-many with Transfers, independent from Place.
-- **Display name**: a Chunks label for a Transfer or file; changing it does not change seeding data.
+- **Display name**: a user-editable Chunks-only label for a Transfer or file; changing it does not change torrent metadata, the original filename, the download directory or seeding data. User aliases are scoped by server/engine identity and infohash, not a mutable file path.
 - **Backing file / published library copy**: respectively the bytes controlled by the engine and an independently managed file exported for a user library. They have different ownership, path and mutation rules.
 
 Tags, category, collection membership, destination suggestion and filesystem mutation authorization are distinct states. A Transfer may belong to multiple collections; a file can be represented in several collections without duplicating data.
@@ -43,7 +43,7 @@ Three deliberately separate actions:
 2. Rename the engine-backed file only where verified supported and safely synchronized.
 3. Create a renamed library copy, preserving the original seeding file. Do not publish incomplete writable data as a stable media library asset; hardlinks are shared-inode views, not snapshots.
 
-Show actual outcome and whether the original seed path is retained.
+Show actual outcome and whether the original seed path is retained. The queue should support direct alias editing and returning to the original torrent name without any filesystem capability. Offer deterministic offline suggestions that strip release clutter and preserve recognized title, year and season/episode tokens. Users can accept or modify suggestions; no auto-apply or invented episode details. Rich external identification requires separate opt-in.
 
 ### 5. Organize and learn with consent
 
