@@ -1,18 +1,28 @@
-# Independent quality / release evidence ledger
-Status: pre-alpha. Green code tests, real rTorrent behavior, safe mutation recovery, Android handset UX and release acceptance are distinct evidence classes.
+# Chunks evidence and release gate ledger
 
-| Gate | Evidence | Status |
+Updated 2026-10-24. This ledger alone records proven gates; GitHub issues track work and WORK-QUEUE.md tracks priorities. Exact CI SHA matters. Mock/fixtures cannot prove server or handset functionality.
+
+| Gate | Evidence observed | Status |
 |---|---|---|
-| Source project scaffold | [merged #11](https://github.com/gamesbyian/Chunks/pull/11), main commit `6dba63fed72c92c7f97128ef3fa08d278a37b730` | Established |
-| Android Gradle compile | [run 40057523588](https://github.com/gamesbyian/Chunks/actions/runs/40057523588), tested SHA `201b53fc3d16482cf2aa1a08c9c01d9e0351174b`, debug artifact `chunks-debug-prealpha` | Passed for that SHA |
-| JVM model/RPC fixtures | `:app:testDebugUnitTest` in run 40057523588; codec/classifier/relocation planner deterministic tests | Passed for that SHA; live RPC not proven |
-| Read-only remote listing | Real server version, protected connection and sanitized response evidence | Not tested |
-| XML/JSON-RPC compatibility | Two server versions and failure matrix | Not tested |
-| Actual remote relocation | Disposable multi-volume tests, no loss, reconnection | Not implemented |
-| Rename while seeding | Data verified with engine hash/check, unchanged source protected | Not implemented |
-| Intelligent sorting | Deterministic examples, confidence/rule acceptance, no silent mutations | Not implemented |
-| Local BitTorrent | Real transfer, seed and Android lifecycle acceptance | Not implemented |
-| Android usability | Physical phone, TalkBack/large text/gesture alternatives | Not observed |
-| Release | Signed APK, privacy/security, license, reproducibility | Blocked |
+| Project scaffold | merged [#11](https://github.com/gamesbyian/Chunks/pull/11), main 6dba63fed72c92c7f97128ef3fa08d278a37b730 | Established |
+| First Android debug build and JVM tests | [run 40057523588](https://github.com/gamesbyian/Chunks/actions/runs/40057523588), PR SHA 201b53fc3d16482cf2aa1a08c9c01d9e0351174b, 42 Gradle tasks successful | Passed for that SHA |
+| Read-only synthetic RPC gateway fixtures | merged [#12](https://github.com/gamesbyian/Chunks/pull/12), [run 40057876761](https://github.com/gamesbyian/Chunks/actions/runs/40057876761), PR SHA 5b5b75ed4abaa9f4e97ec4c7e4fa517130e8f681, Gradle test and debug assemble passed | Passed synthetic JVM fixtures only |
+| Existing relocation planner tests | Included in Android/JVM build of #11; pure decision model only | Passed decision logic, NOT filesystem execution |
+| Real rTorrent reachability/auth | No sanitized actual-server connection evidence | Not tested |
+| Legacy/modern rTorrent compatibility | No dual-server observations, Digest/JSON-RPC/i8 or view coverage proof | Not tested |
+| Complete large remote list and reconnect | No real fleet/performance test | Not tested |
+| Remote Add and ordinary write controls | No implemented reviewed mutation API or real results | Not implemented |
+| Actual live data relocation | No journal executor, disposable crash/volume test or seed recheck | Not implemented |
+| Safe backed-file rename and library copy | No verified seeding/complete file publication case | Not implemented |
+| Organization and rules | Simple local classifier fixture exists; no mature rules, review or provenance acceptance | Prototype only |
+| Local BitTorrent | No local torrent network engine or seeding | Not implemented |
+| Real handset Android | No screenshot, accessibility, lifecycle or on-device UI validation | Not observed |
+| Signed/secure release | No signed release, user-ready credential store, permissions review or license decision | Blocked |
 
-The first merged slice supports a read-only RPC probe and listing in source, but has **not** connected to a real rTorrent instance. This ledger records actual Gradle/JVM evidence only, with no claims about actual seedbox interoperability or device behavior. Subsequent commits require their own tests and evidence.
+## Source and status rules
+
+The current XML-RPC adapter is read-only and Basic-auth capable. The synthetic RPC tests cover authenticated fixture listing, capability absence/presence, redirect refusal and unsafe remote HTTP rejection. These are JVM tests, not real server verification, JSON-RPC compatibility or physical Android observations.
+
+The build artifacts are **debug-only** and not production-qualified. No production server data was moved, renamed, deleted, copied or modified in these Chunks runs.
+
+Future evidence must record exact source SHA, server/Android build as appropriate, sanitized environment topology, test action, verification result and remaining uncertainty. Test fixture pass means no more than the fixture asserts.

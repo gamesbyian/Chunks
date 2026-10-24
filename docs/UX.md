@@ -1,20 +1,38 @@
-# Chunks interaction journeys and visual acceptance
-Status: proposed experience; no owner-approved mockups or handset captures yet.
+# Chunks interaction and accessibility contract
 
-## Design language
-Vibrant, modern and lightly irreverent, not childish. Big buttons with restrained density options; colour supports information but never carries it alone. Prefer plain labels: Transfers / Organize / Servers / Settings; Places as folder destinations, Collections as semantic groups. Expert inspector is progressive disclosure, not a second hidden app.
+Updated 2026-10-24. Status: design intent. No high-fidelity interface family, real handset captures or uncoached-user evidence has been accepted.
 
-## Journey A: Add
-User shares a magnet or .torrent → choose Local or a named connected rTorrent server → choose suggested, recent, favorite or browsed Place → optionally create new directory if actually supported → files/priorities → Add. Default Place must be visible, never hidden in Settings. Error states explain why a server or storage provider cannot grant a location.
+## Mental model, first-run and navigation
 
-## Journey B: Move
-Select transfer → Move → source/destination, relative path, same-volume vs copy, estimated risk, collision and remaining space shown → preview → confirm → progress and cancellation semantics → verified completion. On disconnect, show Recovering/Unknown rather than success or a destructive retry.
+- **Transfers**: what is downloading, completed, uploading, stuck and awaiting a safe move.
+- **Places**: where the actual files reside, grouped by device/server, with recent/favorite folders and clear capability.
+- **Collections**: semantic organization, optionally spanning folders/media/franchises without changing file placement.
+- **Servers**: local engine plus separate rTorrent connections, secure status, diagnostics and explicit offline state.
+- **Settings**: secondary controls, not a hidden destination picker.
 
-## Journey C: Rename
-Rename the engine-managed file when supported, or create a separately named library copy while preserving seed source. Warn before data-affecting operations; never imply a display alias is a real rename.
+First run should offer a clear choice between **Connect an rTorrent server** and **Download on this device** once the local engine actually exists. Before then, label the app as an rTorrent remote prototype rather than implying the local engine is available.
 
-## Journey D: Organize
-Show detected grouping (TV, franchise, series, films, comics, ebooks, music), confidence and provenance. User can Accept, Apply to selected, Teach Chunks, Ignore. Categories, Collections and concrete storage paths are independently editable. No silent file action just because category confidence is high.
+## Task journeys and their failures
 
-## Accessibility
-48dp minimum primary hit targets, one-hand paths, large fonts, TalkBack reading order and action descriptions, keyboard focus, non-gesture alternatives, reduced motion, landscape/tablet adaptation. Actual Android observation required; mockups are drafts.
+### Add torrent
+From Android Share, magnet paste or torrent file: choose actual engine and Place, browse recent/favorite destinations, optionally create a folder only if capability allows, review file selection and Add. Display exact destination and whether the request has been acknowledged and observed on server. If unreachable, invalid magnet, destination rejected or auth expired, preserve draft intent and explain recovery. Avoid silently using an old default server/path.
+
+### Active move
+On transfer details, choose Move → inspect current vs proposed Place, capacity, collisions and expected effect on live download → confirm → observe planned/copying/quiescing/verifying/complete or deferred/uncertain states. If the host can't do it safely, offer Move after completion or Make library copy rather than a dead control. Never show “Done” until verified. When disconnected mid-move, show last confirmed stage and a safe Check progress action; do not duplicate the command.
+
+### Rename
+Present three concrete actions with outcomes: **Change label in Chunks**, **Rename torrent's backing file** (only where available), **Save a renamed library copy**. Show which preserves the seeding source, and never imply changing a UI label is a physical rename. For incomplete files, queue publication until stable or explicitly state that a separate incomplete copy isn't media-ready.
+
+### Smart organization
+Offer *Why this suggestion?* with observed filename facts and uncertain inference. Show category/collection membership and separate candidate destination; allow review by group, review conflicts, apply one, apply selected, teach an approved limited rule, ignore and cancel. A Star Trek TV episode and Star Trek comic can share a Collection but have different labels and Places. User's mixed-media root is legitimate. Never auto-create sprawling nested folders merely because an external catalog supplies a hierarchy.
+
+### Remote failure and reconnect
+Clearly distinguish Remote server offline, Auth failed, RPC unsupported, Filesystem unavailable, Permission denied, Operation pending and Operation uncertain. State whether this app, rTorrent, or file storage is still functioning. A server-side download may continue when the phone is offline.
+
+## Information density and expressiveness
+
+Generous default controls (at least 48dp), expressive colour with text/icons redundant status, readable progress, activity, per-server identity and search. An opt-in denser list mode can display hundreds of transfers without sacrificing navigation; deep peer/tracker/file details progressively disclosed. Distinct loading, empty, offline, access-denied, confirmation, destructive, deferred and uncertain states need designs. Irreverent copy is welcome on delight surfaces but should never replace factual errors.
+
+## Accessibility acceptance
+
+Verify on actual Android handset and where appropriate tablet: TalkBack traversal and actions, large font 200%, reflow, minimum targets, touch reach, gesture alternatives, keyboard focus, reduce motion, colour-vision differentiation and screen rotation/cutouts. Automated semantics audit helps but cannot substitute for physical device or comprehension testing. Prototypes and reference illustrations must retain an explicit unapproved status until reviewed.

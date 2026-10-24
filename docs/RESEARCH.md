@@ -20,3 +20,13 @@
 Known distinctions: rTorrent uses rakshasa libTorrent, not Arvid libtorrent. Metadata changing a torrent directory does not move actual bytes. Local and remote capabilities must be probed. Compatibility and Android background claims remain testable hypotheses until real evidence is gathered.
 
 Competitive UX targets: Flud/LibreTorrent/BiglyBT (local clients), Transdroid/nzb360 (remote), ruTorrent/Flood (rTorrent and file operations), Transmission/qBittorrent (desktop expectations). Research must capture concrete reproducible complaints, not cherry-picked reviews. Licensing and dependency attribution remain open.
+## October 2026 critical review refinements
+
+- rTorrent command distinction between `d.directory.set` and `d.directory_base.set`: https://rtorrent-docs.readthedocs.io/en/latest/cmd-ref.html
+- Documented rTorrent completion scripts combine physical `mv` with directory metadata; not proof of a crash-safe transaction: https://github.com/rakshasa/rtorrent/wiki/Common-Tasks-in-rTorrent
+- rTorrent SCGI socket and reverse-proxy boundary: https://github.com/rakshasa/rtorrent-doc/blob/master/RPC-Setup-XMLRPC.md
+- Reported ruTorrent compatibility and XMLRPC-C i8 variation: https://github.com/Novik/ruTorrent/issues/2983
+- Managed host version compatibility warning (individual deployment evidence, not general rule): https://github.com/MagnaCapax/PMSS/issues/364
+- Android foreground service timeouts and special-use policy: https://developer.android.com/develop/background-work/services/fgs/timeout and https://developer.android.com/develop/background-work/services/fgs/service-types
+
+Do not conflate method presence, release number, build/library flags, permission and proven filesystem safety. External source claims become Chunks capabilities only after test evidence.

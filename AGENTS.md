@@ -4,7 +4,7 @@
 Build a colourful, genuinely usable Android-native BitTorrent client and bulletproof first-class rTorrent remote. Ordinary users must be able to choose a destination for every new transfer, reorganize in-progress data, and rename without losing seedability. Experts must retain deep server and protocol control. Categorization and filesystem location are separate, and suggestions never authorize destructive actions by themselves.
 
 ## Start here
-1. Inspect current main, open PRs/issues, then [live work queue](docs/WORK-QUEUE.md). Never infer missing implementation from a historical unchecked document.
+1. Inspect current main, open PRs/issues, then [live work queue](docs/WORK-QUEUE.md) and [critical review](docs/CRITICAL-REVIEW-2026-10-24.md). Never infer missing implementation from a historical unchecked document.
 2. Read [product](docs/PRODUCT.md) and the relevant [architecture](docs/ARCHITECTURE.md), [security](docs/SECURITY.md) or [UX](docs/UX.md) owner before editing.
 3. Coordinate files and boundary changes through [agent lanes](docs/AGENT-LANES.md). A PR is evidence of a proposed change, not delivered functionality.
 4. Use [CI policy](docs/CI-POLICY.md) and [quality ledger](docs/QUALITY-LEDGER.md). Cite exact test command, SHA, environment and observable result.
@@ -21,6 +21,10 @@ Build a colourful, genuinely usable Android-native BitTorrent client and bulletp
 - Secrets and torrent inventories never go into GitHub issues, CI logs, public fixtures or telemetry. Classification local-first and opt-in for network lookups.
 - No Android feature may claim guaranteed continuous background execution, unrestricted storage, or provider access without device evidence.
 - Users must have accessible 48dp-class controls, alternative to gestures, large-text support, screen-reader labeling, and reduced-motion support.
+
+## Critical review gate
+
+The owner requested an explicit specification/plan hardening checkpoint before further feature development. Treat the revised product, architecture and critical review as current intent. The next substantive implementation is a **read-only real rTorrent compatibility proof** with sanitized evidence. No advanced remote file mutation until independent disposable-volume journal/recovery tests. Failure to reach a real server is a documented external blocker, not permission to claim fixture success. Update decisions and the quality ledger when evidence changes, not merely when a PR proposes a capability.
 
 ## Research → code → evidence
 Prioritize runnable slices over documentation proliferation. Pure logic gets deterministic JVM tests; network adapters get fixture/integration tests; destructive operations require temporary test volumes, fault injection and explicit rollback/recovery evidence; Android semantics need emulator and physical-device evidence. Mock responses don't prove connectivity to a real rTorrent installation. Colour/visual approval cannot be inferred from a compiling Compose UI. Avoid one workflow per issue and don't schedule expensive CI by default.
