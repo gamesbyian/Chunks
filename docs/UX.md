@@ -21,6 +21,10 @@ From Android Share, magnet paste or torrent file: choose actual engine and Place
 On transfer details, choose Move → inspect current vs proposed Place, capacity, collisions and expected effect on live download → confirm → observe planned/copying/quiescing/verifying/complete or deferred/uncertain states. If the host can't do it safely, offer Move after completion or Make library copy rather than a dead control. Never show “Done” until verified. When disconnected mid-move, show last confirmed stage and a safe Check progress action; do not duplicate the command.
 
 ### Rename
+Every transfer card exposes **Change list name** (or **Edit list name**) without requiring filesystem capabilities. The user may freely enter a Chunks-only alias or choose a conservative filename-derived suggestion, edit the proposal before saving, then restore the original at any time. Queue sort/search honor aliases while original torrent names remain searchable and visible. Alias actions are local-only and do not call rTorrent, change metainfo, remap backing files, or rename an exported copy. The UI must state these distinctions next to the control.
+
+Suggestions derived from filenames do not claim knowledge of guest stars or titles absent from that filename. For example, a release name containing S04E02 can produce a readable episode code; the identity of an episode guest requires user input or optional separately consented metadata enrichment. Never infer certainty from punctuation or release-group strings.
+
 Present three concrete actions with outcomes: **Change label in Chunks**, **Rename torrent's backing file** (only where available), **Save a renamed library copy**. Show which preserves the seeding source, and never imply changing a UI label is a physical rename. For incomplete files, queue publication until stable or explicitly state that a separate incomplete copy isn't media-ready.
 
 ### Smart organization
