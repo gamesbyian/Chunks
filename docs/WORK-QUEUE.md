@@ -99,3 +99,7 @@ PR #40 adds an Android Storage Access Framework `OpenDocument` picker, bounded 2
 ## Protected Kotlin adapter gate candidate
 
 PR #42 adds a trusted-main, manual-only Seedhost compatibility workflow invoking the **actual Kotlin RTorrentRemote adapter** against the authorized development server with repository credentials. It checks live authenticated version and main-view torrent decoding without state changes. PR CI will **skip** the live check if no secret environment is supplied, so only a separate manual run with explicit evidence can mark actual Seedhost Kotlin compatibility passed. This is an essential predecessor to declaring handset Add/lifecycle support.
+
+## Destination-parent integrity correction
+
+PR #47 corrects user-selected Add destination semantics from `d.directory_base.set` to `d.directory.set`, with separate expected physical folder roots for single-/multi-file torrents, both Kotlin and protected Python readback verification, and mismatch tests. Do not treat a multi-file torrent flattened into the selected parent as successful. **Pending CI and real-engine/Seedhost evidence**. This prevents early implementation success from accidentally violating the Place contract.

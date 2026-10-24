@@ -73,3 +73,7 @@ PR #40 proposes actual on-device `.torrent` file inspection through standard And
 ## Actual Kotlin adapter protected Seedhost smoke candidate
 
 PR #42 provides a manual-only, default-branch protected read-only Kotlin smoke with exact Seedhost URL/username/password secret contract. A normal green public PR is a compile check and **not** evidence of live adapter compatibility. Record a real manual `workflow_dispatch` run and tested commit SHA before claiming this gate. It does not test Android device TLS or any Add/move/remove behavior.
+
+## Add destination-parent compatibility caveat
+
+The rTorrent documentation differentiates `d.directory.set` from `d.directory_base.set` for multi-file torrents; the latter can flatten/remove the transfer-name subfolder. PR #47 corrects new-Add semantics to parent-directory selection and multi-file-aware readback, with offline negative tests. Prior real-engine runs that cover only single-file torrents do not establish multi-file destination integrity, and this remains a distinct acceptance gate.

@@ -91,3 +91,7 @@ Arvid libtorrent JNI is a candidate, not yet approved. Device APIs and SAF can g
 ## Security, testing, acceptance
 
 Read SECURITY.md and QUALITY-LEDGER.md. Prove read-only real-server compatibility *before* introducing mutation methods. Then use disposable volumes and independent fault injection at every journal transition. No production seedbox operation may be used as the experiment that establishes whether an operation is safe.
+
+## Add destination path semantics
+
+For **new torrent Add**, the user chooses the **parent containing folder**. rTorrent's `d.directory.set=<parent>` behaves consistently for single- and multi-file transfers; `d.directory_base.set=<parent>` can suppress the named subfolder of a multi-file torrent and therefore must NOT be used by the Add flow. The server readback must query `d.is_multi_file`, `d.name` and `d.directory`: a single-file torrent should report parent, while a multi-file torrent should report `parent/name`. This is not file movement; changing an existing transfer's directory requires separate verified filesystem operations. See [rTorrent directory behavior](https://rtorrent-docs.readthedocs.io/en/latest/cmd-ref.html).
