@@ -41,4 +41,4 @@ See [STORAGE-AND-EXTRACTION.md](STORAGE-AND-EXTRACTION.md) and issue #70 for the
 - **D25 | Adopted provisional:** Source-only, explained filename-cleanup suggestions are editable drafts, never auto-applied. Unknown extensions abstain. Unsourced guest/episode titles cannot be inferred from release tokens.
 - **D26 | Open:** Queue-wide batch recommendation review, naming styles, opt-in media enrichment, cross-device alias sync and per-file aliases require independent consent, data-model and acceptance decisions. None authorize physical renames.
 
-Integration candidate [#74](https://github.com/gamesbyian/Chunks/pull/74); #7 continues to own backing-file rename and library copy safety.
+Pre-alpha alias slice merged in [#74](https://github.com/gamesbyian/Chunks/pull/74); #7 continues to own backing-file rename and library copy safety.
