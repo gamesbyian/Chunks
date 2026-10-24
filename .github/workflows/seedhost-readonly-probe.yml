@@ -126,11 +126,20 @@ jobs:
               print("CHUNKS_SEEDHOST_RPC: failed (" + type(error).__name__ + ")")
               raise SystemExit(1)
           PY
+      - uses: actions/checkout@v4
+        if: ${{ inputs.inspect_inventory && success() }}
+      - name: Build QA coverage catalogue from captured actual rTorrent transfers
+        if: ${{ inputs.inspect_inventory && success() }}
+        run: |
+          python3 tools/seedbox_fixture_qa.py             "$RUNNER_TEMP/chunks-seedbox-fixture.json"             --output-dir "$RUNNER_TEMP/chunks-seedbox-qa"
       - name: Upload owner-approved real-server fixture
         if: ${{ inputs.inspect_inventory && success() }}
         uses: actions/upload-artifact@v4
         with:
           name: chunks-seedbox-readonly-fixture
-          path: ${{ runner.temp }}/chunks-seedbox-fixture.json
+          path: |
+            ${{ runner.temp }}/chunks-seedbox-fixture.json
+            ${{ runner.temp }}/chunks-seedbox-qa/qa-cases.json
+            ${{ runner.temp }}/chunks-seedbox-qa/qa-cases.md
           retention-days: 14
           if-no-files-found: error

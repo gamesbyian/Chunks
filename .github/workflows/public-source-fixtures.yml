@@ -5,6 +5,9 @@ on:
     paths:
       - "tools/public_fixture_collector.py"
       - "tools/test_public_fixture_collector.py"
+      - "tools/seedbox_fixture_qa.py"
+      - "tools/test_seedbox_fixture_qa.py"
+      - ".github/workflows/seedhost-readonly-probe.yml"
       - ".github/workflows/public-source-fixtures.yml"
   workflow_dispatch:
     inputs:
@@ -48,7 +51,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Test provenance, torrent identity and malicious metadata
-        run: python3 -m unittest discover -s tools -p 'test_public_fixture_collector.py' -v
+        run: |
+          python3 -m unittest discover -s tools -p 'test_public_fixture_collector.py' -v
+          python3 -m unittest discover -s tools -p 'test_seedbox_fixture_qa.py' -v
 
   collect-public-metadata:
     if: github.event_name == 'workflow_dispatch'
