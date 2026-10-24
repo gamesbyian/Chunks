@@ -26,9 +26,15 @@ object TransferDisplayNames {
     fun suggestions(originalName: String): List<DisplayNameSuggestion> {
         val leaf = originalName.substringAfterLast('/').substringAfterLast('\\').trim()
         if (leaf.isBlank()) return emptyList()
-        val stem = leaf.replace(
-            Regex("(?i)\\.(?:mkv|mp4|m4v|avi|webm|mov|mp3|flac|m4a|cbz|cbr|epub|pdf|torrent)$"), ""
-        )
+        // Unknown dotted suffixes may be real extensions, not release tokens.
+        // Abstain instead of recommending a potentially misleading cleanup.
+        val knownExtension = Regex("(?i)\\.(?:mkv|mp4|m4v|avi|webm|mov|mp3|flac|m4a|cbz|cbr|epub|pdf|torrent)$")
+        val finalToken = leaf.substringAfterLast('.', "")
+        val knownReleaseToken = Regex("(?i)(?:2160p|1080p|720p|480p|hevc|x26[45]|h26[45]|hdr10?|s\\d{1,2}e\\d{1,3})")
+        if (!knownExtension.containsMatchIn(leaf) &&
+            finalToken.matches(Regex("[A-Za-z][A-Za-z0-9]{1,7}")) &&
+            !knownReleaseToken.matches(finalToken)) return emptyList()
+        val stem = leaf.replace(knownExtension, "")
         // Cut at the first recognizable *technical* release token, not at an arbitrary word.
         val technical = Regex(
             "(?i)(?:^|[ ._\\-])(?:2160p|1080p|720p|480p|x264|x265|h264|h265|hevc|" +
