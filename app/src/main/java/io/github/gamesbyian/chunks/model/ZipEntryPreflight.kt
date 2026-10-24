@@ -111,8 +111,8 @@ object ZipEntryPreflight {
         if (raw.isEmpty() || raw.length > 4096 || raw.startsWith("/") ||
             raw.startsWith("\\") || raw.contains('\\') ||
             Regex("^[a-zA-Z]:").containsMatchIn(raw) ||
-            raw.any { it.isISOControl() || it in '\\u202A'..'\\u202E' ||
-                it in '\\u2066'..'\\u2069' }) return null
+            raw.any { it.isISOControl() || it in '\u202A'..'\u202E' ||
+                it in '\u2066'..'\u2069' }) return null
 
         val name = if (directory && raw.endsWith('/')) raw.dropLast(1) else raw
         val parts = name.split("/")
