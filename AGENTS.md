@@ -46,3 +46,7 @@ The owner expressly authorized **destructive torrent operations on the designate
 ## Public test corpus for Add
 
 For future Add scenarios use [the public fixture collector](docs/PUBLIC-TORRENT-FIXTURES.md) with licensed Internet Archive .torrent metainfo and derived exact-infohash magnets. Wikimedia Commons provides licensed direct files and dump assets, NOT presumed torrents. Gate destructive live tests behind exact infohash/destination, snapshot, verification and documented owner approval. Never source random search torrents or embed reusable tracker passkeys.
+
+## Controlled real-server public Add acceptance
+
+The [manual public Add smoke](.github/workflows/seedhost-public-add-smoke.yml) defaults to preview without contacting Seedhost. To mutate the owner-authorized development instance, select `apply=true`, supply the exact source-derived v1 infohash as a confirmation input and a chosen absolute directory. The manual-only workflow issues at most one stopped `load.raw_verbose` request for the public fixture, checks preexisting identity and verifies hash/path/stopped state. Never auto-retry a missing acknowledgement or silently remove ambiguous results. PR tests are offline and receive no secrets. App UI Add remains gated by its own real-server/device evidence.
