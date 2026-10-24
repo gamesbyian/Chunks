@@ -8,7 +8,8 @@ Snapshot 2026-10-24 after critical review; update from **actual main, issues, PR
 - [x] [#45 native baseline atlas](https://github.com/gamesbyian/Chunks/actions/runs/40125909320) captured four actual Android emulator login/connection-screen PNGs and hierarchies, SHA `6ffd05319313a20aa9a397aa31004778ca05e9dc`; merged to main `6de03f8a3aa46d9bff5be8ecb5526173bfa1d907`. Not full task/UI approval.
 - [ ] [#48](https://github.com/gamesbyian/Chunks/pull/48) Add review instrumentation: 2/2 Compose tests passed but first artifact pull failed ([run 40125931289](https://github.com/gamesbyian/Chunks/actions/runs/40125931289)). MediaStore persistence fix at `0e19cc6a93a70010c99ce56483564a56a9611d95` needs successful run and captured PNG inspection before merge.
 - [ ] Protected Seedhost inventory with `inspect_inventory=true`, real Kotlin adapter smoke, live exact-hash Add and lifecycle remain unverified. Earlier authenticated Python version probe is not sufficient; manual-only protected workflows must be run independently, never as secret-bearing PR checks.
-- [ ] Validated Add plan is vulnerable to generated Kotlin `data class.copy()` bypass of private-constructor invariants; focused branch `fix/immutable-validated-add-plan-20261024` changes it to an ordinary class and tests that bypass surface.
+- [ ] Add plan safety: generated Kotlin `data class.copy()` bypasses private-constructor invariants. Focused branch `fix/immutable-validated-add-plan-20261024` removes that generated API and adds a regression guard; awaiting CI.
+- [ ] Start/stop uncertainty: branch also makes `setStarted` return `LifecycleOutcome.Uncertain` when the write ACK fails after the server may have applied it, with an HTTP 502-after-apply regression test; awaiting CI and real Seedhost acceptance.
 
 ## Baseline confirmed
 
