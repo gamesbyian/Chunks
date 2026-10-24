@@ -1,0 +1,21 @@
+package io.github.gamesbyian.chunks.rpc
+
+import java.net.URI
+
+/** Convert a user-entered ruTorrent web URL into a candidate HTTP-RPC URL. */
+object RemoteEndpointHints {
+    fun rpcAddress(input: String): String {
+        val uri = URI(input.trim())
+        require(uri.scheme.equals("https", true) ||
+            (uri.scheme.equals("http", true) &&
+              uri.host in listOf("localhost", "127.0.0.1", "::1"))) {
+            "Use HTTPS for remote ruTorrent"
+        }
+        require(!uri.host.isNullOrBlank() && uri.userInfo == null &&
+            uri.rawQuery == null && uri.rawFragment == null) { "Invalid ruTorrent address" }
+        val path = uri.rawPath.orEmpty().trimEnd('/')
+        val mapped = if (path.endsWith("/rutorrent", true))
+            path + "/plugins/httprpc/action.php" else path.ifEmpty { "/" }
+        return URI(uri.scheme.lowercase(), uri.rawAuthority, mapped, null, null).toASCIIString()
+    }
+}
