@@ -35,6 +35,14 @@ jobs:
           fi
       - name: Build testable native debug APK
         run: gradle --no-daemon :app:assembleDebug
+      - name: Enable Android emulator KVM
+        run: |
+          if [ ! -c /dev/kvm ]; then
+            echo "::error::This runner does not expose /dev/kvm; cannot run hardware-accelerated x86 Android instrumented tests"
+            exit 1
+          fi
+          sudo chmod 0666 /dev/kvm
+          test -r /dev/kvm && test -w /dev/kvm
       - name: Native AVD screenshot + accessibility hierarchy capture
         uses: reactivecircus/android-emulator-runner@v2
         with:
