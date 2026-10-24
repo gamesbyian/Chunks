@@ -31,3 +31,6 @@ Prioritize runnable slices over documentation proliferation. Pure logic gets det
 
 ## Project discipline
 Prefer narrow PRs, no direct main edits, no force push, no conflicting parallel writes, no opaque bulk mutations. Never include a real rTorrent URL/password in code, PR, issue, screenshot or artifact. Use reusable tools only when aligned to Chunks' own contracts. Respect cross-account shared GitHub runner limits, avoid duplicate jobs, and leave one concrete next step.
+## Protected hosted-server tests
+
+The repository contains a **manual-only** `seedhost-readonly-probe.yml`, added in #20, for a credentialed read-only version query on a Seedhost host. Do not put the owner's server URL or secret values into code, PR text or CI logs. The live smoke has **not** run. See [SEEDHOST-REMOTE-TESTING.md](docs/SEEDHOST-REMOTE-TESTING.md) for accepted secret names and the difference between inferred URL and authenticated proof.

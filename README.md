@@ -22,3 +22,6 @@ Every feature must distinguish **requested**, **acknowledged**, and **verified**
 Repository: https://github.com/gamesbyian/Chunks
 
 No third-party service, telemetry, account, or remote metadata lookup is required by the product concept. Licensing and release distribution remain undecided; public repository visibility does not grant permission to redistribute code.
+## Hosted ruTorrent connection
+
+The connection form accepts either an HTTPS rTorrent XML-RPC endpoint or a hosted ruTorrent web URL such as `https://host.example/rutorrent/`. It derives the candidate HTTP-RPC plugin path automatically. See [provider testing and secrets policy](docs/SEEDHOST-REMOTE-TESTING.md). Chunks does not save credentials, and real protected seedbox interoperability remains unverified.
