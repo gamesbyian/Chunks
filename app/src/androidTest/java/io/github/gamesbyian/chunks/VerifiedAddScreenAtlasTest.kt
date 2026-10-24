@@ -51,9 +51,9 @@ class VerifiedAddScreenAtlasTest {
         val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
         assertNotNull("MediaStore must accept native screenshot", uri)
         resolver.openOutputStream(uri!!).use { stream ->
-            assertNotNull("MediaStore output must open", stream)
+            val output = requireNotNull(stream) { "MediaStore output must open" }
             assertTrue("Native PNG screenshot must be written",
-                image.compress(Bitmap.CompressFormat.PNG, 100, stream))
+                image.compress(Bitmap.CompressFormat.PNG, 100, output))
         }
         val publish = ContentValues().apply { put(MediaStore.Images.Media.IS_PENDING, 0) }
         assertTrue("Screenshot must be made readable by adb", resolver.update(uri, publish, null, null) == 1)
