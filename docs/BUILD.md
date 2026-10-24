@@ -25,3 +25,7 @@ See [critical review](CRITICAL-REVIEW-2026-10-24.md) and [quality ledger](QUALIT
 ## Reproducible real rTorrent smoke route
 
 The manual-only [Disposable rTorrent protocol proof](https://github.com/gamesbyian/Chunks/actions/workflows/disposable-rtorrent-probe.yml) installs a throwaway rTorrent 0.9.8 and nginx SCGI proxy on a GitHub runner, and tests version/probe/empty listing through Chunks' JVM adapter, with loopback access only. First completed positive evidence: [run 40060755245](https://github.com/gamesbyian/Chunks/actions/runs/40060755245), source `cd337cc8560c8c1d90c581be3de6f61176106e1c`. This is neither an app APK build nor a live seedbox acceptance. It uses no user credentials or media. It is retained manual-only to respect the shared runner budget.
+
+## Hosted ruTorrent URL handling
+
+[Run 40062658654](https://github.com/gamesbyian/Chunks/actions/runs/40062658654) passed `:app:testDebugUnitTest` and `:app:assembleDebug` at PR SHA `b7fc42a8b6d8307ee00309fddb256dbbca9a91c4` (merged #20). The connection form now accepts ruTorrent HTML URLs and derives a candidate `/plugins/httprpc/action.php` endpoint. This compile/test result does not confirm the endpoint works for the owner's server. Use the manual-only [Seedhost RPC smoke workflow](https://github.com/gamesbyian/Chunks/actions/workflows/seedhost-readonly-probe.yml) once the relevant Chunks repository secrets are confirmed.

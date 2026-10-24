@@ -10,6 +10,7 @@ Snapshot 2026-10-24 after critical review; update from **actual main, issues, PR
 - [x] #14 merged at `a1573a4`: read-only native Transfers/Places/Organize/Server dashboard, remote file inspection, extended rate metrics with command-fault fallback, filtering/search/sort, non-mutating Add/Place preview. Android debug APK/JVM tests passed on exact PR SHA `7a7aae0` ([run 40060156362](https://github.com/gamesbyian/Chunks/actions/runs/40060156362)); no handset/live rTorrent proof.
 - [x] #17 magnet Android Share/Open With intent intake and stricter draft syntax validation merged at `f0182b3`. [Run 40060539699](https://github.com/gamesbyian/Chunks/actions/runs/40060539699) passed `assembleDebug` and JVM tests at PR SHA `d586f712da63ba5c56a3d275ec68e29eb8834a7b`. These remain local drafts, not server Add.
 - [x] #15 ephemeral real rTorrent 0.9.8-1ubuntu0.1 through localhost nginx/SCGI read-only adapter proof passed ([run 40060755245](https://github.com/gamesbyian/Chunks/actions/runs/40060755245), tested SHA `cd337cc8560c8c1d90c581be3de6f61176106e1c`); merged as `fe3b463`; workflow now manual-only.
+- [x] #20 merged at `b2aa6cf`: hosted ruTorrent web-URL-to-RPC candidate derivation and manual-only protected Seedhost read-only smoke workflow. [CI run 40062658654](https://github.com/gamesbyian/Chunks/actions/runs/40062658654) passed Gradle debug assembly/JVM tests at PR SHA `b7fc42a8b6d8307ee00309fddb256dbbca9a91c4`. **Not** a live hosted-server connection.
 - [ ] Real **user-managed** rTorrent seedbox connectivity, protected auth/proxy/version matrix, full list semantics or a newer build verified.
 - [ ] Safe transfer Add, start/stop or other remote mutation observed.
 - [ ] Remote physical move/rename proven on disposable data.
@@ -41,7 +42,7 @@ Coordinate through AGENT-LANES.md. No issue implies an agent is automatically wo
 
 ## Next executable action after this review
 
-Continue **read-only protected seedbox and modern rTorrent compatibility validation** for #1 using the newly proven disposable-server method; do not mutate any server, or ship a full remote feature based only on synthetic XML-RPC fixtures. If real server access is unavailable, improve only deterministic protocol fixtures and record the external evidence gap. Reassess the implementation queue only after that discriminator.
+Run the **trusted manual-only Seedhost version probe** after confirming secret names; then continue **read-only protected seedbox and modern rTorrent compatibility validation** for #1 using the newly proven disposable-server method; do not mutate any server, or ship a full remote feature based only on synthetic XML-RPC fixtures. If real server access is unavailable, improve only deterministic protocol fixtures and record the external evidence gap. Reassess the implementation queue only after that discriminator.
 
 ## Closure rules
 
