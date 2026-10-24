@@ -2,7 +2,6 @@ package io.github.gamesbyian.chunks
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -96,7 +95,7 @@ fun TransferSessionRemoveControl(
                         style = MaterialTheme.typography.bodySmall)
                     Text("This removes the torrent from rTorrent's session. Chunks does not request payload-file deletion. Custom server hooks may have additional effects. Refresh and verify before any further action.",
                         style = MaterialTheme.typography.bodySmall)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
                             onClick = {
                                 confirming = false
@@ -129,12 +128,12 @@ fun TransferSessionRemoveControl(
                             enabled = !pending && mainView && !snapshotStale,
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.error),
-                            modifier = Modifier.height(48.dp)
+                            modifier = Modifier.fillMaxWidth().height(52.dp)
                         ) { Text("Confirm remove") }
                         OutlinedButton(
                             onClick = { confirming = false },
                             enabled = !pending,
-                            modifier = Modifier.height(48.dp)
+                            modifier = Modifier.fillMaxWidth().height(48.dp)
                         ) { Text("Cancel") }
                     }
                 }
