@@ -11,9 +11,9 @@ Build a colourful, genuinely usable Android-native BitTorrent client and bulletp
 5. Update only one live queue and the relevant GitHub issue; preserve research as references and measured evidence in the ledger. Merge via normal checks and branch protections.
 
 ## Product invariants
-- Torrent identity/hash, remote engine state, actual path, display name, file mapping, library copy, collection and classifier suggestion are distinct types/states.
+- Torrent identity/hash, remote engine state, actual path, original torrent title, user display alias, file mapping, library copy, collection and classifier suggestion are distinct types/states. An alias is a Chunks-owned local preference, not a remote rename; preserve original names and exact-hash identity for all engine actions.
 - Choosing a torrent destination must be explicit and frictionless. A changed directory string **does not mean physical bytes have moved**.
-- No silent overwrite, irreversible cleanup, deletion of original seeding data, or automatic renaming from an unapproved recommendation.
+- No silent overwrite, irreversible cleanup, deletion of original seeding data, or automatic renaming from an unapproved recommendation. Automatically *generated* human-readable label suggestions can fill an editable draft only; Save must be explicit. Unknown filename extensions and unsourced guest/episode guesses must not be presented as confident identifications.
 - Remote rTorrent XML-RPC through protected HTTPS is baseline compatibility; modern JSON-RPC requires capability-detected support. Never expose raw unauthenticated SCGI.
 - The local engine is Arvid Norberg libtorrent candidate; rTorrent uses the *different* rakshasa libTorrent codebase. Never conflate their APIs.
 - The companion is optional for everyday RPC; advanced filesystem actions must be refused when no safe capability exists.
@@ -21,6 +21,10 @@ Build a colourful, genuinely usable Android-native BitTorrent client and bulletp
 - Secrets, session cookies and reusable tracker passkeys never go into GitHub. **Owner-authorized development Seedhost torrent inventories are explicitly nonconfidential** and may be used in project fixtures and visual QA (see scoped consent below); unrelated inventories are not. Classification local-first and opt-in for network lookups.
 - No Android feature may claim guaranteed continuous background execution, unrestricted storage, or provider access without device evidence.
 - Users must have accessible 48dp-class controls, alternative to gestures, large-text support, screen-reader labeling, and reduced-motion support.
+
+## Naming work division and evidence
+
+Per-transfer Chunks-only queue alias editing and conservative filename recommendations are tracked in [draft PR #69](https://github.com/gamesbyian/Chunks/pull/69), organization issue #6 and UX issue #8. They belong to the non-mutating UI/classifier lane, not the rTorrent RPC or filesystem mutation lanes. Engine-backed rename/copy under #7 remains separate. Acceptance means verified original+alias search/sort, local persistence and account/hash isolation, native edit/reset, 200% text/TalkBack, real-screen visual inspection and no remote/filesystem write; mere PR creation or code presence is insufficient. Future automatic queue-wide *recommendations* and optional metadata lookups need opt-in/provenance/false-positive review, not hidden folder or filename operations.
 
 ## Critical review gate
 
