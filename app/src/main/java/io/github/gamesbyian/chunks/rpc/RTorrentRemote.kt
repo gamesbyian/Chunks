@@ -149,23 +149,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             // must be reconciled by a later explicit inventory refresh.
             return RemoteAddOutcome.Uncertain(plan.expectedInfoHash)
         }
-        return try {
-            val loaded = listTransfers("main").find {
-                it.hash.equals(plan.expectedInfoHash, ignoreCase = true)
-            } ?: return RemoteAddOutcome.PendingVerification(plan.expectedInfoHash)
-            val base = readVerifiedAddDirectory(
-                plan.expectedInfoHash, plan.destination, loaded.name)
-            val started = number(call("d.state", listOf(plan.expectedInfoHash))) != 0L
-            if (!started && !loaded.started && base != null) {
-                RemoteAddOutcome.VerifiedStopped(plan.expectedInfoHash, base)
-            } else {
-                RemoteAddOutcome.PendingVerification(plan.expectedInfoHash)
-            }
-        } catch (_: IOException) {
-            RemoteAddOutcome.Uncertain(plan.expectedInfoHash)
-        } catch (_: RpcFault) {
-            RemoteAddOutcome.PendingVerification(plan.expectedInfoHash)
-        }
+        return reconcileStoppedAdd(plan)
     }
 
     /**
@@ -192,20 +176,39 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         } catch (_: IOException) {
             return RemoteAddOutcome.Uncertain(hash)
         }
+        return reconcileStoppedAdd(plan)
+    }
+
+    /**
+     * READ ONLY: reconcile a previous stopped Add after an uncertain RPC reply.
+     * Uses only server inventory + exact-hash directory/type/state getters.
+     * Never invokes load, starts a torrent, changes a directory or retries.
+     *
+     * VerifiedStopped proves the desired observed state, NOT whether this
+     * session or a different client originally added the torrent.
+     */
+    suspend fun reconcileStoppedAdd(plan: StoppedRemoteAddPlan): RemoteAddOutcome {
         return try {
-            val item = listTransfers("main").find { it.hash.equals(hash, ignoreCase = true) }
-                ?: return RemoteAddOutcome.PendingVerification(hash)
-            val base = readVerifiedAddDirectory(hash, plan.destination, item.name)
-            val started = number(call("d.state", listOf(hash))) != 0L
-            if (!item.started && !started && base != null) {
-                RemoteAddOutcome.VerifiedStopped(hash, base)
+            val matches = listTransfers("main").filter {
+                it.hash.equals(plan.expectedInfoHash, ignoreCase = true)
+            }
+            if (matches.size != 1) {
+                RemoteAddOutcome.PendingVerification(plan.expectedInfoHash)
             } else {
-                RemoteAddOutcome.PendingVerification(hash)
+                val item = matches.single()
+                val directory = readVerifiedAddDirectory(
+                    plan.expectedInfoHash, plan.destination, item.name)
+                val started = number(call("d.state", listOf(plan.expectedInfoHash))) != 0L
+                if (!item.started && !started && directory != null) {
+                    RemoteAddOutcome.VerifiedStopped(plan.expectedInfoHash, directory)
+                } else {
+                    RemoteAddOutcome.PendingVerification(plan.expectedInfoHash)
+                }
             }
         } catch (_: IOException) {
-            RemoteAddOutcome.Uncertain(hash)
+            RemoteAddOutcome.Uncertain(plan.expectedInfoHash)
         } catch (_: RpcFault) {
-            RemoteAddOutcome.PendingVerification(hash)
+            RemoteAddOutcome.PendingVerification(plan.expectedInfoHash)
         }
     }
 

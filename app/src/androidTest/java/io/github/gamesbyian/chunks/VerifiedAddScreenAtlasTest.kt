@@ -15,6 +15,7 @@ import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.captureToImage
@@ -77,6 +78,32 @@ class VerifiedAddScreenAtlasTest {
         rule.onNodeWithText("Confirm: add stopped").assertExists()
         rule.onNodeWithText("Infohash: " + "ab".repeat(20)).assertExists()
         save("add-confirmation-real-compose")
+    }
+
+    @Test fun uncertainAddOffersReadOnlyReconciliationInsteadOfRepeatSubmit() {
+        var magnet by mutableStateOf(validMagnet)
+        var destination by mutableStateOf("/home/dev/chunks-public-test")
+        rule.setContent {
+            MaterialTheme {
+                VerifiedAddScreen(remote, magnet, destination,
+                    onMagnet = { magnet = it },
+                    onDestination = { destination = it },
+                    onBack = {}, onComplete = {})
+            }
+        }
+        rule.onNode(hasScrollAction()).performScrollToNode(hasText("Review stopped Add"))
+        rule.onNodeWithText("Review stopped Add").performClick()
+        rule.onNode(hasScrollAction()).performScrollToNode(hasText("Confirm: add stopped"))
+        rule.onNodeWithText("Confirm: add stopped").performClick()
+        rule.waitUntil(timeoutMillis = 15_000) {
+            rule.onAllNodesWithText("Check server state (read only)")
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNode(hasScrollAction()).performScrollToNode(
+            hasText("Check server state (read only)"))
+        rule.onNodeWithText("Confirm: add stopped").assertDoesNotExist()
+        rule.onNodeWithText("Check server state (read only)").assertExists()
+        save("add-uncertain-recheck-real-compose")
     }
 
     @Test fun confirmedSessionRemovalShowsExactTargetWithoutSendingRpc() {
