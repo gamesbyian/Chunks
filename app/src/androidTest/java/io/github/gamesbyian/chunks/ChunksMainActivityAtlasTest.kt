@@ -29,6 +29,10 @@ import java.net.Socket
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.Collections
 import org.junit.After
+import org.junit.Assert.assertEquals
+import io.github.gamesbyian.chunks.rpc.RTorrentRemote
+import io.github.gamesbyian.chunks.rpc.RemoteCredentials
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -194,6 +198,15 @@ class ChunksMainActivityAtlasTest {
         assertTrue("Normal external domains must remain HTTPS-only",
             !policy.isCleartextTrafficPermitted("example.com"))
         val endpoint = startLoopback()
+        // First prove the exact adapter/fixture works outside Compose navigation.
+        // A failure here identifies transport or XML-RPC shape rather than UI state.
+        runBlocking {
+            val rpc = RTorrentRemote(RemoteCredentials(endpoint, "", ""))
+            assertEquals("0.9.8", rpc.version())
+            assertEquals(3, rpc.listTransfers("main").size)
+            assertEquals(85, rpc.listFiles("ab".repeat(20)).size)
+        }
+        receivedMethods.clear() // Record the real installed-app calls separately.
         rule.onNodeWithText("ruTorrent web URL or RPC address").performTextInput(endpoint)
         rule.onNodeWithText("Connect to rTorrent").performClick()
         try {
