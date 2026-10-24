@@ -4,8 +4,8 @@ import java.net.URI
 import java.net.URLDecoder
 import java.util.Locale
 
-/** A single, explicitly chosen, v1 Add test target. Not a general file mover. */
-data class StoppedRemoteAddPlan private constructor(
+/** A validated v1 Add target. Keep as a normal class: a data-class copy() bypasses private-constructor validation. */
+class StoppedRemoteAddPlan private constructor(
     val source: String,
     val expectedInfoHash: String,
     val destination: String,
