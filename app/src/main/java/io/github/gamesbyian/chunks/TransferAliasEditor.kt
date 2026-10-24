@@ -67,6 +67,10 @@ internal fun TransferAliasEditor(
                 ) {
                     Text(suggestion.name, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
+                Text(
+                    suggestion.explanation,
+                    style = androidx.compose.material3.MaterialTheme.typography.bodySmall
+                )
             }
             Text("Suggestions can be edited before saving. They don't identify guests or episode titles absent from the filename.")
         }
