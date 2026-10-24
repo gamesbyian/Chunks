@@ -99,3 +99,7 @@ PR #40 adds an Android Storage Access Framework `OpenDocument` picker, bounded 2
 ## Protected Kotlin adapter gate candidate
 
 PR #42 adds a trusted-main, manual-only Seedhost compatibility workflow invoking the **actual Kotlin RTorrentRemote adapter** against the authorized development server with repository credentials. It checks live authenticated version and main-view torrent decoding without state changes. PR CI will **skip** the live check if no secret environment is supplied, so only a separate manual run with explicit evidence can mark actual Seedhost Kotlin compatibility passed. This is an essential predecessor to declaring handset Add/lifecycle support.
+
+## Confirmed Compose Add handoff candidate
+
+PR #44 connects the existing v1 SAF .torrent parser and destination-first stopped-load core to an accessible two-stage Add screen. Submission stays disabled until the user explicitly reviews exact hash and destination. A failed or ambiguous submission cannot be immediately repeated from the same screen; user must inspect remote state. Merge only after Android/JVM green. Real device flow and actual Seedhost Add remain separate acceptance gates, not implied by a build.
