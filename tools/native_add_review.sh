@@ -6,7 +6,7 @@ adb shell wm density 420
 adb shell settings put system font_scale 1.0
 gradle --no-daemon :app:connectedDebugAndroidTest
 mkdir -p "$RUNNER_TEMP/chunks-add-native-review"
-adb pull /sdcard/Android/data/io.github.gamesbyian.chunks/files/chunks-atlas/. "$RUNNER_TEMP/chunks-add-native-review"
+adb pull /sdcard/Pictures/ChunksAddAtlas/. "$RUNNER_TEMP/chunks-add-native-review"
 python3 - <<'PY'
 from pathlib import Path
 import struct, os
