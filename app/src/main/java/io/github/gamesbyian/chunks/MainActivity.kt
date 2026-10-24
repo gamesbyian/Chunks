@@ -551,16 +551,7 @@ private fun TransferCard(
                 if (filesLoading) Text("Reading server file list…")
                 if (filesError != null) Text(filesError, color = Color(0xFF9E3930))
                 if (files != null) {
-                    Text(files.size.toString() + " files · read only", fontWeight = FontWeight.Bold)
-                    for (file in files.take(40)) {
-                        Text(file.path + " · " + Units.bytes(file.sizeBytes) +
-                            (if (file.priority == 0) " · skipped" else ""),
-                            style = MaterialTheme.typography.bodySmall)
-                    }
-                    if (files.size > 40) {
-                        Text("Showing first 40 files. More file browsing is planned.",
-                            style = MaterialTheme.typography.bodySmall)
-                    }
+                    TransferFilePager(transfer.hash, files)
                 }
             }
         }
