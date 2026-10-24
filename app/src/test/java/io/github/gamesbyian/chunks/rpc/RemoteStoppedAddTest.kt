@@ -53,6 +53,52 @@ class RemoteStoppedAddTest {
         return "<value><array><data><value><array><data>" +
             row.joinToString("") + "</data></array></value></data></array></value>"
     }
+    @Test fun ambiguousStoppedAddCanBeReconciledWithoutASecondWrite() = runBlocking {
+        var loaded = false
+        val methods = mutableListOf<String>()
+        val server = HttpServer.create(
+            InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0)
+        server.createContext("/RPC2") { exchange ->
+            val xml = exchange.requestBody.bufferedReader().use { it.readText() }
+            val method = Regex("<methodName>([^<]+)</methodName>")
+                .find(xml)?.groupValues?.get(1).orEmpty()
+            methods.add(method)
+            if (method == "load.verbose") {
+                // The remote has already applied Add, but its proxy lost the ACK.
+                loaded = true
+                exchange.sendResponseHeaders(503, -1)
+                exchange.close()
+            } else {
+                val body = when (method) {
+                    "d.multicall2" -> if (loaded) rowXml()
+                        else "<value><array><data></data></array></value>"
+                    "d.directory" -> value(dir)
+                    "d.is_multi_file" -> num(0)
+                    "d.state" -> num(0)
+                    else -> throw AssertionError("Unexpected method: $method")
+                }
+                val response = "<methodResponse><params><param>$body</param></params></methodResponse>"
+                    .toByteArray(Charsets.UTF_8)
+                exchange.sendResponseHeaders(200, response.size.toLong())
+                exchange.responseBody.use { it.write(response) }
+            }
+        }
+        server.start()
+        try {
+            val remote = RTorrentRemote(RemoteCredentials(
+                "http://127.0.0.1:${server.address.port}/RPC2", "", ""))
+            val plan = StoppedRemoteAddPlan.fromMagnet(magnet, dir)
+            assertEquals(RemoteAddOutcome.Uncertain(hash), remote.loadStopped(plan))
+            assertEquals(listOf("d.multicall2", "load.verbose"), methods)
+            assertEquals(RemoteAddOutcome.VerifiedStopped(hash, dir),
+                remote.reconcileStoppedAdd(plan))
+            assertEquals("Only ONE Add RPC despite a lost acknowledgement",
+                1, methods.count { it == "load.verbose" })
+            assertEquals(listOf("d.multicall2", "load.verbose", "d.multicall2",
+                "d.directory", "d.is_multi_file", "d.state"), methods)
+        } finally { server.stop(0) }
+    }
+
     @Test fun loadsStoppedAndVerifiesDestinationAndState() = runBlocking {
         var loaded = false
         val requests = mutableListOf<String>()
