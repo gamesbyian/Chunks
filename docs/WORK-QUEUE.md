@@ -95,3 +95,7 @@ Opt-in dev Seedhost `inspect_inventory=true` will capture nonsecret torrent meta
 ## Native Android torrent file import preview candidate
 
 PR #40 adds an Android Storage Access Framework `OpenDocument` picker, bounded 2 MiB v1 `.torrent` parser, on-device original `info` dictionary SHA-1, name/file-count/size preview and explicit refusal of traversal/invalid encoding/v2. This is a **local-only Add preview**, not upload or remote Add; selected bytes are not persisted or sent to Seedhost. App/UI CI and a physical Android document picker journey remain required gates.
+
+## Protected Kotlin adapter gate candidate
+
+PR #42 adds a trusted-main, manual-only Seedhost compatibility workflow invoking the **actual Kotlin RTorrentRemote adapter** against the authorized development server with repository credentials. It checks live authenticated version and main-view torrent decoding without state changes. PR CI will **skip** the live check if no secret environment is supplied, so only a separate manual run with explicit evidence can mark actual Seedhost Kotlin compatibility passed. This is an essential predecessor to declaring handset Add/lifecycle support.
