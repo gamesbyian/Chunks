@@ -35,6 +35,16 @@ class RemoteStoppedAddTest {
         }
     }
 
+    @Test fun addPlanCannotBypassValidationViaGeneratedCopy() {
+        // Kotlin data classes generate a public copy() even with a private constructor.
+        // Such a copy could substitute a traversal path or unrelated infohash.
+        assertFalse(StoppedRemoteAddPlan::class.java.methods.any { it.name == "copy" })
+        assertTrue(StoppedRemoteAddPlan::class.java.constructors.none { !it.isSynthetic })
+        val valid = StoppedRemoteAddPlan.fromMagnet(magnet, dir)
+        assertEquals(dir, valid.destination)
+        assertEquals(hash, valid.expectedInfoHash)
+    }
+
     private fun value(text: String) = "<value><string>$text</string></value>"
     private fun num(i: Long) = "<value><i8>$i</i8></value>"
     private fun rowXml(): String {

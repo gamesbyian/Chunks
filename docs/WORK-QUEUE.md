@@ -2,6 +2,15 @@
 
 Snapshot 2026-10-24 after critical review; update from **actual main, issues, PRs and quality evidence**. THIS is the sole current priority owner. Plans, audits and issue discussion do not count as implemented functionality.
 
+## Integration reconciliation (2026-10-24, live CI)
+
+- [x] [#52](https://github.com/gamesbyian/Chunks/pull/52) merged as `9b44718dbf025578f45becbcf4d70653b8a80ba6` after [Android/JVM run 40126293314](https://github.com/gamesbyian/Chunks/actions/runs/40126293314) passed at head `18771b616c25c3d7b258c34b439a96ea2f44980f`; timeout and remote-write text now acknowledges uncertainty instead of asserting that no mutation occurred.
+- [x] [#45 native baseline atlas](https://github.com/gamesbyian/Chunks/actions/runs/40125909320) captured four actual Android emulator login/connection-screen PNGs and hierarchies, SHA `6ffd05319313a20aa9a397aa31004778ca05e9dc`; merged to main `6de03f8a3aa46d9bff5be8ecb5526173bfa1d907`. Not full task/UI approval.
+- [x] [#48](https://github.com/gamesbyian/Chunks/pull/48) merged at `34977f7755f3c235a73018630816be7fbd4f4512`: [run 40126780317](https://github.com/gamesbyian/Chunks/actions/runs/40126780317) passed Android/JVM checks; [run 40126780492](https://github.com/gamesbyian/Chunks/actions/runs/40126780492) passed native API 35 Compose tests and validated two 1080×2400 real PNG Add state captures from MediaStore, artifact `chunks-native-add-review-states`, exact tested SHA `0e19cc6a93a70010c99ce56483564a56a9611d95`. Visual critique, broad state/viewport coverage and physical Android device remain open.
+- [ ] Protected Seedhost inventory with `inspect_inventory=true`, real Kotlin adapter smoke, live exact-hash Add and lifecycle remain unverified. Earlier authenticated Python version probe is not sufficient; manual-only protected workflows must be run independently, never as secret-bearing PR checks.
+- [ ] Add plan safety: generated Kotlin `data class.copy()` bypasses private-constructor invariants. Focused branch `fix/immutable-validated-add-plan-20261024` removes that generated API and adds a regression guard; awaiting CI.
+- [ ] Start/stop uncertainty: branch also makes `setStarted` return `LifecycleOutcome.Uncertain` when the write ACK fails after the server may have applied it, with an HTTP 502-after-apply regression test; awaiting CI and real Seedhost acceptance.
+
 ## Baseline confirmed
 
 - [x] #11 bootstrap merged as main commit 6dba63fed72c92c7f97128ef3fa08d278a37b730.

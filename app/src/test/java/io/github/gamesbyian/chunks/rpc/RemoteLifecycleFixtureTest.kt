@@ -37,6 +37,29 @@ class RemoteLifecycleFixtureTest {
         } finally { server.stop(0) }
     }
 
+    @Test fun lostGatewayAcknowledgementNeverRetriesStart() = runBlocking {
+        var applied = false
+        val calls = mutableListOf<String>()
+        val server = HttpServer.create(InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0)
+        server.createContext("/RPC2") { exchange ->
+            val xml = exchange.requestBody.bufferedReader().use { it.readText() }
+            val method = Regex("<methodName>([^<]+)</methodName>").find(xml)?.groupValues?.get(1) ?: ""
+            calls.add(method)
+            if (method == "d.start") applied = true
+            // Simulate a proxy losing the acknowledgement after the engine applied Start.
+            exchange.sendResponseHeaders(502, -1)
+            exchange.close()
+        }
+        server.start()
+        try {
+            val client = RTorrentRemote(RemoteCredentials(
+                "http://127.0.0.1:${server.address.port}/RPC2", "", ""))
+            assertEquals(LifecycleOutcome.Uncertain(true), client.setStarted(hash, true))
+            assertTrue("The remote command might already be applied", applied)
+            assertEquals("No retry or speculative read after failed ACK", listOf("d.start"), calls)
+        } finally { server.stop(0) }
+    }
+
     @Test fun invalidHashCannotIssueCommands() = runBlocking {
         try {
             RTorrentRemote(RemoteCredentials("http://127.0.0.1:1/RPC2", "", ""))
