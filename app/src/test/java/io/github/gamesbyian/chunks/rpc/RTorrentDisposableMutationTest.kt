@@ -1,6 +1,8 @@
 package io.github.gamesbyian.chunks.rpc
 
 import java.net.URI
+import java.nio.file.Files
+import java.nio.file.Paths
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Assume.assumeTrue
@@ -120,6 +122,65 @@ class RTorrentDisposableMutationTest {
         if (outcome is RemoteAddOutcome.VerifiedStopped) {
             assertEquals(expectedRoot, outcome.destination)
         }
+    }
+
+    @Test fun exactHashSessionEraseWorksOnDisposableRealEngineWithoutDeletingPayload() = runBlocking {
+        val rtorrent = temporaryRemote()
+        val target = System.getenv("CHUNKS_DISPOSABLE_TARGET_DIR").orEmpty()
+        require(target.startsWith("/") && target.contains("chunks-data")) {
+            "Removal test must use the disposable local data root"
+        }
+        val removeBytes = (
+            "d4:infod6:lengthi5e4:name9:erase.txt12:piece lengthi16384e6:pieces20:" +
+            "01234567890123456789ee"
+        ).toByteArray(Charsets.UTF_8)
+        val hash = TorrentMetainfoReader.preview(removeBytes).infoHashV1
+        val payload = Paths.get(target, "erase.txt")
+        val original = "hello".toByteArray(Charsets.UTF_8)
+        Files.createDirectories(payload.parent)
+        Files.write(payload, original)
+        assertTrue("Fresh disposable engine should not contain this exact fixture hash",
+            rtorrent.listTransfers("main").none { it.hash.equals(hash, true) })
+
+        val loaded = rtorrent.loadStoppedTorrentBytes(removeBytes, target)
+        assertTrue("Real Add must not have an ambiguous outcome before destructive testing: $loaded",
+            loaded is RemoteAddOutcome.VerifiedStopped ||
+                loaded is RemoteAddOutcome.PendingVerification)
+        var observed: RemoteTransfer? = null
+        for (attempt in 1..15) {
+            observed = rtorrent.listTransfers("main").firstOrNull { it.hash.equals(hash, true) }
+            if (observed != null) break
+            Thread.sleep(400)
+        }
+        val present = requireNotNull(observed) { "Disposable test torrent failed to appear" }
+        assertEquals("erase.txt", present.name)
+        assertEquals(target, present.directory)
+        assertFalse("Removal acceptance requires a stopped transfer", present.started)
+
+        // Prove optimistic name/path preflight refuses stale UI information.
+        try {
+            rtorrent.eraseFromSession(hash, "stale-display-name", present.directory)
+            fail("A stale name must refuse erase without changing session identity")
+        } catch (_: IllegalArgumentException) { }
+        assertTrue(rtorrent.listTransfers("main").any { it.hash.equals(hash, true) })
+
+        val result = rtorrent.eraseFromSession(hash, present.name, present.directory)
+        assertTrue("Real erase must not return ambiguous result: $result",
+            result is SessionEraseOutcome.VerifiedRemoved ||
+                result is SessionEraseOutcome.PendingRemoval)
+
+        var stillListed = true
+        for (attempt in 1..15) {
+            stillListed = rtorrent.listTransfers("main").any { it.hash.equals(hash, true) }
+            if (!stillListed) break
+            Thread.sleep(400)
+        }
+        assertFalse("d.erase must remove this hash from the real main view", stillListed)
+        assertEquals("After verified disappearance, duplicate erase must issue no write",
+            SessionEraseOutcome.AlreadyAbsent(hash),
+            rtorrent.eraseFromSession(hash, present.name, present.directory))
+        assertArrayEquals("Session removal must not delete or change the payload bytes",
+            original, Files.readAllBytes(payload))
     }
 
 }
