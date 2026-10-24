@@ -134,6 +134,27 @@ class CollectorTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             f.create_commons_single_file_torrent(m, b"short")
 
+    def test_public_source_attribution_preserved_as_plain_text(self):
+        self.assertEqual("JesseW & Contributors",
+                         f.attribution_text('<a href="/wiki/User:JesseW">JesseW &amp; Contributors</a>'))
+        self.assertEqual("Alpha; Beta", f.attribution_text(["Alpha", "Beta"]))
+        response = {"query": {"pages": {"1": {"imageinfo": [{
+            "url": "https://upload.wikimedia.org/wikipedia/commons/a/ab/Example.ogg",
+            "size": 104793, "mime": "audio/ogg",
+            "extmetadata": {
+                "LicenseUrl": {"value": "https://creativecommons.org/licenses/by-sa/3.0/"},
+                "LicenseShortName": {"value": "CC BY-SA 3.0"},
+                "Artist": {"value": "<span>JesseW</span>"},
+                "Attribution": {"value": "JesseW &amp; Commons"}
+            }
+        }]}}}}
+        with patch.object(f, "fetch", return_value=json.dumps(response).encode()):
+            manifest = f.commons_fixture("File:Example.ogg")
+        self.assertEqual("JesseW", manifest["attribution"]["author"])
+        self.assertEqual("JesseW & Commons", manifest["attribution"]["credit"])
+        self.assertEqual("CC BY-SA 3.0", manifest["attribution"]["license_short_name"])
+        self.assertEqual(104793, manifest["asset"]["bytes"])
+
     def test_host_and_source_validation(self):
         for url in ("http://archive.org/metadata/a",
                     "https://notarchive.org/download/a",

@@ -7,6 +7,7 @@ media as content-test references, NOT imaginary torrents. Standard library only.
 """
 import argparse
 import hashlib
+import html
 import json
 import os
 from pathlib import Path
@@ -48,6 +49,11 @@ def fetch(url, cap):
     if len(data) > cap:
         raise ValueError("Source response exceeded byte limit")
     return data
+
+def attribution_text(value):
+    """Keep bounded plain-text credits, never embedded HTML/JS."""
+    raw = "; ".join(str(v) for v in value) if isinstance(value, list) else str(value or "")
+    return " ".join(html.unescape(re.sub(r"<[^>]*>", " ", raw)).split())[:512]
 
 def license_ok(meta):
     if isinstance(meta, list):
@@ -204,7 +210,7 @@ def archive_fixture(identifier, max_total_bytes):
     safe, details = torrent_summary(raw, max_total_bytes)
     out = {"schema": "chunks.public-fixture.v1", "source": "internet-archive",
            "source_url": "https://archive.org/details/" + identifier, "torrent_url": url,
-           "license": license_name, "torrent": details,
+           "license": license_name, "creator": attribution_text(metadata.get("creator")), "torrent": details,
            "safe_torrent_sha256": hashlib.sha256(safe).hexdigest(),
            "nonsecret_fixture": True, "download_payload": False}
     return out, safe
@@ -233,7 +239,15 @@ def commons_fixture(filename):
         raise ValueError("Invalid Commons file size")
     return {"schema": "chunks.public-fixture.v1", "source": "wikimedia-commons",
             "source_url": "https://commons.wikimedia.org/wiki/" + urllib.parse.quote(title.replace(" ", "_")),
-            "license": license_name, "asset": {"url": url, "bytes": size, "mime": info.get("mime")},
+            "license": license_name,
+            "attribution": {
+                "author": attribution_text(extra.get("Artist", {}).get("value")),
+                "credit": attribution_text(extra.get("Attribution", {}).get("value")),
+                "license_short_name": attribution_text(extra.get("LicenseShortName", {}).get("value")),
+                "license_url": str(extra.get("LicenseUrl", {}).get("value", ""))[:1024],
+                "source_page": "https://commons.wikimedia.org/wiki/" + urllib.parse.quote(title.replace(" ", "_"))
+            },
+            "asset": {"url": url, "bytes": size, "mime": info.get("mime")},
             "torrent": None, "magnet": None, "torrent_status": "no_official_torrent_claimed",
             "nonsecret_fixture": True, "download_payload": False}
 
