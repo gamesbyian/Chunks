@@ -3,8 +3,6 @@ package io.github.gamesbyian.chunks
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
@@ -44,13 +42,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import io.github.gamesbyian.chunks.model.AddDraft
 import io.github.gamesbyian.chunks.model.TransferCatalog
 import io.github.gamesbyian.chunks.model.TransferFilter
 import io.github.gamesbyian.chunks.model.TransferOrder
@@ -60,11 +56,7 @@ import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
 import io.github.gamesbyian.chunks.rpc.RemoteFile
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
-import io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader
-import io.github.gamesbyian.chunks.rpc.TorrentMetainfoPreview
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 private val Ink = Color(0xFF262442)
 private val Cream = Color(0xFFFFF8EC)
@@ -106,7 +98,7 @@ class MainActivity : ComponentActivity() {
 }
 
 private enum class Section(val label: String) {
-    TRANSFERS("Transfers"), PLACES("Places"), ORGANIZE("Organize"), SERVER("Server"), ADD("Add preview")
+    TRANSFERS("Transfers"), PLACES("Places"), ORGANIZE("Organize"), SERVER("Server"), ADD("Add")
 }
 
 @Composable
@@ -276,10 +268,11 @@ private fun ChunksApp(sharedMagnet: String?) {
                         stale = false
                     }
                 )
-                Section.ADD -> AddPreviewScreen(
-                    magnet = magnet, path = draftPath,
-                    onMagnet = { magnet = it }, onPath = { draftPath = it },
-                    onBack = { section = Section.TRANSFERS }
+                Section.ADD -> VerifiedAddScreen(
+                    remote = requireNotNull(server), magnet = magnet, destination = draftPath,
+                    onMagnet = { magnet = it }, onDestination = { draftPath = it },
+                    onBack = { section = Section.TRANSFERS },
+                    onComplete = refresh
                 )
             }
         }
@@ -306,7 +299,7 @@ private fun ConnectionScreen(
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         item {
-            ColoredPanel("Hello, server.", "Connect an existing rTorrent installation. Chunks will only read its state in this preview.", Lilac)
+            ColoredPanel("Hello, server.", "Connect an existing rTorrent installation. Chunks connects over protected XML-RPC. Torrent changes require separate explicit confirmation.", Lilac)
         }
         item {
             OutlinedTextField(
@@ -575,105 +568,6 @@ private fun OrganizeScreen(list: List<RemoteTransfer>) {
 }
 
 @Composable
-private fun AddPreviewScreen(
-    magnet: String, path: String, onMagnet: (String) -> Unit,
-    onPath: (String) -> Unit, onBack: () -> Unit
-) {
-    val draft = remember(magnet, path) { AddDraft(magnet, path) }
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    var localTorrent by remember { mutableStateOf<TorrentMetainfoPreview?>(null) }
-    var localTorrentError by remember { mutableStateOf<String?>(null) }
-    var readingLocalTorrent by remember { mutableStateOf(false) }
-    val openTorrent = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null && !readingLocalTorrent) {
-            readingLocalTorrent = true
-            localTorrent = null
-            localTorrentError = null
-            scope.launch {
-                try {
-                    val parsed = withContext(Dispatchers.IO) {
-                        val stream = context.contentResolver.openInputStream(uri)
-                            ?: error("The selected file could not be opened")
-                        stream.use { input ->
-                            val buffer = ByteArray(16_384)
-                            val data = java.io.ByteArrayOutputStream()
-                            while (true) {
-                                val read = input.read(buffer)
-                                if (read < 0) break
-                                if (data.size() + read > TorrentMetainfoReader.MAX_BYTES) {
-                                    error("The .torrent file exceeds the 2 MiB metadata limit")
-                                }
-                                data.write(buffer, 0, read)
-                            }
-                            TorrentMetainfoReader.preview(data.toByteArray())
-                        }
-                    }
-                    localTorrent = parsed
-                } catch (failure: Exception) {
-                    localTorrentError = readableFailure(failure)
-                } finally {
-                    readingLocalTorrent = false
-                }
-            }
-        }
-    }
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
-        item {
-            ColoredPanel("Where should it go?",
-                "Draft a magnet and destination together. Sending torrents is disabled until remote write semantics are tested.", Lime)
-        }
-        item {
-            OutlinedTextField(value = magnet, onValueChange = onMagnet,
-                label = { Text("Magnet link") },
-                modifier = Modifier.fillMaxWidth(), minLines = 2, maxLines = 4)
-        }
-        item {
-            OutlinedButton(
-                onClick = { openTorrent.launch(arrayOf("*/*")) },
-                enabled = !readingLocalTorrent,
-                modifier = Modifier.fillMaxWidth().height(52.dp)
-            ) {
-                Text(if (readingLocalTorrent) "Reading file…" else "Choose a .torrent file")
-            }
-        }
-        if (localTorrent != null) {
-            item {
-                val selected = localTorrent!!
-                ColoredPanel("Valid local .torrent",
-                    selected.name + " · " + selected.fileCount +
-                        " files · " + Units.bytes(selected.sizeBytes) +
-                        "\nSHA-1 infohash: " + selected.infoHashV1 +
-                        "\nLocal preview only. File bytes and server destination have not been sent.", Lilac)
-            }
-        }
-        if (localTorrentError != null) {
-            item { Notice("Can't inspect this file", localTorrentError.orEmpty(), Coral) }
-        }
-        item {
-            OutlinedTextField(value = path, onValueChange = onPath,
-                label = { Text("Destination on server") },
-                modifier = Modifier.fillMaxWidth(), minLines = 1, maxLines = 3)
-        }
-        item {
-            Notice(if (draft.canPreview) "Draft is ready for review" else "Draft needs more details",
-                if (draft.canPreview) "Magnet syntax and absolute-path shape look plausible. The directory's existence, permissions and server acceptance are not yet verified. Nothing has been submitted."
-                else "Enter a magnet with an info hash and an absolute server path. This preview cannot check server permissions.",
-                if (draft.canPreview) Lime else Lilac)
-        }
-        item {
-            OutlinedButton(onClick = onBack, modifier = Modifier.height(52.dp).fillMaxWidth()) {
-                Text("Back to transfers")
-            }
-        }
-    }
-}
-
-@Composable
 private fun ServerScreen(
     version: String, displayedView: String, requestedView: String, onRequestedView: (String) -> Unit,
     loading: Boolean, stale: Boolean, count: Int, onRefresh: () -> Unit, onDisconnect: () -> Unit
@@ -718,7 +612,7 @@ private fun ServerScreen(
             }
         }
         item {
-            Text("Server login details are kept in memory only. Chunks does not issue torrent-changing RPC commands in this build.",
+            Text("Credentials remain in memory only. Stopped Add is opt-in with a review step; file relocation is not yet supported.",
                 style = MaterialTheme.typography.bodySmall)
         }
     }
