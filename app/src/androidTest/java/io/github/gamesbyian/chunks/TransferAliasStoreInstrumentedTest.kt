@@ -20,6 +20,7 @@ class TransferAliasStoreInstrumentedTest {
             assertTrue(store.save(server, hash, "Celebrity Jeopardy S04E02"))
             assertEquals("Celebrity Jeopardy S04E02", store.get(server, hash))
             assertNull(store.get(otherServer, hash))
+            assertNull(store.get(otherAccount, hash))
             assertNull(store.get(server, otherHash))
             // Case-insensitive infohash identity within the same server.
             assertEquals("Celebrity Jeopardy S04E02", store.get(server, hash.lowercase()))
