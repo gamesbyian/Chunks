@@ -24,6 +24,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
+import io.github.gamesbyian.chunks.rpc.RemoteFile
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -124,6 +125,30 @@ class VerifiedAddScreenAtlasTest {
         rule.onNodeWithText("Current directory: /home/dev/chunks-public-test").assertExists()
         rule.onNodeWithText("Confirm remove").assertExists()
         save("remove-confirmation-real-compose")
+    }
+
+    @Test fun nativeFileInventoryCanPagePastFortyWithoutLosingIndices() {
+        val files = (0 until 105).map { index ->
+            RemoteFile(
+                "Season-" + (index / 10) + "/A-very-long-descriptive-episode-name-" +
+                    index.toString().padStart(3, '0') + "-public-example.mkv",
+                10_000L + index, if (index % 3 == 0) 0 else 1
+            )
+        }
+        rule.setContent {
+            MaterialTheme {
+                TransferFilePager("ab".repeat(20), files)
+            }
+        }
+        rule.onNodeWithText("Showing 1–40 of 105 files").assertExists()
+        rule.onNodeWithText("Next 40").performClick()
+        rule.onNodeWithText("Showing 41–80 of 105 files").assertExists()
+        rule.onNodeWithText("Page 2 of 3").assertExists()
+        save("files-dense-second-page-real-compose")
+        rule.onNodeWithText("Next 40").performClick()
+        rule.onNodeWithText("Showing 81–105 of 105 files").assertExists()
+        rule.onNodeWithText("Previous 40").performClick()
+        rule.onNodeWithText("Showing 41–80 of 105 files").assertExists()
     }
 
     @Test fun staleOrDifferentViewCannotOfferSessionRemoval() {
