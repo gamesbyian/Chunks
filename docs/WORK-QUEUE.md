@@ -58,12 +58,12 @@ With the **trusted manual-only Seedhost version probe now passing**, continue **
 
 ## Public Add fixture factory
 
-PR implementation: [public fixtures guide](PUBLIC-TORRENT-FIXTURES.md) with bounded Archive torrent/magnet and Commons file-reference collector, offline tests and manual collection workflow. Mark CI/offline and first live public fetch separately; fixture availability is not an implemented server Add feature.
+Implemented and merged: [PR #29](https://github.com/gamesbyian/Chunks/pull/29) and [PR #30](https://github.com/gamesbyian/Chunks/pull/30) provide bounded licensed Archive `.torrent`/derived magnets, Commons metadata and opt-in small-file-generated v1 torrents. Offline Python suites passed at [runs 40064941665](https://github.com/gamesbyian/Chunks/actions/runs/40064941665) and [40065113278](https://github.com/gamesbyian/Chunks/actions/runs/40065113278). Live provider retrieval and peer/seeding viability remain unchecked.
 
-## Stopped destination-first remote Add API proposal
+## Stopped destination-first remote Add API
 
-PR #31 proposes a narrow XML-RPC Add path for a validated v1 magnet or exact-hash Archive .torrent URL; it refuses duplicate known main-view hashes, loads stopped with an explicit rTorrent directory post-load command and reads back hash/directory/state. Do **not** claim live server compatibility, real payload download or accessible UI until independently verified.
+PR #31 [merged](https://github.com/gamesbyian/Chunks/pull/31) at `de99a6d`, [run 40065534962](https://github.com/gamesbyian/Chunks/actions/runs/40065534962) passed Android APK assembly and JVM fixtures at PR SHA `68c8406ca43f6a7b5a1f6504127cfe4b9fbf8eff`. It supplies a narrow XML-RPC Add path for a validated v1 magnet or exact-hash Archive .torrent URL; it refuses duplicate known main-view hashes, loads stopped with an explicit rTorrent directory post-load command and reads back hash/directory/state. Do **not** claim live server compatibility, real payload download or accessible UI until independently verified.
 
 ## Manual public source Add acceptance
 
-The protected [public Add smoke](../.github/workflows/seedhost-public-add-smoke.yml) supports public Archive/Commons fixtures, default no-server preview and separately confirmed one-torrent stopped `load.raw_verbose` on the authorized Seedhost instance. Synthetic tests are not live server proof. Next verify the collector using a real source, dispatch explicit manual Add to the chosen server directory, reconcile the result against the Kotlin Add API, then deliver a genuinely accessible Add interface.
+[PR #32 merged](https://github.com/gamesbyian/Chunks/pull/32) at `22580cb`, [run 40065967589](https://github.com/gamesbyian/Chunks/actions/runs/40065967589) passed the offline Python tests at PR SHA `2378f2701d637d64e60802d83ced80f4793485c5`. The protected [public Add smoke](../.github/workflows/seedhost-public-add-smoke.yml) supports public Archive/Commons fixtures, default no-server preview and separately confirmed one-torrent stopped `load.raw_verbose` on the authorized Seedhost instance. Synthetic tests are not live server proof. Next verify the collector using a real source, dispatch explicit manual Add to the chosen server directory, reconcile the result against the Kotlin Add API, then deliver a genuinely accessible Add interface.
