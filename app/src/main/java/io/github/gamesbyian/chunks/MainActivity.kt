@@ -421,14 +421,15 @@ private fun TransfersScreen(
         }
         items(visible, key = { it.hash }) { transfer ->
             TransferCard(
-                remote = remote, stale = stale, onLifecycleSettled = onLifecycleSettled,
+                remote = remote, stale = stale, mainView = view == "main",
+                onLifecycleSettled = onLifecycleSettled,
                 transfer = transfer, expanded = selectedHash == transfer.hash,
                 files = files, filesLoading = filesLoading, filesError = filesError,
                 onInspect = { onInspect(transfer) }
             )
         }
         item {
-            Text("Server snapshot. Start/stop requires an explicit per-transfer confirmation and verified readback.",
+            Text("Server snapshot. Start/stop and main-view session removal each require exact-target confirmation and readback. Session removal does not request payload deletion.",
                 style = MaterialTheme.typography.bodySmall)
         }
     }
@@ -436,7 +437,8 @@ private fun TransfersScreen(
 
 @Composable
 private fun TransferCard(
-    remote: RTorrentRemote, stale: Boolean, onLifecycleSettled: () -> Unit,
+    remote: RTorrentRemote, stale: Boolean, mainView: Boolean,
+    onLifecycleSettled: () -> Unit,
     transfer: RemoteTransfer, expanded: Boolean,
     files: List<RemoteFile>?, filesLoading: Boolean, filesError: String?,
     onInspect: () -> Unit
@@ -482,6 +484,10 @@ private fun TransferCard(
             TransferLifecycleControl(
                 remote = remote, transfer = transfer, snapshotStale = stale,
                 onSettled = onLifecycleSettled
+            )
+            TransferSessionRemoveControl(
+                remote = remote, transfer = transfer, snapshotStale = stale,
+                mainView = mainView, onSettled = onLifecycleSettled
             )
             if (expanded) {
                 if (filesLoading) Text("Reading server file list…")
