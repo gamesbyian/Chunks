@@ -80,8 +80,9 @@ object StorageCleanupPreview {
         for (item in previews) {
             if (item.disposition == CleanupDisposition.BLOCKED) continue
             val bytes = item.potentialReleasedBytes
-            total = if (total == null || bytes == null) null
-                else runCatching { Math.addExact(total, bytes) }.getOrNull()
+            val previous = total
+            total = if (previous == null || bytes == null) null
+                else runCatching { Math.addExact(previous, bytes) }.getOrNull()
         }
         return CleanupBatchPreview(previews, total)
     }
