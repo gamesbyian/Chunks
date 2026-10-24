@@ -5,6 +5,9 @@ import android.graphics.Bitmap
 import android.os.Environment
 import android.provider.MediaStore
 import androidx.activity.ComponentActivity
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onRoot
@@ -51,16 +54,18 @@ class TransferAliasEditorInstrumentedTest {
         val committed = mutableListOf<String?>()
         rule.setContent {
             MaterialTheme {
-                TransferAliasEditor(
-                    originalName = torrentName,
-                    hash = "A".repeat(40),
-                    alias = alias,
-                    onSave = {
-                        committed.add(it)
-                        alias = it
-                        true
-                    }
-                )
+                Box(Modifier.fillMaxSize()) {
+                    TransferAliasEditor(
+                        originalName = torrentName,
+                        hash = "A".repeat(40),
+                        alias = alias,
+                        onSave = {
+                            committed.add(it)
+                            alias = it
+                            true
+                        }
+                    )
+                }
             }
         }
 
