@@ -16,7 +16,7 @@ Updated 2026-10-24. This ledger alone records proven gates; GitHub issues track 
 | Real rTorrent reachability/auth | One successful authenticated XML-RPC version response; no actual torrent enumeration or Android connection evidence | Partial |
 | Legacy/modern rTorrent compatibility | No dual-server observations, Digest/JSON-RPC/i8 or view coverage proof | Not tested |
 | Complete large remote list and reconnect | No real fleet/performance test | Not tested |
-| Remote Add and ordinary write controls | No implemented reviewed mutation API or real results | Not implemented |
+| Remote Add and ordinary write controls | Hash-targeted start/stop API implemented in #27, JVM fixtures and debug build passed; no server/device evidence or UI controls, Add still absent | Partial core; real-server test pending |
 | Actual live data relocation | No journal executor, disposable crash/volume test or seed recheck | Not implemented |
 | Safe backed-file rename and library copy | No verified seeding/complete file publication case | Not implemented |
 | Organization and rules | Simple local classifier fixture exists; no mature rules, review or provenance acceptance | Prototype only |
@@ -38,4 +38,4 @@ The owner approved destructive test operations on the designated Seedhost rTorre
 
 ## First controlled remote lifecycle mutation candidate
 
-[PR #27](https://github.com/gamesbyian/Chunks/pull/27) proposes an allowlisted exact-v1-hash start/stop adapter with state read-back and no automatic retries. It has not yet been executed against the owner-designated server; CI evidence must be recorded by exact SHA if passing. Pending/uncertain outcomes must never be displayed as verified success.
+[PR #27](https://github.com/gamesbyian/Chunks/pull/27) proposes an allowlisted exact-v1-hash start/stop adapter with state read-back and no automatic retries. It merged at `ef03e099011f796118f0626bcc32aa1cadf045fa` following [CI run 40064096463](https://github.com/gamesbyian/Chunks/actions/runs/40064096463), PR SHA `124cee10a2468a88eb0cb576bb308ae944baf97c`, successful JVM tests and debug APK assembly. **Actual live-server start/stop remains untested**. Pending/uncertain outcomes must never be displayed as verified success.

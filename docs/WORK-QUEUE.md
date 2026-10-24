@@ -21,7 +21,7 @@ Snapshot 2026-10-24 after critical review; update from **actual main, issues, PR
 
 - [x] Owner designated this Seedhost torrent population as development-only, nonconfidential and explicitly approved **destructive tests of torrents**. Authorization is scoped; robust operation-level safeguards and recovery evidence still required. See AGENTS.md and SEEDHOST-REMOTE-TESTING.md.
 
-- [ ] PR #27 proposes typed hash-targeted `d.start`/`d.stop` with `d.state` read-back and synthetic tests. It remains **unmerged and unverified on the real server** until independent evidence. No UI command is exposed yet.
+- [x] #27 merged as `ef03e09`: typed, exact-hash `d.start`/`d.stop` with `d.state` read-back and synthetic fixture tests. [Run 40064096463](https://github.com/gamesbyian/Chunks/actions/runs/40064096463) passed JVM tests and debug APK build at PR SHA `124cee10a2468a88eb0cb576bb308ae944baf97c`. No live server mutation or UI command exposure yet.
 
 ## Now: one critical path
 
