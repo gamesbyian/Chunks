@@ -15,6 +15,9 @@ Snapshot 2026-10-24 after critical review; update from **actual main, issues, PR
 - [x] [#57](https://github.com/gamesbyian/Chunks/pull/57) merged at `058ba4d14e3267d19775875744cba7d572d59000`: [Android/JVM run 40128997369](https://github.com/gamesbyian/Chunks/actions/runs/40128997369) passed at `14190396beb76abc718ef793e4b33f91ef62d995`; simulated server applying `d.erase` before returning HTTP 503, verified `Uncertain` and exactly one erase RPC, then independently reconciled `AlreadyAbsent` with no second write.
 
 
+- [x] [#59](https://github.com/gamesbyian/Chunks/pull/59) merged at `7a0d40fee5b3894eb34530b826bc0590d777a0ca`: added **read-only exact-hash Add reconciliation** after an uncertain stopped Add, available within the existing Compose Add journey, with no repeat load command. Both magnet/URL and binary .torrent paths share a single postcondition validator. [Android/JVM run 40129567898](https://github.com/gamesbyian/Chunks/actions/runs/40129567898) and [API35 native instrumentation 40129567925](https://github.com/gamesbyian/Chunks/actions/runs/40129567925) passed at `d2e845f86b6dace97a73f275aa1ceae4aac4633f`. A screenshot of the actual native uncertain/recheck state was inspected. **Hosted Seedhost and physical Android acceptance remain open.**
+- [x] [#60](https://github.com/gamesbyian/Chunks/pull/60) updated permanent `AGENTS.md` and `docs/NATIVE-VISUAL-ATLAS.md` to distinguish accepted screenshots/real-engine tests from physical handset and actual Seedhost tasks.
+
 ## Baseline confirmed
 
 - [x] #11 bootstrap merged as main commit 6dba63fed72c92c7f97128ef3fa08d278a37b730.
