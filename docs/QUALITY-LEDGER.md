@@ -31,3 +31,7 @@ The current XML-RPC adapter is read-only and Basic-auth capable, now with option
 The build artifacts are **debug-only** and not production-qualified. No production server data was moved, renamed, deleted, copied or modified in these Chunks runs.
 
 Future evidence must record exact source SHA, server/Android build as appropriate, sanitized environment topology, test action, verification result and remaining uncertainty. Test fixture pass means no more than the fixture asserts.
+
+## Development server testing authorization
+
+The owner approved destructive test operations on the designated Seedhost rTorrent instance and approved publishing nonsecret inventory and visual fixture data. **Authorization is not test evidence**: no remote Add, stop/start, remove, data erase, filesystem move or rename is considered implemented or verified because this consent exists. The approved target is the development torrent population, not credentials, other FTP paths or unrelated servers. Dedicated exact-hash gates and observed outcomes remain required.

@@ -19,6 +19,8 @@ Snapshot 2026-10-24 after critical review; update from **actual main, issues, PR
 - [ ] Physical Android UX or continuous seeding proven.
 - [ ] Release-quality APK signed and accepted.
 
+- [x] Owner designated this Seedhost torrent population as development-only, nonconfidential and explicitly approved **destructive tests of torrents**. Authorization is scoped; robust operation-level safeguards and recovery evidence still required. See AGENTS.md and SEEDHOST-REMOTE-TESTING.md.
+
 ## Now: one critical path
 
 **R1. Read-only real-server compatibility (#1, #9, [compatibility proof PR #15](https://github.com/gamesbyian/Chunks/pull/15) while in review).** Prioritize this before expanding controls. **The disposable legacy server gate is met** (see RTORRENT-COMPATIBILITY-MATRIX.md). Next produce a sanitized protected seedbox/modern build matrix, auth and proxy support, method/encoding behavior, named views, list completeness, response limits and i8 support. Build negative and large-list fixtures; evaluate handling of timeouts/reconnections. Evidence: real read-only listing for at least two meaningfully different rTorrent environments and exact request/response-shape fixtures without private names. The existing JVM fixture tests are only the beginning.

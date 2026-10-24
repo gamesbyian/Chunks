@@ -31,3 +31,9 @@ Seedhost general integration docs describe `/rutorrent/plugins/httprpc/action.ph
 ## Owner designation: development/test inventory
 
 The owner explicitly confirmed this rTorrent instance is configured and populated for Chunks development and the running torrents are **not private or confidential**. Real nonsecret torrent names, paths, sizes, statuses, file layouts and visual inspection artifacts may therefore be kept in the Chunks repository, fixtures, screenshot atlases, CI evidence and PRs. No need for automatic anonymization of this designated development inventory. Still exclude passwords, cookie/session material, auth headers, tracker passkeys or tokens potentially embedded in tracker/announce URLs. This disclosure scope does not change live mutation or deletion safety requirements, and does not apply to other servers by inference. Future visual capture should use real representative states and follow Glimpse/ROYGBIV's multi-viewport, accessibility and screenshot-regression precedent.
+
+## Destructive operation consent and controlled rollout
+
+The owner explicitly authorized destructive actions on torrents in this designated development rTorrent instance for testing. This includes targeted remove/delete and move/rename tests, subject to Chunks' engineering controls: exact torrent info-hash targeting, scoped approved operation, preflight state capture, server capability check, postcondition verification, no silent overwrite, recovery/journal for multi-step storage operations, and appropriately bounded test batches. The server is not production data. This permission does not apply to arbitrary FTP folders, other systems, or secrets.
+
+The original manual seedbox workflow remains read-only. New destructive test workflows must be separate, visibly named, manual-only and default to dry-run, with an explicit arm input and exact torrent hash. No automatic deletion on a routine push or PR.
