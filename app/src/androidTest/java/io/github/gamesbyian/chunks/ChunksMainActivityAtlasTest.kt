@@ -7,7 +7,7 @@ import android.provider.MediaStore
 import android.security.NetworkSecurityPolicy
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
-import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.onRoot
@@ -227,12 +227,12 @@ class ChunksMainActivityAtlasTest {
         save("app-transfers-populated-real-compose")
 
         // An actual installed-app queue action, not only an isolated editor component.
-        rule.onNode(hasScrollAction()).performScrollToNode(hasText("Change list name"))
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Change list name"))
         rule.onAllNodesWithText("Change list name").onFirst().performClick()
         rule.onNodeWithText("Extracted show title, season and episode from filename").assertExists()
         rule.onNodeWithText("Public Example Long Named Archive S01E01").performClick()
         save("app-alias-review-populated-real-compose")
-        rule.onNode(hasScrollAction()).performScrollToNode(hasText("Save name"))
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Save name"))
         rule.onNodeWithText("Save name").performClick()
         rule.onNodeWithText("Original torrent: Public.Example.Long.Named.Archive.S01E01.mkv",
             substring = true).assertExists()
@@ -251,12 +251,12 @@ class ChunksMainActivityAtlasTest {
         save("app-server-populated-real-compose")
 
         rule.onNodeWithText("Transfers").performClick()
-        rule.onNode(hasScrollAction()).performScrollToNode(hasText("Inspect files"))
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Inspect files"))
         rule.onAllNodesWithText("Inspect files").onFirst().performClick()
         rule.waitUntil(15_000) {
             rule.onAllNodesWithText("85 server-reported files").fetchSemanticsNodes().isNotEmpty()
         }
-        rule.onNode(hasScrollAction()).performScrollToNode(
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(
             hasText("85 server-reported files"))
         save("app-files-populated-real-compose")
         val invoked = receivedMethods.toList()
