@@ -15,7 +15,7 @@ Chunks is an Android-native BitTorrent client and first-class rTorrent remote. T
 3. [Live work queue](docs/WORK-QUEUE.md) and [GitHub issues](https://github.com/gamesbyian/Chunks/issues)
 4. [Architecture and failure semantics](docs/ARCHITECTURE.md)
 5. [Engineering decisions](docs/DECISIONS.md), [independent acceptance](docs/QUALITY-LEDGER.md), [CI policy](docs/CI-POLICY.md)
-6. [Research and upstream references](docs/RESEARCH.md), [security](docs/SECURITY.md), [interaction journeys](docs/UX.md)
+6. [Research and upstream references](docs/RESEARCH.md), [cross-project reuse audit](docs/REUSE-AUDIT.md), [security](docs/SECURITY.md), [interaction journeys](docs/UX.md)
 
 Every feature must distinguish **requested**, **acknowledged**, and **verified** outcomes. Neither success on an emulator nor a green Gradle check proves a real seedbox operation, storage safety, Android background reliability, or an accessible physical UI.
 

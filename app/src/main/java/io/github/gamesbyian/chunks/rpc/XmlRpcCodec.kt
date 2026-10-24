@@ -53,10 +53,23 @@ object XmlRpcCodec {
 
     fun response(xml: String): Any? {
         require(xml.length <= 4_194_304) { "RPC response too large" }
+        // Android's DOM implementation does not universally support Xerces feature
+        // flags. Reject DTD syntax *before* parsing; entities requiring DTDs
+        // can never be supplied to a parser on either Android or the JVM.
+        require(!xml.contains("<!DOCTYPE") && !xml.contains("<!ENTITY")) {
+            "XML document declarations and entities are not permitted"
+        }
         val factory = DocumentBuilderFactory.newInstance()
-        factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
-        factory.setFeature("http://xml.org/sax/features/external-general-entities", false)
-        factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false)
+        // Best-effort defense in depth. A missing vendor-specific feature does
+        // not justify disabling the mandatory lexical DTD rejection above.
+        for ((name, enabled) in listOf(
+            "http://apache.org/xml/features/disallow-doctype-decl" to true,
+            "http://xml.org/sax/features/external-general-entities" to false,
+            "http://xml.org/sax/features/external-parameter-entities" to false
+        )) {
+            try { factory.setFeature(name, enabled) }
+            catch (_: javax.xml.parsers.ParserConfigurationException) { /* Android parser may omit flag */ }
+        }
         factory.isXIncludeAware = false
         factory.isExpandEntityReferences = false
         val doc = factory.newDocumentBuilder().parse(InputSource(StringReader(xml)))
