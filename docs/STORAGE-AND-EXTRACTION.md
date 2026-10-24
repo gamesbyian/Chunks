@@ -76,3 +76,7 @@ This work has **not** implemented URI/SAF import, encrypted/multipart compatibil
 ## Warning hysteresis model (candidate)
 
 `StorageWarningHysteresis` is a pure Kotlin decision function for one *optional* per-volume cap. It emits a new in-app advisory only upon crossing a higher 70%, 85%, 95% or over-cap band. Previously emitted bands remain latched until usage drops at least five percentage points below the band's boundary. Unknown allocation preserves the latch and never becomes zero; disabling a voluntary cap resets it. Deterministic tests exercise oscillation, tiny and extreme byte counts, stale readings and cap changes. This model sends no notifications and stores no state. **Actual settings persistence, volume identity, OS low-storage integration and user-facing warning delivery are not implemented** and remain separately gated under #70.
+
+## Advisory warning deduplication acceptance
+
+[#87](https://github.com/gamesbyian/Chunks/pull/87) merged `b12f4b160a6f7e55d7c7d7b796adaa6c5673dd06` after Android/JVM run 40142927995 passed at `1e298a110332114c5cd658bcf902eba6bbec45a4`. `StorageWarningHysteresis` raises advisory events only when a 70%, 85%, 95% or over-cap band is first crossed, suppresses repeat warnings near thresholds with five-percentage-point reset hysteresis, preserves latched state on unknown measurements, and resets when a voluntary cap is disabled. It emits no Android notifications and has no stored settings or actual write throttling. Those remain issue #70 acceptance gates.
