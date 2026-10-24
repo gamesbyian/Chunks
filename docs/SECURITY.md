@@ -28,6 +28,14 @@ Updated after CRITICAL-REVIEW-2026-10-24.md. Public source repository, untrusted
 - An alternative SFTP/SSH transport might browse/copy files but does not automatically confer safe live torrent rebind capability; verify coordination or refuse.
 - Automatic category suggestions do not create user authorization to alter files. Confirm destructive actions at exact target granularity, with batch dry-run and understandable recovery options.
 
+## Display aliases, suggestions and privacy
+
+Display names are user-authored local metadata and may reveal what a person downloads. Keep them separate from hash/path/remote identities and never transmit them via rTorrent RPC, trackers, crash reports, logs or external metadata services as a side effect of editing or accepting a suggestion. Draft #69 uses private, non-backed-up Android preferences keyed by SHA-256 of endpoint, username and infohash. This fingerprint is **not encryption**; do not include credentials or session tokens in the key input. A future durable account/profile model needs explicit migration and cleanup of orphaned alias preferences, including after profile deletion or torrent removal/re-add.
+
+Treat original torrent names and display aliases as untrusted input: bound lengths, reject hidden control/bidirectional override characters, render inert text, and test homographs, malformed Unicode, spoofed file extensions, deceptive technical tokens and empty input. Aliases must never authorize a destructive action, change path mappings, override exact-hash identity or silently alter seeding state. Privacy protection for ordinary users remains the default despite the owner's **scoped** permission to publish nonsecret inventory from the designated development Seedhost.
+
+Deterministic local recommendation does not contact third parties. Future media catalogs/guest identification may require sending title-like data to an external service; design explicit user consent, preview of disclosed fields, recipient and provenance, confidence/error handling, retention/deletion policies and a no-network fallback. Do not claim guest names as known solely from release filenames. Review alias cache/data clearance, offline save failures and leaks via screenshots/diagnostics.
+
 ## Data collection and consent
 
 No default telemetry, network metadata enrichment, tracker discovery, content upload, or diagnostics upload. If logs are requested, provide preview and redaction before export; redact file paths, info hashes and hostnames by default. Allow user inspection and deletion of locally recorded rules/preferences.
