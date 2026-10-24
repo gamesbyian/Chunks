@@ -43,6 +43,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -129,6 +130,10 @@ private fun ChunksApp(sharedMagnet: String?) {
     var magnet by remember { mutableStateOf("") }
     var draftPath by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val aliasStore = remember(context) { TransferAliasStore(context) }
+    var aliasScope by remember { mutableStateOf("") }
+    var aliasRevision by remember { mutableStateOf(0) }
     val remoteFence = remember { RemoteUiRequestFence() }
     val inspectionFence = remember { RemoteUiRequestFence() }
 
@@ -217,6 +222,7 @@ private fun ChunksApp(sharedMagnet: String?) {
                                     inspectionFence.invalidate()
                                     transfers = list
                                     version = v
+                                    aliasScope = endpoint.trim() + "\u0000" + username.trim()
                                     server = candidate
                                     stale = false
                                     section = if (magnet.isNotBlank()) Section.ADD else Section.TRANSFERS
@@ -258,6 +264,8 @@ private fun ChunksApp(sharedMagnet: String?) {
             when (section) {
                 Section.TRANSFERS -> TransfersScreen(
                     remote = requireNotNull(server), onLifecycleSettled = refresh,
+                    aliasStore = aliasStore, aliasScope = aliasScope,
+                    aliasRevision = aliasRevision, onAliasSaved = { aliasRevision++ },
                     list = transfers, view = currentView, loading = loading, stale = stale,
                     query = query, onQuery = { query = it },
                     filter = filter, onFilter = { filter = it },
@@ -318,6 +326,7 @@ private fun ChunksApp(sharedMagnet: String?) {
                         remoteFence.invalidate()
                         inspectionFence.invalidate()
                         server = null
+                        aliasScope = ""
                         version = ""
                         transfers = emptyList()
                         expandedHash = null
@@ -406,6 +415,8 @@ private fun ConnectionScreen(
 @Composable
 private fun TransfersScreen(
     remote: RTorrentRemote, onLifecycleSettled: () -> Unit,
+    aliasStore: TransferAliasStore, aliasScope: String,
+    aliasRevision: Int, onAliasSaved: () -> Unit,
     list: List<RemoteTransfer>, view: String, loading: Boolean, stale: Boolean,
     query: String, onQuery: (String) -> Unit, filter: TransferFilter,
     onFilter: (TransferFilter) -> Unit, order: TransferOrder,
@@ -413,7 +424,11 @@ private fun TransfersScreen(
     selectedHash: String?, files: List<RemoteFile>?, filesError: String?,
     filesLoading: Boolean, onInspect: (RemoteTransfer) -> Unit
 ) {
-    val visible = remember(list, query, filter, order) { TransferCatalog.visible(list, query, filter, order) }
+    val visible = remember(list, query, filter, order, aliasRevision, aliasScope) {
+        TransferCatalog.visible(list, query, filter, order) { transfer ->
+            aliasStore.get(aliasScope, transfer.hash) ?: transfer.name
+        }
+    }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 18.dp, vertical = 8.dp),
@@ -480,6 +495,12 @@ private fun TransfersScreen(
         items(visible, key = { it.hash }) { transfer ->
             TransferCard(
                 remote = remote, stale = stale, mainView = view == "main",
+                alias = aliasStore.get(aliasScope, transfer.hash),
+                onAliasSave = { proposed ->
+                    val saved = aliasStore.save(aliasScope, transfer.hash, proposed)
+                    if (saved) onAliasSaved()
+                    saved
+                },
                 onLifecycleSettled = onLifecycleSettled,
                 transfer = transfer, expanded = selectedHash == transfer.hash,
                 files = files, filesLoading = filesLoading, filesError = filesError,
@@ -496,6 +517,7 @@ private fun TransfersScreen(
 @Composable
 private fun TransferCard(
     remote: RTorrentRemote, stale: Boolean, mainView: Boolean,
+    alias: String?, onAliasSave: (String?) -> Boolean,
     onLifecycleSettled: () -> Unit,
     transfer: RemoteTransfer, expanded: Boolean,
     files: List<RemoteFile>?, filesLoading: Boolean, filesError: String?,
@@ -507,8 +529,17 @@ private fun TransferCard(
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
-            Text(transfer.name, fontWeight = FontWeight.Bold,
+            Text(alias ?: transfer.name, fontWeight = FontWeight.Bold,
                 maxLines = 2, overflow = TextOverflow.Ellipsis)
+            if (alias != null) {
+                Text("Original torrent: " + transfer.name,
+                    style = MaterialTheme.typography.bodySmall, color = Color(0xFF595575),
+                    maxLines = if (expanded) 5 else 1, overflow = TextOverflow.Ellipsis)
+            }
+            TransferAliasEditor(
+                originalName = transfer.name, hash = transfer.hash,
+                alias = alias, onSave = onAliasSave
+            )
             LinearProgressIndicator(
                 progress = { transfer.fractionComplete },
                 modifier = Modifier.fillMaxWidth().height(8.dp),

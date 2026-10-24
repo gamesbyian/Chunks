@@ -34,3 +34,11 @@ Historical alternatives remain in critical review and research, not in competing
 - **D23 | Owner:** Manual archive extraction and intuitive opt-in auto-extraction. **Adopted provisional defaults:** opt-in off, keep seeding originals, capability-tested safe formats and separate extracted output objects.
 
 See [STORAGE-AND-EXTRACTION.md](STORAGE-AND-EXTRACTION.md) and issue #70 for the comprehensive contract. These entries do not constitute implementation evidence.
+
+## Naming decisions after storage D21–D23 (2026-10-24)
+
+- **D24 | Owner:** Editable per-transfer device-local Chunks display alias, distinct from torrent name and file path, preserving engine hash, source data and seeding; original remains searchable and inspectable.
+- **D25 | Adopted provisional:** Source-only, explained filename-cleanup suggestions are editable drafts, never auto-applied. Unknown extensions abstain. Unsourced guest/episode titles cannot be inferred from release tokens.
+- **D26 | Open:** Queue-wide batch recommendation review, naming styles, opt-in media enrichment, cross-device alias sync and per-file aliases require independent consent, data-model and acceptance decisions. None authorize physical renames.
+
+Integration candidate [#74](https://github.com/gamesbyian/Chunks/pull/74); #7 continues to own backing-file rename and library copy safety.
