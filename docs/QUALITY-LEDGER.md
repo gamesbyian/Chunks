@@ -39,3 +39,7 @@ The owner approved destructive test operations on the designated Seedhost rTorre
 ## First controlled remote lifecycle mutation candidate
 
 [PR #27](https://github.com/gamesbyian/Chunks/pull/27) proposes an allowlisted exact-v1-hash start/stop adapter with state read-back and no automatic retries. It merged at `ef03e099011f796118f0626bcc32aa1cadf045fa` following [CI run 40064096463](https://github.com/gamesbyian/Chunks/actions/runs/40064096463), PR SHA `124cee10a2468a88eb0cb576bb308ae944baf97c`, successful JVM tests and debug APK assembly. **Actual live-server start/stop remains untested**. Pending/uncertain outcomes must never be displayed as verified success.
+
+## Public-source fixture factory
+
+The [Archive/Commons collector](PUBLIC-TORRENT-FIXTURES.md) stages strict validation, exact infohash identity and metadata-only provider retrieval. Proposed until CI verification: real Archive `.torrent` and derived magnets, Commons manifest-only file metadata. Collector does not contact rTorrent, download full media, or prove application Add, seeding or lifecycle behavior.

@@ -42,3 +42,7 @@ The owner explicitly designated the connected Seedhost rTorrent instance and its
 ## Owner-authorized destructive testing (2026-10-24)
 
 The owner expressly authorized **destructive torrent operations on the designated Seedhost development instance for testing**. This permits targeted test Add, stop/start, priority changes, rename, relocate, remove and cleanup of torrents/data when implemented with explicit target selection, dry-run where meaningful, before/after inventory evidence, verification and recovery paths. This authorization supersedes previous assumptions that all owner Seedhost data must be treated as production or immutable. It **does not** waive data-integrity engineering requirements, permit uncontrolled bulk deletion, or authorize mutation of another server, account or filesystem outside this test scope. Develop and exercise write support incrementally with exact-hash allowlisting, bounded batches, negative cases and logs. Credentials and embedded tracker secrets remain protected even though the designated test inventory is nonconfidential.
+
+## Public test corpus for Add
+
+For future Add scenarios use [the public fixture collector](docs/PUBLIC-TORRENT-FIXTURES.md) with licensed Internet Archive .torrent metainfo and derived exact-infohash magnets. Wikimedia Commons provides licensed direct files and dump assets, NOT presumed torrents. Gate destructive live tests behind exact infohash/destination, snapshot, verification and documented owner approval. Never source random search torrents or embed reusable tracker passkeys.
