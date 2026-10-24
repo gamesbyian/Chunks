@@ -660,10 +660,16 @@ private fun AddPreviewScreen(
                 modifier = Modifier.fillMaxWidth(), minLines = 1, maxLines = 3)
         }
         item {
-            Notice(if (draft.canPreview) "Draft is ready for review" else "Draft needs more details",
-                if (draft.canPreview) "Magnet syntax and absolute-path shape look plausible. The directory's existence, permissions and server acceptance are not yet verified. Nothing has been submitted."
-                else "Enter a magnet with an info hash and an absolute server path. This preview cannot check server permissions.",
-                if (draft.canPreview) Lime else Lilac)
+            val fileIsReviewable = localTorrent != null && draft.hasDestination
+            val isReviewable = draft.canPreview || fileIsReviewable
+            Notice(if (isReviewable) "Draft is ready for review" else "Draft needs more details",
+                when {
+                    fileIsReviewable -> "The selected .torrent has a verified v1 infohash and an absolute destination draft. Server directory availability and permissions have not been checked. Nothing has been uploaded."
+                    draft.canPreview -> "Magnet syntax and absolute-path shape look plausible. The directory's existence, permissions and server acceptance are not yet verified. Nothing has been submitted."
+                    localTorrent != null -> "The .torrent file is valid. Choose an absolute destination on the server to finish this local preview."
+                    else -> "Enter a valid magnet or choose a .torrent file, then supply an absolute server path. No transfer is submitted from this preview."
+                },
+                if (isReviewable) Lime else Lilac)
         }
         item {
             OutlinedButton(onClick = onBack, modifier = Modifier.height(52.dp).fillMaxWidth()) {
