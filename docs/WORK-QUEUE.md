@@ -103,3 +103,7 @@ PR #42 adds a trusted-main, manual-only Seedhost compatibility workflow invoking
 ## Confirmed Compose Add handoff candidate
 
 PR #44 connects the existing v1 SAF .torrent parser and destination-first stopped-load core to an accessible two-stage Add screen. Submission stays disabled until the user explicitly reviews exact hash and destination. A failed or ambiguous submission cannot be immediately repeated from the same screen; user must inspect remote state. Merge only after Android/JVM green. Real device flow and actual Seedhost Add remain separate acceptance gates, not implied by a build.
+
+## Real disposable rTorrent write acceptance candidate
+
+PR #46 extends the existing localhost-only SCGI/nginx legacy rig to execute a real **stopped raw .torrent Add**, enforce duplicate-hash refusal, then perform verified start/stop against disposable rTorrent 0.9.8 data only. It verifies exact hash and directory, with asynchronous state polling but never repeats the Add after an uncertain outcome. The PR workflow obtains **no secrets** and never accesses the owner's Seedhost. This is a *proposal until the real rTorrent job passes*; actual Seedhost and Android/device operations remain separate.
