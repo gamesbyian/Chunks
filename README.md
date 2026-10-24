@@ -6,7 +6,7 @@ Chunks is an Android-native BitTorrent client and first-class rTorrent remote. T
 
 ## Status
 
-**Pre-alpha / Android remote dashboard prototype.** The repository originally contained only a one-line README. An Android debug APK now provides protected read-only rTorrent connection, list/search/filter/sort, file inspection, discovered Places and local-only collection suggestions, plus a destination-first magnet Add **preview** that accepts Android Share/Open With magnet links. No remote Add, pause/start, moving, renaming, durable login, or local torrent engine is shipped. No live server or handset test is accepted. Current build and test claims are tracked in [the evidence ledger](docs/QUALITY-LEDGER.md); plans are not evidence.
+**Pre-alpha / runnable Android remote.** The native app can connect to a ruTorrent-style HTTPS XML-RPC endpoint with challenge-negotiated Basic/Digest authentication, display, search, filter and inspect transfers, and show Places/collection suggestions. A two-step Add flow accepts a v1 magnet or Android Files `.torrent`, demands a destination and confirmation, then attempts a stopped load and distinguishes verified/pending/uncertain results. Start/Stop controls also require exact-hash confirmation and read-back. See the [evidence ledger](docs/QUALITY-LEDGER.md) for tested source SHAs. These are pre-alpha controls, **not yet a proven handset-to-Seedhost journey**. Moving/renaming actual seeding files, deletion with payload, persistent profiles, local BitTorrent engine, and release APK signing remain unfinished.
 
 ## Read in this order
 
@@ -24,7 +24,7 @@ Repository: https://github.com/gamesbyian/Chunks
 No third-party service, telemetry, account, or remote metadata lookup is required by the product concept. Licensing and release distribution remain undecided; public repository visibility does not grant permission to redistribute code.
 ## Hosted ruTorrent connection
 
-The connection form accepts either an HTTPS rTorrent XML-RPC endpoint or a hosted ruTorrent web URL such as `https://host.example/rutorrent/`. It derives the candidate HTTP-RPC plugin path automatically. See [provider testing and secrets policy](docs/SEEDHOST-REMOTE-TESTING.md). Chunks does not save credentials, and real protected seedbox interoperability remains unverified.
+The connection form accepts either an HTTPS rTorrent XML-RPC endpoint or a hosted ruTorrent web URL such as `https://host.example/rutorrent/`. It derives the candidate HTTP-RPC plugin path automatically. See [provider testing and secrets policy](docs/SEEDHOST-REMOTE-TESTING.md). Chunks does not save credentials; the protected real Seedhost version/auth probe passed [run 40063547095](https://github.com/gamesbyian/Chunks/actions/runs/40063547095), but app/device list and mutation compatibility still require their own live evidence.
 
 ## Licensed public Add fixture and test workflows
 
