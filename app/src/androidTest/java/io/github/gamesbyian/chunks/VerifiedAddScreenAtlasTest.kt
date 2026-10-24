@@ -1,6 +1,9 @@
 package io.github.gamesbyian.chunks
 
+import android.content.ContentValues
 import android.graphics.Bitmap
+import android.os.Environment
+import android.provider.MediaStore
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.getValue
@@ -19,7 +22,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
-import java.io.File
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -36,14 +39,24 @@ class VerifiedAddScreenAtlasTest {
 
     private fun save(name: String) {
         val image = rule.onNode(isRoot()).captureToImage().asAndroidBitmap()
-        val folder = File(
-            InstrumentationRegistry.getInstrumentation().targetContext.getExternalFilesDir(null),
-            "chunks-atlas"
-        )
-        assertTrue("Could not create screenshot folder", folder.isDirectory || folder.mkdirs())
-        File(folder, "$name.png").outputStream().use {
-            assertTrue("Native PNG screenshot must be written", image.compress(Bitmap.CompressFormat.PNG, 100, it))
+        // Gradle instrumentation cleanup can remove app-specific external files before adb pull.
+        // Use Android's public MediaStore collection so native captures survive test teardown.
+        val resolver = InstrumentationRegistry.getInstrumentation().targetContext.contentResolver
+        val values = ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, "$name.png")
+            put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+            put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/ChunksAddAtlas")
+            put(MediaStore.Images.Media.IS_PENDING, 1)
         }
+        val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+        assertNotNull("MediaStore must accept native screenshot", uri)
+        resolver.openOutputStream(uri!!).use { stream ->
+            assertNotNull("MediaStore output must open", stream)
+            assertTrue("Native PNG screenshot must be written",
+                image.compress(Bitmap.CompressFormat.PNG, 100, stream))
+        }
+        val publish = ContentValues().apply { put(MediaStore.Images.Media.IS_PENDING, 0) }
+        assertTrue("Screenshot must be made readable by adb", resolver.update(uri, publish, null, null) == 1)
     }
 
     @Test fun reviewedStoppedAddShowsExactHashAndDestination() {
