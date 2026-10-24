@@ -65,6 +65,7 @@ fun VerifiedAddScreen(
     var outcome by remember { mutableStateOf<String?>(null) }
     var uncertain by remember { mutableStateOf(false) }
     var alreadyAttempted by remember { mutableStateOf(false) }
+    var rechecking by remember { mutableStateOf(false) }
     var fileError by remember { mutableStateOf<String?>(null) }
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -305,6 +306,43 @@ fun VerifiedAddScreen(
                         Text("Operation outcome", fontWeight = FontWeight.Bold)
                         Text(outcome.orEmpty())
                     }
+                }
+            }
+        }
+        if (alreadyAttempted && plan != null) {
+            item {
+                OutlinedButton(
+                    onClick = {
+                        rechecking = true
+                        val reviewedPlan = plan
+                        scope.launch {
+                            try {
+                                val checked = remote.reconcileStoppedAdd(reviewedPlan)
+                                uncertain = checked !is RemoteAddOutcome.VerifiedStopped
+                                outcome = when (checked) {
+                                    is RemoteAddOutcome.VerifiedStopped ->
+                                        "Read-only check verified this exact hash is stopped at " +
+                                            checked.destination + ". Chunks cannot determine which client originally added it."
+                                    is RemoteAddOutcome.PendingVerification ->
+                                        "Read-only check did not verify the exact hash, destination and stopped state. Inspect the server before deciding what to do next."
+                                    is RemoteAddOutcome.Uncertain ->
+                                        "Read-only server check could not complete. The earlier Add may still have succeeded; do not retry blindly."
+                                    is RemoteAddOutcome.AlreadyPresent ->
+                                        "The hash exists, but placement still requires inspection before another action."
+                                }
+                            } catch (_: Exception) {
+                                uncertain = true
+                                outcome = "Could not read server state. The earlier Add might have applied; inspect the transfer list before retrying."
+                            } finally {
+                                rechecking = false
+                                onComplete()
+                            }
+                        }
+                    },
+                    enabled = !submitting && !rechecking,
+                    modifier = Modifier.fillMaxWidth().height(54.dp)
+                ) {
+                    Text(if (rechecking) "Checking server…" else "Check server state (read only)")
                 }
             }
         }
