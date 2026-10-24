@@ -1,29 +1,78 @@
 # Chunks canonical product contract
-Status: committed product direction, engineering details subject to proof. 2026-10-23.
 
-## Thesis
-Chunks makes downloading, moving, renaming and organizing torrents one continuous activity. Android-native, irreverent, colourful, generous targets, sophisticated under the surface. Never force a user to think in protocol terminology to perform a normal file operation.
+Updated after critical review 2026-10-24. Owner-approved **vision** and engineering **proposals** are distinguished in DECISIONS.md. Read CRITICAL-REVIEW-2026-10-24.md before implementing any mutation. This document is the product authority; WORK-QUEUE.md alone owns task priority.
 
-## Three nouns
-- **Transfer**: stable content/torrent identity and the local or remote engine session; may contain many files.
-- **Place**: a concrete, access-checked storage destination on a particular device/server and volume, plus aliases/favorites/history.
-- **Collection**: meaningful cross-media grouping (TV, movies, Star Trek, comics, Spider-Man, albums, books); independent of Places and file names.
+## Product identity
 
-Keep views/tags/rules separate from physical paths. A torrent may belong to several collections while existing in one or more Places.
+**chunks. Your downloads have places to be.**
 
-## Primary journeys
-1. Share a magnet/torrent into Chunks → select Local or rTorrent server → see recent/favorite/new Place → inspect files and space/capabilities → explicitly start.
-2. While downloading, choose Move → preview original/destination path and whether data must copy → journal the operation → reconcile and verify result before success.
-3. Rename one torrent-managed file or create a differently named library copy → explain seeding implications → verify engine mapping/content integrity.
-4. Open Organize → see transparent, confidence-rated suggested categories/Places/new folders and reasons → accept one, batch accept, convert to rule or dismiss. Automatic operation only after explicit scoped rule approval.
-5. Remote setup → protected connection with auth, version/protocol probe and diagnostics → list/control transfers → reconnect after interruption without duplicate mutations.
-6. Expert operations → inspect trackers, peers, priorities, ratios, queue, speed, file availability, error logs; accessible without dominating casual home UI.
+An Android-native, delightful, deeply capable BitTorrent client and first-class rTorrent remote. Move through the app without needing to understand pieces, hash checks, session files or SCGI. Technical depth remains accessible. Attractive colour, irreverent personality and generously sized native controls should coexist with an information-dense expert mode.
 
-## Capability policy
-Local and remote share typed commands, not fictional feature parity. Distinguish native, companion-assisted, safe fallback and unsupported actions. Standard rTorrent RPC should work without Chunks Companion; file-manager-like operations may require it. Never claim no-interruption throughput for cross-filesystem moves; aim for session continuity and reversible interruption.
+A torrent client is a data-integrity tool: none of its charm is worth lost bytes. The user's mixed library is valid; do not demand movies and TV live in separate top-level directories.
 
-## Visual contract
-Dark electric and light playful palettes are proposals, not approved design. 48dp minimum interactive targets, responsive densities, high contrast, TalkBack/keyboard, reduced motion, visible status/error recovery, one-hand priority. Irreverence belongs in discovery and empty states, not errors or destructive confirmation.
+## Three nouns, five different identities
 
-## Non-goals initially
-Mandatory cloud accounts, streaming catalog, tracker index/search, piracy content discovery, opaque AI uploads, universal remote filesystem access through RPC alone, full Plex/Sonarr/Radarr integration before core operations are safe.
+- **Transfer**: one engine-managed BitTorrent download/seed, scoped to a specific engine and server/device. Its torrent info hash does not equal a physical file path.
+- **Place**: a physical destination as accessible to a particular local engine or rTorrent server, not an arbitrary pathname string. Includes capability, volume, allowed root and human display alias.
+- **Collection**: user-recognizable semantic relationship such as Star Trek, Spider-Man, a season, franchise, music, comics or ebooks. Many-to-many with Transfers, independent from Place.
+- **Display name**: a Chunks label for a Transfer or file; changing it does not change seeding data.
+- **Backing file / published library copy**: respectively the bytes controlled by the engine and an independently managed file exported for a user library. They have different ownership, path and mutation rules.
+
+Tags, category, collection membership, destination suggestion and filesystem mutation authorization are distinct states. A Transfer may belong to multiple collections; a file can be represented in several collections without duplicating data.
+
+## Non-negotiable user outcomes
+
+### 1. First-class rTorrent remote, no mandatory Companion
+
+Multiple server profiles, authenticated encrypted connections, clear status, trustworthy lists and filtering, adding magnets and .torrent files with explicit destination, transfer start/stop, per-file selections/priorities, trackers, speeds, errors, appropriate queue settings and expert details **as capabilities are demonstrated**. If a server disallows an operation, explain why and present safe alternatives.
+
+Server management continues with or without a companion. Chunks does not require cloud sign-in. Real seedbox variants must be verified before claiming compatibility. Transport support is measured per installation, not inferred from its stated release alone.
+
+### 2. Destination selection whenever a transfer begins
+
+Start/Add places destination choice prominently within the Add journey. Show device/server and full human-readable destination, with recent/favorite folders and a new-folder action only when supported. Validate destination scope, permissions and collisions before submission; show pending/unknown server response honestly. The action is not complete merely because an RPC returned success.
+
+### 3. Move any time it can be done safely
+
+Allow move requests before, during and after downloading. **Guarantee no silent data loss and no misleading success; strive for uninterrupted torrent session and continued peers.** No universal guarantee of uninterrupted disk throughput during cross-device copying or active-file handoff. When a server/filesystem cannot safely relocate active data, the UI offers a deferred operation, an independent library copy when appropriate, or an explicit refusal.
+
+### 4. Rename without breaking torrent integrity
+
+Three deliberately separate actions:
+1. Rename displayed title only (always reversible, metadata-only).
+2. Rename the engine-backed file only where verified supported and safely synchronized.
+3. Create a renamed library copy, preserving the original seeding file. Do not publish incomplete writable data as a stable media library asset; hardlinks are shared-inode views, not snapshots.
+
+Show actual outcome and whether the original seed path is retained.
+
+### 5. Organize and learn with consent
+
+On-demand or optional automatic analysis can propose Tags, Collections, franchise/season hierarchy, destination folders and naming patterns across TV, movies, music, Star Trek, Spider-Man, ebooks, comics and future genres discovered from actual content. Show provenance and separate *content recognition confidence*, *destination confidence*, and *approved execution rule*. Explain and preview changes. Batch review; never silently mutate from classifier score alone.
+
+Deterministic offline parsing should provide useful functionality without external metadata services. Network enrichment is optional, clearly consented and privacy-filtered.
+
+## Usability standards
+
+- Primary journeys need at most a few natural interactions; no obscure Settings path for per-transfer Place.
+- Default transfer screens express clear labels, error recovery and an easy way to find advanced controls.
+- 48dp minimum interactive targets; generous default sizing, compact optional density, large text, high-contrast semantics, TalkBack, keyboard and alternatives to gesture-only commands.
+- Light/dark colour systems remain proposed until visually evaluated as whole flows on Android, not approved because an illustration exists.
+- Empathy for novice users means clear language, meaningful defaults, undo/recovery and explainable state, without concealing power.
+
+## Experience scope and release slices
+
+**First meaningful remote beta:** reliable authenticated rTorrent remote with real transfer inspection and everyday controls, including destination-aware Add. No client-side torrent engine required for that beta.
+
+**Organization beta:** non-mutating sorting suggestions, collections and approved plans; actual remote moves only behind proven filesystem capabilities and failure recovery.
+
+**Standalone-client beta:** local BitTorrent engine with verified download/seeding, storage permissions and Android lifecycle behavior.
+
+**Release:** all core flows physically tested, independently audited for destructive changes, security/credential story resolved and installer/distribution documented. “Full featured” is a destination, not permission to ship untested engine options.
+
+## Deferred, not forgotten
+
+Cross-machine migration, Plex/Sonarr/Radarr integration, large-scale background automation, advanced bulk naming, streaming-related interactions, automatic external metadata services, additional remote engine adapters and premium multi-server dashboards are exploratory until they preserve the core safety and usability proposition.
+
+## Explicit exclusions
+
+No mandatory accounts, opaque tracker/content search, piracy promotion, unexplained AI uploads, background tracking by default, guessed file operations, or reliance on unapproved extra server privileges.
