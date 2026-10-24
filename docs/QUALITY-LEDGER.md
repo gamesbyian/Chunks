@@ -89,3 +89,7 @@ The rTorrent documentation differentiates `d.directory.set` from `d.directory_ba
 ## Transfer lifecycle controls UI candidate
 
 PR #49 wires existing JVM-tested hash-targeted lifecycle operations into native Compose Cards, requiring explicit confirmation and server read-back. Build pending verification; no physical Android journey or production Seedhost lifecycle write has been observed. Stale snapshot blocks control, and ambiguous result is never reported as verified. Distinct from Add/Remove/File move acceptance gates.
+
+## Exact-hash session removal API candidate
+
+PR #50 adds an allowlisted `d.erase` call preflighted against the main-view hash, expected torrent name and directory. `AlreadyAbsent`, `VerifiedRemoved`, `PendingRemoval` and `Uncertain` are separate. The synthetic fixture tests and Android build require exact CI evidence; no live Seedhost or disposable real rTorrent removal has been observed by this PR. No file deletion claimed, and rTorrent event hooks may alter auxiliary tied metainfo: https://rtorrent-docs.readthedocs.io/en/latest/cmd-ref.html#d-erase. Keep binary payload deletion under a separate companion/filesystem verification plan.
