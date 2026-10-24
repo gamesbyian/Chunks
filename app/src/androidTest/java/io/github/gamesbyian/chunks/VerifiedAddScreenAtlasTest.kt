@@ -16,6 +16,7 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.captureToImage
@@ -137,13 +138,17 @@ class VerifiedAddScreenAtlasTest {
         }
         rule.setContent {
             MaterialTheme {
-                TransferFilePager("ab".repeat(20), files)
+                TransferFilePager(remote, "ab".repeat(20), files,
+                    snapshotStale = false, mainView = true, onSettled = {})
             }
         }
         rule.onNodeWithText("Showing 1–40 of 105 files").assertExists()
         rule.onNodeWithText("Next 40").performClick()
         rule.onNodeWithText("Showing 41–80 of 105 files").assertExists()
         rule.onNodeWithText("Page 2 of 3").assertExists()
+        rule.onAllNodesWithText("Priority").onFirst().performClick()
+        rule.onNodeWithText("Edit one file priority").assertExists()
+        rule.onNodeWithText("Close").performClick()
         save("files-dense-second-page-real-compose")
         rule.onNodeWithText("Next 40").performClick()
         rule.onNodeWithText("Showing 81–105 of 105 files").assertExists()
@@ -164,6 +169,36 @@ class VerifiedAddScreenAtlasTest {
         }
         rule.onNodeWithText("Refresh this stale server snapshot before removing a transfer.").assertExists()
         rule.onNodeWithText("Confirm remove").assertDoesNotExist()
+    }
+
+    @Test fun nativeFilePriorityConfirmationShowsExactTargetAndDoesNotSendRpc() {
+        val file = RemoteFile("Public Bundle/An unusually long archival audio example.ogg", 1024, 1)
+        rule.setContent {
+            MaterialTheme {
+                TransferFilePriorityControl(
+                    remote, "ab".repeat(20), 7, file,
+                    snapshotStale = false, mainView = true, onSettled = {})
+            }
+        }
+        rule.onNodeWithText("High").performClick()
+        rule.onNodeWithText("Review priority change").performClick()
+        rule.onNodeWithText("Confirm file priority change").assertExists()
+        rule.onNodeWithText("Exact infohash: " + "ab".repeat(20)).assertExists()
+        rule.onNodeWithText("Confirm priority").assertExists()
+        save("file-priority-confirmation-real-compose")
+    }
+
+    @Test fun staleFilePriorityControlCannotOfferMutation() {
+        val file = RemoteFile("Public Bundle/Example.ogg", 10L, 1)
+        rule.setContent {
+            MaterialTheme {
+                TransferFilePriorityControl(
+                    remote, "ab".repeat(20), 0, file,
+                    snapshotStale = true, mainView = true, onSettled = {})
+            }
+        }
+        rule.onNodeWithText("Review priority change").assertDoesNotExist()
+        rule.onNodeWithText("Confirm priority").assertDoesNotExist()
     }
 
     @Test fun traversalDestinationCannotReachConfirmation() {

@@ -551,7 +551,11 @@ private fun TransferCard(
                 if (filesLoading) Text("Reading server file list…")
                 if (filesError != null) Text(filesError, color = Color(0xFF9E3930))
                 if (files != null) {
-                    TransferFilePager(transfer.hash, files)
+                    TransferFilePager(
+                        remote = remote, hash = transfer.hash, files = files,
+                        snapshotStale = stale, mainView = mainView,
+                        onSettled = onLifecycleSettled
+                    )
                 }
             }
         }
