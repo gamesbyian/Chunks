@@ -24,6 +24,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
+import io.github.gamesbyian.chunks.rpc.RemoteFile
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -139,6 +140,36 @@ class VerifiedAddScreenAtlasTest {
         }
         rule.onNodeWithText("Refresh this stale server snapshot before removing a transfer.").assertExists()
         rule.onNodeWithText("Confirm remove").assertDoesNotExist()
+    }
+
+    @Test fun nativeFilePriorityConfirmationShowsExactTargetAndDoesNotSendRpc() {
+        val file = RemoteFile("Public Bundle/An unusually long archival audio example.ogg", 1024, 1)
+        rule.setContent {
+            MaterialTheme {
+                TransferFilePriorityControl(
+                    remote, "ab".repeat(20), 7, file,
+                    snapshotStale = false, mainView = true, onSettled = {})
+            }
+        }
+        rule.onNodeWithText("High").performClick()
+        rule.onNodeWithText("Review priority change").performClick()
+        rule.onNodeWithText("Confirm file priority change").assertExists()
+        rule.onNodeWithText("Exact infohash: " + "ab".repeat(20)).assertExists()
+        rule.onNodeWithText("Confirm priority").assertExists()
+        save("file-priority-confirmation-real-compose")
+    }
+
+    @Test fun staleFilePriorityControlCannotOfferMutation() {
+        val file = RemoteFile("Public Bundle/Example.ogg", 10L, 1)
+        rule.setContent {
+            MaterialTheme {
+                TransferFilePriorityControl(
+                    remote, "ab".repeat(20), 0, file,
+                    snapshotStale = true, mainView = true, onSettled = {})
+            }
+        }
+        rule.onNodeWithText("Review priority change").assertDoesNotExist()
+        rule.onNodeWithText("Confirm priority").assertDoesNotExist()
     }
 
     @Test fun traversalDestinationCannotReachConfirmation() {
