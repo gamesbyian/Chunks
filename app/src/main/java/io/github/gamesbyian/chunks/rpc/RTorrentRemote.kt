@@ -113,6 +113,46 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         }
     }
 
+    /**
+     * Load a NEW test transfer stopped at an explicit server directory.
+     *
+     * The d.directory_base.set post-load expression is applied inside load.verbose,
+     * before the transfer is eligible to start. There is no automatic retry,
+     * external content download, filesystem move, or silent duplicate edit.
+     * Real hosted-server acceptance is still required.
+     */
+    suspend fun loadStopped(plan: StoppedRemoteAddPlan): RemoteAddOutcome {
+        val existing = listTransfers("main")
+        if (existing.any { it.hash.equals(plan.expectedInfoHash, ignoreCase = true) }) {
+            return RemoteAddOutcome.AlreadyPresent(plan.expectedInfoHash)
+        }
+        try {
+            call("load.verbose", listOf("", plan.source,
+                "d.directory_base.set=" + plan.destination))
+        } catch (_: IOException) {
+            // Timeout or gateway loss can occur *after* load was applied.
+            // Never repeat the call automatically: duplicates or path drift
+            // must be reconciled by a later explicit inventory refresh.
+            return RemoteAddOutcome.Uncertain(plan.expectedInfoHash)
+        }
+        return try {
+            val loaded = listTransfers("main").find {
+                it.hash.equals(plan.expectedInfoHash, ignoreCase = true)
+            } ?: return RemoteAddOutcome.PendingVerification(plan.expectedInfoHash)
+            val base = call("d.directory_base", listOf(plan.expectedInfoHash)) as? String
+            val started = number(call("d.state", listOf(plan.expectedInfoHash))) != 0L
+            if (!started && !loaded.started && base == plan.destination) {
+                RemoteAddOutcome.VerifiedStopped(plan.expectedInfoHash, base)
+            } else {
+                RemoteAddOutcome.PendingVerification(plan.expectedInfoHash)
+            }
+        } catch (_: IOException) {
+            RemoteAddOutcome.Uncertain(plan.expectedInfoHash)
+        } catch (_: RpcFault) {
+            RemoteAddOutcome.PendingVerification(plan.expectedInfoHash)
+        }
+    }
+
     /** A per-torrent read-only file inspector; never changes file priorities. */
     suspend fun listFiles(hash: String): List<RemoteFile> {
         require(Regex("[0-9a-fA-F]{40}([0-9a-fA-F]{24})?").matches(hash)) {

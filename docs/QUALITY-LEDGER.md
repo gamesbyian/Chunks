@@ -43,3 +43,7 @@ The owner approved destructive test operations on the designated Seedhost rTorre
 ## Public-source fixture factory
 
 The [Archive/Commons collector](PUBLIC-TORRENT-FIXTURES.md) stages strict validation, exact infohash identity and metadata-only provider retrieval. Proposed until CI verification: real Archive `.torrent` and derived magnets, Commons manifest-only file metadata. Collector does not contact rTorrent, download full media, or prove application Add, seeding or lifecycle behavior.
+
+## Remote Add readback prototype
+
+The stopped Add API in PR #31 is pending JVM/Android CI and real-server acceptance. Synthetic RPC acknowledgements, if successful, prove command sequencing only. `VerifiedStopped` requires observed matching main-view hash, `d.directory_base` and stopped state. Pending/uncertain results must not be reported as success. No automatic retry or cleanup on uncertainty; external live test is a distinct gate.
