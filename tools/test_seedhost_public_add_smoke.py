@@ -28,6 +28,8 @@ class Server:
         self.present = False
         self.directory = DIR
         self.started = 0
+        self.multi = False
+        self.name = "Public example"
         self.fail_load = False
     def call(self, method, *args):
         self.calls.append(method)
@@ -38,8 +40,12 @@ class Server:
                 raise OSError("network loss after command")
             self.present = True
             return 0
-        if method == "d.directory_base":
+        if method == "d.directory":
             return self.directory
+        if method == "d.is_multi_file":
+            return int(self.multi)
+        if method == "d.name":
+            return self.name
         if method == "d.state":
             return self.started
         raise AssertionError("Unexpected RPC method")
@@ -62,7 +68,27 @@ class LiveTest(unittest.TestCase):
             result = s.execute(args(True), factory=lambda *params: server)
         self.assertEqual("verified_stopped_in_destination", result["result"])
         self.assertEqual(["d.multicall2", "load.raw_verbose", "d.multicall2",
-                          "d.directory_base", "d.state"], server.calls)
+                          "d.directory", "d.is_multi_file", "d.name", "d.state"], server.calls)
+
+    def test_multifile_parent_add_appends_torrent_name(self):
+        server = Server(None, None, None)
+        server.multi = True
+        server.name = "Public example"
+        server.directory = DIR + "/" + server.name
+        with patch.object(s, "public_fixture", return_value=fixture()):
+            result = s.execute(args(True), factory=lambda *params: server)
+        self.assertEqual("verified_stopped_in_destination", result["result"])
+        self.assertEqual(server.directory, result["observed_directory"])
+
+    def test_multifile_parent_root_cannot_silently_flatten(self):
+        server = Server(None, None, None)
+        server.multi = True
+        server.name = "Public example"
+        # d.directory_base.set would flatten the torrent here; must refuse it.
+        server.directory = DIR
+        with patch.object(s, "public_fixture", return_value=fixture()):
+            result = s.execute(args(True), factory=lambda *params: server)
+        self.assertEqual("readback_mismatch", result["result"])
 
     def test_duplicate_refuses_write(self):
         server = Server(None, None, None)

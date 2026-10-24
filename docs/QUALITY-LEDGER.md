@@ -81,3 +81,7 @@ PR #44 integrates earlier readback APIs with an in-app Add workflow. It requires
 ## Controlled real-engine Add/lifecycle integration candidate
 
 PR #46 proposes real rTorrent 0.9.8 stopped binary Add, duplicate protection and start/stop via the exact Kotlin adapter and an isolated nginx SCGI gateway. Tests are scoped to `127.0.0.1:18080`, use a throwaway path and no credentials. Once green, record exact tested SHA and job result. This is not modern build or authenticated Seedhost proof, and does not prove physical bytes or relocation.
+
+## Add destination-parent compatibility caveat
+
+The rTorrent documentation differentiates `d.directory.set` from `d.directory_base.set` for multi-file torrents; the latter can flatten/remove the transfer-name subfolder. PR #47 corrects new-Add semantics to parent-directory selection and multi-file-aware readback, with offline negative tests. Prior real-engine runs that cover only single-file torrents do not establish multi-file destination integrity, and this remains a distinct acceptance gate.

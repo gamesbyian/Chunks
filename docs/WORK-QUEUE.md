@@ -107,3 +107,7 @@ PR #44 connects the existing v1 SAF .torrent parser and destination-first stoppe
 ## Real disposable rTorrent write acceptance candidate
 
 PR #46 extends the existing localhost-only SCGI/nginx legacy rig to execute a real **stopped raw .torrent Add**, enforce duplicate-hash refusal, then perform verified start/stop against disposable rTorrent 0.9.8 data only. It verifies exact hash and directory, with asynchronous state polling but never repeats the Add after an uncertain outcome. The PR workflow obtains **no secrets** and never accesses the owner's Seedhost. This is a *proposal until the real rTorrent job passes*; actual Seedhost and Android/device operations remain separate.
+
+## Destination-parent integrity correction
+
+PR #47 corrects user-selected Add destination semantics from `d.directory_base.set` to `d.directory.set`, with separate expected physical folder roots for single-/multi-file torrents, both Kotlin and protected Python readback verification, and mismatch tests. Do not treat a multi-file torrent flattened into the selected parent as successful. **Pending CI and real-engine/Seedhost evidence**. This prevents early implementation success from accidentally violating the Place contract.
