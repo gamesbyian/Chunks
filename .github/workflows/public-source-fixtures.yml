@@ -19,6 +19,16 @@ on:
         description: "Internet Archive identifier OR Commons File: title"
         type: string
         required: true
+      download_commons:
+        description: "Also retrieve small licensed Commons media and generate a local test torrent"
+        type: boolean
+        required: false
+        default: false
+      max_commons_mib:
+        description: "Maximum Commons content download in MiB (1..16)"
+        type: number
+        required: true
+        default: 8
       max_total_mib:
         description: "Maximum announced torrent size MiB, no payload downloads"
         type: number
@@ -52,12 +62,18 @@ jobs:
           SOURCE_KIND: ${{ inputs.source_kind }}
           SOURCE_ID: ${{ inputs.source_id }}
           MAX_TOTAL_MIB: ${{ inputs.max_total_mib }}
+          DOWNLOAD_COMMONS: ${{ inputs.download_commons }}
+          MAX_COMMONS_MIB: ${{ inputs.max_commons_mib }}
         run: |
           set -euo pipefail
           if [ "$SOURCE_KIND" = "archive" ]; then
             python3 tools/public_fixture_collector.py --archive-id "$SOURCE_ID" --max-total-mib "$MAX_TOTAL_MIB" --output-dir "$RUNNER_TEMP/chunks-public-fixture"
           elif [ "$SOURCE_KIND" = "commons" ]; then
-            python3 tools/public_fixture_collector.py --commons-file "$SOURCE_ID" --output-dir "$RUNNER_TEMP/chunks-public-fixture"
+            if [ "$DOWNLOAD_COMMONS" = "true" ]; then
+              python3 tools/public_fixture_collector.py --commons-file "$SOURCE_ID" --download-commons --max-commons-mib "$MAX_COMMONS_MIB" --output-dir "$RUNNER_TEMP/chunks-public-fixture"
+            else
+              python3 tools/public_fixture_collector.py --commons-file "$SOURCE_ID" --output-dir "$RUNNER_TEMP/chunks-public-fixture"
+            fi
           else
             echo "Invalid provider"; exit 2
           fi

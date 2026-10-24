@@ -110,6 +110,30 @@ class CollectorTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 f.commons_fixture("Public.png")
 
+    def test_commons_bytes_generate_real_infohash_and_webseed(self):
+        manifest = {"asset": {"url": "https://upload.wikimedia.org/wikipedia/commons/a/ab/Public.ogg",
+                              "bytes": 5}}
+        raw, name = f.create_commons_single_file_torrent(manifest, b"hello")
+        self.assertEqual("Public.ogg", name)
+        self.assertEqual("locally_generated_unseeded_webseed_unverified", manifest["torrent_status"])
+        self.assertEqual(hashlib.sha256(b"hello").hexdigest(), manifest["asset"]["sha256"])
+        root, info_raw = f.parse_bencode(raw)
+        self.assertEqual(5, root[b"info"][b"length"])
+        self.assertEqual("https://upload.wikimedia.org/wikipedia/commons/a/ab/Public.ogg",
+                         root[b"url-list"].decode())
+        self.assertEqual(hashlib.sha1(info_raw).hexdigest(), manifest["torrent"]["infohash_v1"])
+        self.assertTrue(manifest["torrent"]["magnet"].startswith("magnet:?xt="))
+
+    def test_commons_generation_rejects_length_mismatch_and_secret_query(self):
+        m = {"asset": {"url": "https://upload.wikimedia.org/wikipedia/commons/a/ab/Public.png",
+                       "bytes": 10}}
+        with self.assertRaises(ValueError):
+            f.create_commons_single_file_torrent(m, b"short")
+        m["asset"]["bytes"] = 5
+        m["asset"]["url"] += "?token=unsafe"
+        with self.assertRaises(ValueError):
+            f.create_commons_single_file_torrent(m, b"short")
+
     def test_host_and_source_validation(self):
         for url in ("http://archive.org/metadata/a",
                     "https://notarchive.org/download/a",
