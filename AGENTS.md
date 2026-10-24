@@ -18,7 +18,7 @@ Build a colourful, genuinely usable Android-native BitTorrent client and bulletp
 - The local engine is Arvid Norberg libtorrent candidate; rTorrent uses the *different* rakshasa libTorrent codebase. Never conflate their APIs.
 - The companion is optional for everyday RPC; advanced filesystem actions must be refused when no safe capability exists.
 - For multi-stage commands, model requested/acknowledged/verified/uncertain/failure; reconcile after timeouts before retrying a mutation.
-- Secrets and torrent inventories never go into GitHub issues, CI logs, public fixtures or telemetry. Classification local-first and opt-in for network lookups.
+- Secrets, session cookies and reusable tracker passkeys never go into GitHub. **Owner-authorized development Seedhost torrent inventories are explicitly nonconfidential** and may be used in project fixtures and visual QA (see scoped consent below); unrelated inventories are not. Classification local-first and opt-in for network lookups.
 - No Android feature may claim guaranteed continuous background execution, unrestricted storage, or provider access without device evidence.
 - Users must have accessible 48dp-class controls, alternative to gestures, large-text support, screen-reader labeling, and reduced-motion support.
 
