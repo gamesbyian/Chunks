@@ -300,7 +300,13 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
      */
     suspend fun setStarted(hash: String, desiredStarted: Boolean): LifecycleOutcome {
         require(Regex("[0-9a-fA-F]{40}").matches(hash)) { "Invalid v1 torrent hash" }
-        call(if (desiredStarted) "d.start" else "d.stop", listOf(hash))
+        try {
+            call(if (desiredStarted) "d.start" else "d.stop", listOf(hash))
+        } catch (_: IOException) {
+            // The gateway may lose its reply after rTorrent applied the mutation.
+            // Conservatively report uncertainty, and never retry automatically.
+            return LifecycleOutcome.Uncertain(desiredStarted)
+        }
         return try {
             val observed = number(call("d.state", listOf(hash))) != 0L
             if (observed == desiredStarted) LifecycleOutcome.Verified(observed)
