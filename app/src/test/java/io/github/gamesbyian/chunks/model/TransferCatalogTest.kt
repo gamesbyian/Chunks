@@ -29,7 +29,11 @@ class TransferCatalogTest {
     @Test fun unitsAndDraftDoNotClaimServerValidation() {
         assertEquals("1.0 KiB", Units.bytes(1024))
         assertFalse(AddDraft("magnet:?xt=urn:btih:abcdef", "").canPreview)
-        assertTrue(AddDraft("magnet:?xt=urn:btih:abcdef", "/downloads/TV").canPreview)
+        assertTrue(AddDraft("magnet:?xt=urn:btih:" + "a".repeat(40), "/downloads/TV").canPreview)
         assertFalse(AddDraft("https://example.org/file", "/downloads").canPreview)
+        assertFalse(AddDraft("magnet:?xt=urn:btih:abcdef", "/downloads").canPreview)
+        assertTrue(AddDraft("magnet:?xt=urn:btmh:1220" + "b".repeat(64), "/books").canPreview)
+        assertTrue(AddDraft("magnet:?xt=urn%3Abtih%3A" + "C".repeat(32), "/downloads").canPreview)
+        assertFalse(AddDraft("magnet:?xt=urn:btih:" + "a".repeat(40), "/downloads/../etc").canPreview)
     }
 }
