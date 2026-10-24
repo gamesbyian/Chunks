@@ -1,6 +1,11 @@
 name: Seedhost read-only RPC probe
 on:
   workflow_dispatch:
+    inputs:
+      rutorrent_url:
+        description: 'Credential-free Seedhost ruTorrent HTTPS URL'
+        required: true
+        type: string
 permissions:
   contents: read
 concurrency:
@@ -13,21 +18,15 @@ jobs:
     steps:
       - name: Safely test HTTP-RPC version only
         env:
-          RTORRENT_URL: ${{ secrets.RTORRENT_URL }}
-          RUTORRENT_URL: ${{ secrets.RUTORRENT_URL }}
-          SEEDHOST_URL: ${{ secrets.SEEDHOST_RUTORRENT_URL }}
-          RT_USER: ${{ secrets.RTORRENT_USERNAME }}
-          RU_USER: ${{ secrets.RUTORRENT_USERNAME }}
-          SEED_USER: ${{ secrets.SEEDHOST_USERNAME }}
-          RT_PASS: ${{ secrets.RTORRENT_PASSWORD }}
-          RU_PASS: ${{ secrets.RUTORRENT_PASSWORD }}
-          SEED_PASS: ${{ secrets.SEEDHOST_PASSWORD }}
+          RUTORRENT_URL: ${{ inputs.rutorrent_url }}
+          RT_USER: ${{ secrets.rtorrent_user }}
+          RT_PASS: ${{ secrets.rtorrent_pass }}
         run: |
           python3 - <<'PY'
           import base64, os, urllib.parse, urllib.request, urllib.error, xml.etree.ElementTree as ET
-          url = os.getenv("RTORRENT_URL") or os.getenv("RUTORRENT_URL") or os.getenv("SEEDHOST_URL")
-          user = os.getenv("RT_USER") or os.getenv("RU_USER") or os.getenv("SEED_USER")
-          password = os.getenv("RT_PASS") or os.getenv("RU_PASS") or os.getenv("SEED_PASS")
+          url = os.getenv("RUTORRENT_URL")
+          user = os.getenv("RT_USER")
+          password = os.getenv("RT_PASS")
           if not url or not user or not password:
               raise SystemExit("Missing Seedhost URL and/or rTorrent credential secrets in Chunks repository.")
           parsed = urllib.parse.urlsplit(url)
