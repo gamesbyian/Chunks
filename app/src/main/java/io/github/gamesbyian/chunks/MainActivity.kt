@@ -304,8 +304,8 @@ private fun ConnectionScreen(
         item {
             OutlinedTextField(
                 value = endpoint, onValueChange = onEndpoint,
-                label = { Text("Server RPC address") },
-                placeholder = { Text("https://server.example/RPC2") },
+                label = { Text("ruTorrent web URL or RPC address") },
+                placeholder = { Text("https://server.example/rutorrent/") },
                 singleLine = true, modifier = Modifier.fillMaxWidth()
             )
         }

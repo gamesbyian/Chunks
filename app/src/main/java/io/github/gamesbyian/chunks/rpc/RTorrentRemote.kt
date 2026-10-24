@@ -40,7 +40,7 @@ data class RemoteFile(val path: String, val sizeBytes: Long, val priority: Int)
  * HTTPS only, except HTTP on literal loopback used for controlled development fixtures.
  */
 class RTorrentRemote(private val auth: RemoteCredentials) {
-    private val endpoint: URI = URI(auth.endpoint.trim()).also { uri ->
+    private val endpoint: URI = URI(RemoteEndpointHints.rpcAddress(auth.endpoint)).also { uri ->
         require(uri.scheme?.lowercase() == "https" ||
             (uri.scheme?.lowercase() == "http" && uri.host in listOf("localhost", "127.0.0.1", "[::1]"))) {
             "Use an HTTPS reverse proxy to connect securely to rTorrent"
