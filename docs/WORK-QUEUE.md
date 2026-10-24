@@ -63,3 +63,7 @@ PR implementation: [public fixtures guide](PUBLIC-TORRENT-FIXTURES.md) with boun
 ## Stopped destination-first remote Add API proposal
 
 PR #31 proposes a narrow XML-RPC Add path for a validated v1 magnet or exact-hash Archive .torrent URL; it refuses duplicate known main-view hashes, loads stopped with an explicit rTorrent directory post-load command and reads back hash/directory/state. Do **not** claim live server compatibility, real payload download or accessible UI until independently verified.
+
+## Manual public source Add acceptance
+
+The protected [public Add smoke](../.github/workflows/seedhost-public-add-smoke.yml) supports public Archive/Commons fixtures, default no-server preview and separately confirmed one-torrent stopped `load.raw_verbose` on the authorized Seedhost instance. Synthetic tests are not live server proof. Next verify the collector using a real source, dispatch explicit manual Add to the chosen server directory, reconcile the result against the Kotlin Add API, then deliver a genuinely accessible Add interface.

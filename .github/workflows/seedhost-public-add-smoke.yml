@@ -1,0 +1,100 @@
+name: Public fixture Seedhost Add acceptance
+
+on:
+  pull_request:
+    paths:
+      - "tools/seedhost_public_add_smoke.py"
+      - "tools/test_seedhost_public_add_smoke.py"
+      - ".github/workflows/seedhost-public-add-smoke.yml"
+  workflow_dispatch:
+    inputs:
+      source_kind:
+        description: "Licensed public source"
+        type: choice
+        required: true
+        options:
+          - archive
+          - commons
+      source_id:
+        description: "Internet Archive ID or Wikimedia Commons File: title"
+        type: string
+        required: true
+      rutorrent_url:
+        description: "Your Seedhost HTTPS ruTorrent URL (no credentials)"
+        type: string
+        required: true
+      destination:
+        description: "Absolute path on development rTorrent server"
+        type: string
+        required: true
+      max_total_mib:
+        description: "Archive torrent announced payload budget in MiB"
+        type: number
+        required: true
+        default: 512
+      apply:
+        description: "Mutate: explicitly add this ONE public test torrent STOPPED"
+        type: boolean
+        required: false
+        default: false
+      confirm_hash:
+        description: "For apply=true: exact 40-digit infohash from previous preview receipt"
+        type: string
+        required: false
+
+permissions:
+  contents: read
+concurrency:
+  group: chunks-public-add-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  offline-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 -m unittest discover -s tools -p 'test_public_fixture_collector.py' -v
+          python3 -m unittest discover -s tools -p 'test_seedhost_public_add_smoke.py' -v
+
+  manual-seedhost-add:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    needs: offline-validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preview, or confirm and verify ONE stopped Add
+        env:
+          SOURCE_KIND: ${{ inputs.source_kind }}
+          SOURCE_ID: ${{ inputs.source_id }}
+          SERVER_URL: ${{ inputs.rutorrent_url }}
+          TARGET_DIR: ${{ inputs.destination }}
+          MAX_TOTAL_MIB: ${{ inputs.max_total_mib }}
+          APPLY: ${{ inputs.apply }}
+          CONFIRM_HASH: ${{ inputs.confirm_hash }}
+          RT_USER: ${{ secrets.rtorrent_user }}
+          RT_PASS: ${{ secrets.rtorrent_pass }}
+        run: |
+          set -euo pipefail
+          args=(--destination "$TARGET_DIR" --max-total-mib "$MAX_TOTAL_MIB" --receipt-path "$RUNNER_TEMP/chunks-public-add-receipt.json")
+          if [ "$SOURCE_KIND" = "archive" ]; then
+            args+=(--archive-id "$SOURCE_ID")
+          elif [ "$SOURCE_KIND" = "commons" ]; then
+            args+=(--commons-file "$SOURCE_ID")
+          else
+            echo "Invalid public fixture source"; exit 2
+          fi
+          if [ "$APPLY" = "true" ]; then
+            args+=(--apply --rutorrent-url "$SERVER_URL" --confirm-hash "$CONFIRM_HASH")
+          fi
+          python3 tools/seedhost_public_add_smoke.py "${args[@]}"
+      - name: Retain nonsecret Add result receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-public-add-test-receipt
+          path: ${{ runner.temp }}/chunks-public-add-receipt.json
+          retention-days: 14
+          if-no-files-found: warn

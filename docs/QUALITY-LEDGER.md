@@ -47,3 +47,7 @@ The [Archive/Commons collector](PUBLIC-TORRENT-FIXTURES.md) stages strict valida
 ## Remote Add readback prototype
 
 The stopped Add API in PR #31 is pending JVM/Android CI and real-server acceptance. Synthetic RPC acknowledgements, if successful, prove command sequencing only. `VerifiedStopped` requires observed matching main-view hash, `d.directory_base` and stopped state. Pending/uncertain results must not be reported as success. No automatic retry or cleanup on uncertainty; external live test is a distinct gate.
+
+## Public Add protocol acceptance harness
+
+A separate manual-only [Seedhost Add proof](../.github/workflows/seedhost-public-add-smoke.yml) now tests exact-hash-confirmed `load.raw_verbose` and records readback status. Before a real manual run, this is **offline-tested scaffolding only**, not proof of actual Seedhost Add, binary XML-RPC interoperability, physical file bytes, or an Android Add flow. `already_present_no_write`, `acknowledged_pending_readback` and `outcome_uncertain` are not successful new Adds.
