@@ -115,3 +115,7 @@ PR #47 corrects user-selected Add destination semantics from `d.directory_base.s
 ## Native transfer lifecycle control proposal
 
 PR #49 proposes per-transfer **confirmed** Start/Stop on the existing Transfers dashboard, using the hash-targeted `RTorrentRemote.setStarted` adapter already JVM-tested. Stale snapshots block mutation. Every action requires review of the exact torrent/hash and a second tap; results distinguish verified, pending, uncertain and errors, prevent blind repeat in the same card and refresh server state after settlement. **Not accepted until Android CI and true device/Seedhost interaction evidence.** Transfer deletion and physical relocation remain separately gated.
+
+## Targeted session erase API proposal
+
+PR #50 proposes `RTorrentRemote.eraseFromSession` for **one exact v1 hash** with preflight original name/path comparison and postcondition readback confirming removal from `main`. It does **not** delete payload files; `d.erase` removes the rTorrent session item, though custom server event hooks could act on its tied `.torrent` file or other resources. This is a core-only candidate until Android JVM CI and disposable-engine acceptance. No user-facing Remove action and no live Seedhost mutation in PR CI. Do not conflate an RPC acknowledgement with verified disappearance.

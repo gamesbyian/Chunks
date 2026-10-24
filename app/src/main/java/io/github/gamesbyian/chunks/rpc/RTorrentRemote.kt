@@ -35,6 +35,19 @@ data class RemoteTransfer(
 data class RemoteFile(val path: String, val sizeBytes: Long, val priority: Int)
 
 /**
+ * d.erase removes an rTorrent session item; ordinary payload bytes remain.
+ * Custom server hooks can have different side effects, so this is NOT
+ * a promise about filesystem state. It is not a delete-with-data API.
+ */
+sealed class SessionEraseOutcome {
+    data class VerifiedRemoved(val hash: String) : SessionEraseOutcome()
+    data class AlreadyAbsent(val hash: String) : SessionEraseOutcome()
+    data class PendingRemoval(val hash: String) : SessionEraseOutcome()
+    data class Uncertain(val hash: String) : SessionEraseOutcome()
+}
+
+
+/**
  * Acknowledged means the RPC returned without a fault. Verified means a
  * subsequent read reports the requested engine state. Uncertain means
  * an RPC may have applied but its outcome could not be read back.
@@ -47,7 +60,7 @@ sealed class LifecycleOutcome {
 
 
 /**
- * Initial *read-only* XML-RPC adapter. No automatic retries or mutations.
+ * rTorrent XML-RPC adapter with strictly named, hash-scoped operations.\n * No automatic retries after a mutation and no raw arbitrary command surface.
  * HTTPS only, except HTTP on literal loopback used for controlled development fixtures.
  */
 class RTorrentRemote(private val auth: RemoteCredentials) {
@@ -216,6 +229,49 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             parent + "/" + name
         } else parent
         return directory.takeIf { it == expected }
+    }
+
+    /**
+     * Explicitly remove one known torrent identity from rTorrent's session.
+     *
+     * Name and path are optimistic concurrency guards against stale UI state.
+     * No payload deletion, automatic retries, or implicit cleanup. An
+     * HTTP timeout after d.erase is not proof of failure.
+     */
+    suspend fun eraseFromSession(
+        hash: String, expectedName: String, expectedDirectory: String
+    ): SessionEraseOutcome {
+        require(Regex("[0-9a-fA-F]{40}").matches(hash)) {
+            "Only exact 40-character torrent hashes can be erased"
+        }
+        require(expectedName.isNotBlank() && expectedDirectory.startsWith("/")) {
+            "Expected current torrent name and absolute directory"
+        }
+        val matching = listTransfers("main").filter {
+            it.hash.equals(hash, ignoreCase = true)
+        }
+        if (matching.isEmpty()) return SessionEraseOutcome.AlreadyAbsent(hash)
+        require(matching.size == 1) { "Ambiguous torrent identity" }
+        require(matching.single().name == expectedName &&
+            matching.single().directory == expectedDirectory) {
+            "Torrent name or location changed; refresh before removal"
+        }
+        try {
+            call("d.erase", listOf(hash))
+        } catch (_: IOException) {
+            return SessionEraseOutcome.Uncertain(hash)
+        }
+        return try {
+            val stillPresent = listTransfers("main").any {
+                it.hash.equals(hash, ignoreCase = true)
+            }
+            if (stillPresent) SessionEraseOutcome.PendingRemoval(hash)
+            else SessionEraseOutcome.VerifiedRemoved(hash)
+        } catch (_: IOException) {
+            SessionEraseOutcome.Uncertain(hash)
+        } catch (_: RpcFault) {
+            SessionEraseOutcome.PendingRemoval(hash)
+        }
     }
 
     /** A per-torrent read-only file inspector; never changes file priorities. */

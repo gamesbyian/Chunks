@@ -1,0 +1,95 @@
+package io.github.gamesbyian.chunks.rpc
+
+import com.sun.net.httpserver.HttpServer
+import java.net.InetAddress
+import java.net.InetSocketAddress
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert.*
+import org.junit.Test
+
+class RemoteSessionEraseTest {
+    private val hash = "ab".repeat(20)
+    private val directory = "/home/dev/Public Examples"
+    private val name = "public-example.ogg"
+
+    private fun value(s: String) = "<value><string>" + s + "</string></value>"
+    private fun number(n: Int) = "<value><i8>" + n + "</i8></value>"
+    private fun rows(present: Boolean, nameOverride: String): String {
+        if (!present) return "<value><array><data></data></array></value>"
+        val columns = listOf(value(hash), value(nameOverride), number(5),
+            number(0), number(0), value(directory), number(0), number(0), number(0))
+        return "<value><array><data><value><array><data>" +
+            columns.joinToString("") + "</data></array></value></data></array></value>"
+    }
+
+    private suspend fun withServer(
+        initialName: String = name,
+        applyErase: Boolean = true,
+        action: suspend (RTorrentRemote, MutableList<String>) -> Unit
+    ) {
+        var present = true
+        val methods = mutableListOf<String>()
+        val server = HttpServer.create(InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0)
+        server.createContext("/RPC2") { exchange ->
+            val payload = exchange.requestBody.bufferedReader().use { it.readText() }
+            val method = Regex("<methodName>([^<]+)</methodName>")
+                .find(payload)?.groupValues?.get(1).orEmpty()
+            methods.add(method)
+            if (method == "d.erase" && applyErase) present = false
+            val xmlValue = when (method) {
+                "d.multicall2" -> rows(present, initialName)
+                "d.erase" -> number(0)
+                else -> number(0)
+            }
+            val xml = ("<methodResponse><params><param>" + xmlValue +
+                "</param></params></methodResponse>").toByteArray(Charsets.UTF_8)
+            exchange.sendResponseHeaders(200, xml.size.toLong())
+            exchange.responseBody.use { it.write(xml) }
+        }
+        server.start()
+        try {
+            val remote = RTorrentRemote(RemoteCredentials(
+                "http://127.0.0.1:" + server.address.port + "/RPC2", "", ""))
+            action(remote, methods)
+        } finally { server.stop(0) }
+    }
+
+    @Test fun erasesOneExactHashAndVerifiesAbsence() = runBlocking {
+        withServer { remote, methods ->
+            assertEquals(SessionEraseOutcome.VerifiedRemoved(hash),
+                remote.eraseFromSession(hash, name, directory))
+            assertEquals(listOf("d.multicall2", "d.erase", "d.multicall2"), methods)
+            assertEquals(SessionEraseOutcome.AlreadyAbsent(hash),
+                remote.eraseFromSession(hash, name, directory))
+            assertEquals(1, methods.count { it == "d.erase" })
+        }
+    }
+
+    @Test fun staleTorrentNameBlocksMutation() = runBlocking {
+        withServer(initialName = "renamed-by-another-user") { remote, methods ->
+            try {
+                remote.eraseFromSession(hash, name, directory)
+                fail("Stale torrent state must be refused")
+            } catch (_: IllegalArgumentException) { }
+            assertEquals(listOf("d.multicall2"), methods)
+        }
+    }
+
+    @Test fun acknowledgedEraseWithoutGoneReadbackIsPendingNotVerified() = runBlocking {
+        withServer(applyErase = false) { remote, methods ->
+            assertEquals(SessionEraseOutcome.PendingRemoval(hash),
+                remote.eraseFromSession(hash, name, directory))
+            assertEquals(listOf("d.multicall2", "d.erase", "d.multicall2"), methods)
+        }
+    }
+
+    @Test fun refusesInvalidHashesBeforeAnyNetwork() = runBlocking {
+        val remote = RTorrentRemote(RemoteCredentials("http://127.0.0.1:1/RPC2", "", ""))
+        for (bad in listOf("../", "1234", "z".repeat(40), "ab".repeat(21))) {
+            try {
+                remote.eraseFromSession(bad, name, directory)
+                fail("Invalid torrent hash should be refused")
+            } catch (_: IllegalArgumentException) { }
+        }
+    }
+}
