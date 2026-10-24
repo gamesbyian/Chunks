@@ -222,7 +222,7 @@ private fun ChunksApp(sharedMagnet: String?) {
                                     inspectionFence.invalidate()
                                     transfers = list
                                     version = v
-                                    aliasScope = endpoint + "\u0000" + username
+                                    aliasScope = endpoint.trim() + "\u0000" + username.trim()
                                     server = candidate
                                     stale = false
                                     section = if (magnet.isNotBlank()) Section.ADD else Section.TRANSFERS
