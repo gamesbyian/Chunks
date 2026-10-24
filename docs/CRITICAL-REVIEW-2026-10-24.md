@@ -70,4 +70,4 @@ R2 and R3 non-destructive UX work may overlap once command contracts are stable;
 
 ## Safe stopping point
 
-Merged PRs #11 and #12 form the known passing foundation; no production-server operation has been accepted. This review is docs-only. Next permitted implementation should be the **read-only compatibility proof**, with a test plan and sanitized evidence first. A failure to access a real rTorrent instance is an explicit blocker, not an invitation to fabricate success. Decisions not supported by experiment remain Proposed/Open in DECISIONS.md.
+Merged PRs #11 and #12 form the known passing foundation; no production-server operation has been accepted. This review is docs-only. Next permitted implementation should be the **read-only compatibility proof**, with a test plan and sanitized evidence first. A failure to access a real rTorrent instance is an explicit blocker, not an invitation to fabricate success. Decisions not supported by experiment remain Adopted (provisional) or Open in DECISIONS.md.
