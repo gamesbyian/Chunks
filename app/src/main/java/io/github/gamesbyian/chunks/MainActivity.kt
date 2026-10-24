@@ -3,6 +3,8 @@ package io.github.gamesbyian.chunks
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
@@ -42,6 +44,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -57,7 +60,11 @@ import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
 import io.github.gamesbyian.chunks.rpc.RemoteFile
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
+import io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader
+import io.github.gamesbyian.chunks.rpc.TorrentMetainfoPreview
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 private val Ink = Color(0xFF262442)
 private val Cream = Color(0xFFFFF8EC)
@@ -573,6 +580,44 @@ private fun AddPreviewScreen(
     onPath: (String) -> Unit, onBack: () -> Unit
 ) {
     val draft = remember(magnet, path) { AddDraft(magnet, path) }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var localTorrent by remember { mutableStateOf<TorrentMetainfoPreview?>(null) }
+    var localTorrentError by remember { mutableStateOf<String?>(null) }
+    var readingLocalTorrent by remember { mutableStateOf(false) }
+    val openTorrent = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null && !readingLocalTorrent) {
+            readingLocalTorrent = true
+            localTorrent = null
+            localTorrentError = null
+            scope.launch {
+                try {
+                    val parsed = withContext(Dispatchers.IO) {
+                        val stream = context.contentResolver.openInputStream(uri)
+                            ?: error("The selected file could not be opened")
+                        stream.use { input ->
+                            val buffer = ByteArray(16_384)
+                            val data = java.io.ByteArrayOutputStream()
+                            while (true) {
+                                val read = input.read(buffer)
+                                if (read < 0) break
+                                if (data.size() + read > TorrentMetainfoReader.MAX_BYTES) {
+                                    error("The .torrent file exceeds the 2 MiB metadata limit")
+                                }
+                                data.write(buffer, 0, read)
+                            }
+                            TorrentMetainfoReader.preview(data.toByteArray())
+                        }
+                    }
+                    localTorrent = parsed
+                } catch (failure: Exception) {
+                    localTorrentError = readableFailure(failure)
+                } finally {
+                    readingLocalTorrent = false
+                }
+            }
+        }
+    }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 18.dp, vertical = 12.dp),
@@ -586,6 +631,28 @@ private fun AddPreviewScreen(
             OutlinedTextField(value = magnet, onValueChange = onMagnet,
                 label = { Text("Magnet link") },
                 modifier = Modifier.fillMaxWidth(), minLines = 2, maxLines = 4)
+        }
+        item {
+            OutlinedButton(
+                onClick = { openTorrent.launch(arrayOf("*/*")) },
+                enabled = !readingLocalTorrent,
+                modifier = Modifier.fillMaxWidth().height(52.dp)
+            ) {
+                Text(if (readingLocalTorrent) "Reading file…" else "Choose a .torrent file")
+            }
+        }
+        if (localTorrent != null) {
+            item {
+                val selected = localTorrent!!
+                ColoredPanel("Valid local .torrent",
+                    selected.name + " · " + selected.fileCount +
+                        " files · " + Units.bytes(selected.sizeBytes) +
+                        "\nSHA-1 infohash: " + selected.infoHashV1 +
+                        "\nLocal preview only. File bytes and server destination have not been sent.", Lilac)
+            }
+        }
+        if (localTorrentError != null) {
+            item { Notice("Can't inspect this file", localTorrentError.orEmpty(), Coral) }
         }
         item {
             OutlinedTextField(value = path, onValueChange = onPath,
