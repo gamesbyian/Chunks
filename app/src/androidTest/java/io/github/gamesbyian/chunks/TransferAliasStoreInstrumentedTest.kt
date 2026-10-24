@@ -13,8 +13,9 @@ class TransferAliasStoreInstrumentedTest {
         val store = TransferAliasStore(context)
         val hash = "A".repeat(40)
         val otherHash = "B".repeat(40)
-        val server = "https://display-names.example.test/RPC2"
-        val otherServer = "https://different.example.test/RPC2"
+        val server = "https://display-names.example.test/RPC2\u0000alice"
+        val otherServer = "https://different.example.test/RPC2\u0000alice"
+        val otherAccount = "https://display-names.example.test/RPC2\u0000bob"
         try {
             assertTrue(store.save(server, hash, "Celebrity Jeopardy S04E02"))
             assertEquals("Celebrity Jeopardy S04E02", store.get(server, hash))
