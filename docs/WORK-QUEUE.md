@@ -59,3 +59,7 @@ With the **trusted manual-only Seedhost version probe now passing**, continue **
 ## Public Add fixture factory
 
 PR implementation: [public fixtures guide](PUBLIC-TORRENT-FIXTURES.md) with bounded Archive torrent/magnet and Commons file-reference collector, offline tests and manual collection workflow. Mark CI/offline and first live public fetch separately; fixture availability is not an implemented server Add feature.
+
+## Stopped destination-first remote Add API proposal
+
+PR #31 proposes a narrow XML-RPC Add path for a validated v1 magnet or exact-hash Archive .torrent URL; it refuses duplicate known main-view hashes, loads stopped with an explicit rTorrent directory post-load command and reads back hash/directory/state. Do **not** claim live server compatibility, real payload download or accessible UI until independently verified.
