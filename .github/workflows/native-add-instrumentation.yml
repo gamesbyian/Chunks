@@ -44,7 +44,7 @@ jobs:
           fi
           sudo chmod 0666 /dev/kvm
           test -r /dev/kvm && test -w /dev/kvm
-      - name: Run actual native Compose Add review tests
+      - name: Run native Compose and installed-app loopback acceptance
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
