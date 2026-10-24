@@ -7,6 +7,7 @@ Snapshot 2026-10-24 after critical review; update from **actual main, issues, PR
 - [x] #11 bootstrap merged as main commit 6dba63fed72c92c7f97128ef3fa08d278a37b730.
 - [x] #12 read-only synthetic rTorrent gateway fixture proof merged as main commit 5c9ee81d50d7309be065fa826b7fd643b59e9478. [Run 40057876761](https://github.com/gamesbyian/Chunks/actions/runs/40057876761) passed Android debug APK build and JVM unit tests against its PR SHA 5b5b75ed4abaa9f4e97ec4c7e4fa517130e8f681.
 - [x] Product/architecture critique and recovery plan captured in CRITICAL-REVIEW-2026-10-24.md (documentation, not acceptance).
+- [x] #14 merged at `a1573a4`: read-only native Transfers/Places/Organize/Server dashboard, remote file inspection, extended rate metrics with command-fault fallback, filtering/search/sort, non-mutating Add/Place preview. Android debug APK/JVM tests passed on exact PR SHA `7a7aae0` ([run 40060156362](https://github.com/gamesbyian/Chunks/actions/runs/40060156362)); no handset/live rTorrent proof.
 - [ ] Real rTorrent server connectivity or version/proxy interoperability observed.
 - [ ] Safe transfer Add, start/stop or other remote mutation observed.
 - [ ] Remote physical move/rename proven on disposable data.
@@ -16,13 +17,13 @@ Snapshot 2026-10-24 after critical review; update from **actual main, issues, PR
 
 ## Now: one critical path
 
-**R1. Read-only real-server compatibility (#1, #9).** Prioritize this before expanding controls. Produce a sanitized server/proxy/transport/auth matrix, command availability, named views and complete-list semantics, response sizes and i8 support. Build negative and large-list fixtures; evaluate handling of timeouts/reconnections. Evidence: real read-only listing for at least two meaningfully different rTorrent environments and exact request/response-shape fixtures without private names. The existing JVM fixture tests are only the beginning.
+**R1. Read-only real-server compatibility (#1, #9, [compatibility proof PR #15](https://github.com/gamesbyian/Chunks/pull/15) while in review).** Prioritize this before expanding controls. Produce a sanitized server/proxy/transport/auth matrix, command availability, named views and complete-list semantics, response sizes and i8 support. Build negative and large-list fixtures; evaluate handling of timeouts/reconnections. Evidence: real read-only listing for at least two meaningfully different rTorrent environments and exact request/response-shape fixtures without private names. The existing JVM fixture tests are only the beginning.
 
 **R2. Companion-free remote daily-use beta (#4, #8).** With the connection proven, define typed safe command catalog and verification outcomes; Add with Place selection, selection/priorities, ordinary transfer controls and filtering/diagnostics. Acceptance: one end-to-end user journey on actual seedbox from initiating a magnet to a confirmed intended directory, with no upload of passkeys or torrent inventory. No generic user-controlled RPC methods.
 
 **R3. File-operation safety proof (#2, #3, #7, #9).** Separate research/implementation of companion or secure alternative FS provider. First build exact-pathed disposable test volumes and a journal; test cross-volume move, partial and multi-file torrents, concurrent writer, symlink/case/space collisions, crash at each state. No real remote move action before independent acceptance. UI can display unsupported/deferred behavior without pretending the move is done.
 
-**R4. Organization engine (#6, #8).** In parallel with non-destructive R2 only after shared model stabilizes. Category/Place/rule/permission separate, classifier adversarial fixtures and dry-run batch. Use accepted owner choices to learn; no unreviewed automation of physical paths.
+**R4. Organization engine (#6, #8).** The #14 UI currently displays only heuristic suggestions; no rules, executable plans, approvals or actual file sorting are implemented. In parallel with non-destructive R2 only after shared model stabilizes. Category/Place/rule/permission separate, classifier adversarial fixtures and dry-run batch. Use accepted owner choices to learn; no unreviewed automation of physical paths.
 
 **R5. Local BitTorrent engine (#5).** Engine selection, SAF integration and background seeding proof on Android devices; maintain typed semantics and honest foreground limitations. This is not a blocker for the first remote beta.
 

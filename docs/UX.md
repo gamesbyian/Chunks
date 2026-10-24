@@ -1,6 +1,6 @@
 # Chunks interaction and accessibility contract
 
-Updated 2026-10-24. Status: design intent. No high-fidelity interface family, real handset captures or uncoached-user evidence has been accepted.
+Updated 2026-10-24. Status: a preliminary Android Compose interface is implemented in #14. Its Transfers, Places, Organize, Server and Add-preview surfaces have source/build/JVM evidence but **no high-fidelity approved reference family, real handset captures or uncoached-user evidence**. Advanced Move and Rename interactions are still only design contracts.
 
 ## Mental model, first-run and navigation
 
@@ -36,3 +36,7 @@ Generous default controls (at least 48dp), expressive colour with text/icons red
 ## Accessibility acceptance
 
 Verify on actual Android handset and where appropriate tablet: TalkBack traversal and actions, large font 200%, reflow, minimum targets, touch reach, gesture alternatives, keyboard focus, reduce motion, colour-vision differentiation and screen rotation/cutouts. Automated semantics audit helps but cannot substitute for physical device or comprehension testing. Prototypes and reference illustrations must retain an explicit unapproved status until reviewed.
+
+## Implemented preview versus unreleased journey
+
+The #14 dashboard supports selecting rTorrent read-only views, on-demand refresh, filtering/sorting, per-torrent file inspection, inferred categories/collections and server-reported Places. The Add preview checks the rough magnet/path shape and displays a non-submitting draft. The actual per-transfer destination selection and server create-folder/Add confirmation journey is **not** implemented. Refresh failures retain the last snapshot and label it stale. Visual themes are draft; no device visual acceptance has been claimed. Readable error states remain limited and need real-server review.
