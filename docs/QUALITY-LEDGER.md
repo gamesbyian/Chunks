@@ -69,3 +69,7 @@ The proposed `tools/seedbox_fixture_qa.py` works on the opt-in development Seedh
 ## Android SAF .torrent picker proposal
 
 PR #40 proposes actual on-device `.torrent` file inspection through standard Android SAF file picker. Synthetic parser tests must pass before merge. A successful parser build validates source-format preview only, not binary metainfo RPC upload, real external file read on a handset or full Add success. The existing Add draft remains non-submitting.
+
+## Actual Kotlin adapter protected Seedhost smoke candidate
+
+PR #42 provides a manual-only, default-branch protected read-only Kotlin smoke with exact Seedhost URL/username/password secret contract. A normal green public PR is a compile check and **not** evidence of live adapter compatibility. Record a real manual `workflow_dispatch` run and tested commit SHA before claiming this gate. It does not test Android device TLS or any Add/move/remove behavior.
