@@ -48,3 +48,7 @@ As of merged #17, Chunks registers for Android magnet VIEW and text/plain SEND, 
 ## Local .torrent intake acceptance
 
 Use standard Android OpenDocument rather than requiring a custom filesystem browser. Read at most 2 MiB; reject noncanonical bencode, v2/hybrid until supported, path traversal and malformed UTF-8; show verified v1 SHA-1 infohash, torrent name, file count and announced size. No automatic Add and no hidden path mutation. Exercise file pick, cancel, bad extensions with valid bytes, wrong file type, oversized metainfo, accessibility labels and state retention in screenshot QA. First implementation candidate #40 is a preview only and must not imply submission.
+
+## Destination-first confirmed Add implementation
+
+The Compose Add view (#44 candidate) accepts a v1 magnet or SAF-picked local .torrent bytes, switches explicitly between sources, requires an absolute server directory, then offers **Review stopped Add** followed by **Confirm: add stopped**. After any submission attempt it prevents another immediate attempt from that same screen and displays Verified, Already present, Pending verification or Uncertain readback. This is not an auto-start wizard. Android document picker, server directory existence/permissions, live Seedhost success and screenshots require independent device/real-server evidence. The temporary .torrent bytes are held in memory only, not a stored library.

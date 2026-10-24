@@ -73,3 +73,7 @@ PR #40 proposes actual on-device `.torrent` file inspection through standard And
 ## Actual Kotlin adapter protected Seedhost smoke candidate
 
 PR #42 provides a manual-only, default-branch protected read-only Kotlin smoke with exact Seedhost URL/username/password secret contract. A normal green public PR is a compile check and **not** evidence of live adapter compatibility. Record a real manual `workflow_dispatch` run and tested commit SHA before claiming this gate. It does not test Android device TLS or any Add/move/remove behavior.
+
+## Two-stage Add UI candidate
+
+PR #44 integrates earlier readback APIs with an in-app Add workflow. It requires CI and device testing. A successfully assembled APK proves compilation, **not** a complete verified device Add or server authentication. Outcomes are displayed without conflating acknowledgement, pending, duplicate and uncertain states; source is chosen explicitly if both magnet and .torrent are present.
