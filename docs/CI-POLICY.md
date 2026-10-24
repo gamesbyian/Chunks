@@ -14,6 +14,7 @@ Do not use Secrets in fork/PR builds. Never connect the CI runner to a private r
 - Server state mutations and idempotence: synthetic test service and disposable rTorrent host; verify real acknowledgement and no duplicate actions on response loss.
 - Filesystem changes: independent fault injection using disposable datasets, multiple volumes and process kills at each journal checkpoint. Fail closed if recovery cannot be proved.
 - Android UI changes: occasional targeted emulator screenshot/hierarchy atlas and real handset walkthrough, not a permanent broad screenshot job.
+- Chunks-only display aliases and smart naming: deterministic JVM corpus (release-group cleanup, episode/year, unknown suffixes, adversarial/bidi text, no invented metadata), plus one focused native UI/instrumentation journey (suggestion stays draft until saved, reset, persistence across restart and separate endpoint/account/hash identity). Inspect actual populated queue pixels, 200% text and TalkBack, and confirm editor code cannot issue RPC or change backing-file mapping. This gate does not require a destructive Seedhost test, and neither existing baseline-login screenshots nor a passing APK compile prove it. Avoid creating a permanent dedicated CI workflow solely for naming.
 - Local engine background: device tests across Android background/service types and network conditions; do not use one green assembly to infer reliability.
 
 ## Receipts and stopping rules
