@@ -312,7 +312,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
      * Change exactly one file's download priority after independently reading
      * and checking its index, path, byte length and expected old priority.
      *
-     * rTorrent 0.9.x supports f.set_priority(hash, index, priority), followed
+     * rTorrent 0.9.x uses f.priority.set(hash:fINDEX, priority), followed
      * by d.update_priorities(hash). The second RPC is a distinct engine write;
      * if either acknowledgement is lost, do not replay either one.
      *
@@ -348,7 +348,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             return FilePriorityOutcome.Unchanged(hash, fileIndex, desiredPriority)
         }
         try {
-            call("f.set_priority", listOf(hash, fileIndex, desiredPriority))
+            call("f.priority.set", listOf(hash + ":f" + fileIndex, desiredPriority))
             call("d.update_priorities", listOf(hash))
         } catch (_: IOException) {
             return FilePriorityOutcome.Uncertain(hash, fileIndex)
