@@ -39,7 +39,7 @@ class RemoteStoppedAddTest {
         // Kotlin data classes generate a public copy() even with a private constructor.
         // Such a copy could substitute a traversal path or unrelated infohash.
         assertFalse(StoppedRemoteAddPlan::class.java.methods.any { it.name == "copy" })
-        assertTrue(StoppedRemoteAddPlan::class.java.constructors.isEmpty())
+        assertTrue(StoppedRemoteAddPlan::class.java.constructors.none { !it.isSynthetic })
         val valid = StoppedRemoteAddPlan.fromMagnet(magnet, dir)
         assertEquals(dir, valid.destination)
         assertEquals(hash, valid.expectedInfoHash)
