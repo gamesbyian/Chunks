@@ -91,8 +91,9 @@ class VerifiedAddScreenAtlasTest {
         }
         rule.onNodeWithText("Review stopped Add").assertDoesNotExist()
         rule.onNode(hasScrollAction()).performScrollToNode(hasText(
-            "Enter a valid v1 magnet or select a .torrent file, then provide an absolute server directory. Chunks cannot pre-verify server permissions."
+            "Invalid destination: remove repeated slashes, '.' and '..' path segments."
         ))
+        rule.onNodeWithText("Invalid destination: remove repeated slashes, '.' and '..' path segments.").assertExists()
         save("add-invalid-path-real-compose")
     }
 }
