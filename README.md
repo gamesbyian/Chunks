@@ -25,3 +25,7 @@ No third-party service, telemetry, account, or remote metadata lookup is require
 ## Hosted ruTorrent connection
 
 The connection form accepts either an HTTPS rTorrent XML-RPC endpoint or a hosted ruTorrent web URL such as `https://host.example/rutorrent/`. It derives the candidate HTTP-RPC plugin path automatically. See [provider testing and secrets policy](docs/SEEDHOST-REMOTE-TESTING.md). Chunks does not save credentials, and real protected seedbox interoperability remains unverified.
+
+## Licensed public Add fixture and test workflows
+
+For repeatable Add tests, the [public fixture collector](docs/PUBLIC-TORRENT-FIXTURES.md) handles genuine Internet Archive `.torrent` files, verified-hash magnets and optional small Wikimedia Commons files converted to local test torrents. [Fixture collection](https://github.com/gamesbyian/Chunks/actions/workflows/public-source-fixtures.yml) is metadata-only by default and does not contact rTorrent. [Protected Seedhost Add acceptance](https://github.com/gamesbyian/Chunks/actions/workflows/seedhost-public-add-smoke.yml) defaults to preview and requires explicit hash confirmation for one stopped test Add; no live Add has yet been proven merely by merging this workflow.
