@@ -52,3 +52,7 @@ Use standard Android OpenDocument rather than requiring a custom filesystem brow
 ## Destination-first confirmed Add implementation
 
 The Compose Add view (#44 candidate) accepts a v1 magnet or SAF-picked local .torrent bytes, switches explicitly between sources, requires an absolute server directory, then offers **Review stopped Add** followed by **Confirm: add stopped**. After any submission attempt it prevents another immediate attempt from that same screen and displays Verified, Already present, Pending verification or Uncertain readback. This is not an auto-start wizard. Android document picker, server directory existence/permissions, live Seedhost success and screenshots require independent device/real-server evidence. The temporary .torrent bytes are held in memory only, not a stored library.
+
+## Controlled Start/Stop affordance
+
+Transfers show one 48dp Start/Stop action per exact v1 hash, disabled when the list is stale. A confirm surface shows torrent display name and exact identity, and an explicit separate Confirm action performs one RPC. Preserve visible pending/uncertain/success state until user navigates away; never optimistic-toggle status. Refresh server view after the readback. Do not confuse lifecycle stop with deleting torrent or data; no auto-retries or background command loops.

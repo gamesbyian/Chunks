@@ -85,3 +85,7 @@ PR #46 proposes real rTorrent 0.9.8 stopped binary Add, duplicate protection and
 ## Add destination-parent compatibility caveat
 
 The rTorrent documentation differentiates `d.directory.set` from `d.directory_base.set` for multi-file torrents; the latter can flatten/remove the transfer-name subfolder. PR #47 corrects new-Add semantics to parent-directory selection and multi-file-aware readback, with offline negative tests. Prior real-engine runs that cover only single-file torrents do not establish multi-file destination integrity, and this remains a distinct acceptance gate.
+
+## Transfer lifecycle controls UI candidate
+
+PR #49 wires existing JVM-tested hash-targeted lifecycle operations into native Compose Cards, requiring explicit confirmation and server read-back. Build pending verification; no physical Android journey or production Seedhost lifecycle write has been observed. Stale snapshot blocks control, and ambiguous result is never reported as verified. Distinct from Add/Remove/File move acceptance gates.
