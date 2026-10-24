@@ -16,7 +16,7 @@ class RTorrentDisposableServerTest {
         val client = RTorrentRemote(RemoteCredentials(endpoint, "", ""))
         val version = client.version()
         assertTrue(version.isNotBlank())
-        assertTrue(client.listTransfers("main").isEmpty())
+        assertTrue(client.listTransfers().isEmpty())
         assertEquals(version, client.probe().version)
     }
 }

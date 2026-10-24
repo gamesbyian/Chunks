@@ -25,8 +25,8 @@ jobs:
           gradle-version: "9.3.1"
       - name: Start disposable rTorrent and localhost SCGI proxy
         run: |
-          sudo apt-get update -qq
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq rtorrent nginx
+          sudo timeout 180s apt-get update -qq
+          sudo timeout 180s env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq rtorrent nginx
           mkdir -p "$RUNNER_TEMP/chunks-home" "$RUNNER_TEMP/chunks-data" "$RUNNER_TEMP/chunks-session"
           cat > "$RUNNER_TEMP/chunks-home/.rtorrent.rc" <<EOF
           directory.default.set = $RUNNER_TEMP/chunks-data
@@ -49,7 +49,7 @@ jobs:
             }
           }
           EOF
-          HOME="$RUNNER_TEMP/chunks-home" rtorrent
+          timeout 20s env HOME="$RUNNER_TEMP/chunks-home" rtorrent
           sudo nginx -c "$RUNNER_TEMP/chunks-nginx.conf"
       - name: Assert read-only XML-RPC readiness
         run: |
