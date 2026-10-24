@@ -51,3 +51,7 @@ The stopped Add API in [merged PR #31](https://github.com/gamesbyian/Chunks/pull
 ## Public Add protocol acceptance harness
 
 [Merged PR #32](https://github.com/gamesbyian/Chunks/pull/32) passed the **offline** suite in [run 40065967589](https://github.com/gamesbyian/Chunks/actions/runs/40065967589), SHA `2378f2701d637d64e60802d83ced80f4793485c5`. A separate manual-only [Seedhost Add proof](../.github/workflows/seedhost-public-add-smoke.yml) now tests exact-hash-confirmed `load.raw_verbose` and records readback status. Before a real manual run, this is **offline-tested scaffolding only**, not proof of actual Seedhost Add, binary XML-RPC interoperability, physical file bytes, or an Android Add flow. `already_present_no_write`, `acknowledged_pending_readback` and `outcome_uncertain` are not successful new Adds.
+
+## Real snapshot visual QA selector
+
+The proposed `tools/seedbox_fixture_qa.py` works on the opt-in development Seedhost main-view snapshot only. It selects representative **real** transfer cases and records missing UI states without synthesizing names. The script's offline tests, and the enhanced secret-backed snapshot pipeline, require separate evidence. It is **not** a screenshot capture, a live inventory completeness proof, or any transfer mutation.
