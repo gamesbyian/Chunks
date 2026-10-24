@@ -230,6 +230,7 @@ class ChunksMainActivityAtlasTest {
         // The queue is name-sorted, so the first unfiltered card is not this item.
         // Keeping this search after Save also proves the original remains searchable.
         rule.onNodeWithText("Search names or Places").performTextInput("Public.Example")
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("1 shown"))
         rule.onNodeWithText("1 shown").assertExists()
         // An actual installed-app queue action, not only an isolated editor component.
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Change list name"))
