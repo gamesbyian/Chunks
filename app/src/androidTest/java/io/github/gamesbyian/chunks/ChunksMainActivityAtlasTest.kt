@@ -10,6 +10,8 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isRoot
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.printToString
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
@@ -25,6 +27,7 @@ import java.net.InetAddress
 import java.net.ServerSocket
 import java.net.Socket
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.Collections
 import org.junit.After
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -43,6 +46,8 @@ class ChunksMainActivityAtlasTest {
     private var server: ServerSocket? = null
     private var worker: Thread? = null
     private val shutdown = AtomicBoolean(false)
+    private val receivedMethods = Collections.synchronizedList(mutableListOf<String>())
+    @Volatile private var fixtureProblem: String? = null
 
     private fun str(s: String) = "<value><string>" + s.replace("&", "&amp;")
         .replace("<", "&lt;").replace(">", "&gt;") + "</string></value>"
@@ -83,6 +88,7 @@ class ChunksMainActivityAtlasTest {
     private fun response(request: String): ByteArray {
         val method = Regex("<methodName>([^<]+)</methodName>")
             .find(request)?.groupValues?.get(1).orEmpty()
+        receivedMethods.add(method)
         val answer = when(method) {
             "system.client_version" -> str("0.9.8")
             "d.multicall2" -> {
@@ -143,8 +149,10 @@ class ChunksMainActivityAtlasTest {
             while (!shutdown.get()) {
                 try {
                     serve(listening.accept())
-                } catch (_: java.io.IOException) {
+                } catch (failure: Throwable) {
                     if (shutdown.get()) break
+                    fixtureProblem = failure::class.java.simpleName +
+                        ":" + (failure.message ?: "").take(120)
                 }
             }
         }.apply { isDaemon = true; start() }
@@ -188,8 +196,19 @@ class ChunksMainActivityAtlasTest {
         val endpoint = startLoopback()
         rule.onNodeWithText("ruTorrent web URL or RPC address").performTextInput(endpoint)
         rule.onNodeWithText("Connect to rTorrent").performClick()
-        rule.waitUntil(20_000) {
-            rule.onAllNodesWithText("It's all here.").fetchSemanticsNodes().isNotEmpty()
+        try {
+            rule.waitUntil(20_000) {
+                rule.onAllNodesWithText("It's all here.").fetchSemanticsNodes().isNotEmpty()
+            }
+        } catch (failure: androidx.compose.ui.test.ComposeTimeoutException) {
+            // Genuine diagnostic from installed app UI. This fixture uses no
+            // secret values; never print HTTP authorization/request bodies.
+            save("app-connection-diagnostic-real-compose")
+            val ui = rule.onRoot(useUnmergedTree = true).printToString().take(1700)
+            throw AssertionError(
+                "Loopback RPC methods=" + receivedMethods.toList().joinToString(",") +
+                    "; fixture=" + (fixtureProblem ?: "none") +
+                    "; actual native UI=" + ui, failure)
         }
         rule.onNodeWithText("It's all here.").assertExists()
         save("app-transfers-populated-real-compose")
