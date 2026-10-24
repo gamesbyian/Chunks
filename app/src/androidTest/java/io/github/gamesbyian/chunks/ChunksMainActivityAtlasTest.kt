@@ -4,6 +4,7 @@ import android.content.ContentValues
 import android.graphics.Bitmap
 import android.os.Environment
 import android.provider.MediaStore
+import android.security.NetworkSecurityPolicy
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasScrollAction
@@ -177,6 +178,13 @@ class ChunksMainActivityAtlasTest {
     }
 
     @Test fun installedAppNavigatesPopulatedReadOnlyRpcScreens() {
+        val policy = NetworkSecurityPolicy.getInstance()
+        assertTrue("Literal loopback must be permitted for controlled Android QA",
+            policy.isCleartextTrafficPermitted("127.0.0.1"))
+        assertTrue("Localhost may be used as a safe local-only target",
+            policy.isCleartextTrafficPermitted("localhost"))
+        assertTrue("Normal external domains must remain HTTPS-only",
+            !policy.isCleartextTrafficPermitted("example.com"))
         val endpoint = startLoopback()
         rule.onNodeWithText("ruTorrent web URL or RPC address").performTextInput(endpoint)
         rule.onNodeWithText("Connect to rTorrent").performClick()
