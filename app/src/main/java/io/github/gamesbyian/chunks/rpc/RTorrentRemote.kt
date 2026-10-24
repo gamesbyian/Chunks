@@ -36,6 +36,18 @@ data class RemoteTransfer(
 data class RemoteFile(val path: String, val sizeBytes: Long, val priority: Int)
 
 /**
+ * Acknowledged means the RPC returned without a fault. Verified means a
+ * subsequent read reports the requested engine state. Uncertain means
+ * an RPC may have applied but its outcome could not be read back.
+ */
+sealed class LifecycleOutcome {
+    data class Verified(val started: Boolean) : LifecycleOutcome()
+    data class Pending(val requestedStarted: Boolean, val observedStarted: Boolean) : LifecycleOutcome()
+    data class Uncertain(val requestedStarted: Boolean) : LifecycleOutcome()
+}
+
+
+/**
  * Initial *read-only* XML-RPC adapter. No automatic retries or mutations.
  * HTTPS only, except HTTP on literal loopback used for controlled development fixtures.
  */
@@ -117,6 +129,23 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                 sizeBytes = number(columns[1]).coerceAtLeast(0),
                 priority = number(columns[2]).toInt()
             )
+        }
+    }
+
+    /**
+     * Explicit hash-targeted lifecycle mutation. No retries: on transport loss
+     * a command may already have applied, so the caller must refresh state.
+     * Does not remove torrents, erase data or change any filesystem path.
+     */
+    suspend fun setStarted(hash: String, desiredStarted: Boolean): LifecycleOutcome {
+        require(Regex("[0-9a-fA-F]{40}").matches(hash)) { "Invalid v1 torrent hash" }
+        call(if (desiredStarted) "d.start" else "d.stop", listOf(hash))
+        return try {
+            val observed = number(call("d.state", listOf(hash))) != 0L
+            if (observed == desiredStarted) LifecycleOutcome.Verified(observed)
+            else LifecycleOutcome.Pending(desiredStarted, observed)
+        } catch (_: java.io.IOException) {
+            LifecycleOutcome.Uncertain(desiredStarted)
         }
     }
 
