@@ -1,0 +1,18 @@
+# Android/Gradle build output
+.gradle/
+build/
+**/build/
+.idea/
+*.iml
+local.properties
+captures/
+*.apk
+*.aab
+*.keystore
+*.jks
+# Never commit seedbox details, rpc fixtures with credentials, or local configuration
+.env
+.env.*
+secrets.properties
+*.log
+.DS_Store
