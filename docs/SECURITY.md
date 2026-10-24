@@ -45,3 +45,7 @@ Extraction must bound total actual output bytes, ratio, member count, depth, CPU
 ## Display alias privacy boundary
 
 Locally entered labels can reveal torrent contents. Keep them in app-private preferences, unbacked-up in the current prototype, and never transmit them via rTorrent RPC, tracker requests or external metadata enrichment. Hash-based preference keys are identifiers, not encryption; never include passwords, session cookies or tracker passkeys in the key input. Bound and validate aliases, reject hidden bidi/control characters and render them only as inert text. Suggestions derive exclusively from supplied filename facts; any future external title/guest lookup requires explicit, informed, revocable consent and source provenance. An alias must never authorize physical file operations or replace the exact hash/path mutation preflight.
+
+## Android loopback-only test exception
+
+The native Android network security configuration refuses ordinary cleartext endpoints. Literal `127.0.0.1`, `localhost` and `::1` may be used only for local process/device-loopback XML-RPC testing, matching the adapter's existing explicit HTTPS-or-loopback guard. No arbitrary LAN/IP HTTP, unauthenticated public SCGI or certificate-validation bypass is permitted. The installed-app synthetic fixture remains read-only and uses no credentials or remote host.
