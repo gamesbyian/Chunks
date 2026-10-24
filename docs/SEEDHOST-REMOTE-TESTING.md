@@ -1,16 +1,21 @@
-# Seedhost remote setup and read-only acceptance
+# Seedhost rTorrent remote testing
 
-Seedhost documents HTTPS port 443, ruTorrent authentication and the XML-RPC plugin endpoint at /rutorrent/plugins/httprpc/action.php. On some installations the endpoint includes a leading /username/ path; an older /username/RPC1 variant is also documented. The ruTorrent HTML URL is not itself the RPC endpoint.
+The Chunks Android client can derive a candidate XML-RPC plugin endpoint from an HTTPS ruTorrent web URL. This is not proof that the endpoint works for the owner's instance.
 
-- https://www.seedhost.eu/client-area/knowledgebase/241/Sonarr-basic-configuration.html
-- https://www.seedhost.eu/client-area/knowledgebase/300/Couchpotato-basic-configuration.html
+## Exact credential contract
 
-Chunks now derives the plugin RPC candidate from a user-entered ruTorrent web URL. An individual Seedhost account's exact path and authentication must be verified; guessing is not proof.
+The owner confirmed these repository-secret names (case-sensitive):
+- `rtorrent_user`
+- `rtorrent_pass`
 
-Never commit or echo the owner's personal seedbox address, password, private torrent inventory or tracker tokens. GitHub secret values cannot be read back. The general-purpose repo uses FTP_PASSWORD, which must NOT automatically be interpreted as a ruTorrent credential.
+The manual-only `seedhost-readonly-probe.yml` workflow now consumes exactly those secrets. It accepts a **credential-free HTTPS ruTorrent URL as a Run workflow input**; there is no required URL secret. Use the ruTorrent web login URL already supplied to the project when dispatching.
 
-Acceptance: a trusted default-branch, manual-only workflow with explicit relevant credentials stored as Chunks repository secrets; read-only system.client_version over HTTPS with bounded response and redacted logs; then version/method and list completeness verification and physical Android testing. No file movement or write calls before authorization and separate disposable tests.
+Its only request is `system.client_version`. The workflow refuses off-provider hostnames, URLs embedding credentials or query/fragment data, and redirects. It does not log the server URL, password, returned version, XML response, info hashes or file inventory. Do not put real credentials into GitHub workflow inputs or code.
 
-## Available manual smoke workflow
+The credential values cannot be read via available GitHub connector tools and were not retrieved. A passing Kotlin/Android build does not prove the credentialed probe succeeded; record the workflow run and sanitized result separately when it runs.
 
-`.github/workflows/seedhost-readonly-probe.yml` can be launched from Actions **after merging**, but only if credentials and URL are present as repository secrets. Accepted URL secret names: `RTORRENT_URL`, `RUTORRENT_URL` or `SEEDHOST_RUTORRENT_URL`; accepted user/password pairs: `RTORRENT_USERNAME`/`RTORRENT_PASSWORD`, `RUTORRENT_USERNAME`/`RUTORRENT_PASSWORD` or `SEEDHOST_USERNAME`/`SEEDHOST_PASSWORD`. If secret names differ, adapt the workflow carefully on a trusted branch rather than exposing values. The workflow does not print the target URL, version, XML response or credentials. It has no push or PR trigger and makes only the read-only `system.client_version` request.
+## Next gates
+
+After the protected version probe succeeds, test method listing, view/list completeness and browser/Android authentication behavior, without dumping private torrent names. Only then prototype remote write methods against disposable transfers. Live relocation remains blocked pending crash-safe verification.
+
+Seedhost general integration docs describe `/rutorrent/plugins/httprpc/action.php` and deployment-specific variants such as `/RPC1`. Never assume a setter has moved files.
