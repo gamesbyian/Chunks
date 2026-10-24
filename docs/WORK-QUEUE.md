@@ -100,6 +100,14 @@ PR #40 adds an Android Storage Access Framework `OpenDocument` picker, bounded 2
 
 PR #42 adds a trusted-main, manual-only Seedhost compatibility workflow invoking the **actual Kotlin RTorrentRemote adapter** against the authorized development server with repository credentials. It checks live authenticated version and main-view torrent decoding without state changes. PR CI will **skip** the live check if no secret environment is supplied, so only a separate manual run with explicit evidence can mark actual Seedhost Kotlin compatibility passed. This is an essential predecessor to declaring handset Add/lifecycle support.
 
+## Confirmed Compose Add handoff candidate
+
+PR #44 connects the existing v1 SAF .torrent parser and destination-first stopped-load core to an accessible two-stage Add screen. Submission stays disabled until the user explicitly reviews exact hash and destination. A failed or ambiguous submission cannot be immediately repeated from the same screen; user must inspect remote state. Merge only after Android/JVM green. Real device flow and actual Seedhost Add remain separate acceptance gates, not implied by a build.
+
+## Real disposable rTorrent write acceptance candidate
+
+PR #46 extends the existing localhost-only SCGI/nginx legacy rig to execute a real **stopped raw .torrent Add**, enforce duplicate-hash refusal, then perform verified start/stop against disposable rTorrent 0.9.8 data only. It verifies exact hash and directory, with asynchronous state polling but never repeats the Add after an uncertain outcome. The PR workflow obtains **no secrets** and never accesses the owner's Seedhost. This is a *proposal until the real rTorrent job passes*; actual Seedhost and Android/device operations remain separate.
+
 ## Destination-parent integrity correction
 
 PR #47 corrects user-selected Add destination semantics from `d.directory_base.set` to `d.directory.set`, with separate expected physical folder roots for single-/multi-file torrents, both Kotlin and protected Python readback verification, and mismatch tests. Do not treat a multi-file torrent flattened into the selected parent as successful. **Pending CI and real-engine/Seedhost evidence**. This prevents early implementation success from accidentally violating the Place contract.

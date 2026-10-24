@@ -1,13 +1,17 @@
 name: Disposable rTorrent protocol proof
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/disposable-rtorrent-probe.yml"
+      - "app/src/test/java/io/github/gamesbyian/chunks/rpc/RTorrentDisposableMutationTest.kt"
 permissions:
   contents: read
 concurrency:
   group: chunks-disposable-probe
   cancel-in-progress: false
 jobs:
-  legacy-read-only:
+  legacy-real-engine:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -76,13 +80,19 @@ jobs:
           if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
             ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
           fi
-      - name: Test actual rTorrent through Chunks adapter
+      - name: Test read-only protocol and actual stopped Add/start/stop on throwaway rTorrent
         env:
           CHUNKS_DISPOSABLE_RT_URL: http://127.0.0.1:18080/RPC2
-        run: gradle --no-daemon :app:testDebugUnitTest --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableServerTest'
+          CHUNKS_DISPOSABLE_TARGET_DIR: ${{ runner.temp }}/chunks-data
+        run: |
+          # Read-only acceptance asserts a fresh empty server: run it FIRST.
+          gradle --no-daemon :app:testDebugUnitTest --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableServerTest'
+          # Only after the empty-server proof, use the same ephemeral process
+          # for deliberate Add/duplicate/start/stop mutation acceptance.
+          gradle --no-daemon :app:testDebugUnitTest --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableMutationTest'
       - name: Evidence summary
         if: always()
         run: |
-          echo "### Disposable read-only rTorrent test" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Disposable real-engine stopped Add + lifecycle test" >> "$GITHUB_STEP_SUMMARY"
           echo "Source commit: $GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
-          echo "No secrets, user media, remote machines or mutation commands supplied." >> "$GITHUB_STEP_SUMMARY"
+          echo "Real stopped Add/start/stop targets ephemeral local rTorrent only; no secrets, user media or remote machines supplied." >> "$GITHUB_STEP_SUMMARY"

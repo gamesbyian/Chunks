@@ -74,6 +74,14 @@ PR #40 proposes actual on-device `.torrent` file inspection through standard And
 
 PR #42 provides a manual-only, default-branch protected read-only Kotlin smoke with exact Seedhost URL/username/password secret contract. A normal green public PR is a compile check and **not** evidence of live adapter compatibility. Record a real manual `workflow_dispatch` run and tested commit SHA before claiming this gate. It does not test Android device TLS or any Add/move/remove behavior.
 
+## Two-stage Add UI candidate
+
+PR #44 integrates earlier readback APIs with an in-app Add workflow. It requires CI and device testing. A successfully assembled APK proves compilation, **not** a complete verified device Add or server authentication. Outcomes are displayed without conflating acknowledgement, pending, duplicate and uncertain states; source is chosen explicitly if both magnet and .torrent are present.
+
+## Controlled real-engine Add/lifecycle integration candidate
+
+PR #46 proposes real rTorrent 0.9.8 stopped binary Add, duplicate protection and start/stop via the exact Kotlin adapter and an isolated nginx SCGI gateway. Tests are scoped to `127.0.0.1:18080`, use a throwaway path and no credentials. Once green, record exact tested SHA and job result. This is not modern build or authenticated Seedhost proof, and does not prove physical bytes or relocation.
+
 ## Add destination-parent compatibility caveat
 
 The rTorrent documentation differentiates `d.directory.set` from `d.directory_base.set` for multi-file torrents; the latter can flatten/remove the transfer-name subfolder. PR #47 corrects new-Add semantics to parent-directory selection and multi-file-aware readback, with offline negative tests. Prior real-engine runs that cover only single-file torrents do not establish multi-file destination integrity, and this remains a distinct acceptance gate.
