@@ -56,12 +56,13 @@ class RemoteStoppedAddTest {
                 "d.multicall2" -> if (loaded) rowXml()
                                    else "<value><array><data></data></array></value>"
                 "load.verbose" -> {
-                    if (!body.contains("d.directory_base.set=$dir") ||
+                    if (!body.contains("d.directory.set=$dir") ||
                         !body.contains("magnet:?xt=")) throw AssertionError("Unexpected load request")
                     loaded = true
                     num(0)
                 }
-                "d.directory_base" -> value(dir)
+                "d.directory" -> value(dir)
+                "d.is_multi_file" -> num(0)
                 "d.state" -> num(0)
                 else -> throw AssertionError("Unsupported test RPC: $method")
             }
@@ -78,7 +79,7 @@ class RemoteStoppedAddTest {
             assertEquals(RemoteAddOutcome.VerifiedStopped(hash, dir), remote.loadStopped(plan))
             assertTrue(loaded)
             assertEquals(listOf("d.multicall2", "load.verbose", "d.multicall2",
-                "d.directory_base", "d.state"),
+                "d.directory", "d.is_multi_file", "d.state"),
                 requests.map { it.substringBefore('|') })
             val beforeDuplicate = requests.size
             assertEquals(RemoteAddOutcome.AlreadyPresent(hash), remote.loadStopped(plan))
