@@ -23,7 +23,7 @@ jobs:
           RT_PASS: ${{ secrets.rtorrent_pass }}
         run: |
           python3 - <<'PY'
-          import base64, os, urllib.parse, urllib.request, urllib.error, xml.etree.ElementTree as ET
+          import os, urllib.parse, urllib.request, urllib.error, xml.etree.ElementTree as ET
           url = os.getenv("RUTORRENT_URL")
           user = os.getenv("RT_USER")
           password = os.getenv("RT_PASS")
@@ -41,15 +41,23 @@ jobs:
               raise SystemExit("Unrecognized RPC endpoint. No request sent.")
           endpoint = urllib.parse.urlunsplit(("https", parsed.netloc, path, "", ""))
           request_body = b'<?xml version="1.0"?><methodCall><methodName>system.client_version</methodName><params/></methodCall>'
-          basic = base64.b64encode((user + ":" + password).encode()).decode()
           request = urllib.request.Request(endpoint, data=request_body, headers={
-              "Content-Type": "text/xml", "Authorization": "Basic " + basic
+              "Content-Type": "text/xml"
           }, method="POST")
           class NoRedirect(urllib.request.HTTPRedirectHandler):
               def redirect_request(self, req, fp, code, msg, headers, newurl):
                   return None
+          # Let the HTTPS gateway announce Basic or Digest; only then supply
+          # credentials, limited to this exact endpoint. Never follow redirects.
+          manager = urllib.request.HTTPPasswordMgrWithDefaultRealm()
+          manager.add_password(None, endpoint, user, password)
+          opener = urllib.request.build_opener(
+              NoRedirect(),
+              urllib.request.HTTPDigestAuthHandler(manager),
+              urllib.request.HTTPBasicAuthHandler(manager)
+          )
           try:
-              with urllib.request.build_opener(NoRedirect).open(request, timeout=12) as response:
+              with opener.open(request, timeout=12) as response:
                   result = response.read(131073)
                   if len(result) > 131072 or b"<!DOCTYPE" in result.upper() or b"<!ENTITY" in result.upper():
                       raise ValueError("Unsafe or excessive XML response")
@@ -60,7 +68,14 @@ jobs:
                       raise ValueError("Missing RPC result")
                   print("CHUNKS_SEEDHOST_RPC: authenticated read-only response verified")
           except urllib.error.HTTPError as error:
-              print("CHUNKS_SEEDHOST_RPC: HTTP status " + str(error.code))
+              if error.code == 401:
+                  challenge = (error.headers.get("WWW-Authenticate") or "").lower()
+                  scheme = "Digest" if challenge.startswith("digest ") else (
+                      "Basic" if challenge.startswith("basic ") else "unknown")
+                  # Report only challenge *scheme*, not realm, nonce or endpoint.
+                  print("CHUNKS_SEEDHOST_RPC: HTTP 401 after auth negotiation; scheme=" + scheme)
+              else:
+                  print("CHUNKS_SEEDHOST_RPC: HTTP status " + str(error.code))
               raise SystemExit(1)
           except Exception as error:
               print("CHUNKS_SEEDHOST_RPC: failed (" + type(error).__name__ + ")")
