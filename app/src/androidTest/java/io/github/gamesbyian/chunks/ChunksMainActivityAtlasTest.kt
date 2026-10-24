@@ -240,6 +240,8 @@ class ChunksMainActivityAtlasTest {
         save("app-alias-review-populated-real-compose")
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Save name"))
         rule.onNodeWithText("Save name").performClick()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(
+            hasText("Original torrent: Public.Example.Long.Named.Archive.S01E01.mkv"))
         rule.onNodeWithText("Original torrent: Public.Example.Long.Named.Archive.S01E01.mkv",
             substring = true).assertExists()
         save("app-alias-saved-populated-real-compose")
