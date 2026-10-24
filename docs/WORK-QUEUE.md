@@ -1,10 +1,10 @@
 # Chunks current implementation queue
-**Live state as of 2026-10-23.** Reconcile main, open PRs, issues and the [quality ledger](QUALITY-LEDGER.md) before claiming anything shipped. Historical research notes are not open tickets.
+**Live state as of 2026-10-24.** Reconcile main, open PRs, issues and the [quality ledger](QUALITY-LEDGER.md) before claiming anything shipped. Historical research notes are not open tickets.
 
 ## Actual baseline
 - [x] Existing public repo identified; initial content only one README.
 - [x] Product and engineering invariants determined; issue lanes opened (#1–#10).
-- [ ] Foundation branch merged; Android build and unit tests green at exact SHA.
+- [x] Foundation PR #11 merged at `6dba63f`; Android source build and unit tests green on exact PR SHA `201b53f` ([run 40057523588](https://github.com/gamesbyian/Chunks/actions/runs/40057523588)).
 - [ ] Verified connection to an actual rTorrent instance.
 - [ ] Any write/move/rename capability accepted against disposable fixtures.
 - [ ] Working local BitTorrent engine and handset-tested background operation.
@@ -13,7 +13,7 @@
 ## Priority / dependencies
 | Order | Issue | Required next evidence |
 |---|---|---|
-| P0-A | #1 | HTTPS XML-RPC read-only vertical slice, fixture tests, legacy and modern server matrix |
+| P0-A | #1 | Read-only XML-RPC shell merged, but live HTTPS seedbox verification, method/version matrix and fault matrix still needed |
 | P0-B | #2 then #3 | Failure-safe remote file operations, path mapping, companion proof, crash journal |
 | P0-C | #4 | Add with explicit Place; files/priorities and verified state |
 | P0-D | #5 | Local engine integration and Android OS lifecycle proof |

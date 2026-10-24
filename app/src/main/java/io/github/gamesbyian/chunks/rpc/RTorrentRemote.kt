@@ -9,6 +9,14 @@ import kotlinx.coroutines.withContext
 
 data class RemoteCredentials(val endpoint: String, val username: String, val password: String)
 
+/**
+ * Method enumeration is nullable: legacy or restricted installations may
+ * reject system.listMethods even when ordinary RPC commands work.
+ */
+data class RemoteProbe(val version: String, val advertisedMethods: Set<String>?) {
+    val multicallAdvertised: Boolean? get() = advertisedMethods?.contains("d.multicall2")
+}
+
 /** Stable identity and observed values from one specific rTorrent server snapshot. */
 data class RemoteTransfer(
     val hash: String,
@@ -37,7 +45,21 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         }
     }
 
-    suspend fun version(): String = call("system.client_version").toString()
+    suspend fun version(): String =
+        call("system.client_version") as? String ?: error("Unexpected rTorrent version reply")
+
+    suspend fun probe(): RemoteProbe {
+        val serverVersion = version()
+        val methods = try {
+            (call("system.listMethods") as? List<*>)?.map { item ->
+                item as? String ?: error("Non-string RPC method name")
+            }?.toSet()
+        } catch (_: RpcFault) {
+            // Missing introspection does not imply a missing torrent-list method.
+            null
+        }
+        return RemoteProbe(serverVersion, methods)
+    }
 
     suspend fun listTransfers(): List<RemoteTransfer> {
         val fields = listOf("d.hash=", "d.name=", "d.size_bytes=", "d.completed_bytes=", "d.state=", "d.directory=")
@@ -60,7 +82,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
     private fun number(value: Any?): Long =
         (value as? Number)?.toLong() ?: error("Expected numeric rTorrent value")
 
-    suspend fun call(method: String, params: List<Any> = emptyList()): Any? =
+    private suspend fun call(method: String, params: List<Any> = emptyList()): Any? =
         withContext(Dispatchers.IO) {
             val connection = endpoint.toURL().openConnection() as HttpURLConnection
             connection.connectTimeout = 8_000
