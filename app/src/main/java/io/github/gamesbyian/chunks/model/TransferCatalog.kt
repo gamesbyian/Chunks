@@ -16,11 +16,13 @@ object TransferCatalog {
         items: List<RemoteTransfer>,
         query: String,
         filter: TransferFilter,
-        order: TransferOrder
+        order: TransferOrder,
+        displayName: (RemoteTransfer) -> String = { it.name }
     ): List<RemoteTransfer> {
         val needle = query.trim()
         val subset = items.filter { item ->
             val matches = needle.isEmpty() ||
+                displayName(item).contains(needle, ignoreCase = true) ||
                 item.name.contains(needle, ignoreCase = true) ||
                 item.directory.contains(needle, ignoreCase = true)
             val passes = when (filter) {
@@ -33,13 +35,13 @@ object TransferCatalog {
             matches && passes
         }
         return when (order) {
-            TransferOrder.NAME -> subset.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
+            TransferOrder.NAME -> subset.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { displayName(it) })
             TransferOrder.PROGRESS -> subset.sortedWith(compareByDescending<RemoteTransfer> { it.fractionComplete }
-                .thenBy(String.CASE_INSENSITIVE_ORDER) { it.name })
+                .thenBy(String.CASE_INSENSITIVE_ORDER) { displayName(it) })
             TransferOrder.SIZE -> subset.sortedWith(compareByDescending<RemoteTransfer> { it.sizeBytes }
-                .thenBy(String.CASE_INSENSITIVE_ORDER) { it.name })
+                .thenBy(String.CASE_INSENSITIVE_ORDER) { displayName(it) })
             TransferOrder.SPEED -> subset.sortedWith(compareByDescending<RemoteTransfer> { it.downBytesPerSecond ?: 0 }
-                .thenBy(String.CASE_INSENSITIVE_ORDER) { it.name })
+                .thenBy(String.CASE_INSENSITIVE_ORDER) { displayName(it) })
         }
     }
 
