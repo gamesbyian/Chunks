@@ -115,8 +115,10 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
     /**
      * Load a NEW test transfer stopped at an explicit server directory.
      *
-     * The d.directory_base.set post-load expression is applied inside load.verbose,
-     * before the transfer is eligible to start. There is no automatic retry,
+     * The d.directory.set post-load expression selects a parent destination
+     * consistently for single- and multi-file transfers. For multi-file
+     * torrents, rTorrent creates/uses a child named after the torrent.
+     * There is no automatic retry,
      * external content download, filesystem move, or silent duplicate edit.
      * Real hosted-server acceptance is still required.
      */
@@ -127,7 +129,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         }
         try {
             call("load.verbose", listOf("", plan.source,
-                "d.directory_base.set=" + plan.destination))
+                "d.directory.set=" + plan.destination))
         } catch (_: IOException) {
             // Timeout or gateway loss can occur *after* load was applied.
             // Never repeat the call automatically: duplicates or path drift
@@ -138,9 +140,10 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             val loaded = listTransfers("main").find {
                 it.hash.equals(plan.expectedInfoHash, ignoreCase = true)
             } ?: return RemoteAddOutcome.PendingVerification(plan.expectedInfoHash)
-            val base = call("d.directory_base", listOf(plan.expectedInfoHash)) as? String
+            val base = readVerifiedAddDirectory(
+                plan.expectedInfoHash, plan.destination, loaded.name)
             val started = number(call("d.state", listOf(plan.expectedInfoHash))) != 0L
-            if (!started && !loaded.started && base == plan.destination) {
+            if (!started && !loaded.started && base != null) {
                 RemoteAddOutcome.VerifiedStopped(plan.expectedInfoHash, base)
             } else {
                 RemoteAddOutcome.PendingVerification(plan.expectedInfoHash)
@@ -172,16 +175,16 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         }
         try {
             call("load.raw_verbose", listOf("", torrentBytes,
-                "d.directory_base.set=" + plan.destination))
+                "d.directory.set=" + plan.destination))
         } catch (_: IOException) {
             return RemoteAddOutcome.Uncertain(hash)
         }
         return try {
             val item = listTransfers("main").find { it.hash.equals(hash, ignoreCase = true) }
                 ?: return RemoteAddOutcome.PendingVerification(hash)
-            val base = call("d.directory_base", listOf(hash)) as? String
+            val base = readVerifiedAddDirectory(hash, plan.destination, item.name)
             val started = number(call("d.state", listOf(hash))) != 0L
-            if (!item.started && !started && base == plan.destination) {
+            if (!item.started && !started && base != null) {
                 RemoteAddOutcome.VerifiedStopped(hash, base)
             } else {
                 RemoteAddOutcome.PendingVerification(hash)
@@ -191,6 +194,28 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         } catch (_: RpcFault) {
             RemoteAddOutcome.PendingVerification(hash)
         }
+    }
+
+    /**
+     * A user-selected Add destination is the *parent* directory. rTorrent's
+     * d.directory_base.set is NOT suitable here: for multi-file torrents it
+     * suppresses the torrent-name subdirectory, potentially colliding with
+     * unrelated existing files. Use d.directory.set and verify the resulting
+     * root according to d.is_multi_file and the reported torrent name.
+     */
+    private suspend fun readVerifiedAddDirectory(
+        hash: String, parent: String, name: String
+    ): String? {
+        val directory = call("d.directory", listOf(hash)) as? String ?: return null
+        val multi = number(call("d.is_multi_file", listOf(hash))) != 0L
+        val expected = if (multi) {
+            if (name.isBlank() || name == "." || name == ".." ||
+                name.contains('/') || name.contains('\\') || name.any { it.code < 32 }) {
+                return null
+            }
+            parent + "/" + name
+        } else parent
+        return directory.takeIf { it == expected }
     }
 
     /** A per-torrent read-only file inspector; never changes file priorities. */
