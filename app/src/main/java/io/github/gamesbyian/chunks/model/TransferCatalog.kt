@@ -68,8 +68,35 @@ object Units {
 }
 
 data class AddDraft(val magnet: String, val destination: String) {
-    val looksLikeMagnet: Boolean get() =
-        magnet.startsWith("magnet:?") && Regex("(?i)(?:[?&])xt=urn:btih:[A-Za-z0-9]+(?:&|$)").containsMatchIn(magnet)
-    val hasDestination: Boolean get() = destination.startsWith("/") && !destination.contains('\n')
+    val looksLikeMagnet: Boolean get() {
+        val url = magnet.trim()
+        if (url.length > 8192 || !url.startsWith("magnet:?", ignoreCase = true)) return false
+        val xt = url.substringAfter("?").split("&").firstOrNull {
+            it.startsWith("xt=", ignoreCase = true)
+        }?.substringAfter("=") ?: return false
+        val decoded = try {
+            java.net.URLDecoder.decode(xt, "UTF-8")
+        } catch (_: IllegalArgumentException) {
+            return false
+        }
+        return when {
+            decoded.startsWith("urn:btih:", ignoreCase = true) -> {
+                val hash = decoded.substringAfterLast(":")
+                Regex("[a-fA-F0-9]{40}").matches(hash) ||
+                    Regex("[A-Za-z2-7]{32}").matches(hash)
+            }
+            decoded.startsWith("urn:btmh:", ignoreCase = true) -> {
+                Regex("(?i)1220[a-f0-9]{64}").matches(decoded.substringAfterLast(":"))
+            }
+            else -> false
+        }
+    }
+
+    val hasDestination: Boolean get() {
+        val name = destination.trim()
+        return name.startsWith("/") && name.length <= 4096 &&
+            name.none { it.code < 32 } && name.split("/").none { it == ".." }
+    }
+
     val canPreview: Boolean get() = looksLikeMagnet && hasDestination
 }

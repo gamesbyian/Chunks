@@ -1,5 +1,6 @@
 package io.github.gamesbyian.chunks
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -34,6 +35,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -65,16 +67,34 @@ private val Coral = Color(0xFFFFB69D)
 private val Blue = Color(0xFF4662C6)
 
 class MainActivity : ComponentActivity() {
+    private var incomingMagnet by mutableStateOf<String?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        incomingMagnet = magnetFromIntent(intent)
         setContent {
             MaterialTheme(colorScheme = lightColorScheme(
                 primary = Blue, onPrimary = Color.White, surface = Cream,
                 onSurface = Ink, background = Cream, secondary = Ink
             )) {
-                Surface(modifier = Modifier.fillMaxSize()) { ChunksApp() }
+                Surface(modifier = Modifier.fillMaxSize()) { ChunksApp(incomingMagnet) }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        incomingMagnet = magnetFromIntent(intent)
+    }
+
+    private fun magnetFromIntent(intent: Intent?): String? {
+        val candidate = when (intent?.action) {
+            Intent.ACTION_VIEW -> intent.dataString
+            Intent.ACTION_SEND -> intent.getStringExtra(Intent.EXTRA_TEXT)
+            else -> null
+        }?.trim() ?: return null
+        return candidate.takeIf { it.length <= 8192 && it.startsWith("magnet:?", true) }
     }
 }
 
@@ -83,7 +103,7 @@ private enum class Section(val label: String) {
 }
 
 @Composable
-private fun ChunksApp() {
+private fun ChunksApp(sharedMagnet: String?) {
     var endpoint by remember { mutableStateOf("") }
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -106,6 +126,14 @@ private fun ChunksApp() {
     var magnet by remember { mutableStateOf("") }
     var draftPath by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
+
+    // Incoming Android Sharesheet/VIEW links prefill a local draft. Never auto-submit.
+    LaunchedEffect(sharedMagnet) {
+        if (sharedMagnet != null) {
+            magnet = sharedMagnet
+            if (server != null) section = Section.ADD
+        }
+    }
 
     val refresh: () -> Unit = {
         val remote = server
@@ -158,7 +186,7 @@ private fun ChunksApp() {
                                 version = v
                                 server = candidate
                                 stale = false
-                                section = Section.TRANSFERS
+                                section = if (magnet.isNotBlank()) Section.ADD else Section.TRANSFERS
                                 currentView = "main"
                                 requestedView = "main"
                                 // The input controls need not retain a plaintext password after connecting.
