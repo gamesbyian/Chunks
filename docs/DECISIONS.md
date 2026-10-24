@@ -24,5 +24,6 @@ Updated 2026-10-24 after critical review. **Owner** means explicitly requested; 
 | D18 | Open | Minimum target rTorrent version and precise supported proxy auth schemes | Actual deployed environments and tests |
 | D19 | Open | External filesystem adapters for non-installable seedboxes: SFTP/SSH/provider APIs vs companion | Managed-host capability survey |
 | D20 | Adopted | Default is no auto-uploaded logs, private torrent inventory or third-party metadata lookups | Explicit owner choice |
+| D21 | Owner | Editable per-transfer Chunks display aliases, independent of original torrent name/backing bytes; smart locally generated clean-name recommendations, editable and never automatically applied | Engineering must preserve server-scoped identity, persistence, truthful suggestion provenance and intact seeding |
 
 Historical alternatives remain in critical review and research, not in competing plan files. Track implementation in WORK-QUEUE and truth in QUALITY-LEDGER.
