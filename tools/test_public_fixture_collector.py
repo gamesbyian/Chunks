@@ -56,7 +56,7 @@ class CollectorTest(unittest.TestCase):
     def test_unsafe_name_path_and_size_rejected(self):
         for name in (b"..", b"/absolute", b"../escape", b"folder\\escape", b"bad\nname"):
             with self.subTest(name=name):
-                payload = enc({b"info": dict(self.info, **{b"name": name})})
+                payload = enc({b"info": {**self.info, b"name": name}})
                 with self.assertRaises(ValueError):
                     f.torrent_summary(payload, 100)
         with self.assertRaises(ValueError):
