@@ -1,10 +1,23 @@
-# Lean CI policy
-Copied as a principle, not as an archive of workflows, from wallgen, Glimpse and UR-Recomp.
+# Lean CI and evidence economy
 
-One routine Android validation workflow when code/toolchain changes. Use shared account runner capacity responsibly; no redundant push+PR fanout for identical candidate heads, no recurring emulator screenshots, no broad version matrix on ordinary edits. Do not request write scopes or inject secrets into PR builds.
+Updated after Chunks critical review. Borrow Glimpse's native build proof, ROYGBIV's cheap focused gates and UR-Recomp's exact source/evidence accounting, without transplanting their expensive workflows.
 
-Routine: pinned JDK/Gradle/Android SDK → assemble debug APK → JVM unit tests → upload ephemeral debug artifact. Android 37 package compatibility must be observed in logs. Dependency changes are reviewed deliberately. Temporary CI research should be manually invoked or removed after the decision.
+## Automatic CI
 
-Targeted/manual escalation: representative emulator flows for UI, protected synthetic rTorrent fixture integration, real seedbox matrix, destructive disposable test volumes, accessibility captures. A full test campaign is justified only by high-risk filesystem or release changes.
+One PR Android build/test job when app/Gradle/toolchain sources change. Compile debug APK and run JVM tests on pinned, documented toolchain. Upload short-lived unsigned debug artifacts. Do not run both main-push and PR versions for identical source changes. Docs-only plans need editorial review, not a full Android runner.
 
-Evidence hierarchy: source inspection < compile < deterministic fixture test < emulator < real external service/volume < physical Android behavior < human acceptance. Never claim a stronger class from a weaker one. Inspect the first failed CI step and current SHA, then remedy the actual failure. Branch protection should never require a job that can be skipped by an unrelated path filter.
+Do not use Secrets in fork/PR builds. Never connect the CI runner to a private rTorrent host merely to validate a public pull request. Keep live server tests manually authorized, with sanitized result summaries.
+
+## Targeted escalation (manual first)
+
+- XML-RPC parser and transport changes: deterministic fixture and fuzz/size/error cases, plus a bounded integration matrix when justified.
+- Server state mutations and idempotence: synthetic test service and disposable rTorrent host; verify real acknowledgement and no duplicate actions on response loss.
+- Filesystem changes: independent fault injection using disposable datasets, multiple volumes and process kills at each journal checkpoint. Fail closed if recovery cannot be proved.
+- Android UI changes: occasional targeted emulator screenshot/hierarchy atlas and real handset walkthrough, not a permanent broad screenshot job.
+- Local engine background: device tests across Android background/service types and network conditions; do not use one green assembly to infer reliability.
+
+## Receipts and stopping rules
+
+Each experiment records source SHA, build/test variant, environment, questions, inputs (redacted), what was actually measured, outcome and missing coverage. A run can be success, meaningful negative result, inconclusive or infrastructure failure. Stop when more experiments will not change an active design/release decision. One job summary plus a small reproducible result suffices; raw media/file inventories never enter public artifacts.
+
+Normal branch protection should only require consistently present checks; never require an opt-in or path-skipped check. Release gates in QUALITY-LEDGER.md are independent of merge validation.

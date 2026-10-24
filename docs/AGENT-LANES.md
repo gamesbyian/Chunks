@@ -1,16 +1,14 @@
-# Parallel development ownership
-Live files/issues override this default map if another agent is already active.
+# Chunks development lanes and authority
 
-## Lane A: rTorrent protocol and networking
-Own #1, then server read/write controls in #4. Own app/src/main/.../rpc and fixtures; secure transport and capability probe. Do not implement filesystem moves by writing a new path string. Share API contracts before changing the application coordinator.
+These are proposed ownership lanes, not running agents. New agents must reconcile actual main, open PRs, active issue owners, CRITICAL-REVIEW-2026-10-24.md, WORK-QUEUE.md and QUALITY-LEDGER.md before writing. Nothing in a previous agent prompt authorizes unsafe production operations.
 
-## Lane B: storage / companion / safety
-Own #2/#3/#7/#9. Durable server-side operation journal, permission model, path and link validation, fault injection and independent verification. No production server mutations during testing. Independent acceptance should not be written by the implementation agent alone.
+| Lane | Issues | Owns | Must not own |
+|---|---|---|---|
+| A: rTorrent adapter | #1 / direct control of #4 | XML/JSON RPC compatibility, auth and read-only/mutation command verification, bounded server list | Physical filesystem move, generic remote shell |
+| B: filesystem safety | #2 #3 #7, assists #9 | Companion/provider topology, path proof, durability, locks, copy/rename, disposable tests | Android UI contracts, self-certifying release gates |
+| C: humane UI + classifier | #6 #8, Add UI of #4 | Compose experiences, Places/Collections, transparent suggestions, accessibility and real-device tasks | Hidden filesystem mutation or alternative RPC transport |
+| D: integration + release | #5 #10, acceptance coordination #9 | Gradle/source architecture, local engine, CI, durable evidence, integration | Declaring independent QA passed from build logs alone |
 
-## Lane C: Android interface and classification
-Own #6/#8 and UI portion of #4. Typed UI state, Places/Collections organization, transparent classification, TalkBack and physical device proofs. Avoid altering RPC schemas without coordinating Lane A.
+Independently reviewed filesystem fault tests are required even if the implementation agent wrote the tests. Shared model and Gradle edits serialize through the integration owner. A stalled agent should publish current source/tests and exact blockers through a PR, not create a second shadow spec. Real server URLs, credentials and personal torrent lists never enter GitHub.
 
-## Lane D: final integration and release
-Own #5/#10 and shared Gradle/GHA/docs/WORK-QUEUE.md / QUALITY-LEDGER.md reconciliation. Review live PRs before changing shared contracts. Must report exact SHA/test/artifact and unverified functionality. Merge only after normal checks.
-
-GitHub issues identify work, not automatic running agents. Reassign on actual activity; avoid claiming someone is executing because an issue exists. No secret-containing data, seedbox names/URLs or user torrent inventory in any artifact.
+**Next execution:** Read-only rTorrent compatibility first. Do not run destructive changes against production just because the user has authorized project development. This repository is public; code/data from the private media-organizer may inform design but must not be copied with private inventories or secrets.

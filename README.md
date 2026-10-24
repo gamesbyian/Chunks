@@ -11,7 +11,7 @@ Chunks is an Android-native BitTorrent client and first-class rTorrent remote. T
 ## Read in this order
 
 1. [Agent operating contract](AGENTS.md)
-2. [Product contract](docs/PRODUCT.md)
+2. [Critical design review](docs/CRITICAL-REVIEW-2026-10-24.md) and [product contract](docs/PRODUCT.md)
 3. [Live work queue](docs/WORK-QUEUE.md) and [GitHub issues](https://github.com/gamesbyian/Chunks/issues)
 4. [Architecture and failure semantics](docs/ARCHITECTURE.md)
 5. [Engineering decisions](docs/DECISIONS.md), [independent acceptance](docs/QUALITY-LEDGER.md), [CI policy](docs/CI-POLICY.md)
