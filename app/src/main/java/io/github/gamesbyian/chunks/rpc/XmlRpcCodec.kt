@@ -74,8 +74,15 @@ object XmlRpcCodec {
             try { factory.setFeature(name, enabled) }
             catch (_: javax.xml.parsers.ParserConfigurationException) { /* Android parser may omit flag */ }
         }
-        factory.isXIncludeAware = false
-        factory.isExpandEntityReferences = false
+        // Android's platform DocumentBuilderFactory can throw
+        // UnsupportedOperationException even when setting XInclude to false.
+        // This must never prevent an ordinary authenticated XML-RPC reply from
+        // being parsed. Lexical DOCTYPE/ENTITY rejection above is mandatory
+        // regardless of which optional parser controls this implementation has.
+        try { factory.isXIncludeAware = false }
+        catch (_: UnsupportedOperationException) { /* unsupported on some Android parsers */ }
+        try { factory.isExpandEntityReferences = false }
+        catch (_: UnsupportedOperationException) { /* DTD/entity input is already rejected */ }
         val doc = factory.newDocumentBuilder().parse(InputSource(StringReader(xml)))
         val root = doc.documentElement
         require(root.tagName == "methodResponse") { "Invalid XML-RPC response" }
