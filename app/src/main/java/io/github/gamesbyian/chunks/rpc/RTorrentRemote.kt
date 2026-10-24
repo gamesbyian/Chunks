@@ -48,6 +48,18 @@ sealed class SessionEraseOutcome {
 
 
 /**
+ * One exact file priority change, not a blanket torrent or disk operation.
+ * A lost acknowledgement after either write must never be retried blindly.
+ */
+sealed class FilePriorityOutcome {
+    data class Verified(val hash: String, val fileIndex: Int, val priority: Int) : FilePriorityOutcome()
+    data class Unchanged(val hash: String, val fileIndex: Int, val priority: Int) : FilePriorityOutcome()
+    data class PendingVerification(val hash: String, val fileIndex: Int) : FilePriorityOutcome()
+    data class Uncertain(val hash: String, val fileIndex: Int) : FilePriorityOutcome()
+}
+
+
+/**
  * Acknowledged means the RPC returned without a fault. Verified means a
  * subsequent read reports the requested engine state. Uncertain means
  * an RPC may have applied but its outcome could not be read back.
@@ -293,6 +305,73 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                 sizeBytes = number(columns[1]).coerceAtLeast(0),
                 priority = number(columns[2]).toInt()
             )
+        }
+    }
+
+    /**
+     * Change exactly one file's download priority after independently reading
+     * and checking its index, path, byte length and expected old priority.
+     *
+     * rTorrent 0.9.x supports f.set_priority(hash, index, priority), followed
+     * by d.update_priorities(hash). The second RPC is a distinct engine write;
+     * if either acknowledgement is lost, do not replay either one.
+     *
+     * 0 = skip, 1 = normal, 2 = high. Skipped files can still contain
+     * overlapping pieces; this does not erase physical payload bytes.
+     */
+    suspend fun setFilePriority(
+        hash: String,
+        fileIndex: Int,
+        expectedPath: String,
+        expectedSizeBytes: Long,
+        expectedPriority: Int,
+        desiredPriority: Int
+    ): FilePriorityOutcome {
+        require(Regex("[0-9a-fA-F]{40}").matches(hash)) { "Invalid v1 torrent hash" }
+        require(fileIndex in 0..11999) { "Invalid file index" }
+        require(expectedPath.isNotBlank() && expectedPath.length <= 4096 &&
+            expectedPath.none { it.code < 32 }) { "Invalid expected file path" }
+        require(expectedSizeBytes >= 0) { "Invalid file byte size" }
+        require(expectedPriority in 0..2 && desiredPriority in 0..2) {
+            "File priorities must be 0, 1, or 2"
+        }
+
+        val before = listFiles(hash)
+        require(fileIndex < before.size) { "File index no longer exists; refresh" }
+        val original = before[fileIndex]
+        require(original.path == expectedPath &&
+            original.sizeBytes == expectedSizeBytes &&
+            original.priority == expectedPriority) {
+            "File identity, size or priority changed; refresh before editing"
+        }
+        if (expectedPriority == desiredPriority) {
+            return FilePriorityOutcome.Unchanged(hash, fileIndex, desiredPriority)
+        }
+        try {
+            call("f.set_priority", listOf(hash, fileIndex, desiredPriority))
+            call("d.update_priorities", listOf(hash))
+        } catch (_: IOException) {
+            return FilePriorityOutcome.Uncertain(hash, fileIndex)
+        } catch (_: RpcFault) {
+            // The first command may have applied before the second faulted.
+            return FilePriorityOutcome.Uncertain(hash, fileIndex)
+        }
+
+        return try {
+            val after = listFiles(hash)
+            val observed = after.getOrNull(fileIndex)
+            if (observed != null &&
+                observed.path == expectedPath &&
+                observed.sizeBytes == expectedSizeBytes &&
+                observed.priority == desiredPriority) {
+                FilePriorityOutcome.Verified(hash, fileIndex, desiredPriority)
+            } else {
+                FilePriorityOutcome.PendingVerification(hash, fileIndex)
+            }
+        } catch (_: IOException) {
+            FilePriorityOutcome.Uncertain(hash, fileIndex)
+        } catch (_: RpcFault) {
+            FilePriorityOutcome.PendingVerification(hash, fileIndex)
         }
     }
 
