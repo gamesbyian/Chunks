@@ -234,5 +234,11 @@ class ChunksMainActivityAtlasTest {
         rule.onNode(hasScrollAction()).performScrollToNode(
             hasText("85 server-reported files"))
         save("app-files-populated-real-compose")
+        val invoked = receivedMethods.toList()
+        assertTrue("Installed client must request server version", invoked.contains("system.client_version"))
+        assertTrue("Installed client must enumerate the actual transfer list", invoked.contains("d.multicall2"))
+        assertTrue("Installed client must inspect the selected torrent files", invoked.contains("f.multicall"))
+        assertTrue("Read-only atlas must never exercise torrent mutations",
+            invoked.all { it in setOf("system.client_version", "d.multicall2", "f.multicall") })
     }
 }
