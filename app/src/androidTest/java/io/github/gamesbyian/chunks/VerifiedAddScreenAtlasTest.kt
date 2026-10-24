@@ -22,6 +22,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
+import io.github.gamesbyian.chunks.rpc.RemoteTransfer
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -76,6 +77,41 @@ class VerifiedAddScreenAtlasTest {
         rule.onNodeWithText("Confirm: add stopped").assertExists()
         rule.onNodeWithText("Infohash: " + "ab".repeat(20)).assertExists()
         save("add-confirmation-real-compose")
+    }
+
+    @Test fun confirmedSessionRemovalShowsExactTargetWithoutSendingRpc() {
+        val transfer = RemoteTransfer(
+            hash = "ab".repeat(20), name = "A public example with a particularly long torrent title",
+            sizeBytes = 128L, completedBytes = 128L, started = false,
+            directory = "/home/dev/chunks-public-test"
+        )
+        rule.setContent {
+            MaterialTheme {
+                TransferSessionRemoveControl(remote, transfer,
+                    snapshotStale = false, mainView = true, onSettled = {})
+            }
+        }
+        rule.onNodeWithText("Remove from rTorrent…").performClick()
+        rule.onNodeWithText("Confirm removal from rTorrent").assertExists()
+        rule.onNodeWithText("Infohash: " + "ab".repeat(20)).assertExists()
+        rule.onNodeWithText("Current directory: /home/dev/chunks-public-test").assertExists()
+        rule.onNodeWithText("Confirm remove").assertExists()
+        save("remove-confirmation-real-compose")
+    }
+
+    @Test fun staleOrDifferentViewCannotOfferSessionRemoval() {
+        val transfer = RemoteTransfer(
+            hash = "ab".repeat(20), name = "Public example", sizeBytes = 8L,
+            completedBytes = 8L, started = false, directory = "/home/dev/test"
+        )
+        rule.setContent {
+            MaterialTheme {
+                TransferSessionRemoveControl(remote, transfer,
+                    snapshotStale = true, mainView = true, onSettled = {})
+            }
+        }
+        rule.onNodeWithText("Refresh this stale server snapshot before removing a transfer.").assertExists()
+        rule.onNodeWithText("Confirm remove").assertDoesNotExist()
     }
 
     @Test fun traversalDestinationCannotReachConfirmation() {
