@@ -212,7 +212,9 @@ class RTorrentDisposableMutationTest {
         val requested = if (first.priority == 2) 0 else 2
         val outcome = remote.setFilePriority(
             hash, 0, first.path, first.sizeBytes, first.priority, requested)
-        assertTrue("Real priority update returned uncertain: $outcome",
+        val observedAfterWrite = remote.listFiles(hash).single().priority
+        assertTrue("Real priority update returned $outcome; observed priority " +
+            observedAfterWrite + " (previous " + first.priority + ", requested " + requested + ")",
             outcome is FilePriorityOutcome.Verified ||
                 outcome is FilePriorityOutcome.PendingVerification)
 
