@@ -83,3 +83,7 @@ Opt-in dev Seedhost `inspect_inventory=true` will capture nonsecret torrent meta
 - [ ] **Next proof:** manually run [Seedhost read-only inventory capture](https://github.com/gamesbyian/Chunks/actions/workflows/seedhost-readonly-probe.yml) with `inspect_inventory=true` and verify fixture plus QA selector output.
 - [ ] **Next proof:** manually preview then hash-confirm one stopped public fixture Add via [protected Add acceptance](https://github.com/gamesbyian/Chunks/actions/workflows/seedhost-public-add-smoke.yml); verify actual server hash/path/state without retries.
 - [ ] Only after proven compatibility: wire an accessible confirmed Add action and run real Compose screenshot/hierarchy atlas at meaningful viewports, incorporating selected real snapshot cases.
+
+## Android HTTP RPC authentication candidate
+
+The Android adapter has a Basic/Digest challenge-negotiation implementation in PR #38 (pending review/CI). It scopes a single authentication retry to the same endpoint and refuses redirects. Prove local synthetic challenges first, then test the actual user's Seedhost from a handset. The previous Python read-only smoke authentication is **not** proof the Android JVM/handset works.
