@@ -4,9 +4,16 @@ set -euo pipefail
 adb shell wm size 1080x2400
 adb shell wm density 420
 adb shell settings put system font_scale 1.0
+set +e
 gradle --no-daemon :app:connectedDebugAndroidTest
+test_status=$?
+set -e
 mkdir -p "$RUNNER_TEMP/chunks-add-native-review"
-adb pull /sdcard/Pictures/ChunksAddAtlas/. "$RUNNER_TEMP/chunks-add-native-review"
+adb pull /sdcard/Pictures/ChunksAddAtlas/. "$RUNNER_TEMP/chunks-add-native-review" || true
+if [ "$test_status" -ne 0 ]; then
+  echo "CHUNKS_NATIVE_DIAGNOSTIC: instrumentation failed; retained any native PNGs for review"
+  exit "$test_status"
+fi
 python3 - <<'PY'
 from pathlib import Path
 import struct, os
