@@ -21,3 +21,7 @@ Do not use Secrets in fork/PR builds. Never connect the CI runner to a private r
 Each experiment records source SHA, build/test variant, environment, questions, inputs (redacted), what was actually measured, outcome and missing coverage. A run can be success, meaningful negative result, inconclusive or infrastructure failure. Stop when more experiments will not change an active design/release decision. One job summary plus a small reproducible result suffices; raw media/file inventories never enter public artifacts.
 
 Normal branch protection should only require consistently present checks; never require an opt-in or path-skipped check. Release gates in QUALITY-LEDGER.md are independent of merge validation.
+
+## Retained manual real-rTorrent experiment
+
+`disposable-rtorrent-probe.yml` is manual-only after the one-time successful real rTorrent 0.9.8 run [40060755245](https://github.com/gamesbyian/Chunks/actions/runs/40060755245). It installs rTorrent and nginx in an ephemeral runner and runs a strictly read-only Kotlin smoke test. Do not reintroduce PR/push fanout without showing a new durable compatibility gate and an appropriate runner budget. The normal Android PR check remains the sole automatic job for app source changes.

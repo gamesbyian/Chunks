@@ -9,7 +9,8 @@ Snapshot 2026-10-24 after critical review; update from **actual main, issues, PR
 - [x] Product/architecture critique and recovery plan captured in CRITICAL-REVIEW-2026-10-24.md (documentation, not acceptance).
 - [x] #14 merged at `a1573a4`: read-only native Transfers/Places/Organize/Server dashboard, remote file inspection, extended rate metrics with command-fault fallback, filtering/search/sort, non-mutating Add/Place preview. Android debug APK/JVM tests passed on exact PR SHA `7a7aae0` ([run 40060156362](https://github.com/gamesbyian/Chunks/actions/runs/40060156362)); no handset/live rTorrent proof.
 - [x] #17 magnet Android Share/Open With intent intake and stricter draft syntax validation merged at `f0182b3`. [Run 40060539699](https://github.com/gamesbyian/Chunks/actions/runs/40060539699) passed `assembleDebug` and JVM tests at PR SHA `d586f712da63ba5c56a3d275ec68e29eb8834a7b`. These remain local drafts, not server Add.
-- [ ] Real rTorrent server connectivity or version/proxy interoperability observed.
+- [x] #15 ephemeral real rTorrent 0.9.8-1ubuntu0.1 through localhost nginx/SCGI read-only adapter proof passed ([run 40060755245](https://github.com/gamesbyian/Chunks/actions/runs/40060755245), tested SHA `cd337cc8560c8c1d90c581be3de6f61176106e1c`); merged as `fe3b463`; workflow now manual-only.
+- [ ] Real **user-managed** rTorrent seedbox connectivity, protected auth/proxy/version matrix, full list semantics or a newer build verified.
 - [ ] Safe transfer Add, start/stop or other remote mutation observed.
 - [ ] Remote physical move/rename proven on disposable data.
 - [ ] Local BitTorrent engine implemented.
@@ -18,7 +19,7 @@ Snapshot 2026-10-24 after critical review; update from **actual main, issues, PR
 
 ## Now: one critical path
 
-**R1. Read-only real-server compatibility (#1, #9, [compatibility proof PR #15](https://github.com/gamesbyian/Chunks/pull/15) while in review).** Prioritize this before expanding controls. Produce a sanitized server/proxy/transport/auth matrix, command availability, named views and complete-list semantics, response sizes and i8 support. Build negative and large-list fixtures; evaluate handling of timeouts/reconnections. Evidence: real read-only listing for at least two meaningfully different rTorrent environments and exact request/response-shape fixtures without private names. The existing JVM fixture tests are only the beginning.
+**R1. Read-only real-server compatibility (#1, #9, [compatibility proof PR #15](https://github.com/gamesbyian/Chunks/pull/15) while in review).** Prioritize this before expanding controls. **The disposable legacy server gate is met** (see RTORRENT-COMPATIBILITY-MATRIX.md). Next produce a sanitized protected seedbox/modern build matrix, auth and proxy support, method/encoding behavior, named views, list completeness, response limits and i8 support. Build negative and large-list fixtures; evaluate handling of timeouts/reconnections. Evidence: real read-only listing for at least two meaningfully different rTorrent environments and exact request/response-shape fixtures without private names. The existing JVM fixture tests are only the beginning.
 
 **R2. Companion-free remote daily-use beta (#4, #8).** With the connection proven, define typed safe command catalog and verification outcomes; Add with Place selection, selection/priorities, ordinary transfer controls and filtering/diagnostics. Acceptance: one end-to-end user journey on actual seedbox from Android share or paste of a magnet through confirmation of the intended server directory, with no upload of passkeys or torrent inventory. No generic user-controlled RPC methods.
 
@@ -40,7 +41,7 @@ Coordinate through AGENT-LANES.md. No issue implies an agent is automatically wo
 
 ## Next executable action after this review
 
-Write and run **a reproducible sanitized real-server read-only compatibility test** for #1; do not mutate any server, or ship a full remote feature based only on synthetic XML-RPC fixtures. If real server access is unavailable, improve only deterministic protocol fixtures and record the external evidence gap. Reassess the implementation queue only after that discriminator.
+Continue **read-only protected seedbox and modern rTorrent compatibility validation** for #1 using the newly proven disposable-server method; do not mutate any server, or ship a full remote feature based only on synthetic XML-RPC fixtures. If real server access is unavailable, improve only deterministic protocol fixtures and record the external evidence gap. Reassess the implementation queue only after that discriminator.
 
 ## Closure rules
 

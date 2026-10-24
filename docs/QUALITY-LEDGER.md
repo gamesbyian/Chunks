@@ -10,6 +10,7 @@ Updated 2026-10-24. This ledger alone records proven gates; GitHub issues track 
 | Existing relocation planner tests | Included in Android/JVM build of #11; pure decision model only | Passed decision logic, NOT filesystem execution |
 | Read-only native dashboard + new catalog/inspection fixtures | [merged #14](https://github.com/gamesbyian/Chunks/pull/14), [run 40060156362](https://github.com/gamesbyian/Chunks/actions/runs/40060156362), PR SHA `7a7aae0a811542d38b3b523640d05f9d24fccbd7`, debug artifact `chunks-debug-prealpha` | JVM tests + APK assembly passed; no server/device proof |
 | Android Share/Open With and destination-draft validation | [merged #17](https://github.com/gamesbyian/Chunks/pull/17), [run 40060539699](https://github.com/gamesbyian/Chunks/actions/runs/40060539699), PR SHA `d586f712da63ba5c56a3d275ec68e29eb8834a7b`, `chunks-debug-prealpha` | Kotlin/JVM + APK compile passed, no real device intent test |
+| Actual disposable rTorrent 0.9.8 read-only XML-RPC compatibility | [merged #15](https://github.com/gamesbyian/Chunks/pull/15), [run 40060755245](https://github.com/gamesbyian/Chunks/actions/runs/40060755245), tested SHA `cd337cc8560c8c1d90c581be3de6f61176106e1c`. rTorrent package `0.9.8-1ubuntu0.1` behind local nginx/SCGI. JVM version, empty-list and probe passed | **Passed for disposable Ubuntu build only** |
 | Real rTorrent reachability/auth | No sanitized actual-server connection evidence | Not tested |
 | Legacy/modern rTorrent compatibility | No dual-server observations, Digest/JSON-RPC/i8 or view coverage proof | Not tested |
 | Complete large remote list and reconnect | No real fleet/performance test | Not tested |
@@ -23,7 +24,7 @@ Updated 2026-10-24. This ledger alone records proven gates; GitHub issues track 
 
 ## Source and status rules
 
-The current XML-RPC adapter is read-only and Basic-auth capable, now with optional transfer rates, multiple server views, file inspection and a synthetic fallback for unsupported metric methods. The Add screen is a local, non-submitting draft. The synthetic RPC tests cover authenticated fixture listing, capability absence/presence, redirect refusal and unsafe remote HTTP rejection. These are JVM tests, not real server verification, JSON-RPC compatibility or physical Android observations.
+The current XML-RPC adapter is read-only and Basic-auth capable, now with optional transfer rates, multiple server views, file inspection and a synthetic fallback for unsupported metric methods. The Add screen is a local, non-submitting draft. The synthetic RPC tests cover authenticated fixture listing, capability absence/presence, redirect refusal and unsafe remote HTTP rejection. Most are JVM fixtures. The dedicated #15 run separately exercised the same adapter against an actual rTorrent process; this proves only the ephemeral 0.9.8 deployment, **not** authenticated remote seedbox, JSON-RPC, filesystem writes or physical Android behavior.
 
 The build artifacts are **debug-only** and not production-qualified. No production server data was moved, renamed, deleted, copied or modified in these Chunks runs.
 

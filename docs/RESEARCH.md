@@ -30,3 +30,7 @@ Competitive UX targets: Flud/LibreTorrent/BiglyBT (local clients), Transdroid/nz
 - Android foreground service timeouts and special-use policy: https://developer.android.com/develop/background-work/services/fgs/timeout and https://developer.android.com/develop/background-work/services/fgs/service-types
 
 Do not conflate method presence, release number, build/library flags, permission and proven filesystem safety. External source claims become Chunks capabilities only after test evidence.
+
+## Measured interoperability evidence
+
+The rTorrent 0.9.8-1ubuntu0.1 package on an ephemeral Ubuntu GitHub runner, behind nginx localhost SCGI, answered Chunks' read-only Kotlin version, empty main-view list and method enumeration probes successfully in [run 40060755245](https://github.com/gamesbyian/Chunks/actions/runs/40060755245). This closes a single disposable-server path, not managed seedbox, modern JSON-RPC or authenticated HTTPS interoperability. The owning validation dimensions are in [RTORRENT-COMPATIBILITY-MATRIX.md](RTORRENT-COMPATIBILITY-MATRIX.md).
