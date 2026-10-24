@@ -44,4 +44,14 @@ jobs:
           test -n "$CHUNKS_LIVE_RUTORRENT_URL"
           test -n "$CHUNKS_LIVE_RTORRENT_USER"
           test -n "$CHUNKS_LIVE_RTORRENT_PASS"
-          gradle --no-daemon :app:testDebugUnitTest --tests io.github.gamesbyian.chunks.rpc.SeedhostAdapterSmokeTest --info 2>&1 |             sed -E 's/(CHUNKS_LIVE_RTORRENT_(USER|PASS)|CHUNKS_LIVE_RUTORRENT_URL)=([^ ]+)/\1=[REDACTED]/g'
+          gradle --no-daemon --console=plain :app:testDebugUnitTest --tests io.github.gamesbyian.chunks.rpc.SeedhostAdapterSmokeTest
+          python3 - <<'PY'
+          import pathlib, xml.etree.ElementTree as ET
+          path=pathlib.Path("app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.SeedhostAdapterSmokeTest.xml")
+          root=ET.parse(path).getroot()
+          assert int(root.attrib.get("tests",0))==1
+          assert int(root.attrib.get("failures",0))==0
+          assert int(root.attrib.get("errors",0))==0
+          assert int(root.attrib.get("skipped",0))==0
+          print("CHUNKS_KOTLIN_SEEDHOST_READONLY: authenticated version and main-view list passed")
+          PY
