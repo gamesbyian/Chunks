@@ -106,12 +106,33 @@ fun VerifiedAddScreen(
         }
     }
 
+    var invalidDestination = false
+    var addGuidance = "Enter a valid v1 magnet or select a .torrent file, then provide an absolute server directory. Chunks cannot pre-verify server permissions."
     val plan = try {
         val link = if (useFile && selectedTorrent != null && selectedBytes != null)
             "magnet:?xt=urn:btih:" + selectedTorrent!!.infoHashV1
         else magnet
         StoppedRemoteAddPlan.fromMagnet(link, destination)
-    } catch (_: IllegalArgumentException) { null }
+    } catch (failure: IllegalArgumentException) {
+        // Match only our fixed validation messages, never display arbitrary
+        // untrusted magnet input or server-provided exception text.
+        addGuidance = when (failure.message) {
+            "Choose a specific absolute server destination" -> {
+                invalidDestination = true
+                "Choose an absolute server folder starting with / (for example, /downloads)."
+            }
+            "Invalid server destination path" -> {
+                invalidDestination = true
+                "Invalid destination: remove repeated slashes, '.' and '..' path segments."
+            }
+            "Unsupported characters in rTorrent destination" -> {
+                invalidDestination = true
+                "Invalid destination: this folder path contains unsupported punctuation or control characters."
+            }
+            else -> addGuidance
+        }
+        null
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -202,7 +223,9 @@ fun VerifiedAddScreen(
         }
         if (!alreadyAttempted && plan == null) {
             item {
-                Text("Enter a valid v1 magnet or select a .torrent file, then provide an absolute server directory. Chunks cannot pre-verify server permissions.",
+                Text(addGuidance,
+                    color = if (invalidDestination) MaterialTheme.colorScheme.error
+                            else MaterialTheme.colorScheme.onSurface,
                     style = MaterialTheme.typography.bodyMedium)
             }
         }
