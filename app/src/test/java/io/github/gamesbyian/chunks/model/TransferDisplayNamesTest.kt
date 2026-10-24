@@ -27,7 +27,8 @@ class TransferDisplayNamesTest {
     @Test fun cleansMovieYearAndLeavesOrdinaryNamesUntouched() {
         assertEquals("A Movie (2024)", TransferDisplayNames.suggestions(
             "A.Movie.2024.1080p.BluRay.x264.mkv").first().name)
-        assertTrue(TransferDisplayNames.suggestions("Already Readable Title.mkv").isEmpty())
+        assertEquals("Already Readable Title",
+            TransferDisplayNames.suggestions("Already Readable Title.mkv").first().name)
         assertTrue(TransferDisplayNames.suggestions("file.xyz").isEmpty())
         assertTrue(TransferDisplayNames.suggestions("").isEmpty())
     }
