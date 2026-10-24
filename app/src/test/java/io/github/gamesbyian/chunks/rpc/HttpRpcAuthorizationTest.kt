@@ -92,7 +92,7 @@ class HttpRpcAuthorizationTest {
         }
         try {
             val r = RTorrentRemote(RemoteCredentials(
-                "http://127.0.0.1:\${server.address.port}/RPC2", "testuser", "testpass"))
+                "http://127.0.0.1:${server.address.port}/RPC2", "testuser", "testpass"))
             assertEquals("0.9.8", r.version())
             assertTrue(firstUnauthenticated)
             assertTrue(secondAuthenticated)
@@ -116,7 +116,7 @@ class HttpRpcAuthorizationTest {
         }
         try {
             assertEquals("0.9.8", RTorrentRemote(RemoteCredentials(
-                "http://127.0.0.1:\${server.address.port}/RPC2", "testuser", "testpass")).version())
+                "http://127.0.0.1:${server.address.port}/RPC2", "testuser", "testpass")).version())
             assertTrue(firstUnauthenticated)
             assertTrue(secondAuthenticated)
         } finally { server.stop(0) }
@@ -132,7 +132,7 @@ class HttpRpcAuthorizationTest {
         try {
             try {
                 RTorrentRemote(RemoteCredentials(
-                    "http://127.0.0.1:\${server.address.port}/RPC2", "testuser", "testpass")).version()
+                    "http://127.0.0.1:${server.address.port}/RPC2", "testuser", "testpass")).version()
                 fail("Must reject redirects")
             } catch (_: IOException) { }
             assertEquals(1, received)
