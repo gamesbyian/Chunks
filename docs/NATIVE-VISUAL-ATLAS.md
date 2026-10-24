@@ -1,0 +1,7 @@
+# Native Chunks Android screenshot atlas
+
+The manually runnable (and one-time PR test) [native-visual-atlas.yml](../.github/workflows/native-visual-atlas.yml) boots an Android API 35 emulator, installs the real debug APK and captures **actual** `screencap -p` PNG files plus `uiautomator` accessibility hierarchies. Cases: 360x800dp-class small, ~411x914dp standard, 1.4× text, wide ~480x1000dp. Pixel resolution, density, text scale, SHA256 and view identity are recorded in a machine-readable manifest and reviewer checklist. Artifacts expire after 14 days. No server login, passwords, or torrent writes.
+
+Screenshots are evidence, not approvals. A passing baseline only verifies that the initial connection screen renders in emulator; missing hierarchy output is explicitly declared, not fabricated. The next atlas must cover Transfers with genuine opt-in Seedhost fixtures, Add review and outcome/error states, Places, Organize, long/RTL filenames and physical Pixel 6 Pro. The existing [real-data QA selector](../tools/seedbox_fixture_qa.py) supplies representative cases, but those are not yet captured by the native UI.
+
+To run locally with an existing emulator: build `gradle :app:assembleDebug`, install the APK, set `wm size`/`wm density` and `settings put system font_scale`, launch MainActivity, capture `adb exec-out screencap -p` and process with `tools/native_visual_atlas.py`. No fake or HTML-only screenshots count as native acceptance.
