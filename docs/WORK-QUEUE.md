@@ -67,3 +67,7 @@ PR #31 [merged](https://github.com/gamesbyian/Chunks/pull/31) at `de99a6d`, [run
 ## Manual public source Add acceptance
 
 [PR #32 merged](https://github.com/gamesbyian/Chunks/pull/32) at `22580cb`, [run 40065967589](https://github.com/gamesbyian/Chunks/actions/runs/40065967589) passed the offline Python tests at PR SHA `2378f2701d637d64e60802d83ced80f4793485c5`. The protected [public Add smoke](../.github/workflows/seedhost-public-add-smoke.yml) supports public Archive/Commons fixtures, default no-server preview and separately confirmed one-torrent stopped `load.raw_verbose` on the authorized Seedhost instance. Synthetic tests are not live server proof. Next verify the collector using a real source, dispatch explicit manual Add to the chosen server directory, reconcile the result against the Kotlin Add API, then deliver a genuinely accessible Add interface.
+
+## Real-data visual QA preparation
+
+Opt-in dev Seedhost `inspect_inventory=true` will capture nonsecret torrent metadata and build a compact deterministic `qa-cases.json`/`qa-cases.md` selecting long-name, RTL/Unicode, completed, incomplete, active, stopped and destination edge cases. Run source offline regression tests on PRs; first actual snapshot artifact and true multi-viewport Compose screenshot atlas remain acceptance gates. This selection does not affect transfers.
