@@ -1,0 +1,141 @@
+package io.github.gamesbyian.chunks.engine
+
+import java.io.File
+import java.net.InetSocketAddress
+import java.util.Random
+import org.junit.After
+import org.junit.Before
+import org.junit.Assert.*
+import org.junit.Rule
+import org.junit.Test
+import org.junit.rules.TemporaryFolder
+import org.libtorrent4j.TorrentBuilder
+
+/**
+ * Real libtorrent sessions transferring real bytes over loopback BitTorrent
+ * (no trackers, DHT, LSD or port mapping; nothing leaves the machine).
+ */
+class LocalTorrentEngineTest {
+    @get:Rule val temp = TemporaryFolder()
+    private val engines = ArrayList<LocalTorrentEngine>()
+
+    @Before fun native() = DesktopLibtorrent.ensureLoaded()
+
+    @After fun stop() { engines.forEach { it.close() } }
+
+    private fun engine(): LocalTorrentEngine = LocalTorrentEngine(LocalEngineConfig(
+        listenInterfaces = "127.0.0.1:0", allowMultipleConnectionsPerIp = true
+    )).also { it.start(); engines += it }
+
+    private class Fixture(val root: File, val torrent: ByteArray, val files: Map<String, ByteArray>)
+
+    private fun fixture(): Fixture {
+        val parent = temp.newFolder("seed")
+        val root = File(parent, "Chunks public fixture").apply { mkdirs() }
+        val random = Random(42)
+        val files = linkedMapOf(
+            "episode.bin" to ByteArray(1_300_000).also { random.nextBytes(it) },
+            "extras/notes.txt" to "Locally generated test payload".toByteArray()
+        )
+        for ((name, bytes) in files) File(root, name).apply { parentFile.mkdirs() }.writeBytes(bytes)
+        val torrent = TorrentBuilder().path(root).pieceSize(64 * 1024).generate().entry().bencode()
+        return Fixture(root, torrent, files)
+    }
+
+    private fun waitFor(timeoutMs: Long = 60_000, condition: () -> Boolean) {
+        val deadline = System.currentTimeMillis() + timeoutMs
+        while (!condition()) {
+            if (System.currentTimeMillis() > deadline) fail("Timed out waiting for engine state")
+            Thread.sleep(100)
+        }
+    }
+
+    private fun added(result: LocalAddResult): LocalTransferStatus {
+        assertTrue(result.toString(), result is LocalAddResult.AddedStopped)
+        return (result as LocalAddResult.AddedStopped).status
+    }
+
+    @Test fun downloadsRealBytesFromALoopbackSeedAndThenSeeds() {
+        val fixture = fixture()
+        val seeder = engine()
+        val seeded = added(seeder.addStopped(fixture.torrent, fixture.root.parentFile))
+        assertTrue(seeded.stopped)
+        assertEquals(LocalCommandOutcome.VERIFIED, seeder.resume(seeded.infoHash).outcome)
+        waitFor { seeder.status(seeded.infoHash)?.state == LocalTransferState.SEEDING }
+        assertTrue(seeder.listenPort() > 0)
+
+        val destination = temp.newFolder("chosen destination")
+        val leecher = engine()
+        val leeching = added(leecher.addStopped(fixture.torrent, destination,
+            listOf(InetSocketAddress("127.0.0.1", seeder.listenPort()))))
+        assertEquals(seeded.infoHash, leeching.infoHash)
+        assertEquals(0, leeching.progressPpm)
+        assertEquals(LocalCommandOutcome.VERIFIED, leecher.resume(leeching.infoHash).outcome)
+        waitFor {
+            val state = leecher.status(leeching.infoHash)?.state
+            state == LocalTransferState.SEEDING || state == LocalTransferState.FINISHED
+        }
+
+        for ((name, bytes) in fixture.files)
+            assertArrayEquals(name, bytes, File(destination, "Chunks public fixture/$name").readBytes())
+        val done = requireNotNull(leecher.status(leeching.infoHash))
+        assertEquals(1_000_000, done.progressPpm)
+        assertEquals(fixture.files.values.sumOf { it.size.toLong() }, done.doneBytes)
+        // Session counters are refreshed on libtorrent's stats tick, not instantly.
+        waitFor { (leecher.status(leeching.infoHash)?.payloadDownloadedBytes ?: 0) >= done.doneBytes }
+        waitFor { (seeder.status(seeded.infoHash)?.payloadUploadedBytes ?: 0) >= done.doneBytes }
+    }
+
+    @Test fun stoppedAddWritesNothingAndPauseResumeReadBack() {
+        val fixture = fixture()
+        val destination = temp.newFolder("dest")
+        val engine = engine()
+        val status = added(engine.addStopped(fixture.torrent, destination))
+        Thread.sleep(1_000)
+        val still = requireNotNull(engine.status(status.infoHash))
+        assertTrue(still.stopped)
+        assertEquals(0L, still.payloadDownloadedBytes)
+        assertEquals(destination.absolutePath, still.savePath)
+        val resumed = engine.resume(status.infoHash)
+        assertEquals(LocalCommandOutcome.VERIFIED, resumed.outcome)
+        assertFalse(resumed.status!!.stopped)
+        val paused = engine.pause(status.infoHash)
+        assertEquals(LocalCommandOutcome.VERIFIED, paused.outcome)
+        assertTrue(paused.status!!.stopped)
+        assertEquals(LocalCommandOutcome.NOT_FOUND, engine.pause("b".repeat(40)).outcome)
+    }
+
+    @Test fun refusesDuplicatesInvalidMetadataAndUnchosenFolders() {
+        val fixture = fixture()
+        val engine = engine()
+        val destination = temp.newFolder("dest")
+        added(engine.addStopped(fixture.torrent, destination))
+        assertTrue(engine.addStopped(fixture.torrent, destination) is LocalAddResult.Refused)
+        assertTrue(engine.addStopped("not bencode".toByteArray(), destination) is LocalAddResult.Refused)
+        assertTrue(engine.addStopped(fixture.torrent, File(destination, "missing")) is LocalAddResult.Refused)
+        assertTrue(engine.addStopped(fixture.torrent, File("relative")) is LocalAddResult.Refused)
+        assertEquals(1, engine.list().size)
+    }
+
+    @Test fun sessionOnlyRemovalKeepsPayloadBytes() {
+        val fixture = fixture()
+        val engine = engine()
+        val status = added(engine.addStopped(fixture.torrent, fixture.root.parentFile))
+        engine.resume(status.infoHash)
+        waitFor { engine.status(status.infoHash)?.state == LocalTransferState.SEEDING }
+        assertTrue(engine.removeKeepingData(status.infoHash.uppercase()))
+        assertNull(engine.status(status.infoHash))
+        assertFalse(engine.removeKeepingData(status.infoHash))
+        Thread.sleep(500)
+        for ((name, bytes) in fixture.files) assertArrayEquals(bytes, File(fixture.root, name).readBytes())
+    }
+
+    @Test fun rejectsMalformedIdentities() {
+        val engine = engine()
+        try {
+            engine.status("../../etc")
+            fail("expected refusal")
+        } catch (_: IllegalArgumentException) { }
+        assertNull(engine.status("a".repeat(40)))
+    }
+}

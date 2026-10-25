@@ -29,6 +29,12 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
     debugImplementation("androidx.compose.ui:ui-tooling")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+    // Local engine: Arvid Norberg libtorrent via libtorrent4j (not rTorrent's libTorrent).
+    val libtorrent4j = "2.1.0-39"
+    implementation("org.libtorrent4j:libtorrent4j:$libtorrent4j")
+    implementation("org.libtorrent4j:libtorrent4j-android-arm64:$libtorrent4j")
+    implementation("org.libtorrent4j:libtorrent4j-android-x86_64:$libtorrent4j")
+    testImplementation("org.libtorrent4j:libtorrent4j-linux:$libtorrent4j")
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation(composeBom)
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
