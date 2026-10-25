@@ -194,4 +194,43 @@ class LocalTorrentEngineTest {
         assertTrue(wrongName.isFile && garbage.isFile)
         assertEquals("not bencode", garbage.readText())
     }
+
+    @Test fun magnetFetchesOnlyMetadataFromAPeerThenStopsUntilStarted() {
+        val fixture = fixture()
+        val seeder = engine()
+        val seed = added(seeder.addStopped(fixture.torrent, fixture.root.parentFile))
+        seeder.resume(seed.infoHash)
+        waitFor { seeder.status(seed.infoHash)?.state == LocalTransferState.SEEDING }
+
+        val destination = temp.newFolder("magnet destination")
+        val leecher = engine()
+        val magnet = "magnet:?xt=urn:btih:${seed.infoHash.uppercase()}&dn=Chunks%20public%20fixture"
+        val result = leecher.addMagnet(magnet, destination, listOf(InetSocketAddress("127.0.0.1", seeder.listenPort())))
+        assertTrue(result.toString(), result is LocalAddResult.FetchingMetadata)
+        waitFor {
+            val status = leecher.status(seed.infoHash)
+            status != null && status.metadataKnown && status.stopped
+        }
+        val stopped = requireNotNull(leecher.status(seed.infoHash))
+        assertEquals("Chunks public fixture", stopped.name)
+        assertEquals(fixture.files.values.sumOf { it.size.toLong() }, stopped.wantedBytes)
+        // Upload mode requests no payload pieces before the user presses Start.
+        assertEquals(0L, stopped.doneBytes)
+        assertEquals(0L, stopped.payloadDownloadedBytes)
+
+        assertEquals(LocalCommandOutcome.VERIFIED, leecher.resume(seed.infoHash).outcome)
+        waitFor { leecher.status(seed.infoHash)?.progressPpm == 1_000_000 }
+        assertArrayEquals(fixture.files.getValue("episode.bin"),
+            File(destination, "Chunks public fixture/episode.bin").readBytes())
+    }
+
+    @Test fun refusesMagnetsWithoutExactlyOneV1Identity() {
+        val engine = engine()
+        val destination = temp.newFolder("d")
+        for (bad in listOf("magnet:?dn=x", "https://example.org", "magnet:?xt=urn:btih:abc",
+            "magnet:?xt=urn:btih:${"a".repeat(40)}&xt=urn:btih:${"b".repeat(40)}",
+            "magnet:?xt=urn:btmh:1220${"c".repeat(64)}"))
+            assertTrue(bad, engine.addMagnet(bad, destination) is LocalAddResult.Refused)
+        assertTrue(engine.list().isEmpty())
+    }
 }
