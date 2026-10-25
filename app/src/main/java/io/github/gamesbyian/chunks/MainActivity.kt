@@ -204,7 +204,7 @@ private fun ChunksApp(sharedMagnet: String?) {
         }
 
         if (section == Section.ARCHIVES) {
-            LocalZipReviewScreen()
+            LocalZipReviewScreen(onBack = { section = Section.TRANSFERS })
         } else if (server == null) {
             ConnectionScreen(
                 endpoint = endpoint, username = username, password = password,
@@ -320,7 +320,7 @@ private fun ChunksApp(sharedMagnet: String?) {
                         }
                     }
                 )
-                Section.ARCHIVES -> LocalZipReviewScreen()
+                Section.ARCHIVES -> LocalZipReviewScreen(onBack = { section = Section.TRANSFERS })
                 Section.PLACES -> PlacesScreen(transfers) { path ->
                     draftPath = path
                     section = Section.ADD
