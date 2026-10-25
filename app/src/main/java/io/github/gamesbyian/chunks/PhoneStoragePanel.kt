@@ -1,8 +1,9 @@
 package io.github.gamesbyian.chunks
 
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.os.StatFs
-import android.os.storage.StorageManager
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -33,9 +34,17 @@ internal object DeviceSpaceProbe {
         val fs = StatFs(root.absolutePath)
         val total = fs.totalBytes.takeIf { it > 0 }
         val available = fs.availableBytes.takeIf { it >= 0 }
-        val low = context.getSystemService(StorageManager::class.java)
-            ?.getStorageLowBytes(root)?.takeIf { it >= 0 }
-        DeviceSpaceSnapshot(total, available, low)
+        // A sticky ACTION_DEVICE_STORAGE_LOW is a public signal of an
+        // active OS alert. Android's numeric low-space threshold is NOT a
+        // public app API, so never synthesize one from storage capacity.
+        val alert: Boolean? = try {
+            context.registerReceiver(null, IntentFilter(Intent.ACTION_DEVICE_STORAGE_LOW)) != null
+        } catch (_: SecurityException) {
+            null
+        } catch (_: IllegalArgumentException) {
+            null
+        }
+        DeviceSpaceSnapshot(total, available, alert)
     } catch (_: Exception) {
         DeviceSpaceSnapshot(null, null, null)
     }
@@ -77,17 +86,14 @@ internal fun PhoneStoragePanel(
                 Text("Phone volume capacity unavailable. No space estimate is shown.")
             }
             when (snapshot.status) {
-                DeviceSpaceStatus.AT_OR_BELOW_ANDROID_FLOOR ->
+                DeviceSpaceStatus.LOW_WARNING_ACTIVE ->
                     Text("Android reports low phone storage. Avoid adding large local downloads.",
                         color = MaterialTheme.colorScheme.error)
-                DeviceSpaceStatus.ABOVE_ANDROID_FLOOR ->
-                    Text("Above Android's low-space warning threshold.")
+                DeviceSpaceStatus.NO_WARNING_DETECTED ->
+                    Text("No active Android low-storage alert detected. The numeric threshold is not exposed to apps.")
                 DeviceSpaceStatus.UNKNOWN ->
-                    Text("Android low-space threshold status unavailable.")
+                    Text("Android low-storage alert status unavailable.")
             }
-            val floor = snapshot.androidLowSpaceBytes
-            if (floor != null) Text("Android warning threshold: " + Units.bytes(floor),
-                style = MaterialTheme.typography.bodySmall)
             Text("Chunks cannot yet measure or enforce an on-device torrent cap. Remote storage capacity is unknown without a verified server capability.",
                 style = MaterialTheme.typography.bodySmall)
             OutlinedButton(onClick = { snapshot = reader(context) },
