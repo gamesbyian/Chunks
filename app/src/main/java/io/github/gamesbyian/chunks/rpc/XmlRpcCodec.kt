@@ -47,6 +47,9 @@ object XmlRpcCodec {
         is String -> "<value><string>${escape(value)}</string></value>"
         is Int, is Long -> "<value><i8>$value</i8></value>"
         is Boolean -> "<value><boolean>${if (value) "1" else "0"}</boolean></value>"
+        is Map<*, *> -> "<value><struct>" + value.entries.joinToString("") { (name, member) ->
+            "<member><name>" + escape(name as String) + "</name>" + encodeValue(requireNotNull(member)) + "</member>"
+        } + "</struct></value>"
         is List<*> -> "<value><array><data>" +
             value.joinToString("") { encodeValue(requireNotNull(it)) } +
             "</data></array></value>"
@@ -139,9 +142,10 @@ object XmlRpcCodec {
             ) {
                 depth++
                 count++
-                if (depth > MAX_XML_ELEMENT_DEPTH || count > MAX_XML_ELEMENTS) {
+                if (depth > MAX_XML_ELEMENT_DEPTH) {
                     throw SAXException("XML-RPC response structure limit exceeded")
                 }
+                if (count > MAX_XML_ELEMENTS) throw ElementBudgetExceeded()
             }
             override fun endElement(uri: String?, localName: String?, qName: String?) {
                 depth--
@@ -150,6 +154,9 @@ object XmlRpcCodec {
         try {
             factory.newSAXParser().parse(InputSource(StringReader(xml)), handler)
         } catch (failure: SAXException) {
+            // Some platform parsers wrap handler exceptions; match the marker too.
+            if (failure is ElementBudgetExceeded || failure.message?.contains(ELEMENT_BUDGET) == true)
+                throw XmlRpcSizeLimitExceeded("XML-RPC response has too many elements", failure)
             throw IllegalArgumentException("Malformed or oversized XML-RPC structure", failure)
         }
     }
@@ -157,7 +164,7 @@ object XmlRpcCodec {
     private fun readValue(element: Element, depth: Int, budget: IntArray): Any? {
         require(depth <= MAX_XML_ELEMENT_DEPTH) { "XML-RPC value nesting too deep" }
         budget[0]++
-        require(budget[0] <= MAX_RPC_VALUE_NODES) { "Too many XML-RPC values" }
+        if (budget[0] > MAX_RPC_VALUE_NODES) throw XmlRpcSizeLimitExceeded("Too many XML-RPC values")
         val typed = children(element).firstOrNull()
             ?: return boundedText(element.textContent.orEmpty())
         return when (typed.tagName) {
@@ -179,7 +186,7 @@ object XmlRpcCodec {
             "nil" -> null
             "array" -> child(typed, "data")?.let { data ->
                 val entries = children(data).filter { it.tagName == "value" }
-                require(entries.size <= MAX_ARRAY_ENTRIES) { "XML-RPC array too large" }
+                if (entries.size > MAX_ARRAY_ENTRIES) throw XmlRpcSizeLimitExceeded("XML-RPC array too large")
                 entries.map { readValue(it, depth + 1, budget) }
             } ?: emptyList<Any>()
             "struct" -> {
@@ -219,3 +226,15 @@ object XmlRpcCodec {
 }
 
 class RpcFault(val code: String, message: String) : Exception(message)
+
+/**
+ * A well-formed reply exceeded a wide-but-shallow budget (total elements, values,
+ * array entries). Distinct from hostile nesting so callers can switch to a
+ * paged read instead of failing; still an IllegalArgumentException for callers
+ * that treat every refused reply alike.
+ */
+class XmlRpcSizeLimitExceeded(message: String, cause: Throwable? = null) :
+    IllegalArgumentException(message, cause)
+
+private const val ELEMENT_BUDGET = "XML-RPC element budget exceeded"
+private class ElementBudgetExceeded : SAXException(ELEMENT_BUDGET)

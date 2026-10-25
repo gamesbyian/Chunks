@@ -274,4 +274,92 @@ class RTorrentRemoteFixtureTest {
         }
     }
 
+
+    private fun hashFor(index: Int) = "%040X".format(index)
+
+    /** Serves an oversized d.multicall2 and a paged download_list/system.multicall gateway. */
+    private fun largeQueue(count: Int, faultHash: String? = null) = Fixture { request, _ ->
+        when {
+            request.contains("<methodName>d.multicall2</methodName>") -> Reply(200, result("<array><data>" +
+                (0 until count).joinToString("") { i ->
+                    "<value><array><data><value><string>${hashFor(i)}</string></value>" +
+                        "<value><string>${"Long fixture torrent name ".repeat(12)}$i</string></value>" +
+                        "<value><i8>1</i8></value><value><i8>1</i8></value><value><i8>0</i8></value>" +
+                        "<value><string>/data/fixture/$i</string></value><value><i8>0</i8></value>" +
+                        "<value><i8>0</i8></value><value><i8>0</i8></value></data></array></value>"
+                } + "</data></array>"))
+            request.contains("<methodName>download_list</methodName>") -> Reply(200, result("<array><data>" +
+                (0 until count).joinToString("") { "<value><string>${hashFor(it)}</string></value>" } +
+                "</data></array>"))
+            request.contains("<methodName>system.multicall</methodName>") -> {
+                val calls = Regex("<name>methodName</name><value><string>([a-z_.]+)</string></value></member>" +
+                    "<member><name>params</name><value><array><data><value><string>([0-9A-F]{40})</string>")
+                    .findAll(request).map { it.groupValues[1] to it.groupValues[2] }.toList()
+                Reply(200, result("<array><data>" + calls.joinToString("") { (method, hash) ->
+                    if (hash == faultHash) """<value><struct><member><name>faultCode</name><value><int>-501</int></value></member>
+                        <member><name>faultString</name><value><string>Could not find info-hash.</string></value></member></struct></value>"""
+                    else {
+                        val index = hash.toInt(16)
+                        val value = when (method) {
+                            "d.hash" -> "<string>$hash</string>"
+                            "d.name" -> "<string>Torrent $index</string>"
+                            "d.directory" -> "<string>/data/fixture/$index</string>"
+                            "d.size_bytes" -> "<i8>${1000 + index}</i8>"
+                            "d.completed_bytes" -> "<i8>$index</i8>"
+                            "d.state" -> "<i8>${index % 2}</i8>"
+                            else -> "<i8>7</i8>"
+                        }
+                        "<value><array><data><value>$value</value></data></array></value>"
+                    }
+                } + "</data></array>"))
+            }
+            else -> Reply(200, fault(404, "Unexpected RPC method"))
+        }
+    }
+
+    @Test fun queueTooLargeForOneReplyIsReadInBoundedPages() = runBlocking {
+        largeQueue(7_000).use { fixture ->
+            val remote = RTorrentRemote(RemoteCredentials(fixture.endpoint, "", ""))
+            val listed = remote.listTransfers()
+            assertEquals(7_000, listed.size)
+            assertEquals(hashFor(0), listed.first().hash)
+            assertEquals(hashFor(6_999), listed.last().hash)
+            assertEquals("Torrent 4321", listed[4321].name)
+            assertEquals("/data/fixture/4321", listed[4321].directory)
+            assertEquals(1000L + 4321, listed[4321].sizeBytes)
+            assertEquals(7L, listed[4321].downBytesPerSecond)
+            assertTrue(listed[4321].started)
+            val methods = fixture.methods.map { Regex("<methodName>([a-z_.0-9]+)</methodName>").find(it)!!.groupValues[1] }
+            assertEquals(listOf("d.multicall2", "download_list"), methods.take(2))
+            // One rich-field probe plus ceil(7000 / 250) pages; every request is read-only.
+            assertEquals(1 + 28, methods.count { it == "system.multicall" })
+            assertEquals(setOf("d.multicall2", "download_list", "system.multicall"), methods.toSet())
+            val getters = fixture.methods.flatMap { body ->
+                Regex("<name>methodName</name><value><string>([a-z_.]+)</string>").findAll(body).map { it.groupValues[1] }.toList()
+            }.toSet()
+            assertEquals(setOf("d.hash", "d.name", "d.size_bytes", "d.completed_bytes", "d.state",
+                "d.directory", "d.down.rate", "d.up.rate", "d.ratio"), getters)
+            assertTrue(fixture.methods.all { it.length < 4_194_304 })
+        }
+    }
+
+    @Test fun torrentVanishingDuringPagedReadFailsTheWholeSnapshotClosed() {
+        largeQueue(7_000, faultHash = hashFor(5_000)).use { fixture ->
+            val remote = RTorrentRemote(RemoteCredentials(fixture.endpoint, "", ""))
+            try {
+                runBlocking { remote.listTransfers() }
+                fail("A partial list must not be published")
+            } catch (expected: RpcFault) {
+                assertTrue(expected.message.orEmpty().contains("refresh"))
+            }
+        }
+    }
+
+    @Test fun codecReportsWideRepliesDistinctlyFromHostileNesting() {
+        val wide = result("<array><data>" + "<value><i8>1</i8></value>".repeat(13_000) + "</data></array>")
+        assertThrows(XmlRpcSizeLimitExceeded::class.java) { XmlRpcCodec.response(wide) }
+        val deep = result("<array><data>".repeat(30) + "<value><i8>1</i8></value>" + "</data></array>".repeat(30))
+        val failure = assertThrows(IllegalArgumentException::class.java) { XmlRpcCodec.response(deep) }
+        assertFalse(failure is XmlRpcSizeLimitExceeded)
+    }
 }
