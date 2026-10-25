@@ -70,7 +70,7 @@ internal fun PhoneStoragePanel(
                 if (occupied != null) {
                     LinearProgressIndicator(progress = { occupied },
                         modifier = Modifier.fillMaxWidth())
-                    Text("Volume allocation across all apps; not Chunks torrent usage.",
+                    Text("Occupied or reserved on this volume, including other apps. Not Chunks torrent usage.",
                         style = MaterialTheme.typography.bodySmall)
                 }
             } else {
