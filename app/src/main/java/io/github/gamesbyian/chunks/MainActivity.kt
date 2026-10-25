@@ -132,6 +132,10 @@ private fun ChunksApp(sharedMagnet: String?) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val aliasStore = remember(context) { TransferAliasStore(context) }
+    // Owned by the connected app, not the recyclable LazyColumn card.
+    // A plain remembered map prevents getOrPut writes during composition from
+    // being rolled back; each value has observable Compose state fields.
+    val aliasSessions = remember { mutableMapOf<String, TransferAliasEditSession>() }
     var aliasScope by remember { mutableStateOf("") }
     var aliasRevision by remember { mutableStateOf(0) }
     val remoteFence = remember { RemoteUiRequestFence() }
@@ -265,6 +269,7 @@ private fun ChunksApp(sharedMagnet: String?) {
                 Section.TRANSFERS -> TransfersScreen(
                     remote = requireNotNull(server), onLifecycleSettled = refresh,
                     aliasStore = aliasStore, aliasScope = aliasScope,
+                    aliasSessions = aliasSessions,
                     aliasRevision = aliasRevision, onAliasSaved = { aliasRevision++ },
                     list = transfers, view = currentView, loading = loading, stale = stale,
                     query = query, onQuery = { query = it },
@@ -327,6 +332,7 @@ private fun ChunksApp(sharedMagnet: String?) {
                         inspectionFence.invalidate()
                         server = null
                         aliasScope = ""
+                        aliasSessions.clear()
                         version = ""
                         transfers = emptyList()
                         expandedHash = null
@@ -416,6 +422,7 @@ private fun ConnectionScreen(
 private fun TransfersScreen(
     remote: RTorrentRemote, onLifecycleSettled: () -> Unit,
     aliasStore: TransferAliasStore, aliasScope: String,
+    aliasSessions: MutableMap<String, TransferAliasEditSession>,
     aliasRevision: Int, onAliasSaved: () -> Unit,
     list: List<RemoteTransfer>, view: String, loading: Boolean, stale: Boolean,
     query: String, onQuery: (String) -> Unit, filter: TransferFilter,
@@ -496,6 +503,9 @@ private fun TransfersScreen(
             TransferCard(
                 remote = remote, stale = stale, mainView = view == "main",
                 alias = aliasStore.get(aliasScope, transfer.hash),
+                aliasSession = aliasSessions.getOrPut(aliasScope + "\u0000" + transfer.hash) {
+                    TransferAliasEditSession(aliasStore.get(aliasScope, transfer.hash))
+                },
                 onAliasSave = { proposed ->
                     val saved = aliasStore.save(aliasScope, transfer.hash, proposed)
                     if (saved) onAliasSaved()
@@ -517,7 +527,8 @@ private fun TransfersScreen(
 @Composable
 private fun TransferCard(
     remote: RTorrentRemote, stale: Boolean, mainView: Boolean,
-    alias: String?, onAliasSave: (String?) -> Boolean,
+    alias: String?, aliasSession: TransferAliasEditSession,
+    onAliasSave: (String?) -> Boolean,
     onLifecycleSettled: () -> Unit,
     transfer: RemoteTransfer, expanded: Boolean,
     files: List<RemoteFile>?, filesLoading: Boolean, filesError: String?,
@@ -538,7 +549,7 @@ private fun TransferCard(
             }
             TransferAliasEditor(
                 originalName = transfer.name, hash = transfer.hash,
-                alias = alias, onSave = onAliasSave
+                alias = alias, onSave = onAliasSave, session = aliasSession
             )
             LinearProgressIndicator(
                 progress = { transfer.fractionComplete },

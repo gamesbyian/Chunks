@@ -7,10 +7,18 @@ import android.provider.MediaStore
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.hasScrollToIndexAction
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.performScrollToIndex
+import androidx.compose.ui.test.performScrollToNode
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.getValue
@@ -46,6 +54,35 @@ class TransferAliasEditorInstrumentedTest {
         check(resolver.update(uri, ContentValues().apply {
             put(MediaStore.Images.Media.IS_PENDING, 0)
         }, null, null) == 1)
+    }
+
+    @Test fun selectedSuggestionSurvivesLazyListDisposalBeforeExplicitSave() {
+        var alias by mutableStateOf<String?>(null)
+        rule.setContent {
+            MaterialTheme {
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    item(key = "editor") {
+                        TransferAliasEditor(
+                            originalName = "Celebrity.Jeopardy.S04E02.720p.HEVC.x265-MeGusta.mkv",
+                            hash = "C".repeat(40),
+                            alias = alias,
+                            onSave = { alias = it; true }
+                        )
+                    }
+                    items(40) { index ->
+                        Text("Other row $index", modifier = Modifier.height(120.dp))
+                    }
+                }
+            }
+        }
+        rule.onNodeWithText("Change list name").performClick()
+        rule.onNodeWithText("Celebrity Jeopardy S04E02").performClick()
+        // Detach the entire editor item, not just scroll within it.
+        rule.onNode(hasScrollToIndexAction()).performScrollToIndex(25)
+        rule.onNode(hasScrollToIndexAction()).performScrollToIndex(0)
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Save name"))
+        rule.onNodeWithText("Save name").performClick()
+        rule.runOnIdle { assertEquals("Celebrity Jeopardy S04E02", alias) }
     }
 
     @Test fun suggestionsAreOnlyDraftsAndResetRestoresOriginalQueueName() {
