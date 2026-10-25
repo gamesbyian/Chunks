@@ -63,6 +63,14 @@ class RTorrentDisposableMutationTest {
         assertFalse("New test torrent must not auto-start", added.started)
         assertTrue("Existing data must not be sent to a default directory",
             added.directory.startsWith(target))
+        // Large-queue path on the real engine: download_list + system.multicall
+        // must describe exactly what d.multicall2 reports (rates may tick).
+        val paged = rtorrent.listTransfersPaged("main")
+        val fast = rtorrent.listTransfers("main")
+        assertEquals(fast.map { it.hash }, paged.map { it.hash })
+        assertEquals(fast.map { Triple(it.name, it.directory, it.sizeBytes) },
+            paged.map { Triple(it.name, it.directory, it.sizeBytes) })
+        assertNotNull("Real rTorrent should answer extended getters", paged.single().ratioThousandths)
 
         val second = rtorrent.loadStoppedTorrentBytes(bytes, target)
         assertEquals("Duplicate Add must be refused without mutation",

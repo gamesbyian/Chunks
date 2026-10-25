@@ -105,9 +105,8 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
     /** Only server-owned view names, never XML-RPC command fragments. */
     suspend fun listTransfers(view: String = "main"): List<RemoteTransfer> {
         require(Regex("[A-Za-z][A-Za-z0-9_-]{0,39}").matches(view)) { "Invalid view" }
-        val minimum = listOf("d.hash=", "d.name=", "d.size_bytes=", "d.completed_bytes=",
-            "d.state=", "d.directory=")
-        val extended = minimum + listOf("d.down.rate=", "d.up.rate=", "d.ratio=")
+        val minimum = MINIMUM_FIELDS
+        val extended = EXTENDED_FIELDS
         // Optional fields vary across rTorrent builds. Fall back only for
         // an explicit server-side command fault, not on timeouts or network loss.
         // A queue too large for one bounded reply is re-read in pages instead.
@@ -118,7 +117,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                 extractRows(call("d.multicall2", listOf("", view) + minimum)) to false
             }
         } catch (_: RpcReplyTooLarge) {
-            return listTransfersPaged(view, minimum, extended)
+            return listTransfersPaged(view)
         }
         require(rows.size <= MAX_TRANSFERS) { "Unexpectedly large torrent list" }
         val fields = if (rich) extended.size else minimum.size
@@ -135,11 +134,10 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
      * example a torrent erased mid-read) fails the whole snapshot closed rather
      * than publishing a partial or mixed list. Read-only; never retried here.
      */
-    private suspend fun listTransfersPaged(
-        view: String,
-        minimum: List<String>,
-        extended: List<String>
-    ): List<RemoteTransfer> {
+    internal suspend fun listTransfersPaged(view: String): List<RemoteTransfer> {
+        require(Regex("[A-Za-z][A-Za-z0-9_-]{0,39}").matches(view)) { "Invalid view" }
+        val minimum = MINIMUM_FIELDS
+        val extended = EXTENDED_FIELDS
         val hashes = extractRows(call("download_list", listOf("", view))).map {
             val hash = it as? String ?: error("Invalid torrent identity")
             require(identityPattern.matches(hash)) { "Invalid torrent infohash in server view" }
@@ -542,6 +540,9 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
     private companion object {
         const val MAX_TRANSFERS = 12_000
         const val PAGE_SIZE = 250
+        val MINIMUM_FIELDS = listOf("d.hash=", "d.name=", "d.size_bytes=", "d.completed_bytes=",
+            "d.state=", "d.directory=")
+        val EXTENDED_FIELDS = MINIMUM_FIELDS + listOf("d.down.rate=", "d.up.rate=", "d.ratio=")
         val identityPattern = Regex("[0-9a-fA-F]{40}([0-9a-fA-F]{24})?")
     }
 }
