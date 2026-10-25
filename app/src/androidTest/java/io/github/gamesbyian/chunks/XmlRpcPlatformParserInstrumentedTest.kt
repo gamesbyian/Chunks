@@ -33,4 +33,18 @@ class XmlRpcPlatformParserInstrumentedTest {
             XmlRpcCodec.response(reply + "<!ENTITY external>")
         }
     }
+    @Test fun nativeSaxPreflightRejectsDeepHostileStructureWithoutBreakingNormalReplies() {
+        val nested = buildString {
+            repeat(60) { append("<value><array><data>") }
+            append("<value><string>hidden</string></value>")
+            repeat(60) { append("</data></array></value>") }
+        }
+        val deep = "<methodResponse><params><param>" + nested +
+            "</param></params></methodResponse>"
+        assertThrows(IllegalArgumentException::class.java) {
+            XmlRpcCodec.response(deep)
+        }
+        assertEquals("0.9.8", XmlRpcCodec.response(reply))
+    }
+
 }
