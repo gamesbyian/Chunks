@@ -1,6 +1,9 @@
 package io.github.gamesbyian.chunks
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -91,6 +94,8 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
     var message by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     val destination = remember { LocalEngineHolder.appDownloads(context) }
+    // The ongoing notification is how Android lets downloads continue in the background.
+    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
     var restoreNotice by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) {
@@ -145,7 +150,7 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
         if (onBack != null) Button(onClick = onBack, modifier = Modifier.heightIn(min = 48.dp)) { Text("Back") }
         Text("On this phone (experimental)", style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
-        Text("Downloads and seeds with Chunks' own engine while the app is open. Nothing connects to the network until you add a torrent. Transfers are remembered and come back stopped after Chunks restarts. Background downloading and seeding are not supported yet, and Android may stop Chunks at any time. Peers and trackers can see this phone's IP address.")
+        Text("Downloads and seeds with Chunks' own engine. While a transfer runs, an ongoing notification keeps it going in the background, with Stop all; Android may still stop it, and from Android 15 limits this kind of background transfer to about 6 hours a day, after which Chunks pauses everything. Nothing connects to the network until you add a torrent. Transfers are remembered and come back stopped after Chunks restarts. Peers and trackers can see this phone's IP address.")
         Button(onClick = { picker.launch(arrayOf("*/*")) }, enabled = !busy && destination != null,
             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Choose .torrent file") }
         if (destination == null) Text("Phone storage for Chunks is unavailable right now.",
@@ -177,14 +182,25 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
         transfers.forEach { transfer ->
             LocalTransferCard(transfer, busy,
                 onToggle = {
+                    if (transfer.stopped && Build.VERSION.SDK_INT >= 33 &&
+                        context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
+                        PackageManager.PERMISSION_GRANTED) {
+                        notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    }
                     busy = true
                     scope.launch {
                         val outcome = withContext(Dispatchers.IO) {
                             val engine = LocalEngineHolder.get(context)
                             if (transfer.stopped) engine.resume(transfer.infoHash) else engine.pause(transfer.infoHash)
                         }
+                        var serviceProblem: String? = null
+                        if (transfer.stopped && outcome.outcome != LocalCommandOutcome.NOT_FOUND) {
+                            try { LocalEngineService.start(context) } catch (_: Exception) {
+                                serviceProblem = "Android did not allow background running; keep Chunks open."
+                            }
+                        }
                         message = when (outcome.outcome) {
-                            LocalCommandOutcome.VERIFIED -> null
+                            LocalCommandOutcome.VERIFIED -> serviceProblem
                             LocalCommandOutcome.UNCERTAIN -> "The engine has not confirmed the change yet. Check the status before trying again."
                             LocalCommandOutcome.NOT_FOUND -> "This transfer is no longer in the phone engine."
                         }
