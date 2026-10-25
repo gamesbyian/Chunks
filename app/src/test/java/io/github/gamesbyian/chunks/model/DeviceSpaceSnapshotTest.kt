@@ -25,6 +25,6 @@ class DeviceSpaceSnapshotTest {
             { DeviceSpaceSnapshot(-1, 0, 0) },
             { DeviceSpaceSnapshot(100, -1, 0) },
             { DeviceSpaceSnapshot(100, 0, -1) }
-        )) assertThrows(IllegalArgumentException::class.java, bad)
+        )) assertThrows(IllegalArgumentException::class.java) { bad() }
     }
 }
