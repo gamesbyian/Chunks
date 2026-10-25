@@ -7,12 +7,12 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
@@ -97,8 +97,6 @@ internal object LocalZipDocumentInspector {
             return LocalZipReview("Selected document", 0,
                 failure = "Choose a document using Android's file picker.")
 
-        // A prior process may have died before its finally block ran.
-        cleanAbandonedCopies(context.cacheDir)
         val resolver = context.contentResolver
         val label = try {
             resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
@@ -111,46 +109,68 @@ internal object LocalZipDocumentInspector {
         val safeLabel = label?.take(160)?.filter { !it.isISOControl() && it != '/' && it != '\\' }
             ?.trim()?.takeIf { it.isNotBlank() } ?: "Selected document"
 
+        val staged = stage(context, uri, maxInputBytes)
+        val stagedFile = staged.file
+            ?: return LocalZipReview(safeLabel, staged.copiedBytes, failure = staged.failure)
+        try {
+            val inventory = ZipArchiveInventory.inspect(stagedFile, maxInputBytes = maxInputBytes)
+            if (inventory.status == ZipPreflightStatus.BLOCKED)
+                return LocalZipReview(safeLabel, staged.copiedBytes, inventory = inventory)
+            val verified = ZipPayloadVerifier.verify(stagedFile)
+            return LocalZipReview(safeLabel, staged.copiedBytes, inventory, verified)
+        } finally {
+            // Only the randomized app-private staging copy is ever deleted.
+            // The original SAF document, torrent bytes and external files stay untouched.
+            stagedFile.delete()
+        }
+    }
+
+    internal class Staged(val file: File?, val copiedBytes: Long, val failure: String?)
+
+    /**
+     * Copy a selected document into a new randomized app-private file, bounded
+     * even when providers lie about length. The caller owns and must delete it.
+     */
+    fun stage(context: Context, uri: Uri, maxInputBytes: Long = MAX_INPUT_BYTES): Staged {
+        require(maxInputBytes in 1..MAX_INPUT_BYTES)
+        if (uri.scheme != "content")
+            return Staged(null, 0, "Choose a document using Android's file picker.")
+        // A prior process may have died before its finally block ran.
+        cleanAbandonedCopies(context.cacheDir)
         var temporary: File? = null
         var copied = 0L
+        var keep = false
         try {
             temporary = File.createTempFile("chunks-zip-review-", ".zip", context.cacheDir)
             val staged = temporary
-            val stream = resolver.openInputStream(uri)
-                ?: return LocalZipReview(safeLabel, 0, failure = "Android could not open this document.")
+            val stream = context.contentResolver.openInputStream(uri)
+                ?: return Staged(null, 0, "Android could not open this document.")
             stream.use { input ->
                 FileOutputStream(staged).use { output ->
                     val buffer = ByteArray(32 * 1024)
                     while (true) {
                         if (Thread.currentThread().isInterrupted)
-                            return LocalZipReview(safeLabel, copied, failure = "Review interrupted.")
+                            return Staged(null, copied, "Review interrupted.")
                         val count = input.read(buffer)
                         if (count < 0) break
                         if (count == 0)
-                            return LocalZipReview(safeLabel, copied, failure = "Document stream made no progress.")
+                            return Staged(null, copied, "Document stream made no progress.")
                         if (count.toLong() > maxInputBytes - copied)
-                            return LocalZipReview(safeLabel, copied,
-                                failure = "Local ZIP exceeds the " + Units.bytes(maxInputBytes) + " review input limit.")
+                            return Staged(null, copied,
+                                "Local ZIP exceeds the " + Units.bytes(maxInputBytes) + " review input limit.")
                         output.write(buffer, 0, count)
                         copied += count
                     }
                 }
             }
-            val inventory = ZipArchiveInventory.inspect(staged, maxInputBytes = maxInputBytes)
-            if (inventory.status == ZipPreflightStatus.BLOCKED)
-                return LocalZipReview(safeLabel, copied, inventory = inventory)
-            val verified = ZipPayloadVerifier.verify(staged)
-            return LocalZipReview(safeLabel, copied, inventory, verified)
+            keep = true
+            return Staged(staged, copied, null)
         } catch (_: IOException) {
-            return LocalZipReview(safeLabel, copied,
-                failure = "This document could not be read completely.")
+            return Staged(null, copied, "This document could not be read completely.")
         } catch (_: SecurityException) {
-            return LocalZipReview(safeLabel, copied,
-                failure = "Android did not grant access to this document.")
+            return Staged(null, copied, "Android did not grant access to this document.")
         } finally {
-            // Only the randomized app-private staging copy is ever deleted.
-            // The original SAF document, torrent bytes and external files stay untouched.
-            temporary?.delete()
+            if (!keep) temporary?.delete()
         }
     }
 }
@@ -161,9 +181,11 @@ internal fun LocalZipReviewScreen(onBack: (() -> Unit)? = null) {
     val scope = rememberCoroutineScope()
     var busy by remember { mutableStateOf(false) }
     var review by remember { mutableStateOf<LocalZipReview?>(null) }
+    var source by remember { mutableStateOf<Uri?>(null) }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { selected ->
         if (selected != null) {
             review = null
+            source = selected
             busy = true
             scope.launch {
                 // Fail closed on unexpected providers, but don't print private URI
@@ -181,34 +203,35 @@ internal fun LocalZipReviewScreen(onBack: (() -> Unit)? = null) {
         }
     }
 
-    LazyColumn(modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 12.dp),
+    // A plain scrolling Column keeps a running extraction's state and picker
+    // registration alive; lazy items would be disposed when scrolled away.
+    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+            .padding(horizontal = 18.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        if (onBack != null) item {
+        if (onBack != null) {
             Button(onClick = onBack, modifier = Modifier.heightIn(min = 48.dp)) {
                 Text("Back")
             }
         }
-        item {
-            Text("Local ZIP review", style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold)
+        Text("Local ZIP review", style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold)
+        Text("Choose a ZIP saved on this phone. Chunks checks archive paths, member types and actual decompressed bytes before offering to extract it into a new folder you choose. Your selected ZIP is never changed or deleted.")
+        LocalZipInterruptedExtractions()
+        // Android document providers disagree on ZIP MIME types. Show all
+        // openable documents, then trust ONLY our actual ZIP validation.
+        Button(onClick = { picker.launch(arrayOf("*/*")) },
+            enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+            Text(if (busy) "Checking ZIP…" else "Choose local ZIP")
         }
-        item {
-            Text("Choose a ZIP saved on this phone. Chunks checks archive paths, member types and actual decompressed bytes before any extraction feature is offered. Nothing is extracted or deleted from your selected file.")
+        Text("Read-only limits: up to 256 MiB ZIP input and 64 MiB expanded output. Larger or unsupported archives are not verified or extracted. The private temporary copy is discarded after each review or extraction.",
+            style = MaterialTheme.typography.bodySmall)
+        if (review != null) LocalZipReviewResults(requireNotNull(review))
+        val verifiedReview = review
+        val verifiedSource = source
+        if (verifiedReview != null && verifiedSource != null &&
+            verifiedReview.verification?.status == ZipPayloadStatus.VERIFIED_READ_ONLY) {
+            LocalZipExtractionPanel(verifiedSource, verifiedReview)
         }
-        item {
-            // Android document providers disagree on ZIP MIME types. Show all
-            // openable documents, then trust ONLY our actual ZIP validation.
-            Button(onClick = { picker.launch(arrayOf("*/*")) },
-                enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
-                Text(if (busy) "Checking ZIP…" else "Choose local ZIP")
-            }
-        }
-        item {
-            Text("Read-only limits: up to 256 MiB ZIP input and 64 MiB expanded output. Larger or unsupported archives are not verified. The private temporary copy is discarded after the review.",
-                style = MaterialTheme.typography.bodySmall)
-        }
-        if (review != null) item { LocalZipReviewResults(requireNotNull(review)) }
     }
 }
 
