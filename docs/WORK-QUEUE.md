@@ -23,6 +23,10 @@
 
 ## Active integration / hygiene
 
+- [x] [#100](https://github.com/gamesbyian/Chunks/pull/100) merged `6c8631b9d41808710badf4547541f0f750223e77`: batch proposal checkboxes announce the original torrent name in Compose semantics, long titles wrap within their card and alternatives explain their provenance. Native test proves an intervening manual alias blocks **all** selected batch writes. Exact source `2386cab18d5fb439f29de6ba16ffcb99bd3ecf79` passed [Android/JVM 40159540821](https://github.com/gamesbyian/Chunks/actions/runs/40159540821) and [API35 40159540831](https://github.com/gamesbyian/Chunks/actions/runs/40159540831) (**20/20**). Retrieved artifact `12586130971`, inspected real native 1080×2400 proposal screenshot. TalkBack spoken walkthrough and 200%/RTL remain physical/device gates.
+
+
+
 - [x] [#98](https://github.com/gamesbyian/Chunks/pull/98) merged `c3fda9ade7d8b81482ab0551025819a40ca37fbe`: bounded (100) current-view batch suggestion review with edit/selection, two-stage confirmation, one atomic device-local aliases commit, and conditional undo that refuses to overwrite a newer manual change. Tested exact source `f3f6b0238f71c5e167cf9b679d00db708a609f43` passed [Android/JVM 40158980304](https://github.com/gamesbyian/Chunks/actions/runs/40158980304), [API35 native 40158980145](https://github.com/gamesbyian/Chunks/actions/runs/40158980145) and [four-viewport baseline 40158980174](https://github.com/gamesbyian/Chunks/actions/runs/40158980174). Downloaded PNG artifact `12585820104` and visually inspected actual emulator review and saved/undo surfaces. This is entirely local label persistence; remote host, RTL/200% text/TalkBack and full 12k-transfer performance unproved.
 
 
