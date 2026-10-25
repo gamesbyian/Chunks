@@ -61,6 +61,35 @@ internal data class LocalZipReview(
  */
 internal object LocalZipDocumentInspector {
     const val MAX_INPUT_BYTES = ZipArchiveInventory.DEFAULT_MAX_INPUT_BYTES
+    private const val ABANDONED_AFTER_MS = 24L * 60 * 60 * 1000
+    private val stageFile = Regex("^chunks-zip-review-[A-Za-z0-9_-]+\\.zip$")
+
+    /**
+     * Repair only old, abandoned temporary files in our *own* cache root.
+     * Never recursively remove directories or touch documents/remote payload.
+     * A 24h grace prevents racing an in-progress review in another caller.
+     */
+    fun cleanAbandonedCopies(
+        cacheDir: File,
+        nowMs: Long = System.currentTimeMillis()
+    ): Int {
+        var removed = 0
+        for (child in cacheDir.listFiles().orEmpty()) {
+            try {
+                if (!stageFile.matches(child.name) || !child.isFile ||
+                    java.nio.file.Files.isSymbolicLink(child.toPath())) continue
+                val modified = child.lastModified()
+                if (modified <= 0 || nowMs < modified ||
+                    nowMs - modified < ABANDONED_AFTER_MS) continue
+                if (child.delete()) removed++
+            } catch (_: SecurityException) {
+                // Recoverable advisory cleanup failure: preserve unknown bytes.
+            } catch (_: IOException) {
+                // Never turn housekeeping into destructive fallback behavior.
+            }
+        }
+        return removed
+    }
 
     fun inspect(context: Context, uri: Uri, maxInputBytes: Long = MAX_INPUT_BYTES): LocalZipReview {
         require(maxInputBytes in 1..MAX_INPUT_BYTES)
@@ -68,6 +97,8 @@ internal object LocalZipDocumentInspector {
             return LocalZipReview("Selected document", 0,
                 failure = "Choose a document using Android's file picker.")
 
+        // A prior process may have died before its finally block ran.
+        cleanAbandonedCopies(context.cacheDir)
         val resolver = context.contentResolver
         val label = try {
             resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
