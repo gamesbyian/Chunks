@@ -1,9 +1,22 @@
 package io.github.gamesbyian.chunks.engine
 
 import java.io.File
+import java.io.FileOutputStream
 import java.net.InetSocketAddress
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
+import java.util.Collections
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import org.libtorrent4j.AddTorrentParams
+import org.libtorrent4j.AlertListener
+import org.libtorrent4j.Vectors
+import org.libtorrent4j.alerts.Alert
+import org.libtorrent4j.alerts.AlertType
+import org.libtorrent4j.alerts.SaveResumeDataAlert
+import org.libtorrent4j.alerts.TorrentAlert
 import org.libtorrent4j.SessionManager
 import org.libtorrent4j.SessionParams
 import org.libtorrent4j.SettingsPack
@@ -12,6 +25,7 @@ import org.libtorrent4j.TorrentHandle
 import org.libtorrent4j.TorrentInfo
 import org.libtorrent4j.TorrentStatus
 import org.libtorrent4j.swig.error_code
+import org.libtorrent4j.swig.libtorrent
 import org.libtorrent4j.swig.settings_pack
 import org.libtorrent4j.swig.torrent_flags_t
 
@@ -31,7 +45,12 @@ data class LocalEngineConfig(
     val enableLsd: Boolean = false,
     val enablePortMapping: Boolean = false,
     /** Required for same-host tests where every peer is 127.0.0.1. */
-    val allowMultipleConnectionsPerIp: Boolean = false
+    val allowMultipleConnectionsPerIp: Boolean = false,
+    /**
+     * App-private directory for per-transfer resume files. When set, transfers
+     * survive engine restart and process death; restored transfers come back stopped.
+     */
+    val stateDirectory: File? = null
 )
 
 enum class LocalTransferState { CHECKING, DOWNLOADING_METADATA, DOWNLOADING, FINISHED, SEEDING, UNKNOWN }
@@ -64,8 +83,27 @@ sealed class LocalAddResult {
 
 class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConfig()) : AutoCloseable {
     private val session = SessionManager(false)
-    private val handles = LinkedHashMap<String, TorrentHandle>()
+    // Guarded by its own monitor so the alert thread never needs the engine lock.
+    private val handles: MutableMap<String, TorrentHandle> = Collections.synchronizedMap(LinkedHashMap())
+    private val pendingSaves = ConcurrentHashMap<String, CountDownLatch>()
     @Volatile private var started = false
+
+    /** Resume files that could not be restored on start; they are left untouched. */
+    @Volatile var restoreProblems: List<String> = emptyList()
+        private set
+
+    private val resumeListener = object : AlertListener {
+        override fun types() = intArrayOf(AlertType.SAVE_RESUME_DATA.swig(), AlertType.SAVE_RESUME_DATA_FAILED.swig())
+        override fun alert(alert: Alert<*>) {
+            val handle = (alert as? TorrentAlert<*>)?.handle() ?: return
+            val key = synchronized(handles) { handles.entries.firstOrNull { it.value == handle }?.key } ?: return
+            try {
+                if (alert is SaveResumeDataAlert) writeResume(key, AddTorrentParams.writeResumeDataBuf(alert.params()))
+            } finally {
+                pendingSaves.remove(key)?.countDown()
+            }
+        }
+    }
 
     @Synchronized
     fun start() {
@@ -79,6 +117,11 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             config.allowMultipleConnectionsPerIp)
         session.start(SessionParams(pack))
         started = true
+        config.stateDirectory?.let { directory ->
+            require(directory.isDirectory || directory.mkdirs()) { "Engine state directory is unavailable" }
+            session.addListener(resumeListener)
+            restore(directory)
+        }
     }
 
     /** The bound TCP listen port, or 0 if the session is not listening. */
@@ -115,6 +158,8 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             return LocalAddResult.Refused("The local engine refused this torrent: " + error.message())
         val handle = TorrentHandle(raw)
         handles[hash] = handle
+        // Persist the explicit Add immediately; later saves refresh piece state.
+        if (config.stateDirectory != null) writeResume(hash, AddTorrentParams.writeResumeDataBuf(params))
         val status = snapshot(hash, handle)
             ?: return LocalAddResult.Refused("Added torrent could not be read back")
         if (!status.stopped) {
@@ -158,6 +203,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         val key = normal(infoHash)
         val handle = handles.remove(key) ?: return false
         session.remove(handle)
+        config.stateDirectory?.let { File(it, "$key.resume").delete() }
         return true
     }
 
@@ -168,14 +214,65 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     }
 
     @Synchronized
-    fun list(): List<LocalTransferStatus> = handles.mapNotNull { (hash, handle) -> snapshot(hash, handle) }
+    fun list(): List<LocalTransferStatus> =
+        synchronized(handles) { handles.toList() }.mapNotNull { (hash, handle) -> snapshot(hash, handle) }
+
+    /**
+     * Ask libtorrent for fresh resume data for every transfer and write each
+     * atomically. Returns how many were confirmed before the timeout.
+     */
+    fun saveResumeData(timeoutMs: Long = 5_000): Int {
+        if (config.stateDirectory == null || !started) return 0
+        val targets = synchronized(handles) { handles.toList() }
+        val latches = targets.map { (key, handle) ->
+            CountDownLatch(1).also { pendingSaves[key] = it; handle.saveResumeData(TorrentHandle.SAVE_INFO_DICT) }
+        }
+        val deadline = System.nanoTime() + timeoutMs * 1_000_000
+        return latches.count { it.await(maxOf(0, deadline - System.nanoTime()), TimeUnit.NANOSECONDS) }
+    }
 
     @Synchronized
     override fun close() {
         if (!started) return
+        saveResumeData()
         handles.clear()
         session.stop()
         started = false
+    }
+
+    /** Restore every well-formed resume file, always stopped and unmanaged. */
+    private fun restore(directory: File) {
+        val problems = ArrayList<String>()
+        for (file in directory.listFiles().orEmpty().sortedBy { it.name }) {
+            val key = file.name.removeSuffix(".resume")
+            if (!file.name.endsWith(".resume") || !identityPattern.matches(key)) continue
+            val bytes = if (file.isFile && file.length() in 1..MAX_RESUME_BYTES) file.readBytes() else null
+            val error = error_code()
+            val raw = bytes?.let { libtorrent.read_resume_data_ex(Vectors.bytes2byte_vector(it), error) }
+            if (raw == null || error.value() != 0) { problems += file.name; continue }
+            val params = AddTorrentParams(raw)
+            val info = params.torrentInfo
+            if (info == null || !info.isValid || identity(info) != key) { problems += file.name; continue }
+            params.setFlags(params.flags.or_(org.libtorrent4j.TorrentFlags.PAUSED)
+                .and_(org.libtorrent4j.TorrentFlags.AUTO_MANAGED.inv()))
+            val addError = error_code()
+            val handle = session.swig().add_torrent(params.swig(), addError)
+            if (addError.value() != 0 || !handle.is_valid) { problems += file.name; continue }
+            handles[key] = TorrentHandle(handle)
+        }
+        restoreProblems = problems
+    }
+
+    /** Atomic replace of our own resume file: temp file, fsync, rename. */
+    private fun writeResume(key: String, bytes: ByteArray) {
+        val directory = config.stateDirectory ?: return
+        val temporary = File(directory, "$key.resume.tmp")
+        FileOutputStream(temporary).use { output ->
+            output.write(bytes)
+            output.fd.sync()
+        }
+        Files.move(temporary.toPath(), File(directory, "$key.resume").toPath(),
+            StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
     }
 
     private fun snapshot(hash: String, handle: TorrentHandle): LocalTransferStatus? {
@@ -215,5 +312,10 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     private fun normal(infoHash: String): String {
         require(infoHash.matches(Regex("^[0-9a-fA-F]{40}([0-9a-fA-F]{24})?$"))) { "Invalid torrent identity" }
         return infoHash.lowercase(Locale.ROOT)
+    }
+
+    private companion object {
+        val identityPattern = Regex("^[0-9a-f]{40}([0-9a-f]{24})?$")
+        const val MAX_RESUME_BYTES = 16L * 1024 * 1024
     }
 }

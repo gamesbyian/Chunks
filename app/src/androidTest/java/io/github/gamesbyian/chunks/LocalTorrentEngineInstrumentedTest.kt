@@ -81,4 +81,24 @@ class LocalTorrentEngineInstrumentedTest {
         assertTrue(leecher.removeKeepingData(leech.infoHash))
         assertArrayEquals(payload, File(destination, "Chunks device fixture/payload.bin").readBytes())
     }
+
+    @Test fun androidEngineRestoresSavedTransfersStoppedAfterRestart() {
+        val seedRoot = File(work, "persist/Restart fixture").apply { mkdirs() }
+        File(seedRoot, "a.bin").writeBytes(ByteArray(70_000).also { Random(5).nextBytes(it) })
+        val torrent = TorrentBuilder().path(seedRoot).pieceSize(16 * 1024).generate().entry().bencode()
+        val state = File(work, "state").apply { mkdirs() }
+        val config = LocalEngineConfig(listenInterfaces = "127.0.0.1:0", stateDirectory = state)
+
+        val first = LocalTorrentEngine(config).also { it.start(); engines += it }
+        val added = (first.addStopped(torrent, requireNotNull(seedRoot.parentFile)) as LocalAddResult.AddedStopped).status
+        assertEquals(LocalCommandOutcome.VERIFIED, first.resume(added.infoHash).outcome)
+        waitFor { first.status(added.infoHash)?.state == LocalTransferState.SEEDING }
+        first.close()
+
+        val second = LocalTorrentEngine(config).also { it.start(); engines += it }
+        assertTrue(second.restoreProblems.isEmpty())
+        val restored = requireNotNull(second.status(added.infoHash))
+        assertTrue(restored.stopped)
+        waitFor { second.status(added.infoHash)?.progressPpm == 1_000_000 }
+    }
 }

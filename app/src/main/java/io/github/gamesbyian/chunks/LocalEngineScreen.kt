@@ -56,12 +56,24 @@ internal object LocalEngineHolder {
     @Synchronized
     fun current(): LocalTorrentEngine? = engine
 
-    /** Starts the engine (and its listening socket) on first explicit use only. */
+    /**
+     * Starts the engine (and its listening socket) on first explicit use, or to
+     * restore transfers saved earlier. Restored transfers always come back stopped.
+     */
     @Synchronized
-    fun get(): LocalTorrentEngine = engine ?: LocalTorrentEngine(LocalEngineConfig()).also {
+    fun get(context: Context): LocalTorrentEngine = engine ?: LocalTorrentEngine(
+        LocalEngineConfig(stateDirectory = stateDirectory(context))
+    ).also {
         it.start()
         engine = it
     }
+
+    /** Start only if an earlier session left transfers to restore. */
+    @Synchronized
+    fun restoreIfSaved(context: Context): LocalTorrentEngine? = engine
+        ?: if (stateDirectory(context).listFiles().orEmpty().any { it.name.endsWith(".resume") }) get(context) else null
+
+    private fun stateDirectory(context: Context) = File(context.filesDir, "local-engine")
 
     /** The only destination offered in this slice: a real POSIX folder Chunks owns. */
     fun appDownloads(context: Context): File? =
@@ -80,10 +92,24 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
     var busy by remember { mutableStateOf(false) }
     val destination = remember { LocalEngineHolder.appDownloads(context) }
 
+    var restoreNotice by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) {
+        restoreNotice = withContext(Dispatchers.IO) {
+            try {
+                val engine = LocalEngineHolder.restoreIfSaved(context)
+                val problems = engine?.restoreProblems.orEmpty()
+                if (problems.isEmpty()) null
+                else problems.size.toString() + " saved transfer record(s) could not be restored and were left untouched."
+            } catch (_: Exception) { "Saved transfers could not be restored." }
+        }
+        var tick = 0
         while (true) {
             transfers = withContext(Dispatchers.IO) {
                 try { LocalEngineHolder.current()?.list().orEmpty() } catch (_: Exception) { emptyList() }
+            }
+            // Refresh resume data about every 30 s so progress survives process death.
+            if (++tick % 30 == 0) withContext(Dispatchers.IO) {
+                try { LocalEngineHolder.current()?.saveResumeData() } catch (_: Exception) { }
             }
             delay(1_000)
         }
@@ -119,12 +145,13 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
         if (onBack != null) Button(onClick = onBack, modifier = Modifier.heightIn(min = 48.dp)) { Text("Back") }
         Text("On this phone (experimental)", style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
-        Text("Downloads and seeds with Chunks' own engine while the app is open. Nothing connects to the network until you add a torrent. Background downloading and seeding are not supported yet, and Android may stop Chunks at any time. Peers and trackers can see this phone's IP address.")
+        Text("Downloads and seeds with Chunks' own engine while the app is open. Nothing connects to the network until you add a torrent. Transfers are remembered and come back stopped after Chunks restarts. Background downloading and seeding are not supported yet, and Android may stop Chunks at any time. Peers and trackers can see this phone's IP address.")
         Button(onClick = { picker.launch(arrayOf("*/*")) }, enabled = !busy && destination != null,
             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Choose .torrent file") }
         if (destination == null) Text("Phone storage for Chunks is unavailable right now.",
             color = MaterialTheme.colorScheme.error)
         message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        restoreNotice?.let { Text(it, color = MaterialTheme.colorScheme.error) }
 
         val add = pending
         if (add != null && destination != null) LocalAddReview(add.preview, destination,
@@ -133,7 +160,7 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
                 busy = true
                 scope.launch {
                     val result = withContext(Dispatchers.IO) {
-                        try { LocalEngineHolder.get().addStopped(add.bytes, destination) }
+                        try { LocalEngineHolder.get(context).addStopped(add.bytes, destination) }
                         catch (_: Exception) { LocalAddResult.Refused("The local engine could not add this torrent") }
                     }
                     message = when (result) {
@@ -153,7 +180,7 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
                     busy = true
                     scope.launch {
                         val outcome = withContext(Dispatchers.IO) {
-                            val engine = LocalEngineHolder.get()
+                            val engine = LocalEngineHolder.get(context)
                             if (transfer.stopped) engine.resume(transfer.infoHash) else engine.pause(transfer.infoHash)
                         }
                         message = when (outcome.outcome) {
