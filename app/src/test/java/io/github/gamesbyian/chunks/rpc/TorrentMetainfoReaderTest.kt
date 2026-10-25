@@ -92,4 +92,42 @@ class TorrentMetainfoReaderTest {
             }
         }
     }
+
+    private fun multiWithPaths(vararg members: Pair<List<String>, Long>): String {
+        val encoded = members.joinToString("") { (path, size) ->
+            "d6:lengthi" + size + "e4:pathl" +
+                path.joinToString("") { part -> part.toByteArray(Charsets.UTF_8).size.toString() + ":" + part } +
+                "ee"
+        }
+        return "d5:filesl" + encoded +
+            "e4:name4:root12:piece lengthi16384e6:pieces20:01234567890123456789e"
+    }
+
+    @Test fun refusesDuplicateOrFileAsDirectoryPathsBeforeRemoteAdd() {
+        val same = multiWithPaths(
+            listOf("episode.mkv") to 3L,
+            listOf("episode.mkv") to 4L)
+        val parentFirst = multiWithPaths(
+            listOf("Season") to 3L,
+            listOf("Season", "Episode.mkv") to 4L)
+        val nestedFirst = multiWithPaths(
+            listOf("Season", "Episode.mkv") to 3L,
+            listOf("Season") to 4L)
+        for (candidate in listOf(same, parentFirst, nestedFirst)) {
+            try {
+                TorrentMetainfoReader.preview(torrent(candidate))
+                fail("Non-unique torrent backing path must be refused")
+            } catch (expected: IllegalArgumentException) {
+                assertTrue(expected.message.orEmpty().contains("path"))
+            }
+        }
+        // Sharing a parent DIRECTORY is ordinary and must remain supported.
+        val siblings = multiWithPaths(
+            listOf("Season", "Episode01.mkv") to 3L,
+            listOf("Season", "Episode02.mkv") to 4L,
+            listOf("Other", "Episode01.mkv") to 2L)
+        val valid = TorrentMetainfoReader.preview(torrent(siblings))
+        assertEquals(9L, valid.sizeBytes)
+        assertEquals(3, valid.fileCount)
+    }
 }
