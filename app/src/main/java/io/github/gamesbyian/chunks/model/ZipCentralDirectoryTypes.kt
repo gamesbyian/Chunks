@@ -59,6 +59,16 @@ internal object ZipCentralDirectoryTypes {
                 input.readFully(fixed)
                 if (u32(fixed, 0) != 0x02014b50L)
                     return@use "ZIP central directory entry signature is invalid"
+                // ZIP64 can appear on individual members even when the EOCD
+                // contains normal 16/32-bit totals. Reject sentinel fields
+                // until a separately bounded ZIP64 extra-field parser exists.
+                if (u32(fixed, 20) == 0xffffffffL ||
+                    u32(fixed, 24) == 0xffffffffL ||
+                    u32(fixed, 42) == 0xffffffffL ||
+                    u16(fixed, 34) == 0xffff)
+                    return@use "ZIP64 member metadata needs a separate verified inspector"
+                if (u16(fixed, 34) != 0)
+                    return@use "Split ZIP member disk references are unsupported"
                 val flags = u16(fixed, 8)
                 if ((flags and 1) != 0)
                     return@use "Encrypted ZIP entries are not supported by local preflight"
