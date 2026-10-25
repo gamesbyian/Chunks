@@ -38,7 +38,6 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -134,7 +133,9 @@ private fun ChunksApp(sharedMagnet: String?) {
     val context = LocalContext.current
     val aliasStore = remember(context) { TransferAliasStore(context) }
     // Owned by the connected app, not the recyclable LazyColumn card.
-    val aliasSessions = remember { mutableStateMapOf<String, TransferAliasEditSession>() }
+    // A plain remembered map prevents getOrPut writes during composition from
+    // being rolled back; each value has observable Compose state fields.
+    val aliasSessions = remember { mutableMapOf<String, TransferAliasEditSession>() }
     var aliasScope by remember { mutableStateOf("") }
     var aliasRevision by remember { mutableStateOf(0) }
     val remoteFence = remember { RemoteUiRequestFence() }
