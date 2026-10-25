@@ -19,7 +19,10 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.onNode
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -252,9 +255,18 @@ class ChunksMainActivityAtlasTest {
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Change list name"))
         rule.onAllNodesWithText("Change list name").onFirst().performClick()
         rule.onNodeWithText("Extracted show title, season and episode from filename").assertExists()
-        rule.onNodeWithText("Public Example Long Named Archive S01E01").performClick()
+        // A transfer's expanded editor can be taller than the viewport.
+        // Scrolling the LazyColumn to its *item* is not enough to make a
+        // deeply nested suggestion tappable. Scroll the actual target into
+        // view before sending an Android touch event.
+        val recommended = "Public Example Long Named Archive S01E01"
+        rule.onNodeWithText(recommended).performScrollTo()
+        rule.onNodeWithText(recommended).performClick()
+        rule.onNode(hasSetTextAction() and hasText(recommended)).assertExists()
+        rule.onNodeWithText("Display name in Chunks").performScrollTo()
+        save("app-alias-after-suggestion-diagnostic-real-compose")
         save("app-alias-review-populated-real-compose")
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Save name"))
+        rule.onNodeWithText("Save name").performScrollTo()
         // Preserve the actual screen *before* Save so unexpected lifecycle
         // resets can be distinguished from validation and persistence failures.
         save("app-alias-before-save-diagnostic-real-compose")
