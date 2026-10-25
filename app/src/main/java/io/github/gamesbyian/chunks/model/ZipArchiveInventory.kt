@@ -25,6 +25,10 @@ object ZipArchiveInventory {
             return blocked("ZIP file is missing, empty or beyond the local preview size limit")
 
         return try {
+            // ZipEntry omits Unix file-type metadata. Refuse links/special files
+            // before reporting an archive eligible for further streaming checks.
+            val typeFailure = ZipCentralDirectoryTypes.rejectReason(stagedZip, limits.maxEntries)
+            if (typeFailure != null) return blocked(typeFailure)
             ZipFile(stagedZip).use { archive ->
                 val entries = ArrayList<ZipMemberDescriptor>()
                 val members = archive.entries()
