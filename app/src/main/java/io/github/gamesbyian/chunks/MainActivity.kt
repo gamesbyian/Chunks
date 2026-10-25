@@ -103,7 +103,7 @@ class MainActivity : ComponentActivity() {
 }
 
 private enum class Section(val label: String) {
-    TRANSFERS("Transfers"), PLACES("Places"), ORGANIZE("Organize"), SERVER("Server"), ADD("Add"), NAMES("Names")
+    TRANSFERS("Transfers"), PLACES("Places"), ORGANIZE("Organize"), SERVER("Server"), ARCHIVES("ZIP review"), ADD("Add"), NAMES("Names")
 }
 
 @Composable
@@ -203,10 +203,13 @@ private fun ChunksApp(sharedMagnet: String?) {
                 color = Color(0xFF595575))
         }
 
-        if (server == null) {
+        if (section == Section.ARCHIVES) {
+            LocalZipReviewScreen()
+        } else if (server == null) {
             ConnectionScreen(
                 endpoint = endpoint, username = username, password = password,
                 error = error, loading = loading,
+                onLocalZipReview = { section = Section.ARCHIVES },
                 onEndpoint = { endpoint = it }, onUsername = { username = it },
                 onPassword = { password = it },
                 onConnect = {
@@ -317,6 +320,7 @@ private fun ChunksApp(sharedMagnet: String?) {
                         }
                     }
                 )
+                Section.ARCHIVES -> LocalZipReviewScreen()
                 Section.PLACES -> PlacesScreen(transfers) { path ->
                     draftPath = path
                     section = Section.ADD
@@ -375,6 +379,7 @@ private fun readableFailure(failure: Exception): String = when (failure) {
 @Composable
 private fun ConnectionScreen(
     endpoint: String, username: String, password: String, error: String?, loading: Boolean,
+    onLocalZipReview: () -> Unit,
     onEndpoint: (String) -> Unit, onUsername: (String) -> Unit,
     onPassword: (String) -> Unit, onConnect: () -> Unit
 ) {
@@ -418,6 +423,12 @@ private fun ConnectionScreen(
             ) { Text(if (loading) "Connecting…" else "Connect to rTorrent") }
         }
         if (error != null) item { Notice("Connection unsuccessful", error, Coral) }
+        item {
+            OutlinedButton(onClick = onLocalZipReview,
+                modifier = Modifier.fillMaxWidth().height(52.dp)) {
+                Text("Inspect a local ZIP without connecting")
+            }
+        }
         item {
             Text("Protected HTTPS is required for remote servers. Credentials stay in memory only. No torrents or files are changed.",
                 style = MaterialTheme.typography.bodySmall, color = Color(0xFF595575))
