@@ -42,3 +42,10 @@ dependencies {
     androidTestImplementation("androidx.test:runner:1.6.2")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
+tasks.withType<Test>().configureEach {
+    // libtorrent4j's native library installs its own signal handlers. The JVM relies on
+    // SIGSEGV for stack guards and implicit null checks, so without signal chaining a
+    // later ordinary test (e.g. deep XML parsing) kills the test JVM with exit 139.
+    val signalChaining = File(System.getProperty("java.home"), "lib/libjsig.so")
+    if (signalChaining.isFile) environment("LD_PRELOAD", signalChaining.absolutePath)
+}
