@@ -74,4 +74,49 @@ class XmlRpcCodecTest {
             fail("Expected rejection")
         } catch (expected: IllegalArgumentException) { }
     }
+    private fun response(value: String): String =
+        "<methodResponse><params><param>$value</param></params></methodResponse>"
+
+    @Test fun refusesPathologicallyDeepButSmallXmlBeforeConstructingDom() {
+        val nested = buildString {
+            repeat(60) { append("<value><array><data>") }
+            append("<value><string>safe</string></value>")
+            repeat(60) { append("</data></array></value>") }
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            XmlRpcCodec.response(response(nested))
+        }
+    }
+
+    @Test fun rejectsSingleOversizedArrayWithoutTruncation() {
+        val values = "<value><int>1</int></value>".repeat(12_001)
+        val xml = response("<value><array><data>$values</data></array></value>")
+        val failure = assertThrows(IllegalArgumentException::class.java) {
+            XmlRpcCodec.response(xml)
+        }
+        assertTrue(failure.message.orEmpty().contains("array"))
+    }
+
+    @Test fun rejectsOverlongStringsAndStructKeys() {
+        assertThrows(IllegalArgumentException::class.java) {
+            XmlRpcCodec.response(response(
+                "<value><string>${"x".repeat(262_145)}</string></value>"
+            ))
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            XmlRpcCodec.response(response(
+                "<value><struct><member><name>${"a".repeat(257)}</name>" +
+                    "<value><int>1</int></value></member></struct></value>"
+            ))
+        }
+    }
+
+    @Test fun nestedButOrdinaryArrayAndFaultRemainSupported() {
+        val xml = response("<value><array><data>" +
+            "<value><array><data><value><string>ok</string></value>" +
+            "</data></array></value></data></array></value>")
+        assertEquals(listOf(listOf("ok")), XmlRpcCodec.response(xml))
+        responseDecodesFaultAsFailure()
+    }
+
 }
