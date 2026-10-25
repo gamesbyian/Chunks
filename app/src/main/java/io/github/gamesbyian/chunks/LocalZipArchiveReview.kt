@@ -125,7 +125,7 @@ internal object LocalZipDocumentInspector {
 }
 
 @Composable
-internal fun LocalZipReviewScreen() {
+internal fun LocalZipReviewScreen(onBack: (() -> Unit)? = null) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var busy by remember { mutableStateOf(false) }
@@ -153,6 +153,11 @@ internal fun LocalZipReviewScreen() {
     LazyColumn(modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 18.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        if (onBack != null) item {
+            Button(onClick = onBack, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text("Back")
+            }
+        }
         item {
             Text("Local ZIP review", style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold)
