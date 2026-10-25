@@ -1,6 +1,8 @@
 package io.github.gamesbyian.chunks
 
 import android.content.Context
+import io.github.gamesbyian.chunks.model.AliasReviewWrite
+import io.github.gamesbyian.chunks.model.AliasReviewPlanner
 import io.github.gamesbyian.chunks.model.TransferDisplayNames
 import java.security.MessageDigest
 import java.util.Locale
@@ -30,6 +32,44 @@ internal class TransferAliasStore(context: Context) {
         val editor = preferences.edit()
         if (alias == null) editor.remove(preferenceKey)
         else editor.putString(preferenceKey, TransferDisplayNames.validateAlias(alias))
+        return editor.commit()
+    }
+
+    /**
+     * One local preferences transaction for a reviewed batch. A fresh existing
+     * alias, including a malformed legacy value, prevents every write rather
+     * than allowing a partial overwrite of someone's manual label.
+     */
+    @Synchronized
+    fun saveReviewedBatch(endpoint: String, writes: List<AliasReviewWrite>): Boolean {
+        if (endpoint.isBlank() || writes.isEmpty() ||
+            writes.size > AliasReviewPlanner.MAX_REVIEW_ITEMS) return false
+        val keys = writes.map { entry ->
+            require(Regex("[0-9a-fA-F]{40}").matches(entry.hash))
+            require(TransferDisplayNames.validateAlias(entry.alias) == entry.alias)
+            require(entry.alias != entry.originalName)
+            key(endpoint, entry.hash)
+        }
+        if (keys.toSet().size != keys.size || keys.any(preferences::contains)) return false
+        val editor = preferences.edit()
+        writes.forEachIndexed { i, entry -> editor.putString(keys[i], entry.alias) }
+        return editor.commit()
+    }
+
+    /**
+     * Undo only while every currently stored alias still matches the exact
+     * batch that Chunks applied. Never erase a newer manually edited alias.
+     */
+    @Synchronized
+    fun undoReviewedBatch(endpoint: String, writes: List<AliasReviewWrite>): Boolean {
+        if (endpoint.isBlank() || writes.isEmpty() ||
+            writes.size > AliasReviewPlanner.MAX_REVIEW_ITEMS) return false
+        val keys = writes.map { key(endpoint, it.hash) }
+        if (keys.toSet().size != keys.size ||
+            writes.indices.any { i -> preferences.getString(keys[i], null) != writes[i].alias })
+            return false
+        val editor = preferences.edit()
+        keys.forEach(editor::remove)
         return editor.commit()
     }
 
