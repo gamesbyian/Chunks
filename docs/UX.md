@@ -1,6 +1,6 @@
 # Chunks interaction and accessibility contract
 
-Updated 2026-10-24. Status: a preliminary Android Compose interface is implemented in #14. Its Transfers, Places, Organize, Server and Add-preview surfaces have source/build/JVM evidence but **no high-fidelity approved reference family, real handset captures or uncoached-user evidence**. Advanced Move and Rename interactions are still only design contracts.
+Updated 2026-10-25. Status: a preliminary Android Compose interface is implemented in #14. Its Transfers, Places, Organize, Server and Add-preview surfaces have source/build/JVM evidence but **no high-fidelity approved reference family, real handset captures or uncoached-user evidence**. Advanced Move and Rename interactions are still only design contracts.
 
 ## Mental model, first-run and navigation
 
@@ -84,3 +84,9 @@ Transfers offers **Review suggested queue names** to inspect at most 100 eligibl
 ## Phone-storage Places preview (merged #104)
 
 The native Places screen now includes a separate read-only **Phone storage** card with OS-reported total/free bytes for Chunks' internal app volume, occupied-or-reserved progress, optional active Android low-space alert and a **Refresh phone space** control. The text explicitly distinguishes other apps/system reservations and remote rTorrent paths, and refuses to invent either a numerical Android low-space floor or Chunks torrent allocation. This card neither offers deletion nor enforces a cap. [#104](https://github.com/gamesbyian/Chunks/pull/104) passed [Android/JVM 40162903014](https://github.com/gamesbyian/Chunks/actions/runs/40162903014), [API35 40162903028](https://github.com/gamesbyian/Chunks/actions/runs/40162903028) and baseline [40162903074](https://github.com/gamesbyian/Chunks/actions/runs/40162903074), with inspected real low/normal Compose PNGs from artifact `12586059962`. This does not establish physical Android behavior, screen-reader speech or measured torrent usage.
+
+## Local ZIP review task (merged #110; extraction intentionally absent)
+
+From the disconnected connection form, **Inspect a local ZIP without connecting** opens a separate, read-only ZIP inspection page; connected navigation also exposes **ZIP review**. A large **Choose local ZIP** action invokes Android's document picker. The report names the locally selected document, shows safe path previews with bounded output, distinguishes integrity-verified from blocked/unsupported results, and expressly states that successful review is not permission to extract or delete a torrent-backed archive. **Back** returns to the connection form or connected transfer queue. This is a separate phone-local document journey, never a disguised rTorrent remote file browser.
+
+[#110](https://github.com/gamesbyian/Chunks/pull/110) passed Android/JVM and API35 instrumentation at source `4279a5ba4c5b5a89944652ae8adabc310e79202a` ([40229146122](https://github.com/gamesbyian/Chunks/actions/runs/40229146122), [40229146145](https://github.com/gamesbyian/Chunks/actions/runs/40229146145)). Tests exercise real document-provider staging and the Compose result text, but not a complete picker-driven screenshot, 200% typography, screen-reader spoken comprehension, permission revocation or physical handset. Distinguish this **read-only view** from future manual/opt-in archive extraction and cleanup wizard task journeys.
