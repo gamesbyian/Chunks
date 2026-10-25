@@ -40,9 +40,14 @@ jobs:
         run: |
           if ! gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug; then
             # Native (JNI) crashes leave only a JVM fatal-error report; surface its summary.
-            for report in app/hs_err_pid*.log; do
-              [ -f "$report" ] && grep -m1 -A3 "^# Problematic frame" "$report" && sed -n '/^Stack:/,/^$/p' "$report" | head -40
+            for report in $(find . -name 'hs_err_pid*.log' -not -path './.git/*' 2>/dev/null); do
+              echo "JVM fatal error report: $report"
+              grep -m1 -A3 "^# Problematic frame" "$report" || true
+              sed -n '/^Stack:/,/^$/p' "$report" | head -40
             done
+            # Which test classes completed before the process died.
+            grep -ho 'testsuite name="[^"]*" tests="[0-9]*" skipped="[0-9]*" failures="[0-9]*" errors="[0-9]*"' \
+              app/build/test-results/testDebugUnitTest/*.xml 2>/dev/null | sort | tail -60 || true
             exit 1
           fi
       - uses: actions/upload-artifact@v4
