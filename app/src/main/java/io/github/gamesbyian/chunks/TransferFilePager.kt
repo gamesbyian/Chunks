@@ -11,8 +11,9 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -55,8 +56,8 @@ internal fun TransferFilePager(
     mainView: Boolean,
     onSettled: () -> Unit
 ) {
-    var requestedPage by remember(hash, files) { mutableIntStateOf(0) }
-    var selectedIndex by remember(hash, files) { mutableIntStateOf(-1) }
+    var requestedPage by rememberSaveable(hash, files) { mutableStateOf(0) }
+    var selectedIndex by rememberSaveable(hash, files) { mutableStateOf(-1) }
     val current = FilePages.select(files.size, requestedPage)
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("${files.size} server-reported files", fontWeight = FontWeight.Bold)

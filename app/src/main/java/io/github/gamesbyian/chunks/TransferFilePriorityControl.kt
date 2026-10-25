@@ -15,9 +15,9 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -46,14 +46,14 @@ internal fun TransferFilePriorityControl(
     val valid = remember(hash, index) {
         Regex("[0-9a-fA-F]{40}").matches(hash) && index in 0..11999
     }
-    var desired by remember(hash, index, file.path, file.priority) {
-        mutableIntStateOf(file.priority)
+    var desired by rememberSaveable(hash, index, file.path, file.sizeBytes, file.priority) {
+        mutableStateOf(file.priority)
     }
-    var confirming by remember(hash, index, file.path, file.priority) { mutableStateOf(false) }
-    var attempted by remember(hash, index, file.path, file.priority) { mutableStateOf(false) }
-    var pending by remember(hash, index, file.path, file.priority) { mutableStateOf(false) }
+    var confirming by rememberSaveable(hash, index, file.path, file.sizeBytes, file.priority) { mutableStateOf(false) }
+    var attempted by rememberSaveable(hash, index, file.path, file.sizeBytes, file.priority) { mutableStateOf(false) }
+    var pending by remember(hash, index, file.path, file.sizeBytes, file.priority) { mutableStateOf(false) }
     var feedback by remember(hash, index, file.path, file.priority) { mutableStateOf<String?>(null) }
-    var verified by remember(hash, index, file.path, file.priority) { mutableStateOf(false) }
+    var verified by rememberSaveable(hash, index, file.path, file.sizeBytes, file.priority) { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val allowed = valid && file.priority in 0..2 && mainView && !snapshotStale
     val choices = listOf("Skip", "Normal", "High")
