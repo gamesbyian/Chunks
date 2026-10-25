@@ -28,7 +28,7 @@ data class DeviceSpaceSnapshot(
     val occupiedFraction: Float? get() {
         val total = totalBytes ?: return null
         val available = availableBytes ?: return null
-        // Used across the *whole device volume*, including other apps. Never
+        // Unavailable capacity includes *other apps and system reserves*. Never
         // label this number as Chunks-owned or torrent-allocation usage.
         return (1.0 - (available.toDouble() / total.toDouble()))
             .coerceIn(0.0, 1.0).toFloat()
