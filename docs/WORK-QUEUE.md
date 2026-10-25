@@ -23,6 +23,10 @@
 
 ## Active integration / hygiene
 
+- [x] [#104](https://github.com/gamesbyian/Chunks/pull/104) merged `b34535dd8af3baf7744918511dbbe77397003181`: Places now has a read-only real Android internal-volume space card using public `StatFs` total/available bytes, a dynamic sticky system low-storage alert when observable and an explicit Refresh action. All-app/system-reserved capacity is **not** Chunks torrent usage; no remote rTorrent capacity, numerical Android low-space threshold, local engine quota or deletion is inferred. Tested exact source `90184d33eb94421781bb1deeda4690176e2af9d4` passed [Android/JVM 40162903014](https://github.com/gamesbyian/Chunks/actions/runs/40162903014), [API35 40162903028](https://github.com/gamesbyian/Chunks/actions/runs/40162903028) and [four-viewport connection baseline 40162903074](https://github.com/gamesbyian/Chunks/actions/runs/40162903074). Downloaded native artifact `12586059962`, inspected low/normal panel PNGs and Refresh text. Initial hidden-API build failures `40160429336` were resolved by using only Android public APIs. Physical phone and real storage-cap enforcement remain unproven.
+
+
+
 - [x] [#101](https://github.com/gamesbyian/Chunks/pull/101) merged `f403706c5edb0ae9d51bdc109271dbd4c4094b82` after exact source `ac00a4afb0bd39d36cf79abba5220cd538217c03` passed [Android/JVM 40159976292](https://github.com/gamesbyian/Chunks/actions/runs/40159976292) (`:app:testDebugUnitTest :app:assembleDebug`). After existing conservative ZIP metadata/member-type preflight, a read-only streamed verifier uses 32 KiB buffers to check actual inflated byte cap/ratio, declared size and CRC. Tests include dishonest size, corrupt CRC, traversal, compression bomb, malformed archive. No SAF, extractor, disk mutation, source deletion or opt-in auto-extraction.
 
 
