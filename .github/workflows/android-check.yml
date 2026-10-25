@@ -37,7 +37,14 @@ jobs:
             ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
           fi
       - name: Compile Android and run JVM tests
-        run: gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug
+        run: |
+          if ! gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug; then
+            # Native (JNI) crashes leave only a JVM fatal-error report; surface its summary.
+            for report in app/hs_err_pid*.log; do
+              [ -f "$report" ] && grep -m1 -A3 "^# Problematic frame" "$report" && sed -n '/^Stack:/,/^$/p' "$report" | head -40
+            done
+            exit 1
+          fi
       - uses: actions/upload-artifact@v4
         if: success()
         with:
