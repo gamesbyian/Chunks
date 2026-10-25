@@ -99,7 +99,7 @@ internal object LocalZipDocumentInspector {
                             return LocalZipReview(safeLabel, copied, failure = "Document stream made no progress.")
                         if (count.toLong() > maxInputBytes - copied)
                             return LocalZipReview(safeLabel, copied,
-                                failure = "Local ZIP exceeds the 256 MiB review input limit.")
+                                failure = "Local ZIP exceeds the " + Units.bytes(maxInputBytes) + " review input limit.")
                         output.write(buffer, 0, count)
                         copied += count
                     }
