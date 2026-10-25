@@ -166,7 +166,9 @@ internal fun LocalZipReviewScreen(onBack: (() -> Unit)? = null) {
             Text("Choose a ZIP saved on this phone. Chunks checks archive paths, member types and actual decompressed bytes before any extraction feature is offered. Nothing is extracted or deleted from your selected file.")
         }
         item {
-            Button(onClick = { picker.launch(arrayOf("application/zip", "application/octet-stream")) },
+            // Android document providers disagree on ZIP MIME types. Show all
+            // openable documents, then trust ONLY our actual ZIP validation.
+            Button(onClick = { picker.launch(arrayOf("*/*")) },
                 enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
                 Text(if (busy) "Checking ZIP…" else "Choose local ZIP")
             }
