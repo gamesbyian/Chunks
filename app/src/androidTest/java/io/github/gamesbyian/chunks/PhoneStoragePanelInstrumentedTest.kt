@@ -49,7 +49,7 @@ class PhoneStoragePanelInstrumentedTest {
         val count = AtomicInteger(0)
         val sample: (Context) -> DeviceSpaceSnapshot = {
             val free = if (count.getAndIncrement() == 0) gib else 5 * gib
-            DeviceSpaceSnapshot(10 * gib, free, 2 * gib)
+            DeviceSpaceSnapshot(10 * gib, free, free == gib)
         }
         rule.setContent {
             MaterialTheme { PhoneStoragePanel(readSpace = sample) }
@@ -63,7 +63,7 @@ class PhoneStoragePanelInstrumentedTest {
         capture("phone-storage-low-native-compose")
         rule.onNodeWithText("Refresh phone space").performClick()
         rule.onNodeWithText("5.0 GiB free of 10.0 GiB").assertExists()
-        rule.onNodeWithText("Above Android's low-space warning threshold.").assertExists()
+        rule.onNodeWithText("No active Android low-storage alert detected. The numeric threshold is not exposed to apps.").assertExists()
         capture("phone-storage-normal-native-compose")
     }
 
