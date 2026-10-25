@@ -20,6 +20,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -93,6 +94,7 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
     var pending by remember { mutableStateOf<PendingLocalAdd?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
+    var magnet by remember { mutableStateOf("") }
     val destination = remember { LocalEngineHolder.appDownloads(context) }
     // The ongoing notification is how Android lets downloads continue in the background.
     val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
@@ -153,6 +155,25 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
         Text("Downloads and seeds with Chunks' own engine. While a transfer runs, an ongoing notification keeps it going in the background, with Stop all; Android may still stop it, and from Android 15 limits this kind of background transfer to about 6 hours a day, after which Chunks pauses everything. Nothing connects to the network until you add a torrent. Transfers are remembered and come back stopped after Chunks restarts. Peers and trackers can see this phone's IP address.")
         Button(onClick = { picker.launch(arrayOf("*/*")) }, enabled = !busy && destination != null,
             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Choose .torrent file") }
+        OutlinedTextField(value = magnet, onValueChange = { magnet = it.trim() },
+            label = { Text("Or paste a magnet link") }, singleLine = true,
+            modifier = Modifier.fillMaxWidth())
+        if (magnet.isNotEmpty() && destination != null) {
+            Text("Saves into Chunks' folder on phone storage. Chunks fetches only the torrent's description from the magnet's trackers and peers, then stops; no file data downloads until you press Start.",
+                style = MaterialTheme.typography.bodySmall)
+            OutlinedButton(onClick = {
+                busy = true
+                scope.launch {
+                    val result = withContext(Dispatchers.IO) {
+                        try { LocalEngineHolder.get(context).addMagnet(magnet, destination) }
+                        catch (_: Exception) { LocalAddResult.Refused("The local engine could not add this magnet") }
+                    }
+                    message = (result as? LocalAddResult.Refused)?.reason
+                    if (result !is LocalAddResult.Refused) magnet = ""
+                    busy = false
+                }
+            }, enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Add magnet (metadata only)") }
+        }
         if (destination == null) Text("Phone storage for Chunks is unavailable right now.",
             color = MaterialTheme.colorScheme.error)
         message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
@@ -169,7 +190,7 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
                         catch (_: Exception) { LocalAddResult.Refused("The local engine could not add this torrent") }
                     }
                     message = when (result) {
-                        is LocalAddResult.AddedStopped -> null
+                        is LocalAddResult.AddedStopped, is LocalAddResult.FetchingMetadata -> null
                         is LocalAddResult.Refused -> result.reason
                     }
                     pending = null
@@ -247,7 +268,7 @@ private fun stateLabel(transfer: LocalTransferStatus): String = when {
     transfer.error != null -> "Error: " + transfer.error
     transfer.stopped -> "Stopped"
     transfer.state == LocalTransferState.CHECKING -> "Checking files"
-    transfer.state == LocalTransferState.DOWNLOADING_METADATA -> "Fetching metadata"
+    !transfer.metadataKnown || transfer.state == LocalTransferState.DOWNLOADING_METADATA -> "Fetching description (no file data)"
     transfer.state == LocalTransferState.DOWNLOADING -> "Downloading"
     transfer.state == LocalTransferState.SEEDING || transfer.state == LocalTransferState.FINISHED -> "Sharing"
     else -> "Unknown"
