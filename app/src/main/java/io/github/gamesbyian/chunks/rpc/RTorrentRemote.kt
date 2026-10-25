@@ -122,7 +122,9 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                 "Incompatible rTorrent field layout"
             }
             val hash = row[0] as? String ?: error("Missing info hash")
-            require(hash.isNotBlank() && hash.length <= 128) { "Invalid info hash" }
+            require(Regex("[0-9a-fA-F]{40}([0-9a-fA-F]{24})?").matches(hash)) {
+                "Invalid torrent infohash in server view"
+            }
             RemoteTransfer(
                 hash = hash,
                 name = (row[1] as? String ?: error("Missing torrent name")).take(2048),
