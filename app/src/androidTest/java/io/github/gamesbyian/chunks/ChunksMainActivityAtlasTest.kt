@@ -255,6 +255,9 @@ class ChunksMainActivityAtlasTest {
         rule.onNodeWithText("Public Example Long Named Archive S01E01").performClick()
         save("app-alias-review-populated-real-compose")
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Save name"))
+        // Preserve the actual screen *before* Save so unexpected lifecycle
+        // resets can be distinguished from validation and persistence failures.
+        save("app-alias-before-save-diagnostic-real-compose")
         rule.onNodeWithText("Save name").performClick()
         rule.waitForIdle()
         // Preserve the observed post-save state even if the original-caption assertion
