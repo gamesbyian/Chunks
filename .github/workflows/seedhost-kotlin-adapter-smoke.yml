@@ -6,7 +6,8 @@ on:
       rutorrent_url:
         description: "Credential-free ruTorrent HTTPS URL for development Seedhost"
         type: string
-        required: true
+        required: false
+        default: "https://ianseeds.wood.seedhost.eu/rutorrent/"
 
 permissions:
   contents: read

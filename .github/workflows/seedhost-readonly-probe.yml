@@ -4,7 +4,8 @@ on:
     inputs:
       rutorrent_url:
         description: 'Credential-free Seedhost ruTorrent HTTPS URL'
-        required: true
+        required: false
+        default: "https://ianseeds.wood.seedhost.eu/rutorrent/"
         type: string
       inspect_inventory:
         description: 'Read only: also capture nonsecret torrent metadata as a test fixture'
