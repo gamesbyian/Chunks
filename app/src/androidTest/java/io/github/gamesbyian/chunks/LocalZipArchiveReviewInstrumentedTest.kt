@@ -5,6 +5,9 @@ import android.os.Environment
 import android.provider.MediaStore
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -30,6 +33,26 @@ import org.junit.runner.RunWith
 class LocalZipArchiveReviewInstrumentedTest {
     @get:Rule val rule = createAndroidComposeRule<ComponentActivity>()
     private val context get() = InstrumentationRegistry.getInstrumentation().targetContext
+
+    private fun capture(name: String) {
+        val bitmap = rule.onRoot().captureToImage().asAndroidBitmap()
+        val resolver = context.contentResolver
+        val values = ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, name + ".png")
+            put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+            put(MediaStore.Images.Media.RELATIVE_PATH,
+                Environment.DIRECTORY_PICTURES + "/ChunksAddAtlas")
+            put(MediaStore.Images.Media.IS_PENDING, 1)
+        }
+        val uri = requireNotNull(resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values))
+        resolver.openOutputStream(uri).use { stream ->
+            assertTrue(bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100,
+                requireNotNull(stream)))
+        }
+        assertEquals(1, resolver.update(uri, ContentValues().apply {
+            put(MediaStore.Images.Media.IS_PENDING, 0)
+        }, null, null))
+    }
 
     private fun zip(name: String, payload: ByteArray): ByteArray {
         val output = ByteArrayOutputStream()
@@ -81,6 +104,7 @@ class LocalZipArchiveReviewInstrumentedTest {
             rule.onNodeWithText("folder/episode.txt").assertExists()
             rule.onNodeWithText("A successful review does not authorize extraction", substring = true)
                 .assertExists()
+            capture("zip-local-review-safe-real-compose")
         }
         assertEquals("Temporary archive bytes must be discarded", before, stagedCopies())
     }
@@ -91,6 +115,9 @@ class LocalZipArchiveReviewInstrumentedTest {
             val inspected = LocalZipDocumentInspector.inspect(context, uri)
             assertEquals(ZipPreflightStatus.BLOCKED, inspected.inventory?.status)
             assertEquals(null, inspected.verification)
+            rule.setContent { MaterialTheme { LocalZipReviewResults(inspected) } }
+            rule.onNodeWithText("Unsafe or unsupported ZIP", substring = true).assertExists()
+            capture("zip-local-review-blocked-real-compose")
         }
         withDocument(zip("safe.txt", ByteArray(128))) { uri ->
             val inspected = LocalZipDocumentInspector.inspect(context, uri, maxInputBytes = 16)
