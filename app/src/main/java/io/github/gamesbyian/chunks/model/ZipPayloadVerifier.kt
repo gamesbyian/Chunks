@@ -37,7 +37,7 @@ object ZipPayloadVerifier {
             return blocked("Declared ZIP output exceeds the streamed verification budget")
 
         return try {
-            ZipFile(stagedZip).use { zip ->
+            ZipFile(stagedZip).use verification@ { zip ->
                 val buffer = ByteArray(32 * 1024)
                 var files = 0
                 var total = 0L
@@ -48,23 +48,23 @@ object ZipPayloadVerifier {
                     // Refuse missing checksums and sizes; silent partial verification
                     // would be worse than reporting a bounded unsupported archive.
                     if (entry.size < 0 || entry.crc < 0 || entry.compressedSize < 0)
-                        return@use blocked("ZIP member has unknown size or CRC")
+                        return@verification blocked("ZIP member has unknown size or CRC")
                     files++
                     if (files > limits.maxEntries)
-                        return@use blocked("ZIP file count exceeds verification limit")
+                        return@verification blocked("ZIP file count exceeds verification limit")
                     var actual = 0L
                     val crc = CRC32()
                     zip.getInputStream(entry).use { stream ->
                         while (true) {
                             if (Thread.currentThread().isInterrupted)
-                                return@use blocked("ZIP verification was interrupted")
+                                return@verification blocked("ZIP verification was interrupted")
                             val count = stream.read(buffer)
                             if (count < 0) break
-                            if (count == 0) continue
+                            if (count == 0) return@verification blocked("ZIP stream made no progress")
                             if (count.toLong() > maxExpandedBytes - total)
-                                return@use blocked("Actual ZIP expansion exceeded byte budget")
+                                return@verification blocked("Actual ZIP expansion exceeded byte budget")
                             if (count.toLong() > maxExpandedBytes - actual)
-                                return@use blocked("ZIP member exceeded verification byte budget")
+                                return@verification blocked("ZIP member exceeded verification byte budget")
                             total += count
                             actual += count
                             crc.update(buffer, 0, count)
@@ -73,16 +73,16 @@ object ZipPayloadVerifier {
                                 compressed > 0L && (actual / compressed > limits.maxRatio ||
                                     actual / compressed == limits.maxRatio &&
                                     actual % compressed > 0L))
-                                return@use blocked("Actual ZIP member expansion ratio exceeded limit")
+                                return@verification blocked("Actual ZIP member expansion ratio exceeded limit")
                         }
                     }
                     if (actual != entry.size)
-                        return@use blocked("ZIP member actual output size differs from its header")
+                        return@verification blocked("ZIP member actual output size differs from its header")
                     if (crc.value != entry.crc)
-                        return@use blocked("ZIP member CRC mismatch")
+                        return@verification blocked("ZIP member CRC mismatch")
                 }
                 if (files != preview.fileCount)
-                    return@use blocked("ZIP file inventory changed during verification")
+                    return@verification blocked("ZIP file inventory changed during verification")
                 ZipPayloadVerification(ZipPayloadStatus.VERIFIED_READ_ONLY, files, total, null)
             }
         } catch (_: IOException) {
