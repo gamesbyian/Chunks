@@ -64,4 +64,32 @@ class TorrentMetainfoReaderTest {
             } catch (_: Exception) { }
         }
     }
+
+    @Test fun pieceCountMustMatchExactV1PayloadEvenForHugeAndMultifileInputs() {
+        val twoHashes = "01234567890123456789abcdefghijklmnopqrst"
+        val twoPieceInfo = singleInfo
+            .replace("6:lengthi5e", "6:lengthi16385e")
+            .replace("6:pieces20:01234567890123456789", "6:pieces40:" + twoHashes)
+        // One full piece plus a final partial piece is legitimate.
+        assertEquals(16385L, TorrentMetainfoReader.preview(torrent(twoPieceInfo)).sizeBytes)
+        val invalid = listOf(
+            singleInfo.replace("6:lengthi5e", "6:lengthi16385e"),
+            singleInfo.replace("6:pieces20:01234567890123456789",
+                "6:pieces40:" + twoHashes),
+            singleInfo.replace("6:lengthi5e", "6:lengthi0e"),
+            singleInfo.replace("6:lengthi5e", "6:lengthi9223372036854775807e")
+                .replace("12:piece lengthi16384e", "12:piece lengthi1e"),
+            "d5:filesld6:lengthi16385e4:pathl5:a.txtee" +
+                "d6:lengthi4e4:pathl5:b.oggeee" +
+                "4:name4:root12:piece lengthi16384e6:pieces20:01234567890123456789e"
+        )
+        invalid.forEach { info ->
+            try {
+                TorrentMetainfoReader.preview(torrent(info))
+                fail("Contradictory piece hashes must be rejected before remote Add")
+            } catch (expected: IllegalArgumentException) {
+                assertTrue(expected.message.orEmpty().contains("piece"))
+            }
+        }
+    }
 }

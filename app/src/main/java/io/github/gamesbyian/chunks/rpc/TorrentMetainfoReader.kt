@@ -61,6 +61,14 @@ object TorrentMetainfoReader {
             fileCount = list.size
             total = sum
         }
+        // Every v1 piece has one 20-byte SHA-1 digest. A syntactically valid
+        // bencoded file with a contradictory count must not be sent to a real
+        // server. Divide before rounding upward so huge payloads cannot overflow.
+        val expectedPieces = total / pieceLength +
+            if (total % pieceLength == 0L) 0L else 1L
+        require(expectedPieces == pieces.size.toLong() / 20L) {
+            "Torrent piece hashes do not match payload size and piece length"
+        }
         val hash = MessageDigest.getInstance("SHA-1")
             .digest(bytes.copyOfRange(reader.infoStart, reader.infoEnd))
             .joinToString("") { "%02x".format(it.toInt() and 255) }
