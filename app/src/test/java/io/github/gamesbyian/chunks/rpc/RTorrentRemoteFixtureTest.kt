@@ -197,4 +197,34 @@ class RTorrentRemoteFixtureTest {
         }
     }
 
+    @Test fun duplicateCaseVariantInfohashFailsClosedInsteadOfRenderingOrMutating() = runBlocking {
+        val identity = "aB".repeat(20)
+        fun row(hash: String, name: String): String =
+            "<value><array><data>" +
+                "<value><string>$hash</string></value>" +
+                "<value><string>$name</string></value>" +
+                "<value><i8>100</i8></value><value><i8>30</i8></value>" +
+                "<value><int>1</int></value><value><string>/test</string></value>" +
+                "<value><i8>0</i8></value><value><i8>0</i8></value>" +
+                "<value><i8>0</i8></value></data></array></value>"
+        Fixture { request, _ ->
+            assertTrue(request.contains("<methodName>d.multicall2</methodName>"))
+            Reply(200, result("<array><data>" +
+                row(identity, "First title") +
+                row(identity.uppercase(), "Conflicting title") +
+                "</data></array>"))
+        }.use { fixture ->
+            val remote = RTorrentRemote(RemoteCredentials(fixture.endpoint, "", ""))
+            try {
+                remote.listTransfers()
+                fail("A duplicate torrent identity must not enter the native queue")
+            } catch (expected: IllegalArgumentException) {
+                assertTrue(expected.message.orEmpty().contains("duplicate"))
+            }
+            assertEquals(1, fixture.methods.size)
+            assertTrue(fixture.methods.single().contains("d.multicall2"))
+            assertFalse(fixture.methods.single().contains("d.erase"))
+        }
+    }
+
 }

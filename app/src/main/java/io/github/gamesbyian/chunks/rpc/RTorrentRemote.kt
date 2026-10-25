@@ -116,7 +116,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             extractRows(call("d.multicall2", listOf("", view) + minimum)) to false
         }
         require(rows.size <= 12000) { "Unexpectedly large torrent list" }
-        return rows.map { raw ->
+        val parsed = rows.map { raw ->
             val row = raw as? List<*> ?: error("Invalid torrent row")
             require(row.size == if (rich) extended.size else minimum.size) {
                 "Incompatible rTorrent field layout"
@@ -135,6 +135,15 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                 ratioThousandths = if (rich) number(row[8]).coerceAtLeast(0) else null
             )
         }
+        // A case-insensitive duplicate hash in a single server view cannot be
+        // treated as two independent Transfers. Compose uses infohash for keys,
+        // and all control RPCs target it exactly. Refuse the entire ambiguous
+        // snapshot; never silently pick one row or merge differing metadata.
+        val identities = HashSet<String>(parsed.size)
+        require(parsed.all {
+            identities.add(it.hash.uppercase(java.util.Locale.ROOT))
+        }) { "rTorrent server view contains duplicate transfer identities" }
+        return parsed
     }
 
     /**
