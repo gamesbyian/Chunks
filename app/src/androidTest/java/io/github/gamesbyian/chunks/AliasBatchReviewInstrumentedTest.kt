@@ -13,6 +13,7 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
@@ -70,6 +71,9 @@ class AliasBatchReviewInstrumentedTest {
             }
         }
         rule.onNodeWithText("2 suggestions ready for review").assertExists()
+        rule.onNodeWithContentDescription(
+            "Select proposed display name for Celebrity.Jeopardy.S04E02.720p.HEVC.x265-MeGusta.mkv"
+        ).assertExists()
         rule.runOnIdle {
             assertNull(store.get(scope, hash1))
             assertNull(store.get(scope, hash2))
@@ -127,4 +131,19 @@ class AliasBatchReviewInstrumentedTest {
         rule.onNodeWithText("Some names have changed; nothing was undone. Review them individually.")
             .assertExists()
     }
+    @Test fun staleBatchFailsAtomicallyRatherThanOverwriteAManualAlias() {
+        val store = TransferAliasStore(InstrumentationRegistry.getInstrumentation().targetContext)
+        val scope = "batch-conflict-" + System.nanoTime()
+        val a = "D".repeat(40)
+        val b = "E".repeat(40)
+        val proposed = listOf(
+            io.github.gamesbyian.chunks.model.AliasReviewWrite(a, "A.Show.S01E01.mkv", "A Show S01E01"),
+            io.github.gamesbyian.chunks.model.AliasReviewWrite(b, "B.Movie.2024.mkv", "B Movie (2024)")
+        )
+        assertEquals(true, store.save(scope, b, "My existing custom title"))
+        assertEquals(false, store.saveReviewedBatch(scope, proposed))
+        assertNull(store.get(scope, a))
+        assertEquals("My existing custom title", store.get(scope, b))
+    }
+
 }

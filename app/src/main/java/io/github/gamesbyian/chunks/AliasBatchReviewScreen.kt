@@ -24,6 +24,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -185,9 +187,12 @@ internal fun AliasBatchReviewScreen(
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Checkbox(
                                 checked = selected[item.hash] == true,
-                                onCheckedChange = { selected[item.hash] = it; feedback = null }
+                                onCheckedChange = { selected[item.hash] = it; feedback = null },
+                                modifier = Modifier.semantics {
+                                    contentDescription = "Select proposed display name for " + item.originalName
+                                }
                             )
-                            Column {
+                            Column(Modifier.weight(1f)) {
                                 Text(item.originalName, fontWeight = FontWeight.Bold,
                                     maxLines = 3, overflow = TextOverflow.Ellipsis)
                                 Text("Proposed: " + (edits[item.hash] ?: item.suggestedName),
@@ -202,6 +207,8 @@ internal fun AliasBatchReviewScreen(
                                     onClick = { edits[item.hash] = suggestion.name },
                                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                                 ) { Text(suggestion.name, maxLines = 2) }
+                                Text(suggestion.explanation,
+                                    style = MaterialTheme.typography.bodySmall)
                             }
                             OutlinedTextField(
                                 value = edits[item.hash] ?: item.suggestedName,
