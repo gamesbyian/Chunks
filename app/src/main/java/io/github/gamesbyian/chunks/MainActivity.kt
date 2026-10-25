@@ -628,6 +628,7 @@ private fun PlacesScreen(list: List<RemoteTransfer>, onUsePlace: (String) -> Uni
             ColoredPanel("Everything has a place.",
                 "These paths come from rTorrent. Chunks hasn't verified filesystem access to them.", Lilac)
         }
+        item { PhoneStoragePanel() }
         items(places, key = { it.first }) { place ->
             Card(shape = RoundedCornerShape(18.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White)) {
