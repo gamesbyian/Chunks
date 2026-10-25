@@ -1,0 +1,73 @@
+name: Local engine public web-seed download
+
+# Real Internet evidence for the on-phone engine core: build a deterministic
+# torrent from a licensed Wikimedia Commons file whose only source is the
+# official HTTPS upload URL (BEP 19 web seed), then download and verify it with
+# libtorrent. No secrets, no trackers, no peers, no rTorrent.
+on:
+  workflow_dispatch:
+    inputs:
+      commons_file:
+        description: "Licensed Commons File: title (small)"
+        type: string
+        default: "File:Example.ogg"
+        required: true
+  pull_request:
+    paths:
+      - ".github/workflows/local-engine-public-webseed.yml"
+      - "app/src/test/java/io/github/gamesbyian/chunks/engine/LocalEngineWebSeedTest.kt"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chunks-engine-webseed-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  public-webseed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Collect licensed Commons media and build a web-seed torrent
+        env:
+          COMMONS_FILE: ${{ inputs.commons_file || 'File:Example.ogg' }}
+        run: |
+          set -euo pipefail
+          python3 tools/public_fixture_collector.py --commons-file "$COMMONS_FILE" --download-commons \
+            --max-commons-mib 8 --output-dir "$RUNNER_TEMP/public"
+          python3 - <<'PY' >> "$GITHUB_ENV"
+          import json, os, pathlib
+          root = pathlib.Path(os.environ["RUNNER_TEMP"]) / "public"
+          manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
+          asset = manifest["asset"]
+          print("CHUNKS_PUBLIC_WEBSEED_TORRENT=" + str(root / "source-sanitized.torrent"))
+          print("CHUNKS_PUBLIC_WEBSEED_SHA256=" + asset["sha256"])
+          print("CHUNKS_PUBLIC_WEBSEED_NAME=" + asset["saved_name"])
+          PY
+          # The payload fetched by the collector is NOT given to the engine.
+          find "$RUNNER_TEMP/public" -type f ! -name '*.torrent' ! -name 'manifest.json' ! -name '*.magnet' -delete
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+      - name: Install Android API 37 SDK
+        run: |
+          printf "y\n" | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
+          if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          fi
+      - name: Download over the official HTTPS web seed with the local engine
+        run: |
+          gradle --no-daemon --console=plain :app:testDebugUnitTest --tests io.github.gamesbyian.chunks.engine.LocalEngineWebSeedTest
+          python3 - <<'PY'
+          import pathlib, xml.etree.ElementTree as ET
+          root = ET.parse(pathlib.Path("app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.engine.LocalEngineWebSeedTest.xml")).getroot()
+          assert root.attrib["tests"] == "2" and root.attrib["failures"] == "0" and root.attrib["errors"] == "0"
+          assert root.attrib["skipped"] == "0", "The public web-seed test must actually run"
+          print("CHUNKS_LOCAL_ENGINE_WEBSEED: public HTTPS web-seed download verified")
+          PY

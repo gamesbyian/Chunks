@@ -69,6 +69,7 @@ class LocalTorrentEngineTest {
         val leeching = added(leecher.addStopped(fixture.torrent, destination,
             listOf(InetSocketAddress("127.0.0.1", seeder.listenPort()))))
         assertEquals(seeded.infoHash, leeching.infoHash)
+        assertEquals("Chunks public fixture", leeching.name)
         assertEquals(0, leeching.progressPpm)
         assertEquals(LocalCommandOutcome.VERIFIED, leecher.resume(leeching.infoHash).outcome)
         waitFor {
