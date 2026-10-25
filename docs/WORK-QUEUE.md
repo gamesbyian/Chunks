@@ -23,6 +23,10 @@
 
 ## Active integration / hygiene
 
+- [x] [#108](https://github.com/gamesbyian/Chunks/pull/108) merged `7eab30fcc710389d91d7bb18bbae4a33f022828a`: remote `d.multicall2` snapshots now reject duplicate case-insensitive infohash rows rather than publishing ambiguous keyed transfers or silently choosing one entry. Exact PR source `5b7d09639c68170a095a36f923638cd12e871375` passed [Android/JVM 40163747682](https://github.com/gamesbyian/Chunks/actions/runs/40163747682), with a localhost XML-RPC fixture returning conflicting case-variant rows and confirming only one read request, no mutation. Preserve last snapshot as stale on failure; full owner Seedhost view completeness and 12k-scale performance remain independent gates.
+
+
+
 - [x] [#105](https://github.com/gamesbyian/Chunks/pull/105) merged `59f1f62123e9f9e448b34c3efeabe9d667f98f79`: authenticated XML-RPC response parser now runs bounded SAX structure checking before DOM allocation (48 element levels, 250k XML elements), then caps total decoded values, 12k entries per array, 4096 struct members, textual scalars and struct-key length. Tested exact source `66957c77a9ebae6bee1f18c7c6eddd813c2bf25e` passed [Android/JVM 40163171672](https://github.com/gamesbyian/Chunks/actions/runs/40163171672) and [actual API35 parser 40163171740](https://github.com/gamesbyian/Chunks/actions/runs/40163171740) (**21/21 instrumentation tests**), including the hostile 60-level document and ordinary nested RPC compatibility. Existing 4 MiB reply cap and DTD/entity prohibition remain. No protected Seedhost/large-real-queue compatibility claim.
 
 
