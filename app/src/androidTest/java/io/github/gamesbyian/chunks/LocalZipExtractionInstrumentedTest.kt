@@ -4,7 +4,10 @@ import android.content.ContentValues
 import android.os.Environment
 import android.provider.MediaStore
 import androidx.activity.ComponentActivity
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -213,7 +216,14 @@ class LocalZipExtractionInstrumentedTest {
     @Test fun outcomeExplainsResultAndKeptArchive() {
         withDocument(zip("a.txt" to "a".toByteArray())) { source ->
             val result = LocalZipExtraction.extract(context, source, tree, "Show pack.zip", true) { false }
-            rule.setContent { MaterialTheme { LocalZipExtractionOutcome(result, "Show pack.zip") } }
+            rule.setContent {
+                MaterialTheme {
+                    androidx.compose.foundation.layout.Column(
+                        androidx.compose.ui.Modifier.fillMaxSize().padding(16.dp)) {
+                        LocalZipExtractionOutcome(result, "Show pack.zip")
+                    }
+                }
+            }
             rule.onNodeWithText("into the new folder \"Show pack\". The ZIP was kept.", substring = true).assertExists()
             capture("zip-extract-done-real-compose")
         }
