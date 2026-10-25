@@ -12,6 +12,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import org.libtorrent4j.AddTorrentParams
 import org.libtorrent4j.AlertListener
+import org.libtorrent4j.Entry
 import org.libtorrent4j.Vectors
 import org.libtorrent4j.alerts.Alert
 import org.libtorrent4j.alerts.AlertType
@@ -24,6 +25,7 @@ import org.libtorrent4j.TcpEndpoint
 import org.libtorrent4j.TorrentHandle
 import org.libtorrent4j.TorrentInfo
 import org.libtorrent4j.TorrentStatus
+import org.libtorrent4j.swig.entry
 import org.libtorrent4j.swig.error_code
 import org.libtorrent4j.swig.libtorrent
 import org.libtorrent4j.swig.settings_pack
@@ -150,6 +152,10 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         // Stopped and unmanaged: the auto-manager must not start it behind the user.
         params.setFlags(torrent_flags_t().or_(org.libtorrent4j.TorrentFlags.PAUSED)
             .or_(org.libtorrent4j.TorrentFlags.DUPLICATE_IS_ERROR))
+        // libtorrent does not adopt a bdecoded torrent's BEP 19 url-list on its own;
+        // Internet Archive torrents rely on these HTTP(S) sources.
+        val seeds = webSeeds(torrentBytes)
+        if (seeds.isNotEmpty()) params.setUrlSeeds(seeds)
         if (peers.isNotEmpty())
             params.peers(peers.map { TcpEndpoint(requireNotNull(it.address?.hostAddress), it.port) })
         val error = error_code()
@@ -277,7 +283,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
 
     private fun snapshot(hash: String, handle: TorrentHandle): LocalTransferStatus? {
         if (!handle.isValid) return null
-        val status = handle.status()
+        val status = handle.status(TorrentHandle.QUERY_NAME)
         val paused = status.flags().and_(org.libtorrent4j.TorrentFlags.PAUSED).non_zero()
         val error = status.errorCode()?.takeIf { it.isError }?.message
         return LocalTransferStatus(
@@ -302,6 +308,21 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             error = error
         )
     }
+
+    /** Only plain http(s) web seeds, bounded in number and length. */
+    private fun webSeeds(torrentBytes: ByteArray): List<String> = try {
+        val value = Entry.bdecode(torrentBytes).dictionary()["url-list"]
+        val urls = when {
+            value == null -> emptyList()
+            value.swig().type() == entry.data_type.list_t -> value.list().map { it.string() }
+            value.swig().type() == entry.data_type.string_t -> listOf(value.string())
+            else -> emptyList()
+        }
+        urls.filter { url ->
+            url.length <= 2048 && url.none { it.isISOControl() || it == ' ' } &&
+                (url.startsWith("https://") || url.startsWith("http://"))
+        }.distinct().take(32)
+    } catch (_: RuntimeException) { emptyList() }
 
     private fun identity(info: TorrentInfo): String {
         val hashes = info.infoHashes()
