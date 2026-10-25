@@ -41,6 +41,17 @@ class ZipPayloadVerifierTest {
 
     @Test fun actualStreamingByteBudgetRejectsExcessBeforeAnyExtraction() {
         val file = zip("file.bin" to ByteArray(200) { 1 })
+        val bytes = file.readBytes()
+        val central = (0 until bytes.size - 46).first { i ->
+            (bytes[i].toInt() and 255) == 0x50 &&
+                (bytes[i + 1].toInt() and 255) == 0x4b &&
+                (bytes[i + 2].toInt() and 255) == 0x01 &&
+                (bytes[i + 3].toInt() and 255) == 0x02
+        }
+        // Lie in the metadata: declared 1 byte, actual 200 inflated bytes.
+        bytes[central + 24] = 1
+        for (i in 25..27) bytes[central + i] = 0
+        file.writeBytes(bytes)
         val result = ZipPayloadVerifier.verify(file, maxExpandedBytes = 64)
         assertEquals(ZipPayloadStatus.BLOCKED, result.status)
         assertNull(result.actualOutputBytes)
