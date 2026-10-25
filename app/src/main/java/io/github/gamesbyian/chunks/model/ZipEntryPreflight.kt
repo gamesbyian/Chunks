@@ -107,6 +107,13 @@ object ZipEntryPreflight {
         )
     }
 
+    /**
+     * The single canonical member-path rule shared by preflight and the extractor,
+     * so an executor can never write a name the review would have refused.
+     */
+    internal fun canonicalPath(raw: String, directory: Boolean, maxDepth: Int): String? =
+        safeName(raw, directory, maxDepth)
+
     private fun safeName(raw: String, directory: Boolean, maxDepth: Int): String? {
         if (raw.isEmpty() || raw.length > 4096 || raw.startsWith("/") ||
             raw.startsWith("\\") || raw.contains('\\') ||

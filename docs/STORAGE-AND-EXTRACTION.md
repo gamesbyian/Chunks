@@ -108,3 +108,17 @@ A new **Local ZIP review** Android Compose screen uses `OpenDocument` on a user-
 ## Conservative abandoned read-only ZIP staging cleanup (merged #116)
 
 The read-only SAF ZIP inspection flow now checks for app-private staging copies left after a possible process death before opening the next selected document. [#116](https://github.com/gamesbyian/Chunks/pull/116), merge `220cdee2bb6b9ddd12162425a78f2c62091fe7b7`, passed source `7aa832a44164b2730a00386ee2caa403bcd2e437` Android/JVM [40231060527](https://github.com/gamesbyian/Chunks/actions/runs/40231060527) and API35 [40231060427](https://github.com/gamesbyian/Chunks/actions/runs/40231060427). Cleanup is non-recursive, limited to specific randomized ZIP-review cache filenames older than 24 hours and skips links, directories, recent/unknown/future timestamps and unrelated entries. Original Android provider documents and torrent payload files are not involved. This is best-effort cache housekeeping, not a recoverable extraction journal; no auto-extraction, filesystem publication, or source deletion is enabled.
+
+## Manual ZIP extraction executor (model slice, 2026-10-25)
+
+`ZipExtractor` is the first *writing* S2 component. It is platform-neutral: callers supply a `ZipExtractionTarget` (an approved Android SAF tree in the app, a plain directory in JVM tests) and an app-private `ZipExtractionJournal`. Sequence:
+
+1. Re-run the full read-only `ZipPayloadVerifier` pass on the app-private staged copy; any refusal writes nothing.
+2. Headroom: verified output bytes plus a reserve (max 16 MiB or 5%) must fit the destination's reported free space. Unknown free space is refused unless the caller passes an explicit user acknowledgement.
+3. Write-ahead journal `BEGIN`, then every `DIR`/`FILE` line is durably appended **before** that entry is created.
+4. Members are streamed into a new randomly named `.chunks-partial-<operation>` folder, re-checking actual bytes, cumulative budget, expansion ratio, declared size and CRC while writing. Providers that refuse or substitute a name fail closed.
+5. Publication is a single non-replacing rename of the partial folder to a **new** folder named after the archive (`Name`, `Name (2)`, …), confirmed by readback.
+
+Collision policy for this slice: extraction **always** creates a new folder; it never merges into, opens for writing, replaces or deletes any pre-existing file or folder. Per-file skip/rename/overwrite inside an existing folder is not offered. Cancellation and failures remove only journaled entries of the operation's own partial folder, deepest first, non-recursively; anything unexpected (e.g. an unjournaled file) leaves the partial folder in place as `NEEDS_ATTENTION`. `reconcile` resolves an unfinished journal after process death without retrying: it recognizes a completed rename, or rolls back. The source archive is only read.
+
+Evidence class: JVM tests with real ZIP bytes and fault injection (provider refusal, write failure, cancellation, simulated process death before and after publish). Android SAF target, extraction UI, physical-device behaviour and auto-extraction remain unbuilt/unproven.
