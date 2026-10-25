@@ -138,4 +138,59 @@ class LocalTorrentEngineTest {
         } catch (_: IllegalArgumentException) { }
         assertNull(engine.status("a".repeat(40)))
     }
+
+    private fun persistentEngine(state: File) = LocalTorrentEngine(LocalEngineConfig(
+        listenInterfaces = "127.0.0.1:0", allowMultipleConnectionsPerIp = true, stateDirectory = state
+    )).also { it.start(); engines += it }
+
+    @Test fun completedTransferSurvivesRestartAndReturnsStopped() {
+        val fixture = fixture()
+        val seeder = engine()
+        val seed = added(seeder.addStopped(fixture.torrent, fixture.root.parentFile))
+        seeder.resume(seed.infoHash)
+        waitFor { seeder.status(seed.infoHash)?.state == LocalTransferState.SEEDING }
+
+        val state = temp.newFolder("engine-state")
+        val destination = temp.newFolder("persistent destination")
+        val first = persistentEngine(state)
+        val leech = added(first.addStopped(fixture.torrent, destination,
+            listOf(InetSocketAddress("127.0.0.1", seeder.listenPort()))))
+        assertTrue(File(state, leech.infoHash + ".resume").isFile)
+        first.resume(leech.infoHash)
+        waitFor { first.status(leech.infoHash)?.progressPpm == 1_000_000 }
+        assertEquals(1, first.saveResumeData())
+        first.close()
+
+        val second = persistentEngine(state)
+        assertTrue(second.restoreProblems.isEmpty())
+        val restored = requireNotNull(second.status(leech.infoHash))
+        assertTrue("Restored transfers must not start on their own", restored.stopped)
+        assertEquals(destination.absolutePath, restored.savePath)
+        waitFor { second.status(leech.infoHash)?.progressPpm == 1_000_000 }
+        for ((name, bytes) in fixture.files)
+            assertArrayEquals(bytes, File(destination, "Chunks public fixture/$name").readBytes())
+
+        assertTrue(second.removeKeepingData(leech.infoHash))
+        assertFalse(File(state, leech.infoHash + ".resume").exists())
+        assertTrue(File(destination, "Chunks public fixture/episode.bin").isFile)
+    }
+
+    @Test fun unusableResumeFilesAreReportedAndLeftUntouched() {
+        val fixture = fixture()
+        val state = temp.newFolder("engine-state")
+        val good = persistentEngine(state)
+        val status = added(good.addStopped(fixture.torrent, temp.newFolder("d")))
+        good.close()
+        // A valid resume file stored under the wrong identity, and garbage bytes.
+        val wrongName = File(state, "c".repeat(40) + ".resume")
+        File(state, status.infoHash + ".resume").copyTo(wrongName)
+        val garbage = File(state, "d".repeat(40) + ".resume").apply { writeText("not bencode") }
+        File(state, "notes.txt").writeText("ignored")
+
+        val restarted = persistentEngine(state)
+        assertEquals(listOf(status.infoHash), restarted.list().map { it.infoHash })
+        assertEquals(setOf(wrongName.name, garbage.name), restarted.restoreProblems.toSet())
+        assertTrue(wrongName.isFile && garbage.isFile)
+        assertEquals("not bencode", garbage.readText())
+    }
 }
