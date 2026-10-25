@@ -138,4 +138,36 @@ class ZipArchiveInventoryTest {
         assertTrue(inspected.reasons.any { it.contains("multi-volume") })
     }
 
+    @Test fun individualZip64MemberSentinelsCannotBypassConservativeEocdCheck() {
+        for (memberOffset in listOf(20, 24, 42)) {
+            val file = zip("small.txt" to byteArrayOf(5))
+            val bytes = file.readBytes()
+            val at = (0 until bytes.size - 46).first { i ->
+                listOf(0x50, 0x4b, 0x01, 0x02).indices.all { j ->
+                    (bytes[i + j].toInt() and 255) == listOf(0x50, 0x4b, 0x01, 0x02)[j]
+                }
+            }
+            for (j in 0 until 4) bytes[at + memberOffset + j] = 0xff.toByte()
+            file.writeBytes(bytes)
+            val result = ZipArchiveInventory.inspect(file)
+            assertEquals(ZipPreflightStatus.BLOCKED, result.status)
+            assertTrue(result.reasons.any { it.contains("ZIP64") })
+        }
+    }
+
+    @Test fun splitMemberDiskReferenceIsRejectedEvenWhenOverallEocdSaysOneDisk() {
+        val file = zip("small.txt" to byteArrayOf(5))
+        val bytes = file.readBytes()
+        val at = (0 until bytes.size - 46).first { i ->
+            listOf(0x50, 0x4b, 0x01, 0x02).indices.all { j ->
+                (bytes[i + j].toInt() and 255) == listOf(0x50, 0x4b, 0x01, 0x02)[j]
+            }
+        }
+        bytes[at + 34] = 1
+        file.writeBytes(bytes)
+        val result = ZipArchiveInventory.inspect(file)
+        assertEquals(ZipPreflightStatus.BLOCKED, result.status)
+        assertTrue(result.reasons.any { it.contains("Split") })
+    }
+
 }
