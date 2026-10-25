@@ -1,36 +1,32 @@
 package io.github.gamesbyian.chunks.model
 
 /**
- * OS-wide free-space observation on the app's internal physical filesystem.
- * Does not measure Chunks payload allocations, a SAF tree or rTorrent storage.
+ * OS-wide free-space observation on Chunks' internal filesystem.
+ * A low-storage broadcast is advisory, never a measured Chunks quota.
  */
-enum class DeviceSpaceStatus { ABOVE_ANDROID_FLOOR, AT_OR_BELOW_ANDROID_FLOOR, UNKNOWN }
+enum class DeviceSpaceStatus { LOW_WARNING_ACTIVE, NO_WARNING_DETECTED, UNKNOWN }
 
 data class DeviceSpaceSnapshot(
     val totalBytes: Long?,
     val availableBytes: Long?,
-    val androidLowSpaceBytes: Long?
+    val androidLowSpaceAlert: Boolean?
 ) {
     init {
         require(totalBytes == null || totalBytes > 0)
         require(availableBytes == null || availableBytes >= 0)
-        require(androidLowSpaceBytes == null || androidLowSpaceBytes >= 0)
     }
 
-    val status: DeviceSpaceStatus get() = when {
-        availableBytes == null || androidLowSpaceBytes == null ->
-            DeviceSpaceStatus.UNKNOWN
-        availableBytes <= androidLowSpaceBytes ->
-            DeviceSpaceStatus.AT_OR_BELOW_ANDROID_FLOOR
-        else -> DeviceSpaceStatus.ABOVE_ANDROID_FLOOR
+    val status: DeviceSpaceStatus get() = when (androidLowSpaceAlert) {
+        true -> DeviceSpaceStatus.LOW_WARNING_ACTIVE
+        false -> DeviceSpaceStatus.NO_WARNING_DETECTED
+        null -> DeviceSpaceStatus.UNKNOWN
     }
 
     val occupiedFraction: Float? get() {
         val total = totalBytes ?: return null
         val available = availableBytes ?: return null
-        // Unavailable capacity includes *other apps and system reserves*. Never
-        // label this number as Chunks-owned or torrent-allocation usage.
-        return (1.0 - (available.toDouble() / total.toDouble()))
-            .coerceIn(0.0, 1.0).toFloat()
+        // Unavailable capacity includes other apps and system reserves. Never
+        // label this amount as Chunks-owned or torrent-allocation usage.
+        return (1.0 - available.toDouble() / total.toDouble()).coerceIn(0.0, 1.0).toFloat()
     }
 }
