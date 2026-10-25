@@ -58,7 +58,7 @@ class PhoneStoragePanelInstrumentedTest {
         rule.onNodeWithText("1.0 GiB free of 10.0 GiB").assertExists()
         rule.onNodeWithText("Android reports low phone storage. Avoid adding large local downloads.")
             .assertExists()
-        rule.onNodeWithText("Volume allocation across all apps; not Chunks torrent usage.")
+        rule.onNodeWithText("Occupied or reserved on this volume, including other apps. Not Chunks torrent usage.")
             .assertExists()
         capture("phone-storage-low-native-compose")
         rule.onNodeWithText("Refresh phone space").performClick()
