@@ -87,4 +87,55 @@ class ZipArchiveInventoryTest {
             ZipArchiveInventory.inspect(file, maxInputBytes = 0)
         }
     }
+    // Mutate only ZIP central-directory metadata, leaving actual member bytes intact.
+    // java.util.zip.ZipOutputStream does not have a public Unix symlink API.
+    private fun withUnixMemberType(file: File, mode: Int): File {
+        val bytes = file.readBytes()
+        val signature = listOf(0x50, 0x4b, 0x01, 0x02)
+        val at = (0 until bytes.size - 46).firstOrNull { i ->
+            signature.indices.all { j -> (bytes[i + j].toInt() and 255) == signature[j] }
+        } ?: error("Test fixture missing central directory")
+        bytes[at + 5] = 3 // Unix as the ZIP creator host OS
+        bytes[at + 40] = (mode and 255).toByte()
+        bytes[at + 41] = ((mode ushr 8) and 255).toByte()
+        file.writeBytes(bytes)
+        return file
+    }
+
+    @Test fun realZipUnixSymlinkAndSpecialMembersAreBlockedBeforePayloadReads() {
+        val symlink = withUnixMemberType(zip("link.txt" to "../outside".toByteArray()), 0xa1ff)
+        val inspected = ZipArchiveInventory.inspect(symlink)
+        assertEquals(ZipPreflightStatus.BLOCKED, inspected.status)
+        assertTrue(inspected.reasons.any { it.contains("symlink") })
+        assertFalse(File(folder.root.parentFile, "outside").exists())
+
+        val fifo = withUnixMemberType(zip("pipe.txt" to byteArrayOf(1)), 0x11a4)
+        val other = ZipArchiveInventory.inspect(fifo)
+        assertEquals(ZipPreflightStatus.BLOCKED, other.status)
+        assertTrue(other.reasons.any { it.contains("special-file") })
+    }
+
+    @Test fun ordinaryUnixRegularFileMetadataDoesNotProduceFalseSymlinkAlert() {
+        val regular = withUnixMemberType(zip("ordinary.txt" to byteArrayOf(1)), 0x81a4)
+        val inspected = ZipArchiveInventory.inspect(regular)
+        assertEquals(ZipPreflightStatus.BOUNDED_STREAM_CHECK_REQUIRED, inspected.status)
+        assertEquals(listOf("ordinary.txt"), inspected.names)
+    }
+
+    @Test fun centralDirectoryMetadataMismatchBlocksRatherThanGuessingFileTypes() {
+        val file = zip("test.txt" to byteArrayOf(7))
+        val bytes = file.readBytes()
+        val eocd = (bytes.size - 22 downTo 0).first {
+            (bytes[it].toInt() and 255) == 0x50 &&
+                (bytes[it + 1].toInt() and 255) == 0x4b &&
+                (bytes[it + 2].toInt() and 255) == 5 &&
+                (bytes[it + 3].toInt() and 255) == 6
+        }
+        bytes[eocd + 4] = 1 // claim multi-disk ZIP, unsupported by bounded preview
+        file.writeBytes(bytes)
+        val inspected = ZipArchiveInventory.inspect(file)
+        assertEquals(ZipPreflightStatus.BLOCKED, inspected.status)
+        assertTrue(inspected.reasons.any { it.contains("multi-volume") })
+    }
+
 }
