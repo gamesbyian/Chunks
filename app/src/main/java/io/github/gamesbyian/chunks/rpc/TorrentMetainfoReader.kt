@@ -48,12 +48,29 @@ object TorrentMetainfoReader {
             val list = files as? List<*> ?: error("Invalid file list")
             require(list.isNotEmpty() && list.size <= 20_000) { "Unsupported torrent file count" }
             var sum = 0L
+            // Repeated files or a file that is also another file's parent
+            // cannot map to a unique safe backing-file layout. Refuse such
+            // torrent metainfo before any remote Add, without writing bytes.
+            val seenFilePaths = HashSet<List<String>>()
+            val seenParentPaths = HashSet<List<String>>()
             for (item in list) {
                 val row = item as? Map<*, *> ?: error("Invalid file entry")
                 val path = (row["path.utf-8"] ?: row["path"]) as? List<*>
                     ?: error("Invalid file path")
                 require(path.isNotEmpty() && path.size <= 64) { "Invalid file path depth" }
-                path.forEach { cleanPart(it) }
+                val components = path.map { cleanPart(it) }
+                require(components !in seenFilePaths) { "Duplicate torrent file path" }
+                require(components !in seenParentPaths) {
+                    "Torrent file path conflicts with a directory"
+                }
+                for (i in 1 until components.size) {
+                    val parent = components.take(i)
+                    require(parent !in seenFilePaths) {
+                        "Torrent file path conflicts with a directory"
+                    }
+                    seenParentPaths += parent
+                }
+                seenFilePaths += components
                 val length = nonnegative(row["length"])
                 require(sum <= Long.MAX_VALUE - length) { "Torrent size overflow" }
                 sum += length
