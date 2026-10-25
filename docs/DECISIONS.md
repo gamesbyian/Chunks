@@ -16,7 +16,7 @@ Updated 2026-10-24 after critical review. **Owner** means explicitly requested; 
 | D10 | Adopted | Single live queue/decision ledger, exact evidence classes, one lean CI validation path, focused PRs | Only change for observed complexity |
 | D11 | Open | Source-code license and release/distribution policy (sideload/Play) | Third-party code and permission audit |
 | D12 | Open | Companion implementation language and deployment package | Throwaway volume/host prototype |
-| D13 | Open | Local libtorrent native binding and Android long-running service classification | Physical Android tests |
+| D13 | Binding provisional; service open | libtorrent4j 2.1.0-39 adopted for the local engine core (loopback JVM + emulator transfer evidence); Android long-running service classification still open | Physical Android tests |
 | D14 | Adopted (provisional) | Phase order: real-server read-only → companion-free remote controls with explicit Place → safe organization/remote storage proof → local engine → independently accepted release | Critical-path evidence |
 | D15 | Adopted (provisional) | No automatic retry of uncertain destructive operation. Durable server ledger and fencing where available; otherwise refuse unsafe mutation | Independent crash/fault testing |
 | D16 | Adopted (provisional) | Separate category recognition, destination scoring, user-approved rule and filesystem execution authorization | Actual classification fixtures and usability |
