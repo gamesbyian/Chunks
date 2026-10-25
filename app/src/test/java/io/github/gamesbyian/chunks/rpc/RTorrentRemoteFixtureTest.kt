@@ -62,7 +62,7 @@ class RTorrentRemoteFixtureTest {
                     Reply(200, result("<string>0.9.8</string>"))
                 request.contains("<methodName>d.multicall2</methodName>") ->
                     Reply(200, result("""<array><data><value><array><data>
-                      <value><string>ABCDEF</string></value>
+                      <value><string>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA</string></value>
                       <value><string>Star Trek</string></value>
                       <value><i8>100</i8></value>
                       <value><i8>70</i8></value>
@@ -80,7 +80,7 @@ class RTorrentRemoteFixtureTest {
             assertEquals("0.9.8", remote.version())
             val listed = remote.listTransfers()
             assertEquals(1, listed.size)
-            assertEquals("ABCDEF", listed.single().hash)
+            assertEquals("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", listed.single().hash)
             assertEquals("/test/tv", listed.single().directory)
             assertEquals(0.7f, listed.single().fractionComplete, 0.0001f)
             assertEquals(2048L, listed.single().downBytesPerSecond)
@@ -149,7 +149,7 @@ class RTorrentRemoteFixtureTest {
                 triedExtended = true
                 Reply(200, fault(-32601, "d.down.rate missing"))
             } else Reply(200, result("""<array><data><value><array><data>
-                <value><string>ABCDEF</string></value>
+                <value><string>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA</string></value>
                 <value><string>Old server sample</string></value>
                 <value><i8>100</i8></value>
                 <value><i8>70</i8></value>
@@ -224,6 +224,53 @@ class RTorrentRemoteFixtureTest {
             assertEquals(1, fixture.methods.size)
             assertTrue(fixture.methods.single().contains("d.multicall2"))
             assertFalse(fixture.methods.single().contains("d.erase"))
+        }
+    }
+
+    @Test fun rejectsMalformedInfohashRowsWithoutSilentlyUsingTheirValues() = runBlocking {
+        fun row(hash: String): String = "<value><array><data>" +
+            "<value><string>$hash</string></value>" +
+            "<value><string>Untrusted server title</string></value>" +
+            "<value><i8>100</i8></value><value><i8>30</i8></value>" +
+            "<value><int>1</int></value><value><string>/data</string></value>" +
+            "<value><i8>0</i8></value><value><i8>0</i8></value>" +
+            "<value><i8>0</i8></value></data></array></value>"
+
+        for (invalid in listOf("ABCDEF", "G".repeat(40), "a".repeat(39),
+                "b".repeat(41), "a".repeat(65), "a".repeat(40) + "spoof")) {
+            Fixture { request, _ ->
+                assertTrue(request.contains("<methodName>d.multicall2</methodName>"))
+                Reply(200, result("<array><data>" + row(invalid) + "</data></array>"))
+            }.use { fixture ->
+                val remote = RTorrentRemote(RemoteCredentials(fixture.endpoint, "", ""))
+                try {
+                    remote.listTransfers()
+                    fail("Malformed torrent ID must block publication: $invalid")
+                } catch (expected: IllegalArgumentException) {
+                    assertTrue(expected.message.orEmpty().contains("infohash"))
+                }
+                assertEquals(1, fixture.methods.size)
+                assertFalse(fixture.methods.single().contains("d.erase"))
+            }
+        }
+    }
+
+    @Test fun acceptsProperHexV2LengthAsDistinctTransferIdentity() = runBlocking {
+        val valid = "ab".repeat(32)
+        Fixture { request, _ ->
+            assertTrue(request.contains("<methodName>d.multicall2</methodName>"))
+            Reply(200, result("""<array><data><value><array><data>
+                <value><string>$valid</string></value>
+                <value><string>Sixty-four hex test</string></value>
+                <value><i8>100</i8></value><value><i8>30</i8></value>
+                <value><int>0</int></value><value><string>/data</string></value>
+                <value><i8>0</i8></value><value><i8>0</i8></value>
+                <value><i8>0</i8></value>
+            </data></array></value></data></array>"""))
+        }.use { fixture ->
+            assertEquals(valid, RTorrentRemote(RemoteCredentials(fixture.endpoint, "", ""))
+                .listTransfers().single().hash)
+            assertEquals(1, fixture.methods.size)
         }
     }
 
