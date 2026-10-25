@@ -70,7 +70,8 @@ class RTorrentDisposableMutationTest {
         assertEquals(fast.map { it.hash }, paged.map { it.hash })
         assertEquals(fast.map { Triple(it.name, it.directory, it.sizeBytes) },
             paged.map { Triple(it.name, it.directory, it.sizeBytes) })
-        assertNotNull("Real rTorrent should answer extended getters", paged.single().ratioThousandths)
+        assertNotNull("Real rTorrent should answer extended getters",
+            paged.single { it.hash.equals(hash, true) }.ratioThousandths)
 
         val second = rtorrent.loadStoppedTorrentBytes(bytes, target)
         assertEquals("Duplicate Add must be refused without mutation",
