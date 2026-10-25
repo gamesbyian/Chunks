@@ -103,7 +103,7 @@ class MainActivity : ComponentActivity() {
 }
 
 private enum class Section(val label: String) {
-    TRANSFERS("Transfers"), PLACES("Places"), ORGANIZE("Organize"), SERVER("Server"), ARCHIVES("ZIP review"), LOCAL("On this phone"), ADD("Add"), NAMES("Names")
+    TRANSFERS("Transfers"), PLACES("Places"), ORGANIZE("Organize"), SERVER("Server"), ARCHIVES("ZIP review"), ADD("Add"), NAMES("Names")
 }
 
 @Composable
@@ -205,14 +205,11 @@ private fun ChunksApp(sharedMagnet: String?) {
 
         if (section == Section.ARCHIVES) {
             LocalZipReviewScreen(onBack = { section = Section.TRANSFERS })
-        } else if (section == Section.LOCAL && server == null) {
-            LocalEngineScreen(onBack = { section = Section.TRANSFERS })
         } else if (server == null) {
             ConnectionScreen(
                 endpoint = endpoint, username = username, password = password,
                 error = error, loading = loading,
                 onLocalZipReview = { section = Section.ARCHIVES },
-                onLocalEngine = { section = Section.LOCAL },
                 onEndpoint = { endpoint = it }, onUsername = { username = it },
                 onPassword = { password = it },
                 onConnect = {
@@ -324,7 +321,6 @@ private fun ChunksApp(sharedMagnet: String?) {
                     }
                 )
                 Section.ARCHIVES -> LocalZipReviewScreen(onBack = { section = Section.TRANSFERS })
-                Section.LOCAL -> LocalEngineScreen(onBack = { section = Section.TRANSFERS })
                 Section.PLACES -> PlacesScreen(transfers) { path ->
                     draftPath = path
                     section = Section.ADD
@@ -384,7 +380,6 @@ private fun readableFailure(failure: Exception): String = when (failure) {
 private fun ConnectionScreen(
     endpoint: String, username: String, password: String, error: String?, loading: Boolean,
     onLocalZipReview: () -> Unit,
-    onLocalEngine: () -> Unit,
     onEndpoint: (String) -> Unit, onUsername: (String) -> Unit,
     onPassword: (String) -> Unit, onConnect: () -> Unit
 ) {
@@ -432,12 +427,6 @@ private fun ConnectionScreen(
             OutlinedButton(onClick = onLocalZipReview,
                 modifier = Modifier.fillMaxWidth().height(52.dp)) {
                 Text("Inspect a local ZIP without connecting")
-            }
-        }
-        item {
-            OutlinedButton(onClick = onLocalEngine,
-                modifier = Modifier.fillMaxWidth().height(52.dp)) {
-                Text("Download on this phone (experimental)")
             }
         }
         item {
