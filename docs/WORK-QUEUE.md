@@ -23,6 +23,10 @@
 
 ## Active integration / hygiene
 
+- [x] [#105](https://github.com/gamesbyian/Chunks/pull/105) merged `59f1f62123e9f9e448b34c3efeabe9d667f98f79`: authenticated XML-RPC response parser now runs bounded SAX structure checking before DOM allocation (48 element levels, 250k XML elements), then caps total decoded values, 12k entries per array, 4096 struct members, textual scalars and struct-key length. Tested exact source `66957c77a9ebae6bee1f18c7c6eddd813c2bf25e` passed [Android/JVM 40163171672](https://github.com/gamesbyian/Chunks/actions/runs/40163171672) and [actual API35 parser 40163171740](https://github.com/gamesbyian/Chunks/actions/runs/40163171740) (**21/21 instrumentation tests**), including the hostile 60-level document and ordinary nested RPC compatibility. Existing 4 MiB reply cap and DTD/entity prohibition remain. No protected Seedhost/large-real-queue compatibility claim.
+
+
+
 - [x] [#104](https://github.com/gamesbyian/Chunks/pull/104) merged `b34535dd8af3baf7744918511dbbe77397003181`: Places now has a read-only real Android internal-volume space card using public `StatFs` total/available bytes, a dynamic sticky system low-storage alert when observable and an explicit Refresh action. All-app/system-reserved capacity is **not** Chunks torrent usage; no remote rTorrent capacity, numerical Android low-space threshold, local engine quota or deletion is inferred. Tested exact source `90184d33eb94421781bb1deeda4690176e2af9d4` passed [Android/JVM 40162903014](https://github.com/gamesbyian/Chunks/actions/runs/40162903014), [API35 40162903028](https://github.com/gamesbyian/Chunks/actions/runs/40162903028) and [four-viewport connection baseline 40162903074](https://github.com/gamesbyian/Chunks/actions/runs/40162903074). Downloaded native artifact `12586059962`, inspected low/normal panel PNGs and Refresh text. Initial hidden-API build failures `40160429336` were resolved by using only Android public APIs. Physical phone and real storage-cap enforcement remain unproven.
 
 
