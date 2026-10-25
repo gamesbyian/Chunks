@@ -103,7 +103,7 @@ class MainActivity : ComponentActivity() {
 }
 
 private enum class Section(val label: String) {
-    TRANSFERS("Transfers"), PLACES("Places"), ORGANIZE("Organize"), SERVER("Server"), ADD("Add")
+    TRANSFERS("Transfers"), PLACES("Places"), ORGANIZE("Organize"), SERVER("Server"), ADD("Add"), NAMES("Names")
 }
 
 @Composable
@@ -253,7 +253,7 @@ private fun ChunksApp(sharedMagnet: String?) {
                 modifier = Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                for (tab in Section.entries.filter { it != Section.ADD }) {
+                for (tab in Section.entries.filter { it != Section.ADD && it != Section.NAMES }) {
                     FilterChip(
                         selected = section == tab,
                         onClick = { section = tab },
@@ -276,6 +276,7 @@ private fun ChunksApp(sharedMagnet: String?) {
                     filter = filter, onFilter = { filter = it },
                     order = order, onOrder = { order = it },
                     onRefresh = refresh, onAdd = { section = Section.ADD },
+                    onReviewNames = { section = Section.NAMES },
                     selectedHash = expandedHash, files = files, filesError = filesError,
                     filesLoading = filesLoading,
                     onInspect = { transfer ->
@@ -320,6 +321,12 @@ private fun ChunksApp(sharedMagnet: String?) {
                     draftPath = path
                     section = Section.ADD
                 }
+                Section.NAMES -> AliasBatchReviewScreen(
+                    transfers = transfers, aliasStore = aliasStore,
+                    aliasScope = aliasScope, aliasRevision = aliasRevision,
+                    onAliasesChanged = { aliasRevision++ },
+                    onBack = { section = Section.TRANSFERS }
+                )
                 Section.ORGANIZE -> OrganizeScreen(transfers)
                 Section.SERVER -> ServerScreen(
                     version = version, displayedView = currentView,
@@ -428,6 +435,7 @@ private fun TransfersScreen(
     query: String, onQuery: (String) -> Unit, filter: TransferFilter,
     onFilter: (TransferFilter) -> Unit, order: TransferOrder,
     onOrder: (TransferOrder) -> Unit, onRefresh: () -> Unit, onAdd: () -> Unit,
+    onReviewNames: () -> Unit,
     selectedHash: String?, files: List<RemoteFile>?, filesError: String?,
     filesLoading: Boolean, onInspect: (RemoteTransfer) -> Unit
 ) {
@@ -457,6 +465,10 @@ private fun TransfersScreen(
                         modifier = Modifier.height(52.dp)) {
                         Text(if (loading) "Refreshing…" else "Refresh")
                     }
+                }
+                OutlinedButton(onClick = onReviewNames,
+                    modifier = Modifier.fillMaxWidth().height(52.dp)) {
+                    Text("Review suggested queue names")
                 }
             }
         }
