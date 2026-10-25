@@ -105,42 +105,104 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
     /** Only server-owned view names, never XML-RPC command fragments. */
     suspend fun listTransfers(view: String = "main"): List<RemoteTransfer> {
         require(Regex("[A-Za-z][A-Za-z0-9_-]{0,39}").matches(view)) { "Invalid view" }
-        val minimum = listOf("d.hash=", "d.name=", "d.size_bytes=", "d.completed_bytes=",
-            "d.state=", "d.directory=")
-        val extended = minimum + listOf("d.down.rate=", "d.up.rate=", "d.ratio=")
+        val minimum = MINIMUM_FIELDS
+        val extended = EXTENDED_FIELDS
         // Optional fields vary across rTorrent builds. Fall back only for
         // an explicit server-side command fault, not on timeouts or network loss.
+        // A queue too large for one bounded reply is re-read in pages instead.
         val (rows, rich) = try {
-            extractRows(call("d.multicall2", listOf("", view) + extended)) to true
-        } catch (_: RpcFault) {
-            extractRows(call("d.multicall2", listOf("", view) + minimum)) to false
+            try {
+                extractRows(call("d.multicall2", listOf("", view) + extended)) to true
+            } catch (_: RpcFault) {
+                extractRows(call("d.multicall2", listOf("", view) + minimum)) to false
+            }
+        } catch (_: RpcReplyTooLarge) {
+            return listTransfersPaged(view)
         }
-        require(rows.size <= 12000) { "Unexpectedly large torrent list" }
-        val parsed = rows.map { raw ->
+        require(rows.size <= MAX_TRANSFERS) { "Unexpectedly large torrent list" }
+        val fields = if (rich) extended.size else minimum.size
+        return requireUniqueIdentities(rows.map { raw ->
             val row = raw as? List<*> ?: error("Invalid torrent row")
-            require(row.size == if (rich) extended.size else minimum.size) {
-                "Incompatible rTorrent field layout"
-            }
-            val hash = row[0] as? String ?: error("Missing info hash")
-            require(Regex("[0-9a-fA-F]{40}([0-9a-fA-F]{24})?").matches(hash)) {
-                "Invalid torrent infohash in server view"
-            }
-            RemoteTransfer(
-                hash = hash,
-                name = (row[1] as? String ?: error("Missing torrent name")).take(2048),
-                sizeBytes = number(row[2]).coerceAtLeast(0),
-                completedBytes = number(row[3]).coerceAtLeast(0),
-                started = number(row[4]) != 0L,
-                directory = (row[5] as? String ?: error("Missing server path")).take(4096),
-                downBytesPerSecond = if (rich) number(row[6]).coerceAtLeast(0) else null,
-                upBytesPerSecond = if (rich) number(row[7]).coerceAtLeast(0) else null,
-                ratioThousandths = if (rich) number(row[8]).coerceAtLeast(0) else null
-            )
+            require(row.size == fields) { "Incompatible rTorrent field layout" }
+            transferFromRow(row, rich)
+        })
+    }
+
+    /**
+     * Large-queue path: one bounded `download_list` for identities, then
+     * `system.multicall` pages of exact-hash getters. Any per-call fault (for
+     * example a torrent erased mid-read) fails the whole snapshot closed rather
+     * than publishing a partial or mixed list. Read-only; never retried here.
+     */
+    internal suspend fun listTransfersPaged(view: String): List<RemoteTransfer> {
+        require(Regex("[A-Za-z][A-Za-z0-9_-]{0,39}").matches(view)) { "Invalid view" }
+        val minimum = MINIMUM_FIELDS
+        val extended = EXTENDED_FIELDS
+        val hashes = extractRows(call("download_list", listOf("", view))).map {
+            val hash = it as? String ?: error("Invalid torrent identity")
+            require(identityPattern.matches(hash)) { "Invalid torrent infohash in server view" }
+            hash
         }
-        // A case-insensitive duplicate hash in a single server view cannot be
-        // treated as two independent Transfers. Compose uses infohash for keys,
-        // and all control RPCs target it exactly. Refuse the entire ambiguous
-        // snapshot; never silently pick one row or merge differing metadata.
+        require(hashes.size <= MAX_TRANSFERS) { "Unexpectedly large torrent list" }
+        if (hashes.isEmpty()) return emptyList()
+
+        fun getters(fields: List<String>) = fields.map { it.removeSuffix("=") }
+        val rich = try {
+            pagedRows(hashes.take(1), getters(extended))
+            true
+        } catch (_: RpcFault) { false }
+        val fields = getters(if (rich) extended else minimum)
+        val transfers = ArrayList<RemoteTransfer>(hashes.size)
+        for (page in hashes.chunked(PAGE_SIZE)) {
+            val rows = pagedRows(page, fields)
+            for ((index, row) in rows.withIndex()) {
+                val transfer = transferFromRow(row, rich)
+                require(transfer.hash.equals(page[index], ignoreCase = true)) {
+                    "rTorrent returned a different torrent than requested"
+                }
+                transfers += transfer
+            }
+        }
+        return requireUniqueIdentities(transfers)
+    }
+
+    private suspend fun pagedRows(hashes: List<String>, getters: List<String>): List<List<Any?>> {
+        val calls = hashes.flatMap { hash -> getters.map { mapOf("methodName" to it, "params" to listOf(hash)) } }
+        val results = extractRows(call("system.multicall", listOf(calls)))
+        require(results.size == calls.size) { "Incomplete rTorrent multicall reply" }
+        return results.chunked(getters.size).map { row ->
+            row.map { result ->
+                val fault = result as? Map<*, *>
+                if (fault != null) throw RpcFault(fault["faultCode"]?.toString() ?: "unknown",
+                    "Transfer list changed or a field is unsupported; refresh to try again")
+                val single = result as? List<*> ?: error("Invalid multicall result")
+                require(single.size == 1) { "Invalid multicall result" }
+                single[0]
+            }
+        }
+    }
+
+    private fun transferFromRow(row: List<*>, rich: Boolean): RemoteTransfer {
+        val hash = row[0] as? String ?: error("Missing info hash")
+        require(identityPattern.matches(hash)) { "Invalid torrent infohash in server view" }
+        return RemoteTransfer(
+            hash = hash,
+            name = (row[1] as? String ?: error("Missing torrent name")).take(2048),
+            sizeBytes = number(row[2]).coerceAtLeast(0),
+            completedBytes = number(row[3]).coerceAtLeast(0),
+            started = number(row[4]) != 0L,
+            directory = (row[5] as? String ?: error("Missing server path")).take(4096),
+            downBytesPerSecond = if (rich) number(row[6]).coerceAtLeast(0) else null,
+            upBytesPerSecond = if (rich) number(row[7]).coerceAtLeast(0) else null,
+            ratioThousandths = if (rich) number(row[8]).coerceAtLeast(0) else null
+        )
+    }
+
+    // A case-insensitive duplicate hash in a single server view cannot be
+    // treated as two independent Transfers. Compose uses infohash for keys,
+    // and all control RPCs target it exactly. Refuse the entire ambiguous
+    // snapshot; never silently pick one row or merge differing metadata.
+    private fun requireUniqueIdentities(parsed: List<RemoteTransfer>): List<RemoteTransfer> {
         val identities = HashSet<String>(parsed.size)
         require(parsed.all {
             identities.add(it.hash.uppercase(java.util.Locale.ROOT))
@@ -453,7 +515,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                         throw IOException("rTorrent gateway returned HTTP $status")
                     }
                     val length = connection.contentLengthLong
-                    if (length > 4_194_304L) throw IOException("RPC response exceeded 4 MiB")
+                    if (length > 4_194_304L) throw RpcReplyTooLarge("RPC response exceeded 4 MiB")
                     val xml = connection.inputStream.bufferedReader(Charsets.UTF_8).use { reader ->
                         val chars = CharArray(4096)
                         val sb = StringBuilder()
@@ -461,11 +523,12 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                             val read = reader.read(chars)
                             if (read < 0) break
                             sb.append(chars, 0, read)
-                            if (sb.length > 4_194_304) throw IOException("RPC response exceeded 4 MiB")
+                            if (sb.length > 4_194_304) throw RpcReplyTooLarge("RPC response exceeded 4 MiB")
                         }
                         sb.toString()
                     }
-                    return@withContext XmlRpcCodec.response(xml)
+                    return@withContext try { XmlRpcCodec.response(xml) }
+                        catch (tooWide: XmlRpcSizeLimitExceeded) { throw RpcReplyTooLarge(tooWide.message.orEmpty()) }
                 } finally {
                     connection.disconnect()
                 }
@@ -473,4 +536,16 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             @Suppress("UNREACHABLE_CODE")
             error("RPC challenge negotiation exhausted")
         }
+
+    private companion object {
+        const val MAX_TRANSFERS = 12_000
+        const val PAGE_SIZE = 250
+        val MINIMUM_FIELDS = listOf("d.hash=", "d.name=", "d.size_bytes=", "d.completed_bytes=",
+            "d.state=", "d.directory=")
+        val EXTENDED_FIELDS = MINIMUM_FIELDS + listOf("d.down.rate=", "d.up.rate=", "d.ratio=")
+        val identityPattern = Regex("[0-9a-fA-F]{40}([0-9a-fA-F]{24})?")
+    }
 }
+
+/** A well-formed reply was too large for one bounded read; a paged read may work. */
+class RpcReplyTooLarge(message: String) : IOException(message)
