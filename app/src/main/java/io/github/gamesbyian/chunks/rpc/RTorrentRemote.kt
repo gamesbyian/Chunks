@@ -102,6 +102,16 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         return RemoteProbe(serverVersion, methods)
     }
 
+    /**
+     * The server's configured default download directory (read-only). Used only
+     * to *suggest* a Place; Adds still require an explicit user-confirmed path.
+     */
+    suspend fun defaultDirectory(): String? {
+        val value = try { call("directory.default") } catch (_: RpcFault) { return null }
+        val path = (value as? String)?.trim()?.takeIf { it.startsWith("/") && it.length <= 4096 } ?: return null
+        return path.trimEnd('/').ifEmpty { "/" }
+    }
+
     /** Only server-owned view names, never XML-RPC command fragments. */
     suspend fun listTransfers(view: String = "main"): List<RemoteTransfer> {
         require(Regex("[A-Za-z][A-Za-z0-9_-]{0,39}").matches(view)) { "Invalid view" }

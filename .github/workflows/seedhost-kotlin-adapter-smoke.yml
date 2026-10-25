@@ -8,6 +8,11 @@ on:
         type: string
         required: false
         default: "https://ianseeds.wood.seedhost.eu/rutorrent/"
+      apply_mutation:
+        description: "Owner-authorized: add, prioritise, start/stop and session-erase ONE unique synthetic test torrent under <default>/chunks-acceptance"
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: read
@@ -36,23 +41,41 @@ jobs:
           if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
             ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
           fi
-      - name: Run actual Kotlin RPC adapter against development Seedhost, READ ONLY
+      - name: Run actual Kotlin RPC adapter against development Seedhost
         env:
           CHUNKS_LIVE_RUTORRENT_URL: ${{ inputs.rutorrent_url }}
           CHUNKS_LIVE_RTORRENT_USER: ${{ secrets.rtorrent_user }}
           CHUNKS_LIVE_RTORRENT_PASS: ${{ secrets.rtorrent_pass }}
+          CHUNKS_LIVE_MUTATION: ${{ inputs.apply_mutation && 'apply' || 'read-only' }}
         run: |
           test -n "$CHUNKS_LIVE_RUTORRENT_URL"
           test -n "$CHUNKS_LIVE_RTORRENT_USER"
           test -n "$CHUNKS_LIVE_RTORRENT_PASS"
-          gradle --no-daemon --console=plain :app:testDebugUnitTest --tests io.github.gamesbyian.chunks.rpc.SeedhostAdapterSmokeTest
-          python3 - <<'PY'
-          import pathlib, xml.etree.ElementTree as ET
-          path=pathlib.Path("app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.SeedhostAdapterSmokeTest.xml")
-          root=ET.parse(path).getroot()
-          assert int(root.attrib.get("tests",0))==1
-          assert int(root.attrib.get("failures",0))==0
-          assert int(root.attrib.get("errors",0))==0
-          assert int(root.attrib.get("skipped",0))==0
-          print("CHUNKS_KOTLIN_SEEDHOST_READONLY: authenticated version and main-view list passed")
+          set +e
+          gradle --no-daemon --console=plain :app:testDebugUnitTest \
+            --tests io.github.gamesbyian.chunks.rpc.SeedhostAdapterSmokeTest \
+            --tests io.github.gamesbyian.chunks.rpc.SeedhostLiveAcceptanceTest
+          status=$?
+          set -e
+          python3 - "$status" <<'PY'
+          import pathlib, sys, xml.etree.ElementTree as ET
+          base = pathlib.Path("app/build/test-results/testDebugUnitTest")
+          ok = int(sys.argv[1]) == 0
+          for name in ("SeedhostAdapterSmokeTest", "SeedhostLiveAcceptanceTest"):
+              path = base / f"TEST-io.github.gamesbyian.chunks.rpc.{name}.xml"
+              if not path.exists():
+                  print(f"CHUNKS_LIVE: {name} produced no results"); ok = False; continue
+              root = ET.parse(path).getroot()
+              print(f"CHUNKS_LIVE: {name} tests={root.get('tests')} failures={root.get('failures')} errors={root.get('errors')} skipped={root.get('skipped')}")
+              for line in (root.findtext("system-out") or "").splitlines():
+                  if line.startswith("CHUNKS_LIVE:") or line.startswith("CHUNKS_KOTLIN_SEEDHOST"):
+                      print(line[:420])
+              for case in root.iter("testcase"):
+                  failure = case.find("failure") if case.find("failure") is not None else case.find("error")
+                  if failure is not None:
+                      print("CHUNKS_LIVE_FAILURE: " + case.get("name") + " " + (failure.get("message") or "")[:400])
+                      ok = False
+          smoke = ET.parse(base / "TEST-io.github.gamesbyian.chunks.rpc.SeedhostAdapterSmokeTest.xml").getroot()
+          ok = ok and smoke.get("skipped") == "0"
+          sys.exit(0 if ok else 1)
           PY

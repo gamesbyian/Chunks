@@ -362,4 +362,18 @@ class RTorrentRemoteFixtureTest {
         val failure = assertThrows(IllegalArgumentException::class.java) { XmlRpcCodec.response(deep) }
         assertFalse(failure is XmlRpcSizeLimitExceeded)
     }
+
+    @Test fun defaultDirectoryIsReadOnlyAndValidated() = runBlocking {
+        for ((reply, expected) in listOf(
+            result("<string>/home/dev/downloads/</string>") to "/home/dev/downloads",
+            result("<string>relative/path</string>") to null,
+            fault(-506, "Method 'directory.default' not defined") to null)) {
+            Fixture { request, _ ->
+                assertTrue(request.contains("<methodName>directory.default</methodName>"))
+                Reply(200, reply)
+            }.use { fixture ->
+                assertEquals(expected, RTorrentRemote(RemoteCredentials(fixture.endpoint, "", "")).defaultDirectory())
+            }
+        }
+    }
 }
