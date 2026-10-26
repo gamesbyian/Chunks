@@ -87,20 +87,31 @@ class LocalEngineService : Service() {
 
     private fun refresh() {
         if (stopping) return
-        val running = try {
-            LocalEngineHolder.current()?.list().orEmpty().filter { !it.stopped }
-        } catch (_: Exception) { emptyList() }
+        // A failed inventory read does not prove that all transfers stopped.
+        // Shutting down the foreground service on a transient engine exception
+        // could interrupt an active download without warning.
+        val observed = try {
+            LocalEngineHolder.current()?.list().orEmpty()
+        } catch (_: Exception) { null }
+        val poll = LocalServicePoll.classify(observed)
         handler.post {
             if (stopping) return@post
-            if (running.isEmpty()) {
-                stopping = true
-                finish()
-                return@post
+            when (poll) {
+                LocalServicePoll.Idle -> {
+                    stopping = true
+                    finish()
+                }
+                LocalServicePoll.Unavailable ->
+                    getSystemService(NotificationManager::class.java).notify(
+                        NOTIFICATION_ID, notification("Transfer status unavailable; checking again")
+                    )
+                is LocalServicePoll.Active -> {
+                    val text = poll.count.toString() +
+                        (if (poll.count == 1) " transfer" else " transfers") +
+                        " running · " + poll.averagePercent + "% average"
+                    getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, notification(text))
+                }
             }
-            val percent = running.sumOf { it.progressPpm.toLong() } / running.size / 10_000
-            val text = running.size.toString() + (if (running.size == 1) " transfer" else " transfers") +
-                " running · " + percent + "% average"
-            getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, notification(text))
         }
     }
 
