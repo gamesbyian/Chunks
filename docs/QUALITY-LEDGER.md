@@ -213,3 +213,17 @@ After the owner added the development URL as the workflow default on `main`, [Ko
 [#138](https://github.com/gamesbyian/Chunks/pull/138) merged `1c2444d96026804917c792ef03b000f203ce651c`; exact source `37856a73ce077a3b1d149fdfedb8423c8237fa1d` passed [Android/JVM 40251287832](https://github.com/gamesbyian/Chunks/actions/runs/40251287832).
 
 `LocalTorrentEngine.setDhtEnabled` applies DHT to the running session with readback; it is **off by default** (LSD and port mapping stay off). The on-phone screen adds a persisted, 48dp switch, "Find peers without trackers (DHT)", which states that the phone's IP address is shared with the public DHT network. Turning it on never starts the engine by itself. JVM test: off by default, toggles on and off with readback. Not proven: trackerless magnet resolution over the Internet or on a device.
+
+## October 26 first live write acceptance on the development Seedhost
+
+**Correction:** the earlier "all Add routes are dropped, probably a quota" reading was wrong. The owner confirmed web-UI Adds worked, and [diagnosis 40254131404](https://github.com/gamesbyian/Chunks/actions/runs/40254131404) found the real cause: **the host silently drops torrents with no tracker (`announce`)**. Torrents with a loopback or an Internet Archive announce URL were retained, listed, stopped, in the exact folder, and cleanly erased. The synthetic fixtures had no tracker.
+
+[#141](https://github.com/gamesbyian/Chunks/pull/141) merged `073c36a2c2497da3d9a3e3e93d46e5938579cabe` (build 59fa1e35 passed Android/JVM). Run [40254914585](https://github.com/gamesbyian/Chunks/actions/runs/40254914585) at that SHA, `apply_mutation=true`, one unique synthetic torrent `92c2ec07d84e0fa41d1f4ea77d387570388f824e` (`chunks-acceptance-40254914585.txt`) in the inventory's common parent folder:
+- stopped Add via `load.raw_verbose`: **VerifiedStopped** (exact hash, folder, stopped);
+- duplicate Add refused with no second load;
+- file priority off then restore: both **Verified**, final priority equal to the original;
+- Start **Verified**, Stop **Verified**;
+- exact-target session erase: **VerifiedRemoved**;
+- inventory identity set restored (437 before and after).
+
+This is the first real-Seedhost write acceptance of Add, duplicate refusal, per-file priority, Start/Stop and session-only Remove through the Kotlin adapter. It is HTTPS from a GitHub runner, not a phone. The ruTorrent upload form was retried with a tracker-less torrent only, so that route is not separately accepted here. Each synthetic transfer holds a tiny file; Start may leave one such file beside real data, no existing transfer was touched.
