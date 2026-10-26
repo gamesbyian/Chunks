@@ -64,21 +64,23 @@ internal object DeviceSpaceProbe {
  */
 @Composable
 internal fun PhoneStoragePanel(
-    readSpace: ((Context) -> DeviceSpaceSnapshot)? = null
+    readSpace: ((Context) -> DeviceSpaceSnapshot)? = null,
+    readFolder: ((Context) -> LocalFolderInventory)? = null
 ) {
     val context = LocalContext.current
     val reader = readSpace ?: DeviceSpaceProbe::read
     var snapshot by remember(context, readSpace) { mutableStateOf(reader(context)) }
     val scope = rememberCoroutineScope()
-    var folderUsage by remember(context) { mutableStateOf<LocalFolderInventory?>(null) }
+    var folderUsage by remember(context, readFolder) { mutableStateOf<LocalFolderInventory?>(null) }
     suspend fun surveyFolder() = withContext(Dispatchers.IO) {
         try {
-            LocalFolderInventoryProbe.measure(LocalEngineHolder.appDownloads(context))
+            readFolder?.invoke(context)
+                ?: LocalFolderInventoryProbe.measure(LocalEngineHolder.appDownloads(context))
         } catch (_: Exception) {
             LocalFolderInventory(null, 0, false)
         }
     }
-    LaunchedEffect(context) { folderUsage = surveyFolder() }
+    LaunchedEffect(context, readFolder) { folderUsage = surveyFolder() }
 
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth().padding(16.dp),
