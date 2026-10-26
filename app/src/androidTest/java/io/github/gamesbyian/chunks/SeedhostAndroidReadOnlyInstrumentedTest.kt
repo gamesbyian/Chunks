@@ -13,6 +13,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -73,7 +74,7 @@ class SeedhostAndroidReadOnlyInstrumentedTest {
         rule.onNodeWithText("ruTorrent web URL or RPC address").performTextReplacement(url)
         rule.onNodeWithText("Username, if required").performTextReplacement(user!!)
         rule.onNodeWithText("Password").performTextReplacement(password!!)
-        rule.onNodeWithText("Connect to rTorrent").performClick()
+        rule.onNodeWithText("Connect to rTorrent").performScrollTo().performClick()
         try {
             rule.waitUntil(90_000) {
                 rule.onAllNodesWithText("It's all here.").fetchSemanticsNodes().isNotEmpty()
