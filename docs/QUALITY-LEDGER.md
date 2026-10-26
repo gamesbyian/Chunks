@@ -228,10 +228,14 @@ After the owner added the development URL as the workflow default on `main`, [Ko
 
 This is the first real-Seedhost write acceptance of Add, duplicate refusal, per-file priority, Start/Stop and session-only Remove through the Kotlin adapter. It is HTTPS from a GitHub runner, not a phone. The ruTorrent upload form was retried with a tracker-less torrent only, so that route is not separately accepted here. Each synthetic transfer holds a tiny file; Start may leave one such file beside real data, no existing transfer was touched.
 
-## October 26 tracker-less Add warning (pending CI)
+## October 26 tracker-less Add warning
+
+[#143](https://github.com/gamesbyian/Chunks/pull/143) merged `1a04c1c1d651746777601d2ae25ff9d5b5b1bdfe`; exact head `c894759d` passed Android/JVM [40263638982](https://github.com/gamesbyian/Chunks/actions/runs/40263638982).
 
 Following the Seedhost finding that tracker-less torrents are silently discarded, `TorrentMetainfoPreview.trackerCount` counts distinct http(s)/udp URLs in `announce`/`announce-list` (malformed entries ignored, never fatal), and `magnetTrackerCount` counts distinct `tr=` parameters. The remote Add confirmation card shows an explicit warning when a `.torrent` or magnet has no tracker; the on-phone review notes that peers then depend on DHT or web sources. JVM tests cover counting and deduplication.
 
-## October 26 local engine per-file selection (pending CI)
+## October 26 local engine per-file selection
+
+[#144](https://github.com/gamesbyian/Chunks/pull/144) merged `bc7c97e07ee4e070046a1b62ac7c8e292b07e40e`; exact head `11f5c0ba` passed Android/JVM [40265976021](https://github.com/gamesbyian/Chunks/actions/runs/40265976021) and API35 [40265975993](https://github.com/gamesbyian/Chunks/actions/runs/40265975993).
 
 `LocalTorrentEngine.files()` lists user files with progress and selection, hiding BEP 47 pad files that hybrid torrents contain (the first test saw 4 entries for 2 real files). `setFileWanted()` sets libtorrent priority IGNORE/DEFAULT and is `VERIFIED` only after readback. JVM loopback test: a skipped 1.3 MB file is not completed while the other file downloads byte-exact; re-selecting it reads back as wanted; a later session completes the kept partial data byte-exact. Finding: in this tracker-less rig, once the leecher reached "finished" it never regained its peer after re-selection within the same session, even with explicit reconnects and a seeder restart. In-session resumption after re-selecting a file is therefore **unproven** (real swarms re-announce through trackers and DHT). The test also showed `fileProgress` can report a file complete before libtorrent's disk thread has written it, so tests wait for the bytes on disk. The on-phone card gets a Files toggle with 48dp checkbox rows ("Untick a file to skip downloading it. Already downloaded parts are kept.").
