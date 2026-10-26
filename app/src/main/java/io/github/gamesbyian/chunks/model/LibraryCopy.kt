@@ -175,8 +175,32 @@ object LibraryCopier {
             }
             if (copied != file.sizeBytes)
                 return ZipExtractionStatus.FAILED_ROLLED_BACK to "A file changed size while it was being copied"
-            if (!digest.digest().contentEquals(sha256(file.source, buffer)))
+            val expectedDigest = digest.digest()
+            if (!expectedDigest.contentEquals(sha256(file.source, buffer)))
                 return ZipExtractionStatus.FAILED_ROLLED_BACK to "A file changed while it was being copied"
+            // A provider may acknowledge writes but persist fewer or different
+            // bytes. Verify the actual destination, not only the write buffer.
+            val storedInput = target.openExistingInput(node)
+                ?: return ZipExtractionStatus.FAILED_ROLLED_BACK to
+                    "Destination cannot be independently read back for verification"
+            val storedDigest = MessageDigest.getInstance("SHA-256")
+            var storedBytes = 0L
+            storedInput.use { input ->
+                while (true) {
+                    if (cancelled() || Thread.currentThread().isInterrupted)
+                        return ZipExtractionStatus.CANCELLED to "Copy cancelled during destination verification"
+                    val count = input.read(buffer)
+                    if (count < 0) break
+                    if (count == 0 || count.toLong() > copied - storedBytes)
+                        return ZipExtractionStatus.FAILED_ROLLED_BACK to
+                            "Destination stored more bytes than the verified source, or made no progress"
+                    storedBytes += count
+                    storedDigest.update(buffer, 0, count)
+                }
+            }
+            if (storedBytes != copied || !storedDigest.digest().contentEquals(expectedDigest))
+                return ZipExtractionStatus.FAILED_ROLLED_BACK to
+                    "Destination bytes failed SHA-256 and size read-back verification"
             total += copied
             progress(files, total)
         }
