@@ -16,6 +16,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.model.CollectionMembershipRules
@@ -67,7 +68,7 @@ internal fun TransferCollectionEditor(
                     onValueChange = { draft = it; message = null },
                     label = { Text("Collection name") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().testTag("collection-name-input")
                 )
                 OutlinedButton(
                     enabled = CollectionMembershipRules.cleanName(draft) != null &&
