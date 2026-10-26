@@ -85,6 +85,8 @@ class SeedhostAndroidReadOnlyInstrumentedTest {
                 "Inspect the protected runner locally; no credentials are included.", failure)
         }
         rule.onNodeWithText("It's all here.").assertExists()
+        // No screenshot is permitted while the credentials field is onscreen.
+        rule.onNodeWithText("Password").assertDoesNotExist()
 
         val totals = rule.onAllNodesWithText("transfers in the 'main' server view", substring = true)
             .fetchSemanticsNodes()
@@ -97,7 +99,10 @@ class SeedhostAndroidReadOnlyInstrumentedTest {
         // Only the authenticated transfer screen is captured. Never record login.
         captureConnectedQueue("seedhost-android-queue-live")
         rule.onNodeWithText("Refresh").performClick()
-        rule.waitUntil(60_000) {
+        rule.waitUntil(30_000) {
+            rule.onAllNodesWithText("Refreshing…").fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.waitUntil(90_000) {
             rule.onAllNodesWithText("Refresh", substring = false).fetchSemanticsNodes().isNotEmpty()
         }
         rule.onNodeWithText("It's all here.").assertExists()
