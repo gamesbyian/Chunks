@@ -36,7 +36,7 @@ class PhoneStorageCapInstrumentedTest {
         store.set(root, null)
         try {
             val used: (Context) -> LocalFolderInventory = {
-                LocalFolderInventory(850L * gib / 100L, 2, true)
+                LocalFolderInventory(85L * gib / 100L, 2, true)
             }
             rule.setContent {
                 MaterialTheme {
