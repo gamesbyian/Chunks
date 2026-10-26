@@ -233,4 +233,13 @@ class LocalTorrentEngineTest {
             assertTrue(bad, engine.addMagnet(bad, destination) is LocalAddResult.Refused)
         assertTrue(engine.list().isEmpty())
     }
+
+    @Test fun dhtIsOffByDefaultAndTogglesOnlyOnRequest() {
+        val engine = engine()
+        assertFalse(engine.isDhtEnabled())
+        assertTrue(engine.setDhtEnabled(true))
+        assertTrue(engine.isDhtEnabled())
+        assertFalse(engine.setDhtEnabled(false))
+        assertFalse(engine.isDhtEnabled())
+    }
 }

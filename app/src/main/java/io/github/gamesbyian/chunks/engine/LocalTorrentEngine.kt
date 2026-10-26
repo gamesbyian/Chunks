@@ -144,6 +144,24 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         }
     }
 
+    /**
+     * Opt-in DHT (and local peer discovery stays off): lets trackerless magnets
+     * find peers, at the cost of announcing this device's address to the DHT.
+     * Applied to the running session; returns whether libtorrent reports DHT on.
+     */
+    @Synchronized
+    fun setDhtEnabled(enabled: Boolean, readbackTimeoutMs: Long = 2_000): Boolean {
+        check(started) { "Engine not started" }
+        val pack = SettingsPack()
+        pack.setEnableDht(enabled)
+        session.applySettings(pack)
+        val deadline = System.nanoTime() + readbackTimeoutMs * 1_000_000
+        while (session.isDhtRunning != enabled && System.nanoTime() < deadline) Thread.sleep(25)
+        return session.isDhtRunning
+    }
+
+    fun isDhtEnabled(): Boolean = started && session.isDhtRunning
+
     /** The bound TCP listen port, or 0 if the session is not listening. */
     fun listenPort(): Int = session.swig()?.listen_port() ?: 0
 
