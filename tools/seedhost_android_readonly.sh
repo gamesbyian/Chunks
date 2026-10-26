@@ -54,7 +54,7 @@ import os, struct
 root=Path(os.environ["RUNNER_TEMP"])/"chunks-seedhost-android"
 for name in ("seedhost-android-queue-live.png","seedhost-android-queue-refreshed-live.png"):
     data=(root/name).read_bytes()
-    assert data[:8]==b"\\x89PNG\\r\\n\\x1a\\n"
+    assert data[:8] == bytes((137, 80, 78, 71, 13, 10, 26, 10))
     assert data[12:16]==b"IHDR"
     width,height=struct.unpack(">II", data[16:24])
     assert width>=300 and height>=500
