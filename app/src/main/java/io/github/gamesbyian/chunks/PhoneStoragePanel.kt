@@ -15,9 +15,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -25,7 +27,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.model.DeviceSpaceSnapshot
 import io.github.gamesbyian.chunks.model.DeviceSpaceStatus
+import io.github.gamesbyian.chunks.model.LocalFolderInventory
+import io.github.gamesbyian.chunks.model.LocalFolderInventoryProbe
 import io.github.gamesbyian.chunks.model.Units
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** No permissions, background scans, invented torrent usage or filesystem writes. */
 internal object DeviceSpaceProbe {
@@ -57,11 +64,23 @@ internal object DeviceSpaceProbe {
  */
 @Composable
 internal fun PhoneStoragePanel(
-    readSpace: ((Context) -> DeviceSpaceSnapshot)? = null
+    readSpace: ((Context) -> DeviceSpaceSnapshot)? = null,
+    readFolder: ((Context) -> LocalFolderInventory)? = null
 ) {
     val context = LocalContext.current
     val reader = readSpace ?: DeviceSpaceProbe::read
     var snapshot by remember(context, readSpace) { mutableStateOf(reader(context)) }
+    val scope = rememberCoroutineScope()
+    var folderUsage by remember(context, readFolder) { mutableStateOf<LocalFolderInventory?>(null) }
+    suspend fun surveyFolder() = withContext(Dispatchers.IO) {
+        try {
+            readFolder?.invoke(context)
+                ?: LocalFolderInventoryProbe.measure(LocalEngineHolder.appDownloads(context))
+        } catch (_: Exception) {
+            LocalFolderInventory(null, 0, false)
+        }
+    }
+    LaunchedEffect(context, readFolder) { folderUsage = surveyFolder() }
 
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth().padding(16.dp),
@@ -94,9 +113,30 @@ internal fun PhoneStoragePanel(
                 DeviceSpaceStatus.UNKNOWN ->
                     Text("Android low-storage alert status unavailable.")
             }
-            Text("Chunks cannot yet measure or enforce an on-device torrent cap. Remote storage capacity is unknown without a verified server capability.",
+            Text("Chunks' download folder on this phone",
+                fontWeight = FontWeight.SemiBold)
+            val usage = folderUsage
+            when {
+                usage == null -> Text("Measuring Chunks' local files…")
+                usage.logicalBytes == null -> Text("Chunks' downloads folder is unavailable; its size is unknown.")
+                else -> {
+                    Text(Units.bytes(usage.logicalBytes) + " in " + usage.regularFiles +
+                        (if (usage.regularFiles == 1) " file" else " files"))
+                    if (!usage.complete) {
+                        Text("Partial survey only: some files or folders could not be counted.",
+                            color = MaterialTheme.colorScheme.error)
+                    }
+                }
+            }
+            Text("Logical sizes inside Chunks' downloads folder, including files left after removing a torrent. " +
+                "Not allocated disk blocks, unique data, all Chunks storage, or proof that deletion is safe.",
                 style = MaterialTheme.typography.bodySmall)
-            OutlinedButton(onClick = { snapshot = reader(context) },
+            Text("Chunks does not yet enforce a local torrent storage cap. Remote storage capacity is unknown without a verified server capability.",
+                style = MaterialTheme.typography.bodySmall)
+            OutlinedButton(onClick = {
+                snapshot = reader(context)
+                scope.launch { folderUsage = surveyFolder() }
+            },
                 modifier = Modifier.heightIn(min = 48.dp)) {
                 Text("Refresh phone space")
             }

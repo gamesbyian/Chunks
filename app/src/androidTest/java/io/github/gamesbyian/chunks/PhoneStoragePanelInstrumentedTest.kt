@@ -5,16 +5,24 @@ import android.content.Context
 import android.os.Environment
 import android.provider.MediaStore
 import androidx.activity.ComponentActivity
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.gamesbyian.chunks.model.DeviceSpaceSnapshot
+import io.github.gamesbyian.chunks.model.LocalFolderInventory
 import java.util.concurrent.atomic.AtomicInteger
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -65,6 +73,35 @@ class PhoneStoragePanelInstrumentedTest {
         rule.onNodeWithText("5.0 GiB free of 10.0 GiB").assertExists()
         rule.onNodeWithText("No active Android low-storage alert detected. The numeric threshold is not exposed to apps.").assertExists()
         capture("phone-storage-normal-native-compose")
+    }
+
+    @Test fun showsSeparateLocalFolderUsageAndRefreshesItWithoutClaimingAQuota() {
+        val reads = AtomicInteger(0)
+        val folderSample: (Context) -> LocalFolderInventory = {
+            if (reads.getAndIncrement() == 0) LocalFolderInventory(512, 1, true)
+            else LocalFolderInventory(2048, 2, false)
+        }
+        rule.setContent {
+            MaterialTheme {
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                    PhoneStoragePanel(
+                        readSpace = { DeviceSpaceSnapshot(10_000, 5_000, false) },
+                        readFolder = folderSample
+                    )
+                }
+            }
+        }
+        rule.onNodeWithText("Chunks' download folder on this phone").assertExists()
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithText("in 1 file", substring = true).fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithText("Chunks does not yet enforce a local torrent storage cap.", substring = true)
+            .assertExists()
+        rule.onNodeWithText("Refresh phone space").performScrollTo().performClick()
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithText("in 2 files", substring = true).fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithText("Partial survey only:", substring = true).assertExists()
     }
 
     @Test fun platformProbeReadsNoFilesOrPrivateTorrentInventory() {
