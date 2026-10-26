@@ -384,7 +384,7 @@ internal fun LocalTransferCard(
                     Text(if (filesShown) "Hide files" else "Files")
                 }
             }
-            if (filesShown) LocalFileSelection(files, busy, onFileWanted)
+            if (filesShown) LocalFileSelection(files, busy, onFileWanted, transferKey = transfer.infoHash)
             if (confirmRemove) {
                 Text("Remove from the phone engine only. Downloaded files stay in Chunks' folder; sharing of this torrent stops.")
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -399,17 +399,42 @@ internal fun LocalTransferCard(
     }
 }
 
-/** Per-file download selection. Unticking never deletes bytes already written. */
+/** Per-file download selection, bounded to one page even for huge multi-file torrents.
+ * Unticking never deletes bytes already written. Page identity is scoped to the
+ * transfer, not to a Compose list position or a periodically refreshed file list.
+ */
 @Composable
-internal fun LocalFileSelection(files: List<LocalTransferFile>?, busy: Boolean, onFileWanted: (Int, Boolean) -> Unit) {
+internal fun LocalFileSelection(
+    files: List<LocalTransferFile>?,
+    busy: Boolean,
+    onFileWanted: (Int, Boolean) -> Unit,
+    transferKey: String? = null
+) {
     if (files == null) {
         Text("Loading files…", style = MaterialTheme.typography.bodySmall)
         return
     }
+    val pageSize = 40
+    val pageCount = if (files.isEmpty()) 1 else (files.size - 1) / pageSize + 1
+    var requestedPage by remember(transferKey, files.size) { mutableStateOf(0) }
+    val page = requestedPage.coerceIn(0, pageCount - 1)
     Text("Untick a file to skip downloading it. Already downloaded parts are kept.",
         style = MaterialTheme.typography.bodySmall)
-    files.take(200).forEach { file ->
-        val percent = if (file.sizeBytes == 0L) 100 else (file.doneBytes * 100 / file.sizeBytes).toInt()
+    if (pageCount > 1) {
+        Text("Files page " + (page + 1) + " of " + pageCount + " (" + files.size + " files)",
+            style = MaterialTheme.typography.bodySmall)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = { requestedPage = page - 1 }, enabled = !busy && page > 0,
+                modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Previous page") }
+            OutlinedButton(onClick = { requestedPage = page + 1 },
+                enabled = !busy && page + 1 < pageCount,
+                modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Next page") }
+        }
+    }
+    files.drop(page * pageSize).take(pageSize).forEach { file ->
+        // Multiplying done bytes by 100 can overflow Long for large files.
+        val percent = if (file.sizeBytes <= 0L) 100 else
+            (file.doneBytes.toDouble() / file.sizeBytes * 100).toInt().coerceIn(0, 100)
         Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
             .toggleable(value = file.wanted, enabled = !busy, role = Role.Checkbox,
                 onValueChange = { onFileWanted(file.index, it) }),
@@ -422,7 +447,6 @@ internal fun LocalFileSelection(files: List<LocalTransferFile>?, busy: Boolean, 
             }
         }
     }
-    if (files.size > 200) Text("And " + (files.size - 200) + " more files", style = MaterialTheme.typography.bodySmall)
 }
 
 /** KiB/s text to bytes per second; blank or 0 is unlimited, anything else invalid is null. */
