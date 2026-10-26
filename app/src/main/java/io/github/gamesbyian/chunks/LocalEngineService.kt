@@ -11,9 +11,7 @@ import android.content.pm.ServiceInfo
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
-import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
-import java.util.concurrent.RejectedExecutionException
 
 /**
  * Keeps the in-process local engine alive while the user has transfers running,
@@ -42,29 +40,20 @@ class LocalEngineService : Service() {
     }
 
     private val handler = Handler(Looper.getMainLooper())
-    private val worker: ExecutorService = Executors.newSingleThreadExecutor()
-    // Do not enqueue a new native/libtorrent read while the previous one is
-    // still running. A blocked read must not accumulate hours of stale polls.
-    private val pollGate = LocalServicePollGate()
+    // Native status observation and user/OS stop commands MUST use independent
+    // lanes. Otherwise a hung status() call strands Stop all and FGS timeout
+    // handling behind the very read that is failing.
+    private val workLanes = LocalServiceWorkLanes(
+        pollExecutor = Executors.newSingleThreadExecutor(),
+        controlExecutor = Executors.newSingleThreadExecutor()
+    )
     @Volatile private var stopping = false
     private val tick = object : Runnable {
         override fun run() {
             if (stopping) return
-            if (pollGate.tryBegin()) {
-                try {
-                    worker.execute {
-                        try {
-                            refresh()
-                        } finally {
-                            pollGate.finish()
-                        }
-                    }
-                } catch (_: RejectedExecutionException) {
-                    // onDestroy may have shut down the worker between the
-                    // scheduled callback and submission.
-                    pollGate.finish()
-                }
-            }
+            // A single admitted poll prevents a backlog of stale native reads.
+            // A blocked poll never occupies the separate stop-command lane.
+            workLanes.submitPoll { refresh() }
             if (!stopping) handler.postDelayed(this, TICK_MS)
         }
     }
@@ -85,9 +74,7 @@ class LocalEngineService : Service() {
             ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
         if (intent?.action == ACTION_STOP_ALL) {
             stopping = true
-            worker.execute {
-                try { pauseAll(this) } finally { handler.post { finish() } }
-            }
+            requestStopAll()
             return START_NOT_STICKY
         }
         handler.removeCallbacks(tick)
@@ -99,8 +86,21 @@ class LocalEngineService : Service() {
     /** Android 15+ dataSync limit reached: stop honestly instead of being killed. */
     override fun onTimeout(startId: Int, fgsType: Int) {
         stopping = true
-        worker.execute {
-            try { pauseAll(this) } finally { handler.post { finish() } }
+        requestStopAll()
+    }
+
+    /**
+     * Do not enqueue a user Stop all or Android timeout behind native polling.
+     * A separate worker removes that executor-order dependency; it cannot
+     * guarantee JNI itself will return or bypass libtorrent's internal locks.
+     */
+    private fun requestStopAll() {
+        if (!workLanes.submitControl {
+                try { pauseAll(this) } finally { handler.post { finish() } }
+            }) {
+            // Only possible once the service is shutting down. Preserve the
+            // normal foreground-service stop lifecycle.
+            finish()
         }
     }
 
@@ -143,8 +143,11 @@ class LocalEngineService : Service() {
     override fun onDestroy() {
         stopping = true
         handler.removeCallbacks(tick)
-        worker.execute { try { LocalEngineHolder.current()?.saveResumeData() } catch (_: Exception) { } }
-        worker.shutdown()
+        // Resume persistence must likewise be independent of a stuck poll.
+        workLanes.submitControl {
+            try { LocalEngineHolder.current()?.saveResumeData() } catch (_: Exception) { }
+        }
+        workLanes.shutdown()
         super.onDestroy()
     }
 
