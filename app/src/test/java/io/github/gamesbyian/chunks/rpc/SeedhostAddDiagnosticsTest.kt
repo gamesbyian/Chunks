@@ -84,4 +84,30 @@ class SeedhostAddDiagnosticsTest {
             log("variant=magnet stillPresentAfterErase=${rtorrent.lookupName(magnetHash) != null}")
         }
     }
+
+    /** Read-only: which handlers run when a download is inserted or erased on this host. */
+    @Test fun inspectDownloadEventHooksReadOnly() = runBlocking {
+        val rawUrl = System.getenv("CHUNKS_LIVE_RUTORRENT_URL").orEmpty()
+        assumeTrue(rawUrl.isNotBlank() && System.getenv("CHUNKS_LIVE_DIAGNOSE_ADD") == "true")
+        val url = URI(rawUrl)
+        require(url.scheme == "https" && url.host?.endsWith(".seedhost.eu") == true && url.userInfo == null)
+        val rtorrent = RTorrentRemote(RemoteCredentials(rawUrl,
+            System.getenv("CHUNKS_LIVE_RTORRENT_USER").orEmpty(), System.getenv("CHUNKS_LIVE_RTORRENT_PASS").orEmpty()))
+        for (event in listOf("event.download.inserted", "event.download.inserted_new", "event.download.inserted_session",
+                "event.download.erased", "event.download.finished", "event.download.hash_done")) {
+            val keys = try { (rtorrent.call("method.list_keys", listOf("", event)) as? List<*>)?.joinToString(",") }
+                catch (e: Exception) { "error:" + e::class.simpleName }
+            log("hook $event keys=[$keys]")
+        }
+        for (command in listOf("session.path", "directory.default", "system.cwd", "network.scgi.dont_route")) {
+            val value = try { rtorrent.call(command).toString() } catch (e: Exception) { "error:" + e::class.simpleName }
+            log("value $command present=${value.isNotBlank() && !value.startsWith("error")} kind=${if (value.startsWith("/")) "absolute-path" else value.take(24)}")
+        }
+        for (command in listOf("load.raw", "load.raw_verbose", "load.verbose", "load.start", "d.erase")) {
+            val has = try { rtorrent.call("system.has", listOf("", command)).toString() } catch (e: Exception) { "error:" + e::class.simpleName }
+            log("system.has $command=$has")
+        }
+        log("view sizes main=${runCatching { rtorrent.call("view.size", listOf("", "main")) }.getOrNull()} " +
+            "default=${runCatching { rtorrent.call("view.size", listOf("", "default")) }.getOrNull()}")
+    }
 }
