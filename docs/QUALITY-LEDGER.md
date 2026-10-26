@@ -263,6 +263,7 @@ PR [#147](https://github.com/gamesbyian/Chunks/pull/147), head `1a5e7344`, passe
 Two unrelated failures came up on the way and were root-caused in the PR:
 - DHT readback: run `40267927242` failed because a 2 s DHT start readback was too short for a loaded runner; the default is now 5 s and the test allows 15 s.
 - Atlas alias editor: run `40268777188` failed because the atlas test's positional tap on "Change list name" missed the editor; the test now invokes the button's click action and waits.
+- Atlas search: run `40270137679` failed because the IME text input for search sometimes left the queue unfiltered; the test now sets the query with the field's SetText action and waits for it. The installed-app atlas therefore no longer exercises IME typing into search.
 
 `LibraryCopier` copies a finished transfer's wanted files into a **new** folder inside a user-chosen destination, leaving the originals in place so seeding continues (library copy is distinct from the engine's backing data). It reuses the ZIP extractor's protocol and journal format:
 - write-ahead journal;

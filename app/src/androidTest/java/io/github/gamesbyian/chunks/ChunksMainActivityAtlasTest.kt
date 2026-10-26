@@ -25,6 +25,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.BufferedReader
@@ -248,8 +249,13 @@ class ChunksMainActivityAtlasTest {
         // Identify the episodic fixture by its *original* server-reported name.
         // The queue is name-sorted, so the first unfiltered card is not this item.
         // Keeping this search after Save also proves the original remains searchable.
-        rule.onNodeWithText("Search names or Places").performTextInput("Public.Example")
+        // Set the query through the field's own SetText action: IME text input
+        // occasionally raced focus here and left the queue unfiltered.
+        rule.onNodeWithText("Search names or Places").performTextReplacement("Public.Example")
         dismissSearchKeyboard()
+        rule.waitUntil(10_000) {
+            rule.onAllNodes(hasSetTextAction() and hasText("Public.Example")).fetchSemanticsNodes().isNotEmpty()
+        }
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("1 shown"))
         rule.onNodeWithText("1 shown").assertExists()
         // An actual installed-app queue action, not only an isolated editor component.
