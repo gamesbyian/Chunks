@@ -71,7 +71,8 @@ internal object DeviceSpaceProbe {
 @Composable
 internal fun PhoneStoragePanel(
     readSpace: ((Context) -> DeviceSpaceSnapshot)? = null,
-    readFolder: ((Context) -> LocalFolderInventory)? = null
+    readFolder: ((Context) -> LocalFolderInventory)? = null,
+    readAllocated: ((Context) -> LocalAllocatedInventory)? = null
 ) {
     val context = LocalContext.current
     val reader = readSpace ?: DeviceSpaceProbe::read
@@ -86,6 +87,14 @@ internal fun PhoneStoragePanel(
     var capMessage by remember(context, downloadRoot) { mutableStateOf<String?>(null) }
     var newNotice by remember(context, downloadRoot) { mutableStateOf<StorageWarning?>(null) }
     var folderUsage by remember(context, readFolder) { mutableStateOf<LocalFolderInventory?>(null) }
+    var allocationUsage by remember(context, readAllocated) { mutableStateOf<LocalAllocatedInventory?>(null) }
+    suspend fun surveyAllocation() = withContext(Dispatchers.IO) {
+        try {
+            readAllocated?.invoke(context) ?: LocalAllocatedFolderProbe.measure(downloadRoot)
+        } catch (_: Exception) {
+            LocalAllocatedInventory(null, null, 0, 0, false, false)
+        }
+    }
     suspend fun surveyFolder() = withContext(Dispatchers.IO) {
         try {
             readFolder?.invoke(context)
@@ -95,6 +104,7 @@ internal fun PhoneStoragePanel(
         }
     }
     LaunchedEffect(context, readFolder) { folderUsage = surveyFolder() }
+    LaunchedEffect(context, readAllocated) { allocationUsage = surveyAllocation() }
     // Record a threshold crossing only after a complete, bounded observation.
     // Never mutate preferences during Compose rendering or show a precise
     // quota status for a partial/unknown logical file inventory.
@@ -152,7 +162,25 @@ internal fun PhoneStoragePanel(
                 }
             }
             Text("Logical sizes inside Chunks' downloads folder, including files left after removing a torrent. " +
-                "Not allocated disk blocks, unique data, all Chunks storage, or proof that deletion is safe.",
+                "This is separate from filesystem block allocation and cannot authorize deletion.",
+                style = MaterialTheme.typography.bodySmall)
+            Text("Observed allocated storage", fontWeight = FontWeight.SemiBold)
+            val observed = allocationUsage
+            when {
+                observed == null ->
+                    Text("Measuring allocated blocks in Chunks' phone download folder…")
+                !observed.complete || observed.allocatedBytes == null ->
+                    Text("Allocated usage unavailable: the bounded filesystem survey was incomplete. No exact byte total is claimed.",
+                        color = MaterialTheme.colorScheme.error)
+                else -> {
+                    Text(Units.bytes(observed.allocatedBytes) + " of filesystem blocks across " +
+                        observed.uniqueInodes + (if (observed.uniqueInodes == 1) " unique file" else " unique files"))
+                    if (observed.externalHardlinkPossible)
+                        Text("Some files may have hardlinks outside this folder. Their blocks may remain allocated if these paths are removed.",
+                            color = MaterialTheme.colorScheme.error)
+                }
+            }
+            Text("Read-only POSIX block observation, not guaranteed space freed by cleanup. Hardlinks, reflinks, compression and concurrent writes limit accuracy. Never delete torrent data based on this estimate.",
                 style = MaterialTheme.typography.bodySmall)
             Text("Optional download-folder limit", fontWeight = FontWeight.SemiBold)
             Text("Advisory only. Set a logical-size target for Chunks' app-owned download folder. It will NOT pause downloads, prevent writes, remove files or limit the seedbox.",
@@ -230,6 +258,7 @@ internal fun PhoneStoragePanel(
             OutlinedButton(onClick = {
                 snapshot = reader(context)
                 scope.launch { folderUsage = surveyFolder() }
+                scope.launch { allocationUsage = surveyAllocation() }
             },
                 modifier = Modifier.heightIn(min = 48.dp)) {
                 Text("Refresh phone space")
