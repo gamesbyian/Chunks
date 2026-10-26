@@ -27,7 +27,10 @@ internal class LocalInodeAccounting {
         val key = Key(device, inode)
         val old = seen[key]
         if (old != null) {
-            if (old.size != size || old.blocks != blocks || old.links != linkCount) return false
+            if (old.size != size || old.blocks != blocks || old.links != linkCount ||
+                old.paths.toLong() >= linkCount) return false
+            // More observed directory entries than the inode's own link count
+            // indicates a race, bind-mount alias or unsupported filesystem.
             old.paths++
             return true
         }

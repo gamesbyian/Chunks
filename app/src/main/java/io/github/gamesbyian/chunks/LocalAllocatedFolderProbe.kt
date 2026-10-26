@@ -40,6 +40,13 @@ internal object LocalAllocatedFolderProbe {
         if (folder == null) return empty
         val root = folder.toPath()
         if (!Files.isDirectory(root, LinkOption.NOFOLLOW_LINKS)) return empty
+        val rootDevice = try {
+            val stat = Os.lstat(root.toString())
+            if (!OsConstants.S_ISDIR(stat.st_mode)) return empty
+            stat.st_dev
+        } catch (_: Exception) {
+            return empty
+        }
 
         var count = 0
         var paths = 0
@@ -53,6 +60,21 @@ internal object LocalAllocatedFolderProbe {
                         if (count > maxEntries) {
                             complete = false
                             return FileVisitResult.TERMINATE
+                        }
+                        if (dir != root) {
+                            try {
+                                val dirStat = Os.lstat(dir.toString())
+                                if (!OsConstants.S_ISDIR(dirStat.st_mode) ||
+                                    dirStat.st_dev != rootDevice) {
+                                    // A nested mount or swapped directory
+                                    // cannot count against this volume.
+                                    complete = false
+                                    return FileVisitResult.SKIP_SUBTREE
+                                }
+                            } catch (_: Exception) {
+                                complete = false
+                                return FileVisitResult.SKIP_SUBTREE
+                            }
                         }
                         return FileVisitResult.CONTINUE
                     }
@@ -72,7 +94,8 @@ internal object LocalAllocatedFolderProbe {
                         paths++
                         try {
                             val stat = Os.lstat(file.toString())
-                            if (!OsConstants.S_ISREG(stat.st_mode) || stat.st_size < 0L ||
+                            if (!OsConstants.S_ISREG(stat.st_mode) || stat.st_dev != rootDevice ||
+                                stat.st_size < 0L ||
                                 stat.st_blocks < 0L || stat.st_nlink < 1L ||
                                 attrs.size() != stat.st_size) {
                                 // NIO enumeration and lstat disagreed: a
