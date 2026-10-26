@@ -39,3 +39,9 @@ Magnet Add on this host (2026-10-26, [run 40266854968](https://github.com/gamesb
 
 ruTorrent upload Add on this host (2026-10-26, [run 40271734379](https://github.com/gamesbyian/Chunks/actions/runs/40271734379), main `b5d9514d`): a tracker-bearing synthetic torrent posted to ruTorrent's `php/addtorrent.php` with `torrents_start_stopped=1` and `dir_edit` was **VerifiedStopped** in the chosen directory, then exact-hash erased (**VerifiedRemoved**). The earlier failure of this route was the host's tracker-less drop, not the route itself.
 
+
+### Modern disposable rTorrent compatibility (October 26, 2026)
+
+PR [#150](https://github.com/gamesbyian/Chunks/pull/150) adds disposable real-server Kotlin adapter acceptance for Arch Linux rTorrent 0.16.x, retaining the legacy Ubuntu 0.9.8 check. Both read-only inventory and exactly scoped mutation tests passed on the original three-target run [40272836916](https://github.com/gamesbyian/Chunks/actions/runs/40272836916) and the subsequent [40367519383](https://github.com/gamesbyian/Chunks/actions/runs/40367519383), but **those overall workflows were red because Alpine failed**. Record the exact accepted merged-head run separately before declaring PR #150's modern acceptance complete.
+
+**Known failure, not accepted:** Alpine 3.22 rTorrent 0.15.2 answers the initial version probe but later returns nginx HTTP 502 for all Kotlin read-only/mutation calls. Diagnostic [40368041120](https://github.com/gamesbyian/Chunks/actions/runs/40368041120) confirms rTorrent remains PID 1 in a running container; nginx reports upstream SCGI TCP connection reset and prematurely closed response headers. It is neither a demonstrated Kotlin client parser problem nor a container-exit problem. Track separately in [#151](https://github.com/gamesbyian/Chunks/issues/151). Do not claim all modern rTorrent builds pass.
