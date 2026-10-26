@@ -18,6 +18,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.engine.LocalTorrentEngine
 import io.github.gamesbyian.chunks.engine.LocalTransferStatus
+import io.github.gamesbyian.chunks.model.LibraryCopyByteTotals
 import io.github.gamesbyian.chunks.model.LibraryCopyFile
 import io.github.gamesbyian.chunks.model.ZipExtractionResult
 import io.github.gamesbyian.chunks.model.ZipExtractionStatus
