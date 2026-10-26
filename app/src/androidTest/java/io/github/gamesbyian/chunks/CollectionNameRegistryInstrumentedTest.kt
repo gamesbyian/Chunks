@@ -16,10 +16,14 @@ class CollectionNameRegistryInstrumentedTest {
         val local = TransferCollectionStore.LOCAL_ENGINE_SCOPE
         val name = "Independent project collection"
         // Use unique explicit names to avoid mutating unrelated test metadata.
-        assertTrue(store.create(alice, name))
-        assertEquals(listOf(name), CollectionNameRegistry(ctx).names(alice)
-            .filter { it == name })
-        assertFalse(store.names(bob).contains(name))
-        assertFalse(store.names(local).contains(name))
+        try {
+            assertTrue(store.create(alice, name))
+            assertEquals(listOf(name), CollectionNameRegistry(ctx).names(alice)
+                .filter { it == name })
+            assertFalse(store.names(bob).contains(name))
+            assertFalse(store.names(local).contains(name))
+        } finally {
+            store.forget(alice, name)
+        }
     }
 }
