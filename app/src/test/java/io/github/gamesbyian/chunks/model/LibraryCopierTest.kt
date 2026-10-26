@@ -99,6 +99,22 @@ class LibraryCopierTest {
         assertSourceIntact(payload)
     }
 
+    @Test fun overflowingAggregateIsBlockedWithoutTouchingDestinationOrJournal() {
+        val source = payload()
+        val output = temp.newFolder("overflow-rejected")
+        val proof = journal()
+        val request = LibraryCopyRequest(source.root, listOf(
+            LibraryCopyFile(File(source.root, "Episode 1.mkv"), "a", Long.MAX_VALUE),
+            LibraryCopyFile(File(source.root, "Extras/Notes.txt"), "b", 1L)
+        ), "Overflow", "test-target", allowUnknownFreeSpace = true)
+        val result = LibraryCopier.copy(request, Target(output), proof)
+        assertEquals(ZipExtractionStatus.BLOCKED, result.status)
+        assertTrue(result.reason.orEmpty().contains("supported size"))
+        assertTrue(tree(output).isEmpty())
+        assertTrue(proof.read().isEmpty())
+        assertSourceIntact(source)
+    }
+
     @Test fun copiesEveryFileIntoANewFolderAndKeepsTheOriginals() {
         val payload = payload()
         val destination = temp.newFolder("library")
