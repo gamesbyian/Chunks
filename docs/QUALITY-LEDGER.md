@@ -256,7 +256,13 @@ Following the Seedhost finding that tracker-less torrents are silently discarded
 
 The same run repeated the `.torrent` round trip, all Verified. Metadata retrieval from a real swarm, HTTPS from a phone and the app UI path are separate gates.
 
-## October 26 library copy of finished local transfers (pending CI)
+## October 26 library copy of finished local transfers
+
+PR [#147](https://github.com/gamesbyian/Chunks/pull/147), head `1a5e7344`, passed Android/JVM [40269473573](https://github.com/gamesbyian/Chunks/actions/runs/40269473573) and API35 [40269473595](https://github.com/gamesbyian/Chunks/actions/runs/40269473595) with the new `LocalLibraryCopyInstrumentedTest`.
+
+Two unrelated failures came up on the way and were root-caused in the PR:
+- DHT readback: run `40267927242` failed because a 2 s DHT start readback was too short for a loaded runner; the default is now 5 s and the test allows 15 s.
+- Atlas alias editor: run `40268777188` failed because the atlas test's positional tap on "Change list name" missed the editor; the test now invokes the button's click action and waits.
 
 `LibraryCopier` copies a finished transfer's wanted files into a **new** folder inside a user-chosen destination, leaving the originals in place so seeding continues (library copy is distinct from the engine's backing data). It reuses the ZIP extractor's protocol and journal format:
 - write-ahead journal;
