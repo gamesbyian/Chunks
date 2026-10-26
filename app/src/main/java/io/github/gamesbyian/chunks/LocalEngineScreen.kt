@@ -125,6 +125,7 @@ private class PendingLocalAdd(val preview: TorrentMetainfoPreview, val bytes: By
 internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val collectionStore = remember(context) { TransferCollectionStore(context) }
     var transfers by remember { mutableStateOf<List<LocalTransferStatus>>(emptyList()) }
     var filesFor by remember { mutableStateOf<String?>(null) }
     var files by remember { mutableStateOf<List<LocalTransferFile>?>(null) }
