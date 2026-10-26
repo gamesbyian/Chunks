@@ -91,7 +91,6 @@ data class LocalTransferFile(
     val wanted: Boolean
 )
 
-/** libtorrent applies pause/resume asynchronously; only a matching readback is VERIFIED. */
 /** Bytes per second; 0 is unlimited. */
 data class LocalRateLimits(val downloadBytesPerSecond: Int = 0, val uploadBytesPerSecond: Int = 0) {
     init {
@@ -99,6 +98,7 @@ data class LocalRateLimits(val downloadBytesPerSecond: Int = 0, val uploadBytesP
     }
 }
 
+/** libtorrent applies pause/resume asynchronously; only a matching readback is VERIFIED. */
 enum class LocalCommandOutcome { VERIFIED, UNCERTAIN, NOT_FOUND }
 
 data class LocalCommandResult(val outcome: LocalCommandOutcome, val status: LocalTransferStatus?)
