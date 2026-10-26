@@ -376,4 +376,18 @@ class RTorrentRemoteFixtureTest {
             }
         }
     }
+
+    @Test fun lookupNameIsExactAndTreatsUnknownHashAsAbsent() = runBlocking {
+        val known = "A".repeat(40)
+        Fixture { request, _ ->
+            assertTrue(request.contains("<methodName>d.name</methodName>"))
+            if (request.contains(known)) Reply(200, result("<string>Fixture name</string>"))
+            else Reply(200, fault(-501, "Could not find info-hash."))
+        }.use { fixture ->
+            val remote = RTorrentRemote(RemoteCredentials(fixture.endpoint, "", ""))
+            assertEquals("Fixture name", remote.lookupName(known))
+            assertNull(remote.lookupName("B".repeat(40)))
+            try { remote.lookupName("not-a-hash"); fail("must refuse") } catch (_: IllegalArgumentException) { }
+        }
+    }
 }
