@@ -68,10 +68,12 @@ internal class LocalLibraryCopySource(val sourceRoot: File, val files: List<Libr
             val top = wanted.map { it.path.substringBefore('/', "") }.distinct().singleOrNull()
             val nested = !top.isNullOrEmpty() && wanted.all { it.path.contains('/') }
             val root = if (nested) File(save, top!!) else save
-            return LocalLibraryCopySource(root, wanted.map {
+            val selected = wanted.map {
                 val relative = if (nested) it.path.substringAfter('/') else it.path
                 LibraryCopyFile(File(root, relative), relative, it.sizeBytes)
-            })
+            }
+            if (LibraryCopyByteTotals.checked(selected) == null) return null
+            return LocalLibraryCopySource(root, selected)
         }
     }
 }
