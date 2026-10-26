@@ -5,6 +5,11 @@ import android.content.Context
 import android.os.Environment
 import android.provider.MediaStore
 import androidx.activity.ComponentActivity
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
@@ -13,6 +18,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.gamesbyian.chunks.model.DeviceSpaceSnapshot
@@ -77,10 +83,12 @@ class PhoneStoragePanelInstrumentedTest {
         }
         rule.setContent {
             MaterialTheme {
-                PhoneStoragePanel(
-                    readSpace = { DeviceSpaceSnapshot(10_000, 5_000, false) },
-                    readFolder = folderSample
-                )
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                    PhoneStoragePanel(
+                        readSpace = { DeviceSpaceSnapshot(10_000, 5_000, false) },
+                        readFolder = folderSample
+                    )
+                }
             }
         }
         rule.onNodeWithText("Chunks' download folder on this phone").assertExists()
@@ -89,7 +97,7 @@ class PhoneStoragePanelInstrumentedTest {
         }
         rule.onNodeWithText("Chunks does not yet enforce a local torrent storage cap.", substring = true)
             .assertExists()
-        rule.onNodeWithText("Refresh phone space").performClick()
+        rule.onNodeWithText("Refresh phone space").performScrollTo().performClick()
         rule.waitUntil(10_000) {
             rule.onAllNodesWithText("in 2 files", substring = true).fetchSemanticsNodes().isNotEmpty()
         }
