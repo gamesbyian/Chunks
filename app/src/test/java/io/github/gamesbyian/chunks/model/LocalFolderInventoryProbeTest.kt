@@ -36,6 +36,8 @@ class LocalFolderInventoryProbeTest {
             assertEquals(1, result.regularFiles)
             assertEquals(7L, result.logicalBytes)
         } finally {
+            // Remove the link itself first; test teardown must never traverse it.
+            Files.deleteIfExists(root.resolve("escape"))
             root.toFile().deleteRecursively()
             foreign.toFile().deleteRecursively()
         }
@@ -65,6 +67,7 @@ class LocalFolderInventoryProbeTest {
             assertNull(linked.logicalBytes)
             assertFalse(linked.complete)
         } finally {
+            Files.deleteIfExists(root.resolve("linked-root"))
             root.toFile().deleteRecursively()
         }
     }
