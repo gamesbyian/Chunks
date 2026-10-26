@@ -6,7 +6,6 @@ import android.provider.MediaStore
 import android.util.Base64
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.semantics.SemanticsProperties
-import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
