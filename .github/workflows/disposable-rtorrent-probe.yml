@@ -111,3 +111,113 @@ jobs:
           echo "### Disposable real-engine stopped Add + lifecycle test" >> "$GITHUB_STEP_SUMMARY"
           echo "Source commit: $GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
           echo "Real stopped Add/start/stop targets ephemeral local rTorrent only; no secrets, user media or remote machines supplied." >> "$GITHUB_STEP_SUMMARY"
+  modern-real-engine:
+    # A materially different rTorrent: 0.15/0.16 builds use tinyxml2 instead of
+    # xmlrpc-c. Distro packages in throwaway containers; SCGI published only on
+    # runner loopback; the data folder is bind-mounted at the same path.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: arch-latest
+            image: archlinux:latest
+            install: pacman -Sy --noconfirm rtorrent
+          - label: alpine-3.22
+            image: alpine:3.22
+            install: apk add --no-cache rtorrent
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+      - name: Start containerised rTorrent and localhost SCGI proxy
+        run: |
+          sudo timeout 180s apt-get update -qq
+          sudo timeout 180s env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq nginx
+          mkdir -p "$RUNNER_TEMP/chunks-data" "$RUNNER_TEMP/chunks-rc"
+          chmod 777 "$RUNNER_TEMP/chunks-data"
+          cat > "$RUNNER_TEMP/chunks-rc/rtorrent.rc" <<EOF
+          directory.default.set = $RUNNER_TEMP/chunks-data
+          session.path.set = /session
+          network.scgi.open_port = 0.0.0.0:5000
+          system.daemon.set = true
+          EOF
+          docker run -d --name chunks-rtorrent -p 127.0.0.1:5000:5000 \
+            -v "$RUNNER_TEMP/chunks-data:$RUNNER_TEMP/chunks-data" \
+            -v "$RUNNER_TEMP/chunks-rc:/chunks-rc:ro" \
+            "${{ matrix.image }}" sh -c "${{ matrix.install }} >/dev/null && mkdir -p /session && \
+              rtorrent -h 2>&1 | head -n 1; exec rtorrent -n -o import=/chunks-rc/rtorrent.rc"
+          cat > "$RUNNER_TEMP/chunks-nginx.conf" <<EOF
+          worker_processes 1;
+          pid $RUNNER_TEMP/chunks-nginx.pid;
+          error_log $RUNNER_TEMP/chunks-nginx.error notice;
+          events { worker_connections 64; }
+          http {
+            server {
+              listen 127.0.0.1:18080;
+              location /RPC2 {
+                include /etc/nginx/scgi_params;
+                scgi_pass 127.0.0.1:5000;
+              }
+            }
+          }
+          EOF
+          sudo nginx -c "$RUNNER_TEMP/chunks-nginx.conf"
+      - name: Assert XML-RPC readiness and record the version
+        run: |
+          cat > "$RUNNER_TEMP/version.xml" <<'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <methodCall><methodName>system.client_version</methodName><params></params></methodCall>
+          EOF
+          for attempt in $(seq 1 120); do
+            if curl -fsS --max-time 3 -H "Content-Type: text/xml" \
+                 --data-binary @"$RUNNER_TEMP/version.xml" \
+                 http://127.0.0.1:18080/RPC2 -o "$RUNNER_TEMP/response.xml" &&
+               grep -q '<methodResponse>' "$RUNNER_TEMP/response.xml"; then
+              echo "CHUNKS_MODERN_RTORRENT ${{ matrix.label }} version: $(grep -o '<string>[^<]*</string>' "$RUNNER_TEMP/response.xml" | head -n 1)"
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs chunks-rtorrent | tail -n 40
+          echo "::error::Containerised rTorrent/SCGI endpoint unavailable"
+          exit 1
+      - name: Install Android API 37 SDK
+        run: |
+          printf "y\n" | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
+          if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          fi
+      - name: Same read-only and mutation acceptance on the modern engine
+        env:
+          CHUNKS_DISPOSABLE_RT_URL: http://127.0.0.1:18080/RPC2
+          CHUNKS_DISPOSABLE_TARGET_DIR: ${{ runner.temp }}/chunks-data
+        run: |
+          status=0
+          gradle --no-daemon :app:testDebugUnitTest --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableServerTest' || status=1
+          gradle --no-daemon :app:testDebugUnitTest --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableMutationTest' || status=1
+          python3 - <<'PY'
+          import pathlib, xml.etree.ElementTree as ET
+          for path in sorted(pathlib.Path("app/build/test-results/testDebugUnitTest").glob("TEST-*Disposable*.xml")):
+              root=ET.parse(path).getroot()
+              print("CHUNKS_MODERN_RESULT", root.attrib.get("name"), "tests=" + root.attrib.get("tests","?"),
+                    "failures=" + root.attrib.get("failures","?"), "errors=" + root.attrib.get("errors","?"),
+                    "skipped=" + root.attrib.get("skipped","?"))
+              for case in root.findall(".//testcase"):
+                  failure=case.find("failure")
+                  if failure is None:
+                      failure=case.find("error")
+                  if failure is not None:
+                      print("CHUNKS_MODERN_FAILURE:", case.attrib.get("name","unknown"), (failure.attrib.get("message") or "")[:500])
+          PY
+          exit $status
+      - name: Stop container
+        if: always()
+        run: docker rm -f chunks-rtorrent || true
+
