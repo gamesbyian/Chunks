@@ -35,6 +35,9 @@ internal class LocalServiceWorkLanes(
         }
     }
 
+    /** Null if idle; measured without waiting for a possibly stuck native read. */
+    fun inFlightPollMillis(): Long? = pollGate.inFlightMillis()
+
     /** Separate FIFO lane for explicit user and OS lifecycle commands. */
     fun submitControl(command: () -> Unit): Boolean = try {
         controlExecutor.execute(command)

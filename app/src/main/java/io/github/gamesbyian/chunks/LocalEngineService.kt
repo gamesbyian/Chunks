@@ -47,13 +47,22 @@ class LocalEngineService : Service() {
         pollExecutor = Executors.newSingleThreadExecutor(),
         controlExecutor = Executors.newSingleThreadExecutor()
     )
+    // Tick runs on the main thread; a stalled read is never retried, and one
+    // warning is shown until the next genuinely admitted observation.
+    private val stallNotice = LocalServiceStallNotice()
     @Volatile private var stopping = false
     private val tick = object : Runnable {
         override fun run() {
             if (stopping) return
             // A single admitted poll prevents a backlog of stale native reads.
             // A blocked poll never occupies the separate stop-command lane.
-            workLanes.submitPoll { refresh() }
+            if (workLanes.submitPoll { refresh() }) stallNotice.newPollAdmitted()
+            if (stallNotice.shouldWarn(workLanes.inFlightPollMillis())) {
+                getSystemService(NotificationManager::class.java).notify(
+                    NOTIFICATION_ID,
+                    notification("Status check delayed; transfer activity unverified")
+                )
+            }
             if (!stopping) handler.postDelayed(this, TICK_MS)
         }
     }
