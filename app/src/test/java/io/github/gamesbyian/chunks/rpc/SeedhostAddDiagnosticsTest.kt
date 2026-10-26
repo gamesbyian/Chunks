@@ -15,11 +15,12 @@ import org.junit.Test
 class SeedhostAddDiagnosticsTest {
     private fun log(line: String) = println("CHUNKS_LIVE: " + line.replace(Regex("[\\r\\n]"), " ").take(400))
 
-    private fun torrent(name: String): ByteArray {
+    private fun torrent(name: String, announce: String? = null): ByteArray {
         val payload = "Chunks acceptance payload\n".toByteArray()
         val piece = MessageDigest.getInstance("SHA-1").digest(payload)
-        val head = "d4:infod6:lengthi${payload.size}e4:name${name.length}:${name}12:piece lengthi16384e6:pieces20:"
-        return head.toByteArray(Charsets.ISO_8859_1) + piece + "ee".toByteArray()
+        val head = (if (announce != null) "d8:announce${announce.length}:${announce}4:info" else "d4:info") +
+            "d6:lengthi${payload.size}e4:name${name.length}:${name}12:piece lengthi16384e6:pieces20:"
+        return head.toByteArray(Charsets.ISO_8859_1) + piece + (if (announce != null) "ee" else "ee").toByteArray()
     }
 
     @Test fun compareAddVariantsOnDevelopmentSeedhost() = runBlocking {
@@ -66,6 +67,26 @@ class SeedhostAddDiagnosticsTest {
                 } else {
                     log("variant=$label erase via d.erase exact hash=${runCatching { rtorrent.call("d.erase", listOf(hash)) }.isSuccess}")
                 }
+                Thread.sleep(1000)
+                log("variant=$label stillPresentAfterErase=${rtorrent.lookupName(hash) != null}")
+            }
+        }
+        // Hypothesis: the host insert hook drops torrents that have no tracker.
+        for ((label, announce) in listOf("with-announce-loopback" to "http://127.0.0.1:1/announce",
+                "with-announce-archive" to "http://bt1.archive.org:6969/announce")) {
+            val name = "chunks-acceptance-$run-$label.txt"
+            val bytes = torrent(name, announce)
+            val hash = TorrentMetainfoReader.preview(bytes).infoHashV1
+            val ack = try { "ok:" + rtorrent.call("load.raw_verbose", listOf("", bytes, "d.directory.set=\"$base\"")) }
+                catch (e: Exception) { "error:" + e::class.simpleName }
+            var found: String? = null
+            for (i in 1..30) { found = rtorrent.lookupName(hash); if (found != null) break; Thread.sleep(500) }
+            log("variant=$label ack=$ack retained=${found != null}")
+            if (found != null) {
+                val listed = rtorrent.listTransfers("main").firstOrNull { it.hash.equals(hash, true) }
+                log("variant=$label listed=${listed != null} started=${listed?.started} dirIsBase=${listed?.directory == base}")
+                if (listed != null && listed.name == name)
+                    log("variant=$label erase=${rtorrent.eraseFromSession(listed.hash, listed.name, listed.directory)::class.simpleName}")
                 Thread.sleep(1000)
                 log("variant=$label stillPresentAfterErase=${rtorrent.lookupName(hash) != null}")
             }
