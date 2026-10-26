@@ -47,6 +47,9 @@ class LocalEngineService : Service() {
         pollExecutor = Executors.newSingleThreadExecutor(),
         controlExecutor = Executors.newSingleThreadExecutor()
     )
+    // Tick runs on the main thread; a stalled read is never retried, and one
+    // warning is shown until the next genuinely admitted observation.
+    private val stallNotice = LocalServiceStallNotice()
     @Volatile private var stopping = false
     private val tick = object : Runnable {
         override fun run() {
