@@ -18,6 +18,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.engine.LocalTorrentEngine
 import io.github.gamesbyian.chunks.engine.LocalTransferStatus
+import io.github.gamesbyian.chunks.model.LibraryCopyByteTotals
 import io.github.gamesbyian.chunks.model.LibraryCopyFile
 import io.github.gamesbyian.chunks.model.ZipExtractionResult
 import io.github.gamesbyian.chunks.model.ZipExtractionStatus
@@ -48,7 +49,9 @@ internal object LocalLibraryCopySelection {
 
 /** The finished, wanted files of one transfer, laid out relative to a new library folder. */
 internal class LocalLibraryCopySource(val sourceRoot: File, val files: List<LibraryCopyFile>) {
-    val bytes: Long get() = files.sumOf { it.sizeBytes }
+    val bytes: Long = requireNotNull(LibraryCopyByteTotals.checked(files)) {
+        "A library copy cannot exceed the supported total file size"
+    }
 
     companion object {
         /**
@@ -65,10 +68,12 @@ internal class LocalLibraryCopySource(val sourceRoot: File, val files: List<Libr
             val top = wanted.map { it.path.substringBefore('/', "") }.distinct().singleOrNull()
             val nested = !top.isNullOrEmpty() && wanted.all { it.path.contains('/') }
             val root = if (nested) File(save, top!!) else save
-            return LocalLibraryCopySource(root, wanted.map {
+            val selected = wanted.map {
                 val relative = if (nested) it.path.substringAfter('/') else it.path
                 LibraryCopyFile(File(root, relative), relative, it.sizeBytes)
-            })
+            }
+            if (LibraryCopyByteTotals.checked(selected) == null) return null
+            return LocalLibraryCopySource(root, selected)
         }
     }
 }
