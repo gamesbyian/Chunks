@@ -436,7 +436,7 @@ internal fun parseSpeedLimit(text: String): Int? {
 private fun speedText(bytesPerSecond: Int) = if (bytesPerSecond == 0) "" else (bytesPerSecond / 1024).toString()
 
 @Composable
-private fun LocalSpeedLimits() {
+internal fun LocalSpeedLimits() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val saved = remember { LocalEngineHolder.rateLimitsPreferred(context) }

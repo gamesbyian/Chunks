@@ -14,7 +14,11 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -110,5 +114,54 @@ class LocalEngineScreenInstrumentedTest {
         rule.onNodeWithText("Episode 01.mkv").performClick()
         rule.onNodeWithText("Sample.mkv").performClick()
         assertEquals(listOf(0 to false, 2 to true), toggles)
+    }
+
+    @Test fun speedLimitsRefuseInvalidInputAndSaveKibibytes() {
+        val prefs = context.getSharedPreferences("local-engine", android.content.Context.MODE_PRIVATE)
+        val before = prefs.all.toMap()
+        try {
+            prefs.edit().remove("download-limit").remove("upload-limit").commit()
+            rule.setContent {
+                MaterialTheme {
+                    Column(Modifier.fillMaxSize().padding(16.dp)) { LocalSpeedLimits() }
+                }
+            }
+            rule.onNodeWithText("Speed limits").assertExists()
+            rule.onNodeWithText("Download").performTextReplacement("fast")
+            rule.onNodeWithText("Save speed limits").assertIsNotEnabled()
+            rule.onNodeWithText("Download").performTextReplacement("512")
+            rule.onNodeWithText("Upload").performTextReplacement("64")
+            rule.onNodeWithText("Save speed limits").assertIsEnabled()
+            capture("local-engine-speed-limits-real-compose")
+            rule.onNodeWithText("Save speed limits").performClick()
+            // "Applied." when another test left the process engine running.
+            rule.waitUntil(10_000) {
+                rule.onAllNodesWithText("Saved. Applies when the engine starts.").fetchSemanticsNodes().isNotEmpty() ||
+                    rule.onAllNodesWithText("Applied.").fetchSemanticsNodes().isNotEmpty()
+            }
+            assertEquals(512 * 1024, prefs.getInt("download-limit", -1))
+            assertEquals(64 * 1024, prefs.getInt("upload-limit", -1))
+        } finally {
+            val editor = prefs.edit().remove("download-limit").remove("upload-limit")
+            (before["download-limit"] as? Int)?.let { editor.putInt("download-limit", it) }
+            (before["upload-limit"] as? Int)?.let { editor.putInt("upload-limit", it) }
+            editor.commit()
+            LocalEngineHolder.current()?.setRateLimits(LocalEngineHolder.rateLimitsPreferred(context))
+        }
+    }
+
+    @Test fun copyReviewRendersNatively() {
+        rule.setContent {
+            MaterialTheme {
+                Column(Modifier.fillMaxSize().padding(16.dp)) {
+                    LocalZipExtractionConfirm(
+                        LocalZipExtractionPlan("Internet Archive public sample", "Movies", "Internet Archive public sample",
+                            744_488_960, 3, 52_000_000_000, copy = true),
+                        onConfirm = {}, onDismiss = {})
+                }
+            }
+        }
+        rule.onNodeWithText("Copy to new folder").assertIsEnabled()
+        capture("local-engine-copy-review-real-compose")
     }
 }
