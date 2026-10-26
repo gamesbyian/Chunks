@@ -235,7 +235,8 @@ internal object LocalZipExtraction {
     /** Drop our persisted tree grant once no unfinished journal still needs it. */
     private fun releaseIfUnused(context: Context, treeUri: Uri) {
         val wanted = treeUri.toString()
-        val stillNeeded = (journalDir(context).listFiles().orEmpty() + copyJournalDir(context).listFiles().orEmpty()).any { log ->
+        val stillNeeded = (journalDir(context).listFiles().orEmpty().toList() +
+            copyJournalDir(context).listFiles().orEmpty().toList()).any { log ->
             journalName.matches(log.name) && FileZipExtractionJournal(log).read()
                 .firstOrNull { it.firstOrNull() == "BEGIN" }?.getOrNull(2) == wanted
         }
