@@ -384,7 +384,7 @@ internal fun LocalTransferCard(
                     Text(if (filesShown) "Hide files" else "Files")
                 }
             }
-            if (filesShown) LocalFileSelection(files, busy, onFileWanted, transferKey = transfer.infoHash)
+            if (filesShown) LocalFileSelection(files, busy, transferKey = transfer.infoHash, onFileWanted = onFileWanted)
             if (confirmRemove) {
                 Text("Remove from the phone engine only. Downloaded files stay in Chunks' folder; sharing of this torrent stops.")
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -407,8 +407,8 @@ internal fun LocalTransferCard(
 internal fun LocalFileSelection(
     files: List<LocalTransferFile>?,
     busy: Boolean,
-    onFileWanted: (Int, Boolean) -> Unit,
-    transferKey: String? = null
+    transferKey: String? = null,
+    onFileWanted: (Int, Boolean) -> Unit
 ) {
     if (files == null) {
         Text("Loading files…", style = MaterialTheme.typography.bodySmall)
