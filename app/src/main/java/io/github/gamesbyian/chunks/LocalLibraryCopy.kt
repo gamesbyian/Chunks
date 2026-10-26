@@ -28,6 +28,24 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+/**
+ * The torrent engine intentionally bounds file enumeration. A published copy
+ * must never infer "all wanted files are complete" from a truncated prefix.
+ * Ask for one extra row to distinguish exactly 10,000 files from 10,001+.
+ */
+internal object LocalLibraryCopySelection {
+    const val MAX_FILES = 10_000
+    const val PROBE_LIMIT = MAX_FILES + 1
+
+    fun completeWanted(files: List<io.github.gamesbyian.chunks.engine.LocalTransferFile>):
+        List<io.github.gamesbyian.chunks.engine.LocalTransferFile>? {
+        if (files.size > MAX_FILES) return null
+        return files.filter { it.wanted }.takeIf { wanted ->
+            wanted.isNotEmpty() && wanted.all { it.sizeBytes >= 0L && it.doneBytes == it.sizeBytes }
+        }
+    }
+}
+
 /** The finished, wanted files of one transfer, laid out relative to a new library folder. */
 internal class LocalLibraryCopySource(val sourceRoot: File, val files: List<LibraryCopyFile>) {
     val bytes: Long get() = files.sumOf { it.sizeBytes }
@@ -38,8 +56,11 @@ internal class LocalLibraryCopySource(val sourceRoot: File, val files: List<Libr
          * folder becomes the new folder, so its contents are not nested twice.
          */
         fun of(engine: LocalTorrentEngine, transfer: LocalTransferStatus): LocalLibraryCopySource? {
-            val wanted = engine.files(transfer.infoHash)?.filter { it.wanted } ?: return null
-            if (wanted.isEmpty() || wanted.any { it.doneBytes != it.sizeBytes }) return null
+            // A 10,000-row response is ambiguous unless the 10,001st row is
+            // probed. Fail closed if an extra row exists; never publish a
+            // possibly incomplete multi-file collection.
+            val scanned = engine.files(transfer.infoHash, LocalLibraryCopySelection.PROBE_LIMIT) ?: return null
+            val wanted = LocalLibraryCopySelection.completeWanted(scanned) ?: return null
             val save = File(transfer.savePath)
             val top = wanted.map { it.path.substringBefore('/', "") }.distinct().singleOrNull()
             val nested = !top.isNullOrEmpty() && wanted.all { it.path.contains('/') }
@@ -78,7 +99,7 @@ internal fun LocalLibraryCopyPanel(transfer: LocalTransferStatus) {
             source = found
             if (found == null) {
                 result = ZipExtractionResult(ZipExtractionStatus.BLOCKED, null, null, 0, 0,
-                    "the transfer's files are not all finished")
+                    "Copy unavailable: files may be unfinished, metadata missing, or more than 10,000 files are present. No library copy was started.")
                 return@launch
             }
             plan = withContext(Dispatchers.IO) {
