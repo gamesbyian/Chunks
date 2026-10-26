@@ -20,6 +20,7 @@ import io.github.gamesbyian.chunks.model.ZipExtractionTarget
 import io.github.gamesbyian.chunks.model.ZipExtractor
 import java.io.File
 import java.io.OutputStream
+import java.io.InputStream
 
 /**
  * A user-approved Storage Access Framework tree. Every create/rename is read back:
@@ -87,6 +88,8 @@ internal class SafZipExtractionTarget(
             }
         }
     }
+
+    override fun openExistingInput(file: Uri): InputStream? = resolver.openInputStream(file)
 
     override fun rename(node: Uri, parent: Uri, newName: String): Uri? {
         if (child(parent, newName) != null) return null
