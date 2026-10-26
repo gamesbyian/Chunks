@@ -283,3 +283,13 @@ Each source is SHA-256 hashed while copying and re-hashed afterwards. JVM tests 
 - an existing same-named folder is never merged ("Show S01 (2)").
 
 Android: "Copy to a folder…" appears on finished on-phone transfers, with the same review card in copy wording. Copy journals live in `library-copies/`, so interrupted operations report their kind. A new API35 test copies a real seeding engine transfer into the debug DocumentsProvider and checks that the engine is still seeding afterwards. Not covered: the system picker, vendor/SD/cloud providers and a physical phone.
+
+## October 26 Seedhost ruTorrent upload Add (tracker-bearing)
+
+[#148](https://github.com/gamesbyian/Chunks/pull/148) merged `b5d9514d5ee52526e208749ea57906d7d9731a41`. Manual protected run [40271734379](https://github.com/gamesbyian/Chunks/actions/runs/40271734379) on that SHA with `apply_mutation=true`. A synthetic torrent with a loopback announce, uploaded through ruTorrent's `addtorrent.php` form (`loadStoppedViaRuTorrentUpload`), produced:
+- **VerifiedStopped**: listed, `started=false`, directory equal to the chosen base, name matching;
+- exact-hash session erase **VerifiedRemoved**;
+- inventory unchanged.
+
+The same run repeated the magnet Add and the `.torrent` round trip, all Verified. Both XML-RPC `load.*` and the ruTorrent upload route are therefore accepted on this host for torrents that carry a tracker. Latency in this run: `d.multicall2` list ≈1.1 s and paged listing ≈6.0 s for 437 transfers.
+
