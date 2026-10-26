@@ -99,6 +99,15 @@ class SeedhostAddDiagnosticsTest {
                 catch (e: Exception) { "error:" + e::class.simpleName }
             log("hook $event keys=[$keys]")
         }
+        // Only the host-specific insert handler and ruTorrent's erase-data hooks are
+        // printed; tokens such as passkeys or xmpp credentials never live in these.
+        for ((event, key) in listOf("event.download.inserted_new" to "1_prepare",
+                "event.download.inserted_session" to "1_prepare",
+                "event.download.erased" to "erasedata0***", "event.download.erased" to "erasedata1***")) {
+            val body = try { rtorrent.call("method.get", listOf("", event, key)).toString() }
+                catch (e: Exception) { "error:" + e::class.simpleName }
+            log("hook body $event/$key=" + body.replace(Regex("(?i)(passkey|token|secret|password)=[^&\\s,\"]+"), "$1=<redacted>").take(360))
+        }
         for (command in listOf("session.path", "directory.default", "system.cwd", "network.scgi.dont_route")) {
             val value = try { rtorrent.call(command).toString() } catch (e: Exception) { "error:" + e::class.simpleName }
             log("value $command present=${value.isNotBlank() && !value.startsWith("error")} kind=${if (value.startsWith("/")) "absolute-path" else value.take(24)}")
