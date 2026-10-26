@@ -13,6 +13,11 @@ on:
         type: boolean
         required: false
         default: false
+      diagnose_add:
+        description: "Owner-authorized (needs apply_mutation): compare Add variants with unique synthetic torrents, erasing each"
+        type: boolean
+        required: false
+        default: false
       reconcile_hash:
         description: "Optional: read-only reconcile of an earlier uncertain synthetic Add (40-hex); erases only a chunks-acceptance fixture"
         type: string
@@ -53,6 +58,7 @@ jobs:
           CHUNKS_LIVE_RTORRENT_PASS: ${{ secrets.rtorrent_pass }}
           CHUNKS_LIVE_MUTATION: ${{ inputs.apply_mutation && 'apply' || 'read-only' }}
           CHUNKS_LIVE_RECONCILE_HASH: ${{ inputs.reconcile_hash }}
+          CHUNKS_LIVE_DIAGNOSE_ADD: ${{ inputs.diagnose_add }}
         run: |
           test -n "$CHUNKS_LIVE_RUTORRENT_URL"
           test -n "$CHUNKS_LIVE_RTORRENT_USER"
@@ -60,14 +66,15 @@ jobs:
           set +e
           gradle --no-daemon --console=plain :app:testDebugUnitTest \
             --tests io.github.gamesbyian.chunks.rpc.SeedhostAdapterSmokeTest \
-            --tests io.github.gamesbyian.chunks.rpc.SeedhostLiveAcceptanceTest
+            --tests io.github.gamesbyian.chunks.rpc.SeedhostLiveAcceptanceTest \
+            --tests io.github.gamesbyian.chunks.rpc.SeedhostAddDiagnosticsTest
           status=$?
           set -e
           python3 - "$status" <<'PY'
           import pathlib, sys, xml.etree.ElementTree as ET
           base = pathlib.Path("app/build/test-results/testDebugUnitTest")
           ok = int(sys.argv[1]) == 0
-          for name in ("SeedhostAdapterSmokeTest", "SeedhostLiveAcceptanceTest"):
+          for name in ("SeedhostAdapterSmokeTest", "SeedhostLiveAcceptanceTest", "SeedhostAddDiagnosticsTest"):
               path = base / f"TEST-io.github.gamesbyian.chunks.rpc.{name}.xml"
               if not path.exists():
                   print(f"CHUNKS_LIVE: {name} produced no results"); ok = False; continue
