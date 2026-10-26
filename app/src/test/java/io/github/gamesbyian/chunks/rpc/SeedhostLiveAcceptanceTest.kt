@@ -220,4 +220,38 @@ class SeedhostLiveAcceptanceTest {
             rtorrent.listTransfers("main").map { it.hash.lowercase() }.toSet())
         log("mutation round trip complete; inventory restored to its prior identity set")
     }
+
+    /** A magnet with a tracker, as a user would paste it; synthetic identity, erased afterwards. */
+    @Test fun ownerAuthorizedMagnetStoppedAdd() = runBlocking {
+        assumeTrue("Mutation requires apply", System.getenv("CHUNKS_LIVE_MUTATION") == "apply")
+        assumeTrue("Diagnostic runs do not repeat writes", System.getenv("CHUNKS_LIVE_DIAGNOSE_ADD") != "true")
+        val rtorrent = remote()
+        val base = rtorrent.defaultDirectory() ?: commonParent(rtorrent.listTransfers("main").map { it.directory })
+        requireNotNull(base) { "No safe base directory could be determined" }
+        val run = System.getenv("GITHUB_RUN_ID").orEmpty().filter { it.isDigit() }.ifEmpty { System.currentTimeMillis().toString() }
+        val hash = MessageDigest.getInstance("SHA-1").digest("chunks-acceptance-magnet-$run".toByteArray())
+            .joinToString("") { "%02x".format(it) }
+        val magnet = "magnet:?xt=urn:btih:$hash&dn=chunks-acceptance-magnet-$run&tr=http%3A%2F%2F127.0.0.1%3A1%2Fannounce"
+        val plan = StoppedRemoteAddPlan.fromMagnet(magnet, base)
+        val before = rtorrent.listTransfers("main").map { it.hash.lowercase() }.toSet()
+        assertFalse(hash in before)
+        try {
+            val outcome = rtorrent.loadStopped(plan)
+            log("magnet load.verbose outcome=${outcome::class.simpleName}")
+            assertTrue("Magnet Add must never be Uncertain: $outcome", outcome !is RemoteAddOutcome.Uncertain)
+            val listed = waitFor(rtorrent, hash, attempts = 60) { it != null }
+            log("magnet retained=${listed != null} started=${listed?.started} dirIsBase=${listed?.directory == base} " +
+                "nameIsHashOrDn=${listed?.name?.let { it.equals(hash, true) || it.startsWith("chunks-acceptance-magnet") }}")
+            requireNotNull(listed) { "Magnet transfer never appeared" }
+            assertFalse("Magnet Add must stay stopped", listed.started)
+        } finally {
+            val current = rtorrent.listTransfers("main").firstOrNull { it.hash.equals(hash, true) }
+            if (current != null) {
+                val erase = rtorrent.eraseFromSession(current.hash, current.name, current.directory)
+                log("magnet session erase outcome=${erase::class.simpleName}")
+                assertNull(waitFor(rtorrent, hash) { it == null })
+            }
+        }
+        assertEquals(before, rtorrent.listTransfers("main").map { it.hash.lowercase() }.toSet())
+    }
 }
