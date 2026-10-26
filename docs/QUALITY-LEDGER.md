@@ -1,20 +1,15 @@
 # Chunks evidence and release gate ledger
 
-Updated 2026-10-26. This ledger alone records proven gates; GitHub issues track work and WORK-QUEUE.md tracks priorities. Exact CI SHA matters. Mock/fixtures cannot prove server or handset functionality.
+Reconciled 2026-10-26. This ledger owns measured gates; WORK-QUEUE.md owns priorities. Exact CI SHA and environment matter. The original 2026-10-25 table below is **historical**, not the newest current-status inventory. Later dated sections supersede its old open items.
 
-## Current cross-cutting acceptance checkpoint (October 26, 2026)
+## Latest acceptance index (2026-10-26)
 
-| Gate | Proven exact-head evidence | Explicit remaining gap |
-|---|---|---|
-| Protected real Seedhost read/write | Actual Kotlin adapter read a 437-transfer rTorrent 0.9.8 instance and verified stopped Add, duplicate refusal, priority off/restore, Start/Stop and exact session erase in [40254914585](https://github.com/gamesbyian/Chunks/actions/runs/40254914585); tracker-bearing ruTorrent upload route independently verified [40271734379](https://github.com/gamesbyian/Chunks/actions/runs/40271734379). | Android handset-to-Seedhost end-to-end journey, unbounded hosted mutations or unrelated servers. |
-| Legacy versus modern real rTorrent | Disposable 0.9.8 and modern Arch 0.16.x exact-target read/mutation suites passed [40368534273](https://github.com/gamesbyian/Chunks/actions/runs/40368534273). | Alpine 0.15.2 SCGI upstream resets (issue #151) remain a negative result, not accepted support. |
-| Automatic compatibility regression gate | #153 merged `db438290ed43c4eea2ab98a4816ce445cba2600e`. Exact head `ecb029e7ecdd9eff7d5bc5c940da404303f1ae5c` passed legacy/modern disposable jobs [40372755722](https://github.com/gamesbyian/Chunks/actions/runs/40372755722). Trigger is path-scoped to workflow, adapter, read-only and mutation tests. | No automatic live Seedhost or arbitrary app edit fan-out; broad coverage would violate lean CI. |
-| Local background status-read failure | #154 merged `79aef79664c6f0c2364145808aa75b4d2e42f211`. Exact head `e5f14368ef634e71c749ebc6d27f7cf0b7d1efaa` passed [Android/JVM 40389867035](https://github.com/gamesbyian/Chunks/actions/runs/40389867035). On a failed local engine inventory read the foreground service keeps checking rather than declaring idle; successful empty/all-stopped read still permits self-stop. | No injected Android service read exception, on-device six-hour timeout, screen-off/Doze/OEM background acceptance. |
-| Open integration candidates | [#155](https://github.com/gamesbyian/Chunks/pull/155) and [#156](https://github.com/gamesbyian/Chunks/pull/156) are under review and **not accepted** until exact-head CI and merge. | File selection beyond 200 and real on-device Chunks-folder usage must not be reported as delivered until verified. |
+- **Live protected Seedhost:** full Kotlin inventory (437 transfers) and scoped stopped Add, duplicate refusal, priority, Start/Stop, exact-hash session-only erase, magnet and ruTorrent upload tests are accepted; principal [40254914585](https://github.com/gamesbyian/Chunks/actions/runs/40254914585) and ruTorrent upload [40271734379](https://github.com/gamesbyian/Chunks/actions/runs/40271734379), with later detailed exact-SHA receipts. A complete Android handset-to-host journey is **not** accepted.
+- **Disposable real rTorrent:** [#150](https://github.com/gamesbyian/Chunks/pull/150) passed legacy Ubuntu 0.9.8 and Arch 0.16.x adapter read/write [40368534273](https://github.com/gamesbyian/Chunks/actions/runs/40368534273), exact source `2b9d2c3e6291c95fa260bdaaf634527d14ba6186`. [#153](https://github.com/gamesbyian/Chunks/pull/153) narrowly path-scoped PR rerun passed [40372755722](https://github.com/gamesbyian/Chunks/actions/runs/40372755722) at `ecb029e7ecdd9eff7d5bc5c940da404303f1ae5c`. Alpine 0.15.2 failed HTTP 502/SCGI and remains issue #151.
+- **Phone engine:** libtorrent4j core, real web-seed bytes, resume, magnets, opt-in DHT, speed/file selection, on-phone UI, foreground dataSync service and verified **independent finished-file SAF copy** have merged source and targeted evidence. No physical Doze/OEM/background or arbitrary public/SAF save-root proof. Foreground failed-inventory shutdown fix [#154](https://github.com/gamesbyian/Chunks/pull/154) merged at `79aef79664c6f0c2364145808aa75b4d2e42f211`; exact tested head `e5f14368ef634e71c749ebc6d27f7cf0b7d1efaa` passed [Android/JVM 40389867035](https://github.com/gamesbyian/Chunks/actions/runs/40389867035). This proves pure liveness classification, **not injected service failure or physical Doze**.
+- **ZIP/storage:** bounded manual ZIP extraction into a newly created SAF folder, cancel/journal/recovery and preserved source (#119/#120) were demonstrated on API35 via a debug DocumentsProvider, **not** a physical phone, ordinary SD/cloud providers or OS process-kill scenarios. Warnings are advisory; no actual cap enforcement, destructive cleanup or auto-extract.
 
-Rows in the historical summary below record what was still missing **when each older PR was tested**; later dated evidence above may close individual gaps. Do not interpret an old row's "unproven" cell as an override of newer, exact-head results.
-
-## Historical per-feature acceptance summary (snapshot October 25; later proof may supersede gaps)
+## Historical acceptance snapshot (2026-10-25; see newer evidence above and below)
 
 | Capability | Exact observed receipt | Still unproven |
 |---|---|---|
