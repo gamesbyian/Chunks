@@ -292,6 +292,103 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
      * VerifiedStopped proves the desired observed state, NOT whether this
      * session or a different client originally added the torrent.
      */
+    /**
+     * ruTorrent's own upload endpoint, derived only when the RPC address is
+     * ruTorrent's HTTP-RPC plugin on the same host. Null for plain RPC gateways.
+     */
+    internal fun ruTorrentUploadAddress(): URI? {
+        val suffix = "/plugins/httprpc/action.php"
+        val path = endpoint.rawPath ?: return null
+        if (!path.endsWith(suffix)) return null
+        return URI(endpoint.scheme, endpoint.rawAuthority, path.removeSuffix(suffix) + "/php/addtorrent.php", null, null)
+    }
+
+    /**
+     * Stopped Add through ruTorrent's upload form, for hosts that acknowledge
+     * but drop XML-RPC `load.*` requests. Same contract as [loadStoppedTorrentBytes]:
+     * explicit parent folder (`d.directory.set` semantics), duplicate preflight,
+     * no retry, and success only after exact-hash readback of hash, folder and
+     * stopped state. A transport failure after sending is Uncertain.
+     */
+    suspend fun loadStoppedViaRuTorrentUpload(torrentBytes: ByteArray, destination: String): RemoteAddOutcome {
+        val hash = TorrentMetainfoReader.preview(torrentBytes).infoHashV1
+        val plan = StoppedRemoteAddPlan.fromMagnet("magnet:?xt=urn:btih:" + hash, destination)
+        val upload = ruTorrentUploadAddress() ?: throw IllegalStateException("This server has no ruTorrent upload endpoint")
+        if (listTransfers("main").any { it.hash.equals(hash, ignoreCase = true) }) {
+            return RemoteAddOutcome.AlreadyPresent(hash)
+        }
+        try {
+            postRuTorrentUpload(upload, plan.destination, torrentBytes)
+        } catch (_: IOException) {
+            return RemoteAddOutcome.Uncertain(hash)
+        }
+        // ruTorrent's reply text is not proof; only the server's own state is.
+        for (attempt in 1..10) {
+            val outcome = reconcileStoppedAdd(plan)
+            if (outcome !is RemoteAddOutcome.PendingVerification) return outcome
+            kotlinx.coroutines.delay(500)
+        }
+        return RemoteAddOutcome.PendingVerification(hash)
+    }
+
+    private suspend fun postRuTorrentUpload(upload: URI, destination: String, torrentBytes: ByteArray): String =
+        withContext(Dispatchers.IO) {
+            val boundary = "----chunks" + java.util.UUID.randomUUID().toString().replace("-", "")
+            val body = java.io.ByteArrayOutputStream().apply {
+                fun field(name: String, value: String) = write(("--$boundary\r\nContent-Disposition: form-data; " +
+                    "name=\"$name\"\r\n\r\n$value\r\n").toByteArray(Charsets.UTF_8))
+                field("dir_edit", destination)
+                field("torrents_start_stopped", "1")
+                write(("--$boundary\r\nContent-Disposition: form-data; name=\"torrent_file\"; " +
+                    "filename=\"chunks.torrent\"\r\nContent-Type: application/x-bittorrent\r\n\r\n").toByteArray(Charsets.UTF_8))
+                write(torrentBytes)
+                write("\r\n--$boundary--\r\n".toByteArray(Charsets.UTF_8))
+            }.toByteArray()
+            val requestTarget = (upload.rawPath ?: "/") + (upload.rawQuery?.let { "?" + it } ?: "")
+            var authorization: String? = null
+            var attemptedChallenge = false
+            while (true) {
+                val connection = upload.toURL().openConnection() as HttpURLConnection
+                connection.connectTimeout = 8_000
+                connection.readTimeout = 30_000
+                connection.instanceFollowRedirects = false
+                connection.requestMethod = "POST"
+                connection.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+                if (authorization != null) connection.setRequestProperty("Authorization", authorization)
+                connection.doOutput = true
+                connection.setFixedLengthStreamingMode(body.size)
+                try {
+                    connection.outputStream.use { it.write(body) }
+                    val status = connection.responseCode
+                    if (status == HttpURLConnection.HTTP_UNAUTHORIZED && !attemptedChallenge && auth.username.isNotEmpty()) {
+                        val challenges = connection.headerFields.entries
+                            .filter { (name, _) -> name?.equals("WWW-Authenticate", true) == true }
+                            .flatMap { it.value }
+                        authorization = HttpRpcAuthorization.fromChallenge(challenges, auth, "POST", requestTarget)
+                        attemptedChallenge = true
+                        continue
+                    }
+                    // ruTorrent answers the form with 200 or a same-page redirect; never follow it.
+                    if (status !in 200..399) throw IOException("ruTorrent upload returned HTTP $status")
+                    val stream = if (status in 200..299) connection.inputStream else null
+                    return@withContext stream?.use { input ->
+                        val out = java.io.ByteArrayOutputStream()
+                        val buffer = ByteArray(4096)
+                        while (out.size() < 65_536) {
+                            val read = input.read(buffer, 0, minOf(buffer.size, 65_536 - out.size()))
+                            if (read < 0) break
+                            out.write(buffer, 0, read)
+                        }
+                        out.toString("UTF-8")
+                    }.orEmpty()
+                } finally {
+                    connection.disconnect()
+                }
+            }
+            @Suppress("UNREACHABLE_CODE")
+            error("Upload challenge negotiation exhausted")
+        }
+
     suspend fun reconcileStoppedAdd(plan: StoppedRemoteAddPlan): RemoteAddOutcome {
         return try {
             val matches = listTransfers("main").filter {

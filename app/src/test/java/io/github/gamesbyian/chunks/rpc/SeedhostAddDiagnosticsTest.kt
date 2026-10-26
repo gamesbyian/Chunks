@@ -70,6 +70,22 @@ class SeedhostAddDiagnosticsTest {
                 log("variant=$label stillPresentAfterErase=${rtorrent.lookupName(hash) != null}")
             }
         }
+        // ruTorrent's own upload form, which the ruTorrent web UI uses.
+        run {
+            val name = "chunks-acceptance-$run-rutorrent-upload.txt"
+            val bytes = torrent(name)
+            val hash = TorrentMetainfoReader.preview(bytes).infoHashV1
+            val outcome = try { rtorrent.loadStoppedViaRuTorrentUpload(bytes, base)::class.simpleName }
+                catch (e: Exception) { "error:" + e::class.simpleName + ":" + e.message?.take(120) }
+            val listed = rtorrent.listTransfers("main").firstOrNull { it.hash.equals(hash, true) }
+            log("variant=rutorrent-upload outcome=$outcome retained=${rtorrent.lookupName(hash) != null} " +
+                "listed=${listed != null} started=${listed?.started} dirIsBase=${listed?.directory == base}")
+            if (listed != null && listed.name == name) {
+                log("variant=rutorrent-upload erase=${rtorrent.eraseFromSession(listed.hash, listed.name, listed.directory)::class.simpleName}")
+                Thread.sleep(1000)
+                log("variant=rutorrent-upload stillPresentAfterErase=${rtorrent.lookupName(hash) != null}")
+            }
+        }
         // A magnet for a synthetic identity: does any Add path retain a transfer?
         val magnetHash = MessageDigest.getInstance("SHA-1").digest("chunks-acceptance-magnet-$run".toByteArray())
             .joinToString("") { "%02x".format(it) }
