@@ -49,7 +49,9 @@ internal object LocalLibraryCopySelection {
 
 /** The finished, wanted files of one transfer, laid out relative to a new library folder. */
 internal class LocalLibraryCopySource(val sourceRoot: File, val files: List<LibraryCopyFile>) {
-    val bytes: Long get() = files.sumOf { it.sizeBytes }
+    val bytes: Long = requireNotNull(LibraryCopyByteTotals.checked(files)) {
+        "A library copy cannot exceed the supported total file size"
+    }
 
     companion object {
         /**
