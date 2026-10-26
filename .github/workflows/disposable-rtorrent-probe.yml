@@ -235,6 +235,9 @@ jobs:
         if: always()
         run: |
           docker inspect -f 'CHUNKS_MODERN_CONTAINER_FINAL status={{.State.Status}} exit={{.State.ExitCode}}' chunks-rtorrent || true
+          docker top chunks-rtorrent || true
+          docker exec chunks-rtorrent sh -c 'ps -ef || ps' || true
           docker logs chunks-rtorrent 2>&1 | tail -n 60 || true
+          tail -n 60 "$RUNNER_TEMP/chunks-nginx.error" || true
           docker rm -f chunks-rtorrent || true
 
