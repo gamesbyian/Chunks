@@ -80,14 +80,17 @@ internal object LocalAllocatedFolderProbe {
                         try {
                             val stat = Os.lstat(file.toString())
                             if (!OsConstants.S_ISREG(stat.st_mode) || stat.st_size < 0L ||
-                                stat.st_blocks < 0L || stat.st_nlink < 1L) {
+                                stat.st_blocks < 0L || stat.st_nlink < 1L ||
+                                attrs.size() != stat.st_size) {
+                                // NIO enumeration and lstat disagreed: a
+                                // concurrent writer/rename may have raced.
                                 complete = false
                                 return FileVisitResult.CONTINUE
                             }
+                            val blocks = Math.multiplyExact(stat.st_blocks, BYTES_PER_STAT_BLOCK)
                             val key = Inode(stat.st_dev, stat.st_ino)
                             val previous = seen[key]
                             if (previous == null) {
-                                val blocks = Math.multiplyExact(stat.st_blocks, BYTES_PER_STAT_BLOCK)
                                 val entry = Seen(stat.st_size, blocks, stat.st_nlink, 1)
                                 seen[key] = entry
                                 logical = safeAdd(logical, stat.st_size)
@@ -97,7 +100,7 @@ internal object LocalAllocatedFolderProbe {
                                 // A source that changed under the survey is not
                                 // suitable for a complete, precise report.
                                 if (previous.logical != stat.st_size ||
-                                    previous.allocated != stat.st_blocks * BYTES_PER_STAT_BLOCK ||
+                                    previous.allocated != blocks ||
                                     previous.links != stat.st_nlink) complete = false
                             }
                             if (logical == null || allocated == null) complete = false
