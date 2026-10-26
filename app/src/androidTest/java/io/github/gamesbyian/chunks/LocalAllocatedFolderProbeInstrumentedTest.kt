@@ -73,6 +73,25 @@ class LocalAllocatedFolderProbeInstrumentedTest {
         }
     }
 
+    @Test fun recursivePrivateFilesRemainOnTheRootDeviceAndAreObserved() {
+        val root = File(context.filesDir, "alloc-probe-single-volume").apply {
+            deleteRecursively(); mkdirs()
+        }
+        try {
+            val nested = File(root, "nested").apply { mkdirs() }
+            File(nested, "a.bin").writeBytes(ByteArray(8192) { 2 })
+            File(root, "b.bin").writeBytes(ByteArray(1000) { 3 })
+            val observed = LocalAllocatedFolderProbe.measure(root)
+            assertTrue("An ordinary same-volume directory must be fully surveyed", observed.complete)
+            assertEquals(2, observed.regularPaths)
+            assertEquals(2, observed.uniqueInodes)
+            assertEquals(9192L, observed.logicalBytes)
+            assertNotNull(observed.allocatedBytes)
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
     @Test fun missingRootDoesNotPretendZeroAllocation() {
         val report = LocalAllocatedFolderProbe.measure(File(context.filesDir, "alloc-probe-absent"))
         assertFalse(report.complete)
