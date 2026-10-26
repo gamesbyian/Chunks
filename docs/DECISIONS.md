@@ -1,6 +1,6 @@
 # Chunks decisions: one canonical ledger
 
-Updated 2026-10-24 after critical review. **Owner** means explicitly requested; **Adopted (provisional)** is an engineering direction that can change after evidence; **Open** needs validation or decision. Implementing an assumption does not retroactively make it owner-approved.
+Reconciled 2026-10-26 after current implementation/evidence review. **Owner** means explicitly requested; **Adopted (provisional)** is an engineering direction that can change after evidence; **Open** needs validation or decision. Implementing an assumption does not retroactively make it owner-approved.
 
 | ID | Status | Decision and boundaries | Reopen condition |
 |---|---|---|---|
@@ -16,7 +16,7 @@ Updated 2026-10-24 after critical review. **Owner** means explicitly requested; 
 | D10 | Adopted | Single live queue/decision ledger, exact evidence classes, one lean CI validation path, focused PRs | Only change for observed complexity |
 | D11 | Open | Source-code license and release/distribution policy (sideload/Play) | Third-party code and permission audit |
 | D12 | Open | Companion implementation language and deployment package | Throwaway volume/host prototype |
-| D13 | Binding provisional; service open | libtorrent4j 2.1.0-39 adopted for the local engine core (loopback JVM + emulator transfer evidence); Android long-running service classification still open | Physical Android tests |
+| D13 | Binding provisional; physical acceptance open | libtorrent4j 2.1.0-39 adopted for local engine and the dataSync foreground service is merged; long-running physical device acceptance remains open | Physical Android tests |
 | D14 | Adopted (provisional) | Phase order: real-server read-only → companion-free remote controls with explicit Place → safe organization/remote storage proof → local engine → independently accepted release | Critical-path evidence |
 | D15 | Adopted (provisional) | No automatic retry of uncertain destructive operation. Durable server ledger and fencing where available; otherwise refuse unsafe mutation | Independent crash/fault testing |
 | D16 | Adopted (provisional) | Separate category recognition, destination scoring, user-approved rule and filesystem execution authorization | Actual classification fixtures and usability |
@@ -27,7 +27,7 @@ Updated 2026-10-24 after critical review. **Owner** means explicitly requested; 
 
 Historical alternatives remain in critical review and research, not in competing plan files. Track implementation in WORK-QUEUE and truth in QUALITY-LEDGER.
 
-## Owner requirements added 2026-10-24 (awaiting implementation)
+## Owner requirements added 2026-10-24 (partially implemented)
 
 - **D21 | Owner:** Device storage use cap with sane adjustable warning thresholds; compact allocation and cleanup UX. Proposed 70/85/95% warnings and pausing local download writes at cap are provisional until Android device proof. Keep remote quota semantically distinct.
 - **D22 | Owner:** Explicit, comprehensible advance warning whenever chosen deletion can break a torrent, including source archive after extraction. Destructive approval is never inferred from an organization rule or extraction success.
@@ -39,6 +39,14 @@ See [STORAGE-AND-EXTRACTION.md](STORAGE-AND-EXTRACTION.md) and issue #70 for the
 
 - **D24 | Owner:** Editable per-transfer device-local Chunks display alias, distinct from torrent name and file path, preserving engine hash, source data and seeding; original remains searchable and inspectable.
 - **D25 | Adopted provisional:** Source-only, explained filename-cleanup suggestions are editable drafts, never auto-applied. Unknown extensions abstain. Unsourced guest/episode titles cannot be inferred from release tokens.
-- **D26 | Open:** Queue-wide batch recommendation review, naming styles, opt-in media enrichment, cross-device alias sync and per-file aliases require independent consent, data-model and acceptance decisions. None authorize physical renames.
+- **D26 | Partly adopted:** Queue-wide first-100 source-only proposal review/conditional Undo merged (#98). Naming styles, large-scale paging, external opt-in enrichment, per-file aliases and cross-device sync remain separate open decisions. None authorize physical renames.
 
 Pre-alpha alias slice merged in [#74](https://github.com/gamesbyian/Chunks/pull/74); #7 continues to own backing-file rename and library copy safety.
+
+## Reconciled operational decisions (2026-10-26)
+
+- **D27 | Owner:** Named development Seedhost torrent inventory is nonconfidential for nonsecret fixtures/native QA, and targeted destructive **torrent** tests are permitted with preflight and exact postconditions. No passwords, passkeys, unrelated servers or speculative file deletion.
+- **D28 | Implemented narrowly:** Manual bounded ZIP extraction into a **new SAF folder** preserves its source; finished local transfers can make independent verified SAF library copies (#119/#120/#147). Neither permits arbitrary backing rename, remote deletion, auto-extract or direct SAF-based torrent piece storage.
+- **D29 | Open:** Secure persisted server profiles versus deliberately ephemeral credentials, signed distribution path, minimum Android support and native/third-party licenses (#10).
+- **D30 | Open:** Real per-volume caps, physical reclaim accounting, native cleanup and opt-in extraction require device write-path, provider, journaling and physical acceptance (#70).
+- **D31 | Adopted:** rTorrent compatibility is build/proxy specific: Ubuntu 0.9.8 + Arch 0.16.x pass scoped disposable tests; Alpine 0.15.2 unresolved (#151); these are not device evidence.

@@ -1,6 +1,6 @@
 # Seedhost rTorrent remote testing
 
-The Chunks Android client can derive a candidate XML-RPC plugin endpoint from an HTTPS ruTorrent web URL. This is not proof that the endpoint works for the owner's instance.
+The Chunks Android client derives a candidate XML-RPC plugin endpoint from an HTTPS ruTorrent web URL. **The owner's designated development instance subsequently passed authenticated Kotlin inventory of 437 torrents and scoped exact-target Add, file-priority, Start/Stop and session-only Remove, plus magnet and ruTorrent upload journeys**; see QUALITY-LEDGER. Android handset-to-host acceptance is still pending. Subsequent dated sections supersede older candidate-only status.
 
 **Owner-confirmed development URL:** `https://ianseeds.wood.seedhost.eu/rutorrent/` (credential-free web address). This is the default workflow-dispatch input for `seedhost-kotlin-adapter-smoke.yml` and `seedhost-readonly-probe.yml`; manual overrides remain available. Its corresponding candidate HTTP-RPC plugin path is `/rutorrent/plugins/httprpc/action.php`. Credentials must remain in GitHub Secrets `rtorrent_user` and `rtorrent_pass`, never appended to this URL. The previously successful authenticated version-only probe was [run 40063547095](https://github.com/gamesbyian/Chunks/actions/runs/40063547095); do not infer that the full Kotlin adapter smoke has passed.
 

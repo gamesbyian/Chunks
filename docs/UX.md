@@ -1,6 +1,6 @@
 # Chunks interaction and accessibility contract
 
-Updated 2026-10-25. Status: a preliminary Android Compose interface is implemented in #14. Its Transfers, Places, Organize, Server and Add-preview surfaces have source/build/JVM evidence but **no high-fidelity approved reference family, real handset captures or uncoached-user evidence**. Advanced Move and Rename interactions are still only design contracts.
+Reconciled 2026-10-26. Native Compose remote, experimental local engine, finished-file SAF library-copy and bounded manual ZIP-to-SAF extraction journeys exist with targeted JVM/API35 evidence. **No complete visually approved reference family, physical Android handset, real phone-to-Seedhost task, uncoached human usability or 200% TalkBack approval.** Advanced backing-file Move/Rename and cleanup remain design contracts.
 
 ## Mental model, first-run and navigation
 
@@ -10,7 +10,7 @@ Updated 2026-10-25. Status: a preliminary Android Compose interface is implement
 - **Servers**: local engine plus separate rTorrent connections, secure status, diagnostics and explicit offline state.
 - **Settings**: secondary controls, not a hidden destination picker.
 
-First run should offer a clear choice between **Connect an rTorrent server** and **Download on this device** once the local engine actually exists. Before then, label the app as an rTorrent remote prototype rather than implying the local engine is available.
+First run should distinguish **Connect an rTorrent server** from **Download on this device (experimental)**. The local engine exists, but downloads to its app-private save folder and has not passed physical device lifecycle or arbitrary SAF destination acceptance.
 
 ## Task journeys and their failures
 
@@ -57,7 +57,7 @@ The merged Compose Add view (originally #44) accepts a v1 magnet or SAF-picked l
 
 Transfers show one 48dp Start/Stop action per exact v1 hash, disabled when the list is stale. A confirm surface shows torrent display name and exact identity, and an explicit separate Confirm action performs one RPC. Preserve visible pending/uncertain/success state until user navigates away; never optimistic-toggle status. Refresh server view after the readback. Do not confuse lifecycle stop with deleting torrent or data; no auto-retries or background command loops.
 
-## Storage and archive journeys (requested, not yet built)
+## Storage and archive journeys (partially implemented, with open acceptance gates)
 
 **Storage entry:** From Transfers/Places and low-space alerts, show per-volume cap, measured versus unknown usage, free/headroom, active seeding backing bytes, independent library copies, extracted files and staging, with adjustment and warnings suggested at 70/85/95 percent of a chosen cap. Explain that a remote server's storage is independent of the phone. At cap, local downloading may pause while seeding remains available; never pretend remote quota enforcement is supported without proof.
 
@@ -90,3 +90,7 @@ The native Places screen now includes a separate read-only **Phone storage** car
 From the disconnected connection form, **Inspect a local ZIP without connecting** opens a separate, read-only ZIP inspection page; connected navigation also exposes **ZIP review**. A large **Choose local ZIP** action invokes Android's document picker. The report names the locally selected document, shows safe path previews with bounded output, distinguishes integrity-verified from blocked/unsupported results, and expressly states that successful review is not permission to extract or delete a torrent-backed archive. **Back** returns to the connection form or connected transfer queue. This is a separate phone-local document journey, never a disguised rTorrent remote file browser.
 
 [#110](https://github.com/gamesbyian/Chunks/pull/110) passed Android/JVM and API35 instrumentation at source `4279a5ba4c5b5a89944652ae8adabc310e79202a` ([40229146122](https://github.com/gamesbyian/Chunks/actions/runs/40229146122), [40229146145](https://github.com/gamesbyian/Chunks/actions/runs/40229146145)). Tests exercise real document-provider staging and the Compose result text, but not a complete picker-driven screenshot, 200% typography, screen-reader spoken comprehension, permission revocation or physical handset. Distinguish this **read-only view** from future manual/opt-in archive extraction and cleanup wizard task journeys.
+
+## Current SAF UX capability boundary (2026-10-26)
+
+Verified finished local data may be **copied**, never silently moved, to a selected SAF library destination while the original remains seedable. A verified ZIP can be manually extracted into a **new** SAF folder, with unknown-capacity acknowledgement, journal recovery and no source deletion. These are API35 fixture-provider paths rather than blanket SD/cloud support. Disclose actual source/derivative identities and ongoing seeding consequences. The user's auto-extract preference remains disabled until independent device safety proof.

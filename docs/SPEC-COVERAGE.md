@@ -1,0 +1,55 @@
+# Chunks specification coverage and acceptance map
+
+**Reconciled 2026-10-26 from project conversations, [owner decisions](DECISIONS.md), [PRODUCT](PRODUCT.md), [UX](UX.md), [ARCHITECTURE](ARCHITECTURE.md), [SECURITY](SECURITY.md), [STORAGE-AND-EXTRACTION](STORAGE-AND-EXTRACTION.md), code names, merged PRs and live open issues.** This is a traceability map, **not a second work queue**. Ordering lives only in [WORK-QUEUE](WORK-QUEUE.md); exact test evidence only in [QUALITY-LEDGER](QUALITY-LEDGER.md).
+
+Legend: **Implemented (limited)** = code merged, may have some suitable specific test evidence; **Unproven** = feature exists but material real-world acceptance missing; **Planned** = normative owner/engineering requirement with no qualified executor. Never use the table to upgrade a capability's evidence class.
+
+| Product promise / boundary | Current state at audited main | Source authority; remaining acceptance |
+|---|---|---|
+| Native Android app with unmistakable Transfers / Places / Collections / Servers | Implemented (limited) Compose UI and experimental local mode; user-facing semantic Collections are incomplete | PRODUCT, UX; #8, #6, #10: coherent screens, visual review, populated handset and accessibility |
+| Protected direct rTorrent, no mandatory Companion | Implemented (limited), Basic/Digest XML-RPC and actual Seedhost HTTPS Kotlin proof | ARCHITECTURE, SECURITY, compatibility matrix; #1/#4: device-to-host, credential lifecycle, proxy variants |
+| Truthful large lists, individual files, queue controls | Implemented (limited) paged fallback, per-file priorities, Start/Stop, session-only Remove with readback | #1/#4; verify loaded/protected queue, staleness, aborted requests, burst/backoff, huge 12k queues |
+| v1 magnet / .torrent Add, source provenance, target parent Place | Implemented (limited) deliberate stopped Add and explicit directory, sharing/picker, trackerless host warning | #4: real Android-to-host with tracker-bearing licensed fixture, uncertain ACK and hash/path semantics |
+| Reliable session-only Remove distinct from deletion | Implemented (limited) exact-hash erase, server and disposable proof | #4/#9; inspect server events and readback, never assert file deletion capability |
+| Local engine: download, seed, metadata magnets, resume, file priority, speed, web seed, opt-in DHT | Implemented (limited) libtorrent4j and dataSync service; real licensed web-seed bytes | #5: seeded Internet peer swarm, session/resume, Android OS/FGS quotas, offline/Doze/process/reboot |
+| Direct device destination selection and move while active | Planned; app-private engine save directory, independent SAF copy only | #5/#7: SAF/provider input strategy, user permission, mapping, quiescence and crash safety |
+| Remote engine-backed move/rename | Planned, **must** be capability-gated; rTorrent RPC alone insufficient | #2/#3/#7: independent filesystem access, journaling, seeding/hash integrity on disposable volumes |
+| Renamed verified library copy with source retained | Implemented (limited) **finished local files to SAF**; no general rename of seeding file | #7: real public/provider/SD, readback/integrity, collision, process failure, persistent grants |
+| User-entered local transfer display alias vs original torrent name | Implemented (limited) distinct local key/store, original searchable, reversible | #8/#6: hosted queue persistence, account isolation, device accessibility, migration |
+| Local smart clean-title recommendation and editable batch/undo | Implemented (limited) provenance-only parse, first 100 proposals | #6/#8: false-positive corpus, style preferences, pagination, user consent for online enrichment |
+| Collections, tags, destination recommendations, learned rules | Classifier foundations; edit/approve/review and persistent semantic model largely planned | #6: multi-collection, mixed franchise/media case, confidence separate from authority, reclassify/undo |
+| Per-volume cap and warnings | Advisory/hysteresis models + phone app-volume capacity; **no actual enforced cap** | #70: physical allocation accounting, persistence, notification/recovery, local write throttling without seeding loss |
+| Safe cleanup with true reclaim estimates and data-loss warning | Dry-run model only; no verified physical deletion | #70/#9: ownership/reference graph, exact preview, shared file impact, journal and recovery before delete |
+| ZIP review and manual extraction | Implemented (limited) bounded ZIP verification and new SAF folder extraction with journal and preserved source; fixture provider API35 | #70: physical/vendor/SD/cloud provider, picker and process-kill tests, hostile archive breadth |
+| Auto-extract completed archives; archive format breadth | Planned **off by default**; no automatic source deletion, no blanket RAR/7z promise | #70: verified completed-data event, idempotency, consent per-transfer/rule, encrypted/multipart support proof |
+| Remote capacity, deletion and extraction | Monitor-only or unsupported until separate privileges; cannot equate remote and phone storage | #2/#3/#70: independent verified provider and storage root; explicit refusals acceptable |
+| Expert tracker/peer/rate/queue/server settings | Partially surfaced, comprehensive control matrix planned/capability-detected | #1/#8: avoid promises before allowlisted method/host/device evidence |
+| Accessibility and visual character | Native emulator atlases exist; human approval and physical TalkBack/200% unproven | #8/#9: 48dp targets, large type, keyboard, reduced motion, RTL, contrast and dense queues |
+| Shipping, safety, dependencies | Debug APK and targeted CI; no signed release or final secure profile storage decision | #10/#9: license, SBOM, signing, distribution, credential revocation, supported-platform matrix |
+
+## Cross-cutting behavior contracts missing from happy-path checks
+
+1. **State freshness and identity:** Every operation names engine + hash + actual file mapping generation; snapshots include timestamp/freshness. After UI recycle, app death, offline transition or server-side concurrent ruTorrent mutation, a new command requires fresh preflight. A timeout stays **uncertain** and offers **read-only** reconciliation; no blind write retries.
+2. **Source versus derivative:** User label, logical torrent name, original backing file, independent copy and extracted output must be distinguished in data models, storage accounting, screenshots and delete confirmations. Never infer unique physical reclaim from logical sizes or file names. A deleted torrent-backed archive can invalidate sharing even if its extracted copy is intact.
+3. **Storage permissions:** App-private libtorrent paths, SAF tree/document URIs and remote rTorrent filesystem roots are distinct capability domains. Android grant revocation, provider-chosen names, source change during scan, symlink/path attacks, low space, process death and quota limits must be explicitly tested rather than relying on mock filesystem success.
+4. **Evidence tiers:** Pure model / synthetic XML-RPC / libtorrent JVM / Android API35 emulator / disposable real rTorrent / approved development Seedhost / physical Android / actual SAF provider / human visual/usability are separate. Cite tested source SHA and what was observed. A green check never authorizes a claim from a higher tier.
+5. **User choice:** Per-transfer destination, seeding-preserving rename or independent publication, display alias, local-only vs consented enrichment, archive auto-extraction and storage cap are deliberate choices with preview; no silent default remote uploads or autonomous destructive suggestions.
+6. **Security and distribution:** Secrets never in CI/artifacts; published Seedhost test inventory excludes credentials and passkeys. Verify TLS redirects and credential retention. Signed APK/distribution must declare actual Android FGS/storage limits and third-party native dependency licenses.
+
+## Clarifications needed through empirical prototypes (not owner-question blockers)
+
+- Whether a dependable local-engine SAF-backed file I/O layer can be delivered with all required random access/seek/sync semantics on target Android providers, or if app-private download + verified export is the supported release strategy.
+- Which hosted rTorrent installations permit independently authenticated filesystem move/rebind and which require read-only or defer/copy UI. Companion must remain optional.
+- Real physical reclaim measurement under sparse, hardlink, reflink, dedup and concurrent multi-torrent file references; avoid a falsely precise quota or cleanup guarantee.
+- Whether any form beyond bounded ZIP can pass maintained parser/library licensing, zip-bomb and crash-recovery tests; unsupported archives should give useful actionable status, not implied extraction.
+- Final minimum Android API, target-device/performance matrix, encrypted vs session-only server profile policy and signed sideload/Play distribution. Keep open decisions in DECISIONS and owned work in #10.
+
+## Recommended end-to-end acceptance scripts
+
+**Remote journey:** cold-start → connect protected development server → load/paginate real queue → Share a licensed tracker-bearing .torrent/magnet → select real parent Place → review stopped Add → verify exact hash/stopped/actual readback directory → file priority → start/stop → session-only remove → confirm payload retained → simulate lost acknowledgement/reconnect → read-only reconciliation. Every write has explicit target and pre/post observation.
+
+**Phone-local journey:** Add same verified fixture to chosen legal local root → download bytes from licensed web seed and, separately, real peer swarm → hash/seed → rotate background/network/Doze/process/reboot → verify resume and service notification → change file priorities/rate limits → produce an independent named SAF library copy → rehash original and copy → permission revocation/storage pressure → no silent data loss.
+
+**Storage journey:** choose volume and advisory cap → observe warning thresholds and projected allocation → select verified completed ZIP → review bounded inventory/output/staging/unknown space → extract to new SAF folder → cancel/kill/revisit/journal reconciliation → inspect original seed health → dry-run safe cleanup and shared reference detection → explicitly confirm high-risk torrent-backed delete only on disposable test data → verify exact freed bytes and truthfully degraded seeding; auto-extraction remains off until independent acceptance.
+
+**UX journey:** populated long queue and aliases → original/source facts/search/sort → suggested queue-name proposal/preview/save/undo → semantic Collection vs physical Place → font 200%, TalkBack, keyboard and 48dp controls → offline/auth/unsupported/uncertain screens → verified native screenshots + physically observed accessibility and explicit visual review.

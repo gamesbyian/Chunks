@@ -1,4 +1,4 @@
-# Read-only rTorrent compatibility proof matrix
+# rTorrent read/write compatibility proof matrix
 
 This file owns the protocol acceptance protocol for #1, not the current task priority. Created 2026-10-24.
 
@@ -6,11 +6,11 @@ This file owns the protocol acceptance protocol for #1, not the current task pri
 |---|---|
 | Pure XML-RPC and synthetic gateway fixtures | Parser, transport and expected response shapes only, PR #12 |
 | Ephemeral real rTorrent + nginx localhost SCGI | **Passed** [run 40060755245](https://github.com/gamesbyian/Chunks/actions/runs/40060755245), source SHA `cd337cc8560c8c1d90c581be3de6f61176106e1c`, Ubuntu rTorrent package `0.9.8-1ubuntu0.1`; version/probe/empty-list in Chunks JVM adapter |
-| Real protected seedbox | Protected HTTPS authentication and version RPC passed [run 40063547095](https://github.com/gamesbyian/Chunks/actions/runs/40063547095). Kotlin full-list, Android handset and actual Add/remove remain unverified |
-| Newer rTorrent JSON/XML-RPC builds | Separate method/encoding and transport verification; not yet verified |
+| Owner development Seedhost | **Kotlin inventory (437 transfers) and scoped stopped Add, Start/Stop, file priority, exact-target session erase, magnet and ruTorrent upload** accepted as recorded later in QUALITY-LEDGER. Android handset remains unverified |
+| Modern rTorrent | **Arch 0.16.x passed** real read/mutation suite with legacy 0.9.8 ([40368534273](https://github.com/gamesbyian/Chunks/actions/runs/40368534273)); **Alpine 0.15.2 fails** HTTP 502/SCGI (#151); JSON-RPC not accepted |
 | Physical Android | Separate Android network and lifecycle acceptance; not yet verified |
 
-The narrowly scoped one-off GitHub Actions workflow installs an ephemeral rTorrent server on the runner, binds SCGI only to loopback, and never touches production media. The first version-only trial added no torrents; the later isolated real rTorrent 0.9.8 workflow [run 40116608163](https://github.com/gamesbyian/Chunks/actions/runs/40116608163) exercised stopped binary Add and lifecycle changes on disposable data in PR #46. Verify its source SHA and scope before extending that claim. The one-shot [run 40060755245](https://github.com/gamesbyian/Chunks/actions/runs/40060755245) succeeded on the original experiment SHA; its PR trigger has now been retired and only `workflow_dispatch` remains. Update the canonical QUALITY-LEDGER after merging this test tooling.
+The narrowly scoped one-off GitHub Actions workflow installs an ephemeral rTorrent server on the runner, binds SCGI only to loopback, and never touches production media. The first version-only trial added no torrents; the later isolated real rTorrent 0.9.8 workflow [run 40116608163](https://github.com/gamesbyian/Chunks/actions/runs/40116608163) exercised stopped binary Add and lifecycle changes on disposable data in PR #46. Verify its source SHA and scope before extending that claim. The one-shot [run 40060755245](https://github.com/gamesbyian/Chunks/actions/runs/40060755245) succeeded on the original experiment SHA; broad automatic triggers were retired, but PR #153 reintroduced a **narrow path-scoped PR gate** for adapter/real-engine-test/workflow changes, passing legacy and modern suites in [40372755722](https://github.com/gamesbyian/Chunks/actions/runs/40372755722). Update the canonical QUALITY-LEDGER after merging this test tooling.
 
 A passing ephemeral server test is stronger than a mock but cannot prove managed seedbox compatibility, live data relocation, or performance under large torrent lists. Record the exact server package/version, Actions run and source SHA with any conclusion.
 ### Parser boundary receipt (2026-10-24)
