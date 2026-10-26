@@ -10,6 +10,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -36,7 +37,7 @@ class PhoneStorageCapInstrumentedTest {
         store.set(root, null)
         try {
             val used: (Context) -> LocalFolderInventory = {
-                LocalFolderInventory(85L * gib / 100L, 2, true)
+                LocalFolderInventory(90L * gib / 100L, 2, true)
             }
             rule.setContent {
                 MaterialTheme {
@@ -51,8 +52,12 @@ class PhoneStorageCapInstrumentedTest {
             rule.onNodeWithTag("phone-advisory-cap-input").performScrollTo().performTextInput("1")
             rule.onNodeWithText("Save advisory limit").performScrollTo().performClick()
             rule.onNodeWithText("Current advisory limit: 1.0 GiB").assertExists()
-            rule.onNodeWithText("Warning: download-folder logical sizes reached 85%", substring = true)
-                .assertExists()
+            // The bounded folder survey is asynchronous. Test the 85%-tier
+            // at 90% use to avoid a one-byte ceil/floor threshold ambiguity.
+            rule.waitUntil(10_000) {
+                rule.onAllNodesWithText("Warning: download-folder logical sizes reached 85%",
+                    substring = true).fetchSemanticsNodes().isNotEmpty()
+            }
             rule.onNodeWithText("Chunks does not yet enforce a local torrent storage cap.", substring = true)
                 .assertExists()
             assertEquals(gib, LocalCapPreferenceStore(context).get(root))
