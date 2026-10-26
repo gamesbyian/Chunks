@@ -33,11 +33,6 @@ internal data class LocalAllocatedInventory(
 internal object LocalAllocatedFolderProbe {
     const val MAX_ENTRIES = 50_000
     private const val MAX_DEPTH = 32
-    private const val BYTES_PER_STAT_BLOCK = 512L
-
-    private data class Inode(val device: Long, val number: Long)
-    private data class Seen(val logical: Long, val allocated: Long, val links: Long, var paths: Int)
-
     /** Never traverses symlinks or leaves the supplied directory. */
     fun measure(folder: File?, maxEntries: Int = MAX_ENTRIES): LocalAllocatedInventory {
         require(maxEntries > 0)
@@ -49,9 +44,7 @@ internal object LocalAllocatedFolderProbe {
         var count = 0
         var paths = 0
         var complete = true
-        var logical: Long? = 0L
-        var allocated: Long? = 0L
-        val seen = HashMap<Inode, Seen>()
+        val accounting = LocalInodeAccounting()
         try {
             Files.walkFileTree(root, emptySet<FileVisitOption>(), MAX_DEPTH,
                 object : SimpleFileVisitor<Path>() {
@@ -87,23 +80,8 @@ internal object LocalAllocatedFolderProbe {
                                 complete = false
                                 return FileVisitResult.CONTINUE
                             }
-                            val blocks = Math.multiplyExact(stat.st_blocks, BYTES_PER_STAT_BLOCK)
-                            val key = Inode(stat.st_dev, stat.st_ino)
-                            val previous = seen[key]
-                            if (previous == null) {
-                                val entry = Seen(stat.st_size, blocks, stat.st_nlink, 1)
-                                seen[key] = entry
-                                logical = safeAdd(logical, stat.st_size)
-                                allocated = safeAdd(allocated, blocks)
-                            } else {
-                                previous.paths++
-                                // A source that changed under the survey is not
-                                // suitable for a complete, precise report.
-                                if (previous.logical != stat.st_size ||
-                                    previous.allocated != blocks ||
-                                    previous.links != stat.st_nlink) complete = false
-                            }
-                            if (logical == null || allocated == null) complete = false
+                            if (!accounting.add(stat.st_dev, stat.st_ino,
+                                    stat.st_size, stat.st_blocks, stat.st_nlink)) complete = false
                         } catch (_: Exception) {
                             complete = false
                         }
@@ -127,11 +105,7 @@ internal object LocalAllocatedFolderProbe {
         }
         // st_nlink may also include links OUTSIDE this folder. Those blocks
         // are observed here but cannot be promised as reclaimable by deletion.
-        val externalLinks = seen.values.any { it.links > it.paths }
-        return LocalAllocatedInventory(allocated, logical, paths, seen.size,
-            complete, externalLinks)
+        return LocalAllocatedInventory(accounting.allocatedBytes, accounting.logicalBytes, paths,
+            accounting.uniqueInodes, complete, accounting.outsideHardlinksPossible)
     }
-
-    private fun safeAdd(total: Long?, bytes: Long): Long? =
-        total?.let { try { Math.addExact(it, bytes) } catch (_: ArithmeticException) { null } }
 }
