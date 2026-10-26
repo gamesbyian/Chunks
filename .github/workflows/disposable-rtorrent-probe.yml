@@ -5,6 +5,8 @@ on:
     paths:
       - ".github/workflows/disposable-rtorrent-probe.yml"
       - "app/src/test/java/io/github/gamesbyian/chunks/rpc/RTorrentDisposableMutationTest.kt"
+      - "app/src/test/java/io/github/gamesbyian/chunks/rpc/RTorrentDisposableServerTest.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/rpc/RTorrentRemote.kt"
 permissions:
   contents: read
 concurrency:
