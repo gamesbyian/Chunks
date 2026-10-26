@@ -21,6 +21,7 @@ class LibraryCopierTest {
         var created = 0
         var dieAfterFiles = -1
         var failWriteOnFile = -1
+        var corruptReadback = false
         /** Runs while the given file number is being written. */
         var duringWrite: Pair<Int, () -> Unit>? = null
         override val root: File get() = real.root
@@ -52,6 +53,9 @@ class LibraryCopierTest {
                 override fun close() = output.close()
             }
         }
+        override fun openExistingInput(file: File): java.io.InputStream? =
+            if (corruptReadback) java.io.ByteArrayInputStream(byteArrayOf(0))
+            else real.openExistingInput(file)
         override fun rename(node: File, parent: File, newName: String) = real.rename(node, parent, newName)
         override fun delete(node: File) = real.delete(node)
         override fun availableBytes() = free
@@ -82,6 +86,17 @@ class LibraryCopierTest {
 
     private fun assertSourceIntact(payload: Payload) {
         for ((path, bytes) in payload.files) assertArrayEquals(path, bytes, File(payload.root, path).readBytes())
+    }
+
+    @Test fun refusesProviderThatStoresCorruptedDataAfterAcknowledgingWrites() {
+        val payload = payload()
+        val destination = temp.newFolder("corrupted-copy")
+        val target = Target(destination).apply { corruptReadback = true }
+        val result = LibraryCopier.copy(payload.request(), target, journal())
+        assertEquals(ZipExtractionStatus.FAILED_ROLLED_BACK, result.status)
+        assertTrue(result.reason.orEmpty().contains("read-back verification"))
+        assertTrue(tree(destination).isEmpty())
+        assertSourceIntact(payload)
     }
 
     @Test fun copiesEveryFileIntoANewFolderAndKeepsTheOriginals() {
