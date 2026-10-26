@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.width
@@ -50,6 +51,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.model.TransferCatalog
+import io.github.gamesbyian.chunks.model.CollectionMembershipFilter
 import io.github.gamesbyian.chunks.model.TransferFilter
 import io.github.gamesbyian.chunks.model.TransferOrder
 import io.github.gamesbyian.chunks.model.Units
@@ -678,20 +680,28 @@ private fun OrganizeScreen(
     val membershipStore = remember(context) { TransferCollectionStore(context) }
     var manualQuery by remember(scope) { mutableStateOf("") }
     var membershipRevision by remember(scope) { mutableStateOf(0) }
-    // Reuse Transfers' one-alias-lookup-per-item search, preserving both
-    // Chunks display aliases and actual torrent names as searchable facts.
-    // Never use an alias to alter physical names or classifier input.
-    val manualMatches = remember(list, manualQuery, scope, aliasRevision) {
-        TransferCatalog.visible(list, manualQuery, TransferFilter.ALL, TransferOrder.NAME) {
-            if (scope.isBlank()) it.name else aliasStore.get(scope, it.hash) ?: it.name
-        }.take(80)
+    var selectedCollection by remember(scope) { mutableStateOf<String?>(null) }
+    // One device-local lookup per transfer and membership revision, reused for
+    // counts and filtering; no remote calls or backing-file mutations.
+    val membershipsByHash = remember(list, scope, membershipRevision) {
+        if (scope.isBlank()) emptyMap()
+        else list.associate { it.hash to membershipStore.forTransfer(scope, it.hash) }
     }
     // Counts apply only to the currently loaded rTorrent view. A transfer
     // in another view is not silently interpreted as removed or unassigned.
-    val manualCounts = remember(list, scope, membershipRevision) {
-        if (scope.isBlank()) emptyList()
-        else list.flatMap { membershipStore.forTransfer(scope, it.hash) }
-            .groupingBy { it }.eachCount().toList().sortedBy { it.first.lowercase() }
+    val manualCounts = remember(membershipsByHash) {
+        membershipsByHash.values.flatten().groupingBy { it }.eachCount()
+            .toList().sortedBy { it.first.lowercase() }
+    }
+    // Search still covers the original title, Chunks alias and path. Apply
+    // collection membership before the bounded 80-row visible result limit.
+    val manualMatches = remember(list, manualQuery, scope, aliasRevision, selectedCollection, membershipsByHash) {
+        TransferCatalog.visible(list, manualQuery, TransferFilter.ALL, TransferOrder.NAME) {
+            if (scope.isBlank()) it.name else aliasStore.get(scope, it.hash) ?: it.name
+        }.asSequence().filter { transfer ->
+            CollectionMembershipFilter.matches(selectedCollection,
+                membershipsByHash[transfer.hash].orEmpty())
+        }.take(80).toList()
     }
     val collections = remember(list) { TransferCatalog.discoveredCollections(list) }
     val examples = remember(list) {
@@ -717,8 +727,19 @@ private fun OrganizeScreen(
             Text("No manual collection memberships in the current server view.")
         }
         items(manualCounts, key = { "manual-count-" + it.first }) { (name, count) ->
-            Text("$name · $count " + (if (count == 1) "transfer in this view" else "transfers in this view"),
-                style = MaterialTheme.typography.bodyMedium)
+            FilterChip(
+                selected = selectedCollection?.equals(name, ignoreCase = true) == true,
+                onClick = { selectedCollection = if (selectedCollection == name) null else name },
+                label = { Text("$name · $count " +
+                    (if (count == 1) "transfer" else "transfers")) },
+                modifier = Modifier.heightIn(min = 48.dp)
+            )
+        }
+        if (selectedCollection != null) item {
+            Text("Showing only " + selectedCollection + " in this server view.",
+                style = MaterialTheme.typography.bodySmall)
+            OutlinedButton(onClick = { selectedCollection = null },
+                modifier = Modifier.heightIn(min = 48.dp)) { Text("Show all collections") }
         }
         item {
             OutlinedTextField(
@@ -726,7 +747,7 @@ private fun OrganizeScreen(
                 label = { Text("Find a transfer to organize") },
                 singleLine = true, modifier = Modifier.fillMaxWidth()
             )
-            Text("Showing " + manualMatches.size + " matching transfers (up to 80) in the loaded server view.",
+            Text("Showing " + manualMatches.size + " matching transfers (up to 80) in the loaded server view and selected collection.",
                 style = MaterialTheme.typography.bodySmall)
         }
         if (scope.isNotBlank()) {
