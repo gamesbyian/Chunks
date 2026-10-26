@@ -335,7 +335,7 @@ private fun ChunksApp(sharedMagnet: String?) {
                     onAliasesChanged = { aliasRevision++ },
                     onBack = { section = Section.TRANSFERS }
                 )
-                Section.ORGANIZE -> OrganizeScreen(transfers)
+                Section.ORGANIZE -> OrganizeScreen(transfers, aliasScope)
                 Section.SERVER -> ServerScreen(
                     version = version, displayedView = currentView,
                     requestedView = requestedView, onRequestedView = { requestedView = it },
@@ -668,7 +668,24 @@ private fun PlacesScreen(list: List<RemoteTransfer>, onUsePlace: (String) -> Uni
 }
 
 @Composable
-private fun OrganizeScreen(list: List<RemoteTransfer>) {
+private fun OrganizeScreen(list: List<RemoteTransfer>, scope: String) {
+    val context = LocalContext.current
+    val membershipStore = remember(context) { TransferCollectionStore(context) }
+    var manualQuery by remember(scope) { mutableStateOf("") }
+    var membershipRevision by remember(scope) { mutableStateOf(0) }
+    val manualMatches = remember(list, manualQuery) {
+        list.filter {
+            it.name.contains(manualQuery, ignoreCase = true) ||
+                it.hash.contains(manualQuery, ignoreCase = true)
+        }.take(80)
+    }
+    // Counts apply only to the currently loaded rTorrent view. A transfer
+    // in another view is not silently interpreted as removed or unassigned.
+    val manualCounts = remember(list, scope, membershipRevision) {
+        if (scope.isBlank()) emptyList()
+        else list.flatMap { membershipStore.forTransfer(scope, it.hash) }
+            .groupingBy { it }.eachCount().toList().sortedBy { it.first.lowercase() }
+    }
     val collections = remember(list) { TransferCatalog.discoveredCollections(list) }
     val examples = remember(list) {
         list.map { it to Classifier.suggest(it.name) }
@@ -682,6 +699,35 @@ private fun OrganizeScreen(list: List<RemoteTransfer>) {
         item {
             ColoredPanel("Chunks has ideas.",
                 "Local filename suggestions only. No media is inspected, no remote paths are changed.", Coral)
+        }
+        item {
+            Text("Your collections", style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold)
+            Text("Manual, device-local memberships. A transfer may belong to several collections; no filenames, folders, rTorrent categories or sharing change.",
+                style = MaterialTheme.typography.bodySmall)
+        }
+        if (manualCounts.isEmpty()) item {
+            Text("No manual collection memberships in the current server view.")
+        }
+        items(manualCounts, key = { "manual-count-" + it.first }) { (name, count) ->
+            Text("$name · $count " + if (count == 1) "transfer in this view" else "transfers in this view",
+                style = MaterialTheme.typography.bodyMedium)
+        }
+        item {
+            OutlinedTextField(
+                value = manualQuery, onValueChange = { manualQuery = it },
+                label = { Text("Find a transfer to organize") },
+                singleLine = true, modifier = Modifier.fillMaxWidth()
+            )
+            Text("Showing " + manualMatches.size + " matching transfers (up to 80) in the loaded server view.",
+                style = MaterialTheme.typography.bodySmall)
+        }
+        if (scope.isNotBlank()) {
+            items(manualMatches, key = { "manual-edit-" + it.hash }) { transfer ->
+                TransferCollectionEditor(transfer, scope, membershipStore) {
+                    membershipRevision++
+                }
+            }
         }
         item { Text("Discovered collections", style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold) }
