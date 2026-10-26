@@ -1,6 +1,9 @@
 package io.github.gamesbyian.chunks
 
 import io.github.gamesbyian.chunks.engine.LocalTransferFile
+import io.github.gamesbyian.chunks.model.LibraryCopyFile
+import java.io.File
+import org.junit.Assert.fail
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertNotNull
@@ -29,6 +32,19 @@ class LocalLibraryCopySelectionTest {
         val wanted = LocalLibraryCopySelection.completeWanted(
             listOf(file(0), file(1, complete = false, wanted = false)))
         assertEquals(listOf(0), wanted!!.map { it.index })
+    }
+
+    @Test fun independentCopyReviewRejectsUnrepresentableSum() {
+        val source = File("not-opened")
+        try {
+            LocalLibraryCopySource(source, listOf(
+                LibraryCopyFile(File(source, "one"), "one", Long.MAX_VALUE),
+                LibraryCopyFile(File(source, "two"), "two", 1L)
+            ))
+            fail("An overflowing copy total cannot be shown in the review")
+        } catch (_: IllegalArgumentException) {
+            // Fail closed before the chooser or destination creation.
+        }
     }
 
     @Test fun emptyOrAllSkippedSelectionCannotBePublished() {
