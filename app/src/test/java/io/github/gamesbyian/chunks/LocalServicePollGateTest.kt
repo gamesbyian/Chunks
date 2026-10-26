@@ -24,7 +24,7 @@ class LocalServicePollGateTest {
         gate.finish()
         assertTrue(gate.inFlightMillis(18_000_000_000L) == null)
         assertTrue(gate.tryBegin(nowNanos = 19_000_000_000L))
-        assertTrue(gate.inFlightMillis(19_001_000_000L) == 1_000L)
+        assertTrue(gate.inFlightMillis(19_001_000_000L) == 1L)
         gate.finish()
     }
 
