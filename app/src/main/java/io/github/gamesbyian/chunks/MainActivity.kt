@@ -710,7 +710,7 @@ private fun OrganizeScreen(list: List<RemoteTransfer>, scope: String) {
             Text("No manual collection memberships in the current server view.")
         }
         items(manualCounts, key = { "manual-count-" + it.first }) { (name, count) ->
-            Text("$name · $count " + if (count == 1) "transfer in this view" else "transfers in this view",
+            Text("$name · $count " + (if (count == 1) "transfer in this view" else "transfers in this view"),
                 style = MaterialTheme.typography.bodyMedium)
         }
         item {
