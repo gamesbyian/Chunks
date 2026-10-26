@@ -284,6 +284,8 @@ internal fun LocalAddReview(
                 Units.bytes(preview.sizeBytes))
             Text("Saves into: Chunks' folder on phone storage (" + destination.absolutePath + "). Files here are removed if Chunks is uninstalled.")
             Text("It is added stopped. Nothing downloads until you press Start.", style = MaterialTheme.typography.bodySmall)
+            if (preview.trackerCount == 0) Text("This torrent lists no tracker, so peers can only be found through DHT (if turned on) or its web sources.",
+                color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             Button(onClick = onConfirm, enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
                 Text("Add stopped")
             }

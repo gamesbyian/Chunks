@@ -248,6 +248,11 @@ fun VerifiedAddScreen(
                             Text("Infohash: " + plan.expectedInfoHash)
                             Text("Destination: " + plan.destination)
                             Text("Loads stopped. It does not move existing files or guarantee that bytes are downloaded.")
+                            val trackers = if (useFile) selectedTorrent?.trackerCount ?: 0
+                                else TorrentMetainfoReader.magnetTrackerCount(magnet)
+                            if (trackers == 0) {
+                                Text(trackerlessWarning(useFile), color = MaterialTheme.colorScheme.error)
+                            }
                         }
                     }
                 }
@@ -354,3 +359,9 @@ fun VerifiedAddScreen(
         }
     }
 }
+
+/** Seedhost evidence: some servers silently discard torrents without a tracker. */
+internal fun trackerlessWarning(isFile: Boolean): String =
+    (if (isFile) "This .torrent lists no tracker. " else "This magnet link lists no tracker. ") +
+        "Some servers, including the tested Seedhost, silently discard tracker-less torrents, so it may not " +
+        "appear after Add. Chunks will then report it as unconfirmed, not added, and will not retry."

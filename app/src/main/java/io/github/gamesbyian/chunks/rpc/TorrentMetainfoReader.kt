@@ -10,7 +10,9 @@ data class TorrentMetainfoPreview(
     val infoHashV1: String,
     val fileCount: Int,
     val sizeBytes: Long,
-    val pieceLength: Long
+    val pieceLength: Long,
+    /** Distinct http(s)/udp tracker URLs in `announce` and `announce-list`; 0 = tracker-less. */
+    val trackerCount: Int = 0
 )
 
 /**
@@ -89,8 +91,29 @@ object TorrentMetainfoReader {
         val hash = MessageDigest.getInstance("SHA-1")
             .digest(bytes.copyOfRange(reader.infoStart, reader.infoEnd))
             .joinToString("") { "%02x".format(it.toInt() and 255) }
-        return TorrentMetainfoPreview(name, hash, fileCount, total, pieceLength)
+        return TorrentMetainfoPreview(name, hash, fileCount, total, pieceLength, trackerCount(root))
     }
+
+    /** Counts only plausible tracker URLs; malformed entries are ignored, never fatal. */
+    private fun trackerCount(root: Map<*, *>): Int {
+        val urls = HashSet<String>()
+        fun add(value: Any?) {
+            val text = (value as? ByteArray)?.toString(Charsets.UTF_8)?.trim() ?: return
+            if (text.length <= 2048 && Regex("^(https?|udp)://[^\\s]+$", RegexOption.IGNORE_CASE).matches(text))
+                urls += text.lowercase()
+        }
+        add(root["announce"])
+        (root["announce-list"] as? List<*>)?.forEach { tier -> (tier as? List<*>)?.forEach(::add) }
+        return urls.size
+    }
+
+    /** Number of distinct `tr=` tracker parameters in a magnet link. */
+    fun magnetTrackerCount(magnet: String): Int =
+        magnet.substringAfter('?', "").split('&').mapNotNull { part ->
+            val pair = part.split('=', limit = 2)
+            if (pair.size == 2 && pair[0].equals("tr", ignoreCase = true) && pair[1].isNotBlank())
+                java.net.URLDecoder.decode(pair[1], "UTF-8").lowercase() else null
+        }.toSet().size
 
     private fun positive(value: Any?): Long {
         val number = value as? Long ?: error("Invalid positive torrent integer")
