@@ -342,6 +342,29 @@ object ZipExtractor {
                     return ZipExtractionStatus.FAILED_ROLLED_BACK to "ZIP member size differs from its header"
                 if (crc.value != entry.crc)
                     return ZipExtractionStatus.FAILED_ROLLED_BACK to "ZIP member CRC mismatch while writing"
+                // Input checksums alone cannot establish that a DocumentsProvider
+                // actually retained the bytes it acknowledged writing.
+                val storedInput = target.openExistingInput(file)
+                    ?: return ZipExtractionStatus.FAILED_ROLLED_BACK to
+                        "Destination cannot be independently read back for verification"
+                val storedCrc = CRC32()
+                var storedBytes = 0L
+                storedInput.use { input ->
+                    while (true) {
+                        if (cancelled() || Thread.currentThread().isInterrupted)
+                            return ZipExtractionStatus.CANCELLED to "Extraction cancelled during destination verification"
+                        val count = input.read(buffer)
+                        if (count < 0) break
+                        if (count == 0 || count.toLong() > actual - storedBytes)
+                            return ZipExtractionStatus.FAILED_ROLLED_BACK to
+                                "Stored ZIP member exceeds its verified size or made no progress"
+                        storedBytes += count
+                        storedCrc.update(buffer, 0, count)
+                    }
+                }
+                if (storedBytes != actual || storedCrc.value != crc.value)
+                    return ZipExtractionStatus.FAILED_ROLLED_BACK to
+                        "Destination bytes failed ZIP CRC and size read-back verification"
                 progress(files, total)
             }
         }
