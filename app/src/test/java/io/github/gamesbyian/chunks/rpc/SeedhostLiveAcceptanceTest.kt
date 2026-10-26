@@ -112,14 +112,39 @@ class SeedhostLiveAcceptanceTest {
         assertNotEquals(first.infoHashV1, second.infoHashV1)
     }
 
-    private suspend fun waitFor(rtorrent: RTorrentRemote, hash: String, condition: (RemoteTransfer?) -> Boolean): RemoteTransfer? {
+    private suspend fun waitFor(rtorrent: RTorrentRemote, hash: String, attempts: Int = 25,
+                                condition: (RemoteTransfer?) -> Boolean): RemoteTransfer? {
         var observed: RemoteTransfer? = null
-        repeat(25) {
+        repeat(attempts) {
             observed = rtorrent.listTransfers("main").firstOrNull { it.hash.equals(hash, true) }
             if (condition(observed)) return observed
             Thread.sleep(400)
         }
         return observed
+    }
+
+    /**
+     * Read-only reconciliation of an earlier acknowledged-but-unlisted Add. Only a
+     * transfer whose name proves it is one of our synthetic fixtures may be erased.
+     */
+    @Test fun reconcilePreviouslyUncertainSyntheticAdd() = runBlocking {
+        val hash = System.getenv("CHUNKS_LIVE_RECONCILE_HASH").orEmpty().lowercase()
+        assumeTrue("Only when a hash to reconcile is supplied", hash.isNotBlank())
+        require(Regex("[0-9a-f]{40}").matches(hash))
+        val rtorrent = remote()
+        val listed = rtorrent.listTransfers("main").firstOrNull { it.hash.equals(hash, true) }
+        val name = rtorrent.lookupName(hash)
+        log("reconcile hash=$hash listedInMain=${listed != null} sessionLookup=${name != null}")
+        if (listed != null && System.getenv("CHUNKS_LIVE_MUTATION") != "apply") {
+            log("reconcile found the transfer; erase needs apply_mutation=true")
+        } else if (listed != null) {
+            require(listed.name.startsWith("chunks-acceptance-") && listed.name.endsWith(".txt")) {
+                "Refusing to erase a transfer that is not a Chunks synthetic fixture"
+            }
+            val erase = rtorrent.eraseFromSession(listed.hash, listed.name, listed.directory)
+            log("reconcile erase outcome=${erase::class.simpleName}")
+            assertNull(waitFor(rtorrent, hash) { it == null })
+        }
     }
 
     @Test fun ownerAuthorizedExactTargetMutationRoundTrip() = runBlocking {
@@ -131,12 +156,14 @@ class SeedhostLiveAcceptanceTest {
         val base = configured ?: commonParent(rtorrent.listTransfers("main").map { it.directory })
         requireNotNull(base) { "No safe base directory could be determined" }
         log("base directory source=${if (configured != null) "directory.default" else "common parent of inventory"} depth=${base.count { it == '/' }}")
-        val target = "$base/chunks-acceptance"
+        // An earlier run showed a load into a not-yet-existing subfolder was
+        // acknowledged but never listed; target the existing shared folder itself.
+        val target = base
         val runId = System.getenv("GITHUB_RUN_ID").orEmpty().filter { it.isDigit() }.ifEmpty { System.currentTimeMillis().toString() }
         val name = "chunks-acceptance-$runId.txt"
         val bytes = syntheticTorrent(name)
         val hash = TorrentMetainfoReader.preview(bytes).infoHashV1
-        log("mutation target hash=$hash name=$name directory=<default>/chunks-acceptance")
+        log("mutation target hash=$hash name=$name directory=<base>")
         assertTrue("Preflight: unique synthetic hash must be absent",
             rtorrent.listTransfers("main").none { it.hash.equals(hash, true) })
         val before = rtorrent.listTransfers("main").map { it.hash.lowercase() }.toSet()
@@ -147,7 +174,9 @@ class SeedhostLiveAcceptanceTest {
             log("load.raw_verbose outcome=${load::class.simpleName}")
             assertTrue("Add must be verified or pending, never uncertain: $load",
                 load is RemoteAddOutcome.VerifiedStopped || load is RemoteAddOutcome.PendingVerification)
-            added = requireNotNull(waitFor(rtorrent, hash) { it != null }) { "Added hash never appeared" }
+            added = waitFor(rtorrent, hash, attempts = 150) { it != null }
+            if (added == null) log("not listed after reconciliation window; d.name lookup=${rtorrent.lookupName(hash) != null}")
+            requireNotNull(added) { "Added hash never appeared" }
             assertFalse("New transfer must stay stopped", added.started)
             assertEquals(target, added.directory)
             assertEquals(name, added.name)

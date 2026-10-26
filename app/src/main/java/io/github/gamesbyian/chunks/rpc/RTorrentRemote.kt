@@ -112,6 +112,16 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         return path.trimEnd('/').ifEmpty { "/" }
     }
 
+    /**
+     * Read-only exact-identity lookup outside any view: the torrent's name if the
+     * session holds it, null if rTorrent reports the hash unknown. Used to
+     * reconcile an acknowledged Add that has not (yet) appeared in a view.
+     */
+    suspend fun lookupName(hash: String): String? {
+        require(Regex("[0-9a-fA-F]{40}([0-9a-fA-F]{24})?").matches(hash)) { "Invalid torrent identity" }
+        return try { (call("d.name", listOf(hash)) as? String)?.take(2048) } catch (_: RpcFault) { null }
+    }
+
     /** Only server-owned view names, never XML-RPC command fragments. */
     suspend fun listTransfers(view: String = "main"): List<RemoteTransfer> {
         require(Regex("[A-Za-z][A-Za-z0-9_-]{0,39}").matches(view)) { "Invalid view" }

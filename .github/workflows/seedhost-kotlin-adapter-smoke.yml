@@ -13,6 +13,11 @@ on:
         type: boolean
         required: false
         default: false
+      reconcile_hash:
+        description: "Optional: read-only reconcile of an earlier uncertain synthetic Add (40-hex); erases only a chunks-acceptance fixture"
+        type: string
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -47,6 +52,7 @@ jobs:
           CHUNKS_LIVE_RTORRENT_USER: ${{ secrets.rtorrent_user }}
           CHUNKS_LIVE_RTORRENT_PASS: ${{ secrets.rtorrent_pass }}
           CHUNKS_LIVE_MUTATION: ${{ inputs.apply_mutation && 'apply' || 'read-only' }}
+          CHUNKS_LIVE_RECONCILE_HASH: ${{ inputs.reconcile_hash }}
         run: |
           test -n "$CHUNKS_LIVE_RUTORRENT_URL"
           test -n "$CHUNKS_LIVE_RTORRENT_USER"
