@@ -52,6 +52,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.model.TransferCatalog
 import io.github.gamesbyian.chunks.model.CollectionMembershipFilter
+import io.github.gamesbyian.chunks.model.ManualCollectionPager
 import io.github.gamesbyian.chunks.model.TransferFilter
 import io.github.gamesbyian.chunks.model.TransferOrder
 import io.github.gamesbyian.chunks.model.Units
@@ -681,6 +682,7 @@ private fun OrganizeScreen(
     var manualQuery by remember(scope) { mutableStateOf("") }
     var membershipRevision by remember(scope) { mutableStateOf(0) }
     var selectedCollection by remember(scope) { mutableStateOf<String?>(null) }
+    var collectionPage by remember(scope) { mutableStateOf(0) }
     // One device-local lookup per transfer and membership revision, reused for
     // counts and filtering; no remote calls or backing-file mutations.
     val membershipsByHash = remember(list, scope, membershipRevision) {
@@ -694,14 +696,17 @@ private fun OrganizeScreen(
             .toList().sortedBy { it.first.lowercase() }
     }
     // Search still covers the original title, Chunks alias and path. Apply
-    // collection membership before the bounded 80-row visible result limit.
+    // collection membership before paging; never hide later eligible matches.
     val manualMatches = remember(list, manualQuery, scope, aliasRevision, selectedCollection, membershipsByHash) {
         TransferCatalog.visible(list, manualQuery, TransferFilter.ALL, TransferOrder.NAME) {
             if (scope.isBlank()) it.name else aliasStore.get(scope, it.hash) ?: it.name
         }.asSequence().filter { transfer ->
             CollectionMembershipFilter.matches(selectedCollection,
                 membershipsByHash[transfer.hash].orEmpty())
-        }.take(80).toList()
+        }.toList()
+    }
+    val pagedMatches = remember(manualMatches, collectionPage) {
+        ManualCollectionPager.slice(manualMatches, collectionPage)
     }
     val collections = remember(list) { TransferCatalog.discoveredCollections(list) }
     val examples = remember(list) {
@@ -729,7 +734,10 @@ private fun OrganizeScreen(
         items(manualCounts, key = { "manual-count-" + it.first }) { (name, count) ->
             FilterChip(
                 selected = selectedCollection?.equals(name, ignoreCase = true) == true,
-                onClick = { selectedCollection = if (selectedCollection == name) null else name },
+                onClick = {
+                    selectedCollection = if (selectedCollection == name) null else name
+                    collectionPage = 0
+                },
                 label = { Text("$name · $count " +
                     (if (count == 1) "transfer" else "transfers")) },
                 modifier = Modifier.heightIn(min = 48.dp)
@@ -738,20 +746,36 @@ private fun OrganizeScreen(
         if (selectedCollection != null) item {
             Text("Showing only " + selectedCollection + " in this server view.",
                 style = MaterialTheme.typography.bodySmall)
-            OutlinedButton(onClick = { selectedCollection = null },
+            OutlinedButton(onClick = { selectedCollection = null; collectionPage = 0 },
                 modifier = Modifier.heightIn(min = 48.dp)) { Text("Show all collections") }
         }
         item {
             OutlinedTextField(
-                value = manualQuery, onValueChange = { manualQuery = it },
+                value = manualQuery, onValueChange = { manualQuery = it; collectionPage = 0 },
                 label = { Text("Find a transfer to organize") },
                 singleLine = true, modifier = Modifier.fillMaxWidth()
             )
-            Text("Showing " + manualMatches.size + " matching transfers (up to 80) in the loaded server view and selected collection.",
+            Text("Found " + pagedMatches.totalMatches + " matching transfers in the loaded server view and selected collection. Page " +
+                (pagedMatches.pageIndex + 1) + " of " + pagedMatches.totalPages + ".",
                 style = MaterialTheme.typography.bodySmall)
+            if (pagedMatches.totalPages > 1) {
+                // Full-width controls survive narrow displays and 200% text.
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(
+                        onClick = { collectionPage = (pagedMatches.pageIndex - 1).coerceAtLeast(0) },
+                        enabled = pagedMatches.hasPrevious,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    ) { Text("Previous page") }
+                    OutlinedButton(
+                        onClick = { collectionPage = pagedMatches.pageIndex + 1 },
+                        enabled = pagedMatches.hasNext,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    ) { Text("Next page") }
+                }
+            }
         }
         if (scope.isNotBlank()) {
-            items(manualMatches, key = { "manual-edit-" + it.hash }) { transfer ->
+            items(pagedMatches.items, key = { "manual-edit-" + it.hash }) { transfer ->
                 val alias = aliasStore.get(scope, transfer.hash)
                 if (alias != null && alias != transfer.name) {
                     Text("Original torrent title: " + transfer.name,
