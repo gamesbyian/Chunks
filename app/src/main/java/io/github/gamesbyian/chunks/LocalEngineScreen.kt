@@ -21,6 +21,10 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.Role
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -69,7 +73,18 @@ internal object LocalEngineHolder {
         LocalEngineConfig(stateDirectory = stateDirectory(context))
     ).also {
         it.start()
+        if (dhtPreferred(context)) it.setDhtEnabled(true)
         engine = it
+    }
+
+    private fun prefs(context: Context) = context.getSharedPreferences("local-engine", Context.MODE_PRIVATE)
+    fun dhtPreferred(context: Context) = prefs(context).getBoolean("dht", false)
+
+    /** Persist the user's choice and apply it to a running engine; never starts one. */
+    @Synchronized
+    fun setDhtPreferred(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean("dht", enabled).apply()
+        engine?.setDhtEnabled(enabled)
     }
 
     /** Start only if an earlier session left transfers to restore. */
@@ -95,6 +110,7 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
     var message by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     var magnet by remember { mutableStateOf("") }
+    var dht by remember { mutableStateOf(LocalEngineHolder.dhtPreferred(context)) }
     val destination = remember { LocalEngineHolder.appDownloads(context) }
     // The ongoing notification is how Android lets downloads continue in the background.
     val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
@@ -155,6 +171,18 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
         Text("Downloads and seeds with Chunks' own engine. While a transfer runs, an ongoing notification keeps it going in the background, with Stop all; Android may still stop it, and from Android 15 limits this kind of background transfer to about 6 hours a day, after which Chunks pauses everything. Nothing connects to the network until you add a torrent. Transfers are remembered and come back stopped after Chunks restarts. Peers and trackers can see this phone's IP address.")
         Button(onClick = { picker.launch(arrayOf("*/*")) }, enabled = !busy && destination != null,
             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Choose .torrent file") }
+        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
+            .toggleable(value = dht, role = Role.Switch, onValueChange = { wanted ->
+                dht = wanted
+                scope.launch { withContext(Dispatchers.IO) { LocalEngineHolder.setDhtPreferred(context, wanted) } }
+            }), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Find peers without trackers (DHT)")
+                Text("Needed for most magnet links. Off by default: when on, this phone's IP address is shared with the public DHT network.",
+                    style = MaterialTheme.typography.bodySmall)
+            }
+            Switch(checked = dht, onCheckedChange = null)
+        }
         OutlinedTextField(value = magnet, onValueChange = { magnet = it.trim() },
             label = { Text("Or paste a magnet link") }, singleLine = true,
             modifier = Modifier.fillMaxWidth())
