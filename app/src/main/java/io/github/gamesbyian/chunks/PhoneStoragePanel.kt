@@ -100,7 +100,7 @@ internal fun PhoneStoragePanel(
     LaunchedEffect(downloadRoot, savedCap, folderUsage) {
         val usage = folderUsage
         newNotice = if (usage?.complete == true && usage.logicalBytes != null)
-            capStore.observe(downloadRoot, savedCap, usage.logicalBytes, snapshot.availableBytes)
+            capStore.observe(downloadRoot, savedCap, usage.logicalBytes, null)
         else null
     }
 
