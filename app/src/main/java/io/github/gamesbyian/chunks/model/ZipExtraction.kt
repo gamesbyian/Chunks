@@ -2,6 +2,8 @@ package io.github.gamesbyian.chunks.model
 
 import java.io.File
 import java.io.FileOutputStream
+import java.io.FileInputStream
+import java.io.InputStream
 import java.io.IOException
 import java.io.OutputStream
 import java.net.URLDecoder
@@ -30,6 +32,8 @@ interface ZipExtractionTarget<N : Any> {
     fun createDirectory(parent: N, name: String): N?
     fun createFile(parent: N, name: String): N?
     fun openNewOutput(file: N): OutputStream
+    /** Reopen bytes physically stored by the provider for verification before publish. */
+    fun openExistingInput(file: N): InputStream? = null
     fun rename(node: N, parent: N, newName: String): N?
     fun delete(node: N): Boolean
     /** Free bytes on the destination volume, or null when the provider cannot say. */
@@ -427,6 +431,8 @@ class FileZipExtractionTarget(override val root: File) : ZipExtractionTarget<Fil
             try { fd.sync() } finally { super.close() }
         }
     }
+    override fun openExistingInput(file: File): InputStream? =
+        if (Files.isRegularFile(file.toPath(), LinkOption.NOFOLLOW_LINKS)) FileInputStream(file) else null
     override fun rename(node: File, parent: File, newName: String): File? = try {
         // No ATOMIC_MOVE: on Linux it may silently replace an existing target.
         Files.move(node.toPath(), File(parent, newName).toPath(), LinkOption.NOFOLLOW_LINKS).toFile()
