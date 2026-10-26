@@ -146,9 +146,12 @@ jobs:
           directory.default.set = $RUNNER_TEMP/chunks-data
           session.path.set = /session
           network.scgi.open_port = 0.0.0.0:5000
-          system.daemon.set = true
+          # Keep the process attached to the container rather than daemonising.
+          # Alpine's daemonised rTorrent answered readiness but later vanished,
+          # leaving nginx to emit HTTP 502 for all JVM protocol tests.
+          system.daemon.set = false
           EOF
-          docker run -d --name chunks-rtorrent -p 127.0.0.1:5000:5000 \
+          docker run -dit --name chunks-rtorrent -p 127.0.0.1:5000:5000 \
             -v "$RUNNER_TEMP/chunks-data:$RUNNER_TEMP/chunks-data" \
             -v "$RUNNER_TEMP/chunks-rc:/chunks-rc:ro" \
             "${{ matrix.image }}" sh -c "${{ matrix.install }} >/dev/null && mkdir -p /session && \
@@ -194,6 +197,17 @@ jobs:
           if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
             ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
           fi
+      - name: Confirm modern server remains alive after SDK setup
+        run: |
+          docker inspect -f 'CHUNKS_MODERN_CONTAINER status={{.State.Status}} exit={{.State.ExitCode}}' chunks-rtorrent
+          if [ "$(docker inspect -f '{{.State.Running}}' chunks-rtorrent)" != true ]; then
+            docker logs chunks-rtorrent | tail -n 80
+            exit 1
+          fi
+          curl -fsS --max-time 5 -H "Content-Type: text/xml" \
+            --data-binary @"$RUNNER_TEMP/version.xml" \
+            http://127.0.0.1:18080/RPC2 -o "$RUNNER_TEMP/response.xml"
+          grep -q '<methodResponse>' "$RUNNER_TEMP/response.xml"
       - name: Same read-only and mutation acceptance on the modern engine
         env:
           CHUNKS_DISPOSABLE_RT_URL: http://127.0.0.1:18080/RPC2
@@ -217,7 +231,10 @@ jobs:
                       print("CHUNKS_MODERN_FAILURE:", case.attrib.get("name","unknown"), (failure.attrib.get("message") or "")[:500])
           PY
           exit $status
-      - name: Stop container
+      - name: Report modern server state and stop container
         if: always()
-        run: docker rm -f chunks-rtorrent || true
+        run: |
+          docker inspect -f 'CHUNKS_MODERN_CONTAINER_FINAL status={{.State.Status}} exit={{.State.ExitCode}}' chunks-rtorrent || true
+          docker logs chunks-rtorrent 2>&1 | tail -n 60 || true
+          docker rm -f chunks-rtorrent || true
 
