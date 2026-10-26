@@ -54,6 +54,7 @@ import io.github.gamesbyian.chunks.engine.LocalTransferState
 import io.github.gamesbyian.chunks.engine.LocalTransferFile
 import io.github.gamesbyian.chunks.engine.LocalTransferStatus
 import io.github.gamesbyian.chunks.model.Units
+import io.github.gamesbyian.chunks.model.ManualCollectionPager
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoPreview
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader
 import java.io.ByteArrayOutputStream
@@ -127,6 +128,10 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
     val scope = rememberCoroutineScope()
     val collectionStore = remember(context) { TransferCollectionStore(context) }
     var transfers by remember { mutableStateOf<List<LocalTransferStatus>>(emptyList()) }
+    var transferPage by remember { mutableStateOf(0) }
+    val transferSlice = remember(transfers, transferPage) {
+        ManualCollectionPager.slice(transfers, transferPage, size = 20)
+    }
     var collectionRevision by remember { mutableStateOf(0) }
     var knownLocalCollections by remember { mutableStateOf<List<String>>(emptyList()) }
     val localHashes = remember(transfers) { transfers.map { it.infoHash } }
@@ -265,8 +270,18 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
             },
             onCancel = { pending = null })
 
-        if (transfers.isEmpty()) Text("No transfers on this phone yet.", style = MaterialTheme.typography.bodySmall)
-        transfers.forEach { transfer ->
+        if (transfers.isEmpty()) {
+            Text("No transfers on this phone yet.", style = MaterialTheme.typography.bodySmall)
+        } else {
+            // Only 20 heavy cards are composed at a time. Rendering controls
+            // stays pure; a page change never mutates the native engine.
+            LocalTransferPageControls(
+                page = transferSlice,
+                onPrevious = { transferPage = (transferSlice.pageIndex - 1).coerceAtLeast(0) },
+                onNext = { transferPage = transferSlice.pageIndex + 1 }
+            )
+        }
+        transferSlice.items.forEach { transfer ->
             LocalTransferCard(transfer, busy,
                 onToggle = {
                     if (transfer.stopped && Build.VERSION.SDK_INT >= 33 &&
