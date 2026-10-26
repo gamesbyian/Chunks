@@ -309,7 +309,9 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
                         busy = false
                     }
                 })
+            if (transfer.metadataKnown && transfer.progressPpm == 1_000_000) LocalLibraryCopyPanel(transfer)
         }
+        LocalZipInterruptedExtractions()
         LocalSpeedLimits()
     }
 }

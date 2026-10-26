@@ -10,6 +10,9 @@ import android.os.StatFs
 import android.provider.DocumentsContract
 import android.provider.DocumentsContract.Document
 import io.github.gamesbyian.chunks.model.FileZipExtractionJournal
+import io.github.gamesbyian.chunks.model.LibraryCopier
+import io.github.gamesbyian.chunks.model.LibraryCopyFile
+import io.github.gamesbyian.chunks.model.LibraryCopyRequest
 import io.github.gamesbyian.chunks.model.ZipExtractionRequest
 import io.github.gamesbyian.chunks.model.ZipExtractionResult
 import io.github.gamesbyian.chunks.model.ZipExtractionStatus
@@ -121,6 +124,8 @@ internal object LocalZipExtraction {
     private val active: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
 
     private fun journalDir(context: Context) = File(context.filesDir, "zip-extractions").apply { mkdirs() }
+    /** Library copies share the journal format; a separate folder records which kind each was. */
+    private fun copyJournalDir(context: Context) = File(context.filesDir, "library-copies").apply { mkdirs() }
 
     fun extract(
         context: Context,
@@ -164,10 +169,49 @@ internal object LocalZipExtraction {
         }
     }
 
-    /** Resolve journals left by process death. Never re-runs an extraction. */
-    fun reconcilePending(context: Context): List<ZipExtractionResult> {
-        val results = ArrayList<ZipExtractionResult>()
-        for (log in journalDir(context).listFiles().orEmpty()) {
+    /**
+     * Copy a finished local transfer's files into a new folder inside [treeUri].
+     * The originals are only read, so the transfer keeps seeding.
+     */
+    fun copyFinished(
+        context: Context,
+        sourceRoot: File,
+        files: List<LibraryCopyFile>,
+        label: String,
+        treeUri: Uri,
+        allowUnknownFreeSpace: Boolean,
+        cancelled: () -> Boolean
+    ): ZipExtractionResult {
+        val resolver = context.contentResolver
+        try {
+            resolver.takePersistableUriPermission(treeUri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+        } catch (_: SecurityException) { }
+        val operationId = java.util.UUID.randomUUID().toString().replace("-", "")
+        val log = File(copyJournalDir(context), "$operationId.log")
+        active += operationId
+        try {
+            val result = LibraryCopier.copy(
+                LibraryCopyRequest(sourceRoot, files, label, treeUri.toString(), allowUnknownFreeSpace),
+                SafZipExtractionTarget(resolver, treeUri), FileZipExtractionJournal(log), cancelled, operationId)
+            if (result.status != ZipExtractionStatus.NEEDS_ATTENTION) {
+                log.delete()
+                releaseIfUnused(context, treeUri)
+            }
+            return result
+        } finally {
+            active -= operationId
+        }
+    }
+
+    /** An interrupted operation's outcome; [copy] tells a library copy from an extraction. */
+    class Reconciled(val result: ZipExtractionResult, val copy: Boolean)
+
+    /** Resolve journals left by process death. Never re-runs an extraction or copy. */
+    fun reconcilePending(context: Context): List<Reconciled> {
+        val results = ArrayList<Reconciled>()
+        for ((log, copy) in journalDir(context).listFiles().orEmpty().map { it to false } +
+            copyJournalDir(context).listFiles().orEmpty().map { it to true }) {
             if (!journalName.matches(log.name) || !log.isFile ||
                 log.name.removeSuffix(".log") in active) continue
             val journal = FileZipExtractionJournal(log)
@@ -183,7 +227,7 @@ internal object LocalZipExtraction {
                 log.delete()
                 if (target != null) releaseIfUnused(context, target)
             }
-            results += result
+            results += Reconciled(result, copy)
         }
         return results
     }
@@ -191,7 +235,7 @@ internal object LocalZipExtraction {
     /** Drop our persisted tree grant once no unfinished journal still needs it. */
     private fun releaseIfUnused(context: Context, treeUri: Uri) {
         val wanted = treeUri.toString()
-        val stillNeeded = journalDir(context).listFiles().orEmpty().any { log ->
+        val stillNeeded = (journalDir(context).listFiles().orEmpty() + copyJournalDir(context).listFiles().orEmpty()).any { log ->
             journalName.matches(log.name) && FileZipExtractionJournal(log).read()
                 .firstOrNull { it.firstOrNull() == "BEGIN" }?.getOrNull(2) == wanted
         }
