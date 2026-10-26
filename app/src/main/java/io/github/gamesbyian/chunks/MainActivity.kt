@@ -335,7 +335,7 @@ private fun ChunksApp(sharedMagnet: String?) {
                     onAliasesChanged = { aliasRevision++ },
                     onBack = { section = Section.TRANSFERS }
                 )
-                Section.ORGANIZE -> OrganizeScreen(transfers, aliasScope)
+                Section.ORGANIZE -> OrganizeScreen(transfers, aliasScope, aliasStore, aliasRevision)
                 Section.SERVER -> ServerScreen(
                     version = version, displayedView = currentView,
                     requestedView = requestedView, onRequestedView = { requestedView = it },
@@ -668,15 +668,22 @@ private fun PlacesScreen(list: List<RemoteTransfer>, onUsePlace: (String) -> Uni
 }
 
 @Composable
-private fun OrganizeScreen(list: List<RemoteTransfer>, scope: String) {
+private fun OrganizeScreen(
+    list: List<RemoteTransfer>,
+    scope: String,
+    aliasStore: TransferAliasStore,
+    aliasRevision: Int
+) {
     val context = LocalContext.current
     val membershipStore = remember(context) { TransferCollectionStore(context) }
     var manualQuery by remember(scope) { mutableStateOf("") }
     var membershipRevision by remember(scope) { mutableStateOf(0) }
-    val manualMatches = remember(list, manualQuery) {
-        list.filter {
-            it.name.contains(manualQuery, ignoreCase = true) ||
-                it.hash.contains(manualQuery, ignoreCase = true)
+    // Reuse Transfers' one-alias-lookup-per-item search, preserving both
+    // Chunks display aliases and actual torrent names as searchable facts.
+    // Never use an alias to alter physical names or classifier input.
+    val manualMatches = remember(list, manualQuery, scope, aliasRevision) {
+        TransferCatalog.visible(list, manualQuery, TransferFilter.ALL, TransferOrder.NAME) {
+            if (scope.isBlank()) it.name else aliasStore.get(scope, it.hash) ?: it.name
         }.take(80)
     }
     // Counts apply only to the currently loaded rTorrent view. A transfer
@@ -724,7 +731,14 @@ private fun OrganizeScreen(list: List<RemoteTransfer>, scope: String) {
         }
         if (scope.isNotBlank()) {
             items(manualMatches, key = { "manual-edit-" + it.hash }) { transfer ->
-                TransferCollectionEditor(transfer, scope, membershipStore) {
+                val alias = aliasStore.get(scope, transfer.hash)
+                if (alias != null && alias != transfer.name) {
+                    Text("Original torrent title: " + transfer.name,
+                        style = MaterialTheme.typography.bodySmall)
+                }
+                TransferCollectionEditor(
+                    transfer.copy(name = alias ?: transfer.name), scope, membershipStore
+                ) {
                     membershipRevision++
                 }
             }
