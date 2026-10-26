@@ -33,6 +33,21 @@ internal class CollectionNameRegistry(context: Context) {
         return prefs.edit().putStringSet(key(scope), updated.toSet()).commit()
     }
 
+    /**
+     * Forget a reusable name, not any membership. Transfers carrying this
+     * Collection are unaffected and may still show the same name.
+     */
+    @Synchronized
+    fun forget(scope: String, name: String): Boolean {
+        val previous = names(scope)
+        if (previous.none { it.equals(name, ignoreCase = true) }) return false
+        val updated = previous.filterNot { it.equals(name, ignoreCase = true) }
+        val edit = prefs.edit()
+        if (updated.isEmpty()) edit.remove(key(scope))
+        else edit.putStringSet(key(scope), updated.toSet())
+        return edit.commit()
+    }
+
     private fun key(scope: String): String {
         require(scope.isNotBlank() && scope.length <= 8192) { "Invalid Collection scope" }
         val digest = MessageDigest.getInstance("SHA-256")
