@@ -16,6 +16,17 @@ class LocalInodeAccountingTest {
         assertFalse(account.outsideHardlinksPossible)
     }
 
+    @Test fun impossibleObservedHardlinksAreNotSilentlyCounted() {
+        val account = LocalInodeAccounting()
+        assertTrue(account.add(1, 10, 4096, 8, 2))
+        assertTrue(account.add(1, 10, 4096, 8, 2))
+        assertFalse("Three paths cannot refer to an inode with two links",
+            account.add(1, 10, 4096, 8, 2))
+        assertEquals(1, account.uniqueInodes)
+        assertEquals(4096L, account.allocatedBytes)
+        assertFalse(account.outsideHardlinksPossible)
+    }
+
     @Test fun sameInodeNumberOnOtherDeviceIsIndependentStorage() {
         val account = LocalInodeAccounting()
         assertTrue(account.add(1, 7, 1_000, 8, 1))
