@@ -242,4 +242,49 @@ class LocalTorrentEngineTest {
         assertFalse(engine.setDhtEnabled(false))
         assertFalse(engine.isDhtEnabled())
     }
+
+    @Test fun skippedFileIsNotDownloadedUntilSelected() {
+        val fixture = fixture()
+        val seeder = engine()
+        val seed = added(seeder.addStopped(fixture.torrent, fixture.root.parentFile))
+        seeder.resume(seed.infoHash)
+        waitFor { seeder.status(seed.infoHash)?.state == LocalTransferState.SEEDING }
+
+        val destination = temp.newFolder("selective")
+        val leecher = engine()
+        val leech = added(leecher.addStopped(fixture.torrent, destination,
+            listOf(InetSocketAddress("127.0.0.1", seeder.listenPort()))))
+        val files = requireNotNull(leecher.files(leech.infoHash))
+        assertEquals(2, files.size)
+        assertTrue(files.all { it.wanted && it.doneBytes == 0L })
+        val big = files.single { it.path.endsWith("episode.bin") }
+        assertEquals(1_300_000L, big.sizeBytes)
+        assertEquals(LocalCommandOutcome.VERIFIED, leecher.setFileWanted(leech.infoHash, big.index, false))
+        assertFalse(requireNotNull(leecher.files(leech.infoHash)).single { it.index == big.index }.wanted)
+
+        leecher.resume(leech.infoHash)
+        waitFor {
+            leecher.files(leech.infoHash)?.single { it.path.endsWith("notes.txt") }?.let { it.doneBytes == it.sizeBytes } == true &&
+                leecher.status(leech.infoHash)?.state == LocalTransferState.FINISHED
+        }
+        // Progress counts verified pieces; the disk thread may still be flushing them.
+        val notes = File(destination, "Chunks public fixture/extras/notes.txt")
+        waitFor { notes.isFile && notes.readBytes().contentEquals(fixture.files.getValue("extras/notes.txt")) }
+        val skipped = requireNotNull(leecher.files(leech.infoHash)).single { it.index == big.index }
+        assertTrue("Skipped file must not be fully downloaded", skipped.doneBytes < skipped.sizeBytes)
+
+        assertEquals(LocalCommandOutcome.VERIFIED, leecher.setFileWanted(leech.infoHash, big.index, true))
+        assertTrue(requireNotNull(leecher.files(leech.infoHash)).single { it.index == big.index }.wanted)
+
+        // Kept partial data is completed by a later session (in-session resumption after
+        // "finished" depends on peer rediscovery, which this tracker-less rig lacks).
+        leecher.close()
+        val resumed = engine()
+        added(resumed.addStopped(fixture.torrent, destination, listOf(InetSocketAddress("127.0.0.1", seeder.listenPort()))))
+        resumed.resume(leech.infoHash)
+        waitFor { resumed.status(leech.infoHash)?.progressPpm == 1_000_000 }
+        assertArrayEquals(fixture.files.getValue("episode.bin"),
+            File(destination, "Chunks public fixture/episode.bin").readBytes())
+        assertEquals(LocalCommandOutcome.NOT_FOUND, leecher.setFileWanted("c".repeat(40), 0, true))
+    }
 }
