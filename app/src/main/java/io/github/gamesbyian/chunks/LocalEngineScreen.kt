@@ -125,6 +125,7 @@ private class PendingLocalAdd(val preview: TorrentMetainfoPreview, val bytes: By
 internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val collectionStore = remember(context) { TransferCollectionStore(context) }
     var transfers by remember { mutableStateOf<List<LocalTransferStatus>>(emptyList()) }
     var filesFor by remember { mutableStateOf<String?>(null) }
     var files by remember { mutableStateOf<List<LocalTransferFile>?>(null) }
@@ -309,6 +310,13 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
                         busy = false
                     }
                 })
+            TransferCollectionEditor(
+                infoHash = transfer.infoHash,
+                displayName = transfer.name,
+                scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
+                store = collectionStore,
+                onMembershipChanged = {}
+            )
             if (transfer.metadataKnown && transfer.progressPpm == 1_000_000) LocalLibraryCopyPanel(transfer)
         }
         LocalZipInterruptedExtractions()

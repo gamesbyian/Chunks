@@ -13,6 +13,11 @@ import java.util.Locale
  * Collection names are user-entered text, never inferred/saved automatically.
  */
 internal class TransferCollectionStore(context: Context) {
+    companion object {
+        /** Separate from every URL+account scope; no engine side effects. */
+        const val LOCAL_ENGINE_SCOPE = "\u0001chunks-local-private-v1"
+    }
+
     private val prefs = context.applicationContext.getSharedPreferences(
         "chunks_collection_memberships_v1", Context.MODE_PRIVATE
     )

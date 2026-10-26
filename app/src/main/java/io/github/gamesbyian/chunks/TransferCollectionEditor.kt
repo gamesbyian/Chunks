@@ -33,19 +33,34 @@ internal fun TransferCollectionEditor(
     store: TransferCollectionStore,
     onMembershipChanged: () -> Unit
 ) {
-    var expanded by remember(scope, transfer.hash) { mutableStateOf(false) }
-    var draft by remember(scope, transfer.hash) { mutableStateOf("") }
-    var memberships by remember(scope, transfer.hash) {
-        mutableStateOf(store.forTransfer(scope, transfer.hash))
+    TransferCollectionEditor(transfer.hash, transfer.name, scope, store, onMembershipChanged)
+}
+
+/**
+ * Shared remote/local Collection editor. Local transfers use a distinct
+ * app-owned identity namespace, never the rTorrent endpoint scope.
+ */
+@Composable
+internal fun TransferCollectionEditor(
+    infoHash: String,
+    displayName: String,
+    scope: String,
+    store: TransferCollectionStore,
+    onMembershipChanged: () -> Unit
+) {
+    var expanded by remember(scope, infoHash) { mutableStateOf(false) }
+    var draft by remember(scope, infoHash) { mutableStateOf("") }
+    var memberships by remember(scope, infoHash) {
+        mutableStateOf(store.forTransfer(scope, infoHash))
     }
-    var message by remember(scope, transfer.hash) { mutableStateOf<String?>(null) }
+    var message by remember(scope, infoHash) { mutableStateOf<String?>(null) }
 
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text(transfer.name, fontWeight = FontWeight.SemiBold,
+            Text(displayName, fontWeight = FontWeight.SemiBold,
                 style = MaterialTheme.typography.bodyLarge)
             Text(
                 if (memberships.isEmpty()) "No manual collections"
@@ -74,9 +89,9 @@ internal fun TransferCollectionEditor(
                     enabled = CollectionMembershipRules.cleanName(draft) != null &&
                         memberships.size < CollectionMembershipRules.MAX_PER_TRANSFER,
                     onClick = {
-                        val saved = store.add(scope, transfer.hash, draft)
+                        val saved = store.add(scope, infoHash, draft)
                         if (saved) {
-                            memberships = store.forTransfer(scope, transfer.hash)
+                            memberships = store.forTransfer(scope, infoHash)
                             draft = ""
                             message = "Membership saved on this phone. Sharing is unchanged."
                             onMembershipChanged()
@@ -89,8 +104,8 @@ internal fun TransferCollectionEditor(
                 for (name in memberships) {
                     OutlinedButton(
                         onClick = {
-                            if (store.remove(scope, transfer.hash, name)) {
-                                memberships = store.forTransfer(scope, transfer.hash)
+                            if (store.remove(scope, infoHash, name)) {
+                                memberships = store.forTransfer(scope, infoHash)
                                 message = "Collection membership removed. Torrent files are unchanged."
                                 onMembershipChanged()
                             } else {
