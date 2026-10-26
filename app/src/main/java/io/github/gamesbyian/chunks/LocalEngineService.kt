@@ -13,6 +13,7 @@ import android.os.IBinder
 import android.os.Looper
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.RejectedExecutionException
 
 /**
  * Keeps the in-process local engine alive while the user has transfers running,
@@ -42,10 +43,28 @@ class LocalEngineService : Service() {
 
     private val handler = Handler(Looper.getMainLooper())
     private val worker: ExecutorService = Executors.newSingleThreadExecutor()
+    // Do not enqueue a new native/libtorrent read while the previous one is
+    // still running. A blocked read must not accumulate hours of stale polls.
+    private val pollGate = LocalServicePollGate()
     @Volatile private var stopping = false
     private val tick = object : Runnable {
         override fun run() {
-            worker.execute { refresh() }
+            if (stopping) return
+            if (pollGate.tryBegin()) {
+                try {
+                    worker.execute {
+                        try {
+                            refresh()
+                        } finally {
+                            pollGate.finish()
+                        }
+                    }
+                } catch (_: RejectedExecutionException) {
+                    // onDestroy may have shut down the worker between the
+                    // scheduled callback and submission.
+                    pollGate.finish()
+                }
+            }
             if (!stopping) handler.postDelayed(this, TICK_MS)
         }
     }
