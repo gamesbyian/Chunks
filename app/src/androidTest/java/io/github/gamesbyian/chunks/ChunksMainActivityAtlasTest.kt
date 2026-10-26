@@ -8,6 +8,7 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.security.NetworkSecurityPolicy
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
@@ -19,6 +20,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.hasSetTextAction
@@ -252,7 +254,13 @@ class ChunksMainActivityAtlasTest {
         rule.onNodeWithText("1 shown").assertExists()
         // An actual installed-app queue action, not only an isolated editor component.
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Change list name"))
-        rule.onAllNodesWithText("Change list name").onFirst().performClick()
+        // Scrolling can leave the button at the viewport edge, where a centre tap
+        // misses; invoke its real click action and wait for the editor instead.
+        rule.onAllNodesWithText("Change list name").onFirst().performSemanticsAction(SemanticsActions.OnClick)
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithText("Extracted show title, season and episode from filename")
+                .fetchSemanticsNodes().isNotEmpty()
+        }
         rule.onNodeWithText("Extracted show title, season and episode from filename").assertExists()
         // A transfer's expanded editor can be taller than the viewport.
         // Scrolling the LazyColumn to its *item* is not enough to make a
