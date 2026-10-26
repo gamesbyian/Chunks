@@ -46,8 +46,12 @@ object LibraryCopier {
         operationId: String = UUID.randomUUID().toString().replace("-", "")
     ): ZipExtractionResult {
         require(operationId.matches(Regex("^[a-f0-9]{8,64}$"))) { "Invalid operation id" }
+        // Unsigned-looking provider lengths can overflow a signed Long in
+        // aggregate, even when each individual file length is nonnegative.
+        // Never create a destination folder with a wrapped space forecast.
+        val expected = LibraryCopyByteTotals.checked(request.files)
+            ?: return blocked("Total file size is invalid or exceeds the supported size")
         validate(request)?.let { return blocked(it) }
-        val expected = request.files.sumOf { it.sizeBytes }
 
         val free = try { target.availableBytes() } catch (_: Exception) { null }
         if (free == null && !request.allowUnknownFreeSpace) return blocked("Destination free space is unknown")
