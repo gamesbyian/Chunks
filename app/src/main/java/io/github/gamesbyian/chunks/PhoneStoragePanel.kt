@@ -189,7 +189,9 @@ internal fun PhoneStoragePanel(
                     modifier = Modifier.heightIn(min = 48.dp)
                 ) { Text("Clear advisory limit") }
             }
-            val assessment = LocalCapInput.assessment(savedCap, folderUsage, free)
+            // The OS sample above is filesDir (internal); app Downloads may be on
+            // another mount. Never combine those free bytes with this limit.
+            val assessment = LocalCapInput.assessment(savedCap, folderUsage, null)
             val currentCap = savedCap
             if (currentCap != null) {
                 Text("Current advisory limit: " + Units.bytes(currentCap))
