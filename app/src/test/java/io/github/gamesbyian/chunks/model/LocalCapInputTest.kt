@@ -18,7 +18,6 @@ class LocalCapInputTest {
             "1e9", "1,000", "1.2345", "999999999999", "1 GiB")) {
             assertNull("Unexpected input accepted: $value", LocalCapInput.parseGiB(value))
         }
-        assertEquals(Long.MAX_VALUE, Long.MAX_VALUE)
     }
 
     @Test fun completeObservationWarnsButPartialAndMissingSurveysAreUnknown() {
