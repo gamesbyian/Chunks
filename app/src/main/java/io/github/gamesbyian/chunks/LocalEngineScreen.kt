@@ -310,6 +310,13 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
                         busy = false
                     }
                 })
+            TransferCollectionEditor(
+                infoHash = transfer.infoHash,
+                displayName = transfer.name,
+                scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
+                store = collectionStore,
+                onMembershipChanged = {}
+            )
             if (transfer.metadataKnown && transfer.progressPpm == 1_000_000) LocalLibraryCopyPanel(transfer)
         }
         LocalZipInterruptedExtractions()
