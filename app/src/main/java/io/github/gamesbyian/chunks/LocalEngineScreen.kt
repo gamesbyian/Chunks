@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
@@ -36,14 +37,18 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.engine.LocalAddResult
 import io.github.gamesbyian.chunks.engine.LocalCommandOutcome
 import io.github.gamesbyian.chunks.engine.LocalEngineConfig
+import io.github.gamesbyian.chunks.engine.LocalRateLimits
 import io.github.gamesbyian.chunks.engine.LocalTorrentEngine
 import io.github.gamesbyian.chunks.engine.LocalTransferState
 import io.github.gamesbyian.chunks.engine.LocalTransferFile
@@ -76,6 +81,7 @@ internal object LocalEngineHolder {
     ).also {
         it.start()
         if (dhtPreferred(context)) it.setDhtEnabled(true)
+        it.setRateLimits(rateLimitsPreferred(context))
         engine = it
     }
 
@@ -87,6 +93,18 @@ internal object LocalEngineHolder {
     fun setDhtPreferred(context: Context, enabled: Boolean) {
         prefs(context).edit().putBoolean("dht", enabled).apply()
         engine?.setDhtEnabled(enabled)
+    }
+
+    fun rateLimitsPreferred(context: Context) = prefs(context).let {
+        LocalRateLimits(it.getInt("download-limit", 0).coerceAtLeast(0), it.getInt("upload-limit", 0).coerceAtLeast(0))
+    }
+
+    /** Persist speed limits and apply them to a running engine; returns what the engine reads back. */
+    @Synchronized
+    fun setRateLimitsPreferred(context: Context, limits: LocalRateLimits): LocalRateLimits? {
+        prefs(context).edit().putInt("download-limit", limits.downloadBytesPerSecond)
+            .putInt("upload-limit", limits.uploadBytesPerSecond).apply()
+        return engine?.setRateLimits(limits)
     }
 
     /** Start only if an earlier session left transfers to restore. */
@@ -292,6 +310,7 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
                     }
                 })
         }
+        LocalSpeedLimits()
     }
 }
 
@@ -402,4 +421,56 @@ internal fun LocalFileSelection(files: List<LocalTransferFile>?, busy: Boolean, 
         }
     }
     if (files.size > 200) Text("And " + (files.size - 200) + " more files", style = MaterialTheme.typography.bodySmall)
+}
+
+/** KiB/s text to bytes per second; blank or 0 is unlimited, anything else invalid is null. */
+internal fun parseSpeedLimit(text: String): Int? {
+    val trimmed = text.trim()
+    if (trimmed.isEmpty()) return 0
+    val kib = trimmed.toIntOrNull() ?: return null
+    return if (kib in 0..(Int.MAX_VALUE / 1024)) kib * 1024 else null
+}
+
+private fun speedText(bytesPerSecond: Int) = if (bytesPerSecond == 0) "" else (bytesPerSecond / 1024).toString()
+
+@Composable
+private fun LocalSpeedLimits() {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val saved = remember { LocalEngineHolder.rateLimitsPreferred(context) }
+    var download by remember { mutableStateOf(speedText(saved.downloadBytesPerSecond)) }
+    var upload by remember { mutableStateOf(speedText(saved.uploadBytesPerSecond)) }
+    var result by remember { mutableStateOf<String?>(null) }
+    val downloadLimit = parseSpeedLimit(download)
+    val uploadLimit = parseSpeedLimit(upload)
+    Text("Speed limits", fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
+    Text("In KiB per second; leave blank for unlimited. Devices on your own network are not limited.",
+        style = MaterialTheme.typography.bodySmall)
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        OutlinedTextField(value = download, onValueChange = { download = it; result = null },
+            label = { Text("Download") }, singleLine = true, isError = downloadLimit == null,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.weight(1f))
+        OutlinedTextField(value = upload, onValueChange = { upload = it; result = null },
+            label = { Text("Upload") }, singleLine = true, isError = uploadLimit == null,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            modifier = Modifier.weight(1f))
+    }
+    OutlinedButton(onClick = {
+        val wanted = LocalRateLimits(downloadLimit ?: return@OutlinedButton, uploadLimit ?: return@OutlinedButton)
+        scope.launch {
+            val applied = withContext(Dispatchers.IO) {
+                try { Result.success(LocalEngineHolder.setRateLimitsPreferred(context, wanted)) }
+                catch (e: Exception) { Result.failure(e) }
+            }
+            result = when {
+                applied.isFailure -> "Saved, but the running engine did not accept the limits."
+                applied.getOrNull() == null -> "Saved. Applies when the engine starts."
+                applied.getOrNull() == wanted -> "Applied."
+                else -> "Saved, but the engine reports different limits."
+            }
+        }
+    }, enabled = downloadLimit != null && uploadLimit != null,
+        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Save speed limits") }
+    result?.let { Text(it, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }) }
 }

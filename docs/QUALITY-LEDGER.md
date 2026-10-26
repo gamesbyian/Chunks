@@ -239,3 +239,17 @@ Following the Seedhost finding that tracker-less torrents are silently discarded
 [#144](https://github.com/gamesbyian/Chunks/pull/144) merged `bc7c97e07ee4e070046a1b62ac7c8e292b07e40e`; exact head `11f5c0ba` passed Android/JVM [40265976021](https://github.com/gamesbyian/Chunks/actions/runs/40265976021) and API35 [40265975993](https://github.com/gamesbyian/Chunks/actions/runs/40265975993).
 
 `LocalTorrentEngine.files()` lists user files with progress and selection, hiding BEP 47 pad files that hybrid torrents contain (the first test saw 4 entries for 2 real files). `setFileWanted()` sets libtorrent priority IGNORE/DEFAULT and is `VERIFIED` only after readback. JVM loopback test: a skipped 1.3 MB file is not completed while the other file downloads byte-exact; re-selecting it reads back as wanted; a later session completes the kept partial data byte-exact. Finding: in this tracker-less rig, once the leecher reached "finished" it never regained its peer after re-selection within the same session, even with explicit reconnects and a seeder restart. In-session resumption after re-selecting a file is therefore **unproven** (real swarms re-announce through trackers and DHT). The test also showed `fileProgress` can report a file complete before libtorrent's disk thread has written it, so tests wait for the bytes on disk. The on-phone card gets a Files toggle with 48dp checkbox rows ("Untick a file to skip downloading it. Already downloaded parts are kept.").
+
+## October 26 local engine speed limits (pending CI)
+
+`LocalTorrentEngine.setRateLimits()` applies session-wide download/upload limits (bytes/s, 0 unlimited) and returns what libtorrent reads back; `LocalRateLimits` refuses negatives. JVM tests: limits start unlimited, read back exactly and reset. A real loopback transfer with the seeder's upload capped at 128 KiB/s took longer than 60 % of the theoretical ≈10 s; with the same test but libtorrent's default peer classes the transfer finished too fast and the test **failed**, confirming that libtorrent exempts local-network and loopback peers by default. `LocalEngineConfig.rateLimitLocalPeers` (tests only) moves every address into the global class. The on-phone screen gains a "Speed limits" section (KiB/s, blank = unlimited, persisted, applied on engine start) that states local-network devices are not limited. No Internet-swarm or physical-device measurement.
+
+## October 26 Seedhost magnet stopped Add
+
+[#145](https://github.com/gamesbyian/Chunks/pull/145) merged `2fb68926cb3010b2f163b2b69f5bed4df7200b3e` (head `e699cb36` passed Android/JVM). Manual protected run [40266854968](https://github.com/gamesbyian/Chunks/actions/runs/40266854968) on that SHA with `apply_mutation=true`. A synthetic magnet (identity SHA-1 of `chunks-acceptance-magnet-40266854968`, loopback `tr=`) produced:
+- `load.verbose` outcome **VerifiedStopped**;
+- listed with the exact hash, `started=false`, directory equal to the chosen base;
+- exact-hash session erase **VerifiedRemoved**;
+- inventory identity set unchanged (437).
+
+The same run repeated the `.torrent` round trip, all Verified. Metadata retrieval from a real swarm, HTTPS from a phone and the app UI path are separate gates.

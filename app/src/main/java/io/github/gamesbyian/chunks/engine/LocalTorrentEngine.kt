@@ -25,9 +25,11 @@ import org.libtorrent4j.TcpEndpoint
 import org.libtorrent4j.TorrentHandle
 import org.libtorrent4j.TorrentInfo
 import org.libtorrent4j.TorrentStatus
+import org.libtorrent4j.swig.address
 import org.libtorrent4j.swig.entry
 import org.libtorrent4j.swig.error_code
 import org.libtorrent4j.swig.libtorrent
+import org.libtorrent4j.swig.ip_filter
 import org.libtorrent4j.swig.settings_pack
 import org.libtorrent4j.swig.torrent_flags_t
 
@@ -52,7 +54,12 @@ data class LocalEngineConfig(
      * App-private directory for per-transfer resume files. When set, transfers
      * survive engine restart and process death; restored transfers come back stopped.
      */
-    val stateDirectory: File? = null
+    val stateDirectory: File? = null,
+    /**
+     * Apply speed limits to local-network and loopback peers too. libtorrent
+     * exempts them by default; tests use this to observe throttling over loopback.
+     */
+    val rateLimitLocalPeers: Boolean = false
 )
 
 enum class LocalTransferState { CHECKING, DOWNLOADING_METADATA, DOWNLOADING, FINISHED, SEEDING, UNKNOWN }
@@ -83,6 +90,13 @@ data class LocalTransferFile(
     val doneBytes: Long,
     val wanted: Boolean
 )
+
+/** Bytes per second; 0 is unlimited. */
+data class LocalRateLimits(val downloadBytesPerSecond: Int = 0, val uploadBytesPerSecond: Int = 0) {
+    init {
+        require(downloadBytesPerSecond >= 0 && uploadBytesPerSecond >= 0) { "Speed limits cannot be negative" }
+    }
+}
 
 /** libtorrent applies pause/resume asynchronously; only a matching readback is VERIFIED. */
 enum class LocalCommandOutcome { VERIFIED, UNCERTAIN, NOT_FOUND }
@@ -146,6 +160,15 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             config.allowMultipleConnectionsPerIp)
         session.addListener(engineListener)
         session.start(SessionParams(pack))
+        if (config.rateLimitLocalPeers) {
+            // Every address in the global peer class only, dropping the exempt local class.
+            val filter = ip_filter()
+            val none = error_code()
+            filter.add_rule(address.from_string("0.0.0.0", none), address.from_string("255.255.255.255", none), 1)
+            filter.add_rule(address.from_string("::", none),
+                address.from_string("ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff", none), 1)
+            session.swig().set_peer_class_filter(filter)
+        }
         started = true
         config.stateDirectory?.let { directory ->
             require(directory.isDirectory || directory.mkdirs()) { "Engine state directory is unavailable" }
@@ -170,6 +193,27 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     }
 
     fun isDhtEnabled(): Boolean = started && session.isDhtRunning
+
+    /**
+     * Session-wide speed limits in bytes per second; 0 means unlimited. Returns
+     * the limits libtorrent reads back. libtorrent's default peer classes leave
+     * local-network peers unthrottled unless [LocalEngineConfig.rateLimitLocalPeers].
+     */
+    @Synchronized
+    fun setRateLimits(limits: LocalRateLimits): LocalRateLimits {
+        check(started) { "Engine not started" }
+        val pack = SettingsPack()
+        pack.downloadRateLimit(limits.downloadBytesPerSecond)
+        pack.uploadRateLimit(limits.uploadBytesPerSecond)
+        session.applySettings(pack)
+        return rateLimits()
+    }
+
+    fun rateLimits(): LocalRateLimits {
+        check(started) { "Engine not started" }
+        val current = session.settings()
+        return LocalRateLimits(current.downloadRateLimit(), current.uploadRateLimit())
+    }
 
     /** The bound TCP listen port, or 0 if the session is not listening. */
     fun listenPort(): Int = session.swig()?.listen_port() ?: 0
