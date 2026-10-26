@@ -20,6 +20,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.model.CollectionMembershipRules
+import io.github.gamesbyian.chunks.model.CollectionChoicePlanner
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
 
 /**
@@ -31,9 +32,11 @@ internal fun TransferCollectionEditor(
     transfer: RemoteTransfer,
     scope: String,
     store: TransferCollectionStore,
+    availableCollections: List<String> = emptyList(),
     onMembershipChanged: () -> Unit
 ) {
-    TransferCollectionEditor(transfer.hash, transfer.name, scope, store, onMembershipChanged)
+    TransferCollectionEditor(transfer.hash, transfer.name, scope, store,
+        availableCollections, onMembershipChanged)
 }
 
 /**
@@ -46,6 +49,7 @@ internal fun TransferCollectionEditor(
     displayName: String,
     scope: String,
     store: TransferCollectionStore,
+    availableCollections: List<String> = emptyList(),
     onMembershipChanged: () -> Unit
 ) {
     var expanded by remember(scope, infoHash) { mutableStateOf(false) }
@@ -78,6 +82,25 @@ internal fun TransferCollectionEditor(
                     "A transfer can belong to several collections. These names stay on this phone; no folders or torrent data change.",
                     style = MaterialTheme.typography.bodySmall
                 )
+                val choices = CollectionChoicePlanner.unassigned(availableCollections, memberships)
+                if (choices.isNotEmpty()) {
+                    Text("Add an existing collection", style = MaterialTheme.typography.bodyMedium)
+                    for (name in choices) {
+                        OutlinedButton(
+                            onClick = {
+                                if (store.add(scope, infoHash, name)) {
+                                    memberships = store.forTransfer(scope, infoHash)
+                                    message = "Added to $name on this phone. Sharing is unchanged."
+                                    onMembershipChanged()
+                                } else {
+                                    message = "Collection could not be added. Nothing changed."
+                                }
+                            },
+                            enabled = memberships.size < CollectionMembershipRules.MAX_PER_TRANSFER,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                        ) { Text("Add to $name") }
+                    }
+                }
                 OutlinedTextField(
                     value = draft,
                     onValueChange = { draft = it; message = null },
