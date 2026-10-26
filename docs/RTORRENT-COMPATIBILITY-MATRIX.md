@@ -32,3 +32,5 @@ A single `d.multicall2` reply for roughly 6k+ transfers exceeds Chunks' 4 MiB tr
 ## Owner development Seedhost (observed 2026-10-26)
 
 rTorrent 0.9.8 behind ruTorrent HTTP-RPC over HTTPS with challenged authentication. Read-only Kotlin adapter evidence in [run 40247072785](https://github.com/gamesbyian/Chunks/actions/runs/40247072785): full 436-transfer main view, paged listing parity, `f.multicall` file listings, all write methods advertised. `directory.default` is empty on this host, so Chunks cannot suggest a server default Place from it.
+
+Write behaviour on this host (2026-10-26): `load.raw_verbose` (three command forms), `load.raw`, `load.verbose` with a magnet, and ruTorrent's `php/addtorrent.php` all acknowledge and then **drop** new transfers. A host `1_prepare` insert hook is present. Chunks reports all of these as unverified (`PendingVerification`) and never retries. Read-only operations are fully compatible.
