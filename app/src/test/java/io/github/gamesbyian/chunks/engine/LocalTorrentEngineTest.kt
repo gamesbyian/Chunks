@@ -234,6 +234,44 @@ class LocalTorrentEngineTest {
         assertTrue(engine.list().isEmpty())
     }
 
+    @Test fun speedLimitsStartUnlimitedAndReadBack() {
+        val engine = engine()
+        assertEquals(LocalRateLimits(0, 0), engine.rateLimits())
+        val limited = LocalRateLimits(downloadBytesPerSecond = 512 * 1024, uploadBytesPerSecond = 64 * 1024)
+        assertEquals(limited, engine.setRateLimits(limited))
+        assertEquals(limited, engine.rateLimits())
+        assertEquals(LocalRateLimits(), engine.setRateLimits(LocalRateLimits()))
+        try {
+            LocalRateLimits(uploadBytesPerSecond = -1)
+            fail("expected refusal")
+        } catch (_: IllegalArgumentException) { }
+    }
+
+    @Test fun uploadLimitThrottlesARealTransfer() {
+        val fixture = fixture()
+        val seeder = LocalTorrentEngine(LocalEngineConfig(listenInterfaces = "127.0.0.1:0",
+            allowMultipleConnectionsPerIp = true, rateLimitLocalPeers = true)).also { it.start(); engines += it }
+        val limit = 128 * 1024
+        assertEquals(limit, seeder.setRateLimits(LocalRateLimits(uploadBytesPerSecond = limit)).uploadBytesPerSecond)
+        val seed = added(seeder.addStopped(fixture.torrent, fixture.root.parentFile))
+        seeder.resume(seed.infoHash)
+        waitFor { seeder.status(seed.infoHash)?.state == LocalTransferState.SEEDING }
+
+        val leecher = engine()
+        val destination = temp.newFolder("throttled")
+        val leech = added(leecher.addStopped(fixture.torrent, destination,
+            listOf(InetSocketAddress("127.0.0.1", seeder.listenPort()))))
+        val started = System.nanoTime()
+        leecher.resume(leech.infoHash)
+        waitFor(120_000) { leecher.status(leech.infoHash)?.progressPpm == 1_000_000 }
+        val seconds = (System.nanoTime() - started) / 1e9
+        val total = fixture.files.values.sumOf { it.size.toLong() }
+        // ~1.3 MB at 128 KiB/s is about 10 s; unthrottled loopback takes well under 2 s.
+        assertTrue("finished in $seconds s", seconds > total / limit.toDouble() * 0.6)
+        assertArrayEquals(fixture.files.getValue("episode.bin"),
+            File(destination, "Chunks public fixture/episode.bin").readBytes())
+    }
+
     @Test fun dhtIsOffByDefaultAndTogglesOnlyOnRequest() {
         val engine = engine()
         assertFalse(engine.isDhtEnabled())
