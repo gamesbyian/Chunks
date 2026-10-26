@@ -25,3 +25,7 @@ Normal branch protection should only require consistently present checks; never 
 ## Retained manual real-rTorrent experiment
 
 `disposable-rtorrent-probe.yml` is manual-only after the one-time successful real rTorrent 0.9.8 run [40060755245](https://github.com/gamesbyian/Chunks/actions/runs/40060755245). It installs rTorrent and nginx in an ephemeral runner and runs a strictly read-only Kotlin smoke test. Do not reintroduce PR/push fanout without showing a new durable compatibility gate and an appropriate runner budget. The normal Android PR check remains the sole automatic job for app source changes.
+
+## Modern compatibility gate exception (October 26, 2026)
+
+PR #150 temporarily uses a **path-scoped** pull-request trigger for `disposable-rtorrent-probe.yml` itself to obtain evidence on materially different Arch Linux rTorrent 0.16.x. Its legacy and modern tests pass on exact source `2b9d2c3e6291c95fa260bdaaf634527d14ba6186` ([40368534273](https://github.com/gamesbyian/Chunks/actions/runs/40368534273)). It is **not** a general automatic app-source fan-out; no secrets, user media or hosted server is involved. Alpine 0.15.2 remains excluded and tracked in #151 after repeated HTTP 502 SCGI failures.
