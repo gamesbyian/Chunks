@@ -1,8 +1,20 @@
 # Chunks evidence and release gate ledger
 
-Updated 2026-10-25. This ledger alone records proven gates; GitHub issues track work and WORK-QUEUE.md tracks priorities. Exact CI SHA matters. Mock/fixtures cannot prove server or handset functionality.
+Updated 2026-10-26. This ledger alone records proven gates; GitHub issues track work and WORK-QUEUE.md tracks priorities. Exact CI SHA matters. Mock/fixtures cannot prove server or handset functionality.
 
-## Authoritative current acceptance summary (2026-10-25)
+## Current cross-cutting acceptance checkpoint (October 26, 2026)
+
+| Gate | Proven exact-head evidence | Explicit remaining gap |
+|---|---|---|
+| Protected real Seedhost read/write | Actual Kotlin adapter read a 437-transfer rTorrent 0.9.8 instance and verified stopped Add, duplicate refusal, priority off/restore, Start/Stop and exact session erase in [40254914585](https://github.com/gamesbyian/Chunks/actions/runs/40254914585); tracker-bearing ruTorrent upload route independently verified [40271734379](https://github.com/gamesbyian/Chunks/actions/runs/40271734379). | Android handset-to-Seedhost end-to-end journey, unbounded hosted mutations or unrelated servers. |
+| Legacy versus modern real rTorrent | Disposable 0.9.8 and modern Arch 0.16.x exact-target read/mutation suites passed [40368534273](https://github.com/gamesbyian/Chunks/actions/runs/40368534273). | Alpine 0.15.2 SCGI upstream resets (issue #151) remain a negative result, not accepted support. |
+| Automatic compatibility regression gate | #153 merged `db438290ed43c4eea2ab98a4816ce445cba2600e`. Exact head `ecb029e7ecdd9eff7d5bc5c940da404303f1ae5c` passed legacy/modern disposable jobs [40372755722](https://github.com/gamesbyian/Chunks/actions/runs/40372755722). Trigger is path-scoped to workflow, adapter, read-only and mutation tests. | No automatic live Seedhost or arbitrary app edit fan-out; broad coverage would violate lean CI. |
+| Local background status-read failure | #154 merged `79aef79664c6f0c2364145808aa75b4d2e42f211`. Exact head `e5f14368ef634e71c749ebc6d27f7cf0b7d1efaa` passed [Android/JVM 40389867035](https://github.com/gamesbyian/Chunks/actions/runs/40389867035). On a failed local engine inventory read the foreground service keeps checking rather than declaring idle; successful empty/all-stopped read still permits self-stop. | No injected Android service read exception, on-device six-hour timeout, screen-off/Doze/OEM background acceptance. |
+| Open integration candidates | [#155](https://github.com/gamesbyian/Chunks/pull/155) and [#156](https://github.com/gamesbyian/Chunks/pull/156) are under review and **not accepted** until exact-head CI and merge. | File selection beyond 200 and real on-device Chunks-folder usage must not be reported as delivered until verified. |
+
+Rows in the historical summary below record what was still missing **when each older PR was tested**; later dated evidence above may close individual gaps. Do not interpret an old row's "unproven" cell as an override of newer, exact-head results.
+
+## Historical per-feature acceptance summary (snapshot October 25; later proof may supersede gaps)
 
 | Capability | Exact observed receipt | Still unproven |
 |---|---|---|
