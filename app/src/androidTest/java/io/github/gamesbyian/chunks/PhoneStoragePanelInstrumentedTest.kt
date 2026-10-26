@@ -104,6 +104,38 @@ class PhoneStoragePanelInstrumentedTest {
         rule.onNodeWithText("Partial survey only:", substring = true).assertExists()
     }
 
+    @Test fun allocatedBlockEstimateIsSeparateFromLogicalCapAndNeverPromisesReclaim() {
+        val reads = AtomicInteger(0)
+        val allocation: (Context) -> LocalAllocatedInventory = {
+            if (reads.getAndIncrement() == 0)
+                LocalAllocatedInventory(4096, 8192, 2, 1, true, true)
+            else LocalAllocatedInventory(4096, 8192, 2, 1, false, true)
+        }
+        rule.setContent {
+            MaterialTheme {
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                    PhoneStoragePanel(
+                        readSpace = { DeviceSpaceSnapshot(20_000, 10_000, false) },
+                        readFolder = { LocalFolderInventory(8192, 2, true) },
+                        readAllocated = allocation
+                    )
+                }
+            }
+        }
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithText("4.0 KiB of filesystem blocks", substring = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithText("Some files may have hardlinks outside this folder.", substring = true)
+            .assertExists()
+        rule.onNodeWithText("not guaranteed space freed by cleanup", substring = true).assertExists()
+        rule.onNodeWithText("Refresh phone space").performScrollTo().performClick()
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithText("Allocated usage unavailable:", substring = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
     @Test fun platformProbeReadsNoFilesOrPrivateTorrentInventory() {
         val report = DeviceSpaceProbe.read(InstrumentationRegistry.getInstrumentation().targetContext)
         assertTrue(report.totalBytes == null || report.totalBytes > 0)
