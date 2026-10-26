@@ -19,6 +19,36 @@ import org.junit.runner.RunWith
 class TransferCollectionEditorInstrumentedTest {
     @get:Rule val rule = createAndroidComposeRule<ComponentActivity>()
 
+    @Test fun reusesAnExistingCollectionByExplicitOneTapWithoutNetworkSideEffects() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val store = TransferCollectionStore(context)
+        val scope = "https://test.invalid/RPC2\u0000quick-collection-choice-test"
+        val hash = "E".repeat(40)
+        val knownHash = "F".repeat(40)
+        val transfer = RemoteTransfer(hash, "Untouched.torrent.name", 100L, 70L, false, "/original/path")
+        try {
+            store.add(scope, knownHash, "Star Trek")
+            store.remove(scope, hash, "Star Trek")
+            rule.setContent {
+                MaterialTheme {
+                    TransferCollectionEditor(transfer, scope, store,
+                        availableCollections = listOf("Star Trek", "STAR TREK")) {}
+                }
+            }
+            rule.onNodeWithText("Edit collections").performClick()
+            rule.onNodeWithText("Add to Star Trek").performClick()
+            rule.waitForIdle()
+            assertEquals(listOf("Star Trek"), TransferCollectionStore(context).forTransfer(scope, hash))
+            assertEquals("Untouched.torrent.name", transfer.name)
+            assertEquals("/original/path", transfer.directory)
+            rule.onNodeWithText("Remove from Star Trek").performClick()
+            assertEquals(emptyList<String>(), store.forTransfer(scope, hash))
+        } finally {
+            store.remove(scope, hash, "Star Trek")
+            store.remove(scope, knownHash, "Star Trek")
+        }
+    }
+
     @Test fun phoneEngineUsesAnIndependentCollectionNamespace() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val store = TransferCollectionStore(context)
