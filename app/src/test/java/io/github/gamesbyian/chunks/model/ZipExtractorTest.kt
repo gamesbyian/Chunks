@@ -23,6 +23,7 @@ class ZipExtractorTest {
         var free: Long? = Long.MAX_VALUE / 4
         var createdFiles = 0
         var failWriteOnFile = -1
+        var corruptReadback = false
         var dieAfterFiles = -1
         var refuseFileNumber = -1
         var dieAfterRename = false
@@ -46,6 +47,9 @@ class ZipExtractorTest {
                 override fun close() = output.close()
             }
         }
+        override fun openExistingInput(file: File): java.io.InputStream? =
+            if (corruptReadback) java.io.ByteArrayInputStream(byteArrayOf(1))
+            else real.openExistingInput(file)
         override fun rename(node: File, parent: File, newName: String): File? {
             val renamed = real.rename(node, parent, newName)
             if (dieAfterRename) throw SimulatedProcessDeath()
@@ -81,6 +85,17 @@ class ZipExtractorTest {
         .map { it.relativeTo(root).invariantSeparatorsPath + if (it.isDirectory) "/" else "" }.sorted().toList()
 
     private fun newJournal() = FileZipExtractionJournal(File(temp.newFolder(), "op.log"))
+
+    @Test fun refusesProviderThatAcknowledgesWritesButReadsBackCorruptedBytes() {
+        val source = zip("file.txt" to "this text should survive intact".toByteArray())
+        val destination = temp.newFolder("corrupt-readback")
+        val target = FaultyTarget(destination).apply { corruptReadback = true }
+        val result = ZipExtractor.extract(request(source), target, newJournal())
+        assertEquals(ZipExtractionStatus.FAILED_ROLLED_BACK, result.status)
+        assertTrue(result.reason.orEmpty().contains("read-back verification"))
+        assertTrue(tree(destination).isEmpty())
+        assertTrue(source.isFile)
+    }
 
     @Test fun extractsNestedMembersIntoANewFolderWithExactBytesAndKeepsSource() {
         val episode = ByteArray(70_000) { (it % 251).toByte() }
