@@ -56,7 +56,13 @@ class LocalEngineService : Service() {
             if (stopping) return
             // A single admitted poll prevents a backlog of stale native reads.
             // A blocked poll never occupies the separate stop-command lane.
-            workLanes.submitPoll { refresh() }
+            if (workLanes.submitPoll { refresh() }) stallNotice.newPollAdmitted()
+            if (stallNotice.shouldWarn(workLanes.inFlightPollMillis())) {
+                getSystemService(NotificationManager::class.java).notify(
+                    NOTIFICATION_ID,
+                    notification("Status check delayed; transfer activity unverified")
+                )
+            }
             if (!stopping) handler.postDelayed(this, TICK_MS)
         }
     }
