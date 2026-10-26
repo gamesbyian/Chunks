@@ -273,25 +273,13 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
         if (transfers.isEmpty()) {
             Text("No transfers on this phone yet.", style = MaterialTheme.typography.bodySmall)
         } else {
-            Text("On-phone transfers: " + transferSlice.totalMatches +
-                " · page " + (transferSlice.pageIndex + 1) + " of " + transferSlice.totalPages,
-                style = MaterialTheme.typography.bodyMedium)
-            if (transferSlice.totalPages > 1) {
-                // Each page renders at most 20 heavy transfer and Collection
-                // cards, rather than eagerly rendering every native status.
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(
-                        onClick = { transferPage = (transferSlice.pageIndex - 1).coerceAtLeast(0) },
-                        enabled = transferSlice.hasPrevious,
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                    ) { Text("Previous phone transfers") }
-                    OutlinedButton(
-                        onClick = { transferPage = transferSlice.pageIndex + 1 },
-                        enabled = transferSlice.hasNext,
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                    ) { Text("Next phone transfers") }
-                }
-            }
+            // Only 20 heavy cards are composed at a time. Rendering controls
+            // stays pure; a page change never mutates the native engine.
+            LocalTransferPageControls(
+                page = transferSlice,
+                onPrevious = { transferPage = (transferSlice.pageIndex - 1).coerceAtLeast(0) },
+                onNext = { transferPage = transferSlice.pageIndex + 1 }
+            )
         }
         transferSlice.items.forEach { transfer ->
             LocalTransferCard(transfer, busy,
