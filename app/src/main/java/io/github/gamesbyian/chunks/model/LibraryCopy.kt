@@ -1,7 +1,6 @@
 package io.github.gamesbyian.chunks.model
 
 import java.io.File
-import java.io.FileInputStream
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.LinkOption
@@ -33,6 +32,8 @@ data class LibraryCopyRequest(
  * only journaled entries, and [ZipExtractor.reconcile] after process death.
  * Each source is hashed while copying and re-hashed afterwards; a source that
  * changed during the copy fails the operation instead of publishing a mismatch.
+ * Both reads explicitly reject a last-component symlink swapped after preflight.
+ * This does not replace full openat-style parent path/ownership fencing.
  */
 object LibraryCopier {
     const val MAX_FILES = 10_000
@@ -162,7 +163,7 @@ object LibraryCopier {
             val digest = MessageDigest.getInstance("SHA-256")
             var copied = 0L
             target.openNewOutput(node).use { output ->
-                FileInputStream(file.source).use { input ->
+                Files.newInputStream(file.source.toPath(), LinkOption.NOFOLLOW_LINKS).use { input ->
                     while (true) {
                         if (cancelled() || Thread.currentThread().isInterrupted)
                             return ZipExtractionStatus.CANCELLED to "Copy cancelled"
@@ -213,7 +214,7 @@ object LibraryCopier {
 
     private fun sha256(file: File, buffer: ByteArray): ByteArray {
         val digest = MessageDigest.getInstance("SHA-256")
-        FileInputStream(file).use { input ->
+        Files.newInputStream(file.toPath(), LinkOption.NOFOLLOW_LINKS).use { input ->
             while (true) {
                 val count = input.read(buffer)
                 if (count < 0) break

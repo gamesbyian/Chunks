@@ -22,6 +22,8 @@ class LibraryCopierTest {
         var dieAfterFiles = -1
         var failWriteOnFile = -1
         var corruptReadback = false
+        /** Runs after preflight, while creating a destination file, before source is opened. */
+        var afterCreateFile: (() -> Unit)? = null
         /** Runs while the given file number is being written. */
         var duringWrite: Pair<Int, () -> Unit>? = null
         override val root: File get() = real.root
@@ -32,7 +34,9 @@ class LibraryCopierTest {
         override fun createFile(parent: File, name: String): File? {
             if (created == dieAfterFiles) throw SimulatedProcessDeath()
             created++
-            return real.createFile(parent, name)
+            val target = real.createFile(parent, name)
+            if (created == 1) afterCreateFile?.invoke()
+            return target
         }
         override fun openNewOutput(file: File): OutputStream {
             val output = real.openNewOutput(file)
@@ -86,6 +90,30 @@ class LibraryCopierTest {
 
     private fun assertSourceIntact(payload: Payload) {
         for ((path, bytes) in payload.files) assertArrayEquals(path, bytes, File(payload.root, path).readBytes())
+    }
+
+    @Test fun refusesSymlinkSwappedIntoSourceAfterPreflight() {
+        val payload = payload()
+        val original = File(payload.root, "Episode 1.mkv")
+        val backup = File(payload.root, "Episode 1.mkv.saved")
+        val outside = temp.newFile("outside-secret").apply { writeText("Do not publish me") }
+        val destination = temp.newFolder("symlink-rejected")
+        val target = Target(destination).apply {
+            afterCreateFile = {
+                Files.move(original.toPath(), backup.toPath())
+                Files.createSymbolicLink(original.toPath(), outside.toPath())
+            }
+        }
+        try {
+            val result = LibraryCopier.copy(payload.request(), target, journal())
+            assertEquals(ZipExtractionStatus.FAILED_ROLLED_BACK, result.status)
+            assertTrue("Source symlink must never be followed into output", tree(destination).isEmpty())
+            assertEquals("Do not publish me", outside.readText())
+        } finally {
+            Files.deleteIfExists(original.toPath()) // Removes only injected symlink
+            if (backup.exists()) Files.move(backup.toPath(), original.toPath())
+        }
+        assertSourceIntact(payload)
     }
 
     @Test fun refusesProviderThatStoresCorruptedDataAfterAcknowledgingWrites() {
