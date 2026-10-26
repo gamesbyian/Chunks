@@ -1,6 +1,6 @@
 # Chunks: authoritative live work queue
 
-**Reconciled 2026-10-26 through merged #169 (`88821ef6d2b9`), including service fixes #166/#168 and storage integrity fixes #163/#164/#169; protected Android-to-Seedhost UI proof remains pending.** This is the **only ranked workboard**. Implementation claims belong to source; specific acceptance evidence belongs to [QUALITY-LEDGER.md](QUALITY-LEDGER.md); normative behavior belongs to [PRODUCT.md](PRODUCT.md), [ARCHITECTURE.md](ARCHITECTURE.md), [UX.md](UX.md), [SECURITY.md](SECURITY.md) and [STORAGE-AND-EXTRACTION.md](STORAGE-AND-EXTRACTION.md). See [SPEC-COVERAGE.md](SPEC-COVERAGE.md) for the feature-to-acceptance crosswalk. Do not treat historical PR/issue descriptions as current status.
+**Reconciled 2026-10-26 through merged #173 (`dc504a6a10da`), including #170/#172 manual Collections, #173 alias-aware collection search, service #166/#168 and storage #163/#164/#169; protected Android-to-Seedhost UI proof remains pending.** This is the **only ranked workboard**. Implementation claims belong to source; specific acceptance evidence belongs to [QUALITY-LEDGER.md](QUALITY-LEDGER.md); normative behavior belongs to [PRODUCT.md](PRODUCT.md), [ARCHITECTURE.md](ARCHITECTURE.md), [UX.md](UX.md), [SECURITY.md](SECURITY.md) and [STORAGE-AND-EXTRACTION.md](STORAGE-AND-EXTRACTION.md). See [SPEC-COVERAGE.md](SPEC-COVERAGE.md) for the feature-to-acceptance crosswalk. Do not treat historical PR/issue descriptions as current status.
 
 ## Accepted baseline; do not rebuild
 
