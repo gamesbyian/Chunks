@@ -240,7 +240,9 @@ Following the Seedhost finding that tracker-less torrents are silently discarded
 
 `LocalTorrentEngine.files()` lists user files with progress and selection, hiding BEP 47 pad files that hybrid torrents contain (the first test saw 4 entries for 2 real files). `setFileWanted()` sets libtorrent priority IGNORE/DEFAULT and is `VERIFIED` only after readback. JVM loopback test: a skipped 1.3 MB file is not completed while the other file downloads byte-exact; re-selecting it reads back as wanted; a later session completes the kept partial data byte-exact. Finding: in this tracker-less rig, once the leecher reached "finished" it never regained its peer after re-selection within the same session, even with explicit reconnects and a seeder restart. In-session resumption after re-selecting a file is therefore **unproven** (real swarms re-announce through trackers and DHT). The test also showed `fileProgress` can report a file complete before libtorrent's disk thread has written it, so tests wait for the bytes on disk. The on-phone card gets a Files toggle with 48dp checkbox rows ("Untick a file to skip downloading it. Already downloaded parts are kept.").
 
-## October 26 local engine speed limits (pending CI)
+## October 26 local engine speed limits
+
+[#146](https://github.com/gamesbyian/Chunks/pull/146) merged `98bf1455bf653ad96e496a7345894e6c8c33498d`; exact head `9dd3f5f4` passed Android/JVM [40267175139](https://github.com/gamesbyian/Chunks/actions/runs/40267175139). The speed-limit UI has no emulator or screenshot evidence yet.
 
 `LocalTorrentEngine.setRateLimits()` applies session-wide download/upload limits (bytes/s, 0 unlimited) and returns what libtorrent reads back; `LocalRateLimits` refuses negatives. JVM tests: limits start unlimited, read back exactly and reset. A real loopback transfer with the seeder's upload capped at 128 KiB/s took longer than 60 % of the theoretical ≈10 s; with the same test but libtorrent's default peer classes the transfer finished too fast and the test **failed**, confirming that libtorrent exempts local-network and loopback peers by default. `LocalEngineConfig.rateLimitLocalPeers` (tests only) moves every address into the global class. The on-phone screen gains a "Speed limits" section (KiB/s, blank = unlimited, persisted, applied on engine start) that states local-network devices are not limited. No Internet-swarm or physical-device measurement.
 
@@ -253,3 +255,31 @@ Following the Seedhost finding that tracker-less torrents are silently discarded
 - inventory identity set unchanged (437).
 
 The same run repeated the `.torrent` round trip, all Verified. Metadata retrieval from a real swarm, HTTPS from a phone and the app UI path are separate gates.
+
+## October 26 library copy of finished local transfers
+
+PR [#147](https://github.com/gamesbyian/Chunks/pull/147), head `1a5e7344`, passed Android/JVM [40269473573](https://github.com/gamesbyian/Chunks/actions/runs/40269473573) and API35 [40269473595](https://github.com/gamesbyian/Chunks/actions/runs/40269473595) with the new `LocalLibraryCopyInstrumentedTest`.
+
+Two unrelated failures came up on the way and were root-caused in the PR:
+- DHT readback: run `40267927242` failed because a 2 s DHT start readback was too short for a loaded runner; the default is now 5 s and the test allows 15 s.
+- Atlas alias editor: run `40268777188` failed because the atlas test's positional tap on "Change list name" missed the editor; the test now invokes the button's click action and waits.
+- Atlas search: run `40270137679` failed because the IME text input for search sometimes left the queue unfiltered; the test now sets the query with the field's SetText action and waits for it. The installed-app atlas therefore no longer exercises IME typing into search.
+
+`LibraryCopier` copies a finished transfer's wanted files into a **new** folder inside a user-chosen destination, leaving the originals in place so seeding continues (library copy is distinct from the engine's backing data). It reuses the ZIP extractor's protocol and journal format:
+- write-ahead journal;
+- a random partial folder;
+- one non-replacing publish rename (now the shared `ZipExtractor.publish`);
+- rollback of journaled entries only;
+- `ZipExtractor.reconcile` after process death.
+
+Inputs are refused before any write when:
+- a path is unsafe;
+- a source is a symlink, outside the transfer folder, missing or not its final size;
+- names collide case-insensitively, or a file and a folder share a name.
+
+Each source is SHA-256 hashed while copying and re-hashed afterwards. JVM tests use real files:
+- a source changed in already-copied bytes fails and leaves nothing;
+- write failure, cancellation and simulated process death roll back via reconcile;
+- an existing same-named folder is never merged ("Show S01 (2)").
+
+Android: "Copy to a folder…" appears on finished on-phone transfers, with the same review card in copy wording. Copy journals live in `library-copies/`, so interrupted operations report their kind. A new API35 test copies a real seeding engine transfer into the debug DocumentsProvider and checks that the engine is still seeding afterwards. Not covered: the system picker, vendor/SD/cloud providers and a physical phone.

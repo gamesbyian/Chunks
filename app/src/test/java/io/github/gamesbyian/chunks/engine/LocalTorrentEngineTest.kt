@@ -275,9 +275,10 @@ class LocalTorrentEngineTest {
     @Test fun dhtIsOffByDefaultAndTogglesOnlyOnRequest() {
         val engine = engine()
         assertFalse(engine.isDhtEnabled())
-        assertTrue(engine.setDhtEnabled(true))
+        // DHT starts and stops on libtorrent's network thread; loaded CI runners need longer than 2 s.
+        assertTrue(engine.setDhtEnabled(true, readbackTimeoutMs = 15_000))
         assertTrue(engine.isDhtEnabled())
-        assertFalse(engine.setDhtEnabled(false))
+        assertFalse(engine.setDhtEnabled(false, readbackTimeoutMs = 15_000))
         assertFalse(engine.isDhtEnabled())
     }
 

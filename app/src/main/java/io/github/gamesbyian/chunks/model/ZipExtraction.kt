@@ -145,8 +145,25 @@ object ZipExtractor {
             return finish(journal, target, partialName, operationId, ZipExtractionStatus.FAILED_ROLLED_BACK,
                 "Written output differs from the verified archive", files, bytes)
 
-        // Publication: one non-replacing rename. A provider refusing every free
-        // name leaves the partial folder for rollback, never a merged folder.
+        return publish(target, journal, partial, partialName, baseName, operationId, files, bytes, cancelled)
+    }
+
+    /**
+     * Publication: one non-replacing rename of the finished partial folder. A
+     * provider refusing every free name leaves the partial folder for rollback,
+     * never a merged folder. Shared with [LibraryCopier].
+     */
+    internal fun <N : Any> publish(
+        target: ZipExtractionTarget<N>,
+        journal: ZipExtractionJournal,
+        partial: N,
+        partialName: String,
+        baseName: String,
+        operationId: String,
+        files: Int,
+        bytes: Long,
+        cancelled: () -> Boolean
+    ): ZipExtractionResult {
         for (attempt in 1..MAX_NAME_ATTEMPTS) {
             if (cancelled())
                 return finish(journal, target, partialName, operationId, ZipExtractionStatus.CANCELLED,
@@ -329,7 +346,7 @@ object ZipExtractor {
     }
 
     /** Remove only journaled children of our own partial folder, deepest first. */
-    private fun <N : Any> finish(
+    internal fun <N : Any> finish(
         journal: ZipExtractionJournal,
         target: ZipExtractionTarget<N>,
         partialName: String,
@@ -365,7 +382,7 @@ object ZipExtractor {
         return target.delete(partial) && target.child(target.root, partialName) == null
     }
 
-    private fun needsAttention(journal: ZipExtractionJournal, operationId: String, files: Int, bytes: Long, reason: String): ZipExtractionResult {
+    internal fun needsAttention(journal: ZipExtractionJournal, operationId: String, files: Int, bytes: Long, reason: String): ZipExtractionResult {
         try { journal.append(listOf("NEEDS_ATTENTION")) } catch (_: IOException) { }
         return ZipExtractionResult(ZipExtractionStatus.NEEDS_ATTENTION, operationId, null, files, bytes, reason)
     }

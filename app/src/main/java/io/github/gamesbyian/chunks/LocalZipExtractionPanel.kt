@@ -49,7 +49,9 @@ internal data class LocalZipExtractionPlan(
     val folderName: String,
     val outputBytes: Long,
     val fileCount: Int,
-    val freeBytes: Long?
+    val freeBytes: Long?,
+    /** A library copy of a finished transfer rather than a ZIP extraction. */
+    val copy: Boolean = false
 )
 
 /**
@@ -133,9 +135,9 @@ internal fun LocalZipExtractionConfirm(
     val enoughSpace = plan.freeBytes?.let { it - minOf(it, reserve) >= plan.outputBytes }
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Review extraction", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
+            Text(if (plan.copy) "Review copy" else "Review extraction", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
                 modifier = Modifier.semantics { heading() })
-            Text("Archive: " + plan.archiveLabel)
+            Text((if (plan.copy) "Transfer: " else "Archive: ") + plan.archiveLabel)
             Text("Into: " + plan.destinationLabel)
             Text("New folder: " + plan.folderName +
                 " (a numbered name such as \"" + plan.folderName + " (2)\" is used if that name is taken)")
@@ -152,16 +154,18 @@ internal fun LocalZipExtractionConfirm(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Checkbox(checked = acknowledged, onCheckedChange = null)
-                    Text("This folder can't report free space. Extract anyway; Chunks stops and removes partial files if writing fails.",
+                    Text("This folder can't report free space. " + (if (plan.copy) "Copy" else "Extract") +
+                        " anyway; Chunks stops and removes partial files if writing fails.",
                         modifier = Modifier.padding(start = 8.dp))
                 }
             }
-            Text("Existing files and folders are not opened, merged or replaced. The ZIP itself is not changed or deleted.",
+            Text("Existing files and folders are not opened, merged or replaced. " + if (plan.copy)
+                "The downloaded originals stay where they are and keep seeding." else "The ZIP itself is not changed or deleted.",
                 style = MaterialTheme.typography.bodySmall)
             Button(onClick = { onConfirm(enoughSpace == null && acknowledged) },
                 enabled = enoughSpace == true || enoughSpace == null && acknowledged,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
-                Text("Extract to new folder")
+                Text(if (plan.copy) "Copy to new folder" else "Extract to new folder")
             }
             OutlinedButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                 Text("Choose a different folder")
@@ -171,27 +175,40 @@ internal fun LocalZipExtractionConfirm(
 }
 
 @Composable
-internal fun LocalZipExtractionRunning(onCancel: () -> Unit) {
+internal fun LocalZipExtractionRunning(onCancel: () -> Unit, copy: Boolean = false) {
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Extracting and checking every file…", fontWeight = FontWeight.Bold,
+            Text(if (copy) "Copying and checking every file…" else "Extracting and checking every file…", fontWeight = FontWeight.Bold,
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
             Text("Files are written into a hidden partial folder and only appear under their final name when every byte has been checked.")
             OutlinedButton(onClick = onCancel, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                Text("Cancel extraction")
+                Text(if (copy) "Cancel copy" else "Cancel extraction")
             }
         }
     }
 }
 
-internal fun extractionMessage(result: ZipExtractionResult): String = when (result.status) {
-    ZipExtractionStatus.EXTRACTED -> if (result.writtenFiles == 0 && result.reason != null)
-        "An interrupted extraction had already finished into the folder \"" + result.folderName + "\"."
-    else "Extracted " + result.writtenFiles + " files (" +
-        Units.bytes(result.writtenBytes) + ") into the new folder \"" + result.folderName + "\". The ZIP was kept."
-    ZipExtractionStatus.BLOCKED -> "Not extracted: " + result.reason + ". Nothing was written."
-    ZipExtractionStatus.CANCELLED -> "Extraction cancelled. Partial files were removed; nothing else changed."
-    ZipExtractionStatus.FAILED_ROLLED_BACK -> "Extraction failed: " + result.reason +
+internal fun extractionMessage(result: ZipExtractionResult, copy: Boolean = false): String =
+    if (copy) copyMessage(result) else when (result.status) {
+        ZipExtractionStatus.EXTRACTED -> if (result.writtenFiles == 0 && result.reason != null)
+            "An interrupted extraction had already finished into the folder \"" + result.folderName + "\"."
+        else "Extracted " + result.writtenFiles + " files (" +
+            Units.bytes(result.writtenBytes) + ") into the new folder \"" + result.folderName + "\". The ZIP was kept."
+        ZipExtractionStatus.BLOCKED -> "Not extracted: " + result.reason + ". Nothing was written."
+        ZipExtractionStatus.CANCELLED -> "Extraction cancelled. Partial files were removed; nothing else changed."
+        ZipExtractionStatus.FAILED_ROLLED_BACK -> "Extraction failed: " + result.reason +
+            ". Partial files were removed; nothing else changed."
+        ZipExtractionStatus.NEEDS_ATTENTION -> "Needs attention: " + result.reason +
+            ". Chunks did not retry or delete anything it could not account for. Look for a folder starting with \"" +
+            ZipExtractor.PARTIAL_PREFIX + "\" in the destination."
+    }
+
+private fun copyMessage(result: ZipExtractionResult): String = when (result.status) {
+    ZipExtractionStatus.EXTRACTED -> "Copied " + result.writtenFiles + " files (" + Units.bytes(result.writtenBytes) +
+        ") into the new folder \"" + result.folderName + "\". The originals keep seeding."
+    ZipExtractionStatus.BLOCKED -> "Not copied: " + result.reason + ". Nothing was written."
+    ZipExtractionStatus.CANCELLED -> "Copy cancelled. Partial files were removed; nothing else changed."
+    ZipExtractionStatus.FAILED_ROLLED_BACK -> "Copy failed: " + result.reason +
         ". Partial files were removed; nothing else changed."
     ZipExtractionStatus.NEEDS_ATTENTION -> "Needs attention: " + result.reason +
         ". Chunks did not retry or delete anything it could not account for. Look for a folder starting with \"" +
@@ -199,12 +216,12 @@ internal fun extractionMessage(result: ZipExtractionResult): String = when (resu
 }
 
 @Composable
-internal fun LocalZipExtractionOutcome(result: ZipExtractionResult, archiveLabel: String) {
+internal fun LocalZipExtractionOutcome(result: ZipExtractionResult, archiveLabel: String, copy: Boolean = false) {
     val success = result.status == ZipExtractionStatus.EXTRACTED
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(archiveLabel, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Text(extractionMessage(result),
+            Text(extractionMessage(result, copy),
                 color = if (success) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
         }
@@ -215,7 +232,7 @@ internal fun LocalZipExtractionOutcome(result: ZipExtractionResult, archiveLabel
 @Composable
 internal fun LocalZipInterruptedExtractions() {
     val context = LocalContext.current
-    var results by remember { mutableStateOf<List<ZipExtractionResult>>(emptyList()) }
+    var results by remember { mutableStateOf<List<LocalZipExtraction.Reconciled>>(emptyList()) }
     LaunchedEffect(Unit) {
         results = withContext(Dispatchers.IO) {
             try { LocalZipExtraction.reconcilePending(context) } catch (_: Exception) { emptyList() }
@@ -224,9 +241,9 @@ internal fun LocalZipInterruptedExtractions() {
     if (results.isEmpty()) return
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Earlier extraction was interrupted", style = MaterialTheme.typography.titleMedium,
+            Text("An earlier extraction or copy was interrupted", style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
-            results.forEach { Text(extractionMessage(it)) }
+            results.forEach { Text(extractionMessage(it.result, it.copy)) }
         }
     }
 }

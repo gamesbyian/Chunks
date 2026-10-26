@@ -180,7 +180,8 @@ class LocalZipExtractionInstrumentedTest {
 
         val results = LocalZipExtraction.reconcilePending(context)
         assertEquals(1, results.size)
-        assertEquals(ZipExtractionStatus.FAILED_ROLLED_BACK, results.single().status)
+        assertEquals(ZipExtractionStatus.FAILED_ROLLED_BACK, results.single().result.status)
+        assertFalse(results.single().copy)
         assertTrue(base.list().orEmpty().isEmpty())
         assertTrue(journals.list().orEmpty().isEmpty())
     }
