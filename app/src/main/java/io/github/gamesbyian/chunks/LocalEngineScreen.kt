@@ -127,6 +127,16 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
     val scope = rememberCoroutineScope()
     val collectionStore = remember(context) { TransferCollectionStore(context) }
     var transfers by remember { mutableStateOf<List<LocalTransferStatus>>(emptyList()) }
+    var collectionRevision by remember { mutableStateOf(0) }
+    var knownLocalCollections by remember { mutableStateOf<List<String>>(emptyList()) }
+    val localHashes = remember(transfers) { transfers.map { it.infoHash } }
+    LaunchedEffect(localHashes, collectionRevision) {
+        knownLocalCollections = withContext(Dispatchers.IO) {
+            localHashes.asSequence()
+                .flatMap { collectionStore.forTransfer(TransferCollectionStore.LOCAL_ENGINE_SCOPE, it).asSequence() }
+                .distinct().sortedWith(String.CASE_INSENSITIVE_ORDER).toList()
+        }
+    }
     var filesFor by remember { mutableStateOf<String?>(null) }
     var files by remember { mutableStateOf<List<LocalTransferFile>?>(null) }
     var pending by remember { mutableStateOf<PendingLocalAdd?>(null) }
@@ -315,7 +325,8 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
                 displayName = transfer.name,
                 scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
                 store = collectionStore,
-                onMembershipChanged = {}
+                availableCollections = knownLocalCollections,
+                onMembershipChanged = { collectionRevision++ }
             )
             if (transfer.metadataKnown && transfer.progressPpm == 1_000_000) LocalLibraryCopyPanel(transfer)
         }
