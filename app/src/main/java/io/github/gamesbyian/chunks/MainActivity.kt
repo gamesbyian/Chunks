@@ -708,6 +708,7 @@ private fun OrganizeScreen(
     val pagedMatches = remember(manualMatches, collectionPage) {
         ManualCollectionPager.slice(manualMatches, collectionPage)
     }
+    val knownRemoteCollections = remember(manualCounts) { manualCounts.map { it.first } }
     val collections = remember(list) { TransferCatalog.discoveredCollections(list) }
     val examples = remember(list) {
         list.map { it to Classifier.suggest(it.name) }
@@ -782,7 +783,8 @@ private fun OrganizeScreen(
                         style = MaterialTheme.typography.bodySmall)
                 }
                 TransferCollectionEditor(
-                    transfer.copy(name = alias ?: transfer.name), scope, membershipStore
+                    transfer.copy(name = alias ?: transfer.name), scope, membershipStore,
+                    availableCollections = knownRemoteCollections
                 ) {
                     membershipRevision++
                 }
