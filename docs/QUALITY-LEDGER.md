@@ -293,3 +293,9 @@ Android: "Copy to a folder…" appears on finished on-phone transfers, with the 
 
 The same run repeated the magnet Add and the `.torrent` round trip, all Verified. Both XML-RPC `load.*` and the ruTorrent upload route are therefore accepted on this host for torrents that carry a tracker. Latency in this run: `d.multicall2` list ≈1.1 s and paged listing ≈6.0 s for 437 transfers.
 
+
+## October 26 modern rTorrent compatibility: accepted 0.16, unresolved Alpine 0.15
+
+[#150](https://github.com/gamesbyian/Chunks/pull/150) merged as `ac8103e6e1514362c6763774a6cf6dca50ea322d`. Exact workflow source `2b9d2c3e6291c95fa260bdaaf634527d14ba6186` passed [disposable real-server CI 40368534273](https://github.com/gamesbyian/Chunks/actions/runs/40368534273) with two successful matrix jobs: legacy Ubuntu rTorrent 0.9.8 and materially newer Arch Linux rTorrent 0.16.x. Each runs the actual Kotlin adapter read-only and stopped Add/duplicate, file-priority, Start/Stop and session-only Remove acceptance against throwaway rTorrent/SCGI, with no production credentials/media. The PR's later documentation-only edit added the explicit negative result to the compatibility matrix. This is **not** a physical-device or managed Seedhost compatibility claim.
+
+Alpine 3.22 rTorrent 0.15.2 was separately attempted but **failed** on [40368041120](https://github.com/gamesbyian/Chunks/actions/runs/40368041120). The rTorrent PID remained alive, but nginx saw SCGI reset/prematurely closed upstream response headers and all Kotlin RPC operations failed HTTP 502. Track the unsupported build in [#151](https://github.com/gamesbyian/Chunks/issues/151); do not call the whole 0.15/0.16 family compatible. The accepted passing matrix excludes Alpine until diagnosed.
