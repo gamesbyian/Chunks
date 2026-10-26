@@ -30,6 +30,19 @@ class ManualCollectionPagerTest {
             ManualCollectionPager.slice((0 until 85).toList(), -100).items)
     }
 
+    @Test fun onPhoneTwentyCardPagesReachTheWholeTransferList() {
+        val hashes = (0 until 163).map { "HASH-$it" }
+        val pages = (0 until 9).map { ManualCollectionPager.slice(hashes, it, size = 20) }
+        assertEquals(hashes, pages.flatMap { it.items })
+        assertEquals(9, pages.last().totalPages)
+        assertEquals(3, pages.last().items.size)
+        assertFalse(pages.last().hasNext)
+        assertEquals(hashes.takeLast(3),
+            ManualCollectionPager.slice(hashes, Int.MAX_VALUE, size = 20).items)
+        assertEquals(emptyList<String>(),
+            ManualCollectionPager.slice(emptyList<String>(), 100, size = 20).items)
+    }
+
     @Test fun rejectsInvalidPageSizes() {
         try {
             ManualCollectionPager.slice(listOf(1), 0, 0)
