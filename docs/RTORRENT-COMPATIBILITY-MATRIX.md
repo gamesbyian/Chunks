@@ -28,3 +28,7 @@ The remote transfer list now requires exactly 40 hexadecimal characters for v1-s
 ## Large-queue listing fallback (fixture evidence only)
 
 A single `d.multicall2` reply for roughly 6k+ transfers exceeds Chunks' 4 MiB transport cap or the XML element/value budgets. Such replies now raise a distinct `RpcReplyTooLarge`, and listing falls back to one `download_list` (identities only) plus `system.multicall` pages of 250 hashes × exact-hash `d.*` getters. Any per-call fault (e.g. a torrent erased mid-read) fails the whole snapshot closed; a requested/returned hash mismatch is refused. Hostile deep nesting stays an ordinary refusal and never triggers paging. Evidence: localhost XML-RPC fixture with 7,000 synthetic transfers, plus the disposable real rTorrent 0.9.8 job ([run 40238780520](https://github.com/gamesbyian/Chunks/actions/runs/40238780520)) where the paged read matched `d.multicall2` (hashes, names, directories, sizes, extended getters) for a small real queue. Not proven: owner Seedhost build, a real multi-thousand queue, latency.
+
+## Owner development Seedhost (observed 2026-10-26)
+
+rTorrent 0.9.8 behind ruTorrent HTTP-RPC over HTTPS with challenged authentication. Read-only Kotlin adapter evidence in [run 40247072785](https://github.com/gamesbyian/Chunks/actions/runs/40247072785): full 436-transfer main view, paged listing parity, `f.multicall` file listings, all write methods advertised. `directory.default` is empty on this host, so Chunks cannot suggest a server default Place from it.

@@ -80,6 +80,22 @@ class SeedhostLiveAcceptanceTest {
         fast.take(5).forEach { log("sample name=\"${it.name}\" started=${it.started} complete=${it.completedBytes == it.sizeBytes}") }
     }
 
+    /** Deepest absolute directory shared by all paths, at least two levels deep, else null. */
+    private fun commonParent(paths: List<String>): String? {
+        val split = paths.filter { it.startsWith("/") }.map { it.trimEnd('/').split('/').drop(1) }
+        if (split.isEmpty()) return null
+        var shared = split.first()
+        for (parts in split.drop(1)) shared = shared.zip(parts).takeWhile { (a, b) -> a == b }.map { it.first }
+        return if (shared.size >= 2 && shared.none { it.isEmpty() || it == ".." }) "/" + shared.joinToString("/") else null
+    }
+
+    @Test fun commonParentIsConservative() {
+        assertEquals("/home/u/downloads", commonParent(listOf("/home/u/downloads/A", "/home/u/downloads/B/C")))
+        assertNull(commonParent(listOf("/home/a", "/srv/b")))
+        assertNull(commonParent(listOf("/data")))
+        assertNull(commonParent(emptyList()))
+    }
+
     /** One unique synthetic transfer per run, so repeats never collide or touch existing data. */
     private fun syntheticTorrent(name: String): ByteArray {
         val payload = "Chunks acceptance payload\n".toByteArray()
@@ -109,7 +125,12 @@ class SeedhostLiveAcceptanceTest {
     @Test fun ownerAuthorizedExactTargetMutationRoundTrip() = runBlocking {
         assumeTrue("Mutation requires apply", System.getenv("CHUNKS_LIVE_MUTATION") == "apply")
         val rtorrent = remote()
-        val base = requireNotNull(rtorrent.defaultDirectory()) { "Server default directory unavailable" }
+        // This host leaves directory.default empty; fall back to the folder every
+        // existing transfer lives under, so the test folder sits beside real data.
+        val configured = rtorrent.defaultDirectory()
+        val base = configured ?: commonParent(rtorrent.listTransfers("main").map { it.directory })
+        requireNotNull(base) { "No safe base directory could be determined" }
+        log("base directory source=${if (configured != null) "directory.default" else "common parent of inventory"} depth=${base.count { it == '/' }}")
         val target = "$base/chunks-acceptance"
         val runId = System.getenv("GITHUB_RUN_ID").orEmpty().filter { it.isDigit() }.ifEmpty { System.currentTimeMillis().toString() }
         val name = "chunks-acceptance-$runId.txt"
