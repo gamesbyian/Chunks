@@ -6,6 +6,7 @@ import java.io.File
 import java.io.RandomAccessFile
 import java.nio.file.Files
 import org.junit.Assert.*
+import org.junit.Assume
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -18,8 +19,15 @@ class LocalAllocatedFolderProbeInstrumentedTest {
         val outside = File(context.filesDir, "alloc-probe-outside").apply { deleteRecursively(); mkdirs() }
         try {
             val file = File(root, "first.bin").apply { writeBytes(ByteArray(4096) { 5 }) }
-            Files.createLink(File(root, "second.bin").toPath(), file.toPath())
-            Files.createLink(File(outside, "external.bin").toPath(), file.toPath())
+            try {
+                Files.createLink(File(root, "second.bin").toPath(), file.toPath())
+                Files.createLink(File(outside, "external.bin").toPath(), file.toPath())
+            } catch (denied: java.nio.file.AccessDeniedException) {
+                // Android app SELinux policy can deny hardlink creation even
+                // within app-private storage. The pure JVM test exercises
+                // the actual shared accounting implementation in that case.
+                Assume.assumeNoException(denied)
+            }
             val inventory = LocalAllocatedFolderProbe.measure(root)
             assertTrue(inventory.complete)
             assertEquals(2, inventory.regularPaths)
