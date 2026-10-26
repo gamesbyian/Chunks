@@ -28,7 +28,8 @@ internal class LocalCapPreferenceStore(context: Context) {
 
     fun get(root: File?): Long? {
         val id = root?.let(::key) ?: return null
-        val raw = preferences.getLong("cap_" + id, 0L)
+        val raw = try { preferences.getLong("cap_" + id, 0L) }
+            catch (_: ClassCastException) { 0L }
         return raw.takeIf { it > 0L }
     }
 
