@@ -1,6 +1,6 @@
 # Chunks: authoritative live work queue
 
-**Reconciled 2026-10-26 against main `0e08845f6e47`, issues and merged #154/#155/#156; protected Android-to-Seedhost UI proof remains pending.** This is the **only ranked workboard**. Implementation claims belong to source; specific acceptance evidence belongs to [QUALITY-LEDGER.md](QUALITY-LEDGER.md); normative behavior belongs to [PRODUCT.md](PRODUCT.md), [ARCHITECTURE.md](ARCHITECTURE.md), [UX.md](UX.md), [SECURITY.md](SECURITY.md) and [STORAGE-AND-EXTRACTION.md](STORAGE-AND-EXTRACTION.md). See [SPEC-COVERAGE.md](SPEC-COVERAGE.md) for the feature-to-acceptance crosswalk. Do not treat historical PR/issue descriptions as current status.
+**Reconciled 2026-10-26 through merged #166 (`641951490563`), issues and storage integrity fixes #163/#164; protected Android-to-Seedhost UI proof remains pending.** This is the **only ranked workboard**. Implementation claims belong to source; specific acceptance evidence belongs to [QUALITY-LEDGER.md](QUALITY-LEDGER.md); normative behavior belongs to [PRODUCT.md](PRODUCT.md), [ARCHITECTURE.md](ARCHITECTURE.md), [UX.md](UX.md), [SECURITY.md](SECURITY.md) and [STORAGE-AND-EXTRACTION.md](STORAGE-AND-EXTRACTION.md). See [SPEC-COVERAGE.md](SPEC-COVERAGE.md) for the feature-to-acceptance crosswalk. Do not treat historical PR/issue descriptions as current status.
 
 ## Accepted baseline; do not rebuild
 
