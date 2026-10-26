@@ -7,6 +7,8 @@ import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
@@ -18,6 +20,7 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -114,6 +117,34 @@ class LocalEngineScreenInstrumentedTest {
         rule.onNodeWithText("Episode 01.mkv").performClick()
         rule.onNodeWithText("Sample.mkv").performClick()
         assertEquals(listOf(0 to false, 2 to true), toggles)
+    }
+
+    @Test fun selectionPagesReachEveryFileWithoutRenderingHugeLists() {
+        val selected = mutableListOf<Pair<Int, Boolean>>()
+        val files = (0 until 85).map { index ->
+            LocalTransferFile(index, "Archive/File %03d.txt".format(index), 100L, 0L, true)
+        }
+        rule.setContent {
+            MaterialTheme {
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
+                    LocalFileSelection(files, busy = false, onFileWanted = { index, wanted ->
+                        selected += index to wanted
+                    }, transferKey = "fixture")
+                }
+            }
+        }
+        rule.onNodeWithText("Files page 1 of 3 (85 files)").assertExists()
+        rule.onNodeWithText("File 040.txt").assertDoesNotExist()
+        rule.onNodeWithText("Previous page").assertIsNotEnabled()
+        rule.onNodeWithText("Next page").performClick()
+        rule.onNodeWithText("Files page 2 of 3 (85 files)").assertExists()
+        rule.onNodeWithText("File 040.txt").performScrollTo().performClick()
+        rule.onNodeWithText("File 080.txt").assertDoesNotExist()
+        rule.onNodeWithText("Next page").performScrollTo().performClick()
+        rule.onNodeWithText("Files page 3 of 3 (85 files)").assertExists()
+        rule.onNodeWithText("File 084.txt").performScrollTo().performClick()
+        rule.onNodeWithText("Next page").performScrollTo().assertIsNotEnabled()
+        assertEquals(listOf(40 to false, 84 to false), selected)
     }
 
     @Test fun speedLimitsRefuseInvalidInputAndSaveKibibytes() {
