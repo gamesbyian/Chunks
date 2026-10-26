@@ -100,7 +100,10 @@ class SeedhostLiveAcceptanceTest {
     private fun syntheticTorrent(name: String): ByteArray {
         val payload = "Chunks acceptance payload\n".toByteArray()
         val piece = MessageDigest.getInstance("SHA-1").digest(payload)
-        val head = "d4:infod6:lengthi${payload.size}e4:name${name.length}:${name}12:piece lengthi16384e6:pieces20:"
+        // The development Seedhost silently drops tracker-less torrents; a stopped
+        // transfer never contacts this unroutable announce address.
+        val announce = "http://127.0.0.1:1/announce"
+        val head = "d8:announce${announce.length}:${announce}4:infod6:lengthi${payload.size}e4:name${name.length}:${name}12:piece lengthi16384e6:pieces20:"
         return head.toByteArray(Charsets.ISO_8859_1) + piece + "ee".toByteArray()
     }
 
