@@ -13,6 +13,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -24,10 +25,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.model.DeviceSpaceSnapshot
 import io.github.gamesbyian.chunks.model.DeviceSpaceStatus
 import io.github.gamesbyian.chunks.model.LocalFolderInventory
+import io.github.gamesbyian.chunks.model.LocalCapInput
+import io.github.gamesbyian.chunks.model.StorageWarning
 import io.github.gamesbyian.chunks.model.LocalFolderInventoryProbe
 import io.github.gamesbyian.chunks.model.Units
 import kotlinx.coroutines.Dispatchers
@@ -71,6 +76,14 @@ internal fun PhoneStoragePanel(
     val reader = readSpace ?: DeviceSpaceProbe::read
     var snapshot by remember(context, readSpace) { mutableStateOf(reader(context)) }
     val scope = rememberCoroutineScope()
+    val downloadRoot = remember(context) { LocalEngineHolder.appDownloads(context) }
+    val capStore = remember(context) { LocalCapPreferenceStore(context) }
+    var savedCap by remember(context, downloadRoot) { mutableStateOf(capStore.get(downloadRoot)) }
+    var capDraft by remember(context, downloadRoot) {
+        mutableStateOf(savedCap?.let(LocalCapInput::formatGiB) ?: "")
+    }
+    var capMessage by remember(context, downloadRoot) { mutableStateOf<String?>(null) }
+    var newNotice by remember(context, downloadRoot) { mutableStateOf<StorageWarning?>(null) }
     var folderUsage by remember(context, readFolder) { mutableStateOf<LocalFolderInventory?>(null) }
     suspend fun surveyFolder() = withContext(Dispatchers.IO) {
         try {
@@ -81,6 +94,15 @@ internal fun PhoneStoragePanel(
         }
     }
     LaunchedEffect(context, readFolder) { folderUsage = surveyFolder() }
+    // Record a threshold crossing only after a complete, bounded observation.
+    // Never mutate preferences during Compose rendering or show a precise
+    // quota status for a partial/unknown logical file inventory.
+    LaunchedEffect(downloadRoot, savedCap, folderUsage) {
+        val usage = folderUsage
+        newNotice = if (usage?.complete == true && usage.logicalBytes != null)
+            capStore.observe(downloadRoot, savedCap, usage.logicalBytes, snapshot.availableBytes)
+        else null
+    }
 
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth().padding(16.dp),
@@ -131,6 +153,75 @@ internal fun PhoneStoragePanel(
             Text("Logical sizes inside Chunks' downloads folder, including files left after removing a torrent. " +
                 "Not allocated disk blocks, unique data, all Chunks storage, or proof that deletion is safe.",
                 style = MaterialTheme.typography.bodySmall)
+            Text("Optional download-folder limit", fontWeight = FontWeight.SemiBold)
+            Text("Advisory only. Set a logical-size target for Chunks' app-owned download folder. It will NOT pause downloads, prevent writes, remove files or limit the seedbox.",
+                style = MaterialTheme.typography.bodySmall)
+            OutlinedTextField(
+                value = capDraft,
+                onValueChange = { capDraft = it; capMessage = null },
+                label = { Text("Advisory limit (GiB)") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+            val capCandidate = LocalCapInput.parseGiB(capDraft)
+            OutlinedButton(
+                onClick = {
+                    val chosen = capCandidate
+                    if (chosen != null && capStore.set(downloadRoot, chosen)) {
+                        savedCap = chosen
+                        capMessage = "Advisory limit saved on this phone. Downloading and sharing continue unchanged."
+                    } else capMessage = "Could not save that limit. Nothing changed."
+                },
+                enabled = capCandidate != null && downloadRoot != null,
+                modifier = Modifier.heightIn(min = 48.dp)
+            ) { Text("Save advisory limit") }
+            if (savedCap != null) {
+                OutlinedButton(
+                    onClick = {
+                        if (capStore.set(downloadRoot, null)) {
+                            savedCap = null
+                            capDraft = ""
+                            newNotice = null
+                            capMessage = "Advisory limit cleared. Existing files are untouched."
+                        } else capMessage = "Could not clear that limit."
+                    },
+                    modifier = Modifier.heightIn(min = 48.dp)
+                ) { Text("Clear advisory limit") }
+            }
+            val assessment = LocalCapInput.assessment(savedCap, folderUsage, free)
+            val currentCap = savedCap
+            if (currentCap != null) {
+                Text("Current advisory limit: " + Units.bytes(currentCap))
+                val warning = assessment.warning
+                when (warning) {
+                    StorageWarning.NONE ->
+                        Text("The complete logical download-folder survey is below 70% of this advisory limit.")
+                    StorageWarning.SEVENTY ->
+                        Text("Heads up: download-folder logical sizes reached 70% of the advisory limit.")
+                    StorageWarning.EIGHTY_FIVE ->
+                        Text("Warning: download-folder logical sizes reached 85% of the advisory limit.",
+                            color = MaterialTheme.colorScheme.error)
+                    StorageWarning.NINETY_FIVE ->
+                        Text("Warning: download-folder logical sizes reached 95% of the advisory limit.",
+                            color = MaterialTheme.colorScheme.error)
+                    StorageWarning.OVER_CAP ->
+                        Text("The download folder is at or above your advisory limit. Chunks has not paused or deleted anything.",
+                            color = MaterialTheme.colorScheme.error)
+                    StorageWarning.UNKNOWN ->
+                        Text("Limit status unknown: a full download-folder scan is required. No precise usage percentage is available.")
+                }
+                if (newNotice != null) {
+                    Text("New warning threshold observed on this refresh.",
+                        style = MaterialTheme.typography.bodySmall)
+                }
+                val remaining = assessment.remainingWithinCapBytes
+                if (remaining != null)
+                    Text(Units.bytes(remaining) + " logical headroom within the advisory limit. This is not free disk allocation.",
+                        style = MaterialTheme.typography.bodySmall)
+            }
+            if (capMessage != null)
+                Text(requireNotNull(capMessage), style = MaterialTheme.typography.bodySmall)
             Text("Chunks does not yet enforce a local torrent storage cap. Remote storage capacity is unknown without a verified server capability.",
                 style = MaterialTheme.typography.bodySmall)
             OutlinedButton(onClick = {
