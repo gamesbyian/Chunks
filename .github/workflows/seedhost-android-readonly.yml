@@ -30,10 +30,10 @@ jobs:
         with:
           gradle-version: "9.3.1"
       - name: Check protected access prerequisites
-    env:
-      CHUNKS_LIVE_RUTORRENT_URL: ${{ inputs.rutorrent_url }}
-      CHUNKS_LIVE_RTORRENT_USER: ${{ secrets.rtorrent_user }}
-      CHUNKS_LIVE_RTORRENT_PASS: ${{ secrets.rtorrent_pass }}
+        env:
+          CHUNKS_LIVE_RUTORRENT_URL: ${{ inputs.rutorrent_url }}
+          CHUNKS_LIVE_RTORRENT_USER: ${{ secrets.rtorrent_user }}
+          CHUNKS_LIVE_RTORRENT_PASS: ${{ secrets.rtorrent_pass }}
         run: |
           test -n "$CHUNKS_LIVE_RUTORRENT_URL"
           test -n "$CHUNKS_LIVE_RTORRENT_USER"
@@ -53,10 +53,10 @@ jobs:
           sudo chmod 0666 /dev/kvm
       - name: Installed Android app reads real protected Seedhost over HTTPS
         uses: reactivecircus/android-emulator-runner@v2
-    env:
-      CHUNKS_LIVE_RUTORRENT_URL: ${{ inputs.rutorrent_url }}
-      CHUNKS_LIVE_RTORRENT_USER: ${{ secrets.rtorrent_user }}
-      CHUNKS_LIVE_RTORRENT_PASS: ${{ secrets.rtorrent_pass }}
+        env:
+          CHUNKS_LIVE_RUTORRENT_URL: ${{ inputs.rutorrent_url }}
+          CHUNKS_LIVE_RTORRENT_USER: ${{ secrets.rtorrent_user }}
+          CHUNKS_LIVE_RTORRENT_PASS: ${{ secrets.rtorrent_pass }}
         with:
           api-level: 35
           target: google_apis
