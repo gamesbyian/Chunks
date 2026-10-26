@@ -17,6 +17,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -45,6 +46,7 @@ import io.github.gamesbyian.chunks.engine.LocalCommandOutcome
 import io.github.gamesbyian.chunks.engine.LocalEngineConfig
 import io.github.gamesbyian.chunks.engine.LocalTorrentEngine
 import io.github.gamesbyian.chunks.engine.LocalTransferState
+import io.github.gamesbyian.chunks.engine.LocalTransferFile
 import io.github.gamesbyian.chunks.engine.LocalTransferStatus
 import io.github.gamesbyian.chunks.model.Units
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoPreview
@@ -106,6 +108,8 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var transfers by remember { mutableStateOf<List<LocalTransferStatus>>(emptyList()) }
+    var filesFor by remember { mutableStateOf<String?>(null) }
+    var files by remember { mutableStateOf<List<LocalTransferFile>?>(null) }
     var pending by remember { mutableStateOf<PendingLocalAdd?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
@@ -127,6 +131,11 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
         }
         var tick = 0
         while (true) {
+            filesFor?.let { hash ->
+                files = withContext(Dispatchers.IO) {
+                    try { LocalEngineHolder.current()?.files(hash) } catch (_: Exception) { null }
+                }
+            }
             transfers = withContext(Dispatchers.IO) {
                 try { LocalEngineHolder.current()?.list().orEmpty() } catch (_: Exception) { emptyList() }
             }
@@ -256,6 +265,25 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
                         busy = false
                     }
                 },
+                files = files.takeIf { filesFor == transfer.infoHash },
+                filesShown = filesFor == transfer.infoHash,
+                onShowFiles = {
+                    files = null
+                    filesFor = if (filesFor == transfer.infoHash) null else transfer.infoHash
+                },
+                onFileWanted = { index, wanted ->
+                    busy = true
+                    scope.launch {
+                        val outcome = withContext(Dispatchers.IO) {
+                            LocalEngineHolder.current()?.setFileWanted(transfer.infoHash, index, wanted)
+                                ?: LocalCommandOutcome.NOT_FOUND
+                        }
+                        message = if (outcome == LocalCommandOutcome.VERIFIED) null
+                            else "The engine has not confirmed the file selection yet."
+                        files = withContext(Dispatchers.IO) { LocalEngineHolder.current()?.files(transfer.infoHash) }
+                        busy = false
+                    }
+                },
                 onRemove = {
                     busy = true
                     scope.launch {
@@ -309,7 +337,11 @@ internal fun LocalTransferCard(
     transfer: LocalTransferStatus,
     busy: Boolean,
     onToggle: () -> Unit,
-    onRemove: () -> Unit
+    onRemove: () -> Unit,
+    files: List<LocalTransferFile>? = null,
+    filesShown: Boolean = false,
+    onShowFiles: () -> Unit = {},
+    onFileWanted: (Int, Boolean) -> Unit = { _, _ -> }
 ) {
     var confirmRemove by remember(transfer.infoHash) { mutableStateOf(false) }
     val percent = transfer.progressPpm / 10_000
@@ -327,7 +359,11 @@ internal fun LocalTransferCard(
                 }
                 OutlinedButton(onClick = { confirmRemove = true }, enabled = !busy && !confirmRemove,
                     modifier = Modifier.heightIn(min = 48.dp)) { Text("Remove…") }
+                if (transfer.metadataKnown) OutlinedButton(onClick = onShowFiles, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text(if (filesShown) "Hide files" else "Files")
+                }
             }
+            if (filesShown) LocalFileSelection(files, busy, onFileWanted)
             if (confirmRemove) {
                 Text("Remove from the phone engine only. Downloaded files stay in Chunks' folder; sharing of this torrent stops.")
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -340,4 +376,30 @@ internal fun LocalTransferCard(
             }
         }
     }
+}
+
+/** Per-file download selection. Unticking never deletes bytes already written. */
+@Composable
+internal fun LocalFileSelection(files: List<LocalTransferFile>?, busy: Boolean, onFileWanted: (Int, Boolean) -> Unit) {
+    if (files == null) {
+        Text("Loading files…", style = MaterialTheme.typography.bodySmall)
+        return
+    }
+    Text("Untick a file to skip downloading it. Already downloaded parts are kept.",
+        style = MaterialTheme.typography.bodySmall)
+    files.take(200).forEach { file ->
+        val percent = if (file.sizeBytes == 0L) 100 else (file.doneBytes * 100 / file.sizeBytes).toInt()
+        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
+            .toggleable(value = file.wanted, enabled = !busy, role = Role.Checkbox,
+                onValueChange = { onFileWanted(file.index, it) }),
+            verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(checked = file.wanted, onCheckedChange = null)
+            Column(Modifier.padding(start = 8.dp).weight(1f)) {
+                Text(file.path.substringAfterLast('/'), style = MaterialTheme.typography.bodyMedium)
+                Text(Units.bytes(file.sizeBytes) + " · " + percent + "%" + if (file.wanted) "" else " · skipped",
+                    style = MaterialTheme.typography.bodySmall)
+            }
+        }
+    }
+    if (files.size > 200) Text("And " + (files.size - 200) + " more files", style = MaterialTheme.typography.bodySmall)
 }

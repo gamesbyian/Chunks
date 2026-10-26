@@ -18,6 +18,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import io.github.gamesbyian.chunks.engine.LocalTransferFile
 import io.github.gamesbyian.chunks.engine.LocalTransferState
 import io.github.gamesbyian.chunks.engine.LocalTransferStatus
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoPreview
@@ -89,5 +90,25 @@ class LocalEngineScreenInstrumentedTest {
         capture("local-engine-remove-confirm-real-compose")
         rule.onNodeWithText("Remove, keep files").performClick()
         assertEquals(1, removed)
+    }
+
+    @Test fun fileSelectionReportsEachToggleAndMarksSkippedFiles() {
+        val toggles = mutableListOf<Pair<Int, Boolean>>()
+        val files = listOf(
+            LocalTransferFile(0, "Season 1/Episode 01.mkv", 734_003_200, 367_001_600, wanted = true),
+            LocalTransferFile(2, "Season 1/Sample.mkv", 10_485_760, 0, wanted = false))
+        rule.setContent {
+            MaterialTheme {
+                Column(Modifier.fillMaxSize().padding(16.dp)) {
+                    LocalFileSelection(files, busy = false) { index, wanted -> toggles += index to wanted }
+                }
+            }
+        }
+        rule.onNodeWithText("Episode 01.mkv").assertExists()
+        rule.onNodeWithText("skipped", substring = true).assertExists()
+        capture("local-engine-file-selection-real-compose")
+        rule.onNodeWithText("Episode 01.mkv").performClick()
+        rule.onNodeWithText("Sample.mkv").performClick()
+        assertEquals(listOf(0 to false, 2 to true), toggles)
     }
 }

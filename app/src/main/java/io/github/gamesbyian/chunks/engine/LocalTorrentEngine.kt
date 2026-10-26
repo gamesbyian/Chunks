@@ -75,6 +75,15 @@ data class LocalTransferStatus(
     val metadataKnown: Boolean = true
 )
 
+/** One file inside a local transfer; `wanted = false` means libtorrent will not download it. */
+data class LocalTransferFile(
+    val index: Int,
+    val path: String,
+    val sizeBytes: Long,
+    val doneBytes: Long,
+    val wanted: Boolean
+)
+
 /** libtorrent applies pause/resume asynchronously; only a matching readback is VERIFIED. */
 enum class LocalCommandOutcome { VERIFIED, UNCERTAIN, NOT_FOUND }
 
@@ -289,6 +298,56 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             if (System.nanoTime() >= deadline) return LocalCommandResult(LocalCommandOutcome.UNCERTAIN, latest)
             Thread.sleep(25)
         }
+    }
+
+    /** Files with progress and selection, or null if unknown or metadata is not yet known. */
+    @Synchronized
+    fun files(infoHash: String, limit: Int = 10_000): List<LocalTransferFile>? {
+        val handle = handles[normal(infoHash)] ?: return null
+        if (!handle.isValid) return null
+        val info = handle.torrentFile() ?: return null
+        val storage = info.files()
+        val progress = handle.fileProgress()
+        val priorities = handle.filePriorities()
+        // Pad files are internal alignment padding (BEP 47), never user content.
+        return (0 until storage.numFiles()).asSequence().filter { !storage.padFileAt(it) }.take(limit).map { index ->
+            LocalTransferFile(index, storage.filePath(index), storage.fileSize(index),
+                progress.getOrElse(index) { 0L },
+                priorities.getOrNull(index)?.let { it != org.libtorrent4j.Priority.IGNORE } ?: true)
+        }.toList()
+    }
+
+    /**
+     * Select or skip one file. libtorrent applies priorities asynchronously, so
+     * the result is VERIFIED only once readback shows the requested selection.
+     * Skipping never deletes bytes already written.
+     */
+    fun setFileWanted(infoHash: String, index: Int, wanted: Boolean, readbackTimeoutMs: Long = 5_000): LocalCommandOutcome {
+        require(readbackTimeoutMs in 0..60_000)
+        val key = normal(infoHash)
+        synchronized(this) {
+            val handle = handles[key] ?: return LocalCommandOutcome.NOT_FOUND
+            val files = handle.torrentFile()?.files() ?: return LocalCommandOutcome.NOT_FOUND
+            require(index in 0 until files.numFiles() && !files.padFileAt(index)) { "No such file" }
+            handle.filePriority(index, if (wanted) org.libtorrent4j.Priority.DEFAULT else org.libtorrent4j.Priority.IGNORE)
+        }
+        val deadline = System.nanoTime() + readbackTimeoutMs * 1_000_000
+        while (true) {
+            val observed = synchronized(this) {
+                handles[key]?.filePriorities()?.getOrNull(index)
+            } ?: return LocalCommandOutcome.NOT_FOUND
+            if ((observed != org.libtorrent4j.Priority.IGNORE) == wanted) return LocalCommandOutcome.VERIFIED
+            if (System.nanoTime() >= deadline) return LocalCommandOutcome.UNCERTAIN
+            Thread.sleep(25)
+        }
+    }
+
+    /** Ask libtorrent to connect to one explicit peer (tests and user-supplied peers). */
+    @Synchronized
+    internal fun connectPeer(infoHash: String, peer: InetSocketAddress): Boolean {
+        val handle = handles[normal(infoHash)] ?: return false
+        handle.swig().connect_peer(TcpEndpoint(requireNotNull(peer.address?.hostAddress), peer.port).swig())
+        return true
     }
 
     /** Remove from the session only. Payload files are never deleted here. */
