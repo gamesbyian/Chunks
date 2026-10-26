@@ -130,4 +130,22 @@ class TorrentMetainfoReaderTest {
         assertEquals(9L, valid.sizeBytes)
         assertEquals(3, valid.fileCount)
     }
+
+    @Test fun countsDistinctPlausibleTrackersAndFlagsTrackerless() {
+        assertEquals(1, TorrentMetainfoReader.preview(torrent(singleInfo)).trackerCount)
+        val none = ("d4:info" + singleInfo + "e").toByteArray(Charsets.UTF_8)
+        assertEquals(0, TorrentMetainfoReader.preview(none).trackerCount)
+        fun b(text: String) = "${text.length}:$text"
+        val list = ("d" + b("announce") + b("udp://t.example:6969") + b("announce-list") +
+            "ll" + b("udp://t.example:6969") + "el" + b("https://t2.example/announce") + b("not a url") + "ee" +
+            b("info") + singleInfo + "e").toByteArray(Charsets.UTF_8)
+        assertEquals(2, TorrentMetainfoReader.preview(list).trackerCount)
+    }
+
+    @Test fun countsMagnetTrackerParameters() {
+        val hash = "a".repeat(40)
+        assertEquals(0, TorrentMetainfoReader.magnetTrackerCount("magnet:?xt=urn:btih:$hash&dn=x"))
+        assertEquals(2, TorrentMetainfoReader.magnetTrackerCount(
+            "magnet:?xt=urn:btih:$hash&tr=udp%3A%2F%2Fa%3A1&TR=https%3A%2F%2Fb%2Fannounce&tr=udp%3A%2F%2Fa%3A1&tr="))
+    }
 }

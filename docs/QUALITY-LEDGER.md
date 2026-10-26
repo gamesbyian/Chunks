@@ -227,3 +227,7 @@ After the owner added the development URL as the workflow default on `main`, [Ko
 - inventory identity set restored (437 before and after).
 
 This is the first real-Seedhost write acceptance of Add, duplicate refusal, per-file priority, Start/Stop and session-only Remove through the Kotlin adapter. It is HTTPS from a GitHub runner, not a phone. The ruTorrent upload form was retried with a tracker-less torrent only, so that route is not separately accepted here. Each synthetic transfer holds a tiny file; Start may leave one such file beside real data, no existing transfer was touched.
+
+## October 26 tracker-less Add warning (pending CI)
+
+Following the Seedhost finding that tracker-less torrents are silently discarded, `TorrentMetainfoPreview.trackerCount` counts distinct http(s)/udp URLs in `announce`/`announce-list` (malformed entries ignored, never fatal), and `magnetTrackerCount` counts distinct `tr=` parameters. The remote Add confirmation card shows an explicit warning when a `.torrent` or magnet has no tracker; the on-phone review notes that peers then depend on DHT or web sources. JVM tests cover counting and deduplication.
