@@ -182,7 +182,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
      * Applied to the running session; returns whether libtorrent reports DHT on.
      */
     @Synchronized
-    fun setDhtEnabled(enabled: Boolean, readbackTimeoutMs: Long = 2_000): Boolean {
+    fun setDhtEnabled(enabled: Boolean, readbackTimeoutMs: Long = 5_000): Boolean {
         check(started) { "Engine not started" }
         val pack = SettingsPack()
         pack.setEnableDht(enabled)
