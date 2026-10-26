@@ -149,6 +149,7 @@ class SeedhostLiveAcceptanceTest {
 
     @Test fun ownerAuthorizedExactTargetMutationRoundTrip() = runBlocking {
         assumeTrue("Mutation requires apply", System.getenv("CHUNKS_LIVE_MUTATION") == "apply")
+        assumeTrue("Diagnostic runs do not repeat the round trip", System.getenv("CHUNKS_LIVE_DIAGNOSE_ADD") != "true")
         val rtorrent = remote()
         // This host leaves directory.default empty; fall back to the folder every
         // existing transfer lives under, so the test folder sits beside real data.

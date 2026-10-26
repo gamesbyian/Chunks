@@ -497,7 +497,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
     private fun number(value: Any?): Long =
         (value as? Number)?.toLong() ?: error("Expected numeric rTorrent value")
 
-    private suspend fun call(method: String, params: List<Any> = emptyList()): Any? =
+    internal suspend fun call(method: String, params: List<Any> = emptyList()): Any? =
         withContext(Dispatchers.IO) {
             // A challenge-based credential exchange is scoped to the *same*
             // HTTPS/loopback endpoint. Never enable redirects or set a
