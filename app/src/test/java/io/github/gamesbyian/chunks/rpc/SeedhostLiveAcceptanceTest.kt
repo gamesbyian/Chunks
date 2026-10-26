@@ -254,4 +254,35 @@ class SeedhostLiveAcceptanceTest {
         }
         assertEquals(before, rtorrent.listTransfers("main").map { it.hash.lowercase() }.toSet())
     }
+
+    /** ruTorrent's own upload form with a tracker-bearing synthetic torrent; erased afterwards. */
+    @Test fun ownerAuthorizedRuTorrentUploadStoppedAdd() = runBlocking {
+        assumeTrue("Mutation requires apply", System.getenv("CHUNKS_LIVE_MUTATION") == "apply")
+        assumeTrue("Diagnostic runs do not repeat writes", System.getenv("CHUNKS_LIVE_DIAGNOSE_ADD") != "true")
+        val rtorrent = remote()
+        val base = rtorrent.defaultDirectory() ?: commonParent(rtorrent.listTransfers("main").map { it.directory })
+        requireNotNull(base) { "No safe base directory could be determined" }
+        val run = System.getenv("GITHUB_RUN_ID").orEmpty().filter { it.isDigit() }.ifEmpty { System.currentTimeMillis().toString() }
+        val name = "chunks-acceptance-$run-upload.txt"
+        val bytes = syntheticTorrent(name)
+        val hash = TorrentMetainfoReader.preview(bytes).infoHashV1
+        val before = rtorrent.listTransfers("main").map { it.hash.lowercase() }.toSet()
+        assertFalse(hash in before)
+        try {
+            val outcome = rtorrent.loadStoppedViaRuTorrentUpload(bytes, base)
+            log("rutorrent upload outcome=${outcome::class.simpleName}")
+            val listed = waitFor(rtorrent, hash) { it != null }
+            log("rutorrent upload retained=${listed != null} started=${listed?.started} dirIsBase=${listed?.directory == base} " +
+                "nameMatches=${listed?.name == name}")
+            assertTrue("Upload Add must verify stopped: $outcome", outcome is RemoteAddOutcome.VerifiedStopped)
+        } finally {
+            val current = rtorrent.listTransfers("main").firstOrNull { it.hash.equals(hash, true) }
+            if (current != null && current.name == name) {
+                val erase = rtorrent.eraseFromSession(current.hash, current.name, current.directory)
+                log("rutorrent upload session erase outcome=${erase::class.simpleName}")
+                assertNull(waitFor(rtorrent, hash) { it == null })
+            }
+        }
+        assertEquals(before, rtorrent.listTransfers("main").map { it.hash.lowercase() }.toSet())
+    }
 }
