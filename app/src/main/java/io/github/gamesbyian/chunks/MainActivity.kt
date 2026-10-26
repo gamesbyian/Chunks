@@ -759,16 +759,17 @@ private fun OrganizeScreen(
                 (pagedMatches.pageIndex + 1) + " of " + pagedMatches.totalPages + ".",
                 style = MaterialTheme.typography.bodySmall)
             if (pagedMatches.totalPages > 1) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Full-width controls survive narrow displays and 200% text.
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(
                         onClick = { collectionPage = (pagedMatches.pageIndex - 1).coerceAtLeast(0) },
                         enabled = pagedMatches.hasPrevious,
-                        modifier = Modifier.heightIn(min = 48.dp)
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                     ) { Text("Previous page") }
                     OutlinedButton(
                         onClick = { collectionPage = pagedMatches.pageIndex + 1 },
                         enabled = pagedMatches.hasNext,
-                        modifier = Modifier.heightIn(min = 48.dp)
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                     ) { Text("Next page") }
                 }
             }
