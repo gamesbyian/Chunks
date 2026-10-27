@@ -436,6 +436,8 @@ private fun ChunksApp(sharedMagnet: String?) {
                     stale = stale, loading = loading,
                     onBack = { section = Section.TRANSFERS }
                 )
+                Section.SNAPSHOT_INSPECT -> SnapshotDocumentInspectScreen(
+                    onBack = { section = Section.TRANSFERS })
                 Section.ARCHIVES -> LocalZipReviewScreen(onBack = { section = Section.TRANSFERS })
                 Section.LOCAL -> LocalEngineScreen(onBack = { section = Section.TRANSFERS })
                 Section.PLACES -> PlacesScreen(transfers) { path ->
