@@ -1,6 +1,9 @@
 name: One-time protected Seedhost active-Start acceptance
 
-# Manual in the future; initial push is gated to one deliberate merge title.
+# A subsequent one-time exact-target mutation is permitted ONLY after protected read-only
+# absence reconciliation (40464540703) and existing-directory proof (40557896602).
+# The mutation remains separately gated to an explicitly named trusted-main merge;
+# this PR does not invoke it and cannot access production credentials on its branch.
 on:
   push:
     branches: [main]
