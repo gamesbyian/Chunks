@@ -37,6 +37,7 @@ fun TransferLifecycleControl(
     remote: RTorrentRemote,
     transfer: RemoteTransfer,
     snapshotStale: Boolean,
+    onMutationStarted: () -> Boolean,
     onSettled: () -> Unit
 ) {
     val validV1Hash = remember(transfer.hash) { Regex("[0-9a-fA-F]{40}").matches(transfer.hash) }
@@ -83,6 +84,7 @@ fun TransferLifecycleControl(
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
                             onClick = {
+                                if (onMutationStarted()) {
                                 confirming = false
                                 attempted = true
                                 pending = true
@@ -106,6 +108,12 @@ fun TransferLifecycleControl(
                                         pending = false
                                         onSettled()
                                     }
+                                }
+                                } else {
+                                    confirming = false
+                                    attempted = true
+                                    verified = false
+                                    feedback = "Another remote command needs fresh readback before any further action."
                                 }
                             },
                             enabled = !pending && !snapshotStale,
