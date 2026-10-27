@@ -10,7 +10,12 @@ android {
         minSdk = 29
         targetSdk = 37
         versionCode = 1
-        versionName = "0.1.0-dev"
+        // CI provides the actual checked-out commit, including the synthetic PR merge
+        // commit when applicable. Local builds without this environment variable
+        // retain the plain development version and must not invent provenance.
+        val builtCommit = providers.environmentVariable("CHUNKS_SOURCE_SHA").orNull
+            ?.trim()?.takeIf { it.matches(Regex("[0-9a-fA-F]{40}")) }?.take(12)
+        versionName = "0.1.0-dev" + (builtCommit?.let { "+$it" } ?: "")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     buildFeatures { compose = true }

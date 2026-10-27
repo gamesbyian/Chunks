@@ -13,6 +13,11 @@ on:
 permissions:
   contents: read
 
+# Reflect the exact commit checked out by actions/checkout. For PRs this is
+# GitHub's tested merge ref, not automatically the pull request head.
+env:
+  CHUNKS_SOURCE_SHA: ${{ github.sha }}
+
 concurrency:
   group: chunks-android-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -50,9 +55,22 @@ jobs:
               app/build/test-results/testDebugUnitTest/*.xml 2>/dev/null | sort | tail -60 || true
             exit 1
           fi
+      - name: Verify embedded revision and save APK checksum
+        run: |
+          apk="app/build/outputs/apk/debug/app-debug.apk"
+          receipt="app/build/outputs/apk/debug/CHUNKS-BUILD-SHA256.txt"
+          test -s "$apk"
+          short="${CHUNKS_SOURCE_SHA:0:12}"
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$apk" | grep -F "versionName='0.1.0-dev+$short'"
+          # Artifact ZIP entries are flattened under the common debug/ folder.
+          # Emit a relative filename so a tester can verify extracted bytes.
+          (cd "$(dirname "$apk")" && sha256sum "$(basename "$apk")") > "$receipt"
+          printf '# built_commit=%s\n# workflow_run=%s\n' "$CHUNKS_SOURCE_SHA" "$GITHUB_RUN_ID" >> "$receipt"
       - uses: actions/upload-artifact@v4
         if: success()
         with:
           name: chunks-debug-prealpha
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/debug/CHUNKS-BUILD-SHA256.txt
           retention-days: 7
