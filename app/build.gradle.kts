@@ -70,41 +70,50 @@ tasks.withType<Test>().configureEach {
 }
 
 /**
- * Immutable, configuration-cache-safe check of the approved launcher art.
- * Uses a declarative task type so Gradle never has to serialize the
- * build.gradle.kts script instance when storing its configuration cache.
+ * Prevent silent source drift: SVG is canonical, the runtime Android
+ * VectorDrawable is a reproducible rendering, and the old PNG is reference-only.
+ * This check requires no Node installation for ordinary Gradle builds;
+ * CI additionally runs the deterministic generator's --check mode.
  */
 abstract class VerifyChunksLauncherArtwork : DefaultTask() {
     @get:InputFile abstract val artwork: RegularFileProperty
+    @get:InputFile abstract val sourceSvg: RegularFileProperty
+    @get:InputFile abstract val referencePng: RegularFileProperty
     @get:InputFile abstract val adaptiveXml: RegularFileProperty
     @get:InputFile abstract val manifest: RegularFileProperty
-    @get:Input abstract val approvedGitBlob: Property<String>
+    @get:Input abstract val referencePngBlob: Property<String>
 
     @TaskAction
     fun verify() {
-        val file = artwork.get().asFile
-        check(file.isFile) { "Approved Chunks launcher PNG missing" }
-        val bytes = file.readBytes()
-        val signature = byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10)
-        check(bytes.size >= 100_000 && bytes.take(8) == signature.toList()) {
-            "Approved launcher artwork must be the high-resolution PNG"
+        fun gitBlob(bytes: ByteArray): String {
+            val sha1 = MessageDigest.getInstance("SHA-1")
+            sha1.update("blob ${bytes.size}\\u0000".toByteArray(Charsets.UTF_8))
+            sha1.update(bytes)
+            return sha1.digest().joinToString("") { "%02x".format(it.toInt() and 0xff) }
         }
-        val sha1 = MessageDigest.getInstance("SHA-1")
-        sha1.update("blob ${bytes.size}\u0000".toByteArray(Charsets.UTF_8))
-        sha1.update(bytes)
-        val blob = sha1.digest().joinToString("") { "%02x".format(it.toInt() and 0xff) }
-        check(blob == approvedGitBlob.get()) {
-            "Launcher art differs from owner-approved original; review replacement explicitly."
+        val svg = sourceSvg.get().asFile.readBytes()
+        check(svg.size in 1_000..100_000 && String(svg, Charsets.UTF_8).contains("<svg ")) {
+            "Canonical Chunks SVG source is missing or invalid"
+        }
+        val reference = referencePng.get().asFile.readBytes()
+        check(gitBlob(reference) == referencePngBlob.get()) {
+            "Historical owner-supplied PNG reference was modified"
+        }
+        val vector = artwork.get().asFile.readText()
+        check(vector.contains("<vector ") &&
+            vector.contains("SOURCE_SVG_GIT_BLOB=${gitBlob(svg)}") &&
+            vector.contains("<gradient ") && vector.contains("<clip-path ")) {
+            "Android vector is stale or malformed; run node tools/generate_launcher_vector.cjs"
         }
         val icon = adaptiveXml.get().asFile.readText()
         check(icon.contains("@drawable/chunks_launcher_artwork") &&
             !icon.contains("@drawable/ic_chunks_foreground") &&
             !icon.contains("@drawable/ic_chunks_monochrome")) {
-            "Adaptive launcher icon must use the approved artwork"
+            "Adaptive launcher foreground must consume the SVG-derived native vector"
         }
         val app = manifest.get().asFile.readText()
-        check(app.contains("android:icon=\\\"@mipmap/ic_launcher\\\"".replace("\\\"", "\"")) &&
-            app.contains("android:roundIcon=\\\"@mipmap/ic_launcher\\\"".replace("\\\"", "\""))) {
+        check(app.contains("android:icon=\\\"@mipmap/ic_launcher\\\"") &&
+            app.contains("android:roundIcon=\\\"@mipmap/ic_launcher\\\"")) {
             "Application and round icons must both use ic_launcher"
         }
     }
@@ -112,10 +121,12 @@ abstract class VerifyChunksLauncherArtwork : DefaultTask() {
 
 val verifyChunksLauncherArtwork by tasks.registering(VerifyChunksLauncherArtwork::class) {
     group = "verification"
-    description = "Check approved launcher PNG identity and Android adaptive icon wiring"
-    artwork.set(layout.projectDirectory.file("src/main/res/drawable-nodpi/chunks_launcher_artwork.png"))
+    description = "Verify SVG-derived native vector and preserved reference PNG"
+    artwork.set(layout.projectDirectory.file("src/main/res/drawable/chunks_launcher_artwork.xml"))
+    sourceSvg.set(layout.projectDirectory.file("../docs/design/approved/chunks-app-icon-master.svg"))
+    referencePng.set(layout.projectDirectory.file("../docs/design/approved/chunks-app-icon-master.png"))
     adaptiveXml.set(layout.projectDirectory.file("src/main/res/mipmap-anydpi-v26/ic_launcher.xml"))
     manifest.set(layout.projectDirectory.file("src/main/AndroidManifest.xml"))
-    approvedGitBlob.set("03a8677e9c90f4b455e67683fcc4a2b79517b1ea")
+    referencePngBlob.set("03a8677e9c90f4b455e67683fcc4a2b79517b1ea")
 }
 tasks.named("preBuild").configure { dependsOn(verifyChunksLauncherArtwork) }
