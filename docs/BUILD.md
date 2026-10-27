@@ -8,6 +8,12 @@ The workflow installs Android API 37 with SDK 37.0; targeted real API35 instrume
 
 Evidence: [run 40057523588](https://github.com/gamesbyian/Chunks/actions/runs/40057523588) passed 42 Gradle tasks including JVM tests and assembly against source SHA `201b53fc3d16482cf2aa1a08c9c01d9e0351174b`; its artifact is `chunks-debug-prealpha`. Subsequent source changes require new proof. Build artifacts are debug only; a successful Gradle job is not a real-server or real-device acceptance.
 
+## Owner-approved launcher artwork
+
+The official Chunks app icon is the untouched, owner-supplied PNG at `docs/design/approved/chunks-app-icon-master.png` (Git blob `03a8677e9c90f4b455e67683fcc4a2b79517b1ea`). The Android resource `app/src/main/res/drawable-nodpi/chunks_launcher_artwork.png` must be identical, and `res/mipmap-anydpi-v26/ic_launcher.xml` must use that drawable for its foreground. The manifest points normal and round icons to `@mipmap/ic_launcher`; obsolete seven-block foreground and monochrome themed layers must not be reintroduced.
+
+All normal and side-by-side APK builds run the configuration-cache-safe Gradle `verifyChunksLauncherArtwork` check before packaging. It asserts the approved original Git blob, PNG signature and resource/manifest wiring. The icon-specific debug release workflow also checks the approved resource in both APK packages with `aapt dump resources`. A build pass is **not** visual acceptance of Android's various round/squircle/masked launchers; review these on an actual device when available. Never uninstall an existing app merely to update its debug build, because app-owned torrent data may be lost.
+
 ## Downloadable APK in GitHub Releases
 
 A dedicated [Publish Chunks installable Android debug APK](../.github/workflows/publish-debug-apk.yml) workflow builds and JVM-tests the exact checked-out `main` SHA, verifies the Android versionName suffix, produces a paired SHA-256 receipt and publishes both files as assets of an immutable pre-release tag `android-debug-<12-character-source-SHA>`. The workflow runs once when added to `main` and may later be dispatched manually. The release asset URL is stable, unlike the seven-day Actions artifact.
