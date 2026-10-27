@@ -15,6 +15,10 @@
 
 [Merged #222](https://github.com/gamesbyian/Chunks/pull/222) introduces an actual Compose `ChunksBrandHeader` and stronger transfer-card outline. These consume the overview's bold modular silhouette with native text/geometry and accessibility rather than rasterizing any reference. Exact-head Android/JVM, API35 and emulator atlas checks passed (see [QUALITY-LEDGER](../../QUALITY-LEDGER.md)), and the four captured disconnected-screen PNGs have now been independently inspected (the header/contrast are legible at the recorded sizes and 1.4× font scale). The transfers cards themselves are not included in this particular atlas and no owner sign-off is implied. Merged [#223](https://github.com/gamesbyian/Chunks/pull/223) adds a small original seven-block C Android adaptive launcher vector, plus a monochrome themed-icon path; the generated brand sheet remains inspiration and has not been converted into app bitmap assets. Full font licensing, more vector assets, dense lists, all status states, actual launcher screenshot inspection, and physical handset review remain open.
 
+## Approved app icon master
+
+The **SVG is now canonical**: [transparent, editable Chunks icon](../approved/chunks-app-icon-master.svg). The original [PNG](../approved/chunks-app-icon-master.png) is retained untouched only for comparison. Android consumes the SVG-generated `app/src/main/res/drawable/chunks_launcher_artwork.xml` native VectorDrawable produced by `node tools/generate_launcher_vector.cjs`, not the PNG. The seven-block C icon is superseded. The six visual references above remain conceptual rather than replacement source artwork.
+
 ## Implementation notes
 
 - Reproduce the **segmented progress bar** as a proper progress indicator with a continuously accurate percent; segment boundaries are decorative and must not falsify completion or conceal intermediate values.
