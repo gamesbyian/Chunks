@@ -4,8 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       rutorrent_url:
-        description: "Credential-free HTTPS ruTorrent URL for the owner's development Seedhost"
-        required: true
+        description: "Credential-free HTTPS ruTorrent URL; defaults to the approved development Seedhost"
+        required: false
+        default: "https://ianseeds.wood.seedhost.eu/rutorrent/"
         type: string
 
 permissions:
