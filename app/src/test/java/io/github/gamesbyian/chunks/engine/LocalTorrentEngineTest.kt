@@ -224,6 +224,37 @@ class LocalTorrentEngineTest {
             File(destination, "Chunks public fixture/episode.bin").readBytes())
     }
 
+    @Test fun manualStartBeforeMagnetMetadataPersistsThroughDiscoveryAndDownloadsBytes() {
+        val fixture = fixture()
+        val seeder = engine()
+        val seed = added(seeder.addStopped(fixture.torrent, fixture.root.parentFile))
+        assertEquals(LocalCommandOutcome.VERIFIED, seeder.resume(seed.infoHash).outcome)
+        waitFor { seeder.status(seed.infoHash)?.state == LocalTransferState.SEEDING }
+
+        val destination = temp.newFolder("manual early magnet")
+        val leecher = engine()
+        // No initial peer or DHT means metadata cannot race ahead of manual
+        // Start. Only after explicitly starting do we connect the test seeder.
+        val magnet = "magnet:?xt=urn:btih:${seed.infoHash}"
+        assertTrue(leecher.addMagnet(magnet, destination) is LocalAddResult.FetchingMetadata)
+        val before = requireNotNull(leecher.status(seed.infoHash))
+        assertFalse(before.metadataKnown)
+        assertTrue(before.uploadOnly)
+        val started = leecher.resume(seed.infoHash)
+        assertEquals(LocalCommandOutcome.VERIFIED, started.outcome)
+        assertFalse("Still metadata-only before a peer is introduced",
+            requireNotNull(leecher.status(seed.infoHash)).metadataKnown)
+        assertTrue(leecher.connectPeer(seed.infoHash, InetSocketAddress("127.0.0.1", seeder.listenPort())))
+        waitFor {
+            val state = leecher.status(seed.infoHash)
+            state != null && state.metadataKnown && !state.stopped && !state.uploadOnly
+        }
+        waitFor { leecher.status(seed.infoHash)?.progressPpm == 1_000_000 }
+        for ((name, bytes) in fixture.files) {
+            assertArrayEquals(name, bytes, File(destination, "Chunks public fixture/$name").readBytes())
+        }
+    }
+
     @Test fun optedInMagnetStartsPayloadAfterMetadataAndDownloadsExactBytes() {
         val fixture = fixture()
         val seeder = engine()
