@@ -104,7 +104,7 @@ For each remote profile, resolve the server's **real configured default** (not a
 
 ## Add destination path semantics
 
-For **new torrent Add**, the user chooses the **parent containing folder**. rTorrent's `d.directory.set=<parent>` behaves consistently for single- and multi-file transfers; `d.directory_base.set=<parent>` can suppress the named subfolder of a multi-file torrent and therefore must NOT be used by the Add flow. The server readback must query `d.is_multi_file`, `d.name` and `d.directory`: a single-file torrent should report parent, while a multi-file torrent should report `parent/name`. This is not file movement; changing an existing transfer's directory requires separate verified filesystem operations. See [rTorrent directory behavior](https://rtorrent-docs.readthedocs.io/en/latest/cmd-ref.html).
+For **new torrent Add**, a user who opts to change the destination chooses the **parent containing folder**; otherwise use the resolved existing engine default without a mandatory picker. rTorrent's `d.directory.set=<parent>` behaves consistently for single- and multi-file transfers; `d.directory_base.set=<parent>` can suppress the named subfolder of a multi-file torrent and therefore must NOT be used by the Add flow. The server readback must query `d.is_multi_file`, `d.name` and `d.directory`: a single-file torrent should report parent, while a multi-file torrent should report `parent/name`. This is not file movement; changing an existing transfer's directory requires separate verified filesystem operations. See [rTorrent directory behavior](https://rtorrent-docs.readthedocs.io/en/latest/cmd-ref.html).
 
 ## Distinguish session erase from file deletion
 
