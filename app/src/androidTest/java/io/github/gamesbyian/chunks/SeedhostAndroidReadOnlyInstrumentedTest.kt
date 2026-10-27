@@ -166,6 +166,12 @@ class SeedhostAndroidReadOnlyInstrumentedTest {
             rule.onAllNodesWithText("A place for every download.").fetchSemanticsNodes().isNotEmpty()
         }
         checkpoint("add-open")
+        // The Add screen is another LazyColumn. Once the destination-status
+        // request settles, explicitly compose the custom folder item before
+        // asserting it exists; a label offscreen is otherwise not discoverable.
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(
+            hasText("Custom server folder (optional)")
+        )
         rule.onNodeWithText("Custom server folder (optional)").assertExists()
         rule.waitUntil(30_000) {
             val hasDefault = rule.onAllNodesWithText("Using rTorrent default Place:", substring = true)
