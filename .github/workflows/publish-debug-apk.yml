@@ -54,7 +54,7 @@ jobs:
             grep -F "versionName='0.1.0-dev+$short'"
           (cd "$(dirname "$apk")" && sha256sum app-debug.apk) > "$receipt"
           printf '# built_commit=%s\n# workflow_run=%s\n' "$CHUNKS_SOURCE_SHA" "$GITHUB_RUN_ID" >> "$receipt"
-          sha256sum -c "$receipt" --ignore-missing
+          (cd "$(dirname "$apk")" && sha256sum -c CHUNKS-BUILD-SHA256.txt)
       - name: Publish immutable pre-release assets inside this repository
         run: |
           set -euo pipefail
