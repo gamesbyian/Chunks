@@ -51,7 +51,7 @@ class SeedhostAndroidReadOnlyInstrumentedTest {
         require(stage in setOf(
             "arguments", "form", "connect-visible", "connect", "queue", "inventory",
             "first-capture", "refresh-click", "refresh-busy",
-            "refresh-idle", "final-capture"
+            "refresh-idle", "final-capture", "add-open", "add-preview", "add-return"
         ))
         InstrumentationRegistry.getInstrumentation().sendStatus(
             2, Bundle().apply { putString("chunks_stage", stage) }
@@ -142,5 +142,29 @@ class SeedhostAndroidReadOnlyInstrumentedTest {
         checkpoint("refresh-idle")
         captureConnectedQueue("seedhost-android-queue-refreshed-live")
         checkpoint("final-capture")
+
+        // This is an additional READ-ONLY installed UI journey. It never
+        // supplies a magnet, selects a .torrent, or presses Review/Confirm.
+        // The same actual Seedhost adapter must render the Add destinations
+        // without inventing a Chunks folder on the remote server.
+        rule.onNodeWithText("+ Add torrent").performClick()
+        rule.waitUntil(30_000) {
+            rule.onAllNodesWithText("A place for every download.").fetchSemanticsNodes().isNotEmpty()
+        }
+        checkpoint("add-open")
+        rule.onNodeWithText("Custom server folder (optional)").assertExists()
+        rule.waitUntil(30_000) {
+            rule.onAllNodesWithText("Reading rTorrent's configured default Place…")
+                .fetchSemanticsNodes().isEmpty()
+        }
+        rule.onNodeWithText("Review Add").assertDoesNotExist()
+        // No preview candidate exists, so the Add mutation must remain
+        // impossible while we inspect this genuine connected screen.
+        captureConnectedQueue("seedhost-android-add-readonly-live")
+        checkpoint("add-preview")
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Back to transfers"))
+        rule.onNodeWithText("Back to transfers").performClick()
+        rule.onNodeWithText("It's all here.").assertExists()
+        checkpoint("add-return")
     }
 }
