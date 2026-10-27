@@ -52,9 +52,9 @@ def main():
     assert inv["totals"]["approved"] == 1
     assert len(actual) == inv["totals"]["vectorDraft"], (len(actual), inv["totals"]["vectorDraft"])
     assert pending == inv["totals"]["planned"], (pending, inv["totals"]["planned"])
-    for cat in ["icons/catalog.json", "variants-catalog.json", "ui/catalog.json"]:
+    for cat in ["icons/catalog.json", "variants-catalog.json", "ui/catalog.json", "typography/catalog.json"]:
         collection=json.loads((BASE / cat).read_text(encoding="utf-8"))
-        for item in collection["assets"]:
+        for item in collection.get("assets", collection.get("glyphs", [])):
             path="docs/design/svg/" + item["path"]
             assert path in actual, f"catalog references missing file: {path}"
     # Gallery may be opened as a static file, so its embedded inventory must be complete.
@@ -63,6 +63,7 @@ def main():
     match = re.search(r'<script type="application/json" id="svg-catalog">(.*?)</script>', gallery, re.S)
     assert match, "missing static gallery JSON catalogue"
     gallery_assets = json.loads(match.group(1))
+    assert len(gallery_assets) == inv["totals"]["vectorDraft"], "gallery count does not match manifest"
     gallery_paths = [item["src"] for item in gallery_assets]
     expected_gallery = {str(p.relative_to(BASE)) for p in BASE.rglob("*.svg")}
     assert len(gallery_paths) == len(set(gallery_paths)), "duplicate gallery SVG paths"
