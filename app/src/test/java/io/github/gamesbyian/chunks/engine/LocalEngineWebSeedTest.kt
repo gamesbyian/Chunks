@@ -91,6 +91,13 @@ class LocalEngineWebSeedTest {
         val added = (engine.addStopped(File(torrentPath).readBytes(), destination) as LocalAddResult.AddedStopped).status
         assertEquals(LocalCommandOutcome.VERIFIED, engine.resume(added.infoHash).outcome)
         waitFor(180_000) { engine.status(added.infoHash)?.progressPpm == 1_000_000 }
+        val finished = requireNotNull(engine.status(added.infoHash))
+        assertFalse("Start was acknowledged but libtorrent is still paused", finished.stopped)
+        // allTimeDownload may exclude HTTP web-seed payload; completed wanted
+        // bytes and independent SHA-256 are the authoritative file evidence.
+        assertTrue("External web seed must have wanted bytes", finished.wantedBytes > 0L)
+        assertEquals("Full payload must be piece-verified on disk",
+            finished.wantedBytes, finished.doneBytes)
         assertEquals(expectedSha256, sha256(File(destination, expectedName).readBytes()))
         println("CHUNKS_LOCAL_ENGINE_WEBSEED: verified ${added.infoHash} sha256=$expectedSha256")
     }
