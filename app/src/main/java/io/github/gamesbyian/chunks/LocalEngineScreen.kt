@@ -603,6 +603,17 @@ internal fun LocalTransferCard(
                 modifier = Modifier.fillMaxWidth().semantics { stateDescription = "$percent percent complete" })
             Text("Downloaded " + Units.bytes(transfer.payloadDownloadedBytes) + " · Shared " +
                 Units.bytes(transfer.payloadUploadedBytes), style = MaterialTheme.typography.bodySmall)
+            if (!transfer.stopped && transfer.uploadOnly && transfer.metadataKnown) {
+                Text("Running in upload-only mode: libtorrent is not requesting file pieces. " +
+                    "This can follow a disk write error; inspect the error above and available storage.",
+                    color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            } else if (!transfer.stopped && transfer.peers == 0 &&
+                transfer.progressPpm < 1_000_000) {
+                Text(if (!transfer.metadataKnown)
+                    "No peers yet. Magnet metadata cannot arrive until a tracker or DHT supplies peers."
+                    else "Running, but 0 peers connected. Check trackers, DHT, VPN/firewall and live seed availability. Starting alone cannot produce bytes.",
+                    style = MaterialTheme.typography.bodySmall)
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = onToggle, enabled = !busy, modifier = Modifier.heightIn(min = 48.dp)) {
                     Text(if (transfer.stopped) "Start" else "Stop")
