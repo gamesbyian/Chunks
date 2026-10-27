@@ -1,0 +1,870 @@
+{
+  "schema": 1,
+  "notes": "Original reference-led vector drafts, independent of the approved Android launcher SVG.",
+  "assets": [
+    {
+      "id": "navigation/transfers",
+      "path": "icons/navigation/transfers.svg",
+      "label": "Transfers download into tray",
+      "kind": "navigation",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "navigation/workspace",
+      "path": "icons/navigation/workspace.svg",
+      "label": "Workspace folder with inset slot",
+      "kind": "navigation",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "navigation/storage",
+      "path": "icons/navigation/storage.svg",
+      "label": "Stacked database",
+      "kind": "navigation",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "navigation/discover",
+      "path": "icons/navigation/discover.svg",
+      "label": "Discover compass",
+      "kind": "navigation",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "navigation/settings",
+      "path": "icons/navigation/settings.svg",
+      "label": "settings",
+      "kind": "navigation",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "transfers/download",
+      "path": "icons/transfers/download.svg",
+      "label": "download",
+      "kind": "transfers",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "transfers/upload",
+      "path": "icons/transfers/upload.svg",
+      "label": "upload",
+      "kind": "transfers",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "transfers/download-cloud",
+      "path": "icons/transfers/download-cloud.svg",
+      "label": "download cloud",
+      "kind": "transfers",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "transfers/transfer",
+      "path": "icons/transfers/transfer.svg",
+      "label": "transfer",
+      "kind": "transfers",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "transfers/sync",
+      "path": "icons/transfers/sync.svg",
+      "label": "sync",
+      "kind": "transfers",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "transfers/refresh",
+      "path": "icons/transfers/refresh.svg",
+      "label": "refresh",
+      "kind": "transfers",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "transfers/play",
+      "path": "icons/transfers/play.svg",
+      "label": "play",
+      "kind": "transfers",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "transfers/pause",
+      "path": "icons/transfers/pause.svg",
+      "label": "pause",
+      "kind": "transfers",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "transfers/stop",
+      "path": "icons/transfers/stop.svg",
+      "label": "stop",
+      "kind": "transfers",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "transfers/queue",
+      "path": "icons/transfers/queue.svg",
+      "label": "queue",
+      "kind": "transfers",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "transfers/move",
+      "path": "icons/transfers/move.svg",
+      "label": "move",
+      "kind": "transfers",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "transfers/copy",
+      "path": "icons/transfers/copy.svg",
+      "label": "copy",
+      "kind": "transfers",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "transfers/magnet-link",
+      "path": "icons/transfers/magnet-link.svg",
+      "label": "magnet link",
+      "kind": "transfers",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "transfers/clipboard-paste",
+      "path": "icons/transfers/clipboard-paste.svg",
+      "label": "clipboard paste",
+      "kind": "transfers",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "transfers/browse-file",
+      "path": "icons/transfers/browse-file.svg",
+      "label": "browse file",
+      "kind": "transfers",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "transfers/add-torrent",
+      "path": "icons/transfers/add-torrent.svg",
+      "label": "add torrent",
+      "kind": "transfers",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "transfers/remove-transfer",
+      "path": "icons/transfers/remove-transfer.svg",
+      "label": "remove transfer",
+      "kind": "transfers",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "transfers/rate-down",
+      "path": "icons/transfers/rate-down.svg",
+      "label": "rate down",
+      "kind": "transfers",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "transfers/rate-up",
+      "path": "icons/transfers/rate-up.svg",
+      "label": "rate up",
+      "kind": "transfers",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "transfers/torrent-file",
+      "path": "icons/transfers/torrent-file.svg",
+      "label": "torrent file",
+      "kind": "transfers",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "transfers/speed-lightning",
+      "path": "icons/transfers/speed-lightning.svg",
+      "label": "speed lightning",
+      "kind": "transfers",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "storage/database",
+      "path": "icons/storage/database.svg",
+      "label": "database",
+      "kind": "storage",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "storage/server-rack",
+      "path": "icons/storage/server-rack.svg",
+      "label": "server rack",
+      "kind": "storage",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "storage/drive",
+      "path": "icons/storage/drive.svg",
+      "label": "drive",
+      "kind": "storage",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "storage/usage-pie",
+      "path": "icons/storage/usage-pie.svg",
+      "label": "Usage chart pie",
+      "kind": "storage",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "storage/free-space",
+      "path": "icons/storage/free-space.svg",
+      "label": "free space",
+      "kind": "storage",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "storage/manage",
+      "path": "icons/storage/manage.svg",
+      "label": "manage",
+      "kind": "storage",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "storage/cleanup",
+      "path": "icons/storage/cleanup.svg",
+      "label": "cleanup",
+      "kind": "storage",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "storage/scan",
+      "path": "icons/storage/scan.svg",
+      "label": "scan",
+      "kind": "storage",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "storage/delete",
+      "path": "icons/storage/delete.svg",
+      "label": "delete",
+      "kind": "storage",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "storage/auto-cleanup",
+      "path": "icons/storage/auto-cleanup.svg",
+      "label": "auto cleanup",
+      "kind": "storage",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "storage/tools",
+      "path": "icons/storage/tools.svg",
+      "label": "tools",
+      "kind": "storage",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "storage/extract-archive",
+      "path": "icons/storage/extract-archive.svg",
+      "label": "extract archive",
+      "kind": "storage",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "storage/keep-original",
+      "path": "icons/storage/keep-original.svg",
+      "label": "keep original",
+      "kind": "storage",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "storage/archive-box",
+      "path": "icons/storage/archive-box.svg",
+      "label": "archive box",
+      "kind": "storage",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "storage/storage-warning",
+      "path": "icons/storage/storage-warning.svg",
+      "label": "storage warning",
+      "kind": "storage",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "files/folder",
+      "path": "icons/files/folder.svg",
+      "label": "folder",
+      "kind": "files",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "files/folder-yellow",
+      "path": "icons/files/folder-yellow.svg",
+      "label": "folder yellow",
+      "kind": "files",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "files/folder-slot",
+      "path": "icons/files/folder-slot.svg",
+      "label": "folder slot",
+      "kind": "files",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "files/document",
+      "path": "icons/files/document.svg",
+      "label": "document",
+      "kind": "files",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "files/document-text",
+      "path": "icons/files/document-text.svg",
+      "label": "document text",
+      "kind": "files",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "files/image",
+      "path": "icons/files/image.svg",
+      "label": "image",
+      "kind": "files",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "files/video",
+      "path": "icons/files/video.svg",
+      "label": "video",
+      "kind": "files",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "files/audio",
+      "path": "icons/files/audio.svg",
+      "label": "audio",
+      "kind": "files",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "files/archive-zip",
+      "path": "icons/files/archive-zip.svg",
+      "label": "archive zip",
+      "kind": "files",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "files/new-folder",
+      "path": "icons/files/new-folder.svg",
+      "label": "new folder",
+      "kind": "files",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "files/rename",
+      "path": "icons/files/rename.svg",
+      "label": "rename",
+      "kind": "files",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "files/copy-folder",
+      "path": "icons/files/copy-folder.svg",
+      "label": "copy folder",
+      "kind": "files",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "files/move-folder",
+      "path": "icons/files/move-folder.svg",
+      "label": "move folder",
+      "kind": "files",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "files/sort-az",
+      "path": "icons/files/sort-az.svg",
+      "label": "sort az",
+      "kind": "files",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "files/file-checkbox",
+      "path": "icons/files/file-checkbox.svg",
+      "label": "file checkbox",
+      "kind": "files",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "connectivity/phone",
+      "path": "icons/connectivity/phone.svg",
+      "label": "phone",
+      "kind": "connectivity",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "connectivity/monitor",
+      "path": "icons/connectivity/monitor.svg",
+      "label": "monitor",
+      "kind": "connectivity",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "connectivity/server",
+      "path": "icons/connectivity/server.svg",
+      "label": "server",
+      "kind": "connectivity",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "connectivity/globe",
+      "path": "icons/connectivity/globe.svg",
+      "label": "globe",
+      "kind": "connectivity",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "connectivity/peers",
+      "path": "icons/connectivity/peers.svg",
+      "label": "peers",
+      "kind": "connectivity",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "connectivity/broadcast",
+      "path": "icons/connectivity/broadcast.svg",
+      "label": "broadcast",
+      "kind": "connectivity",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "connectivity/cloud",
+      "path": "icons/connectivity/cloud.svg",
+      "label": "cloud",
+      "kind": "connectivity",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "connectivity/local-to-remote",
+      "path": "icons/connectivity/local-to-remote.svg",
+      "label": "local to remote",
+      "kind": "connectivity",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "connectivity/remote-to-local",
+      "path": "icons/connectivity/remote-to-local.svg",
+      "label": "remote to local",
+      "kind": "connectivity",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "status/completed",
+      "path": "icons/status/completed.svg",
+      "label": "completed",
+      "kind": "status",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "status/paused",
+      "path": "icons/status/paused.svg",
+      "label": "paused",
+      "kind": "status",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "status/downloading",
+      "path": "icons/status/downloading.svg",
+      "label": "downloading",
+      "kind": "status",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "status/uploading",
+      "path": "icons/status/uploading.svg",
+      "label": "uploading",
+      "kind": "status",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "status/warning",
+      "path": "icons/status/warning.svg",
+      "label": "warning",
+      "kind": "status",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "status/error",
+      "path": "icons/status/error.svg",
+      "label": "error",
+      "kind": "status",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "status/queued",
+      "path": "icons/status/queued.svg",
+      "label": "queued",
+      "kind": "status",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "status/stalled",
+      "path": "icons/status/stalled.svg",
+      "label": "stalled",
+      "kind": "status",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "status/disabled",
+      "path": "icons/status/disabled.svg",
+      "label": "disabled",
+      "kind": "status",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "status/seeding",
+      "path": "icons/status/seeding.svg",
+      "label": "seeding",
+      "kind": "status",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "status/selected",
+      "path": "icons/status/selected.svg",
+      "label": "selected",
+      "kind": "status",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "status/unselected",
+      "path": "icons/status/unselected.svg",
+      "label": "unselected",
+      "kind": "status",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "system/search",
+      "path": "icons/system/search.svg",
+      "label": "search",
+      "kind": "system",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "system/share",
+      "path": "icons/system/share.svg",
+      "label": "share",
+      "kind": "system",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "system/chevron-right",
+      "path": "icons/system/chevron-right.svg",
+      "label": "chevron right",
+      "kind": "system",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "system/chevron-left",
+      "path": "icons/system/chevron-left.svg",
+      "label": "chevron left",
+      "kind": "system",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "system/chevron-up",
+      "path": "icons/system/chevron-up.svg",
+      "label": "chevron up",
+      "kind": "system",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "system/chevron-down",
+      "path": "icons/system/chevron-down.svg",
+      "label": "chevron down",
+      "kind": "system",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "system/more-vertical",
+      "path": "icons/system/more-vertical.svg",
+      "label": "more vertical",
+      "kind": "system",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "system/more-horizontal",
+      "path": "icons/system/more-horizontal.svg",
+      "label": "more horizontal",
+      "kind": "system",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "system/close",
+      "path": "icons/system/close.svg",
+      "label": "close",
+      "kind": "system",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "system/back",
+      "path": "icons/system/back.svg",
+      "label": "back",
+      "kind": "system",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "system/add",
+      "path": "icons/system/add.svg",
+      "label": "add",
+      "kind": "system",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "system/info",
+      "path": "icons/system/info.svg",
+      "label": "info",
+      "kind": "system",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "system/help",
+      "path": "icons/system/help.svg",
+      "label": "help",
+      "kind": "system",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "doodles/burst-two",
+      "path": "icons/doodles/burst-two.svg",
+      "label": "burst two",
+      "kind": "doodles",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "doodles/burst-three",
+      "path": "icons/doodles/burst-three.svg",
+      "label": "burst three",
+      "kind": "doodles",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "doodles/heart-pink",
+      "path": "icons/doodles/heart-pink.svg",
+      "label": "heart pink",
+      "kind": "doodles",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "doodles/star-yellow",
+      "path": "icons/doodles/star-yellow.svg",
+      "label": "star yellow",
+      "kind": "doodles",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "doodles/sparkle-outline",
+      "path": "icons/doodles/sparkle-outline.svg",
+      "label": "sparkle outline",
+      "kind": "doodles",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "doodles/crown-blue",
+      "path": "icons/doodles/crown-blue.svg",
+      "label": "crown blue",
+      "kind": "doodles",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "doodles/yellow-underline",
+      "path": "icons/doodles/yellow-underline.svg",
+      "label": "yellow underline",
+      "kind": "doodles",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "doodles/purple-underline",
+      "path": "icons/doodles/purple-underline.svg",
+      "label": "purple underline",
+      "kind": "doodles",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "doodles/pink-brush",
+      "path": "icons/doodles/pink-brush.svg",
+      "label": "pink brush",
+      "kind": "doodles",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "doodles/blue-splash",
+      "path": "icons/doodles/blue-splash.svg",
+      "label": "blue splash",
+      "kind": "doodles",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "doodles/green-blob",
+      "path": "icons/doodles/green-blob.svg",
+      "label": "green blob",
+      "kind": "doodles",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "doodles/pink-blob",
+      "path": "icons/doodles/pink-blob.svg",
+      "label": "pink blob",
+      "kind": "doodles",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "doodles/purple-blob",
+      "path": "icons/doodles/purple-blob.svg",
+      "label": "purple blob",
+      "kind": "doodles",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "doodles/yellow-blob",
+      "path": "icons/doodles/yellow-blob.svg",
+      "label": "yellow blob",
+      "kind": "doodles",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "doodles/confetti-three",
+      "path": "icons/doodles/confetti-three.svg",
+      "label": "confetti three",
+      "kind": "doodles",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "doodles/black-dots",
+      "path": "icons/doodles/black-dots.svg",
+      "label": "black dots",
+      "kind": "doodles",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "doodles/loop-arrow",
+      "path": "icons/doodles/loop-arrow.svg",
+      "label": "loop arrow",
+      "kind": "doodles",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "doodles/wavy-line",
+      "path": "icons/doodles/wavy-line.svg",
+      "label": "wavy line",
+      "kind": "doodles",
+      "status": "vector-draft",
+      "reference": "02-iconography-contact-sheet.png"
+    }
+  ]
+}

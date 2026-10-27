@@ -1,0 +1,5617 @@
+{
+  "schemaVersion": 1,
+  "policy": "Preserve all source-image alternatives separately, even inconsistent ones. No automatic favourite. No reference PNG deleted or modified.",
+  "referenceDirectory": "docs/design/reference-images/",
+  "canonicalLauncher": "docs/design/approved/chunks-app-icon-master.svg",
+  "statusMeaning": {
+    "approved-existing": "Approved and used by the installed launcher pipeline",
+    "vector-draft": "Committed original editable SVG; needs detail/fidelity review and Android-specific qualification",
+    "planned": "Explicit asset not yet produced; do not claim it exists"
+  },
+  "totals": {
+    "approved": 1,
+    "vectorDraft": 173,
+    "planned": 601
+  },
+  "assets": [
+    {
+      "id": "approved/chunks-app-icon-master",
+      "path": "docs/design/approved/chunks-app-icon-master.svg",
+      "category": "launcher",
+      "label": "Approved transparent launcher illustration; sole Android source",
+      "status": "approved-existing",
+      "source": "owner-approved-icon-2026-10-27"
+    },
+    {
+      "id": "navigation/transfers",
+      "path": "docs/design/svg/icons/navigation/transfers.svg",
+      "category": "navigation",
+      "label": "Transfers download into tray",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "navigation/workspace",
+      "path": "docs/design/svg/icons/navigation/workspace.svg",
+      "category": "navigation",
+      "label": "Workspace folder with inset slot",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "navigation/storage",
+      "path": "docs/design/svg/icons/navigation/storage.svg",
+      "category": "navigation",
+      "label": "Stacked database",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "navigation/discover",
+      "path": "docs/design/svg/icons/navigation/discover.svg",
+      "category": "navigation",
+      "label": "Discover compass",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "navigation/settings",
+      "path": "docs/design/svg/icons/navigation/settings.svg",
+      "category": "navigation",
+      "label": "settings",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "transfers/download",
+      "path": "docs/design/svg/icons/transfers/download.svg",
+      "category": "transfers",
+      "label": "download",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "transfers/upload",
+      "path": "docs/design/svg/icons/transfers/upload.svg",
+      "category": "transfers",
+      "label": "upload",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "transfers/download-cloud",
+      "path": "docs/design/svg/icons/transfers/download-cloud.svg",
+      "category": "transfers",
+      "label": "download cloud",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "transfers/transfer",
+      "path": "docs/design/svg/icons/transfers/transfer.svg",
+      "category": "transfers",
+      "label": "transfer",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "transfers/sync",
+      "path": "docs/design/svg/icons/transfers/sync.svg",
+      "category": "transfers",
+      "label": "sync",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "transfers/refresh",
+      "path": "docs/design/svg/icons/transfers/refresh.svg",
+      "category": "transfers",
+      "label": "refresh",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "transfers/play",
+      "path": "docs/design/svg/icons/transfers/play.svg",
+      "category": "transfers",
+      "label": "play",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "transfers/pause",
+      "path": "docs/design/svg/icons/transfers/pause.svg",
+      "category": "transfers",
+      "label": "pause",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "transfers/stop",
+      "path": "docs/design/svg/icons/transfers/stop.svg",
+      "category": "transfers",
+      "label": "stop",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "transfers/queue",
+      "path": "docs/design/svg/icons/transfers/queue.svg",
+      "category": "transfers",
+      "label": "queue",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "transfers/move",
+      "path": "docs/design/svg/icons/transfers/move.svg",
+      "category": "transfers",
+      "label": "move",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "transfers/copy",
+      "path": "docs/design/svg/icons/transfers/copy.svg",
+      "category": "transfers",
+      "label": "copy",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "transfers/magnet-link",
+      "path": "docs/design/svg/icons/transfers/magnet-link.svg",
+      "category": "transfers",
+      "label": "magnet link",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "transfers/clipboard-paste",
+      "path": "docs/design/svg/icons/transfers/clipboard-paste.svg",
+      "category": "transfers",
+      "label": "clipboard paste",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "transfers/browse-file",
+      "path": "docs/design/svg/icons/transfers/browse-file.svg",
+      "category": "transfers",
+      "label": "browse file",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "transfers/add-torrent",
+      "path": "docs/design/svg/icons/transfers/add-torrent.svg",
+      "category": "transfers",
+      "label": "add torrent",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "transfers/remove-transfer",
+      "path": "docs/design/svg/icons/transfers/remove-transfer.svg",
+      "category": "transfers",
+      "label": "remove transfer",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "transfers/rate-down",
+      "path": "docs/design/svg/icons/transfers/rate-down.svg",
+      "category": "transfers",
+      "label": "rate down",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "transfers/rate-up",
+      "path": "docs/design/svg/icons/transfers/rate-up.svg",
+      "category": "transfers",
+      "label": "rate up",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "transfers/torrent-file",
+      "path": "docs/design/svg/icons/transfers/torrent-file.svg",
+      "category": "transfers",
+      "label": "torrent file",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "transfers/speed-lightning",
+      "path": "docs/design/svg/icons/transfers/speed-lightning.svg",
+      "category": "transfers",
+      "label": "speed lightning",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "storage/database",
+      "path": "docs/design/svg/icons/storage/database.svg",
+      "category": "storage",
+      "label": "database",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "storage/server-rack",
+      "path": "docs/design/svg/icons/storage/server-rack.svg",
+      "category": "storage",
+      "label": "server rack",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "storage/drive",
+      "path": "docs/design/svg/icons/storage/drive.svg",
+      "category": "storage",
+      "label": "drive",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "storage/usage-pie",
+      "path": "docs/design/svg/icons/storage/usage-pie.svg",
+      "category": "storage",
+      "label": "Usage chart pie",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "storage/free-space",
+      "path": "docs/design/svg/icons/storage/free-space.svg",
+      "category": "storage",
+      "label": "free space",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "storage/manage",
+      "path": "docs/design/svg/icons/storage/manage.svg",
+      "category": "storage",
+      "label": "manage",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "storage/cleanup",
+      "path": "docs/design/svg/icons/storage/cleanup.svg",
+      "category": "storage",
+      "label": "cleanup",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "storage/scan",
+      "path": "docs/design/svg/icons/storage/scan.svg",
+      "category": "storage",
+      "label": "scan",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "storage/delete",
+      "path": "docs/design/svg/icons/storage/delete.svg",
+      "category": "storage",
+      "label": "delete",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "storage/auto-cleanup",
+      "path": "docs/design/svg/icons/storage/auto-cleanup.svg",
+      "category": "storage",
+      "label": "auto cleanup",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "storage/tools",
+      "path": "docs/design/svg/icons/storage/tools.svg",
+      "category": "storage",
+      "label": "tools",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "storage/extract-archive",
+      "path": "docs/design/svg/icons/storage/extract-archive.svg",
+      "category": "storage",
+      "label": "extract archive",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "storage/keep-original",
+      "path": "docs/design/svg/icons/storage/keep-original.svg",
+      "category": "storage",
+      "label": "keep original",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "storage/archive-box",
+      "path": "docs/design/svg/icons/storage/archive-box.svg",
+      "category": "storage",
+      "label": "archive box",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "storage/storage-warning",
+      "path": "docs/design/svg/icons/storage/storage-warning.svg",
+      "category": "storage",
+      "label": "storage warning",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "files/folder",
+      "path": "docs/design/svg/icons/files/folder.svg",
+      "category": "files",
+      "label": "folder",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "files/folder-yellow",
+      "path": "docs/design/svg/icons/files/folder-yellow.svg",
+      "category": "files",
+      "label": "folder yellow",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "files/folder-slot",
+      "path": "docs/design/svg/icons/files/folder-slot.svg",
+      "category": "files",
+      "label": "folder slot",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "files/document",
+      "path": "docs/design/svg/icons/files/document.svg",
+      "category": "files",
+      "label": "document",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "files/document-text",
+      "path": "docs/design/svg/icons/files/document-text.svg",
+      "category": "files",
+      "label": "document text",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "files/image",
+      "path": "docs/design/svg/icons/files/image.svg",
+      "category": "files",
+      "label": "image",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "files/video",
+      "path": "docs/design/svg/icons/files/video.svg",
+      "category": "files",
+      "label": "video",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "files/audio",
+      "path": "docs/design/svg/icons/files/audio.svg",
+      "category": "files",
+      "label": "audio",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "files/archive-zip",
+      "path": "docs/design/svg/icons/files/archive-zip.svg",
+      "category": "files",
+      "label": "archive zip",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "files/new-folder",
+      "path": "docs/design/svg/icons/files/new-folder.svg",
+      "category": "files",
+      "label": "new folder",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "files/rename",
+      "path": "docs/design/svg/icons/files/rename.svg",
+      "category": "files",
+      "label": "rename",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "files/copy-folder",
+      "path": "docs/design/svg/icons/files/copy-folder.svg",
+      "category": "files",
+      "label": "copy folder",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "files/move-folder",
+      "path": "docs/design/svg/icons/files/move-folder.svg",
+      "category": "files",
+      "label": "move folder",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "files/sort-az",
+      "path": "docs/design/svg/icons/files/sort-az.svg",
+      "category": "files",
+      "label": "sort az",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "files/file-checkbox",
+      "path": "docs/design/svg/icons/files/file-checkbox.svg",
+      "category": "files",
+      "label": "file checkbox",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "connectivity/phone",
+      "path": "docs/design/svg/icons/connectivity/phone.svg",
+      "category": "connectivity",
+      "label": "phone",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "connectivity/monitor",
+      "path": "docs/design/svg/icons/connectivity/monitor.svg",
+      "category": "connectivity",
+      "label": "monitor",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "connectivity/server",
+      "path": "docs/design/svg/icons/connectivity/server.svg",
+      "category": "connectivity",
+      "label": "server",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "connectivity/globe",
+      "path": "docs/design/svg/icons/connectivity/globe.svg",
+      "category": "connectivity",
+      "label": "globe",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "connectivity/peers",
+      "path": "docs/design/svg/icons/connectivity/peers.svg",
+      "category": "connectivity",
+      "label": "peers",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "connectivity/broadcast",
+      "path": "docs/design/svg/icons/connectivity/broadcast.svg",
+      "category": "connectivity",
+      "label": "broadcast",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "connectivity/cloud",
+      "path": "docs/design/svg/icons/connectivity/cloud.svg",
+      "category": "connectivity",
+      "label": "cloud",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "connectivity/local-to-remote",
+      "path": "docs/design/svg/icons/connectivity/local-to-remote.svg",
+      "category": "connectivity",
+      "label": "local to remote",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "connectivity/remote-to-local",
+      "path": "docs/design/svg/icons/connectivity/remote-to-local.svg",
+      "category": "connectivity",
+      "label": "remote to local",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "status/completed",
+      "path": "docs/design/svg/icons/status/completed.svg",
+      "category": "status",
+      "label": "completed",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "status/paused",
+      "path": "docs/design/svg/icons/status/paused.svg",
+      "category": "status",
+      "label": "paused",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "status/downloading",
+      "path": "docs/design/svg/icons/status/downloading.svg",
+      "category": "status",
+      "label": "downloading",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "status/uploading",
+      "path": "docs/design/svg/icons/status/uploading.svg",
+      "category": "status",
+      "label": "uploading",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "status/warning",
+      "path": "docs/design/svg/icons/status/warning.svg",
+      "category": "status",
+      "label": "warning",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "status/error",
+      "path": "docs/design/svg/icons/status/error.svg",
+      "category": "status",
+      "label": "error",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "status/queued",
+      "path": "docs/design/svg/icons/status/queued.svg",
+      "category": "status",
+      "label": "queued",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "status/stalled",
+      "path": "docs/design/svg/icons/status/stalled.svg",
+      "category": "status",
+      "label": "stalled",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "status/disabled",
+      "path": "docs/design/svg/icons/status/disabled.svg",
+      "category": "status",
+      "label": "disabled",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "status/seeding",
+      "path": "docs/design/svg/icons/status/seeding.svg",
+      "category": "status",
+      "label": "seeding",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "status/selected",
+      "path": "docs/design/svg/icons/status/selected.svg",
+      "category": "status",
+      "label": "selected",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "status/unselected",
+      "path": "docs/design/svg/icons/status/unselected.svg",
+      "category": "status",
+      "label": "unselected",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "system/search",
+      "path": "docs/design/svg/icons/system/search.svg",
+      "category": "system",
+      "label": "search",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "system/share",
+      "path": "docs/design/svg/icons/system/share.svg",
+      "category": "system",
+      "label": "share",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "system/chevron-right",
+      "path": "docs/design/svg/icons/system/chevron-right.svg",
+      "category": "system",
+      "label": "chevron right",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "system/chevron-left",
+      "path": "docs/design/svg/icons/system/chevron-left.svg",
+      "category": "system",
+      "label": "chevron left",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "system/chevron-up",
+      "path": "docs/design/svg/icons/system/chevron-up.svg",
+      "category": "system",
+      "label": "chevron up",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "system/chevron-down",
+      "path": "docs/design/svg/icons/system/chevron-down.svg",
+      "category": "system",
+      "label": "chevron down",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "system/more-vertical",
+      "path": "docs/design/svg/icons/system/more-vertical.svg",
+      "category": "system",
+      "label": "more vertical",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "system/more-horizontal",
+      "path": "docs/design/svg/icons/system/more-horizontal.svg",
+      "category": "system",
+      "label": "more horizontal",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "system/close",
+      "path": "docs/design/svg/icons/system/close.svg",
+      "category": "system",
+      "label": "close",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "system/back",
+      "path": "docs/design/svg/icons/system/back.svg",
+      "category": "system",
+      "label": "back",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "system/add",
+      "path": "docs/design/svg/icons/system/add.svg",
+      "category": "system",
+      "label": "add",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "system/info",
+      "path": "docs/design/svg/icons/system/info.svg",
+      "category": "system",
+      "label": "info",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "system/help",
+      "path": "docs/design/svg/icons/system/help.svg",
+      "category": "system",
+      "label": "help",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "doodles/burst-two",
+      "path": "docs/design/svg/icons/doodles/burst-two.svg",
+      "category": "doodles",
+      "label": "burst two",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "doodles/burst-three",
+      "path": "docs/design/svg/icons/doodles/burst-three.svg",
+      "category": "doodles",
+      "label": "burst three",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "doodles/heart-pink",
+      "path": "docs/design/svg/icons/doodles/heart-pink.svg",
+      "category": "doodles",
+      "label": "heart pink",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "doodles/star-yellow",
+      "path": "docs/design/svg/icons/doodles/star-yellow.svg",
+      "category": "doodles",
+      "label": "star yellow",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "doodles/sparkle-outline",
+      "path": "docs/design/svg/icons/doodles/sparkle-outline.svg",
+      "category": "doodles",
+      "label": "sparkle outline",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "doodles/crown-blue",
+      "path": "docs/design/svg/icons/doodles/crown-blue.svg",
+      "category": "doodles",
+      "label": "crown blue",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "doodles/yellow-underline",
+      "path": "docs/design/svg/icons/doodles/yellow-underline.svg",
+      "category": "doodles",
+      "label": "yellow underline",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "doodles/purple-underline",
+      "path": "docs/design/svg/icons/doodles/purple-underline.svg",
+      "category": "doodles",
+      "label": "purple underline",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "doodles/pink-brush",
+      "path": "docs/design/svg/icons/doodles/pink-brush.svg",
+      "category": "doodles",
+      "label": "pink brush",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "doodles/blue-splash",
+      "path": "docs/design/svg/icons/doodles/blue-splash.svg",
+      "category": "doodles",
+      "label": "blue splash",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "doodles/green-blob",
+      "path": "docs/design/svg/icons/doodles/green-blob.svg",
+      "category": "doodles",
+      "label": "green blob",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "doodles/pink-blob",
+      "path": "docs/design/svg/icons/doodles/pink-blob.svg",
+      "category": "doodles",
+      "label": "pink blob",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "doodles/purple-blob",
+      "path": "docs/design/svg/icons/doodles/purple-blob.svg",
+      "category": "doodles",
+      "label": "purple blob",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "doodles/yellow-blob",
+      "path": "docs/design/svg/icons/doodles/yellow-blob.svg",
+      "category": "doodles",
+      "label": "yellow blob",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "doodles/confetti-three",
+      "path": "docs/design/svg/icons/doodles/confetti-three.svg",
+      "category": "doodles",
+      "label": "confetti three",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "doodles/black-dots",
+      "path": "docs/design/svg/icons/doodles/black-dots.svg",
+      "category": "doodles",
+      "label": "black dots",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "doodles/loop-arrow",
+      "path": "docs/design/svg/icons/doodles/loop-arrow.svg",
+      "category": "doodles",
+      "label": "loop arrow",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "doodles/wavy-line",
+      "path": "docs/design/svg/icons/doodles/wavy-line.svg",
+      "category": "doodles",
+      "label": "wavy line",
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "brand/wordmark-black",
+      "path": "docs/design/svg/brand/wordmark-black.svg",
+      "category": "wordmark",
+      "label": "brand wordmark black",
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "brand/wordmark-purple-offset",
+      "path": "docs/design/svg/brand/wordmark-purple-offset.svg",
+      "category": "wordmark",
+      "label": "brand wordmark purple offset",
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "brand/wordmark-purple-lilac",
+      "path": "docs/design/svg/brand/wordmark-purple-lilac.svg",
+      "category": "wordmark",
+      "label": "brand wordmark purple lilac",
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "brand/wordmark-white-reverse",
+      "path": "docs/design/svg/brand/wordmark-white-reverse.svg",
+      "category": "wordmark",
+      "label": "brand wordmark white reverse",
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "brand/wordmark-grey-monochrome",
+      "path": "docs/design/svg/brand/wordmark-grey-monochrome.svg",
+      "category": "wordmark",
+      "label": "brand wordmark grey monochrome",
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "brand/wordmark-white-purple-offset",
+      "path": "docs/design/svg/brand/wordmark-white-purple-offset.svg",
+      "category": "wordmark",
+      "label": "brand wordmark white purple offset",
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "brand/wordmark-with-emphasis",
+      "path": "docs/design/svg/brand/wordmark-with-emphasis.svg",
+      "category": "wordmark",
+      "label": "brand wordmark with emphasis",
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "brand/primary-lockup",
+      "path": "docs/design/svg/brand/primary-lockup.svg",
+      "category": "lockup",
+      "label": "brand primary lockup",
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "brand/dark-reversed-lockup",
+      "path": "docs/design/svg/brand/dark-reversed-lockup.svg",
+      "category": "lockup",
+      "label": "brand dark reversed lockup",
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "brand/monochrome-lockup",
+      "path": "docs/design/svg/brand/monochrome-lockup.svg",
+      "category": "lockup",
+      "label": "brand monochrome lockup",
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "brand/stacked-lockup",
+      "path": "docs/design/svg/brand/stacked-lockup.svg",
+      "category": "lockup",
+      "label": "brand stacked lockup",
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "brand/compact-horizontal-lockup",
+      "path": "docs/design/svg/brand/compact-horizontal-lockup.svg",
+      "category": "lockup",
+      "label": "brand compact horizontal lockup",
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "brand/yellow-sticker-lockup",
+      "path": "docs/design/svg/brand/yellow-sticker-lockup.svg",
+      "category": "sticker",
+      "label": "brand yellow sticker lockup",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "brand/purple-sticker-lockup",
+      "path": "docs/design/svg/brand/purple-sticker-lockup.svg",
+      "category": "sticker",
+      "label": "brand purple sticker lockup",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "brand/green-sticker-lockup",
+      "path": "docs/design/svg/brand/green-sticker-lockup.svg",
+      "category": "sticker",
+      "label": "brand green sticker lockup",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "brand/pink-sticker-lockup",
+      "path": "docs/design/svg/brand/pink-sticker-lockup.svg",
+      "category": "sticker",
+      "label": "brand pink sticker lockup",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "launcher-alternatives/smiling-folder-yellow",
+      "path": "docs/design/svg/launcher-alternatives/smiling-folder-yellow.svg",
+      "category": "launcher-alternative",
+      "label": "launcher alternatives smiling folder yellow",
+      "status": "vector-draft",
+      "source": "04-brand-lockups-and-app-icon.png"
+    },
+    {
+      "id": "launcher-alternatives/smiling-folder-light",
+      "path": "docs/design/svg/launcher-alternatives/smiling-folder-light.svg",
+      "category": "launcher-alternative",
+      "label": "launcher alternatives smiling folder light",
+      "status": "vector-draft",
+      "source": "04-brand-lockups-and-app-icon.png"
+    },
+    {
+      "id": "launcher-alternatives/smiling-folder-dark",
+      "path": "docs/design/svg/launcher-alternatives/smiling-folder-dark.svg",
+      "category": "launcher-alternative",
+      "label": "launcher alternatives smiling folder dark",
+      "status": "vector-draft",
+      "source": "04-brand-lockups-and-app-icon.png"
+    },
+    {
+      "id": "launcher-alternatives/smiling-folder-transparent",
+      "path": "docs/design/svg/launcher-alternatives/smiling-folder-transparent.svg",
+      "category": "launcher-alternative",
+      "label": "launcher alternatives smiling folder transparent",
+      "status": "vector-draft",
+      "source": "04-brand-lockups-and-app-icon.png"
+    },
+    {
+      "id": "launcher-alternatives/smiling-folder-flat",
+      "path": "docs/design/svg/launcher-alternatives/smiling-folder-flat.svg",
+      "category": "launcher-alternative",
+      "label": "launcher alternatives smiling folder flat",
+      "status": "vector-draft",
+      "source": "04-brand-lockups-and-app-icon.png"
+    },
+    {
+      "id": "launcher-alternatives/c-monogram-purple",
+      "path": "docs/design/svg/launcher-alternatives/c-monogram-purple.svg",
+      "category": "launcher-alternative",
+      "label": "launcher alternatives c monogram purple",
+      "status": "vector-draft",
+      "source": "04-brand-lockups-and-app-icon.png"
+    },
+    {
+      "id": "launcher-alternatives/c-monogram-confetti-dark",
+      "path": "docs/design/svg/launcher-alternatives/c-monogram-confetti-dark.svg",
+      "category": "launcher-alternative",
+      "label": "launcher alternatives c monogram confetti dark",
+      "status": "vector-draft",
+      "source": "04-brand-lockups-and-app-icon.png"
+    },
+    {
+      "id": "launcher-alternatives/multicolour-blocks-dark",
+      "path": "docs/design/svg/launcher-alternatives/multicolour-blocks-dark.svg",
+      "category": "launcher-alternative",
+      "label": "launcher alternatives multicolour blocks dark",
+      "status": "vector-draft",
+      "source": "04-brand-lockups-and-app-icon.png"
+    },
+    {
+      "id": "launcher-alternatives/folder-with-blocks",
+      "path": "docs/design/svg/launcher-alternatives/folder-with-blocks.svg",
+      "category": "launcher-alternative",
+      "label": "launcher alternatives folder with blocks",
+      "status": "vector-draft",
+      "source": "04-brand-lockups-and-app-icon.png"
+    },
+    {
+      "id": "illustrations/four-colour-character-combo",
+      "path": "docs/design/svg/illustrations/four-colour-character-combo.svg",
+      "category": "illustration",
+      "label": "illustrations four colour character combo",
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "character-parts/folder-front-panel",
+      "category": "character-parts",
+      "label": "folder front panel",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-parts/folder-rear-wall",
+      "category": "character-parts",
+      "label": "folder rear wall",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-parts/folder-top-tab",
+      "category": "character-parts",
+      "label": "folder top tab",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-parts/folder-lip-and-outer-edge",
+      "category": "character-parts",
+      "label": "folder lip and outer edge",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-parts/folder-right-extrusion",
+      "category": "character-parts",
+      "label": "folder right extrusion",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-parts/folder-inner-rim",
+      "category": "character-parts",
+      "label": "folder inner rim",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-parts/folder-front-highlight",
+      "category": "character-parts",
+      "label": "folder front highlight",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-parts/folder-top-highlight",
+      "category": "character-parts",
+      "label": "folder top highlight",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-parts/folder-side-shading",
+      "category": "character-parts",
+      "label": "folder side shading",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-parts/folder-lower-shadow",
+      "category": "character-parts",
+      "label": "folder lower shadow",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-parts/folder-left-eye",
+      "category": "character-parts",
+      "label": "folder left eye",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-parts/folder-right-eye",
+      "category": "character-parts",
+      "label": "folder right eye",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-parts/folder-smile",
+      "category": "character-parts",
+      "label": "folder smile",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-parts/folder-ground-shadow",
+      "category": "character-parts",
+      "label": "folder ground shadow",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-parts/folder-monochrome-silhouette",
+      "category": "character-parts",
+      "label": "folder monochrome silhouette",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-parts/folder-micro-simple-silhouette",
+      "category": "character-parts",
+      "label": "folder micro-simple silhouette",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-parts/folder-with-colourful-contents",
+      "category": "character-parts",
+      "label": "folder with colourful contents",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-parts/folder-without-contents",
+      "category": "character-parts",
+      "label": "folder without contents",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-parts/folder-black-white-mark",
+      "category": "character-parts",
+      "label": "folder black/white mark",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-parts/folder-with-black-burst-strokes",
+      "category": "character-parts",
+      "label": "folder with black burst strokes",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-parts/purple-storage-cube-front",
+      "category": "character-parts",
+      "label": "purple storage cube front",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-parts/purple-storage-cube-top",
+      "category": "character-parts",
+      "label": "purple storage cube top",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-parts/purple-storage-cube-side",
+      "category": "character-parts",
+      "label": "purple storage cube side",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-parts/purple-cube-highlights",
+      "category": "character-parts",
+      "label": "purple cube highlights",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-parts/purple-cube-shadow",
+      "category": "character-parts",
+      "label": "purple cube shadow",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-parts/purple-cube-three-disc-pictogram",
+      "category": "character-parts",
+      "label": "purple cube three-disc pictogram",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-parts/green-download-cube-front",
+      "category": "character-parts",
+      "label": "green download cube front",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-parts/green-download-cube-top",
+      "category": "character-parts",
+      "label": "green download cube top",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-parts/green-download-cube-side",
+      "category": "character-parts",
+      "label": "green download cube side",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-parts/green-cube-highlights",
+      "category": "character-parts",
+      "label": "green cube highlights",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-parts/green-cube-shadow",
+      "category": "character-parts",
+      "label": "green cube shadow",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-parts/green-cube-arrow-pictogram",
+      "category": "character-parts",
+      "label": "green cube arrow pictogram",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-parts/coral-media-cube-front",
+      "category": "character-parts",
+      "label": "coral media cube front",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-parts/coral-media-cube-top",
+      "category": "character-parts",
+      "label": "coral media cube top",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-parts/coral-media-cube-side",
+      "category": "character-parts",
+      "label": "coral media cube side",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-parts/coral-cube-highlights",
+      "category": "character-parts",
+      "label": "coral cube highlights",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-parts/coral-cube-shadow",
+      "category": "character-parts",
+      "label": "coral cube shadow",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-parts/coral-cube-mountain-sun-pictogram",
+      "category": "character-parts",
+      "label": "coral cube mountain-sun pictogram",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-parts/plain-pink-3d-block",
+      "category": "character-parts",
+      "label": "plain pink 3D block",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-parts/plain-yellow-3d-block",
+      "category": "character-parts",
+      "label": "plain yellow 3D block",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-parts/plain-blue-3d-block",
+      "category": "character-parts",
+      "label": "plain blue 3D block",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-parts/plain-purple-3d-block",
+      "category": "character-parts",
+      "label": "plain purple 3D block",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-parts/plain-green-3d-block",
+      "category": "character-parts",
+      "label": "plain green 3D block",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-parts/plain-orange-3d-block",
+      "category": "character-parts",
+      "label": "plain orange 3D block",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-parts/three-dimensional-block-silhouette",
+      "category": "character-parts",
+      "label": "three-dimensional block silhouette",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-combinations/folder-with-background-blobs",
+      "category": "character-combinations",
+      "label": "folder with background blobs",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-combinations/folder-with-colourful-block-contents",
+      "category": "character-combinations",
+      "label": "folder with colourful block contents",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-combinations/folder-and-green-download-cube",
+      "category": "character-combinations",
+      "label": "folder and green download cube",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-combinations/folder-storage-download-media-lineup",
+      "category": "character-combinations",
+      "label": "folder-storage-download-media lineup",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-combinations/compact-four-character-lineup",
+      "category": "character-combinations",
+      "label": "compact four-character lineup",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-combinations/four-character-diagonal",
+      "category": "character-combinations",
+      "label": "four-character diagonal",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-combinations/four-character-monochrome",
+      "category": "character-combinations",
+      "label": "four-character monochrome",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-combinations/folder-and-doodle-hero",
+      "category": "character-combinations",
+      "label": "folder and doodle hero",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-combinations/folder-and-crown",
+      "category": "character-combinations",
+      "label": "folder and crown",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-combinations/light-hero-character-scene",
+      "category": "character-combinations",
+      "label": "light hero character scene",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "character-combinations/dark-hero-character-scene",
+      "category": "character-combinations",
+      "label": "dark hero character scene",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "brand-fidelity/exact-reference-bespoke-chunks-wordmark-outlines",
+      "category": "brand-fidelity",
+      "label": "exact reference bespoke Chunks wordmark outlines",
+      "status": "planned",
+      "source": "04-brand-lockups-and-app-icon.png"
+    },
+    {
+      "id": "brand-fidelity/primary-tagline-hand-lettered-outline",
+      "category": "brand-fidelity",
+      "label": "primary tagline hand-lettered outline",
+      "status": "planned",
+      "source": "04-brand-lockups-and-app-icon.png"
+    },
+    {
+      "id": "brand-fidelity/alternate-tagline-hand-lettered-outline",
+      "category": "brand-fidelity",
+      "label": "alternate tagline hand-lettered outline",
+      "status": "planned",
+      "source": "04-brand-lockups-and-app-icon.png"
+    },
+    {
+      "id": "brand-fidelity/white-label-on-dark-with-underline",
+      "category": "brand-fidelity",
+      "label": "white label on dark with underline",
+      "status": "planned",
+      "source": "04-brand-lockups-and-app-icon.png"
+    },
+    {
+      "id": "brand-fidelity/grey-monochrome-logo-lockup",
+      "category": "brand-fidelity",
+      "label": "grey monochrome logo lockup",
+      "status": "planned",
+      "source": "04-brand-lockups-and-app-icon.png"
+    },
+    {
+      "id": "brand-fidelity/black-monochrome-logo-lockup",
+      "category": "brand-fidelity",
+      "label": "black monochrome logo lockup",
+      "status": "planned",
+      "source": "04-brand-lockups-and-app-icon.png"
+    },
+    {
+      "id": "brand-fidelity/full-stacked-four-character-brand-lockup",
+      "category": "brand-fidelity",
+      "label": "full stacked four-character brand lockup",
+      "status": "planned",
+      "source": "04-brand-lockups-and-app-icon.png"
+    },
+    {
+      "id": "brand-fidelity/horizontal-four-character-brand-lockup",
+      "category": "brand-fidelity",
+      "label": "horizontal four-character brand lockup",
+      "status": "planned",
+      "source": "04-brand-lockups-and-app-icon.png"
+    },
+    {
+      "id": "brand-fidelity/mini-logo-for-16-px",
+      "category": "brand-fidelity",
+      "label": "mini logo for 16 px",
+      "status": "planned",
+      "source": "04-brand-lockups-and-app-icon.png"
+    },
+    {
+      "id": "brand-fidelity/cream-launch-screen-frame",
+      "category": "brand-fidelity",
+      "label": "cream launch-screen frame",
+      "status": "planned",
+      "source": "04-brand-lockups-and-app-icon.png"
+    },
+    {
+      "id": "brand-fidelity/brand-wordmark-without-offset-shadow",
+      "category": "brand-fidelity",
+      "label": "brand wordmark without offset shadow",
+      "status": "planned",
+      "source": "04-brand-lockups-and-app-icon.png"
+    },
+    {
+      "id": "brand-fidelity/brand-wordmark-black-shadow-white-stroke",
+      "category": "brand-fidelity",
+      "label": "brand wordmark black shadow white stroke",
+      "status": "planned",
+      "source": "04-brand-lockups-and-app-icon.png"
+    },
+    {
+      "id": "brand-fidelity/splash-screen-decorative-composition",
+      "category": "brand-fidelity",
+      "label": "splash screen decorative composition",
+      "status": "planned",
+      "source": "04-brand-lockups-and-app-icon.png"
+    },
+    {
+      "id": "brand-fidelity/onboarding-brand-hero-composition",
+      "category": "brand-fidelity",
+      "label": "onboarding brand hero composition",
+      "status": "planned",
+      "source": "04-brand-lockups-and-app-icon.png"
+    },
+    {
+      "id": "brand-fidelity/black-outlined-same-torrents-sticker",
+      "category": "brand-fidelity",
+      "label": "black outlined Same Torrents sticker",
+      "status": "planned",
+      "source": "04-brand-lockups-and-app-icon.png"
+    },
+    {
+      "id": "brand-fidelity/yellow-same-files-sticker",
+      "category": "brand-fidelity",
+      "label": "yellow Same Files sticker",
+      "status": "planned",
+      "source": "04-brand-lockups-and-app-icon.png"
+    },
+    {
+      "id": "launcher-concepts/folder-with-cubes-dimensional-concept",
+      "category": "launcher-concepts",
+      "label": "folder-with-cubes dimensional concept",
+      "status": "planned",
+      "source": "04-brand-lockups-and-app-icon.png"
+    },
+    {
+      "id": "launcher-concepts/white-simple-folder-on-black",
+      "category": "launcher-concepts",
+      "label": "white simple folder on black",
+      "status": "planned",
+      "source": "04-brand-lockups-and-app-icon.png"
+    },
+    {
+      "id": "launcher-concepts/black-simple-folder-on-white",
+      "category": "launcher-concepts",
+      "label": "black simple folder on white",
+      "status": "planned",
+      "source": "04-brand-lockups-and-app-icon.png"
+    },
+    {
+      "id": "launcher-concepts/grey-monochrome-folder",
+      "category": "launcher-concepts",
+      "label": "grey monochrome folder",
+      "status": "planned",
+      "source": "04-brand-lockups-and-app-icon.png"
+    },
+    {
+      "id": "launcher-concepts/micro-smile-only-8px",
+      "category": "launcher-concepts",
+      "label": "micro smile-only 8px",
+      "status": "planned",
+      "source": "04-brand-lockups-and-app-icon.png"
+    },
+    {
+      "id": "launcher-concepts/launcher-micro-16px",
+      "category": "launcher-concepts",
+      "label": "launcher micro 16px",
+      "status": "planned",
+      "source": "04-brand-lockups-and-app-icon.png"
+    },
+    {
+      "id": "launcher-concepts/launcher-micro-24px",
+      "category": "launcher-concepts",
+      "label": "launcher micro 24px",
+      "status": "planned",
+      "source": "04-brand-lockups-and-app-icon.png"
+    },
+    {
+      "id": "launcher-concepts/launcher-micro-32px",
+      "category": "launcher-concepts",
+      "label": "launcher micro 32px",
+      "status": "planned",
+      "source": "04-brand-lockups-and-app-icon.png"
+    },
+    {
+      "id": "launcher-concepts/launcher-micro-48px",
+      "category": "launcher-concepts",
+      "label": "launcher micro 48px",
+      "status": "planned",
+      "source": "04-brand-lockups-and-app-icon.png"
+    },
+    {
+      "id": "launcher-concepts/launcher-micro-64px",
+      "category": "launcher-concepts",
+      "label": "launcher micro 64px",
+      "status": "planned",
+      "source": "04-brand-lockups-and-app-icon.png"
+    },
+    {
+      "id": "launcher-concepts/notification-monochrome-folder",
+      "category": "launcher-concepts",
+      "label": "notification monochrome folder",
+      "status": "planned",
+      "source": "04-brand-lockups-and-app-icon.png"
+    },
+    {
+      "id": "launcher-concepts/light-adaptive-foreground",
+      "category": "launcher-concepts",
+      "label": "light adaptive foreground",
+      "status": "planned",
+      "source": "04-brand-lockups-and-app-icon.png"
+    },
+    {
+      "id": "launcher-concepts/dark-adaptive-foreground",
+      "category": "launcher-concepts",
+      "label": "dark adaptive foreground",
+      "status": "planned",
+      "source": "04-brand-lockups-and-app-icon.png"
+    },
+    {
+      "id": "launcher-concepts/monochrome-adaptive-foreground",
+      "category": "launcher-concepts",
+      "label": "monochrome adaptive foreground",
+      "status": "planned",
+      "source": "04-brand-lockups-and-app-icon.png"
+    },
+    {
+      "id": "missing-glyph-icons/stop-transfer-circular",
+      "category": "missing-glyph-icons",
+      "label": "stop transfer circular",
+      "status": "planned",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "missing-glyph-icons/file-drop-zone-icon",
+      "category": "missing-glyph-icons",
+      "label": "file-drop zone icon",
+      "status": "planned",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "missing-glyph-icons/magnifying-document-duplicate",
+      "category": "missing-glyph-icons",
+      "label": "magnifying document duplicate",
+      "status": "planned",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "missing-glyph-icons/selected-radio-dot",
+      "category": "missing-glyph-icons",
+      "label": "selected radio dot",
+      "status": "planned",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "missing-glyph-icons/unselected-radio-ring",
+      "category": "missing-glyph-icons",
+      "label": "unselected radio ring",
+      "status": "planned",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "missing-glyph-icons/warning-triangle-slim",
+      "category": "missing-glyph-icons",
+      "label": "warning triangle slim",
+      "status": "planned",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "missing-glyph-icons/shield-with-check",
+      "category": "missing-glyph-icons",
+      "label": "shield with check",
+      "status": "planned",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "missing-glyph-icons/sort-descending",
+      "category": "missing-glyph-icons",
+      "label": "sort descending",
+      "status": "planned",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "missing-glyph-icons/sort-ascending",
+      "category": "missing-glyph-icons",
+      "label": "sort ascending",
+      "status": "planned",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "missing-glyph-icons/filter-funnel",
+      "category": "missing-glyph-icons",
+      "label": "filter funnel",
+      "status": "planned",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "missing-glyph-icons/server-heartbeat",
+      "category": "missing-glyph-icons",
+      "label": "server heartbeat",
+      "status": "planned",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "missing-glyph-icons/infinity-sync",
+      "category": "missing-glyph-icons",
+      "label": "infinity sync",
+      "status": "planned",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "missing-glyph-icons/back-to-top-arrow",
+      "category": "missing-glyph-icons",
+      "label": "back to top arrow",
+      "status": "planned",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "missing-glyph-icons/download-with-cloud-ring",
+      "category": "missing-glyph-icons",
+      "label": "download with cloud ring",
+      "status": "planned",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "missing-glyph-icons/upload-with-cloud-ring",
+      "category": "missing-glyph-icons",
+      "label": "upload with cloud ring",
+      "status": "planned",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "missing-glyph-icons/queue-list-variant",
+      "category": "missing-glyph-icons",
+      "label": "queue list variant",
+      "status": "planned",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "missing-glyph-icons/copy-magnet-variant",
+      "category": "missing-glyph-icons",
+      "label": "copy magnet variant",
+      "status": "planned",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "missing-glyph-icons/rename-folder-variant",
+      "category": "missing-glyph-icons",
+      "label": "rename folder variant",
+      "status": "planned",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "missing-glyph-icons/library-collection-stack",
+      "category": "missing-glyph-icons",
+      "label": "library collection stack",
+      "status": "planned",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "missing-glyph-icons/archive-package",
+      "category": "missing-glyph-icons",
+      "label": "archive package",
+      "status": "planned",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "missing-glyph-icons/tracker-antenna",
+      "category": "missing-glyph-icons",
+      "label": "tracker antenna",
+      "status": "planned",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "missing-glyph-icons/rtorrent-connection",
+      "category": "missing-glyph-icons",
+      "label": "rTorrent connection",
+      "status": "planned",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "missing-glyph-icons/local-engine-symbol",
+      "category": "missing-glyph-icons",
+      "label": "local engine symbol",
+      "status": "planned",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "missing-glyph-icons/device-file-open",
+      "category": "missing-glyph-icons",
+      "label": "device file open",
+      "status": "planned",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "missing-glyph-icons/restore-snapshot",
+      "category": "missing-glyph-icons",
+      "label": "restore snapshot",
+      "status": "planned",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "missing-glyph-icons/save-snapshot",
+      "category": "missing-glyph-icons",
+      "label": "save snapshot",
+      "status": "planned",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "missing-glyph-icons/preview-snapshot",
+      "category": "missing-glyph-icons",
+      "label": "preview snapshot",
+      "status": "planned",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "missing-glyph-icons/bulk-select",
+      "category": "missing-glyph-icons",
+      "label": "bulk select",
+      "status": "planned",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "missing-glyph-icons/select-visible",
+      "category": "missing-glyph-icons",
+      "label": "select visible",
+      "status": "planned",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "missing-glyph-icons/confirm-apply",
+      "category": "missing-glyph-icons",
+      "label": "confirm apply",
+      "status": "planned",
+      "source": "02-iconography-contact-sheet.png"
+    },
+    {
+      "id": "decoration-variants/small-yellow-heart-blob",
+      "category": "decoration-variants",
+      "label": "small yellow heart blob",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "decoration-variants/pink-mini-heart",
+      "category": "decoration-variants",
+      "label": "pink mini heart",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "decoration-variants/large-blue-blob",
+      "category": "decoration-variants",
+      "label": "large blue blob",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "decoration-variants/cyan-corner-splash",
+      "category": "decoration-variants",
+      "label": "cyan corner splash",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "decoration-variants/green-dotted-blob",
+      "category": "decoration-variants",
+      "label": "green dotted blob",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "decoration-variants/yellow-corner-splash",
+      "category": "decoration-variants",
+      "label": "yellow corner splash",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "decoration-variants/purple-oval-blob",
+      "category": "decoration-variants",
+      "label": "purple oval blob",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "decoration-variants/pink-top-edge-splash",
+      "category": "decoration-variants",
+      "label": "pink top-edge splash",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "decoration-variants/cyan-branching-blob",
+      "category": "decoration-variants",
+      "label": "cyan branching blob",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "decoration-variants/yellow-five-point-star",
+      "category": "decoration-variants",
+      "label": "yellow five-point star",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "decoration-variants/mini-blue-crown",
+      "category": "decoration-variants",
+      "label": "mini blue crown",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "decoration-variants/outline-mini-crown",
+      "category": "decoration-variants",
+      "label": "outline mini crown",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "decoration-variants/small-pink-dot-cluster",
+      "category": "decoration-variants",
+      "label": "small pink dot cluster",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "decoration-variants/blue-droplet",
+      "category": "decoration-variants",
+      "label": "blue droplet",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "decoration-variants/purple-teardrop",
+      "category": "decoration-variants",
+      "label": "purple teardrop",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "decoration-variants/green-droplet",
+      "category": "decoration-variants",
+      "label": "green droplet",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "decoration-variants/yellow-oval-dash",
+      "category": "decoration-variants",
+      "label": "yellow oval dash",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "decoration-variants/short-blue-mark",
+      "category": "decoration-variants",
+      "label": "short blue mark",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "decoration-variants/short-pink-mark",
+      "category": "decoration-variants",
+      "label": "short pink mark",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "decoration-variants/green-brush-stroke",
+      "category": "decoration-variants",
+      "label": "green brush stroke",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "decoration-variants/black-spiral",
+      "category": "decoration-variants",
+      "label": "black spiral",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "decoration-variants/double-arc",
+      "category": "decoration-variants",
+      "label": "double arc",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "decoration-variants/double-yellow-underline",
+      "category": "decoration-variants",
+      "label": "double yellow underline",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "decoration-variants/triple-yellow-zigzag",
+      "category": "decoration-variants",
+      "label": "triple yellow zigzag",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "decoration-variants/pink-underline",
+      "category": "decoration-variants",
+      "label": "pink underline",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "decoration-variants/blue-underline",
+      "category": "decoration-variants",
+      "label": "blue underline",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "decoration-variants/light-grey-halftone-dots",
+      "category": "decoration-variants",
+      "label": "light grey halftone dots",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "decoration-variants/blue-dotted-spray",
+      "category": "decoration-variants",
+      "label": "blue dotted spray",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "decoration-variants/sprinkle-patch",
+      "category": "decoration-variants",
+      "label": "sprinkle patch",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "decoration-variants/multi-colour-confetti-cluster",
+      "category": "decoration-variants",
+      "label": "multi-colour confetti cluster",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "stickers/yellow-big-files-sticker-exact-hand-lettering",
+      "category": "stickers",
+      "label": "yellow Big Files sticker exact hand-lettering",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "stickers/white-same-torrents-sticker",
+      "category": "stickers",
+      "label": "white Same Torrents sticker",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "stickers/purple-download-organise-sticker-exact-hand-lettering",
+      "category": "stickers",
+      "label": "purple Download Organise sticker exact hand-lettering",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "stickers/green-fast-private-sticker-exact-hand-lettering",
+      "category": "stickers",
+      "label": "green Fast Private sticker exact hand-lettering",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "stickers/pink-movies-shows-sticker-exact-hand-lettering",
+      "category": "stickers",
+      "label": "pink Movies Shows sticker exact hand-lettering",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "stickers/yellow-simple-icons-sticker",
+      "category": "stickers",
+      "label": "yellow Simple Icons sticker",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "stickers/white-same-vibes-sticker",
+      "category": "stickers",
+      "label": "white Same Vibes sticker",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "stickers/yellow-your-torrents-sticker",
+      "category": "stickers",
+      "label": "yellow Your Torrents sticker",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "stickers/rounded-text-highlight-yellow",
+      "category": "stickers",
+      "label": "rounded text highlight yellow",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "stickers/rounded-text-highlight-cyan",
+      "category": "stickers",
+      "label": "rounded text highlight cyan",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "stickers/rounded-text-highlight-purple",
+      "category": "stickers",
+      "label": "rounded text highlight purple",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "stickers/rounded-text-highlight-pink",
+      "category": "stickers",
+      "label": "rounded text highlight pink",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "stickers/white-outlined-speech-bubble",
+      "category": "stickers",
+      "label": "white outlined speech bubble",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "stickers/purple-speech-bubble-blank",
+      "category": "stickers",
+      "label": "purple speech bubble blank",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "stickers/yellow-speech-bubble-blank",
+      "category": "stickers",
+      "label": "yellow speech bubble blank",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "stickers/green-speech-bubble-blank",
+      "category": "stickers",
+      "label": "green speech bubble blank",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "stickers/pink-speech-bubble-blank",
+      "category": "stickers",
+      "label": "pink speech bubble blank",
+      "status": "planned",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "ui-components/compact-torrent-card",
+      "category": "ui-components",
+      "label": "compact torrent card",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/expanded-torrent-card",
+      "category": "ui-components",
+      "label": "expanded torrent card",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/transfer-downloading-card",
+      "category": "ui-components",
+      "label": "transfer downloading card",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/transfer-seeding-card",
+      "category": "ui-components",
+      "label": "transfer seeding card",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/transfer-paused-card",
+      "category": "ui-components",
+      "label": "transfer paused card",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/transfer-error-card",
+      "category": "ui-components",
+      "label": "transfer error card",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/transfer-complete-card",
+      "category": "ui-components",
+      "label": "transfer complete card",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/transfer-media-thumbnail-frame",
+      "category": "ui-components",
+      "label": "transfer media thumbnail frame",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/transfer-title-block",
+      "category": "ui-components",
+      "label": "transfer title block",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/transfer-metrics-row",
+      "category": "ui-components",
+      "label": "transfer metrics row",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/transfer-status-pill-slot",
+      "category": "ui-components",
+      "label": "transfer status-pill slot",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/transfer-trailing-action-control",
+      "category": "ui-components",
+      "label": "transfer trailing action control",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/mini-floating-transfer-panel",
+      "category": "ui-components",
+      "label": "mini floating transfer panel",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/segmented-progress-track",
+      "category": "ui-components",
+      "label": "segmented progress track",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/segmented-progress-filled-unit",
+      "category": "ui-components",
+      "label": "segmented progress filled unit",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/segmented-progress-empty-unit",
+      "category": "ui-components",
+      "label": "segmented progress empty unit",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/segmented-progress-partial-unit",
+      "category": "ui-components",
+      "label": "segmented progress partial unit",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/segmented-progress-downloading",
+      "category": "ui-components",
+      "label": "segmented progress downloading",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/segmented-progress-paused",
+      "category": "ui-components",
+      "label": "segmented progress paused",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/segmented-progress-complete",
+      "category": "ui-components",
+      "label": "segmented progress complete",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/segmented-progress-seeding",
+      "category": "ui-components",
+      "label": "segmented progress seeding",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/segmented-progress-error",
+      "category": "ui-components",
+      "label": "segmented progress error",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/segmented-progress-disabled",
+      "category": "ui-components",
+      "label": "segmented progress disabled",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/multicolour-segmented-progress",
+      "category": "ui-components",
+      "label": "multicolour segmented progress",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/inline-file-progress",
+      "category": "ui-components",
+      "label": "inline file progress",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/storage-capacity-bar",
+      "category": "ui-components",
+      "label": "storage capacity bar",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/storage-capacity-legend",
+      "category": "ui-components",
+      "label": "storage capacity legend",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/small-download-speed-strip",
+      "category": "ui-components",
+      "label": "small download speed strip",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/small-upload-speed-strip",
+      "category": "ui-components",
+      "label": "small upload speed strip",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/progress-percentage-label",
+      "category": "ui-components",
+      "label": "progress percentage label",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/stepper-completed-step",
+      "category": "ui-components",
+      "label": "stepper completed step",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/stepper-current-step",
+      "category": "ui-components",
+      "label": "stepper current step",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/stepper-pending-step",
+      "category": "ui-components",
+      "label": "stepper pending step",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/top-navigation-tabs",
+      "category": "ui-components",
+      "label": "top navigation tabs",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/bottom-navigation-rail",
+      "category": "ui-components",
+      "label": "bottom navigation rail",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/selected-bottom-tab",
+      "category": "ui-components",
+      "label": "selected bottom tab",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/unselected-bottom-tab",
+      "category": "ui-components",
+      "label": "unselected bottom tab",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/filter-chip-selected",
+      "category": "ui-components",
+      "label": "filter chip selected",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/filter-chip-unselected",
+      "category": "ui-components",
+      "label": "filter chip unselected",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/filter-chip-count",
+      "category": "ui-components",
+      "label": "filter chip count",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/file-category-chip",
+      "category": "ui-components",
+      "label": "file category chip",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/status-chip",
+      "category": "ui-components",
+      "label": "status chip",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/cyan-local-workspace-panel",
+      "category": "ui-components",
+      "label": "cyan local workspace panel",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/purple-remote-workspace-panel",
+      "category": "ui-components",
+      "label": "purple remote workspace panel",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/workspace-file-row",
+      "category": "ui-components",
+      "label": "workspace file row",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/workspace-folder-row",
+      "category": "ui-components",
+      "label": "workspace folder row",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/workspace-swap-button",
+      "category": "ui-components",
+      "label": "workspace swap button",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/workspace-action-row",
+      "category": "ui-components",
+      "label": "workspace action row",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/transfer-between-devices-dropzone",
+      "category": "ui-components",
+      "label": "transfer-between-devices dropzone",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/yellow-storage-overview",
+      "category": "ui-components",
+      "label": "yellow storage overview",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/cleanup-wizard-card",
+      "category": "ui-components",
+      "label": "cleanup wizard card",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/green-auto-extract-card",
+      "category": "ui-components",
+      "label": "green auto-extract card",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/cyan-keep-original-card",
+      "category": "ui-components",
+      "label": "cyan keep-original card",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/orange-large-torrent-warning",
+      "category": "ui-components",
+      "label": "orange large-torrent warning",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/yellow-low-space-warning",
+      "category": "ui-components",
+      "label": "yellow low-space warning",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/key-value-detail-row",
+      "category": "ui-components",
+      "label": "key-value detail row",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/file-checklist-row",
+      "category": "ui-components",
+      "label": "file checklist row",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/indented-folder-row",
+      "category": "ui-components",
+      "label": "indented folder row",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/dark-rounded-modal-shell",
+      "category": "ui-components",
+      "label": "dark rounded modal shell",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/add-torrent-dialog",
+      "category": "ui-components",
+      "label": "add-torrent dialog",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/warning-banner",
+      "category": "ui-components",
+      "label": "warning banner",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/error-banner",
+      "category": "ui-components",
+      "label": "error banner",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/success-banner",
+      "category": "ui-components",
+      "label": "success banner",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/empty-transfer-state",
+      "category": "ui-components",
+      "label": "empty transfer state",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-components/empty-downloads-state",
+      "category": "ui-components",
+      "label": "empty downloads state",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-controls/toggle-track-on",
+      "category": "ui-controls",
+      "label": "toggle track on",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-controls/toggle-track-off",
+      "category": "ui-controls",
+      "label": "toggle track off",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-controls/toggle-thumb-on",
+      "category": "ui-controls",
+      "label": "toggle thumb on",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-controls/toggle-thumb-off",
+      "category": "ui-controls",
+      "label": "toggle thumb off",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-controls/toggle-disabled",
+      "category": "ui-controls",
+      "label": "toggle disabled",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-controls/checkbox-checked",
+      "category": "ui-controls",
+      "label": "checkbox checked",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-controls/checkbox-unchecked",
+      "category": "ui-controls",
+      "label": "checkbox unchecked",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-controls/checkbox-disabled-checked",
+      "category": "ui-controls",
+      "label": "checkbox disabled checked",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-controls/checkbox-disabled-unchecked",
+      "category": "ui-controls",
+      "label": "checkbox disabled unchecked",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-controls/radio-selected",
+      "category": "ui-controls",
+      "label": "radio selected",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-controls/radio-unselected",
+      "category": "ui-controls",
+      "label": "radio unselected",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-controls/focused-field-outline",
+      "category": "ui-controls",
+      "label": "focused field outline",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-controls/purple-primary-button",
+      "category": "ui-controls",
+      "label": "purple primary button",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-controls/pink-floating-add-button",
+      "category": "ui-controls",
+      "label": "pink floating add button",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-controls/green-resume-button",
+      "category": "ui-controls",
+      "label": "green resume button",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-controls/purple-pause-button",
+      "category": "ui-controls",
+      "label": "purple pause button",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-controls/purple-queue-button",
+      "category": "ui-controls",
+      "label": "purple queue button",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-controls/cyan-move-button",
+      "category": "ui-controls",
+      "label": "cyan move button",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-controls/cyan-copy-button",
+      "category": "ui-controls",
+      "label": "cyan copy button",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-controls/green-sync-button",
+      "category": "ui-controls",
+      "label": "green sync button",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-controls/orange-remove-button",
+      "category": "ui-controls",
+      "label": "orange remove button",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-controls/black-edit-button",
+      "category": "ui-controls",
+      "label": "black edit button",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-controls/black-share-button",
+      "category": "ui-controls",
+      "label": "black share button",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-controls/dark-copy-magnet-button",
+      "category": "ui-controls",
+      "label": "dark copy-magnet button",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-controls/grey-disabled-button",
+      "category": "ui-controls",
+      "label": "grey disabled button",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-controls/cyan-browse-button",
+      "category": "ui-controls",
+      "label": "cyan browse button",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-controls/purple-paste-button",
+      "category": "ui-controls",
+      "label": "purple paste button",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-controls/yellow-round-add-button",
+      "category": "ui-controls",
+      "label": "yellow round add button",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-controls/cyan-round-pause-button",
+      "category": "ui-controls",
+      "label": "cyan round pause button",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-controls/green-round-play-button",
+      "category": "ui-controls",
+      "label": "green round play button",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "ui-controls/red-error-circle-button",
+      "category": "ui-controls",
+      "label": "red error circle button",
+      "status": "planned",
+      "source": "05-ui-components-and-states.png"
+    },
+    {
+      "id": "promotional-compositions/brand-hero",
+      "category": "promotional-compositions",
+      "label": "brand hero",
+      "status": "planned",
+      "source": "01-overview-visual-direction.png"
+    },
+    {
+      "id": "promotional-compositions/onboarding-splash",
+      "category": "promotional-compositions",
+      "label": "onboarding splash",
+      "status": "planned",
+      "source": "01-overview-visual-direction.png"
+    },
+    {
+      "id": "promotional-compositions/empty-state-folder-with-crown",
+      "category": "promotional-compositions",
+      "label": "empty state folder with crown",
+      "status": "planned",
+      "source": "01-overview-visual-direction.png"
+    },
+    {
+      "id": "promotional-compositions/folder-among-colour-blobs",
+      "category": "promotional-compositions",
+      "label": "folder among colour blobs",
+      "status": "planned",
+      "source": "01-overview-visual-direction.png"
+    },
+    {
+      "id": "promotional-compositions/four-character-promotional-poster",
+      "category": "promotional-compositions",
+      "label": "four-character promotional poster",
+      "status": "planned",
+      "source": "01-overview-visual-direction.png"
+    },
+    {
+      "id": "promotional-compositions/dark-background-mascot-poster",
+      "category": "promotional-compositions",
+      "label": "dark-background mascot poster",
+      "status": "planned",
+      "source": "01-overview-visual-direction.png"
+    },
+    {
+      "id": "promotional-compositions/light-background-mascot-poster",
+      "category": "promotional-compositions",
+      "label": "light-background mascot poster",
+      "status": "planned",
+      "source": "01-overview-visual-direction.png"
+    },
+    {
+      "id": "promotional-compositions/marketing-hero-banner-wide",
+      "category": "promotional-compositions",
+      "label": "marketing hero banner wide",
+      "status": "planned",
+      "source": "01-overview-visual-direction.png"
+    },
+    {
+      "id": "promotional-compositions/marketing-hero-vertical",
+      "category": "promotional-compositions",
+      "label": "marketing hero vertical",
+      "status": "planned",
+      "source": "01-overview-visual-direction.png"
+    },
+    {
+      "id": "promotional-compositions/app-store-promotional-panel",
+      "category": "promotional-compositions",
+      "label": "app-store promotional panel",
+      "status": "planned",
+      "source": "01-overview-visual-direction.png"
+    },
+    {
+      "id": "promotional-compositions/fast-downloads-shield-and-speed-features",
+      "category": "promotional-compositions",
+      "label": "fast downloads shield and speed features",
+      "status": "planned",
+      "source": "01-overview-visual-direction.png"
+    },
+    {
+      "id": "promotional-compositions/workspace-transfer-illustration",
+      "category": "promotional-compositions",
+      "label": "workspace transfer illustration",
+      "status": "planned",
+      "source": "01-overview-visual-direction.png"
+    },
+    {
+      "id": "promotional-compositions/storage-cleanup-illustration",
+      "category": "promotional-compositions",
+      "label": "storage cleanup illustration",
+      "status": "planned",
+      "source": "01-overview-visual-direction.png"
+    },
+    {
+      "id": "promotional-compositions/torrent-details-illustration",
+      "category": "promotional-compositions",
+      "label": "torrent details illustration",
+      "status": "planned",
+      "source": "01-overview-visual-direction.png"
+    },
+    {
+      "id": "promotional-compositions/colourful-corner-frame",
+      "category": "promotional-compositions",
+      "label": "colourful corner frame",
+      "status": "planned",
+      "source": "01-overview-visual-direction.png"
+    },
+    {
+      "id": "promotional-compositions/footer-confetti-decorative-background",
+      "category": "promotional-compositions",
+      "label": "footer confetti decorative background",
+      "status": "planned",
+      "source": "01-overview-visual-direction.png"
+    },
+    {
+      "id": "media-art/orange-landscape-cover",
+      "category": "media-art",
+      "label": "orange landscape cover",
+      "status": "planned",
+      "source": "01-overview-visual-direction.png"
+    },
+    {
+      "id": "media-art/green-mountain-valley-cover",
+      "category": "media-art",
+      "label": "green mountain valley cover",
+      "status": "planned",
+      "source": "01-overview-visual-direction.png"
+    },
+    {
+      "id": "media-art/dark-purple-planet-cover",
+      "category": "media-art",
+      "label": "dark purple planet cover",
+      "status": "planned",
+      "source": "01-overview-visual-direction.png"
+    },
+    {
+      "id": "media-art/spacecraft-over-planet-cover",
+      "category": "media-art",
+      "label": "spacecraft over planet cover",
+      "status": "planned",
+      "source": "01-overview-visual-direction.png"
+    },
+    {
+      "id": "media-art/generic-image-cover",
+      "category": "media-art",
+      "label": "generic image cover",
+      "status": "planned",
+      "source": "01-overview-visual-direction.png"
+    },
+    {
+      "id": "media-art/generic-video-cover",
+      "category": "media-art",
+      "label": "generic video cover",
+      "status": "planned",
+      "source": "01-overview-visual-direction.png"
+    },
+    {
+      "id": "media-art/generic-audio-cover",
+      "category": "media-art",
+      "label": "generic audio cover",
+      "status": "planned",
+      "source": "01-overview-visual-direction.png"
+    },
+    {
+      "id": "media-art/missing-cover-placeholder",
+      "category": "media-art",
+      "label": "missing-cover placeholder",
+      "status": "planned",
+      "source": "01-overview-visual-direction.png"
+    },
+    {
+      "id": "media-art/media-thumbnail-rounded-frame",
+      "category": "media-art",
+      "label": "media thumbnail rounded frame",
+      "status": "planned",
+      "source": "01-overview-visual-direction.png"
+    },
+    {
+      "id": "android-specimens/system-status-time",
+      "category": "android-specimens",
+      "label": "system status time",
+      "status": "planned",
+      "source": "01-overview-visual-direction.png"
+    },
+    {
+      "id": "android-specimens/wifi-symbol",
+      "category": "android-specimens",
+      "label": "WiFi symbol",
+      "status": "planned",
+      "source": "01-overview-visual-direction.png"
+    },
+    {
+      "id": "android-specimens/signal-bars",
+      "category": "android-specimens",
+      "label": "signal bars",
+      "status": "planned",
+      "source": "01-overview-visual-direction.png"
+    },
+    {
+      "id": "android-specimens/battery-symbol",
+      "category": "android-specimens",
+      "label": "battery symbol",
+      "status": "planned",
+      "source": "01-overview-visual-direction.png"
+    },
+    {
+      "id": "android-specimens/phone-punch-hole-cutout",
+      "category": "android-specimens",
+      "label": "phone punch-hole cutout",
+      "status": "planned",
+      "source": "01-overview-visual-direction.png"
+    },
+    {
+      "id": "android-specimens/phone-portrait-bezel",
+      "category": "android-specimens",
+      "label": "phone portrait bezel",
+      "status": "planned",
+      "source": "01-overview-visual-direction.png"
+    },
+    {
+      "id": "android-specimens/adaptive-icon-mask-specimen",
+      "category": "android-specimens",
+      "label": "adaptive icon mask specimen",
+      "status": "planned",
+      "source": "01-overview-visual-direction.png"
+    },
+    {
+      "id": "android-specimens/android-system-back-arrow-specimen",
+      "category": "android-specimens",
+      "label": "Android system back-arrow specimen",
+      "status": "planned",
+      "source": "01-overview-visual-direction.png"
+    },
+    {
+      "id": "android-specimens/native-document-picker-symbol",
+      "category": "android-specimens",
+      "label": "native document picker symbol",
+      "status": "planned",
+      "source": "01-overview-visual-direction.png"
+    },
+    {
+      "id": "android-specimens/touch-target-48dp-reference",
+      "category": "android-specimens",
+      "label": "touch target 48dp reference",
+      "status": "planned",
+      "source": "01-overview-visual-direction.png"
+    },
+    {
+      "id": "android-specimens/focus-ring-reference",
+      "category": "android-specimens",
+      "label": "focus ring reference",
+      "status": "planned",
+      "source": "01-overview-visual-direction.png"
+    },
+    {
+      "id": "typography/display-rounded/uppercase/A",
+      "category": "typography",
+      "label": "display-rounded uppercase: A",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/uppercase/B",
+      "category": "typography",
+      "label": "display-rounded uppercase: B",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/uppercase/C",
+      "category": "typography",
+      "label": "display-rounded uppercase: C",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/uppercase/D",
+      "category": "typography",
+      "label": "display-rounded uppercase: D",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/uppercase/E",
+      "category": "typography",
+      "label": "display-rounded uppercase: E",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/uppercase/F",
+      "category": "typography",
+      "label": "display-rounded uppercase: F",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/uppercase/G",
+      "category": "typography",
+      "label": "display-rounded uppercase: G",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/uppercase/H",
+      "category": "typography",
+      "label": "display-rounded uppercase: H",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/uppercase/I",
+      "category": "typography",
+      "label": "display-rounded uppercase: I",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/uppercase/J",
+      "category": "typography",
+      "label": "display-rounded uppercase: J",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/uppercase/K",
+      "category": "typography",
+      "label": "display-rounded uppercase: K",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/uppercase/L",
+      "category": "typography",
+      "label": "display-rounded uppercase: L",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/uppercase/M",
+      "category": "typography",
+      "label": "display-rounded uppercase: M",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/uppercase/N",
+      "category": "typography",
+      "label": "display-rounded uppercase: N",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/uppercase/O",
+      "category": "typography",
+      "label": "display-rounded uppercase: O",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/uppercase/P",
+      "category": "typography",
+      "label": "display-rounded uppercase: P",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/uppercase/Q",
+      "category": "typography",
+      "label": "display-rounded uppercase: Q",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/uppercase/R",
+      "category": "typography",
+      "label": "display-rounded uppercase: R",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/uppercase/S",
+      "category": "typography",
+      "label": "display-rounded uppercase: S",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/uppercase/T",
+      "category": "typography",
+      "label": "display-rounded uppercase: T",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/uppercase/U",
+      "category": "typography",
+      "label": "display-rounded uppercase: U",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/uppercase/V",
+      "category": "typography",
+      "label": "display-rounded uppercase: V",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/uppercase/W",
+      "category": "typography",
+      "label": "display-rounded uppercase: W",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/uppercase/X",
+      "category": "typography",
+      "label": "display-rounded uppercase: X",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/uppercase/Y",
+      "category": "typography",
+      "label": "display-rounded uppercase: Y",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/uppercase/Z",
+      "category": "typography",
+      "label": "display-rounded uppercase: Z",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/lowercase/a",
+      "category": "typography",
+      "label": "display-rounded lowercase: a",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/lowercase/b",
+      "category": "typography",
+      "label": "display-rounded lowercase: b",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/lowercase/c",
+      "category": "typography",
+      "label": "display-rounded lowercase: c",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/lowercase/d",
+      "category": "typography",
+      "label": "display-rounded lowercase: d",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/lowercase/e",
+      "category": "typography",
+      "label": "display-rounded lowercase: e",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/lowercase/f",
+      "category": "typography",
+      "label": "display-rounded lowercase: f",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/lowercase/g",
+      "category": "typography",
+      "label": "display-rounded lowercase: g",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/lowercase/h",
+      "category": "typography",
+      "label": "display-rounded lowercase: h",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/lowercase/i",
+      "category": "typography",
+      "label": "display-rounded lowercase: i",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/lowercase/j",
+      "category": "typography",
+      "label": "display-rounded lowercase: j",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/lowercase/k",
+      "category": "typography",
+      "label": "display-rounded lowercase: k",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/lowercase/l",
+      "category": "typography",
+      "label": "display-rounded lowercase: l",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/lowercase/m",
+      "category": "typography",
+      "label": "display-rounded lowercase: m",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/lowercase/n",
+      "category": "typography",
+      "label": "display-rounded lowercase: n",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/lowercase/o",
+      "category": "typography",
+      "label": "display-rounded lowercase: o",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/lowercase/p",
+      "category": "typography",
+      "label": "display-rounded lowercase: p",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/lowercase/q",
+      "category": "typography",
+      "label": "display-rounded lowercase: q",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/lowercase/r",
+      "category": "typography",
+      "label": "display-rounded lowercase: r",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/lowercase/s",
+      "category": "typography",
+      "label": "display-rounded lowercase: s",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/lowercase/t",
+      "category": "typography",
+      "label": "display-rounded lowercase: t",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/lowercase/u",
+      "category": "typography",
+      "label": "display-rounded lowercase: u",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/lowercase/v",
+      "category": "typography",
+      "label": "display-rounded lowercase: v",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/lowercase/w",
+      "category": "typography",
+      "label": "display-rounded lowercase: w",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/lowercase/x",
+      "category": "typography",
+      "label": "display-rounded lowercase: x",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/lowercase/y",
+      "category": "typography",
+      "label": "display-rounded lowercase: y",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/lowercase/z",
+      "category": "typography",
+      "label": "display-rounded lowercase: z",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/digit/0",
+      "category": "typography",
+      "label": "display-rounded digit: 0",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/digit/1",
+      "category": "typography",
+      "label": "display-rounded digit: 1",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/digit/2",
+      "category": "typography",
+      "label": "display-rounded digit: 2",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/digit/3",
+      "category": "typography",
+      "label": "display-rounded digit: 3",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/digit/4",
+      "category": "typography",
+      "label": "display-rounded digit: 4",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/digit/5",
+      "category": "typography",
+      "label": "display-rounded digit: 5",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/digit/6",
+      "category": "typography",
+      "label": "display-rounded digit: 6",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/digit/7",
+      "category": "typography",
+      "label": "display-rounded digit: 7",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/digit/8",
+      "category": "typography",
+      "label": "display-rounded digit: 8",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/digit/9",
+      "category": "typography",
+      "label": "display-rounded digit: 9",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/punctuation/exclamation",
+      "category": "typography",
+      "label": "display-rounded punctuation exclamation !",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/punctuation/question",
+      "category": "typography",
+      "label": "display-rounded punctuation question ?",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/punctuation/period",
+      "category": "typography",
+      "label": "display-rounded punctuation period .",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/punctuation/comma",
+      "category": "typography",
+      "label": "display-rounded punctuation comma ,",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/punctuation/colon",
+      "category": "typography",
+      "label": "display-rounded punctuation colon :",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/punctuation/semicolon",
+      "category": "typography",
+      "label": "display-rounded punctuation semicolon ;",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/punctuation/apostrophe",
+      "category": "typography",
+      "label": "display-rounded punctuation apostrophe '",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/punctuation/double-quote",
+      "category": "typography",
+      "label": "display-rounded punctuation double-quote \"",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/punctuation/open-paren",
+      "category": "typography",
+      "label": "display-rounded punctuation open-paren (",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/punctuation/close-paren",
+      "category": "typography",
+      "label": "display-rounded punctuation close-paren )",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/punctuation/open-square",
+      "category": "typography",
+      "label": "display-rounded punctuation open-square [",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/punctuation/close-square",
+      "category": "typography",
+      "label": "display-rounded punctuation close-square ]",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/punctuation/open-curly",
+      "category": "typography",
+      "label": "display-rounded punctuation open-curly {",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/punctuation/close-curly",
+      "category": "typography",
+      "label": "display-rounded punctuation close-curly }",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/punctuation/at",
+      "category": "typography",
+      "label": "display-rounded punctuation at @",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/punctuation/hash",
+      "category": "typography",
+      "label": "display-rounded punctuation hash #",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/punctuation/dollar",
+      "category": "typography",
+      "label": "display-rounded punctuation dollar $",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/punctuation/percent",
+      "category": "typography",
+      "label": "display-rounded punctuation percent %",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/punctuation/ampersand",
+      "category": "typography",
+      "label": "display-rounded punctuation ampersand &",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/punctuation/asterisk",
+      "category": "typography",
+      "label": "display-rounded punctuation asterisk *",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/punctuation/plus",
+      "category": "typography",
+      "label": "display-rounded punctuation plus +",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/punctuation/minus",
+      "category": "typography",
+      "label": "display-rounded punctuation minus -",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/punctuation/equals",
+      "category": "typography",
+      "label": "display-rounded punctuation equals =",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/punctuation/less-than",
+      "category": "typography",
+      "label": "display-rounded punctuation less-than <",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/punctuation/greater-than",
+      "category": "typography",
+      "label": "display-rounded punctuation greater-than >",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/punctuation/slash",
+      "category": "typography",
+      "label": "display-rounded punctuation slash /",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/punctuation/backslash",
+      "category": "typography",
+      "label": "display-rounded punctuation backslash \\",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/punctuation/bar",
+      "category": "typography",
+      "label": "display-rounded punctuation bar |",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/punctuation/underscore",
+      "category": "typography",
+      "label": "display-rounded punctuation underscore _",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/punctuation/en-dash",
+      "category": "typography",
+      "label": "display-rounded punctuation en-dash –",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/punctuation/em-dash",
+      "category": "typography",
+      "label": "display-rounded punctuation em-dash —",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/punctuation/bullet",
+      "category": "typography",
+      "label": "display-rounded punctuation bullet •",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/punctuation/ellipsis",
+      "category": "typography",
+      "label": "display-rounded punctuation ellipsis …",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/punctuation/multiply",
+      "category": "typography",
+      "label": "display-rounded punctuation multiply ×",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/punctuation/degree",
+      "category": "typography",
+      "label": "display-rounded punctuation degree °",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/punctuation/arrow-up",
+      "category": "typography",
+      "label": "display-rounded punctuation arrow-up ↑",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/punctuation/arrow-down",
+      "category": "typography",
+      "label": "display-rounded punctuation arrow-down ↓",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/punctuation/arrow-left",
+      "category": "typography",
+      "label": "display-rounded punctuation arrow-left ←",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/punctuation/arrow-right",
+      "category": "typography",
+      "label": "display-rounded punctuation arrow-right →",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/display-rounded/punctuation/check",
+      "category": "typography",
+      "label": "display-rounded punctuation check ✓",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/A",
+      "category": "typography",
+      "label": "marker-handdrawn uppercase: A",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/B",
+      "category": "typography",
+      "label": "marker-handdrawn uppercase: B",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/C",
+      "category": "typography",
+      "label": "marker-handdrawn uppercase: C",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/D",
+      "category": "typography",
+      "label": "marker-handdrawn uppercase: D",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/E",
+      "category": "typography",
+      "label": "marker-handdrawn uppercase: E",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/F",
+      "category": "typography",
+      "label": "marker-handdrawn uppercase: F",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/G",
+      "category": "typography",
+      "label": "marker-handdrawn uppercase: G",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/H",
+      "category": "typography",
+      "label": "marker-handdrawn uppercase: H",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/I",
+      "category": "typography",
+      "label": "marker-handdrawn uppercase: I",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/J",
+      "category": "typography",
+      "label": "marker-handdrawn uppercase: J",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/K",
+      "category": "typography",
+      "label": "marker-handdrawn uppercase: K",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/L",
+      "category": "typography",
+      "label": "marker-handdrawn uppercase: L",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/M",
+      "category": "typography",
+      "label": "marker-handdrawn uppercase: M",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/N",
+      "category": "typography",
+      "label": "marker-handdrawn uppercase: N",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/O",
+      "category": "typography",
+      "label": "marker-handdrawn uppercase: O",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/P",
+      "category": "typography",
+      "label": "marker-handdrawn uppercase: P",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/Q",
+      "category": "typography",
+      "label": "marker-handdrawn uppercase: Q",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/R",
+      "category": "typography",
+      "label": "marker-handdrawn uppercase: R",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/S",
+      "category": "typography",
+      "label": "marker-handdrawn uppercase: S",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/T",
+      "category": "typography",
+      "label": "marker-handdrawn uppercase: T",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/U",
+      "category": "typography",
+      "label": "marker-handdrawn uppercase: U",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/V",
+      "category": "typography",
+      "label": "marker-handdrawn uppercase: V",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/W",
+      "category": "typography",
+      "label": "marker-handdrawn uppercase: W",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/X",
+      "category": "typography",
+      "label": "marker-handdrawn uppercase: X",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/Y",
+      "category": "typography",
+      "label": "marker-handdrawn uppercase: Y",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/Z",
+      "category": "typography",
+      "label": "marker-handdrawn uppercase: Z",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/a",
+      "category": "typography",
+      "label": "marker-handdrawn lowercase: a",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/b",
+      "category": "typography",
+      "label": "marker-handdrawn lowercase: b",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/c",
+      "category": "typography",
+      "label": "marker-handdrawn lowercase: c",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/d",
+      "category": "typography",
+      "label": "marker-handdrawn lowercase: d",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/e",
+      "category": "typography",
+      "label": "marker-handdrawn lowercase: e",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/f",
+      "category": "typography",
+      "label": "marker-handdrawn lowercase: f",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/g",
+      "category": "typography",
+      "label": "marker-handdrawn lowercase: g",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/h",
+      "category": "typography",
+      "label": "marker-handdrawn lowercase: h",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/i",
+      "category": "typography",
+      "label": "marker-handdrawn lowercase: i",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/j",
+      "category": "typography",
+      "label": "marker-handdrawn lowercase: j",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/k",
+      "category": "typography",
+      "label": "marker-handdrawn lowercase: k",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/l",
+      "category": "typography",
+      "label": "marker-handdrawn lowercase: l",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/m",
+      "category": "typography",
+      "label": "marker-handdrawn lowercase: m",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/n",
+      "category": "typography",
+      "label": "marker-handdrawn lowercase: n",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/o",
+      "category": "typography",
+      "label": "marker-handdrawn lowercase: o",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/p",
+      "category": "typography",
+      "label": "marker-handdrawn lowercase: p",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/q",
+      "category": "typography",
+      "label": "marker-handdrawn lowercase: q",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/r",
+      "category": "typography",
+      "label": "marker-handdrawn lowercase: r",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/s",
+      "category": "typography",
+      "label": "marker-handdrawn lowercase: s",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/t",
+      "category": "typography",
+      "label": "marker-handdrawn lowercase: t",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/u",
+      "category": "typography",
+      "label": "marker-handdrawn lowercase: u",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/v",
+      "category": "typography",
+      "label": "marker-handdrawn lowercase: v",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/w",
+      "category": "typography",
+      "label": "marker-handdrawn lowercase: w",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/x",
+      "category": "typography",
+      "label": "marker-handdrawn lowercase: x",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/y",
+      "category": "typography",
+      "label": "marker-handdrawn lowercase: y",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/z",
+      "category": "typography",
+      "label": "marker-handdrawn lowercase: z",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/digit/0",
+      "category": "typography",
+      "label": "marker-handdrawn digit: 0",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/digit/1",
+      "category": "typography",
+      "label": "marker-handdrawn digit: 1",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/digit/2",
+      "category": "typography",
+      "label": "marker-handdrawn digit: 2",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/digit/3",
+      "category": "typography",
+      "label": "marker-handdrawn digit: 3",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/digit/4",
+      "category": "typography",
+      "label": "marker-handdrawn digit: 4",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/digit/5",
+      "category": "typography",
+      "label": "marker-handdrawn digit: 5",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/digit/6",
+      "category": "typography",
+      "label": "marker-handdrawn digit: 6",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/digit/7",
+      "category": "typography",
+      "label": "marker-handdrawn digit: 7",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/digit/8",
+      "category": "typography",
+      "label": "marker-handdrawn digit: 8",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/digit/9",
+      "category": "typography",
+      "label": "marker-handdrawn digit: 9",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/exclamation",
+      "category": "typography",
+      "label": "marker-handdrawn punctuation exclamation !",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/question",
+      "category": "typography",
+      "label": "marker-handdrawn punctuation question ?",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/period",
+      "category": "typography",
+      "label": "marker-handdrawn punctuation period .",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/comma",
+      "category": "typography",
+      "label": "marker-handdrawn punctuation comma ,",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/colon",
+      "category": "typography",
+      "label": "marker-handdrawn punctuation colon :",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/semicolon",
+      "category": "typography",
+      "label": "marker-handdrawn punctuation semicolon ;",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/apostrophe",
+      "category": "typography",
+      "label": "marker-handdrawn punctuation apostrophe '",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/double-quote",
+      "category": "typography",
+      "label": "marker-handdrawn punctuation double-quote \"",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/open-paren",
+      "category": "typography",
+      "label": "marker-handdrawn punctuation open-paren (",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/close-paren",
+      "category": "typography",
+      "label": "marker-handdrawn punctuation close-paren )",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/open-square",
+      "category": "typography",
+      "label": "marker-handdrawn punctuation open-square [",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/close-square",
+      "category": "typography",
+      "label": "marker-handdrawn punctuation close-square ]",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/open-curly",
+      "category": "typography",
+      "label": "marker-handdrawn punctuation open-curly {",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/close-curly",
+      "category": "typography",
+      "label": "marker-handdrawn punctuation close-curly }",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/at",
+      "category": "typography",
+      "label": "marker-handdrawn punctuation at @",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/hash",
+      "category": "typography",
+      "label": "marker-handdrawn punctuation hash #",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/dollar",
+      "category": "typography",
+      "label": "marker-handdrawn punctuation dollar $",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/percent",
+      "category": "typography",
+      "label": "marker-handdrawn punctuation percent %",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/ampersand",
+      "category": "typography",
+      "label": "marker-handdrawn punctuation ampersand &",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/asterisk",
+      "category": "typography",
+      "label": "marker-handdrawn punctuation asterisk *",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/plus",
+      "category": "typography",
+      "label": "marker-handdrawn punctuation plus +",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/minus",
+      "category": "typography",
+      "label": "marker-handdrawn punctuation minus -",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/equals",
+      "category": "typography",
+      "label": "marker-handdrawn punctuation equals =",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/less-than",
+      "category": "typography",
+      "label": "marker-handdrawn punctuation less-than <",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/greater-than",
+      "category": "typography",
+      "label": "marker-handdrawn punctuation greater-than >",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/slash",
+      "category": "typography",
+      "label": "marker-handdrawn punctuation slash /",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/backslash",
+      "category": "typography",
+      "label": "marker-handdrawn punctuation backslash \\",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/bar",
+      "category": "typography",
+      "label": "marker-handdrawn punctuation bar |",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/underscore",
+      "category": "typography",
+      "label": "marker-handdrawn punctuation underscore _",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/en-dash",
+      "category": "typography",
+      "label": "marker-handdrawn punctuation en-dash –",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/em-dash",
+      "category": "typography",
+      "label": "marker-handdrawn punctuation em-dash —",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/bullet",
+      "category": "typography",
+      "label": "marker-handdrawn punctuation bullet •",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/ellipsis",
+      "category": "typography",
+      "label": "marker-handdrawn punctuation ellipsis …",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/multiply",
+      "category": "typography",
+      "label": "marker-handdrawn punctuation multiply ×",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/degree",
+      "category": "typography",
+      "label": "marker-handdrawn punctuation degree °",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/arrow-up",
+      "category": "typography",
+      "label": "marker-handdrawn punctuation arrow-up ↑",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/arrow-down",
+      "category": "typography",
+      "label": "marker-handdrawn punctuation arrow-down ↓",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/arrow-left",
+      "category": "typography",
+      "label": "marker-handdrawn punctuation arrow-left ←",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/arrow-right",
+      "category": "typography",
+      "label": "marker-handdrawn punctuation arrow-right →",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/check",
+      "category": "typography",
+      "label": "marker-handdrawn punctuation check ✓",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/A",
+      "category": "typography",
+      "label": "compact-ui-specimen uppercase: A",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/B",
+      "category": "typography",
+      "label": "compact-ui-specimen uppercase: B",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/C",
+      "category": "typography",
+      "label": "compact-ui-specimen uppercase: C",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/D",
+      "category": "typography",
+      "label": "compact-ui-specimen uppercase: D",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/E",
+      "category": "typography",
+      "label": "compact-ui-specimen uppercase: E",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/F",
+      "category": "typography",
+      "label": "compact-ui-specimen uppercase: F",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/G",
+      "category": "typography",
+      "label": "compact-ui-specimen uppercase: G",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/H",
+      "category": "typography",
+      "label": "compact-ui-specimen uppercase: H",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/I",
+      "category": "typography",
+      "label": "compact-ui-specimen uppercase: I",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/J",
+      "category": "typography",
+      "label": "compact-ui-specimen uppercase: J",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/K",
+      "category": "typography",
+      "label": "compact-ui-specimen uppercase: K",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/L",
+      "category": "typography",
+      "label": "compact-ui-specimen uppercase: L",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/M",
+      "category": "typography",
+      "label": "compact-ui-specimen uppercase: M",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/N",
+      "category": "typography",
+      "label": "compact-ui-specimen uppercase: N",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/O",
+      "category": "typography",
+      "label": "compact-ui-specimen uppercase: O",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/P",
+      "category": "typography",
+      "label": "compact-ui-specimen uppercase: P",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/Q",
+      "category": "typography",
+      "label": "compact-ui-specimen uppercase: Q",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/R",
+      "category": "typography",
+      "label": "compact-ui-specimen uppercase: R",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/S",
+      "category": "typography",
+      "label": "compact-ui-specimen uppercase: S",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/T",
+      "category": "typography",
+      "label": "compact-ui-specimen uppercase: T",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/U",
+      "category": "typography",
+      "label": "compact-ui-specimen uppercase: U",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/V",
+      "category": "typography",
+      "label": "compact-ui-specimen uppercase: V",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/W",
+      "category": "typography",
+      "label": "compact-ui-specimen uppercase: W",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/X",
+      "category": "typography",
+      "label": "compact-ui-specimen uppercase: X",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/Y",
+      "category": "typography",
+      "label": "compact-ui-specimen uppercase: Y",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/Z",
+      "category": "typography",
+      "label": "compact-ui-specimen uppercase: Z",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/a",
+      "category": "typography",
+      "label": "compact-ui-specimen lowercase: a",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/b",
+      "category": "typography",
+      "label": "compact-ui-specimen lowercase: b",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/c",
+      "category": "typography",
+      "label": "compact-ui-specimen lowercase: c",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/d",
+      "category": "typography",
+      "label": "compact-ui-specimen lowercase: d",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/e",
+      "category": "typography",
+      "label": "compact-ui-specimen lowercase: e",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/f",
+      "category": "typography",
+      "label": "compact-ui-specimen lowercase: f",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/g",
+      "category": "typography",
+      "label": "compact-ui-specimen lowercase: g",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/h",
+      "category": "typography",
+      "label": "compact-ui-specimen lowercase: h",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/i",
+      "category": "typography",
+      "label": "compact-ui-specimen lowercase: i",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/j",
+      "category": "typography",
+      "label": "compact-ui-specimen lowercase: j",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/k",
+      "category": "typography",
+      "label": "compact-ui-specimen lowercase: k",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/l",
+      "category": "typography",
+      "label": "compact-ui-specimen lowercase: l",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/m",
+      "category": "typography",
+      "label": "compact-ui-specimen lowercase: m",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/n",
+      "category": "typography",
+      "label": "compact-ui-specimen lowercase: n",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/o",
+      "category": "typography",
+      "label": "compact-ui-specimen lowercase: o",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/p",
+      "category": "typography",
+      "label": "compact-ui-specimen lowercase: p",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/q",
+      "category": "typography",
+      "label": "compact-ui-specimen lowercase: q",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/r",
+      "category": "typography",
+      "label": "compact-ui-specimen lowercase: r",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/s",
+      "category": "typography",
+      "label": "compact-ui-specimen lowercase: s",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/t",
+      "category": "typography",
+      "label": "compact-ui-specimen lowercase: t",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/u",
+      "category": "typography",
+      "label": "compact-ui-specimen lowercase: u",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/v",
+      "category": "typography",
+      "label": "compact-ui-specimen lowercase: v",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/w",
+      "category": "typography",
+      "label": "compact-ui-specimen lowercase: w",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/x",
+      "category": "typography",
+      "label": "compact-ui-specimen lowercase: x",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/y",
+      "category": "typography",
+      "label": "compact-ui-specimen lowercase: y",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/z",
+      "category": "typography",
+      "label": "compact-ui-specimen lowercase: z",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/digit/0",
+      "category": "typography",
+      "label": "compact-ui-specimen digit: 0",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/digit/1",
+      "category": "typography",
+      "label": "compact-ui-specimen digit: 1",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/digit/2",
+      "category": "typography",
+      "label": "compact-ui-specimen digit: 2",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/digit/3",
+      "category": "typography",
+      "label": "compact-ui-specimen digit: 3",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/digit/4",
+      "category": "typography",
+      "label": "compact-ui-specimen digit: 4",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/digit/5",
+      "category": "typography",
+      "label": "compact-ui-specimen digit: 5",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/digit/6",
+      "category": "typography",
+      "label": "compact-ui-specimen digit: 6",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/digit/7",
+      "category": "typography",
+      "label": "compact-ui-specimen digit: 7",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/digit/8",
+      "category": "typography",
+      "label": "compact-ui-specimen digit: 8",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/digit/9",
+      "category": "typography",
+      "label": "compact-ui-specimen digit: 9",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/exclamation",
+      "category": "typography",
+      "label": "compact-ui-specimen punctuation exclamation !",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/question",
+      "category": "typography",
+      "label": "compact-ui-specimen punctuation question ?",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/period",
+      "category": "typography",
+      "label": "compact-ui-specimen punctuation period .",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/comma",
+      "category": "typography",
+      "label": "compact-ui-specimen punctuation comma ,",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/colon",
+      "category": "typography",
+      "label": "compact-ui-specimen punctuation colon :",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/semicolon",
+      "category": "typography",
+      "label": "compact-ui-specimen punctuation semicolon ;",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/apostrophe",
+      "category": "typography",
+      "label": "compact-ui-specimen punctuation apostrophe '",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/double-quote",
+      "category": "typography",
+      "label": "compact-ui-specimen punctuation double-quote \"",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/open-paren",
+      "category": "typography",
+      "label": "compact-ui-specimen punctuation open-paren (",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/close-paren",
+      "category": "typography",
+      "label": "compact-ui-specimen punctuation close-paren )",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/open-square",
+      "category": "typography",
+      "label": "compact-ui-specimen punctuation open-square [",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/close-square",
+      "category": "typography",
+      "label": "compact-ui-specimen punctuation close-square ]",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/open-curly",
+      "category": "typography",
+      "label": "compact-ui-specimen punctuation open-curly {",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/close-curly",
+      "category": "typography",
+      "label": "compact-ui-specimen punctuation close-curly }",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/at",
+      "category": "typography",
+      "label": "compact-ui-specimen punctuation at @",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/hash",
+      "category": "typography",
+      "label": "compact-ui-specimen punctuation hash #",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/dollar",
+      "category": "typography",
+      "label": "compact-ui-specimen punctuation dollar $",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/percent",
+      "category": "typography",
+      "label": "compact-ui-specimen punctuation percent %",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/ampersand",
+      "category": "typography",
+      "label": "compact-ui-specimen punctuation ampersand &",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/asterisk",
+      "category": "typography",
+      "label": "compact-ui-specimen punctuation asterisk *",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/plus",
+      "category": "typography",
+      "label": "compact-ui-specimen punctuation plus +",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/minus",
+      "category": "typography",
+      "label": "compact-ui-specimen punctuation minus -",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/equals",
+      "category": "typography",
+      "label": "compact-ui-specimen punctuation equals =",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/less-than",
+      "category": "typography",
+      "label": "compact-ui-specimen punctuation less-than <",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/greater-than",
+      "category": "typography",
+      "label": "compact-ui-specimen punctuation greater-than >",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/slash",
+      "category": "typography",
+      "label": "compact-ui-specimen punctuation slash /",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/backslash",
+      "category": "typography",
+      "label": "compact-ui-specimen punctuation backslash \\",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/bar",
+      "category": "typography",
+      "label": "compact-ui-specimen punctuation bar |",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/underscore",
+      "category": "typography",
+      "label": "compact-ui-specimen punctuation underscore _",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/en-dash",
+      "category": "typography",
+      "label": "compact-ui-specimen punctuation en-dash –",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/em-dash",
+      "category": "typography",
+      "label": "compact-ui-specimen punctuation em-dash —",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/bullet",
+      "category": "typography",
+      "label": "compact-ui-specimen punctuation bullet •",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/ellipsis",
+      "category": "typography",
+      "label": "compact-ui-specimen punctuation ellipsis …",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/multiply",
+      "category": "typography",
+      "label": "compact-ui-specimen punctuation multiply ×",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/degree",
+      "category": "typography",
+      "label": "compact-ui-specimen punctuation degree °",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/arrow-up",
+      "category": "typography",
+      "label": "compact-ui-specimen punctuation arrow-up ↑",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/arrow-down",
+      "category": "typography",
+      "label": "compact-ui-specimen punctuation arrow-down ↓",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/arrow-left",
+      "category": "typography",
+      "label": "compact-ui-specimen punctuation arrow-left ←",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/arrow-right",
+      "category": "typography",
+      "label": "compact-ui-specimen punctuation arrow-right →",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/check",
+      "category": "typography",
+      "label": "compact-ui-specimen punctuation check ✓",
+      "status": "planned",
+      "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "vector/green-download/dimensional",
+      "category": "character-combinations",
+      "label": "green download complete dimensional",
+      "path": "docs/design/svg/characters/green-download/dimensional.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/green-download/flat",
+      "category": "character-combinations",
+      "label": "green download simplified flat",
+      "path": "docs/design/svg/characters/green-download/flat.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/green-download/monochrome",
+      "category": "character-combinations",
+      "label": "green download monochrome",
+      "path": "docs/design/svg/characters/green-download/monochrome.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/green-download/front",
+      "category": "character-parts",
+      "label": "green download front standalone layer",
+      "path": "docs/design/svg/characters/green-download/front.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/green-download/top",
+      "category": "character-parts",
+      "label": "green download top standalone layer",
+      "path": "docs/design/svg/characters/green-download/top.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/green-download/side",
+      "category": "character-parts",
+      "label": "green download side standalone layer",
+      "path": "docs/design/svg/characters/green-download/side.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/green-download/highlight",
+      "category": "character-parts",
+      "label": "green download highlight standalone layer",
+      "path": "docs/design/svg/characters/green-download/highlight.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/green-download/ground-shadow",
+      "category": "character-parts",
+      "label": "green download ground-shadow standalone layer",
+      "path": "docs/design/svg/characters/green-download/ground-shadow.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/green-download/pictogram",
+      "category": "character-parts",
+      "label": "green download pictogram standalone layer",
+      "path": "docs/design/svg/characters/green-download/pictogram.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/purple-storage/dimensional",
+      "category": "character-combinations",
+      "label": "purple storage complete dimensional",
+      "path": "docs/design/svg/characters/purple-storage/dimensional.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/purple-storage/flat",
+      "category": "character-combinations",
+      "label": "purple storage simplified flat",
+      "path": "docs/design/svg/characters/purple-storage/flat.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/purple-storage/monochrome",
+      "category": "character-combinations",
+      "label": "purple storage monochrome",
+      "path": "docs/design/svg/characters/purple-storage/monochrome.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/purple-storage/front",
+      "category": "character-parts",
+      "label": "purple storage front standalone layer",
+      "path": "docs/design/svg/characters/purple-storage/front.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/purple-storage/top",
+      "category": "character-parts",
+      "label": "purple storage top standalone layer",
+      "path": "docs/design/svg/characters/purple-storage/top.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/purple-storage/side",
+      "category": "character-parts",
+      "label": "purple storage side standalone layer",
+      "path": "docs/design/svg/characters/purple-storage/side.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/purple-storage/highlight",
+      "category": "character-parts",
+      "label": "purple storage highlight standalone layer",
+      "path": "docs/design/svg/characters/purple-storage/highlight.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/purple-storage/ground-shadow",
+      "category": "character-parts",
+      "label": "purple storage ground-shadow standalone layer",
+      "path": "docs/design/svg/characters/purple-storage/ground-shadow.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/purple-storage/pictogram",
+      "category": "character-parts",
+      "label": "purple storage pictogram standalone layer",
+      "path": "docs/design/svg/characters/purple-storage/pictogram.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/coral-media/dimensional",
+      "category": "character-combinations",
+      "label": "coral media complete dimensional",
+      "path": "docs/design/svg/characters/coral-media/dimensional.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/coral-media/flat",
+      "category": "character-combinations",
+      "label": "coral media simplified flat",
+      "path": "docs/design/svg/characters/coral-media/flat.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/coral-media/monochrome",
+      "category": "character-combinations",
+      "label": "coral media monochrome",
+      "path": "docs/design/svg/characters/coral-media/monochrome.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/coral-media/front",
+      "category": "character-parts",
+      "label": "coral media front standalone layer",
+      "path": "docs/design/svg/characters/coral-media/front.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/coral-media/top",
+      "category": "character-parts",
+      "label": "coral media top standalone layer",
+      "path": "docs/design/svg/characters/coral-media/top.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/coral-media/side",
+      "category": "character-parts",
+      "label": "coral media side standalone layer",
+      "path": "docs/design/svg/characters/coral-media/side.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/coral-media/highlight",
+      "category": "character-parts",
+      "label": "coral media highlight standalone layer",
+      "path": "docs/design/svg/characters/coral-media/highlight.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/coral-media/ground-shadow",
+      "category": "character-parts",
+      "label": "coral media ground-shadow standalone layer",
+      "path": "docs/design/svg/characters/coral-media/ground-shadow.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/coral-media/pictogram",
+      "category": "character-parts",
+      "label": "coral media pictogram standalone layer",
+      "path": "docs/design/svg/characters/coral-media/pictogram.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/blue-folder/dimensional",
+      "category": "character-combinations",
+      "label": "Blue happy folder standalone dimensional mascot",
+      "path": "docs/design/svg/characters/blue-folder/dimensional.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/blue-folder/flat",
+      "category": "character-combinations",
+      "label": "Blue smiling folder flat variant",
+      "path": "docs/design/svg/characters/blue-folder/flat.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/blue-folder/monochrome",
+      "category": "character-combinations",
+      "label": "Blue folder monochrome black silhouette",
+      "path": "docs/design/svg/characters/blue-folder/monochrome.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/blue-folder/ground",
+      "category": "character-parts",
+      "label": "Blue happy folder ground standalone layer",
+      "path": "docs/design/svg/characters/blue-folder/ground.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/blue-folder/rear",
+      "category": "character-parts",
+      "label": "Blue happy folder rear standalone layer",
+      "path": "docs/design/svg/characters/blue-folder/rear.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/blue-folder/side",
+      "category": "character-parts",
+      "label": "Blue happy folder side standalone layer",
+      "path": "docs/design/svg/characters/blue-folder/side.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/blue-folder/front",
+      "category": "character-parts",
+      "label": "Blue happy folder front standalone layer",
+      "path": "docs/design/svg/characters/blue-folder/front.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/blue-folder/shine",
+      "category": "character-parts",
+      "label": "Blue happy folder shine standalone layer",
+      "path": "docs/design/svg/characters/blue-folder/shine.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/blue-folder/eyes",
+      "category": "character-parts",
+      "label": "Blue happy folder eyes standalone layer",
+      "path": "docs/design/svg/characters/blue-folder/eyes.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/blue-folder/smile",
+      "category": "character-parts",
+      "label": "Blue happy folder smile standalone layer",
+      "path": "docs/design/svg/characters/blue-folder/smile.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/four-character-lineup/dimensional",
+      "category": "character-combinations",
+      "label": "Four-character dimensional lineup",
+      "path": "docs/design/svg/characters/four-character-lineup/dimensional.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/four-character-lineup/storage-first",
+      "category": "character-combinations",
+      "label": "Four-character lineup storage-first variant",
+      "path": "docs/design/svg/characters/four-character-lineup/storage-first.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    }
+  ]
+}
