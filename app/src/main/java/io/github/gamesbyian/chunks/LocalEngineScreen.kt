@@ -216,13 +216,11 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
                     val frame = outcome.value
                     // A sample scheduled before an uncertain mutation cannot
                     // clear its safety latch, even if it finishes afterward.
-                    if (LocalScreenReader.revision.accepts(frame.revision)) {
+                    if (LocalScreenReader.revision.acceptObservation(frame.revision, frame.transfers)) {
                         inventoryFrame = LocalInventoryFreshness.advance(inventoryFrame, frame.transfers)
                         restoreNotice = frame.restoreNotice
-                        if (frame.transfers != null) {
-                            LocalScreenReader.revision.acceptSuccessfulRead(frame.revision)
-                            if (frame.filesHash != null && frame.filesHash == filesFor) files = frame.files
-                        }
+                        if (frame.transfers != null && frame.filesHash != null &&
+                            frame.filesHash == filesFor) files = frame.files
                     }
                 }
                 LocalScreenPollOutcome.Unavailable ->
