@@ -8,6 +8,8 @@
 
 **2026-10-27 Android Downloads clarification (approved/planned):** Resolve Android's standard primary shared Downloads as the preferred parent for a lazily created on-device Chunks Downloads directory, normally matching Chrome's default. Do not claim to detect Chrome's custom download path. An independently selected, remembered Chunks default may use an SD card where tested. Android scoped-storage and native libtorrent seek/write/verify/resume/seed are release acceptance gates; current app-private engine storage is not accepted as the public Downloads deliverable. See [ARCHITECTURE.md](ARCHITECTURE.md) and [WORK-QUEUE.md](WORK-QUEUE.md).
 
+**2026-10-27 owner addition, planned:** Transfer details must offer a straightforward local↔remote copy path, with metadata-only Add distinguished from actual verified byte-copy and migration requiring independently confirmed target resume/seeding plus separately authorized source removal. Also show archive-deletion-after-verified-extraction directly beside individual Remove / Remove & data and in cleanup, with provenance/readback/ownership proof, explicit seeding-breakage acknowledgement and scoped remote filesystem permission. Neither capability is implemented/accepted. See PRODUCT, UX, ARCHITECTURE, SECURITY, STORAGE-AND-EXTRACTION and WORK-QUEUE.
+
 Legend: **Implemented (limited)** = code merged, may have some suitable specific test evidence; **Unproven** = feature exists but material real-world acceptance missing; **Planned** = normative owner/engineering requirement with no qualified executor. Never use the table to upgrade a capability's evidence class.
 
 | Product promise / boundary | Current state at audited main | Source authority; remaining acceptance |

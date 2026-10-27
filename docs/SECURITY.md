@@ -2,6 +2,12 @@
 
 Updated after CRITICAL-REVIEW-2026-10-24.md. Public source repository, untrusted torrent metadata, powerful rTorrent RPC and destructive filesystem operations create a combined trust problem. The primary objective is protecting users' private server credentials and valuable already-seeding data.
 
+## Local ↔ remote copy/move and archive-delete threat boundaries
+
+Cross-engine UI handoff is not proof of data transfer: torrent identity/metainfo Add may trigger a fresh download. Byte-copy or move requires explicit filesystem authority on **both** endpoints, scoped inventory, safe storage grants, integrity-verified target resume/seeding, bounded transfers and durable recovery. The source may only be removed after independent proof plus a separate exact-target destructive confirmation; do not route generic filesystem or shell commands through unrestricted rTorrent RPC. Credentials for both sides remain endpoint-scoped and must not be copied into torrent metainfo or logs. Network partial failures are uncertain, not permission to retry a destructive operation blindly.
+
+Deleting a torrent-backed archive after extraction can invalidate torrent hashes and seeding. Presence of a similarly named extracted file or folder is **not** verification. Require trusted extraction provenance, independently checked output bytes and ownership, reference/active-writer analysis, durable deletion journal and postcondition verification. Refuse if a server lacks narrowly scoped delete capability. UI offers the action from transfer details/removal as well as cleanup, but it is never implicitly authorized by Remove transfer or successful extraction. Include explicit torrent-breakage language in the destructive confirmation. See STORAGE-AND-EXTRACTION and PRODUCT.
+
 ## Trust boundaries and threats
 
 1. Android UI/import boundary: an untrusted magnet link, torrent metainfo, file name or tracker URL can carry malicious paths, giant strings, Unicode, private tracker passkeys or URLs. Never use torrent-provided paths for raw file writes without engine + filesystem containment checks.
