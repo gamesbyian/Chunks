@@ -4,6 +4,8 @@
 
 **2026-10-27 added owner scope:** Optional session privacy lock for local transfers and independently each rTorrent profile (once per process session by default once enabled), supported Android strong biometrics/device credential fallback, quick lock, redaction, and separate opt-out-by-default secure remote login persistence are **Planned / unproven**. Requirements: [TRANSFER-PRIVACY-LOCK.md](TRANSFER-PRIVACY-LOCK.md), [PRODUCT.md](PRODUCT.md), [SECURITY.md](SECURITY.md), [UX.md](UX.md). Implementation and physical acceptance remain open; do not count this text as code.
 
+**2026-10-27 owner correction:** Visible per-transfer destination choice is optional at Add. Planned: local default user-visible Downloads/Chunks Downloads (create only on device when technically supported); remote existing server default, no remotely created Chunks folder; separate validated per-engine/profile recent successful destinations shown in Add. Current local app-private save directory and remote explicit-parent Add do **not** satisfy this promise. Scope/evidence: [PRODUCT.md](PRODUCT.md), [UX.md](UX.md), [ARCHITECTURE.md](ARCHITECTURE.md), [WORK-QUEUE.md](WORK-QUEUE.md). Never report as shipped.
+
 Legend: **Implemented (limited)** = code merged, may have some suitable specific test evidence; **Unproven** = feature exists but material real-world acceptance missing; **Planned** = normative owner/engineering requirement with no qualified executor. Never use the table to upgrade a capability's evidence class.
 
 | Product promise / boundary | Current state at audited main | Source authority; remaining acceptance |
