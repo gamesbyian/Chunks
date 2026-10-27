@@ -10,8 +10,8 @@
   },
   "totals": {
     "approved": 1,
-    "vectorDraft": 632,
-    "planned": 189
+    "vectorDraft": 692,
+    "planned": 129
   },
   "assets": [
     {
@@ -1710,421 +1710,481 @@
       "id": "missing-glyph-icons/stop-transfer-circular",
       "category": "missing-glyph-icons",
       "label": "stop transfer circular",
-      "status": "planned",
-      "source": "02-iconography-contact-sheet.png"
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/missing-glyph-icons/stop-transfer-circular.svg"
     },
     {
       "id": "missing-glyph-icons/file-drop-zone-icon",
       "category": "missing-glyph-icons",
       "label": "file-drop zone icon",
-      "status": "planned",
-      "source": "02-iconography-contact-sheet.png"
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/missing-glyph-icons/file-drop-zone-icon.svg"
     },
     {
       "id": "missing-glyph-icons/magnifying-document-duplicate",
       "category": "missing-glyph-icons",
       "label": "magnifying document duplicate",
-      "status": "planned",
-      "source": "02-iconography-contact-sheet.png"
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/missing-glyph-icons/magnifying-document-duplicate.svg"
     },
     {
       "id": "missing-glyph-icons/selected-radio-dot",
       "category": "missing-glyph-icons",
       "label": "selected radio dot",
-      "status": "planned",
-      "source": "02-iconography-contact-sheet.png"
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/missing-glyph-icons/selected-radio-dot.svg"
     },
     {
       "id": "missing-glyph-icons/unselected-radio-ring",
       "category": "missing-glyph-icons",
       "label": "unselected radio ring",
-      "status": "planned",
-      "source": "02-iconography-contact-sheet.png"
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/missing-glyph-icons/unselected-radio-ring.svg"
     },
     {
       "id": "missing-glyph-icons/warning-triangle-slim",
       "category": "missing-glyph-icons",
       "label": "warning triangle slim",
-      "status": "planned",
-      "source": "02-iconography-contact-sheet.png"
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/missing-glyph-icons/warning-triangle-slim.svg"
     },
     {
       "id": "missing-glyph-icons/shield-with-check",
       "category": "missing-glyph-icons",
       "label": "shield with check",
-      "status": "planned",
-      "source": "02-iconography-contact-sheet.png"
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/missing-glyph-icons/shield-with-check.svg"
     },
     {
       "id": "missing-glyph-icons/sort-descending",
       "category": "missing-glyph-icons",
       "label": "sort descending",
-      "status": "planned",
-      "source": "02-iconography-contact-sheet.png"
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/missing-glyph-icons/sort-descending.svg"
     },
     {
       "id": "missing-glyph-icons/sort-ascending",
       "category": "missing-glyph-icons",
       "label": "sort ascending",
-      "status": "planned",
-      "source": "02-iconography-contact-sheet.png"
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/missing-glyph-icons/sort-ascending.svg"
     },
     {
       "id": "missing-glyph-icons/filter-funnel",
       "category": "missing-glyph-icons",
       "label": "filter funnel",
-      "status": "planned",
-      "source": "02-iconography-contact-sheet.png"
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/missing-glyph-icons/filter-funnel.svg"
     },
     {
       "id": "missing-glyph-icons/server-heartbeat",
       "category": "missing-glyph-icons",
       "label": "server heartbeat",
-      "status": "planned",
-      "source": "02-iconography-contact-sheet.png"
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/missing-glyph-icons/server-heartbeat.svg"
     },
     {
       "id": "missing-glyph-icons/infinity-sync",
       "category": "missing-glyph-icons",
       "label": "infinity sync",
-      "status": "planned",
-      "source": "02-iconography-contact-sheet.png"
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/missing-glyph-icons/infinity-sync.svg"
     },
     {
       "id": "missing-glyph-icons/back-to-top-arrow",
       "category": "missing-glyph-icons",
       "label": "back to top arrow",
-      "status": "planned",
-      "source": "02-iconography-contact-sheet.png"
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/missing-glyph-icons/back-to-top-arrow.svg"
     },
     {
       "id": "missing-glyph-icons/download-with-cloud-ring",
       "category": "missing-glyph-icons",
       "label": "download with cloud ring",
-      "status": "planned",
-      "source": "02-iconography-contact-sheet.png"
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/missing-glyph-icons/download-with-cloud-ring.svg"
     },
     {
       "id": "missing-glyph-icons/upload-with-cloud-ring",
       "category": "missing-glyph-icons",
       "label": "upload with cloud ring",
-      "status": "planned",
-      "source": "02-iconography-contact-sheet.png"
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/missing-glyph-icons/upload-with-cloud-ring.svg"
     },
     {
       "id": "missing-glyph-icons/queue-list-variant",
       "category": "missing-glyph-icons",
       "label": "queue list variant",
-      "status": "planned",
-      "source": "02-iconography-contact-sheet.png"
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/missing-glyph-icons/queue-list-variant.svg"
     },
     {
       "id": "missing-glyph-icons/copy-magnet-variant",
       "category": "missing-glyph-icons",
       "label": "copy magnet variant",
-      "status": "planned",
-      "source": "02-iconography-contact-sheet.png"
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/missing-glyph-icons/copy-magnet-variant.svg"
     },
     {
       "id": "missing-glyph-icons/rename-folder-variant",
       "category": "missing-glyph-icons",
       "label": "rename folder variant",
-      "status": "planned",
-      "source": "02-iconography-contact-sheet.png"
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/missing-glyph-icons/rename-folder-variant.svg"
     },
     {
       "id": "missing-glyph-icons/library-collection-stack",
       "category": "missing-glyph-icons",
       "label": "library collection stack",
-      "status": "planned",
-      "source": "02-iconography-contact-sheet.png"
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/missing-glyph-icons/library-collection-stack.svg"
     },
     {
       "id": "missing-glyph-icons/archive-package",
       "category": "missing-glyph-icons",
       "label": "archive package",
-      "status": "planned",
-      "source": "02-iconography-contact-sheet.png"
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/missing-glyph-icons/archive-package.svg"
     },
     {
       "id": "missing-glyph-icons/tracker-antenna",
       "category": "missing-glyph-icons",
       "label": "tracker antenna",
-      "status": "planned",
-      "source": "02-iconography-contact-sheet.png"
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/missing-glyph-icons/tracker-antenna.svg"
     },
     {
       "id": "missing-glyph-icons/rtorrent-connection",
       "category": "missing-glyph-icons",
       "label": "rTorrent connection",
-      "status": "planned",
-      "source": "02-iconography-contact-sheet.png"
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/missing-glyph-icons/rtorrent-connection.svg"
     },
     {
       "id": "missing-glyph-icons/local-engine-symbol",
       "category": "missing-glyph-icons",
       "label": "local engine symbol",
-      "status": "planned",
-      "source": "02-iconography-contact-sheet.png"
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/missing-glyph-icons/local-engine-symbol.svg"
     },
     {
       "id": "missing-glyph-icons/device-file-open",
       "category": "missing-glyph-icons",
       "label": "device file open",
-      "status": "planned",
-      "source": "02-iconography-contact-sheet.png"
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/missing-glyph-icons/device-file-open.svg"
     },
     {
       "id": "missing-glyph-icons/restore-snapshot",
       "category": "missing-glyph-icons",
       "label": "restore snapshot",
-      "status": "planned",
-      "source": "02-iconography-contact-sheet.png"
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/missing-glyph-icons/restore-snapshot.svg"
     },
     {
       "id": "missing-glyph-icons/save-snapshot",
       "category": "missing-glyph-icons",
       "label": "save snapshot",
-      "status": "planned",
-      "source": "02-iconography-contact-sheet.png"
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/missing-glyph-icons/save-snapshot.svg"
     },
     {
       "id": "missing-glyph-icons/preview-snapshot",
       "category": "missing-glyph-icons",
       "label": "preview snapshot",
-      "status": "planned",
-      "source": "02-iconography-contact-sheet.png"
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/missing-glyph-icons/preview-snapshot.svg"
     },
     {
       "id": "missing-glyph-icons/bulk-select",
       "category": "missing-glyph-icons",
       "label": "bulk select",
-      "status": "planned",
-      "source": "02-iconography-contact-sheet.png"
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/missing-glyph-icons/bulk-select.svg"
     },
     {
       "id": "missing-glyph-icons/select-visible",
       "category": "missing-glyph-icons",
       "label": "select visible",
-      "status": "planned",
-      "source": "02-iconography-contact-sheet.png"
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/missing-glyph-icons/select-visible.svg"
     },
     {
       "id": "missing-glyph-icons/confirm-apply",
       "category": "missing-glyph-icons",
       "label": "confirm apply",
-      "status": "planned",
-      "source": "02-iconography-contact-sheet.png"
+      "status": "vector-draft",
+      "source": "02-iconography-contact-sheet.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/missing-glyph-icons/confirm-apply.svg"
     },
     {
       "id": "decoration-variants/small-yellow-heart-blob",
       "category": "decoration-variants",
       "label": "small yellow heart blob",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/decoration-variants/small-yellow-heart-blob.svg"
     },
     {
       "id": "decoration-variants/pink-mini-heart",
       "category": "decoration-variants",
       "label": "pink mini heart",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/decoration-variants/pink-mini-heart.svg"
     },
     {
       "id": "decoration-variants/large-blue-blob",
       "category": "decoration-variants",
       "label": "large blue blob",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/decoration-variants/large-blue-blob.svg"
     },
     {
       "id": "decoration-variants/cyan-corner-splash",
       "category": "decoration-variants",
       "label": "cyan corner splash",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/decoration-variants/cyan-corner-splash.svg"
     },
     {
       "id": "decoration-variants/green-dotted-blob",
       "category": "decoration-variants",
       "label": "green dotted blob",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/decoration-variants/green-dotted-blob.svg"
     },
     {
       "id": "decoration-variants/yellow-corner-splash",
       "category": "decoration-variants",
       "label": "yellow corner splash",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/decoration-variants/yellow-corner-splash.svg"
     },
     {
       "id": "decoration-variants/purple-oval-blob",
       "category": "decoration-variants",
       "label": "purple oval blob",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/decoration-variants/purple-oval-blob.svg"
     },
     {
       "id": "decoration-variants/pink-top-edge-splash",
       "category": "decoration-variants",
       "label": "pink top-edge splash",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/decoration-variants/pink-top-edge-splash.svg"
     },
     {
       "id": "decoration-variants/cyan-branching-blob",
       "category": "decoration-variants",
       "label": "cyan branching blob",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/decoration-variants/cyan-branching-blob.svg"
     },
     {
       "id": "decoration-variants/yellow-five-point-star",
       "category": "decoration-variants",
       "label": "yellow five-point star",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/decoration-variants/yellow-five-point-star.svg"
     },
     {
       "id": "decoration-variants/mini-blue-crown",
       "category": "decoration-variants",
       "label": "mini blue crown",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/decoration-variants/mini-blue-crown.svg"
     },
     {
       "id": "decoration-variants/outline-mini-crown",
       "category": "decoration-variants",
       "label": "outline mini crown",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/decoration-variants/outline-mini-crown.svg"
     },
     {
       "id": "decoration-variants/small-pink-dot-cluster",
       "category": "decoration-variants",
       "label": "small pink dot cluster",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/decoration-variants/small-pink-dot-cluster.svg"
     },
     {
       "id": "decoration-variants/blue-droplet",
       "category": "decoration-variants",
       "label": "blue droplet",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/decoration-variants/blue-droplet.svg"
     },
     {
       "id": "decoration-variants/purple-teardrop",
       "category": "decoration-variants",
       "label": "purple teardrop",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/decoration-variants/purple-teardrop.svg"
     },
     {
       "id": "decoration-variants/green-droplet",
       "category": "decoration-variants",
       "label": "green droplet",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/decoration-variants/green-droplet.svg"
     },
     {
       "id": "decoration-variants/yellow-oval-dash",
       "category": "decoration-variants",
       "label": "yellow oval dash",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/decoration-variants/yellow-oval-dash.svg"
     },
     {
       "id": "decoration-variants/short-blue-mark",
       "category": "decoration-variants",
       "label": "short blue mark",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/decoration-variants/short-blue-mark.svg"
     },
     {
       "id": "decoration-variants/short-pink-mark",
       "category": "decoration-variants",
       "label": "short pink mark",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/decoration-variants/short-pink-mark.svg"
     },
     {
       "id": "decoration-variants/green-brush-stroke",
       "category": "decoration-variants",
       "label": "green brush stroke",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/decoration-variants/green-brush-stroke.svg"
     },
     {
       "id": "decoration-variants/black-spiral",
       "category": "decoration-variants",
       "label": "black spiral",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/decoration-variants/black-spiral.svg"
     },
     {
       "id": "decoration-variants/double-arc",
       "category": "decoration-variants",
       "label": "double arc",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/decoration-variants/double-arc.svg"
     },
     {
       "id": "decoration-variants/double-yellow-underline",
       "category": "decoration-variants",
       "label": "double yellow underline",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/decoration-variants/double-yellow-underline.svg"
     },
     {
       "id": "decoration-variants/triple-yellow-zigzag",
       "category": "decoration-variants",
       "label": "triple yellow zigzag",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/decoration-variants/triple-yellow-zigzag.svg"
     },
     {
       "id": "decoration-variants/pink-underline",
       "category": "decoration-variants",
       "label": "pink underline",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/decoration-variants/pink-underline.svg"
     },
     {
       "id": "decoration-variants/blue-underline",
       "category": "decoration-variants",
       "label": "blue underline",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/decoration-variants/blue-underline.svg"
     },
     {
       "id": "decoration-variants/light-grey-halftone-dots",
       "category": "decoration-variants",
       "label": "light grey halftone dots",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/decoration-variants/light-grey-halftone-dots.svg"
     },
     {
       "id": "decoration-variants/blue-dotted-spray",
       "category": "decoration-variants",
       "label": "blue dotted spray",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/decoration-variants/blue-dotted-spray.svg"
     },
     {
       "id": "decoration-variants/sprinkle-patch",
       "category": "decoration-variants",
       "label": "sprinkle patch",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/decoration-variants/sprinkle-patch.svg"
     },
     {
       "id": "decoration-variants/multi-colour-confetti-cluster",
       "category": "decoration-variants",
       "label": "multi-colour confetti cluster",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png; original variant visual draft",
+      "path": "docs/design/svg/new-variants/decoration-variants/multi-colour-confetti-cluster.svg"
     },
     {
       "id": "stickers/yellow-big-files-sticker-exact-hand-lettering",

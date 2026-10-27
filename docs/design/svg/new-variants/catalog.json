@@ -1,0 +1,245 @@
+{
+  "schema": 1,
+  "assets": [
+    {
+      "id": "missing-glyph-icons/stop-transfer-circular",
+      "path": "new-variants/missing-glyph-icons/stop-transfer-circular.svg"
+    },
+    {
+      "id": "missing-glyph-icons/file-drop-zone-icon",
+      "path": "new-variants/missing-glyph-icons/file-drop-zone-icon.svg"
+    },
+    {
+      "id": "missing-glyph-icons/magnifying-document-duplicate",
+      "path": "new-variants/missing-glyph-icons/magnifying-document-duplicate.svg"
+    },
+    {
+      "id": "missing-glyph-icons/selected-radio-dot",
+      "path": "new-variants/missing-glyph-icons/selected-radio-dot.svg"
+    },
+    {
+      "id": "missing-glyph-icons/unselected-radio-ring",
+      "path": "new-variants/missing-glyph-icons/unselected-radio-ring.svg"
+    },
+    {
+      "id": "missing-glyph-icons/warning-triangle-slim",
+      "path": "new-variants/missing-glyph-icons/warning-triangle-slim.svg"
+    },
+    {
+      "id": "missing-glyph-icons/shield-with-check",
+      "path": "new-variants/missing-glyph-icons/shield-with-check.svg"
+    },
+    {
+      "id": "missing-glyph-icons/sort-descending",
+      "path": "new-variants/missing-glyph-icons/sort-descending.svg"
+    },
+    {
+      "id": "missing-glyph-icons/sort-ascending",
+      "path": "new-variants/missing-glyph-icons/sort-ascending.svg"
+    },
+    {
+      "id": "missing-glyph-icons/filter-funnel",
+      "path": "new-variants/missing-glyph-icons/filter-funnel.svg"
+    },
+    {
+      "id": "missing-glyph-icons/server-heartbeat",
+      "path": "new-variants/missing-glyph-icons/server-heartbeat.svg"
+    },
+    {
+      "id": "missing-glyph-icons/infinity-sync",
+      "path": "new-variants/missing-glyph-icons/infinity-sync.svg"
+    },
+    {
+      "id": "missing-glyph-icons/back-to-top-arrow",
+      "path": "new-variants/missing-glyph-icons/back-to-top-arrow.svg"
+    },
+    {
+      "id": "missing-glyph-icons/download-with-cloud-ring",
+      "path": "new-variants/missing-glyph-icons/download-with-cloud-ring.svg"
+    },
+    {
+      "id": "missing-glyph-icons/upload-with-cloud-ring",
+      "path": "new-variants/missing-glyph-icons/upload-with-cloud-ring.svg"
+    },
+    {
+      "id": "missing-glyph-icons/queue-list-variant",
+      "path": "new-variants/missing-glyph-icons/queue-list-variant.svg"
+    },
+    {
+      "id": "missing-glyph-icons/copy-magnet-variant",
+      "path": "new-variants/missing-glyph-icons/copy-magnet-variant.svg"
+    },
+    {
+      "id": "missing-glyph-icons/rename-folder-variant",
+      "path": "new-variants/missing-glyph-icons/rename-folder-variant.svg"
+    },
+    {
+      "id": "missing-glyph-icons/library-collection-stack",
+      "path": "new-variants/missing-glyph-icons/library-collection-stack.svg"
+    },
+    {
+      "id": "missing-glyph-icons/archive-package",
+      "path": "new-variants/missing-glyph-icons/archive-package.svg"
+    },
+    {
+      "id": "missing-glyph-icons/tracker-antenna",
+      "path": "new-variants/missing-glyph-icons/tracker-antenna.svg"
+    },
+    {
+      "id": "missing-glyph-icons/rtorrent-connection",
+      "path": "new-variants/missing-glyph-icons/rtorrent-connection.svg"
+    },
+    {
+      "id": "missing-glyph-icons/local-engine-symbol",
+      "path": "new-variants/missing-glyph-icons/local-engine-symbol.svg"
+    },
+    {
+      "id": "missing-glyph-icons/device-file-open",
+      "path": "new-variants/missing-glyph-icons/device-file-open.svg"
+    },
+    {
+      "id": "missing-glyph-icons/restore-snapshot",
+      "path": "new-variants/missing-glyph-icons/restore-snapshot.svg"
+    },
+    {
+      "id": "missing-glyph-icons/save-snapshot",
+      "path": "new-variants/missing-glyph-icons/save-snapshot.svg"
+    },
+    {
+      "id": "missing-glyph-icons/preview-snapshot",
+      "path": "new-variants/missing-glyph-icons/preview-snapshot.svg"
+    },
+    {
+      "id": "missing-glyph-icons/bulk-select",
+      "path": "new-variants/missing-glyph-icons/bulk-select.svg"
+    },
+    {
+      "id": "missing-glyph-icons/select-visible",
+      "path": "new-variants/missing-glyph-icons/select-visible.svg"
+    },
+    {
+      "id": "missing-glyph-icons/confirm-apply",
+      "path": "new-variants/missing-glyph-icons/confirm-apply.svg"
+    },
+    {
+      "id": "decoration-variants/small-yellow-heart-blob",
+      "path": "new-variants/decoration-variants/small-yellow-heart-blob.svg"
+    },
+    {
+      "id": "decoration-variants/pink-mini-heart",
+      "path": "new-variants/decoration-variants/pink-mini-heart.svg"
+    },
+    {
+      "id": "decoration-variants/large-blue-blob",
+      "path": "new-variants/decoration-variants/large-blue-blob.svg"
+    },
+    {
+      "id": "decoration-variants/cyan-corner-splash",
+      "path": "new-variants/decoration-variants/cyan-corner-splash.svg"
+    },
+    {
+      "id": "decoration-variants/green-dotted-blob",
+      "path": "new-variants/decoration-variants/green-dotted-blob.svg"
+    },
+    {
+      "id": "decoration-variants/yellow-corner-splash",
+      "path": "new-variants/decoration-variants/yellow-corner-splash.svg"
+    },
+    {
+      "id": "decoration-variants/purple-oval-blob",
+      "path": "new-variants/decoration-variants/purple-oval-blob.svg"
+    },
+    {
+      "id": "decoration-variants/pink-top-edge-splash",
+      "path": "new-variants/decoration-variants/pink-top-edge-splash.svg"
+    },
+    {
+      "id": "decoration-variants/cyan-branching-blob",
+      "path": "new-variants/decoration-variants/cyan-branching-blob.svg"
+    },
+    {
+      "id": "decoration-variants/yellow-five-point-star",
+      "path": "new-variants/decoration-variants/yellow-five-point-star.svg"
+    },
+    {
+      "id": "decoration-variants/mini-blue-crown",
+      "path": "new-variants/decoration-variants/mini-blue-crown.svg"
+    },
+    {
+      "id": "decoration-variants/outline-mini-crown",
+      "path": "new-variants/decoration-variants/outline-mini-crown.svg"
+    },
+    {
+      "id": "decoration-variants/small-pink-dot-cluster",
+      "path": "new-variants/decoration-variants/small-pink-dot-cluster.svg"
+    },
+    {
+      "id": "decoration-variants/blue-droplet",
+      "path": "new-variants/decoration-variants/blue-droplet.svg"
+    },
+    {
+      "id": "decoration-variants/purple-teardrop",
+      "path": "new-variants/decoration-variants/purple-teardrop.svg"
+    },
+    {
+      "id": "decoration-variants/green-droplet",
+      "path": "new-variants/decoration-variants/green-droplet.svg"
+    },
+    {
+      "id": "decoration-variants/yellow-oval-dash",
+      "path": "new-variants/decoration-variants/yellow-oval-dash.svg"
+    },
+    {
+      "id": "decoration-variants/short-blue-mark",
+      "path": "new-variants/decoration-variants/short-blue-mark.svg"
+    },
+    {
+      "id": "decoration-variants/short-pink-mark",
+      "path": "new-variants/decoration-variants/short-pink-mark.svg"
+    },
+    {
+      "id": "decoration-variants/green-brush-stroke",
+      "path": "new-variants/decoration-variants/green-brush-stroke.svg"
+    },
+    {
+      "id": "decoration-variants/black-spiral",
+      "path": "new-variants/decoration-variants/black-spiral.svg"
+    },
+    {
+      "id": "decoration-variants/double-arc",
+      "path": "new-variants/decoration-variants/double-arc.svg"
+    },
+    {
+      "id": "decoration-variants/double-yellow-underline",
+      "path": "new-variants/decoration-variants/double-yellow-underline.svg"
+    },
+    {
+      "id": "decoration-variants/triple-yellow-zigzag",
+      "path": "new-variants/decoration-variants/triple-yellow-zigzag.svg"
+    },
+    {
+      "id": "decoration-variants/pink-underline",
+      "path": "new-variants/decoration-variants/pink-underline.svg"
+    },
+    {
+      "id": "decoration-variants/blue-underline",
+      "path": "new-variants/decoration-variants/blue-underline.svg"
+    },
+    {
+      "id": "decoration-variants/light-grey-halftone-dots",
+      "path": "new-variants/decoration-variants/light-grey-halftone-dots.svg"
+    },
+    {
+      "id": "decoration-variants/blue-dotted-spray",
+      "path": "new-variants/decoration-variants/blue-dotted-spray.svg"
+    },
+    {
+      "id": "decoration-variants/sprinkle-patch",
+      "path": "new-variants/decoration-variants/sprinkle-patch.svg"
+    },
+    {
+      "id": "decoration-variants/multi-colour-confetti-cluster",
+      "path": "new-variants/decoration-variants/multi-colour-confetti-cluster.svg"
+    }
+  ]
+}
