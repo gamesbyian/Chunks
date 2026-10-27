@@ -49,7 +49,8 @@ fun TransferLifecycleControl(
     onSettled: () -> Unit,
     snapshotRevision: Long = 0L,
     // Test seam. Production always sends one exact-hash RPC lifecycle request.
-    performLifecycle: suspend (String, Boolean) -> LifecycleOutcome = remote::setStarted
+    performLifecycle: suspend (String, Boolean) -> LifecycleOutcome = remote::setStarted,
+    observeActivity: suspend (String) -> RemoteTransferActivity = remote::readActivity
 ) {
     val validV1Hash = remember(transfer.hash) { Regex("[0-9a-fA-F]{40}").matches(transfer.hash) }
     var confirming by rememberSaveable(transfer.hash, transfer.name, transfer.directory) { mutableStateOf(false) }
@@ -62,10 +63,14 @@ fun TransferLifecycleControl(
     var confirmingAtRevision by rememberSaveable(transfer.hash, transfer.name, transfer.directory) {
         mutableStateOf(-1L)
     }
+    var resumeInactive by rememberSaveable(transfer.hash, transfer.name, transfer.directory) {
+        mutableStateOf(false)
+    }
     var pending by remember(transfer.hash, transfer.name, transfer.directory) { mutableStateOf(false) }
     var feedback by remember(transfer.hash) { mutableStateOf<String?>(null) }
     var verified by rememberSaveable(transfer.hash, transfer.name, transfer.directory) { mutableStateOf(false) }
     var activity by remember(transfer.hash) { mutableStateOf<RemoteTransferActivity?>(null) }
+    var activityAtRevision by remember(transfer.hash) { mutableStateOf(-1L) }
     var checkingActivity by remember(transfer.hash) { mutableStateOf(false) }
     var trackerHealth by remember(remote, transfer.hash) { mutableStateOf<RemoteTrackerHealth?>(null) }
     var checkingTrackers by remember(remote, transfer.hash) { mutableStateOf(false) }
@@ -77,8 +82,8 @@ fun TransferLifecycleControl(
     var watchJob by remember(remote, transfer.hash) { mutableStateOf<Job?>(null) }
 
     val scope = rememberCoroutineScope()
-    val requestedStarted = !transfer.started
-    val verb = if (requestedStarted) "Start" else "Stop"
+    val requestedStarted = resumeInactive || !transfer.started
+    val verb = if (resumeInactive) "Resume" else if (requestedStarted) "Start" else "Stop"
     val confirmationFresh = confirming && confirmingAtRevision == snapshotRevision
     val freshAfterAttempt = attempted && !pending && !snapshotStale &&
         attemptedAtRevision != snapshotRevision
@@ -94,12 +99,28 @@ fun TransferLifecycleControl(
         if (!confirmationFresh && canOfferAction) {
             OutlinedButton(
                 onClick = {
+                    resumeInactive = false
                     confirmingAtRevision = snapshotRevision
                     confirming = true
                 },
                 enabled = !snapshotStale,
                 modifier = Modifier.height(48.dp)
-            ) { Text(verb + " transfer…") }
+            ) { Text((if (transfer.started) "Stop" else "Start") + " transfer…") }
+            // A torrent can have d.state=1 while d.is_active=0. Give a
+            // deliberate, exact-hash Open/Start/Resume review only after a
+            // CURRENT read-only activity report proves it is inactive.
+            if (transfer.started && activity?.active == false &&
+                activityAtRevision == snapshotRevision) {
+                OutlinedButton(
+                    onClick = {
+                        resumeInactive = true
+                        confirmingAtRevision = snapshotRevision
+                        confirming = true
+                    },
+                    enabled = !snapshotStale,
+                    modifier = Modifier.height(48.dp)
+                ) { Text("Resume inactive transfer…") }
+            }
         }
         if (snapshotStale) {
             Text("Refresh this stale server snapshot before changing a transfer.",
@@ -127,6 +148,7 @@ fun TransferLifecycleControl(
                                 if (!snapshotStale && confirmingAtRevision == snapshotRevision &&
                                     onMutationStarted()) {
                                 confirming = false
+                                resumeInactive = false
                                 attempted = true
                                 attemptedAtRevision = snapshotRevision
                                 pending = true
@@ -155,8 +177,13 @@ fun TransferLifecycleControl(
                                     }
                                     if (requestedStarted) {
                                         checkingActivity = true
-                                        try { activity = remote.readActivity(transfer.hash) }
-                                        catch (_: Exception) { activity = null }
+                                        try {
+                                            val fresh = observeActivity(transfer.hash)
+                                            if (!snapshotStale) {
+                                                activity = fresh
+                                                activityAtRevision = snapshotRevision
+                                            }
+                                        } catch (_: Exception) { activity = null }
                                         finally { checkingActivity = false }
                                     }
                                 }
@@ -183,9 +210,15 @@ fun TransferLifecycleControl(
             OutlinedButton(
                 onClick = {
                     checkingActivity = true
+                    val observedRevision = snapshotRevision
                     scope.launch {
-                        try { activity = remote.readActivity(transfer.hash) }
-                        catch (_: Exception) { activity = null }
+                        try {
+                            val observed = observeActivity(transfer.hash)
+                            if (!snapshotStale && observedRevision == snapshotRevision) {
+                                activity = observed
+                                activityAtRevision = observedRevision
+                            }
+                        } catch (_: Exception) { activity = null }
                         finally { checkingActivity = false }
                     }
                 },
