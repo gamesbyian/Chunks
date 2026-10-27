@@ -8,11 +8,22 @@ The workflow installs Android API 37 with SDK 37.0; targeted real API35 instrume
 
 Evidence: [run 40057523588](https://github.com/gamesbyian/Chunks/actions/runs/40057523588) passed 42 Gradle tasks including JVM tests and assembly against source SHA `201b53fc3d16482cf2aa1a08c9c01d9e0351174b`; its artifact is `chunks-debug-prealpha`. Subsequent source changes require new proof. Build artifacts are debug only; a successful Gradle job is not a real-server or real-device acceptance.
 
-## Owner-approved launcher artwork
+## Canonical SVG launcher artwork
 
-The official Chunks app icon is the untouched, owner-supplied PNG at `docs/design/approved/chunks-app-icon-master.png` (Git blob `03a8677e9c90f4b455e67683fcc4a2b79517b1ea`). The Android resource `app/src/main/res/drawable-nodpi/chunks_launcher_artwork.png` must be identical, and `res/mipmap-anydpi-v26/ic_launcher.xml` must use that drawable for its foreground. The manifest points normal and round icons to `@mipmap/ic_launcher`; obsolete seven-block foreground and monochrome themed layers must not be reintroduced.
+The authoritative icon drawing is [`docs/design/approved/chunks-app-icon-master.svg`](design/approved/chunks-app-icon-master.svg), the transparent scalable folder-and-chunks illustration with **no baked-in black bezel**. The original owner-supplied [`chunks-app-icon-master.png`](design/approved/chunks-app-icon-master.png) is retained byte-for-byte **only as visual reference** (Git blob `03a8677e9c90f4b455e67683fcc4a2b79517b1ea`). The Android APK no longer ships that 1.2 MB PNG foreground.
 
-All normal and side-by-side APK builds run the configuration-cache-safe Gradle `verifyChunksLauncherArtwork` check before packaging. It asserts the approved original Git blob, PNG signature and resource/manifest wiring. The icon-specific debug release workflow also checks the approved resource in both APK packages with `aapt dump resources`. A build pass is **not** visual acceptance of Android's various round/squircle/masked launchers; review these on an actual device when available. Never uninstall an existing app merely to update its debug build, because app-owned torrent data may be lost.
+Android adaptive-icon resources cannot directly point at `.svg`; they require a platform drawable. The source-controlled `app/src/main/res/drawable/chunks_launcher_artwork.xml` is a **generated native VectorDrawable**, derived from the SVG by `tools/generate_launcher_vector.cjs`. It retains paths, gradients, symbols and transparent edges; raster-only blur/shadow underlays are omitted. Android's `mipmap-anydpi-v26/ic_launcher.xml` uses that vector over a dark launcher background, and the manifest points round and normal icons to `@mipmap/ic_launcher`. The 0.73 scale keeps artwork inside adaptive masks, which the OS applies.
+
+To change icon art, edit **only the SVG**, then run:
+
+```sh
+node tools/generate_launcher_vector.cjs
+node tools/generate_launcher_vector.cjs --check
+gradle --no-daemon :app:verifyChunksLauncherArtwork :app:assembleDebug
+```
+
+The dependency-free Node 22 converter runs in `--check` mode in Android build/release/visual CI. Gradle `preBuild` verifies that the SVG's Git blob matches the generated vector provenance, the reference PNG is unchanged, and manifest/adaptive wiring is intact. Ordinary Gradle builds do not require Node unless regenerating the asset. Never add runtime PNG back. A successful build is not physical-device launcher-mask or themed-icon acceptance. Avoid uninstalling installed debug builds solely to change the icon, as that can delete app-owned torrent data.
+
 
 ## Downloadable APK in GitHub Releases
 
