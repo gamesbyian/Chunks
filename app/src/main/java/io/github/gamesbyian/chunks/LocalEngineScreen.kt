@@ -54,6 +54,8 @@ import io.github.gamesbyian.chunks.engine.LocalTransferState
 import io.github.gamesbyian.chunks.engine.LocalTransferFile
 import io.github.gamesbyian.chunks.engine.LocalTransferStatus
 import io.github.gamesbyian.chunks.model.Units
+import io.github.gamesbyian.chunks.model.LocalInventoryFrame
+import io.github.gamesbyian.chunks.model.LocalInventoryFreshness
 import io.github.gamesbyian.chunks.model.CollectionNameRegistryRules
 import io.github.gamesbyian.chunks.model.ManualCollectionPager
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoPreview
@@ -132,7 +134,11 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
     var registeredNames by remember {
         mutableStateOf(nameRegistry.names(TransferCollectionStore.LOCAL_ENGINE_SCOPE))
     }
-    var transfers by remember { mutableStateOf<List<LocalTransferStatus>>(emptyList()) }
+    var inventoryFrame by remember {
+        mutableStateOf(LocalInventoryFrame<LocalTransferStatus>(emptyList(), stale = false))
+    }
+    val transfers = inventoryFrame.entries
+    val inventoryStale = inventoryFrame.stale
     var transferPage by remember { mutableStateOf(0) }
     val transferSlice = remember(transfers, transferPage) {
         ManualCollectionPager.slice(transfers, transferPage, size = 20)
@@ -176,9 +182,10 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
                     try { LocalEngineHolder.current()?.files(hash) } catch (_: Exception) { null }
                 }
             }
-            transfers = withContext(Dispatchers.IO) {
-                try { LocalEngineHolder.current()?.list().orEmpty() } catch (_: Exception) { emptyList() }
+            val observed = withContext(Dispatchers.IO) {
+                try { LocalEngineHolder.current()?.list().orEmpty() } catch (_: Exception) { null }
             }
+            inventoryFrame = LocalInventoryFreshness.advance(inventoryFrame, observed)
             // Refresh resume data about every 30 s so progress survives process death.
             if (++tick % 30 == 0) withContext(Dispatchers.IO) {
                 try { LocalEngineHolder.current()?.saveResumeData() } catch (_: Exception) { }
@@ -218,7 +225,7 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
         Text("On this phone (experimental)", style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
         Text("Downloads and seeds with Chunks' own engine. While a transfer runs, an ongoing notification keeps it going in the background, with Stop all; Android may still stop it, and from Android 15 limits this kind of background transfer to about 6 hours a day, after which Chunks pauses everything. Nothing connects to the network until you add a torrent. Transfers are remembered and come back stopped after Chunks restarts. Peers and trackers can see this phone's IP address.")
-        Button(onClick = { picker.launch(arrayOf("*/*")) }, enabled = !busy && destination != null,
+        Button(onClick = { picker.launch(arrayOf("*/*")) }, enabled = !busy && !inventoryStale && destination != null,
             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Choose .torrent file") }
         Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
             .toggleable(value = dht, role = Role.Switch, onValueChange = { wanted ->
@@ -249,16 +256,22 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
                     if (result !is LocalAddResult.Refused) magnet = ""
                     busy = false
                 }
-            }, enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Add magnet (metadata only)") }
+            }, enabled = !busy && !inventoryStale, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Add magnet (metadata only)") }
         }
         if (destination == null) Text("Phone storage for Chunks is unavailable right now.",
             color = MaterialTheme.colorScheme.error)
         message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         restoreNotice?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        if (inventoryStale) {
+            Text("Phone torrent status unavailable. Showing the last confirmed transfers. " +
+                "Start, Stop, Remove, file selection, new Adds and library publication are disabled " +
+                "until a fresh engine status read succeeds.",
+                color = MaterialTheme.colorScheme.error)
+        }
 
         val add = pending
         if (add != null && destination != null) LocalAddReview(add.preview, destination,
-            busy = busy,
+            busy = busy || inventoryStale,
             onConfirm = {
                 busy = true
                 scope.launch {
@@ -294,7 +307,7 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
             )
         }
         transferSlice.items.forEach { transfer ->
-            LocalTransferCard(transfer, busy,
+            LocalTransferCard(transfer, busy || inventoryStale,
                 onToggle = {
                     if (transfer.stopped && Build.VERSION.SDK_INT >= 33 &&
                         context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
@@ -360,7 +373,8 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
                     collectionRevision++
                 }
             )
-            if (transfer.metadataKnown && transfer.progressPpm == 1_000_000) LocalLibraryCopyPanel(transfer)
+            if (!inventoryStale && transfer.metadataKnown && transfer.progressPpm == 1_000_000)
+                LocalLibraryCopyPanel(transfer)
         }
         LocalZipInterruptedExtractions()
         LocalSpeedLimits()
@@ -431,7 +445,8 @@ internal fun LocalTransferCard(
                 }
                 OutlinedButton(onClick = { confirmRemove = true }, enabled = !busy && !confirmRemove,
                     modifier = Modifier.heightIn(min = 48.dp)) { Text("Remove…") }
-                if (transfer.metadataKnown) OutlinedButton(onClick = onShowFiles, modifier = Modifier.heightIn(min = 48.dp)) {
+                if (transfer.metadataKnown) OutlinedButton(onClick = onShowFiles,
+                    enabled = !busy, modifier = Modifier.heightIn(min = 48.dp)) {
                     Text(if (filesShown) "Hide files" else "Files")
                 }
             }
