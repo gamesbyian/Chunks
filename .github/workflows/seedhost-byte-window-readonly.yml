@@ -4,6 +4,8 @@ name: Protected Seedhost read-only byte-window witness
 # workflow explicitly schedule ONE read-only witness on the approved dev host.
 # Registered on main by #253; this follow-up workflow-only change invokes
 # the first actual trusted-main read-only sample. No hosted mutation allowed.
+# 2026-10-27 second pass: sample up to six incomplete started torrents (read-only),
+# reporting only aggregate traffic/peer/active evidence, not transfer identities.
 on:
   push:
     branches: [main]
