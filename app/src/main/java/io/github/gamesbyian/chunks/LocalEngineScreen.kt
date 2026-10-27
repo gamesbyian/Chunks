@@ -647,8 +647,15 @@ internal fun LocalTransferCard(
             Text(stateLabel(transfer) + " · " + percent + "% · " + transfer.peers + " peers")
             ChunkedProgressBar(progress = transfer.progressPpm / 1_000_000f,
                 modifier = Modifier.fillMaxWidth().semantics { stateDescription = "$percent percent complete" })
-            Text("Downloaded " + Units.bytes(transfer.payloadDownloadedBytes) + " · Shared " +
+            // totalWantedDone is hash-verified completed payload; allTimeDownload
+            // is a libtorrent network counter and may exclude HTTPS web seeds.
+            Text("Verified on disk " + Units.bytes(transfer.doneBytes) + " of " +
+                Units.bytes(transfer.wantedBytes) + " · Shared " +
                 Units.bytes(transfer.payloadUploadedBytes), style = MaterialTheme.typography.bodySmall)
+            if (transfer.payloadDownloadedBytes > 0L) {
+                Text("Network payload counter " + Units.bytes(transfer.payloadDownloadedBytes),
+                    style = MaterialTheme.typography.bodySmall)
+            }
             if (!transfer.stopped && transfer.uploadOnly && transfer.metadataKnown) {
                 Text("Running in upload-only mode: libtorrent is not requesting file pieces. " +
                     "This can follow a disk write error; inspect the error above and available storage.",
