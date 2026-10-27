@@ -79,13 +79,23 @@ internal object LocalEngineHolder {
      * restore transfers saved earlier. Restored transfers always come back stopped.
      */
     @Synchronized
-    fun get(context: Context): LocalTorrentEngine = engine ?: LocalTorrentEngine(
-        LocalEngineConfig(stateDirectory = stateDirectory(context))
-    ).also {
-        it.start()
-        if (dhtPreferred(context)) it.setDhtEnabled(true)
-        it.setRateLimits(rateLimitsPreferred(context))
-        engine = it
+    fun get(context: Context): LocalTorrentEngine {
+        engine?.let { return it }
+        val candidate = LocalTorrentEngine(
+            LocalEngineConfig(stateDirectory = stateDirectory(context))
+        )
+        val verified = LocalEngineStartupSettings.open(
+            candidate = candidate,
+            savedDht = dhtPreferred(context),
+            savedLimits = rateLimitsPreferred(context),
+            start = { it.start() },
+            setDht = { running, desired -> running.setDhtEnabled(desired) },
+            setLimits = { running, desired -> running.setRateLimits(desired) },
+            close = { it.close() }
+        )
+        // Never expose a partially started engine as the live singleton.
+        engine = verified
+        return verified
     }
 
     private fun prefs(context: Context) = context.getSharedPreferences("local-engine", Context.MODE_PRIVATE)
