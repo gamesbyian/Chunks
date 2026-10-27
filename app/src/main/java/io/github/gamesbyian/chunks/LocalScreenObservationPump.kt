@@ -84,13 +84,10 @@ internal class LocalScreenObservationRevision {
 
     @Synchronized fun snapshot(): Long = revision
 
-    @Synchronized fun accepts(sampleRevision: Long): Boolean =
-        !commandPending && sampleRevision == revision
-
-    /** Call only after a genuinely successful non-null list read. */
-    @Synchronized fun acceptSuccessfulRead(sampleRevision: Long): Boolean {
-        if (!accepts(sampleRevision)) return false
-        awaitingReadback = false
+    /** Null means the list read failed, not an authoritative empty inventory. */
+    @Synchronized fun <T> acceptObservation(sampleRevision: Long, list: List<T>?): Boolean {
+        if (commandPending || sampleRevision != revision) return false
+        if (list != null) awaitingReadback = false
         return true
     }
 
