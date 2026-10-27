@@ -124,7 +124,7 @@ private fun ChunksApp(sharedMagnet: String?) {
     var username by remember { mutableStateOf(remembered?.username.orEmpty()) }
     var password by remember { mutableStateOf(remembered?.password.orEmpty()) }
     // Remembering is the default. Every user can opt out before Connect.
-    var rememberLogin by remember { mutableStateOf(true) }
+    var rememberLogin by remember { mutableStateOf(vault.rememberingEnabled()) }
     var savedLoginPresent by remember { mutableStateOf(remembered != null) }
     var credentialNotice by remember { mutableStateOf<String?>(null) }
     var server by remember { mutableStateOf<RTorrentRemote?>(null) }
@@ -232,22 +232,25 @@ private fun ChunksApp(sharedMagnet: String?) {
                 credentialNotice = credentialNotice,
                 onRememberLogin = { enabled ->
                     rememberLogin = enabled
-                    if (!enabled) {
-                        scope.launch {
-                            val cleared = withContext(Dispatchers.IO) {
-                                try { vault.clear() } catch (_: Exception) { false }
-                            }
-                            savedLoginPresent = if (cleared) false else vault.hasSavedLogin()
-                            credentialNotice = if (cleared) "Saved login erased on this device."
-                                else "Could not erase saved login; retry Forget saved login."
+                    scope.launch {
+                        val persisted = withContext(Dispatchers.IO) {
+                            try { vault.setRememberingEnabled(enabled) }
+                            catch (_: Exception) { false }
                         }
-                    } else credentialNotice = null
+                        if (!persisted) rememberLogin = vault.rememberingEnabled()
+                        savedLoginPresent = vault.hasSavedLogin()
+                        credentialNotice = when {
+                            !persisted -> "Could not save the credential remembering preference. Retry this change."
+                            !enabled -> "Login remembering disabled across restarts; saved credentials erased."
+                            else -> "Login remembering enabled. Credentials are saved after your next successful Connect."
+                        }
+                    }
                 },
                 onForgetLogin = {
                     rememberLogin = false
                     scope.launch {
                         val cleared = withContext(Dispatchers.IO) {
-                            try { vault.clear() } catch (_: Exception) { false }
+                            try { vault.setRememberingEnabled(false) } catch (_: Exception) { false }
                         }
                         savedLoginPresent = if (cleared) false else vault.hasSavedLogin()
                         if (cleared) {
@@ -293,14 +296,18 @@ private fun ChunksApp(sharedMagnet: String?) {
                                     // Failures never persist an unverified password.
                                     val retained = withContext(Dispatchers.IO) {
                                         try {
-                                            if (saveThisLogin) vault.save(settings) else vault.clear()
+                                            if (saveThisLogin) vault.save(settings)
+                                            else vault.setRememberingEnabled(false)
                                         } catch (_: Exception) { false }
                                     }
                                     savedLoginPresent = if (retained && saveThisLogin) true
                                         else vault.hasSavedLogin()
-                                    credentialNotice = if (retained) null
-                                        else "Connected, but saved-login storage could not be confirmed. " +
-                                            "You may need to enter your password again after restart."
+                                    credentialNotice = when {
+                                        !retained -> "Connected, but login remembering settings could not be saved. " +
+                                            "Confirm the preference before restarting."
+                                        !saveThisLogin -> "Connected without remembering credentials. Your opt-out persists across restarts."
+                                        else -> null
+                                    }
                                     // Do not retain another copy in the screen field.
                                     password = ""
                                 }
@@ -424,7 +431,7 @@ private fun ChunksApp(sharedMagnet: String?) {
                         rememberLogin = false
                         scope.launch {
                             val cleared = withContext(Dispatchers.IO) {
-                                try { vault.clear() } catch (_: Exception) { false }
+                                try { vault.setRememberingEnabled(false) } catch (_: Exception) { false }
                             }
                             savedLoginPresent = if (cleared) false else vault.hasSavedLogin()
                             credentialNotice = if (cleared) "Saved login erased. Current connection remains active."
