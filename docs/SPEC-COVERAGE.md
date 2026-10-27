@@ -6,6 +6,8 @@
 
 **2026-10-27 owner correction:** Visible per-transfer destination choice is optional at Add. Planned: local default user-visible Downloads/Chunks Downloads (create only on device when technically supported); remote existing server default, no remotely created Chunks folder; separate validated per-engine/profile recent successful destinations shown in Add. Current local app-private save directory and remote explicit-parent Add do **not** satisfy this promise. Scope/evidence: [PRODUCT.md](PRODUCT.md), [UX.md](UX.md), [ARCHITECTURE.md](ARCHITECTURE.md), [WORK-QUEUE.md](WORK-QUEUE.md). Never report as shipped.
 
+**2026-10-27 Android Downloads clarification (approved/planned):** Resolve Android's standard primary shared Downloads as the preferred parent for a lazily created on-device Chunks Downloads directory, normally matching Chrome's default. Do not claim to detect Chrome's custom download path. An independently selected, remembered Chunks default may use an SD card where tested. Android scoped-storage and native libtorrent seek/write/verify/resume/seed are release acceptance gates; current app-private engine storage is not accepted as the public Downloads deliverable. See [ARCHITECTURE.md](ARCHITECTURE.md) and [WORK-QUEUE.md](WORK-QUEUE.md).
+
 Legend: **Implemented (limited)** = code merged, may have some suitable specific test evidence; **Unproven** = feature exists but material real-world acceptance missing; **Planned** = normative owner/engineering requirement with no qualified executor. Never use the table to upgrade a capability's evidence class.
 
 | Product promise / boundary | Current state at audited main | Source authority; remaining acceptance |
