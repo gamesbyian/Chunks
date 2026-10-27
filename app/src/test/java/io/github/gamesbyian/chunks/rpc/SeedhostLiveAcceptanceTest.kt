@@ -96,6 +96,50 @@ class SeedhostLiveAcceptanceTest {
         assertNull(commonParent(emptyList()))
     }
 
+    /**
+     * Read-only host destination preflight. An arbitrary common prefix of all
+     * torrent paths was the unverified assumption in the failed first run.
+     * Read back each bounded complete single-file candidate's actual directory
+     * before nominating a parent for a different uniquely named test file.
+     * Neither existing downloaded bytes nor files are mutated by this method.
+     */
+    private suspend fun preflightExistingParent(rtorrent: RTorrentRemote): SeedhostDestinationPreflight.Selection? {
+        log("preflight phase=read-default")
+        val configured = rtorrent.defaultDirectory()
+        log("preflight configuredDefaultPresent=${configured != null}")
+        log("preflight phase=read-inventory")
+        val inventory = rtorrent.listTransfers("main")
+        val candidates = inventory.filter {
+            it.sizeBytes > 0 && it.completedBytes == it.sizeBytes
+        }.take(48)
+        log("preflight inventory=${inventory.size} completeCandidatesInspected=${candidates.size}")
+        val observations = candidates.map { transfer ->
+            val multi = try {
+                (rtorrent.call("d.is_multi_file", listOf(transfer.hash)) as? Number)?.toInt()
+            } catch (_: RpcFault) { null }
+            val freshPath = try {
+                rtorrent.call("d.directory", listOf(transfer.hash)) as? String
+            } catch (_: RpcFault) { null }
+            SeedhostDestinationPreflight.Observation(
+                directory = transfer.directory,
+                complete = true,
+                singleFile = multi?.let { it == 0 },
+                freshDirectoryMatches = freshPath == transfer.directory
+            )
+        }
+        val chosen = SeedhostDestinationPreflight.select(configured, observations)
+        log("preflight result=${if (chosen == null) "indeterminate" else "supported"} " +
+            "configuredCorroborated=${chosen?.usedConfiguredDefault == true} " +
+            "singleFileReferences=${chosen?.independentReferences ?: 0}")
+        return chosen
+    }
+
+    @Test fun readOnlyExistingDestinationPreflight() = runBlocking {
+        val rtorrent = remote()
+        val chosen = preflightExistingParent(rtorrent)
+        assertNotNull("No sufficiently corroborated existing single-file destination; no write permitted", chosen)
+    }
+
     /** One unique synthetic transfer per run, so repeats never collide or touch existing data. */
     private fun syntheticTorrent(name: String): ByteArray {
         val payload = "Chunks acceptance payload\n".toByteArray()
@@ -154,15 +198,14 @@ class SeedhostLiveAcceptanceTest {
         assumeTrue("Mutation requires apply", System.getenv("CHUNKS_LIVE_MUTATION") == "apply")
         assumeTrue("Diagnostic runs do not repeat the round trip", System.getenv("CHUNKS_LIVE_DIAGNOSE_ADD") != "true")
         val rtorrent = remote()
-        // This host leaves directory.default empty; fall back to the folder every
-        // existing transfer lives under, so the test folder sits beside real data.
-        val configured = rtorrent.defaultDirectory()
-        val base = configured ?: commonParent(rtorrent.listTransfers("main").map { it.directory })
-        requireNotNull(base) { "No safe base directory could be determined" }
-        log("base directory source=${if (configured != null) "directory.default" else "common parent of inventory"} depth=${base.count { it == '/' }}")
-        // An earlier run showed a load into a not-yet-existing subfolder was
-        // acknowledged but never listed; target the existing shared folder itself.
-        val target = base
+        log("roundtrip phase=preflight")
+        val selected = preflightExistingParent(rtorrent)
+        requireNotNull(selected) { "Existing download directory could not be corroborated; no write attempted" }
+        // This is a previously observed parent of a complete SINGLE-FILE
+        // transfer. It is stronger evidence than an inventory-wide path prefix,
+        // but it still does not prove writable permissions; Add must read back.
+        val target = selected.directory
+        log("roundtrip phase=identity-preflight")
         val runId = System.getenv("GITHUB_RUN_ID").orEmpty().filter { it.isDigit() }.ifEmpty { System.currentTimeMillis().toString() }
         val name = "chunks-acceptance-$runId.txt"
         val bytes = syntheticTorrent(name)
@@ -174,6 +217,7 @@ class SeedhostLiveAcceptanceTest {
 
         var added: RemoteTransfer? = null
         try {
+            log("roundtrip phase=add-stopped")
             val load = rtorrent.loadStoppedTorrentBytes(bytes, target)
             log("load.raw_verbose outcome=${load::class.simpleName}")
             assertTrue("Add must be verified or pending, never uncertain: $load",
@@ -198,6 +242,7 @@ class SeedhostLiveAcceptanceTest {
             assertTrue(back is FilePriorityOutcome.Verified || back is FilePriorityOutcome.PendingVerification)
             assertEquals(file.priority, rtorrent.listFiles(hash).single().priority)
 
+            log("roundtrip phase=start")
             val start = rtorrent.setStarted(hash, true)
             log("start outcome=${start::class.simpleName}")
             assertTrue(start !is LifecycleOutcome.Uncertain)
@@ -212,12 +257,14 @@ class SeedhostLiveAcceptanceTest {
             }
             assertTrue("The development Seedhost never reported active after Start", active)
             log("rTorrent active state verified after complete Open/Start/Resume")
+            log("roundtrip phase=stop")
             val stop = rtorrent.setStarted(hash, false)
             log("stop outcome=${stop::class.simpleName}")
             assertTrue(stop !is LifecycleOutcome.Uncertain)
             assertTrue("Did not stop", waitFor(rtorrent, hash) { it?.started == false }?.started == false)
         } finally {
             // Single exact-target cleanup of our own synthetic transfer; never a retry loop.
+            log("roundtrip phase=finally-reconcile-exact-hash")
             val current = rtorrent.listTransfers("main").firstOrNull { it.hash.equals(hash, true) }
             if (current != null) {
                 val erase = rtorrent.eraseFromSession(hash, current.name, current.directory)
