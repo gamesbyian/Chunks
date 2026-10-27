@@ -52,7 +52,14 @@ class SeedhostDestinationPreflightTest {
     @Test fun invalidPathsAndDangerousCommandCharactersAreIneligible() {
         val candidates = listOf("/", "/one", "/srv//child", "/srv/../other",
             "/srv/./other", "/srv/x;d.erase", "/srv/x=d.directory.set",
-            "/srv/evil\\path", "/srv/quotes'bad", "/srv/$d")
+            "/srv/evil\\path", "/srv/quotes'bad", "/srv/" + ')
+        assertNull(SeedhostDestinationPreflight.select(null, candidates.map(::observed)))
+        assertEquals("/srv/valid path",
+            SeedhostDestinationPreflight.select(null, candidates.map(::observed) +
+                observed("/srv/valid path"))?.directory)
+    }
+}
+ + "d")
         assertNull(SeedhostDestinationPreflight.select(null, candidates.map(::observed)))
         assertEquals("/srv/valid path",
             SeedhostDestinationPreflight.select(null, candidates.map(::observed) +
