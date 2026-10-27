@@ -25,7 +25,7 @@ First run should distinguish **Connect an rTorrent server** from **Download on t
 ## Task journeys and their failures
 
 ### Add torrent
-From Android Share, magnet paste or torrent file: choose actual engine and Place, browse recent/favorite destinations, optionally create a folder only if capability allows, review file selection and Add. Display exact destination and whether the request has been acknowledged and observed on server. If unreachable, invalid magnet, destination rejected or auth expired, preserve draft intent and explain recovery. Avoid silently using an old default server/path.
+From Android Share, magnet paste or torrent file: choose the engine; show its actual default Place and an optional Change/recent/favorite control, optionally create a folder only if capability allows, review file selection and Add. Display exact destination and whether the request has been acknowledged and observed on server. If unreachable, invalid magnet, destination rejected or auth expired, preserve draft intent and explain recovery. Avoid silently using an old default server/path.
 
 ### Active move
 On transfer details, choose Move → inspect current vs proposed Place, capacity, collisions and expected effect on live download → confirm → observe planned/copying/quiescing/verifying/complete or deferred/uncertain states. If the host can't do it safely, offer Move after completion or Make library copy rather than a dead control. Never show “Done” until verified. When disconnected mid-move, show last confirmed stage and a safe Check progress action; do not duplicate the command.
