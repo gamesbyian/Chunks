@@ -268,6 +268,7 @@ private fun ChunksApp(sharedMagnet: String?) {
                         // Freeze credentials for this one connection attempt.
                         // A later edit or lifecycle reset cannot redirect it.
                         val settings = RemoteCredentials(endpoint, username, password)
+                        val saveThisLogin = rememberLogin
                         scope.launch {
                             try {
                                 val candidate = RTorrentRemote(settings)
@@ -289,10 +290,10 @@ private fun ChunksApp(sharedMagnet: String?) {
                                     // Failures never persist an unverified password.
                                     val retained = withContext(Dispatchers.IO) {
                                         try {
-                                            if (rememberLogin) vault.save(settings) else vault.clear()
+                                            if (saveThisLogin) vault.save(settings) else vault.clear()
                                         } catch (_: Exception) { false }
                                     }
-                                    savedLoginPresent = if (retained && rememberLogin) true
+                                    savedLoginPresent = if (retained && saveThisLogin) true
                                         else vault.hasSavedLogin()
                                     credentialNotice = if (retained) null
                                         else "Connected, but saved-login storage could not be confirmed. " +
@@ -447,6 +448,18 @@ private fun ChunksApp(sharedMagnet: String?) {
                         stale = false
                         currentView = "main"
                         requestedView = "main"
+                        // Keep Disconnect separate from Forget. Reload the
+                        // encrypted profile for one-tap reconnect in this session.
+                        scope.launch {
+                            val saved = withContext(Dispatchers.IO) {
+                                try { vault.load() } catch (_: Exception) { null }
+                            }
+                            if (server == null && rememberLogin && saved != null) {
+                                endpoint = saved.endpoint
+                                username = saved.username
+                                password = saved.password
+                            }
+                        }
                     }
                 )
                 Section.ADD -> VerifiedAddScreen(
