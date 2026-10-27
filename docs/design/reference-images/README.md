@@ -11,6 +11,8 @@
 | [05: UI components and states](05-ui-components-and-states.png) | Segmented progress bars, list cards, tabs, storage meters, action buttons, warning, disabled and error states |
 | [06: Colour, illustrations and stickers](06-colour-illustrations-and-stickers.png) | Palette, geometric background forms, 3D-style symbol family, playful stickers and empty-state art |
 
+**NEW:** [Comprehensive SVG production plan, all variant policy and exhaustive inventory](SVG-ASSET-PRODUCTION-PLAN.md) and [new vector library](../svg/README.md). The reference PNGs remain immutable. Approved launcher status remains unchanged.
+
 ## Implementation status (first limited native slice)
 
 [Merged #222](https://github.com/gamesbyian/Chunks/pull/222) introduces an actual Compose `ChunksBrandHeader` and stronger transfer-card outline. These consume the overview's bold modular silhouette with native text/geometry and accessibility rather than rasterizing any reference. Exact-head Android/JVM, API35 and emulator atlas checks passed (see [QUALITY-LEDGER](../../QUALITY-LEDGER.md)), and the four captured disconnected-screen PNGs have now been independently inspected (the header/contrast are legible at the recorded sizes and 1.4× font scale). The transfers cards themselves are not included in this particular atlas and no owner sign-off is implied. Merged [#223](https://github.com/gamesbyian/Chunks/pull/223) adds a small original seven-block C Android adaptive launcher vector, plus a monochrome themed-icon path; the generated brand sheet remains inspiration and has not been converted into app bitmap assets. Full font licensing, more vector assets, dense lists, all status states, actual launcher screenshot inspection, and physical handset review remain open.

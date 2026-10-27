@@ -1,0 +1,23 @@
+name: Validate Chunks SVG asset library
+
+on:
+  pull_request:
+    paths:
+      - 'docs/design/svg/**'
+      - 'docs/design/reference-images/**'
+      - 'tools/validate_svg_library.py'
+      - '.github/workflows/svg-library-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  svg-library-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out exact PR head
+        uses: actions/checkout@v4
+      - name: Validate self-contained SVGs and full inventory
+        run: python3 tools/validate_svg_library.py
