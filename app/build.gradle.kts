@@ -1,4 +1,10 @@
 import java.security.MessageDigest
+import org.gradle.api.DefaultTask
+import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.provider.Property
+import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.InputFile
+import org.gradle.api.tasks.TaskAction
 
 plugins {
     id("com.android.application")
@@ -64,19 +70,19 @@ tasks.withType<Test>().configureEach {
 }
 
 /**
- * Owner-approved launcher icon is an immutable source asset.
- * Refuse ordinary and preview APK builds when its reference is missing,
- * replaced by a different PNG, or no longer wired through the adaptive icon.
+ * Immutable, configuration-cache-safe check of the approved launcher art.
+ * Uses a declarative task type so Gradle never has to serialize the
+ * build.gradle.kts script instance when storing its configuration cache.
  */
-val approvedLauncherArtwork = "03a8677e9c90f4b455e67683fcc4a2b79517b1ea"
-val verifyChunksLauncherArtwork by tasks.registering {
-    group = "verification"
-    description = "Check owner-approved Chunks launcher artwork and manifest wiring"
-    inputs.file(layout.projectDirectory.file("src/main/res/drawable-nodpi/chunks_launcher_artwork.png"))
-    inputs.file(layout.projectDirectory.file("src/main/res/mipmap-anydpi-v26/ic_launcher.xml"))
-    inputs.file(layout.projectDirectory.file("src/main/AndroidManifest.xml"))
-    doLast {
-        val file = layout.projectDirectory.file("src/main/res/drawable-nodpi/chunks_launcher_artwork.png").asFile
+abstract class VerifyChunksLauncherArtwork : DefaultTask() {
+    @get:InputFile abstract val artwork: RegularFileProperty
+    @get:InputFile abstract val adaptiveXml: RegularFileProperty
+    @get:InputFile abstract val manifest: RegularFileProperty
+    @get:Input abstract val approvedGitBlob: Property<String>
+
+    @TaskAction
+    fun verify() {
+        val file = artwork.get().asFile
         check(file.isFile) { "Approved Chunks launcher PNG missing" }
         val bytes = file.readBytes()
         val signature = byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10)
@@ -87,21 +93,29 @@ val verifyChunksLauncherArtwork by tasks.registering {
         sha1.update("blob ${bytes.size}\u0000".toByteArray(Charsets.UTF_8))
         sha1.update(bytes)
         val blob = sha1.digest().joinToString("") { "%02x".format(it.toInt() and 0xff) }
-        check(blob == approvedLauncherArtwork) {
-            "The committed launcher art differs from the owner-approved original. Review replacement explicitly."
+        check(blob == approvedGitBlob.get()) {
+            "Launcher art differs from owner-approved original; review replacement explicitly."
         }
-        val iconXml = layout.projectDirectory.file("src/main/res/mipmap-anydpi-v26/ic_launcher.xml")
-            .asFile.readText()
-        check(iconXml.contains("@drawable/chunks_launcher_artwork") &&
-            !iconXml.contains("@drawable/ic_chunks_foreground") &&
-            !iconXml.contains("@drawable/ic_chunks_monochrome")) {
-            "Android adaptive icon must use the owner-approved artwork"
+        val icon = adaptiveXml.get().asFile.readText()
+        check(icon.contains("@drawable/chunks_launcher_artwork") &&
+            !icon.contains("@drawable/ic_chunks_foreground") &&
+            !icon.contains("@drawable/ic_chunks_monochrome")) {
+            "Adaptive launcher icon must use the approved artwork"
         }
-        val manifest = layout.projectDirectory.file("src/main/AndroidManifest.xml").asFile.readText()
-        check(manifest.contains("android:icon=\\\"@mipmap/ic_launcher\\\"".replace("\\\"", "\"")) &&
-            manifest.contains("android:roundIcon=\\\"@mipmap/ic_launcher\\\"".replace("\\\"", "\""))) {
-            "The application and round icon must both use ic_launcher"
+        val app = manifest.get().asFile.readText()
+        check(app.contains("android:icon=\\\"@mipmap/ic_launcher\\\"".replace("\\\"", "\"")) &&
+            app.contains("android:roundIcon=\\\"@mipmap/ic_launcher\\\"".replace("\\\"", "\""))) {
+            "Application and round icons must both use ic_launcher"
         }
     }
+}
+
+val verifyChunksLauncherArtwork by tasks.registering(VerifyChunksLauncherArtwork::class) {
+    group = "verification"
+    description = "Check approved launcher PNG identity and Android adaptive icon wiring"
+    artwork.set(layout.projectDirectory.file("src/main/res/drawable-nodpi/chunks_launcher_artwork.png"))
+    adaptiveXml.set(layout.projectDirectory.file("src/main/res/mipmap-anydpi-v26/ic_launcher.xml"))
+    manifest.set(layout.projectDirectory.file("src/main/AndroidManifest.xml"))
+    approvedGitBlob.set("03a8677e9c90f4b455e67683fcc4a2b79517b1ea")
 }
 tasks.named("preBuild").configure { dependsOn(verifyChunksLauncherArtwork) }
