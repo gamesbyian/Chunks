@@ -154,8 +154,11 @@ class SeedhostAndroidReadOnlyInstrumentedTest {
         checkpoint("add-open")
         rule.onNodeWithText("Custom server folder (optional)").assertExists()
         rule.waitUntil(30_000) {
-            rule.onAllNodesWithText("Reading rTorrent's configured default Place…")
-                .fetchSemanticsNodes().isEmpty()
+            val hasDefault = rule.onAllNodesWithText("Using rTorrent default Place:", substring = true)
+                .fetchSemanticsNodes().isNotEmpty()
+            val unavailable = rule.onAllNodesWithText("No usable default Place was reported.", substring = true)
+                .fetchSemanticsNodes().isNotEmpty()
+            hasDefault || unavailable
         }
         rule.onNodeWithText("Review Add").assertDoesNotExist()
         // No preview candidate exists, so the Add mutation must remain
