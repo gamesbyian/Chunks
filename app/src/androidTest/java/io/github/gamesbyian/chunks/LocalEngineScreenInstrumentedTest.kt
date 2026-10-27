@@ -99,6 +99,33 @@ class LocalEngineScreenInstrumentedTest {
         assertEquals(1, removed)
     }
 
+    @Test fun staleInventoryDisablesNativeTransferMutationsAndFileSelection() {
+        var toggles = 0
+        var removals = 0
+        val status = LocalTransferStatus("f".repeat(40), "Previously observed transfer",
+            LocalTransferState.SEEDING, stopped = false, progressPpm = 1_000_000,
+            wantedBytes = 1000, doneBytes = 1000, payloadDownloadedBytes = 1000,
+            payloadUploadedBytes = 2000, peers = 2, savePath = "/x", error = null)
+        rule.setContent {
+            MaterialTheme {
+                Column(Modifier.fillMaxSize().padding(16.dp)) {
+                    LocalTransferCard(status, busy = true, onToggle = { toggles++ },
+                        onRemove = { removals++ },
+                        files = listOf(LocalTransferFile(0, "complete.bin", 1000, 1000, true)),
+                        filesShown = true, onShowFiles = { toggles++ },
+                        onFileWanted = { _, _ -> toggles++ })
+                }
+            }
+        }
+        rule.onNodeWithText("Previously observed transfer").assertExists()
+        rule.onNodeWithText("Stop").assertIsNotEnabled()
+        rule.onNodeWithText("Remove…").assertIsNotEnabled()
+        rule.onNodeWithText("Files").assertIsNotEnabled()
+        rule.onNodeWithText("complete.bin").assertExists().assertIsNotEnabled()
+        assertEquals(0, toggles)
+        assertEquals(0, removals)
+    }
+
     @Test fun fileSelectionReportsEachToggleAndMarksSkippedFiles() {
         val toggles = mutableListOf<Pair<Int, Boolean>>()
         val files = listOf(
