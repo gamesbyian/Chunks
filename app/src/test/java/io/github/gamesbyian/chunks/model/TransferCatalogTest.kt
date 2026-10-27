@@ -20,6 +20,26 @@ class TransferCatalogTest {
         assertEquals("A", TransferCatalog.visible(examples, "", TransferFilter.ALL, TransferOrder.SPEED).first().hash)
     }
 
+    @Test fun startedFlagDoesNotImplyActualTrafficAndUnknownIsNotZero() {
+        val unknown = RemoteTransfer("N", "Not Observed", 100, 0, true, "/x", null, null)
+        val zero = RemoteTransfer("Z", "Started but no traffic", 100, 40, true,
+            "/x", 0, 0)
+        val uploading = RemoteTransfer("U", "Upload only", 100, 100, true,
+            "/x", 0, 20)
+        val moving = RemoteTransfer("M", "Downloading", 100, 20, true,
+            "/x", 120, 0)
+        val stopped = RemoteTransfer("S", "Stopped", 100, 20, false, "/x", 0, 0)
+        val rows = listOf(unknown, zero, uploading, moving, stopped)
+        fun hashes(filter: TransferFilter) =
+            TransferCatalog.visible(rows, "", filter, TransferOrder.NAME)
+                .map { it.hash }.toSet()
+        assertEquals(setOf("N", "Z", "U", "M"), hashes(TransferFilter.ACTIVE))
+        assertEquals(setOf("U", "M"), hashes(TransferFilter.TRANSFERRING))
+        assertEquals(setOf("Z"), hashes(TransferFilter.ZERO_DOWNLOAD))
+        assertFalse(hashes(TransferFilter.ZERO_DOWNLOAD).contains("N"))
+        assertFalse(hashes(TransferFilter.ZERO_DOWNLOAD).contains("U"))
+    }
+
     @Test fun groupingsAreSemanticAndPhysicalSeparately() {
         assertEquals(3, TransferCatalog.places(examples).size)
         assertEquals(2, TransferCatalog.discoveredCollections(examples).size)
