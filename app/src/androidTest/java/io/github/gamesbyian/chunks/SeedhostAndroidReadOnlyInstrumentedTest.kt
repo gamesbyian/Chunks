@@ -2,6 +2,7 @@ package io.github.gamesbyian.chunks
 
 import android.content.ContentValues
 import android.os.Environment
+import android.os.Bundle
 import android.provider.MediaStore
 import android.util.Base64
 import androidx.compose.ui.graphics.asAndroidBitmap
@@ -39,6 +40,21 @@ class SeedhostAndroidReadOnlyInstrumentedTest {
         return String(Base64.decode(encoded, Base64.NO_WRAP), Charsets.UTF_8)
     }
 
+    /**
+     * Only fixed enum checkpoint labels reach protected CI. Never include
+     * credentials, URLs, tracker values, file paths or exception bodies.
+     */
+    private fun checkpoint(stage: String) {
+        require(stage in setOf(
+            "arguments", "form", "connect", "queue", "inventory",
+            "first-capture", "refresh-click", "refresh-busy",
+            "refresh-idle", "final-capture"
+        ))
+        InstrumentationRegistry.getInstrumentation().sendStatus(
+            2, Bundle().apply { putString("chunks_stage", stage) }
+        )
+    }
+
     private fun captureConnectedQueue(name: String) {
         val bitmap = rule.onRoot().captureToImage().asAndroidBitmap()
         val resolver = InstrumentationRegistry.getInstrumentation().targetContext.contentResolver
@@ -64,6 +80,7 @@ class SeedhostAndroidReadOnlyInstrumentedTest {
         assumeTrue("Manual protected Seedhost workflow only",
             !url.isNullOrBlank() && !user.isNullOrBlank() && !password.isNullOrBlank())
 
+        checkpoint("arguments")
         val target = URI(url!!)
         assertTrue("Protected test requires a credential-free HTTPS URL",
             target.scheme.equals("https", true) && target.host != null &&
@@ -73,7 +90,9 @@ class SeedhostAndroidReadOnlyInstrumentedTest {
         rule.onNodeWithText("ruTorrent web URL or RPC address").performTextReplacement(url)
         rule.onNodeWithText("Username, if required").performTextReplacement(user!!)
         rule.onNodeWithText("Password").performTextReplacement(password!!)
+        checkpoint("form")
         rule.onNodeWithText("Connect to rTorrent").performScrollTo().performClick()
+        checkpoint("connect")
         try {
             rule.waitUntil(90_000) {
                 rule.onAllNodesWithText("It's all here.").fetchSemanticsNodes().isNotEmpty()
@@ -83,6 +102,7 @@ class SeedhostAndroidReadOnlyInstrumentedTest {
             throw AssertionError("Real Android app did not reach the transfer queue. " +
                 "Inspect the protected runner locally; no credentials are included.", failure)
         }
+        checkpoint("queue")
         rule.onNodeWithText("It's all here.").assertExists()
         // No screenshot is permitted while the credentials field is onscreen.
         rule.onNodeWithText("Password").assertDoesNotExist()
@@ -96,16 +116,22 @@ class SeedhostAndroidReadOnlyInstrumentedTest {
         assertTrue("Real development server returned an empty or malformed queue", count != null && count > 0)
 
         // Only the authenticated transfer screen is captured. Never record login.
+        checkpoint("inventory")
         captureConnectedQueue("seedhost-android-queue-live")
+        checkpoint("first-capture")
         rule.onNodeWithText("Refresh").performClick()
+        checkpoint("refresh-click")
         rule.waitUntil(30_000) {
             rule.onAllNodesWithText("Refreshing…").fetchSemanticsNodes().isNotEmpty()
         }
+        checkpoint("refresh-busy")
         rule.waitUntil(90_000) {
             rule.onAllNodesWithText("Refresh", substring = false).fetchSemanticsNodes().isNotEmpty()
         }
         rule.onNodeWithText("It's all here.").assertExists()
         rule.onNodeWithText("Refresh problem").assertDoesNotExist()
+        checkpoint("refresh-idle")
         captureConnectedQueue("seedhost-android-queue-refreshed-live")
+        checkpoint("final-capture")
     }
 }
