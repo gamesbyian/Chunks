@@ -24,6 +24,6 @@ internal object RemoteQueueActivityContext {
         if (!snapshotFresh || !target.started || target.sizeBytes <= 0L ||
             target.completedBytes >= target.sizeBytes || target.downBytesPerSecond != 0L) return false
         val sameHashPresent = target.hash.uppercase(Locale.ROOT) in positiveRateHashes
-        return positiveRateHashes.size > if (sameHashPresent) 1 else 0
+        return positiveRateHashes.size > (if (sameHashPresent) 1 else 0)
     }
 }
