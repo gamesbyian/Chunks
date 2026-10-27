@@ -13,7 +13,7 @@
 
 ## Implementation status (first limited native slice)
 
-[Merged #222](https://github.com/gamesbyian/Chunks/pull/222) introduces an actual Compose `ChunksBrandHeader` and stronger transfer-card outline. These consume the overview's bold modular silhouette with native text/geometry and accessibility rather than rasterizing any reference. Exact-head Android/JVM, API35 and emulator atlas checks passed (see [QUALITY-LEDGER](../../QUALITY-LEDGER.md)), but the screenshot pixels have not yet been independently reviewed and no owner sign-off is implied. Full font licensing and vector asset development, dense lists, all status states, and physical handset review remain open.
+[Merged #222](https://github.com/gamesbyian/Chunks/pull/222) introduces an actual Compose `ChunksBrandHeader` and stronger transfer-card outline. These consume the overview's bold modular silhouette with native text/geometry and accessibility rather than rasterizing any reference. Exact-head Android/JVM, API35 and emulator atlas checks passed (see [QUALITY-LEDGER](../../QUALITY-LEDGER.md)), but the screenshot pixels have not yet been independently reviewed and no owner sign-off is implied. Merged [#223](https://github.com/gamesbyian/Chunks/pull/223) adds a small original seven-block C Android adaptive launcher vector, plus a monochrome themed-icon path; the generated brand sheet remains inspiration and has not been converted into app bitmap assets. Full font licensing, more vector assets, dense lists, all status states, actual launcher screenshot inspection, and physical handset review remain open.
 
 ## Implementation notes
 
