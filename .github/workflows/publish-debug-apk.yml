@@ -1,6 +1,7 @@
 name: Publish Chunks installable Android debug APK
 
-# Debug releases are explicit, exact-main, immutable artifacts; no APK is automatically\n# built for ordinary source commits. See the side-by-side Preview release workflow.
+# Deliberately one-time on initial installation of this workflow; further
+# builds are explicit, not a new public release for every source commit.
 on:
   push:
     branches: [main]
