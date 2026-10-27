@@ -112,8 +112,29 @@ class LocalTorrentEngineInstrumentedTest {
             val state = leecher.status(leech.infoHash)?.state
             state == LocalTransferState.SEEDING || state == LocalTransferState.FINISHED
         }
-        waitForVerifiedReadback(File(destination, "Chunks device fixture/payload.bin"),
-            payload, "completed-transfer")
+        val completedPayload = File(destination, "Chunks device fixture/payload.bin")
+        // The earlier intermittent zero-byte mismatches appeared after libtorrent
+        // reported SEEDING/FINISHED. Capture whether disk bytes were briefly
+        // behind completion *before* explicitly asking libtorrent to flush.
+        // This pre-flush observation is diagnostic, not a corruption verdict.
+        val beforeFlush = try { completedPayload.takeIf { it.isFile }?.readBytes() }
+            catch (_: Exception) { null }
+        if (beforeFlush == null || !beforeFlush.contentEquals(payload)) {
+            val mismatch = beforeFlush?.indices?.firstOrNull { index ->
+                index >= payload.size || beforeFlush[index] != payload[index]
+            } ?: minOf(beforeFlush?.size ?: 0, payload.size)
+            println("CHUNKS_NATIVE_PRE_FLUSH pending size=${beforeFlush?.size ?: -1} firstMismatch=$mismatch")
+        } else {
+            println("CHUNKS_NATIVE_PRE_FLUSH already-exact")
+        }
+        val flushStarted = System.nanoTime()
+        assertTrue("Native cache-flushed alert must confirm the leeching session's completed bytes",
+            leecher.flushCompletedForLibraryRead(leech.infoHash, 20_000L))
+        println("CHUNKS_NATIVE_FLUSH_CONFIRMED waitMs=" +
+            java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - flushStarted))
+        // A mismatch AFTER the native flush is more consequential than an
+        // asynchronous pre-flush read. Exact bytes remain a hard requirement.
+        waitForVerifiedReadback(completedPayload, payload, "after-native-cache-flush")
         waitFor { (seeder.status(seed.infoHash)?.payloadUploadedBytes ?: 0) >= payload.size }
 
         // Session-only removal keeps the downloaded bytes.
