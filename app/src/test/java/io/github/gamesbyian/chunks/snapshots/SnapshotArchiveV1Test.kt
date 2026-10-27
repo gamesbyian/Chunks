@@ -60,13 +60,27 @@ class SnapshotArchiveV1Test {
     @Test fun rejectDuplicateNamesAndMissingChecksums() {
         val duplicate = ByteArrayOutputStream()
         ZipOutputStream(duplicate).use { zip ->
-            repeat(2) {
-                zip.putNextEntry(ZipEntry("manifest.json"))
+            for (name in listOf("manifest.json", "Manifest.json")) {
+                zip.putNextEntry(ZipEntry(name))
                 zip.write(manifest)
                 zip.closeEntry()
             }
         }
-        expectRejected { SnapshotArchiveV1.decode(duplicate.toByteArray()) }
+        // Java's ZIP writer correctly forbids duplicate entry names, so make
+        // an adversarial ZIP by rewriting both copies of the second name in
+        // its local and central-directory headers to the exact first name.
+        val duplicateBytes = duplicate.toByteArray()
+        val from = "Manifest.json".toByteArray()
+        val to = "manifest.json".toByteArray()
+        var replacements = 0
+        for (offset in 0..duplicateBytes.size - from.size) {
+            if (from.indices.all { i -> duplicateBytes[offset + i] == from[i] }) {
+                to.copyInto(duplicateBytes, offset)
+                replacements++
+            }
+        }
+        assertEquals("Local header and central-directory copy", 2, replacements)
+        expectRejected { SnapshotArchiveV1.decode(duplicateBytes) }
         val missing = ByteArrayOutputStream()
         ZipOutputStream(missing).use { zip ->
             zip.putNextEntry(ZipEntry("manifest.json"))
