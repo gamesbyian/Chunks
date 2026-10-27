@@ -6,7 +6,6 @@ import java.nio.charset.CharacterCodingException
 import java.nio.charset.CodingErrorAction
 import java.nio.charset.StandardCharsets
 import java.time.Instant
-import java.util.Locale
 
 /**
  * Strict, side-effect-free v1 inventory contract on top of SnapshotArchiveV1.
@@ -199,7 +198,7 @@ internal object SnapshotManifestV1 {
         return Verified(
             manifest,
             metainfo.mapValues { it.value.copyOf() },
-            required.isNotEmpty() || manifest.items.any { it.magnet?.contains("&tr=", true) == true }
+            required.isNotEmpty() || manifest.items.any { it.recovery == Recovery.MAGNET }
         )
     }
 
@@ -222,8 +221,21 @@ internal object SnapshotManifestV1 {
 
     private fun safeText(value: String, maxLength: Int, name: String) {
         require(value.isNotEmpty() && value.length <= maxLength &&
-            value.none { it.code < 32 || it.code == 127 ||
-                it.isSurrogate() }) { "Unsafe or oversized " + name }
+            value.none { it.code < 32 || it.code == 127 } &&
+            validSurrogates(value)) { "Unsafe or oversized " + name }
+    }
+
+    private fun validSurrogates(value: String): Boolean {
+        var index = 0
+        while (index < value.length) {
+            val char = value[index]
+            if (char.isHighSurrogate()) {
+                index++
+                if (index == value.length || !value[index].isLowSurrogate()) return false
+            } else if (char.isLowSurrogate()) return false
+            index++
+        }
+        return true
     }
 
     private fun strictUtf8(bytes: ByteArray): String = try {
@@ -328,7 +340,7 @@ internal object SnapshotManifestV1 {
                 val char = source[at++]
                 if (char == '"') {
                     val text = result.toString()
-                    require(text.none { it.isSurrogate() }) { "Unpaired JSON surrogate" }
+                    require(validSurrogates(text)) { "Unpaired JSON surrogate" }
                     return text
                 }
                 if (char == '\\') {
