@@ -59,7 +59,8 @@ jobs:
           fi
       - name: Verify embedded revision and save APK checksum
         run: |
-          apk="app/build/outputs/apk/debug/app-debug.apk"
+          apk="app/build/outputs/apk/debug/chunks-debug.apk"
+          cp app/build/outputs/apk/debug/app-debug.apk "$apk"
           receipt="app/build/outputs/apk/debug/CHUNKS-BUILD-SHA256.txt"
           test -s "$apk"
           short="${CHUNKS_SOURCE_SHA:0:12}"
@@ -73,6 +74,6 @@ jobs:
         with:
           name: chunks-debug-prealpha
           path: |
-            app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/debug/chunks-debug.apk
             app/build/outputs/apk/debug/CHUNKS-BUILD-SHA256.txt
           retention-days: 7
