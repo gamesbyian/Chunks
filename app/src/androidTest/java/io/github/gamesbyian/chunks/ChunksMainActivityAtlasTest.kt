@@ -251,11 +251,20 @@ class ChunksMainActivityAtlasTest {
         }
         receivedMethods.clear() // Record the real installed-app calls separately.
         rule.onNodeWithText("ruTorrent web URL or RPC address").performTextInput(endpoint)
-        // The native login now includes a separate remembered-login row, so
-        // Connect can be uncomposed below the LazyColumn viewport/IME.
-        // Compose the target through the lazy scroll action before clicking.
+        // Close the still-focused Android keyboard first. Otherwise the IME can
+        // asynchronously re-scroll the input back into view and recycle the
+        // freshly composed Connect item between scroll and click.
+        rule.runOnUiThread {
+            val input = rule.activity.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            input.hideSoftInputFromWindow(rule.activity.window.decorView.windowToken, 0)
+            rule.activity.currentFocus?.clearFocus()
+        }
+        rule.waitForIdle()
+        // The remembered-login row pushes Connect below the initially composed
+        // LazyColumn viewport. Scroll to compose it, then invoke its semantics
+        // action without injecting a touch into a moving/closing IME viewport.
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Connect to rTorrent"))
-        rule.onNodeWithText("Connect to rTorrent").performClick()
+        rule.onNodeWithText("Connect to rTorrent").performSemanticsAction(SemanticsActions.OnClick)
         try {
             rule.waitUntil(20_000) {
                 rule.onAllNodesWithText("It's all here.").fetchSemanticsNodes().isNotEmpty()

@@ -9,6 +9,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -39,6 +41,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -627,11 +630,27 @@ private fun TransfersScreen(
             aliasStore.get(aliasScope, transfer.hash) ?: transfer.name
         }
     }
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
+    val listState = rememberLazyListState()
+    val topControlScope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val showBackToTop by remember(listState, visible) {
+        derivedStateOf {
+            ReturnToTopPolicy.remote(
+                firstVisibleIndex = listState.firstVisibleItemIndex,
+                firstVisibleOffsetPx = listState.firstVisibleItemScrollOffset,
+                viewportHeightPx = listState.layoutInfo.viewportSize.height,
+                hasTransfers = visible.isNotEmpty()
+            )
+        }
+    }
+    Box(Modifier.fillMaxSize()) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            // Keep the final item reachable above the floating action.
+            contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 8.dp, bottom = 92.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 ColoredPanel(
@@ -721,6 +740,17 @@ private fun TransfersScreen(
             Text("Server snapshot. Start/stop and main-view session removal each require exact-target confirmation and readback. Session removal does not request payload deletion.",
                 style = MaterialTheme.typography.bodySmall)
         }
+        }
+        ReturnToTopControl(
+            visible = showBackToTop,
+            modifier = Modifier.align(Alignment.BottomEnd).padding(end = 24.dp, bottom = 22.dp),
+            onClick = {
+                topControlScope.launch {
+                    if (ReturnToTopPolicy.animationsEnabled(context)) listState.animateScrollToItem(0)
+                    else listState.scrollToItem(0)
+                }
+            }
+        )
     }
 }
 

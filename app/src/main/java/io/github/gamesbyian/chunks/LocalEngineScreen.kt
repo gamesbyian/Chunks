@@ -7,6 +7,7 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -29,6 +30,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,6 +38,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
@@ -317,8 +321,26 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
         }
     }
 
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    val scrollState = rememberScrollState()
+    val viewportHeightPx = with(LocalDensity.current) {
+        LocalConfiguration.current.screenHeightDp.dp.roundToPx()
+    }
+    val showBackToTop by remember(scrollState, viewportHeightPx, transfers.isNotEmpty()) {
+        derivedStateOf {
+            ReturnToTopPolicy.local(
+                scrollPx = scrollState.value,
+                maxScrollPx = scrollState.maxValue,
+                viewportHeightPx = viewportHeightPx,
+                hasTransfers = transfers.isNotEmpty()
+            )
+        }
+    }
+    Box(Modifier.fillMaxSize()) {
+    Column(
+        Modifier.fillMaxSize().verticalScroll(scrollState)
+            .padding(start = 18.dp, end = 18.dp, top = 12.dp, bottom = 92.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
         if (onBack != null) Button(onClick = onBack, modifier = Modifier.heightIn(min = 48.dp)) { Text("Back") }
         Text("On this phone (experimental)", style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
@@ -584,6 +606,17 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
         }
         LocalZipInterruptedExtractions()
         LocalSpeedLimits()
+    }
+    ReturnToTopControl(
+        visible = showBackToTop,
+        modifier = Modifier.align(Alignment.BottomEnd).padding(end = 24.dp, bottom = 22.dp),
+        onClick = {
+            scope.launch {
+                if (ReturnToTopPolicy.animationsEnabled(context)) scrollState.animateScrollTo(0)
+                else scrollState.scrollTo(0)
+            }
+        }
+    )
     }
 }
 
