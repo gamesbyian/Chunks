@@ -91,6 +91,10 @@ class LocalEngineWebSeedTest {
         val added = (engine.addStopped(File(torrentPath).readBytes(), destination) as LocalAddResult.AddedStopped).status
         assertEquals(LocalCommandOutcome.VERIFIED, engine.resume(added.infoHash).outcome)
         waitFor(180_000) { engine.status(added.infoHash)?.progressPpm == 1_000_000 }
+        val finished = requireNotNull(engine.status(added.infoHash))
+        assertFalse("Start was acknowledged but libtorrent is still paused", finished.stopped)
+        assertTrue("Completed real HTTPS transfer must account for received payload",
+            finished.payloadDownloadedBytes > 0L)
         assertEquals(expectedSha256, sha256(File(destination, expectedName).readBytes()))
         println("CHUNKS_LOCAL_ENGINE_WEBSEED: verified ${added.infoHash} sha256=$expectedSha256")
     }
