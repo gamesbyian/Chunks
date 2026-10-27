@@ -91,11 +91,19 @@ internal object LocalEngineHolder {
     private fun prefs(context: Context) = context.getSharedPreferences("local-engine", Context.MODE_PRIVATE)
     fun dhtPreferred(context: Context) = prefs(context).getBoolean("dht", false)
 
-    /** Persist the user's choice and apply it to a running engine; never starts one. */
+    /**
+     * No optimistic DHT setting: do not claim/persist a change that the running
+     * engine could not read back. A commit failure is also unconfirmed.
+     * This never starts an engine merely to toggle a future preference.
+     */
     @Synchronized
-    fun setDhtPreferred(context: Context, enabled: Boolean) {
-        prefs(context).edit().putBoolean("dht", enabled).apply()
-        engine?.setDhtEnabled(enabled)
+    fun setDhtPreferred(context: Context, enabled: Boolean): Boolean {
+        val running = engine
+        return LocalDhtPreferenceTransaction.commitIfApplied(
+            requested = enabled,
+            applyToRunningEngine = running?.let { { it.setDhtEnabled(enabled) } },
+            savePreference = { value -> prefs(context).edit().putBoolean("dht", value).commit() }
+        )
     }
 
     fun rateLimitsPreferred(context: Context) = prefs(context).let {
@@ -201,6 +209,8 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
     }
     var magnet by remember { mutableStateOf("") }
     var dht by remember { mutableStateOf(LocalEngineHolder.dhtPreferred(context)) }
+    var dhtSaving by remember { mutableStateOf(false) }
+    var dhtError by remember { mutableStateOf<String?>(null) }
     val destination = remember { LocalEngineHolder.appDownloads(context) }
     // The ongoing notification is how Android lets downloads continue in the background.
     val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
@@ -293,16 +303,33 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
         Button(onClick = { picker.launch(arrayOf("*/*")) }, enabled = !busy && !inventoryStale && destination != null,
             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Choose .torrent file") }
         Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
-            .toggleable(value = dht, role = Role.Switch, onValueChange = { wanted ->
-                dht = wanted
-                scope.launch { withContext(Dispatchers.IO) { LocalEngineHolder.setDhtPreferred(context, wanted) } }
+            .toggleable(value = dht, enabled = !dhtSaving, role = Role.Switch, onValueChange = { wanted ->
+                if (!dhtSaving) {
+                    dhtSaving = true
+                    dhtError = null
+                    scope.launch {
+                        val confirmed = withContext(Dispatchers.IO) {
+                            try { LocalEngineHolder.setDhtPreferred(context, wanted) }
+                            catch (_: Exception) { false }
+                        }
+                        // Switch only after confirmed native readback + durable preference.
+                        dht = LocalEngineHolder.dhtPreferred(context)
+                        dhtError = if (confirmed) null else
+                            "DHT setting could not be confirmed. The live network state may be uncertain; " +
+                            "do not assume discovery is enabled or disabled until you check again."
+                        dhtSaving = false
+                    }
+                }
             }), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text("Find peers without trackers (DHT)")
                 Text("Needed for most magnet links. Off by default: when on, this phone's IP address is shared with the public DHT network.",
                     style = MaterialTheme.typography.bodySmall)
+                if (dhtSaving) Text("Applying DHT setting…", style = MaterialTheme.typography.bodySmall)
+                dhtError?.let { Text(it, style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error) }
             }
-            Switch(checked = dht, onCheckedChange = null)
+            Switch(checked = dht, enabled = !dhtSaving, onCheckedChange = null)
         }
         OutlinedTextField(value = magnet, onValueChange = { magnet = it.trim() },
             label = { Text("Or paste a magnet link") }, singleLine = true,
@@ -333,7 +360,7 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
                         message = "Magnet Add was not confirmed. Wait for a fresh transfer list and check for the magnet before retrying."
                     }
                 }
-            }, enabled = !busy && !inventoryStale, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Add magnet (metadata only)") }
+            }, enabled = !busy && !inventoryStale && !dhtSaving, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Add magnet (metadata only)") }
         }
         if (destination == null) Text("Phone storage for Chunks is unavailable right now.",
             color = MaterialTheme.colorScheme.error)
