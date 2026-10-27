@@ -42,8 +42,9 @@ internal object LocalQueueCatalog {
                 item.savePath.contains(needle, ignoreCase = true)
         }.toList()
 
-        val stable = compareBy<LocalTransferStatus>(String.CASE_INSENSITIVE_ORDER) { it.name }
-            .thenBy { it.infoHash }
+        val stable: Comparator<LocalTransferStatus> =
+            compareBy(String.CASE_INSENSITIVE_ORDER) { item: LocalTransferStatus -> item.name }
+                .thenBy { it.infoHash }
         return when (order) {
             LocalQueueOrder.NAME -> filtered.sortedWith(stable)
             LocalQueueOrder.PROGRESS -> filtered.sortedWith(
