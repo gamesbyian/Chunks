@@ -156,10 +156,11 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
         mutableStateOf(nameRegistry.names(TransferCollectionStore.LOCAL_ENGINE_SCOPE))
     }
     var inventoryFrame by remember {
-        mutableStateOf(LocalInventoryFrame<LocalTransferStatus>(emptyList(), stale = false))
+        mutableStateOf(LocalInventoryFrame<LocalTransferStatus>(emptyList(),
+            stale = LocalScreenReader.revision.blocksMutations()))
     }
     val transfers = inventoryFrame.entries
-    val inventoryStale = inventoryFrame.stale
+    val inventoryStale = inventoryFrame.stale || LocalScreenReader.revision.blocksMutations()
     var transferPage by remember { mutableStateOf(0) }
     val transferSlice = remember(transfers, transferPage) {
         ManualCollectionPager.slice(transfers, transferPage, size = 20)
@@ -180,6 +181,24 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
     var pending by remember { mutableStateOf<PendingLocalAdd?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
+
+    // The admission/observation gate is process-wide: navigating away and back
+    // must not revive controls before a post-command native read succeeds.
+    fun performLocalMutation(operation: suspend () -> Unit) {
+        if (busy || inventoryFrame.stale || !LocalScreenReader.revision.beginMutation()) {
+            message = "A prior native action needs a fresh confirmed transfer list before another change."
+            return
+        }
+        inventoryFrame = inventoryFrame.copy(stale = true)
+        busy = true
+        scope.launch {
+            try { operation() } finally {
+                LocalScreenReader.revision.settledMutation()
+                inventoryFrame = inventoryFrame.copy(stale = true)
+                busy = false
+            }
+        }
+    }
     var magnet by remember { mutableStateOf("") }
     var dht by remember { mutableStateOf(LocalEngineHolder.dhtPreferred(context)) }
     val destination = remember { LocalEngineHolder.appDownloads(context) }
@@ -200,7 +219,10 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
                     if (LocalScreenReader.revision.accepts(frame.revision)) {
                         inventoryFrame = LocalInventoryFreshness.advance(inventoryFrame, frame.transfers)
                         restoreNotice = frame.restoreNotice
-                        if (frame.filesHash != null && frame.filesHash == filesFor) files = frame.files
+                        if (frame.transfers != null) {
+                            LocalScreenReader.revision.acceptSuccessfulRead(frame.revision)
+                            if (frame.filesHash != null && frame.filesHash == filesFor) files = frame.files
+                        }
                     }
                 }
                 LocalScreenPollOutcome.Unavailable ->
