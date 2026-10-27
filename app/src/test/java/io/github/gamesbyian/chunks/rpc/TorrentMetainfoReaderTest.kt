@@ -148,4 +148,45 @@ class TorrentMetainfoReaderTest {
         assertEquals(2, TorrentMetainfoReader.magnetTrackerCount(
             "magnet:?xt=urn:btih:$hash&tr=udp%3A%2F%2Fa%3A1&TR=https%3A%2F%2Fb%2Fannounce&tr=udp%3A%2F%2Fa%3A1&tr="))
     }
+
+    @Test fun malformedAndNonsensicalMagnetTrackersNeverCrashOrHideWarning() {
+        val magnet = "magnet:?xt=urn:btih:" + "a".repeat(40)
+        for (parameter in listOf(
+            "tr=%", "tr=%G0", "tr=%FF", "tr=not-a-tracker",
+            "tr=https%3A%2F%2F", "tr=udp%3A%2F%2Ftracker.example",
+            "tr=ftp%3A%2F%2Ftracker.example%2Ffile",
+            "tr=http%3A%2F%2Fuser%3Apass%40tracker.example%2Fannounce"
+        )) {
+            assertEquals("Bad parameter: " + parameter, 0,
+                TorrentMetainfoReader.magnetTrackerCount(magnet + "&" + parameter))
+        }
+        assertEquals(0, TorrentMetainfoReader.magnetTrackerCount(magnet + "x".repeat(8192)))
+        assertEquals(0, TorrentMetainfoReader.magnetTrackerCount("garbage?tr=https%3A%2F%2Ftracker.example"))
+    }
+
+    @Test fun magnetTrackerAdviceDeduplicatesOnlyUsableHttpHttpsUdpEndpoints() {
+        val magnet = "magnet:?xt=urn:btih:" + "a".repeat(40)
+        val params = "&tr=udp%3A%2F%2Ftracker.example%3A6969" +
+            "&TR=UDP%3A%2F%2FTRACKER.EXAMPLE%3A6969" +
+            "&tr=https%3A%2F%2Ftracker.example%2Fannounce" +
+            "&tr=%ZZ&tr=http%3A%2F%2F"
+        assertEquals(2, TorrentMetainfoReader.magnetTrackerCount(magnet + params))
+    }
+
+    @Test fun malformedTorrentAnnounceDoesNotCountAsWorkingTracker() {
+        val malformed = listOf(
+            "not a tracker",
+            "https:///",
+            "udp://tracker.example",
+            "http://name:password@tracker.example/announce",
+            "ftp://tracker.example/announce"
+        )
+        malformed.forEach { tracker ->
+            val length = tracker.toByteArray(Charsets.UTF_8).size
+            val bytes = ("d8:announce" + length + ":" + tracker +
+                "4:info" + singleInfo + "e").toByteArray(Charsets.UTF_8)
+            assertEquals("Bad tracker: " + tracker, 0,
+                TorrentMetainfoReader.preview(bytes).trackerCount)
+        }
+    }
 }
