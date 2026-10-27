@@ -12,6 +12,22 @@ class RemoteEndpointHintsTest {
         assertEquals("https://box.test/account/RPC1",
             RemoteEndpointHints.rpcAddress("https://box.test/account/RPC1"))
     }
+    @Test fun preservesRawPercentEncodingInHostedAccountAndDirectRpcPaths() {
+        // In the old component-URI constructor %20 became %2520. Hosted
+        // account prefixes are legitimate URL paths, not strings to re-encode.
+        assertEquals("https://box.test/my%20account/rutorrent/plugins/httprpc/action.php",
+            RemoteEndpointHints.rpcAddress("https://box.test/my%20account/rutorrent/"))
+        assertEquals("https://box.test/%25members/rutorrent/plugins/httprpc/action.php",
+            RemoteEndpointHints.rpcAddress("https://box.test/%25members/rutorrent"))
+        assertEquals("https://box.test/custom%2Frpc/RPC%202",
+            RemoteEndpointHints.rpcAddress("https://box.test/custom%2Frpc/RPC%202"))
+    }
+
+    @Test fun keepsLiteralLoopbackIpv6AuthorityAndPort() {
+        assertEquals("http://[::1]:8080/RPC2",
+            RemoteEndpointHints.rpcAddress("http://[::1]:8080/RPC2"))
+    }
+
     @Test fun rejectsUnencryptedRemoteAndCredentialsInUrl() {
         for (candidate in listOf("http://box.test/rutorrent",
             "https://user:pass@box.test/rutorrent",
