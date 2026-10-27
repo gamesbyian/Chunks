@@ -61,7 +61,7 @@ The merged Compose Add view (#231 building on #44) accepts a v1 magnet or SAF-pi
 
 ## Controlled Start/Stop affordance
 
-Transfers show one 48dp Start/Stop action per exact v1 hash, disabled when the list is stale. A confirm surface shows torrent display name and exact identity, and an explicit separate Confirm action performs one RPC. Preserve visible pending/uncertain/success state until user navigates away; never optimistic-toggle status. Refresh server view after the readback. Do not confuse lifecycle stop with deleting torrent or data; no auto-retries or background command loops.
+Transfers show one 48dp Start/Stop action per exact v1 hash, disabled when the list is stale. A confirm surface shows torrent display name and exact identity, and an explicit separate Confirm action performs one checked rTorrent lifecycle sequence. Preserve visible pending/uncertain/success state until user navigates away; never optimistic-toggle status. Refresh server view after the readback. A `Start state set` label is deliberately weaker than verified `d.is_active`: offer Diagnose download activity with open/active, connected peers, down rate and clear no-peers/no-traffic/unsupported explanations. On-phone cards prioritize **piece-verified completed bytes on disk** and expose missing peers or libtorrent upload-only mode; network payload counters are secondary because HTTP web seeds can finish with `allTimeDownload=0`. No auto-retries or background command loops; lifecycle stop must never imply payload deletion.
 
 ## Storage and archive journeys (partially implemented, with open acceptance gates)
 
