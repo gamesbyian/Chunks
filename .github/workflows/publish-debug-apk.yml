@@ -2,6 +2,9 @@ name: Publish Chunks installable Android debug APK
 
 # Deliberately one-time on initial installation of this workflow; further
 # builds are explicit, not a new public release for every source commit.
+# 2026-10-27 republish only after merged Add-default, verified-recent Place,
+# remembered-credential policy and documentation pass their exact-head gates.
+# This is an installable DEBUG pre-alpha, never physical handset acceptance.
 on:
   push:
     branches: [main]
