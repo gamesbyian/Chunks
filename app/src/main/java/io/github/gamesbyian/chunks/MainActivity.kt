@@ -171,7 +171,7 @@ private fun ChunksApp(sharedMagnet: String?) {
                         try {
                             val snapshot = remote.listTransfers(ticket.view)
                             if (server === remote && remoteFence.current(ticket) &&
-                                mutationGate.accepts(readbackTicket)) {
+                                mutationGate.acceptFreshRead(readbackTicket)) {
                                 transfers = snapshot
                                 currentView = ticket.view
                                 stale = false
