@@ -44,15 +44,25 @@ jobs:
           fi
       - name: Test and build exact main checkout
         run: gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug
+      - name: Build side-by-side separately installed Chunks Preview
+        env:
+          CHUNKS_SIDE_BY_SIDE: "1"
+        run: |
+          set -euo pipefail
+          gradle --no-daemon :app:assembleDebug
+          cp app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/chunks-preview.apk
       - name: Verify embedded revision and compute APK SHA-256
         run: |
           apk="app/build/outputs/apk/debug/app-debug.apk"
           receipt="app/build/outputs/apk/debug/CHUNKS-BUILD-SHA256.txt"
           test -s "$apk"
+          test -s app/build/outputs/apk/debug/chunks-preview.apk
           short="${CHUNKS_SOURCE_SHA:0:12}"
           "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$apk" |
             grep -F "versionName='0.1.0-dev+$short'"
-          (cd "$(dirname "$apk")" && sha256sum app-debug.apk) > "$receipt"
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging app/build/outputs/apk/debug/chunks-preview.apk |
+            grep -F "package: name='io.github.gamesbyian.chunks.preview'"
+          (cd "$(dirname "$apk")" && sha256sum app-debug.apk chunks-preview.apk) > "$receipt"
           printf '# built_commit=%s\n# workflow_run=%s\n' "$CHUNKS_SOURCE_SHA" "$GITHUB_RUN_ID" >> "$receipt"
           (cd "$(dirname "$apk")" && sha256sum -c CHUNKS-BUILD-SHA256.txt)
       - name: Publish immutable pre-release assets inside this repository
@@ -66,15 +76,17 @@ jobs:
           fi
           gh release create "$tag" \
             "app/build/outputs/apk/debug/app-debug.apk#app-debug.apk" \
+            "app/build/outputs/apk/debug/chunks-preview.apk#chunks-preview.apk" \
             "app/build/outputs/apk/debug/CHUNKS-BUILD-SHA256.txt#CHUNKS-BUILD-SHA256.txt" \
             --repo "$GITHUB_REPOSITORY" --target "$CHUNKS_SOURCE_SHA" \
             --title "Chunks Android debug build $short" --prerelease \
-            --notes "Installable Android pre-alpha debug APK built and JVM-tested from exact main commit $CHUNKS_SOURCE_SHA. Download BOTH assets and verify SHA-256 using sha256sum -c CHUNKS-BUILD-SHA256.txt. Debug signing only: no publisher identity, production security guarantee, physical-device validation, Seedhost end-to-end acceptance, or guaranteed Android background seeding. See docs/BUILD.md and docs/QUALITY-LEDGER.md. Never publish private server credentials."
+            --notes "Installable Android pre-alpha debug APK built and JVM-tested from exact main commit $CHUNKS_SOURCE_SHA. Download BOTH assets and verify SHA-256 using sha256sum -c CHUNKS-BUILD-SHA256.txt. Prefer chunks-preview.apk for side-by-side install alongside a prior Chunks debug build. Never uninstall the original merely to resolve a debug-signature conflict: doing so can delete app-owned downloads and resume files. Debug signing only: no publisher identity, production security guarantee, physical-device validation, Seedhost end-to-end acceptance, or guaranteed Android background seeding. See docs/BUILD.md and docs/QUALITY-LEDGER.md. Never publish private server credentials."
       - name: Keep conventional short-lived CI artifact as an alternative
         uses: actions/upload-artifact@v4
         with:
           name: chunks-debug-prealpha
           path: |
             app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/debug/chunks-preview.apk
             app/build/outputs/apk/debug/CHUNKS-BUILD-SHA256.txt
           retention-days: 7
