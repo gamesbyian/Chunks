@@ -20,6 +20,10 @@ A torrent client is a data-integrity tool: none of its charm is worth lost bytes
 
 Tags, category, collection membership, destination suggestion and filesystem mutation authorization are distinct states. A Transfer may belong to multiple collections; a file can be represented in several collections without duplicating data.
 
+## Transfer access privacy and authentication (owner requirement, 2026-10-27)
+
+Offer an optional privacy lock that protects **viewing and interacting with local transfers** and, independently, each remote rTorrent profile. Once enabled, the default is **one Android authentication per app process session**; configurable choices allow never, each foreground return, a five-minute background timeout, or each entry. Expose an immediate **Lock now** action. Use Android's supported native biometric interface (fingerprint and other eligible strong biometrics) with device PIN/pattern/password fallback by default; capability-aware alternatives must not strand users. Lock the interface and redact private transfer data without stopping authorized background downloads or seeding. Server login is separate: remember rTorrent connection credentials by default after first authenticated setup, provide opt-out/forget, and protect persistent credentials using reviewed Android Keystore-backed storage. Additional authentication may be required for sensitive actions without replacing exact destructive-operation confirmation. **Requirement only; not implemented or tested.** Full behavioral contract: [TRANSFER-PRIVACY-LOCK.md](TRANSFER-PRIVACY-LOCK.md).
+
 ## Non-negotiable user outcomes
 
 ### 1. First-class rTorrent remote, no mandatory Companion
