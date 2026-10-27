@@ -1,6 +1,6 @@
 # Portable transfer snapshots (owner requirement, 2026-10-27)
 
-**Status: planned. No snapshot export/import code or interoperability acceptance is claimed by this document.** Canonical product requirement for Chunks local and remote rTorrent inventory portability. Product/architecture/security/UX decisions should refer here; priority remains solely in WORK-QUEUE.
+**Status: transport foundation implemented (#295), user-facing snapshot export/import still planned.** Bounded ZIP member packaging, deterministic SHA-256 member receipt and strict no-filesystem-extraction reader passed Android/JVM [40594814560](https://github.com/gamesbyian/Chunks/actions/runs/40594814560) and were merged at `1431b1a846284046efec65c46d89cf6c90e81f7e`. The container does NOT yet parse/validate manifest schema or metainfo identity, connect to either engine, or perform export/import UI or payload recovery. Canonical product requirement for Chunks local and remote rTorrent inventory portability. Product/architecture/security/UX decisions should refer here; priority remains solely in WORK-QUEUE.
 
 ## Outcome and scope
 
