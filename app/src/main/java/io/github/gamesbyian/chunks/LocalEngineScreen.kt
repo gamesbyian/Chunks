@@ -110,12 +110,24 @@ internal object LocalEngineHolder {
         LocalRateLimits(it.getInt("download-limit", 0).coerceAtLeast(0), it.getInt("upload-limit", 0).coerceAtLeast(0))
     }
 
-    /** Persist speed limits and apply them to a running engine; returns what the engine reads back. */
+    /**
+     * Save a future-start preference only if no engine exists; otherwise demand
+     * an exact native readback before the durable commit. Failed/uncertain
+     * application must not overwrite the previous saved speed limits.
+     */
     @Synchronized
-    fun setRateLimitsPreferred(context: Context, limits: LocalRateLimits): LocalRateLimits? {
-        prefs(context).edit().putInt("download-limit", limits.downloadBytesPerSecond)
-            .putInt("upload-limit", limits.uploadBytesPerSecond).apply()
-        return engine?.setRateLimits(limits)
+    fun setRateLimitsPreferred(context: Context, limits: LocalRateLimits): Boolean {
+        val running = engine
+        return LocalRateLimitPreferenceTransaction.commitIfApplied(
+            requested = limits,
+            applyToRunningEngine = running?.let { { it.setRateLimits(limits) } },
+            savePreference = { value ->
+                prefs(context).edit()
+                    .putInt("download-limit", value.downloadBytesPerSecond)
+                    .putInt("upload-limit", value.uploadBytesPerSecond)
+                    .commit()
+            }
+        )
     }
 
     /** Start only if an earlier session left transfers to restore. */
@@ -675,6 +687,7 @@ internal fun LocalSpeedLimits() {
     var download by remember { mutableStateOf(speedText(saved.downloadBytesPerSecond)) }
     var upload by remember { mutableStateOf(speedText(saved.uploadBytesPerSecond)) }
     var result by remember { mutableStateOf<String?>(null) }
+    var saving by remember { mutableStateOf(false) }
     val downloadLimit = parseSpeedLimit(download)
     val uploadLimit = parseSpeedLimit(upload)
     Text("Speed limits", fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
@@ -691,20 +704,34 @@ internal fun LocalSpeedLimits() {
             modifier = Modifier.weight(1f))
     }
     OutlinedButton(onClick = {
-        val wanted = LocalRateLimits(downloadLimit ?: return@OutlinedButton, uploadLimit ?: return@OutlinedButton)
-        scope.launch {
-            val applied = withContext(Dispatchers.IO) {
-                try { Result.success(LocalEngineHolder.setRateLimitsPreferred(context, wanted)) }
-                catch (e: Exception) { Result.failure(e) }
-            }
-            result = when {
-                applied.isFailure -> "Saved, but the running engine did not accept the limits."
-                applied.getOrNull() == null -> "Saved. Applies when the engine starts."
-                applied.getOrNull() == wanted -> "Applied."
-                else -> "Saved, but the engine reports different limits."
+        if (!saving) {
+            val wanted = LocalRateLimits(
+                downloadLimit ?: return@OutlinedButton,
+                uploadLimit ?: return@OutlinedButton
+            )
+            saving = true
+            result = null
+            scope.launch {
+                try {
+                    val confirmed = withContext(Dispatchers.IO) {
+                        LocalEngineHolder.setRateLimitsPreferred(context, wanted)
+                    }
+                    result = if (confirmed)
+                        "Speed limits verified (if the engine is running) and saved on this phone."
+                    else
+                        "Speed limits were not saved. The engine did not confirm them, or local storage could not commit. Live limits may be uncertain."
+                } catch (cancel: kotlinx.coroutines.CancellationException) {
+                    throw cancel
+                } catch (_: Exception) {
+                    result = "Speed limits were not confirmed or saved. The running engine may have changed; check its state before trying again."
+                } finally {
+                    saving = false
+                }
             }
         }
-    }, enabled = downloadLimit != null && uploadLimit != null,
-        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Save speed limits") }
+    }, enabled = !saving && downloadLimit != null && uploadLimit != null,
+        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+        Text(if (saving) "Checking speed limits…" else "Save speed limits")
+    }
     result?.let { Text(it, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }) }
 }
