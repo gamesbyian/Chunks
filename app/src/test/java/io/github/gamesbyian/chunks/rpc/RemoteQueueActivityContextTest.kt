@@ -14,7 +14,7 @@ class RemoteQueueActivityContextTest {
         downBytesPerSecond = 400)
     private fun observed(target: RemoteTransfer, view: List<RemoteTransfer>, fresh: Boolean = true) =
         RemoteQueueActivityContext.otherTransferReportsDownloading(
-            target, RemoteQueueActivityContext.countReportingDownloadTraffic(view), fresh
+            target, RemoteQueueActivityContext.hashesReportingDownloadTraffic(view), fresh
         )
 
     @Test fun onlyPositiveRateOnDifferentTransferInFreshViewQualifies() {
@@ -43,7 +43,7 @@ class RemoteQueueActivityContextTest {
                 downBytesPerSecond = if (index == 11_999) 42L else null
             )
         }
-        assertEquals(1, RemoteQueueActivityContext.countReportingDownloadTraffic(lots))
+        assertEquals(1, RemoteQueueActivityContext.hashesReportingDownloadTraffic(lots).size)
         assertTrue(observed(stalled, lots))
     }
 
