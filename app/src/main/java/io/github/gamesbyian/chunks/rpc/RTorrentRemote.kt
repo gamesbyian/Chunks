@@ -644,6 +644,43 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         )
     }
 
+    /**
+     * Read-only exact-target traffic sample. A d.hash guard before AND after
+     * optional getters prevents attributing a vanished/replaced torrent's
+     * counters to this selection. Faulting optional getters become unknown,
+     * never zero. A disconnected client receives a failure, not fake samples.
+     */
+    suspend fun readTrafficSample(hash: String): RemoteTrafficSample {
+        require(Regex("[0-9a-fA-F]{40}").matches(hash)) { "Invalid v1 torrent hash" }
+        suspend fun guardIdentity() {
+            val returned = call("d.hash", listOf(hash)) as? String
+            check(returned?.equals(hash, ignoreCase = true) == true) {
+                "rTorrent transfer identity not confirmed"
+            }
+        }
+        suspend fun optionalNumber(method: String): Long? = try {
+            number(call(method, listOf(hash))).takeIf { it >= 0L }
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            null
+        }
+        guardIdentity()
+        val received = optionalNumber("d.down.total")
+        val verified = optionalNumber("d.completed_bytes")
+        val size = optionalNumber("d.size_bytes")
+        val active = optionalNumber("d.is_active")?.let { it != 0L }
+        val peers = optionalNumber("d.peers_connected")
+        val rate = optionalNumber("d.down.rate")
+        guardIdentity()
+        return RemoteTrafficSample(
+            hash = hash, monotonicNanos = System.nanoTime(),
+            receivedBytes = received, verifiedBytes = verified,
+            expectedBytes = size, active = active, peers = peers,
+            rateBytesPerSecond = rate
+        )
+    }
+
     private fun extractRows(response: Any?): List<*> =
         response as? List<*> ?: error("Unexpected rTorrent array reply")
 
