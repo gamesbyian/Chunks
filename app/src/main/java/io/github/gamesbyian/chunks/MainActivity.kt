@@ -65,6 +65,7 @@ import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
 import io.github.gamesbyian.chunks.rpc.RemoteFile
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
+import io.github.gamesbyian.chunks.rpc.RemoteQueueActivityContext
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -706,6 +707,9 @@ private fun TransfersScreen(
                 },
                 onLifecycleSettled = onLifecycleSettled,
                 transfer = transfer, expanded = selectedHash == transfer.hash,
+                otherTransferDownloading = RemoteQueueActivityContext.otherTransferReportsDownloading(
+                    transfer, list, !stale && !loading
+                ),
                 files = files, filesLoading = filesLoading, filesError = filesError,
                 onInspect = { onInspect(transfer) }
             )
@@ -725,6 +729,7 @@ private fun TransferCard(
     onAliasSave: (String?) -> Boolean,
     onLifecycleSettled: () -> Unit,
     transfer: RemoteTransfer, expanded: Boolean,
+    otherTransferDownloading: Boolean,
     files: List<RemoteFile>?, filesLoading: Boolean, filesError: String?,
     onInspect: () -> Unit
 ) {
@@ -763,6 +768,14 @@ private fun TransferCard(
                 Text("No download traffic in this snapshot. Start state alone does not prove " +
                     "the torrent is active or connected; use Diagnose download activity below.",
                     style = MaterialTheme.typography.bodySmall)
+            }
+            if (otherTransferDownloading) {
+                Text(
+                    "Other transfers in this loaded server view report download traffic, " +
+                        "while this torrent reports none. This is one server snapshot, " +
+                        "not proof of available seeders or future progress for this torrent.",
+                    style = MaterialTheme.typography.bodySmall
+                )
             }
             if (transfer.downBytesPerSecond != null) {
                 Text("↓ " + Units.bytes(transfer.downBytesPerSecond) + "/s" +
