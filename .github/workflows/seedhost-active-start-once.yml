@@ -17,7 +17,10 @@ concurrency:
 
 jobs:
   exact-hash-start:
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, 'qa: one-time Seedhost active Start acceptance'))
+    if: >-
+      ${{ github.ref == 'refs/heads/main' &&
+          (github.event_name == 'workflow_dispatch' ||
+           contains(github.event.head_commit.message, 'one-time Seedhost active Start acceptance')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 23
     env:
