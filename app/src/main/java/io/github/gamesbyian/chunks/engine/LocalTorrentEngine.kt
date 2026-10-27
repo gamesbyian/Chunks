@@ -155,8 +155,15 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             }
             try {
                 // A magnet without metadata has nothing restorable yet; never persist it half-known.
-                if (alert is SaveResumeDataAlert && alert.params().torrentInfo?.isValid == true)
-                    writeResume(key, AddTorrentParams.writeResumeDataBuf(alert.params()))
+                if (alert is SaveResumeDataAlert && alert.params().torrentInfo?.isValid == true) {
+                    val bytes = AddTorrentParams.writeResumeDataBuf(alert.params())
+                    // The handle may have been removed while the alert was being decoded.
+                    // Lock across both identity recheck and disk commit; Remove uses this
+                    // same lock before deleting the saved resume file.
+                    LocalResumeWriteFence.writeIfCurrent(handles, key, handle) {
+                        writeResume(key, bytes)
+                    }
+                }
             } finally {
                 pendingSaves.remove(key)?.countDown()
             }
@@ -413,12 +420,21 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     @Synchronized
     fun removeKeepingData(infoHash: String): Boolean {
         val key = normal(infoHash)
+        val handle = handles[key] ?: return false
+        // Do not lose the only tracked handle before the native session accepts
+        // the removal request. A thrown JNI call must leave it inspectable.
+        session.remove(handle)
+        // Must use the same monitor held across an asynchronous resume write.
+        // Any writer already admitted finishes before we delete the file; any
+        // late alert for this handle is refused by LocalResumeWriteFence.
+        synchronized(handles) { handles.remove(key) }
         awaitingMetadata.remove(key)
         pendingFlushes.remove(key)?.refused()
-        val handle = handles.remove(key) ?: return false
-        session.remove(handle)
-        config.stateDirectory?.let { File(it, "$key.resume").delete() }
-        return true
+        pendingSaves.remove(key)?.countDown()
+        val saved = config.stateDirectory?.let { File(it, "$key.resume") } ?: return true
+        // A removed session with an undeletable .resume file can reappear on
+        // restart. Do not report that as a fully confirmed removal.
+        return try { !saved.exists() || saved.delete() } catch (_: Exception) { false }
     }
 
     @Synchronized
