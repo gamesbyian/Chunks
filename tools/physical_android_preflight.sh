@@ -4,7 +4,7 @@
 set -euo pipefail
 
 if [[ $# -ne 1 ]]; then
-    echo "Usage: bash tools/physical_android_preflight.sh /path/to/app-debug.apk" >&2
+    echo "Usage: bash tools/physical_android_preflight.sh /path/to/chunks-debug.apk" >&2
     exit 2
 fi
 
@@ -16,12 +16,12 @@ for tool in adb sha256sum; do
 done
 
 apk="$1"
-[[ -s "$apk" && "$(basename "$apk")" == "app-debug.apk" ]] || {
-    echo "Expected the extracted nonempty app-debug.apk" >&2
+[[ -s "$apk" && "$(basename "$apk")" == "chunks-debug.apk" ]] || {
+    echo "Expected the extracted nonempty chunks-debug.apk" >&2
     exit 2
 }
 folder="$(cd "$(dirname "$apk")" && pwd -P)"
-apk="$folder/app-debug.apk"
+apk="$folder/chunks-debug.apk"
 receipt="$folder/CHUNKS-BUILD-SHA256.txt"
 [[ -s "$receipt" ]] || {
     echo "Missing the matching CHUNKS-BUILD-SHA256.txt from the Actions artifact" >&2
