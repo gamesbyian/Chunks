@@ -251,6 +251,10 @@ class ChunksMainActivityAtlasTest {
         }
         receivedMethods.clear() // Record the real installed-app calls separately.
         rule.onNodeWithText("ruTorrent web URL or RPC address").performTextInput(endpoint)
+        // The native login now includes a separate remembered-login row, so
+        // Connect can be uncomposed below the LazyColumn viewport/IME.
+        // Compose the target through the lazy scroll action before clicking.
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Connect to rTorrent"))
         rule.onNodeWithText("Connect to rTorrent").performClick()
         try {
             rule.waitUntil(20_000) {
