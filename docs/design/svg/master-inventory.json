@@ -10,8 +10,8 @@
   },
   "totals": {
     "approved": 1,
-    "vectorDraft": 326,
-    "planned": 495
+    "vectorDraft": 632,
+    "planned": 189
   },
   "assets": [
     {
@@ -3269,2143 +3269,3367 @@
       "id": "typography/display-rounded/uppercase/A",
       "category": "typography",
       "label": "display-rounded uppercase: A",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/uppercase/A.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "A"
     },
     {
       "id": "typography/display-rounded/uppercase/B",
       "category": "typography",
       "label": "display-rounded uppercase: B",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/uppercase/B.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "B"
     },
     {
       "id": "typography/display-rounded/uppercase/C",
       "category": "typography",
       "label": "display-rounded uppercase: C",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/uppercase/C.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "C"
     },
     {
       "id": "typography/display-rounded/uppercase/D",
       "category": "typography",
       "label": "display-rounded uppercase: D",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/uppercase/D.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "D"
     },
     {
       "id": "typography/display-rounded/uppercase/E",
       "category": "typography",
       "label": "display-rounded uppercase: E",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/uppercase/E.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "E"
     },
     {
       "id": "typography/display-rounded/uppercase/F",
       "category": "typography",
       "label": "display-rounded uppercase: F",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/uppercase/F.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "F"
     },
     {
       "id": "typography/display-rounded/uppercase/G",
       "category": "typography",
       "label": "display-rounded uppercase: G",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/uppercase/G.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "G"
     },
     {
       "id": "typography/display-rounded/uppercase/H",
       "category": "typography",
       "label": "display-rounded uppercase: H",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/uppercase/H.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "H"
     },
     {
       "id": "typography/display-rounded/uppercase/I",
       "category": "typography",
       "label": "display-rounded uppercase: I",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/uppercase/I.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "I"
     },
     {
       "id": "typography/display-rounded/uppercase/J",
       "category": "typography",
       "label": "display-rounded uppercase: J",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/uppercase/J.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "J"
     },
     {
       "id": "typography/display-rounded/uppercase/K",
       "category": "typography",
       "label": "display-rounded uppercase: K",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/uppercase/K.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "K"
     },
     {
       "id": "typography/display-rounded/uppercase/L",
       "category": "typography",
       "label": "display-rounded uppercase: L",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/uppercase/L.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "L"
     },
     {
       "id": "typography/display-rounded/uppercase/M",
       "category": "typography",
       "label": "display-rounded uppercase: M",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/uppercase/M.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "M"
     },
     {
       "id": "typography/display-rounded/uppercase/N",
       "category": "typography",
       "label": "display-rounded uppercase: N",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/uppercase/N.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "N"
     },
     {
       "id": "typography/display-rounded/uppercase/O",
       "category": "typography",
       "label": "display-rounded uppercase: O",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/uppercase/O.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "O"
     },
     {
       "id": "typography/display-rounded/uppercase/P",
       "category": "typography",
       "label": "display-rounded uppercase: P",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/uppercase/P.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "P"
     },
     {
       "id": "typography/display-rounded/uppercase/Q",
       "category": "typography",
       "label": "display-rounded uppercase: Q",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/uppercase/Q.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "Q"
     },
     {
       "id": "typography/display-rounded/uppercase/R",
       "category": "typography",
       "label": "display-rounded uppercase: R",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/uppercase/R.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "R"
     },
     {
       "id": "typography/display-rounded/uppercase/S",
       "category": "typography",
       "label": "display-rounded uppercase: S",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/uppercase/S.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "S"
     },
     {
       "id": "typography/display-rounded/uppercase/T",
       "category": "typography",
       "label": "display-rounded uppercase: T",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/uppercase/T.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "T"
     },
     {
       "id": "typography/display-rounded/uppercase/U",
       "category": "typography",
       "label": "display-rounded uppercase: U",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/uppercase/U.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "U"
     },
     {
       "id": "typography/display-rounded/uppercase/V",
       "category": "typography",
       "label": "display-rounded uppercase: V",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/uppercase/V.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "V"
     },
     {
       "id": "typography/display-rounded/uppercase/W",
       "category": "typography",
       "label": "display-rounded uppercase: W",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/uppercase/W.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "W"
     },
     {
       "id": "typography/display-rounded/uppercase/X",
       "category": "typography",
       "label": "display-rounded uppercase: X",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/uppercase/X.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "X"
     },
     {
       "id": "typography/display-rounded/uppercase/Y",
       "category": "typography",
       "label": "display-rounded uppercase: Y",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/uppercase/Y.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "Y"
     },
     {
       "id": "typography/display-rounded/uppercase/Z",
       "category": "typography",
       "label": "display-rounded uppercase: Z",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/uppercase/Z.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "Z"
     },
     {
       "id": "typography/display-rounded/lowercase/a",
       "category": "typography",
       "label": "display-rounded lowercase: a",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/lowercase/a.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "a"
     },
     {
       "id": "typography/display-rounded/lowercase/b",
       "category": "typography",
       "label": "display-rounded lowercase: b",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/lowercase/b.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "b"
     },
     {
       "id": "typography/display-rounded/lowercase/c",
       "category": "typography",
       "label": "display-rounded lowercase: c",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/lowercase/c.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "c"
     },
     {
       "id": "typography/display-rounded/lowercase/d",
       "category": "typography",
       "label": "display-rounded lowercase: d",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/lowercase/d.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "d"
     },
     {
       "id": "typography/display-rounded/lowercase/e",
       "category": "typography",
       "label": "display-rounded lowercase: e",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/lowercase/e.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "e"
     },
     {
       "id": "typography/display-rounded/lowercase/f",
       "category": "typography",
       "label": "display-rounded lowercase: f",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/lowercase/f.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "f"
     },
     {
       "id": "typography/display-rounded/lowercase/g",
       "category": "typography",
       "label": "display-rounded lowercase: g",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/lowercase/g.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "g"
     },
     {
       "id": "typography/display-rounded/lowercase/h",
       "category": "typography",
       "label": "display-rounded lowercase: h",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/lowercase/h.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "h"
     },
     {
       "id": "typography/display-rounded/lowercase/i",
       "category": "typography",
       "label": "display-rounded lowercase: i",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/lowercase/i.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "i"
     },
     {
       "id": "typography/display-rounded/lowercase/j",
       "category": "typography",
       "label": "display-rounded lowercase: j",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/lowercase/j.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "j"
     },
     {
       "id": "typography/display-rounded/lowercase/k",
       "category": "typography",
       "label": "display-rounded lowercase: k",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/lowercase/k.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "k"
     },
     {
       "id": "typography/display-rounded/lowercase/l",
       "category": "typography",
       "label": "display-rounded lowercase: l",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/lowercase/l.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "l"
     },
     {
       "id": "typography/display-rounded/lowercase/m",
       "category": "typography",
       "label": "display-rounded lowercase: m",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/lowercase/m.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "m"
     },
     {
       "id": "typography/display-rounded/lowercase/n",
       "category": "typography",
       "label": "display-rounded lowercase: n",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/lowercase/n.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "n"
     },
     {
       "id": "typography/display-rounded/lowercase/o",
       "category": "typography",
       "label": "display-rounded lowercase: o",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/lowercase/o.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "o"
     },
     {
       "id": "typography/display-rounded/lowercase/p",
       "category": "typography",
       "label": "display-rounded lowercase: p",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/lowercase/p.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "p"
     },
     {
       "id": "typography/display-rounded/lowercase/q",
       "category": "typography",
       "label": "display-rounded lowercase: q",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/lowercase/q.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "q"
     },
     {
       "id": "typography/display-rounded/lowercase/r",
       "category": "typography",
       "label": "display-rounded lowercase: r",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/lowercase/r.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "r"
     },
     {
       "id": "typography/display-rounded/lowercase/s",
       "category": "typography",
       "label": "display-rounded lowercase: s",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/lowercase/s.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "s"
     },
     {
       "id": "typography/display-rounded/lowercase/t",
       "category": "typography",
       "label": "display-rounded lowercase: t",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/lowercase/t.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "t"
     },
     {
       "id": "typography/display-rounded/lowercase/u",
       "category": "typography",
       "label": "display-rounded lowercase: u",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/lowercase/u.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "u"
     },
     {
       "id": "typography/display-rounded/lowercase/v",
       "category": "typography",
       "label": "display-rounded lowercase: v",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/lowercase/v.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "v"
     },
     {
       "id": "typography/display-rounded/lowercase/w",
       "category": "typography",
       "label": "display-rounded lowercase: w",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/lowercase/w.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "w"
     },
     {
       "id": "typography/display-rounded/lowercase/x",
       "category": "typography",
       "label": "display-rounded lowercase: x",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/lowercase/x.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "x"
     },
     {
       "id": "typography/display-rounded/lowercase/y",
       "category": "typography",
       "label": "display-rounded lowercase: y",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/lowercase/y.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "y"
     },
     {
       "id": "typography/display-rounded/lowercase/z",
       "category": "typography",
       "label": "display-rounded lowercase: z",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/lowercase/z.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "z"
     },
     {
       "id": "typography/display-rounded/digit/0",
       "category": "typography",
       "label": "display-rounded digit: 0",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/digit/0.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "0"
     },
     {
       "id": "typography/display-rounded/digit/1",
       "category": "typography",
       "label": "display-rounded digit: 1",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/digit/1.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "1"
     },
     {
       "id": "typography/display-rounded/digit/2",
       "category": "typography",
       "label": "display-rounded digit: 2",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/digit/2.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "2"
     },
     {
       "id": "typography/display-rounded/digit/3",
       "category": "typography",
       "label": "display-rounded digit: 3",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/digit/3.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "3"
     },
     {
       "id": "typography/display-rounded/digit/4",
       "category": "typography",
       "label": "display-rounded digit: 4",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/digit/4.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "4"
     },
     {
       "id": "typography/display-rounded/digit/5",
       "category": "typography",
       "label": "display-rounded digit: 5",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/digit/5.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "5"
     },
     {
       "id": "typography/display-rounded/digit/6",
       "category": "typography",
       "label": "display-rounded digit: 6",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/digit/6.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "6"
     },
     {
       "id": "typography/display-rounded/digit/7",
       "category": "typography",
       "label": "display-rounded digit: 7",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/digit/7.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "7"
     },
     {
       "id": "typography/display-rounded/digit/8",
       "category": "typography",
       "label": "display-rounded digit: 8",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/digit/8.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "8"
     },
     {
       "id": "typography/display-rounded/digit/9",
       "category": "typography",
       "label": "display-rounded digit: 9",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/digit/9.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "9"
     },
     {
       "id": "typography/display-rounded/punctuation/exclamation",
       "category": "typography",
       "label": "display-rounded punctuation exclamation !",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/punctuation/exclamation.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "exclamation"
     },
     {
       "id": "typography/display-rounded/punctuation/question",
       "category": "typography",
       "label": "display-rounded punctuation question ?",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/punctuation/question.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "question"
     },
     {
       "id": "typography/display-rounded/punctuation/period",
       "category": "typography",
       "label": "display-rounded punctuation period .",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/punctuation/period.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "period"
     },
     {
       "id": "typography/display-rounded/punctuation/comma",
       "category": "typography",
       "label": "display-rounded punctuation comma ,",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/punctuation/comma.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "comma"
     },
     {
       "id": "typography/display-rounded/punctuation/colon",
       "category": "typography",
       "label": "display-rounded punctuation colon :",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/punctuation/colon.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "colon"
     },
     {
       "id": "typography/display-rounded/punctuation/semicolon",
       "category": "typography",
       "label": "display-rounded punctuation semicolon ;",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/punctuation/semicolon.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "semicolon"
     },
     {
       "id": "typography/display-rounded/punctuation/apostrophe",
       "category": "typography",
       "label": "display-rounded punctuation apostrophe '",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/punctuation/apostrophe.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "apostrophe"
     },
     {
       "id": "typography/display-rounded/punctuation/double-quote",
       "category": "typography",
       "label": "display-rounded punctuation double-quote \"",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/punctuation/double-quote.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "double-quote"
     },
     {
       "id": "typography/display-rounded/punctuation/open-paren",
       "category": "typography",
       "label": "display-rounded punctuation open-paren (",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/punctuation/open-paren.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "open-paren"
     },
     {
       "id": "typography/display-rounded/punctuation/close-paren",
       "category": "typography",
       "label": "display-rounded punctuation close-paren )",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/punctuation/close-paren.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "close-paren"
     },
     {
       "id": "typography/display-rounded/punctuation/open-square",
       "category": "typography",
       "label": "display-rounded punctuation open-square [",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/punctuation/open-square.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "open-square"
     },
     {
       "id": "typography/display-rounded/punctuation/close-square",
       "category": "typography",
       "label": "display-rounded punctuation close-square ]",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/punctuation/close-square.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "close-square"
     },
     {
       "id": "typography/display-rounded/punctuation/open-curly",
       "category": "typography",
       "label": "display-rounded punctuation open-curly {",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/punctuation/open-curly.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "open-curly"
     },
     {
       "id": "typography/display-rounded/punctuation/close-curly",
       "category": "typography",
       "label": "display-rounded punctuation close-curly }",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/punctuation/close-curly.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "close-curly"
     },
     {
       "id": "typography/display-rounded/punctuation/at",
       "category": "typography",
       "label": "display-rounded punctuation at @",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/punctuation/at.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "at"
     },
     {
       "id": "typography/display-rounded/punctuation/hash",
       "category": "typography",
       "label": "display-rounded punctuation hash #",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/punctuation/hash.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "hash"
     },
     {
       "id": "typography/display-rounded/punctuation/dollar",
       "category": "typography",
       "label": "display-rounded punctuation dollar $",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/punctuation/dollar.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "dollar"
     },
     {
       "id": "typography/display-rounded/punctuation/percent",
       "category": "typography",
       "label": "display-rounded punctuation percent %",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/punctuation/percent.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "percent"
     },
     {
       "id": "typography/display-rounded/punctuation/ampersand",
       "category": "typography",
       "label": "display-rounded punctuation ampersand &",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/punctuation/ampersand.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "ampersand"
     },
     {
       "id": "typography/display-rounded/punctuation/asterisk",
       "category": "typography",
       "label": "display-rounded punctuation asterisk *",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/punctuation/asterisk.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "asterisk"
     },
     {
       "id": "typography/display-rounded/punctuation/plus",
       "category": "typography",
       "label": "display-rounded punctuation plus +",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/punctuation/plus.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "plus"
     },
     {
       "id": "typography/display-rounded/punctuation/minus",
       "category": "typography",
       "label": "display-rounded punctuation minus -",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/punctuation/minus.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "minus"
     },
     {
       "id": "typography/display-rounded/punctuation/equals",
       "category": "typography",
       "label": "display-rounded punctuation equals =",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/punctuation/equals.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "equals"
     },
     {
       "id": "typography/display-rounded/punctuation/less-than",
       "category": "typography",
       "label": "display-rounded punctuation less-than <",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/punctuation/less-than.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "less-than"
     },
     {
       "id": "typography/display-rounded/punctuation/greater-than",
       "category": "typography",
       "label": "display-rounded punctuation greater-than >",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/punctuation/greater-than.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "greater-than"
     },
     {
       "id": "typography/display-rounded/punctuation/slash",
       "category": "typography",
       "label": "display-rounded punctuation slash /",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/punctuation/slash.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "slash"
     },
     {
       "id": "typography/display-rounded/punctuation/backslash",
       "category": "typography",
       "label": "display-rounded punctuation backslash \\",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/punctuation/backslash.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "backslash"
     },
     {
       "id": "typography/display-rounded/punctuation/bar",
       "category": "typography",
       "label": "display-rounded punctuation bar |",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/punctuation/bar.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "bar"
     },
     {
       "id": "typography/display-rounded/punctuation/underscore",
       "category": "typography",
       "label": "display-rounded punctuation underscore _",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/punctuation/underscore.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "underscore"
     },
     {
       "id": "typography/display-rounded/punctuation/en-dash",
       "category": "typography",
       "label": "display-rounded punctuation en-dash –",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/punctuation/en-dash.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "en-dash"
     },
     {
       "id": "typography/display-rounded/punctuation/em-dash",
       "category": "typography",
       "label": "display-rounded punctuation em-dash —",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/punctuation/em-dash.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "em-dash"
     },
     {
       "id": "typography/display-rounded/punctuation/bullet",
       "category": "typography",
       "label": "display-rounded punctuation bullet •",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/punctuation/bullet.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "bullet"
     },
     {
       "id": "typography/display-rounded/punctuation/ellipsis",
       "category": "typography",
       "label": "display-rounded punctuation ellipsis …",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/punctuation/ellipsis.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "ellipsis"
     },
     {
       "id": "typography/display-rounded/punctuation/multiply",
       "category": "typography",
       "label": "display-rounded punctuation multiply ×",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/punctuation/multiply.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "multiply"
     },
     {
       "id": "typography/display-rounded/punctuation/degree",
       "category": "typography",
       "label": "display-rounded punctuation degree °",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/punctuation/degree.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "degree"
     },
     {
       "id": "typography/display-rounded/punctuation/arrow-up",
       "category": "typography",
       "label": "display-rounded punctuation arrow-up ↑",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/punctuation/arrow-up.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "arrow-up"
     },
     {
       "id": "typography/display-rounded/punctuation/arrow-down",
       "category": "typography",
       "label": "display-rounded punctuation arrow-down ↓",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/punctuation/arrow-down.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "arrow-down"
     },
     {
       "id": "typography/display-rounded/punctuation/arrow-left",
       "category": "typography",
       "label": "display-rounded punctuation arrow-left ←",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/punctuation/arrow-left.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "arrow-left"
     },
     {
       "id": "typography/display-rounded/punctuation/arrow-right",
       "category": "typography",
       "label": "display-rounded punctuation arrow-right →",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/punctuation/arrow-right.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "arrow-right"
     },
     {
       "id": "typography/display-rounded/punctuation/check",
       "category": "typography",
       "label": "display-rounded punctuation check ✓",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/display-rounded/punctuation/check.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "display-rounded",
+      "glyph": "check"
     },
     {
       "id": "typography/marker-handdrawn/uppercase/A",
       "category": "typography",
       "label": "marker-handdrawn uppercase: A",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/uppercase/A.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "A"
     },
     {
       "id": "typography/marker-handdrawn/uppercase/B",
       "category": "typography",
       "label": "marker-handdrawn uppercase: B",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/uppercase/B.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "B"
     },
     {
       "id": "typography/marker-handdrawn/uppercase/C",
       "category": "typography",
       "label": "marker-handdrawn uppercase: C",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/uppercase/C.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "C"
     },
     {
       "id": "typography/marker-handdrawn/uppercase/D",
       "category": "typography",
       "label": "marker-handdrawn uppercase: D",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/uppercase/D.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "D"
     },
     {
       "id": "typography/marker-handdrawn/uppercase/E",
       "category": "typography",
       "label": "marker-handdrawn uppercase: E",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/uppercase/E.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "E"
     },
     {
       "id": "typography/marker-handdrawn/uppercase/F",
       "category": "typography",
       "label": "marker-handdrawn uppercase: F",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/uppercase/F.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "F"
     },
     {
       "id": "typography/marker-handdrawn/uppercase/G",
       "category": "typography",
       "label": "marker-handdrawn uppercase: G",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/uppercase/G.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "G"
     },
     {
       "id": "typography/marker-handdrawn/uppercase/H",
       "category": "typography",
       "label": "marker-handdrawn uppercase: H",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/uppercase/H.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "H"
     },
     {
       "id": "typography/marker-handdrawn/uppercase/I",
       "category": "typography",
       "label": "marker-handdrawn uppercase: I",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/uppercase/I.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "I"
     },
     {
       "id": "typography/marker-handdrawn/uppercase/J",
       "category": "typography",
       "label": "marker-handdrawn uppercase: J",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/uppercase/J.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "J"
     },
     {
       "id": "typography/marker-handdrawn/uppercase/K",
       "category": "typography",
       "label": "marker-handdrawn uppercase: K",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/uppercase/K.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "K"
     },
     {
       "id": "typography/marker-handdrawn/uppercase/L",
       "category": "typography",
       "label": "marker-handdrawn uppercase: L",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/uppercase/L.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "L"
     },
     {
       "id": "typography/marker-handdrawn/uppercase/M",
       "category": "typography",
       "label": "marker-handdrawn uppercase: M",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/uppercase/M.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "M"
     },
     {
       "id": "typography/marker-handdrawn/uppercase/N",
       "category": "typography",
       "label": "marker-handdrawn uppercase: N",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/uppercase/N.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "N"
     },
     {
       "id": "typography/marker-handdrawn/uppercase/O",
       "category": "typography",
       "label": "marker-handdrawn uppercase: O",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/uppercase/O.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "O"
     },
     {
       "id": "typography/marker-handdrawn/uppercase/P",
       "category": "typography",
       "label": "marker-handdrawn uppercase: P",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/uppercase/P.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "P"
     },
     {
       "id": "typography/marker-handdrawn/uppercase/Q",
       "category": "typography",
       "label": "marker-handdrawn uppercase: Q",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/uppercase/Q.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "Q"
     },
     {
       "id": "typography/marker-handdrawn/uppercase/R",
       "category": "typography",
       "label": "marker-handdrawn uppercase: R",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/uppercase/R.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "R"
     },
     {
       "id": "typography/marker-handdrawn/uppercase/S",
       "category": "typography",
       "label": "marker-handdrawn uppercase: S",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/uppercase/S.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "S"
     },
     {
       "id": "typography/marker-handdrawn/uppercase/T",
       "category": "typography",
       "label": "marker-handdrawn uppercase: T",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/uppercase/T.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "T"
     },
     {
       "id": "typography/marker-handdrawn/uppercase/U",
       "category": "typography",
       "label": "marker-handdrawn uppercase: U",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/uppercase/U.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "U"
     },
     {
       "id": "typography/marker-handdrawn/uppercase/V",
       "category": "typography",
       "label": "marker-handdrawn uppercase: V",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/uppercase/V.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "V"
     },
     {
       "id": "typography/marker-handdrawn/uppercase/W",
       "category": "typography",
       "label": "marker-handdrawn uppercase: W",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/uppercase/W.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "W"
     },
     {
       "id": "typography/marker-handdrawn/uppercase/X",
       "category": "typography",
       "label": "marker-handdrawn uppercase: X",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/uppercase/X.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "X"
     },
     {
       "id": "typography/marker-handdrawn/uppercase/Y",
       "category": "typography",
       "label": "marker-handdrawn uppercase: Y",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/uppercase/Y.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "Y"
     },
     {
       "id": "typography/marker-handdrawn/uppercase/Z",
       "category": "typography",
       "label": "marker-handdrawn uppercase: Z",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/uppercase/Z.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "Z"
     },
     {
       "id": "typography/marker-handdrawn/lowercase/a",
       "category": "typography",
       "label": "marker-handdrawn lowercase: a",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/lowercase/a.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "a"
     },
     {
       "id": "typography/marker-handdrawn/lowercase/b",
       "category": "typography",
       "label": "marker-handdrawn lowercase: b",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/lowercase/b.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "b"
     },
     {
       "id": "typography/marker-handdrawn/lowercase/c",
       "category": "typography",
       "label": "marker-handdrawn lowercase: c",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/lowercase/c.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "c"
     },
     {
       "id": "typography/marker-handdrawn/lowercase/d",
       "category": "typography",
       "label": "marker-handdrawn lowercase: d",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/lowercase/d.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "d"
     },
     {
       "id": "typography/marker-handdrawn/lowercase/e",
       "category": "typography",
       "label": "marker-handdrawn lowercase: e",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/lowercase/e.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "e"
     },
     {
       "id": "typography/marker-handdrawn/lowercase/f",
       "category": "typography",
       "label": "marker-handdrawn lowercase: f",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/lowercase/f.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "f"
     },
     {
       "id": "typography/marker-handdrawn/lowercase/g",
       "category": "typography",
       "label": "marker-handdrawn lowercase: g",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/lowercase/g.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "g"
     },
     {
       "id": "typography/marker-handdrawn/lowercase/h",
       "category": "typography",
       "label": "marker-handdrawn lowercase: h",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/lowercase/h.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "h"
     },
     {
       "id": "typography/marker-handdrawn/lowercase/i",
       "category": "typography",
       "label": "marker-handdrawn lowercase: i",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/lowercase/i.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "i"
     },
     {
       "id": "typography/marker-handdrawn/lowercase/j",
       "category": "typography",
       "label": "marker-handdrawn lowercase: j",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/lowercase/j.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "j"
     },
     {
       "id": "typography/marker-handdrawn/lowercase/k",
       "category": "typography",
       "label": "marker-handdrawn lowercase: k",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/lowercase/k.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "k"
     },
     {
       "id": "typography/marker-handdrawn/lowercase/l",
       "category": "typography",
       "label": "marker-handdrawn lowercase: l",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/lowercase/l.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "l"
     },
     {
       "id": "typography/marker-handdrawn/lowercase/m",
       "category": "typography",
       "label": "marker-handdrawn lowercase: m",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/lowercase/m.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "m"
     },
     {
       "id": "typography/marker-handdrawn/lowercase/n",
       "category": "typography",
       "label": "marker-handdrawn lowercase: n",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/lowercase/n.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "n"
     },
     {
       "id": "typography/marker-handdrawn/lowercase/o",
       "category": "typography",
       "label": "marker-handdrawn lowercase: o",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/lowercase/o.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "o"
     },
     {
       "id": "typography/marker-handdrawn/lowercase/p",
       "category": "typography",
       "label": "marker-handdrawn lowercase: p",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/lowercase/p.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "p"
     },
     {
       "id": "typography/marker-handdrawn/lowercase/q",
       "category": "typography",
       "label": "marker-handdrawn lowercase: q",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/lowercase/q.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "q"
     },
     {
       "id": "typography/marker-handdrawn/lowercase/r",
       "category": "typography",
       "label": "marker-handdrawn lowercase: r",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/lowercase/r.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "r"
     },
     {
       "id": "typography/marker-handdrawn/lowercase/s",
       "category": "typography",
       "label": "marker-handdrawn lowercase: s",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/lowercase/s.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "s"
     },
     {
       "id": "typography/marker-handdrawn/lowercase/t",
       "category": "typography",
       "label": "marker-handdrawn lowercase: t",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/lowercase/t.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "t"
     },
     {
       "id": "typography/marker-handdrawn/lowercase/u",
       "category": "typography",
       "label": "marker-handdrawn lowercase: u",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/lowercase/u.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "u"
     },
     {
       "id": "typography/marker-handdrawn/lowercase/v",
       "category": "typography",
       "label": "marker-handdrawn lowercase: v",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/lowercase/v.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "v"
     },
     {
       "id": "typography/marker-handdrawn/lowercase/w",
       "category": "typography",
       "label": "marker-handdrawn lowercase: w",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/lowercase/w.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "w"
     },
     {
       "id": "typography/marker-handdrawn/lowercase/x",
       "category": "typography",
       "label": "marker-handdrawn lowercase: x",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/lowercase/x.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "x"
     },
     {
       "id": "typography/marker-handdrawn/lowercase/y",
       "category": "typography",
       "label": "marker-handdrawn lowercase: y",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/lowercase/y.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "y"
     },
     {
       "id": "typography/marker-handdrawn/lowercase/z",
       "category": "typography",
       "label": "marker-handdrawn lowercase: z",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/lowercase/z.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "z"
     },
     {
       "id": "typography/marker-handdrawn/digit/0",
       "category": "typography",
       "label": "marker-handdrawn digit: 0",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/digit/0.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "0"
     },
     {
       "id": "typography/marker-handdrawn/digit/1",
       "category": "typography",
       "label": "marker-handdrawn digit: 1",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/digit/1.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "1"
     },
     {
       "id": "typography/marker-handdrawn/digit/2",
       "category": "typography",
       "label": "marker-handdrawn digit: 2",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/digit/2.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "2"
     },
     {
       "id": "typography/marker-handdrawn/digit/3",
       "category": "typography",
       "label": "marker-handdrawn digit: 3",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/digit/3.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "3"
     },
     {
       "id": "typography/marker-handdrawn/digit/4",
       "category": "typography",
       "label": "marker-handdrawn digit: 4",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/digit/4.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "4"
     },
     {
       "id": "typography/marker-handdrawn/digit/5",
       "category": "typography",
       "label": "marker-handdrawn digit: 5",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/digit/5.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "5"
     },
     {
       "id": "typography/marker-handdrawn/digit/6",
       "category": "typography",
       "label": "marker-handdrawn digit: 6",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/digit/6.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "6"
     },
     {
       "id": "typography/marker-handdrawn/digit/7",
       "category": "typography",
       "label": "marker-handdrawn digit: 7",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/digit/7.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "7"
     },
     {
       "id": "typography/marker-handdrawn/digit/8",
       "category": "typography",
       "label": "marker-handdrawn digit: 8",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/digit/8.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "8"
     },
     {
       "id": "typography/marker-handdrawn/digit/9",
       "category": "typography",
       "label": "marker-handdrawn digit: 9",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/digit/9.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "9"
     },
     {
       "id": "typography/marker-handdrawn/punctuation/exclamation",
       "category": "typography",
       "label": "marker-handdrawn punctuation exclamation !",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/punctuation/exclamation.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "exclamation"
     },
     {
       "id": "typography/marker-handdrawn/punctuation/question",
       "category": "typography",
       "label": "marker-handdrawn punctuation question ?",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/punctuation/question.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "question"
     },
     {
       "id": "typography/marker-handdrawn/punctuation/period",
       "category": "typography",
       "label": "marker-handdrawn punctuation period .",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/punctuation/period.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "period"
     },
     {
       "id": "typography/marker-handdrawn/punctuation/comma",
       "category": "typography",
       "label": "marker-handdrawn punctuation comma ,",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/punctuation/comma.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "comma"
     },
     {
       "id": "typography/marker-handdrawn/punctuation/colon",
       "category": "typography",
       "label": "marker-handdrawn punctuation colon :",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/punctuation/colon.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "colon"
     },
     {
       "id": "typography/marker-handdrawn/punctuation/semicolon",
       "category": "typography",
       "label": "marker-handdrawn punctuation semicolon ;",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/punctuation/semicolon.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "semicolon"
     },
     {
       "id": "typography/marker-handdrawn/punctuation/apostrophe",
       "category": "typography",
       "label": "marker-handdrawn punctuation apostrophe '",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/punctuation/apostrophe.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "apostrophe"
     },
     {
       "id": "typography/marker-handdrawn/punctuation/double-quote",
       "category": "typography",
       "label": "marker-handdrawn punctuation double-quote \"",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/punctuation/double-quote.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "double-quote"
     },
     {
       "id": "typography/marker-handdrawn/punctuation/open-paren",
       "category": "typography",
       "label": "marker-handdrawn punctuation open-paren (",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/punctuation/open-paren.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "open-paren"
     },
     {
       "id": "typography/marker-handdrawn/punctuation/close-paren",
       "category": "typography",
       "label": "marker-handdrawn punctuation close-paren )",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/punctuation/close-paren.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "close-paren"
     },
     {
       "id": "typography/marker-handdrawn/punctuation/open-square",
       "category": "typography",
       "label": "marker-handdrawn punctuation open-square [",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/punctuation/open-square.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "open-square"
     },
     {
       "id": "typography/marker-handdrawn/punctuation/close-square",
       "category": "typography",
       "label": "marker-handdrawn punctuation close-square ]",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/punctuation/close-square.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "close-square"
     },
     {
       "id": "typography/marker-handdrawn/punctuation/open-curly",
       "category": "typography",
       "label": "marker-handdrawn punctuation open-curly {",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/punctuation/open-curly.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "open-curly"
     },
     {
       "id": "typography/marker-handdrawn/punctuation/close-curly",
       "category": "typography",
       "label": "marker-handdrawn punctuation close-curly }",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/punctuation/close-curly.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "close-curly"
     },
     {
       "id": "typography/marker-handdrawn/punctuation/at",
       "category": "typography",
       "label": "marker-handdrawn punctuation at @",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/punctuation/at.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "at"
     },
     {
       "id": "typography/marker-handdrawn/punctuation/hash",
       "category": "typography",
       "label": "marker-handdrawn punctuation hash #",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/punctuation/hash.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "hash"
     },
     {
       "id": "typography/marker-handdrawn/punctuation/dollar",
       "category": "typography",
       "label": "marker-handdrawn punctuation dollar $",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/punctuation/dollar.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "dollar"
     },
     {
       "id": "typography/marker-handdrawn/punctuation/percent",
       "category": "typography",
       "label": "marker-handdrawn punctuation percent %",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/punctuation/percent.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "percent"
     },
     {
       "id": "typography/marker-handdrawn/punctuation/ampersand",
       "category": "typography",
       "label": "marker-handdrawn punctuation ampersand &",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/punctuation/ampersand.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "ampersand"
     },
     {
       "id": "typography/marker-handdrawn/punctuation/asterisk",
       "category": "typography",
       "label": "marker-handdrawn punctuation asterisk *",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/punctuation/asterisk.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "asterisk"
     },
     {
       "id": "typography/marker-handdrawn/punctuation/plus",
       "category": "typography",
       "label": "marker-handdrawn punctuation plus +",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/punctuation/plus.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "plus"
     },
     {
       "id": "typography/marker-handdrawn/punctuation/minus",
       "category": "typography",
       "label": "marker-handdrawn punctuation minus -",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/punctuation/minus.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "minus"
     },
     {
       "id": "typography/marker-handdrawn/punctuation/equals",
       "category": "typography",
       "label": "marker-handdrawn punctuation equals =",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/punctuation/equals.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "equals"
     },
     {
       "id": "typography/marker-handdrawn/punctuation/less-than",
       "category": "typography",
       "label": "marker-handdrawn punctuation less-than <",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/punctuation/less-than.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "less-than"
     },
     {
       "id": "typography/marker-handdrawn/punctuation/greater-than",
       "category": "typography",
       "label": "marker-handdrawn punctuation greater-than >",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/punctuation/greater-than.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "greater-than"
     },
     {
       "id": "typography/marker-handdrawn/punctuation/slash",
       "category": "typography",
       "label": "marker-handdrawn punctuation slash /",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/punctuation/slash.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "slash"
     },
     {
       "id": "typography/marker-handdrawn/punctuation/backslash",
       "category": "typography",
       "label": "marker-handdrawn punctuation backslash \\",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/punctuation/backslash.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "backslash"
     },
     {
       "id": "typography/marker-handdrawn/punctuation/bar",
       "category": "typography",
       "label": "marker-handdrawn punctuation bar |",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/punctuation/bar.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "bar"
     },
     {
       "id": "typography/marker-handdrawn/punctuation/underscore",
       "category": "typography",
       "label": "marker-handdrawn punctuation underscore _",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/punctuation/underscore.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "underscore"
     },
     {
       "id": "typography/marker-handdrawn/punctuation/en-dash",
       "category": "typography",
       "label": "marker-handdrawn punctuation en-dash –",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/punctuation/en-dash.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "en-dash"
     },
     {
       "id": "typography/marker-handdrawn/punctuation/em-dash",
       "category": "typography",
       "label": "marker-handdrawn punctuation em-dash —",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/punctuation/em-dash.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "em-dash"
     },
     {
       "id": "typography/marker-handdrawn/punctuation/bullet",
       "category": "typography",
       "label": "marker-handdrawn punctuation bullet •",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/punctuation/bullet.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "bullet"
     },
     {
       "id": "typography/marker-handdrawn/punctuation/ellipsis",
       "category": "typography",
       "label": "marker-handdrawn punctuation ellipsis …",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/punctuation/ellipsis.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "ellipsis"
     },
     {
       "id": "typography/marker-handdrawn/punctuation/multiply",
       "category": "typography",
       "label": "marker-handdrawn punctuation multiply ×",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/punctuation/multiply.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "multiply"
     },
     {
       "id": "typography/marker-handdrawn/punctuation/degree",
       "category": "typography",
       "label": "marker-handdrawn punctuation degree °",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/punctuation/degree.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "degree"
     },
     {
       "id": "typography/marker-handdrawn/punctuation/arrow-up",
       "category": "typography",
       "label": "marker-handdrawn punctuation arrow-up ↑",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/punctuation/arrow-up.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "arrow-up"
     },
     {
       "id": "typography/marker-handdrawn/punctuation/arrow-down",
       "category": "typography",
       "label": "marker-handdrawn punctuation arrow-down ↓",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/punctuation/arrow-down.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "arrow-down"
     },
     {
       "id": "typography/marker-handdrawn/punctuation/arrow-left",
       "category": "typography",
       "label": "marker-handdrawn punctuation arrow-left ←",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/punctuation/arrow-left.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "arrow-left"
     },
     {
       "id": "typography/marker-handdrawn/punctuation/arrow-right",
       "category": "typography",
       "label": "marker-handdrawn punctuation arrow-right →",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/punctuation/arrow-right.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "arrow-right"
     },
     {
       "id": "typography/marker-handdrawn/punctuation/check",
       "category": "typography",
       "label": "marker-handdrawn punctuation check ✓",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/marker-handdrawn/punctuation/check.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "marker-handdrawn",
+      "glyph": "check"
     },
     {
       "id": "typography/compact-ui-specimen/uppercase/A",
       "category": "typography",
       "label": "compact-ui-specimen uppercase: A",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/uppercase/A.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "A"
     },
     {
       "id": "typography/compact-ui-specimen/uppercase/B",
       "category": "typography",
       "label": "compact-ui-specimen uppercase: B",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/uppercase/B.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "B"
     },
     {
       "id": "typography/compact-ui-specimen/uppercase/C",
       "category": "typography",
       "label": "compact-ui-specimen uppercase: C",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/uppercase/C.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "C"
     },
     {
       "id": "typography/compact-ui-specimen/uppercase/D",
       "category": "typography",
       "label": "compact-ui-specimen uppercase: D",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/uppercase/D.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "D"
     },
     {
       "id": "typography/compact-ui-specimen/uppercase/E",
       "category": "typography",
       "label": "compact-ui-specimen uppercase: E",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/uppercase/E.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "E"
     },
     {
       "id": "typography/compact-ui-specimen/uppercase/F",
       "category": "typography",
       "label": "compact-ui-specimen uppercase: F",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/uppercase/F.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "F"
     },
     {
       "id": "typography/compact-ui-specimen/uppercase/G",
       "category": "typography",
       "label": "compact-ui-specimen uppercase: G",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/uppercase/G.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "G"
     },
     {
       "id": "typography/compact-ui-specimen/uppercase/H",
       "category": "typography",
       "label": "compact-ui-specimen uppercase: H",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/uppercase/H.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "H"
     },
     {
       "id": "typography/compact-ui-specimen/uppercase/I",
       "category": "typography",
       "label": "compact-ui-specimen uppercase: I",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/uppercase/I.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "I"
     },
     {
       "id": "typography/compact-ui-specimen/uppercase/J",
       "category": "typography",
       "label": "compact-ui-specimen uppercase: J",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/uppercase/J.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "J"
     },
     {
       "id": "typography/compact-ui-specimen/uppercase/K",
       "category": "typography",
       "label": "compact-ui-specimen uppercase: K",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/uppercase/K.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "K"
     },
     {
       "id": "typography/compact-ui-specimen/uppercase/L",
       "category": "typography",
       "label": "compact-ui-specimen uppercase: L",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/uppercase/L.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "L"
     },
     {
       "id": "typography/compact-ui-specimen/uppercase/M",
       "category": "typography",
       "label": "compact-ui-specimen uppercase: M",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/uppercase/M.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "M"
     },
     {
       "id": "typography/compact-ui-specimen/uppercase/N",
       "category": "typography",
       "label": "compact-ui-specimen uppercase: N",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/uppercase/N.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "N"
     },
     {
       "id": "typography/compact-ui-specimen/uppercase/O",
       "category": "typography",
       "label": "compact-ui-specimen uppercase: O",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/uppercase/O.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "O"
     },
     {
       "id": "typography/compact-ui-specimen/uppercase/P",
       "category": "typography",
       "label": "compact-ui-specimen uppercase: P",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/uppercase/P.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "P"
     },
     {
       "id": "typography/compact-ui-specimen/uppercase/Q",
       "category": "typography",
       "label": "compact-ui-specimen uppercase: Q",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/uppercase/Q.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "Q"
     },
     {
       "id": "typography/compact-ui-specimen/uppercase/R",
       "category": "typography",
       "label": "compact-ui-specimen uppercase: R",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/uppercase/R.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "R"
     },
     {
       "id": "typography/compact-ui-specimen/uppercase/S",
       "category": "typography",
       "label": "compact-ui-specimen uppercase: S",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/uppercase/S.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "S"
     },
     {
       "id": "typography/compact-ui-specimen/uppercase/T",
       "category": "typography",
       "label": "compact-ui-specimen uppercase: T",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/uppercase/T.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "T"
     },
     {
       "id": "typography/compact-ui-specimen/uppercase/U",
       "category": "typography",
       "label": "compact-ui-specimen uppercase: U",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/uppercase/U.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "U"
     },
     {
       "id": "typography/compact-ui-specimen/uppercase/V",
       "category": "typography",
       "label": "compact-ui-specimen uppercase: V",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/uppercase/V.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "V"
     },
     {
       "id": "typography/compact-ui-specimen/uppercase/W",
       "category": "typography",
       "label": "compact-ui-specimen uppercase: W",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/uppercase/W.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "W"
     },
     {
       "id": "typography/compact-ui-specimen/uppercase/X",
       "category": "typography",
       "label": "compact-ui-specimen uppercase: X",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/uppercase/X.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "X"
     },
     {
       "id": "typography/compact-ui-specimen/uppercase/Y",
       "category": "typography",
       "label": "compact-ui-specimen uppercase: Y",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/uppercase/Y.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "Y"
     },
     {
       "id": "typography/compact-ui-specimen/uppercase/Z",
       "category": "typography",
       "label": "compact-ui-specimen uppercase: Z",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/uppercase/Z.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "Z"
     },
     {
       "id": "typography/compact-ui-specimen/lowercase/a",
       "category": "typography",
       "label": "compact-ui-specimen lowercase: a",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/lowercase/a.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "a"
     },
     {
       "id": "typography/compact-ui-specimen/lowercase/b",
       "category": "typography",
       "label": "compact-ui-specimen lowercase: b",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/lowercase/b.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "b"
     },
     {
       "id": "typography/compact-ui-specimen/lowercase/c",
       "category": "typography",
       "label": "compact-ui-specimen lowercase: c",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/lowercase/c.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "c"
     },
     {
       "id": "typography/compact-ui-specimen/lowercase/d",
       "category": "typography",
       "label": "compact-ui-specimen lowercase: d",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/lowercase/d.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "d"
     },
     {
       "id": "typography/compact-ui-specimen/lowercase/e",
       "category": "typography",
       "label": "compact-ui-specimen lowercase: e",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/lowercase/e.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "e"
     },
     {
       "id": "typography/compact-ui-specimen/lowercase/f",
       "category": "typography",
       "label": "compact-ui-specimen lowercase: f",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/lowercase/f.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "f"
     },
     {
       "id": "typography/compact-ui-specimen/lowercase/g",
       "category": "typography",
       "label": "compact-ui-specimen lowercase: g",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/lowercase/g.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "g"
     },
     {
       "id": "typography/compact-ui-specimen/lowercase/h",
       "category": "typography",
       "label": "compact-ui-specimen lowercase: h",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/lowercase/h.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "h"
     },
     {
       "id": "typography/compact-ui-specimen/lowercase/i",
       "category": "typography",
       "label": "compact-ui-specimen lowercase: i",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/lowercase/i.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "i"
     },
     {
       "id": "typography/compact-ui-specimen/lowercase/j",
       "category": "typography",
       "label": "compact-ui-specimen lowercase: j",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/lowercase/j.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "j"
     },
     {
       "id": "typography/compact-ui-specimen/lowercase/k",
       "category": "typography",
       "label": "compact-ui-specimen lowercase: k",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/lowercase/k.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "k"
     },
     {
       "id": "typography/compact-ui-specimen/lowercase/l",
       "category": "typography",
       "label": "compact-ui-specimen lowercase: l",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/lowercase/l.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "l"
     },
     {
       "id": "typography/compact-ui-specimen/lowercase/m",
       "category": "typography",
       "label": "compact-ui-specimen lowercase: m",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/lowercase/m.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "m"
     },
     {
       "id": "typography/compact-ui-specimen/lowercase/n",
       "category": "typography",
       "label": "compact-ui-specimen lowercase: n",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/lowercase/n.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "n"
     },
     {
       "id": "typography/compact-ui-specimen/lowercase/o",
       "category": "typography",
       "label": "compact-ui-specimen lowercase: o",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/lowercase/o.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "o"
     },
     {
       "id": "typography/compact-ui-specimen/lowercase/p",
       "category": "typography",
       "label": "compact-ui-specimen lowercase: p",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/lowercase/p.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "p"
     },
     {
       "id": "typography/compact-ui-specimen/lowercase/q",
       "category": "typography",
       "label": "compact-ui-specimen lowercase: q",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/lowercase/q.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "q"
     },
     {
       "id": "typography/compact-ui-specimen/lowercase/r",
       "category": "typography",
       "label": "compact-ui-specimen lowercase: r",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/lowercase/r.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "r"
     },
     {
       "id": "typography/compact-ui-specimen/lowercase/s",
       "category": "typography",
       "label": "compact-ui-specimen lowercase: s",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/lowercase/s.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "s"
     },
     {
       "id": "typography/compact-ui-specimen/lowercase/t",
       "category": "typography",
       "label": "compact-ui-specimen lowercase: t",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/lowercase/t.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "t"
     },
     {
       "id": "typography/compact-ui-specimen/lowercase/u",
       "category": "typography",
       "label": "compact-ui-specimen lowercase: u",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/lowercase/u.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "u"
     },
     {
       "id": "typography/compact-ui-specimen/lowercase/v",
       "category": "typography",
       "label": "compact-ui-specimen lowercase: v",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/lowercase/v.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "v"
     },
     {
       "id": "typography/compact-ui-specimen/lowercase/w",
       "category": "typography",
       "label": "compact-ui-specimen lowercase: w",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/lowercase/w.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "w"
     },
     {
       "id": "typography/compact-ui-specimen/lowercase/x",
       "category": "typography",
       "label": "compact-ui-specimen lowercase: x",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/lowercase/x.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "x"
     },
     {
       "id": "typography/compact-ui-specimen/lowercase/y",
       "category": "typography",
       "label": "compact-ui-specimen lowercase: y",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/lowercase/y.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "y"
     },
     {
       "id": "typography/compact-ui-specimen/lowercase/z",
       "category": "typography",
       "label": "compact-ui-specimen lowercase: z",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/lowercase/z.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "z"
     },
     {
       "id": "typography/compact-ui-specimen/digit/0",
       "category": "typography",
       "label": "compact-ui-specimen digit: 0",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/digit/0.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "0"
     },
     {
       "id": "typography/compact-ui-specimen/digit/1",
       "category": "typography",
       "label": "compact-ui-specimen digit: 1",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/digit/1.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "1"
     },
     {
       "id": "typography/compact-ui-specimen/digit/2",
       "category": "typography",
       "label": "compact-ui-specimen digit: 2",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/digit/2.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "2"
     },
     {
       "id": "typography/compact-ui-specimen/digit/3",
       "category": "typography",
       "label": "compact-ui-specimen digit: 3",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/digit/3.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "3"
     },
     {
       "id": "typography/compact-ui-specimen/digit/4",
       "category": "typography",
       "label": "compact-ui-specimen digit: 4",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/digit/4.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "4"
     },
     {
       "id": "typography/compact-ui-specimen/digit/5",
       "category": "typography",
       "label": "compact-ui-specimen digit: 5",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/digit/5.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "5"
     },
     {
       "id": "typography/compact-ui-specimen/digit/6",
       "category": "typography",
       "label": "compact-ui-specimen digit: 6",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/digit/6.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "6"
     },
     {
       "id": "typography/compact-ui-specimen/digit/7",
       "category": "typography",
       "label": "compact-ui-specimen digit: 7",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/digit/7.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "7"
     },
     {
       "id": "typography/compact-ui-specimen/digit/8",
       "category": "typography",
       "label": "compact-ui-specimen digit: 8",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/digit/8.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "8"
     },
     {
       "id": "typography/compact-ui-specimen/digit/9",
       "category": "typography",
       "label": "compact-ui-specimen digit: 9",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/digit/9.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "9"
     },
     {
       "id": "typography/compact-ui-specimen/punctuation/exclamation",
       "category": "typography",
       "label": "compact-ui-specimen punctuation exclamation !",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/punctuation/exclamation.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "exclamation"
     },
     {
       "id": "typography/compact-ui-specimen/punctuation/question",
       "category": "typography",
       "label": "compact-ui-specimen punctuation question ?",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/punctuation/question.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "question"
     },
     {
       "id": "typography/compact-ui-specimen/punctuation/period",
       "category": "typography",
       "label": "compact-ui-specimen punctuation period .",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/punctuation/period.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "period"
     },
     {
       "id": "typography/compact-ui-specimen/punctuation/comma",
       "category": "typography",
       "label": "compact-ui-specimen punctuation comma ,",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/punctuation/comma.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "comma"
     },
     {
       "id": "typography/compact-ui-specimen/punctuation/colon",
       "category": "typography",
       "label": "compact-ui-specimen punctuation colon :",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/punctuation/colon.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "colon"
     },
     {
       "id": "typography/compact-ui-specimen/punctuation/semicolon",
       "category": "typography",
       "label": "compact-ui-specimen punctuation semicolon ;",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/punctuation/semicolon.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "semicolon"
     },
     {
       "id": "typography/compact-ui-specimen/punctuation/apostrophe",
       "category": "typography",
       "label": "compact-ui-specimen punctuation apostrophe '",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/punctuation/apostrophe.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "apostrophe"
     },
     {
       "id": "typography/compact-ui-specimen/punctuation/double-quote",
       "category": "typography",
       "label": "compact-ui-specimen punctuation double-quote \"",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/punctuation/double-quote.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "double-quote"
     },
     {
       "id": "typography/compact-ui-specimen/punctuation/open-paren",
       "category": "typography",
       "label": "compact-ui-specimen punctuation open-paren (",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/punctuation/open-paren.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "open-paren"
     },
     {
       "id": "typography/compact-ui-specimen/punctuation/close-paren",
       "category": "typography",
       "label": "compact-ui-specimen punctuation close-paren )",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/punctuation/close-paren.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "close-paren"
     },
     {
       "id": "typography/compact-ui-specimen/punctuation/open-square",
       "category": "typography",
       "label": "compact-ui-specimen punctuation open-square [",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/punctuation/open-square.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "open-square"
     },
     {
       "id": "typography/compact-ui-specimen/punctuation/close-square",
       "category": "typography",
       "label": "compact-ui-specimen punctuation close-square ]",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/punctuation/close-square.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "close-square"
     },
     {
       "id": "typography/compact-ui-specimen/punctuation/open-curly",
       "category": "typography",
       "label": "compact-ui-specimen punctuation open-curly {",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/punctuation/open-curly.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "open-curly"
     },
     {
       "id": "typography/compact-ui-specimen/punctuation/close-curly",
       "category": "typography",
       "label": "compact-ui-specimen punctuation close-curly }",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/punctuation/close-curly.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "close-curly"
     },
     {
       "id": "typography/compact-ui-specimen/punctuation/at",
       "category": "typography",
       "label": "compact-ui-specimen punctuation at @",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/punctuation/at.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "at"
     },
     {
       "id": "typography/compact-ui-specimen/punctuation/hash",
       "category": "typography",
       "label": "compact-ui-specimen punctuation hash #",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/punctuation/hash.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "hash"
     },
     {
       "id": "typography/compact-ui-specimen/punctuation/dollar",
       "category": "typography",
       "label": "compact-ui-specimen punctuation dollar $",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/punctuation/dollar.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "dollar"
     },
     {
       "id": "typography/compact-ui-specimen/punctuation/percent",
       "category": "typography",
       "label": "compact-ui-specimen punctuation percent %",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/punctuation/percent.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "percent"
     },
     {
       "id": "typography/compact-ui-specimen/punctuation/ampersand",
       "category": "typography",
       "label": "compact-ui-specimen punctuation ampersand &",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/punctuation/ampersand.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "ampersand"
     },
     {
       "id": "typography/compact-ui-specimen/punctuation/asterisk",
       "category": "typography",
       "label": "compact-ui-specimen punctuation asterisk *",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/punctuation/asterisk.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "asterisk"
     },
     {
       "id": "typography/compact-ui-specimen/punctuation/plus",
       "category": "typography",
       "label": "compact-ui-specimen punctuation plus +",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/punctuation/plus.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "plus"
     },
     {
       "id": "typography/compact-ui-specimen/punctuation/minus",
       "category": "typography",
       "label": "compact-ui-specimen punctuation minus -",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/punctuation/minus.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "minus"
     },
     {
       "id": "typography/compact-ui-specimen/punctuation/equals",
       "category": "typography",
       "label": "compact-ui-specimen punctuation equals =",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/punctuation/equals.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "equals"
     },
     {
       "id": "typography/compact-ui-specimen/punctuation/less-than",
       "category": "typography",
       "label": "compact-ui-specimen punctuation less-than <",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/punctuation/less-than.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "less-than"
     },
     {
       "id": "typography/compact-ui-specimen/punctuation/greater-than",
       "category": "typography",
       "label": "compact-ui-specimen punctuation greater-than >",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/punctuation/greater-than.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "greater-than"
     },
     {
       "id": "typography/compact-ui-specimen/punctuation/slash",
       "category": "typography",
       "label": "compact-ui-specimen punctuation slash /",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/punctuation/slash.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "slash"
     },
     {
       "id": "typography/compact-ui-specimen/punctuation/backslash",
       "category": "typography",
       "label": "compact-ui-specimen punctuation backslash \\",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/punctuation/backslash.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "backslash"
     },
     {
       "id": "typography/compact-ui-specimen/punctuation/bar",
       "category": "typography",
       "label": "compact-ui-specimen punctuation bar |",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/punctuation/bar.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "bar"
     },
     {
       "id": "typography/compact-ui-specimen/punctuation/underscore",
       "category": "typography",
       "label": "compact-ui-specimen punctuation underscore _",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/punctuation/underscore.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "underscore"
     },
     {
       "id": "typography/compact-ui-specimen/punctuation/en-dash",
       "category": "typography",
       "label": "compact-ui-specimen punctuation en-dash –",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/punctuation/en-dash.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "en-dash"
     },
     {
       "id": "typography/compact-ui-specimen/punctuation/em-dash",
       "category": "typography",
       "label": "compact-ui-specimen punctuation em-dash —",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/punctuation/em-dash.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "em-dash"
     },
     {
       "id": "typography/compact-ui-specimen/punctuation/bullet",
       "category": "typography",
       "label": "compact-ui-specimen punctuation bullet •",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/punctuation/bullet.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "bullet"
     },
     {
       "id": "typography/compact-ui-specimen/punctuation/ellipsis",
       "category": "typography",
       "label": "compact-ui-specimen punctuation ellipsis …",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/punctuation/ellipsis.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "ellipsis"
     },
     {
       "id": "typography/compact-ui-specimen/punctuation/multiply",
       "category": "typography",
       "label": "compact-ui-specimen punctuation multiply ×",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/punctuation/multiply.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "multiply"
     },
     {
       "id": "typography/compact-ui-specimen/punctuation/degree",
       "category": "typography",
       "label": "compact-ui-specimen punctuation degree °",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/punctuation/degree.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "degree"
     },
     {
       "id": "typography/compact-ui-specimen/punctuation/arrow-up",
       "category": "typography",
       "label": "compact-ui-specimen punctuation arrow-up ↑",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/punctuation/arrow-up.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "arrow-up"
     },
     {
       "id": "typography/compact-ui-specimen/punctuation/arrow-down",
       "category": "typography",
       "label": "compact-ui-specimen punctuation arrow-down ↓",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/punctuation/arrow-down.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "arrow-down"
     },
     {
       "id": "typography/compact-ui-specimen/punctuation/arrow-left",
       "category": "typography",
       "label": "compact-ui-specimen punctuation arrow-left ←",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/punctuation/arrow-left.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "arrow-left"
     },
     {
       "id": "typography/compact-ui-specimen/punctuation/arrow-right",
       "category": "typography",
       "label": "compact-ui-specimen punctuation arrow-right →",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/punctuation/arrow-right.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "arrow-right"
     },
     {
       "id": "typography/compact-ui-specimen/punctuation/check",
       "category": "typography",
       "label": "compact-ui-specimen punctuation check ✓",
-      "status": "planned",
-      "source": "03-typography-and-wordmark.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; experimental custom SVG skeleton, NOT pixel-exact or a font binary",
+      "path": "docs/design/svg/typography/compact-ui-specimen/punctuation/check.svg",
+      "fidelity": "exploratory-stroked-paths",
+      "fontFamily": "compact-ui-specimen",
+      "glyph": "check"
     },
     {
       "id": "vector/green-download/dimensional",
