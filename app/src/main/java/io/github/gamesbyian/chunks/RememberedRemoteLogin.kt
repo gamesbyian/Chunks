@@ -13,7 +13,7 @@ import javax.crypto.spec.GCMParameterSpec
 import org.json.JSONArray
 
 /**
- * One opt-in saved rTorrent profile, encrypted with a device-bound Android
+ * One opt-out saved rTorrent profile, encrypted with a device-bound Android
  * Keystore AES-GCM key. The credential record never enters source, backups,
  * exported components, or cleartext preferences. No biometric requirement:
  * background-free manual Connect remains possible on a restarted app.
@@ -26,6 +26,8 @@ internal class RememberedRemoteLogin(context: Context) {
         "remembered-remote-login-v1", Context.MODE_PRIVATE
     )
     private val alias = "io.github.gamesbyian.chunks.remembered-remote-login-v1"
+
+    @Synchronized fun hasSavedLogin(): Boolean = prefs.contains("ciphertext")
 
     @Synchronized fun load(): RemoteCredentials? {
         val text = prefs.getString("ciphertext", null) ?: return null
