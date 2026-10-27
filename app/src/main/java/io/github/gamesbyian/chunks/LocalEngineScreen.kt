@@ -7,6 +7,7 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,6 +20,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -61,6 +63,9 @@ import io.github.gamesbyian.chunks.model.LocalInventoryFrame
 import io.github.gamesbyian.chunks.model.LocalInventoryFreshness
 import io.github.gamesbyian.chunks.model.CollectionNameRegistryRules
 import io.github.gamesbyian.chunks.model.ManualCollectionPager
+import io.github.gamesbyian.chunks.model.LocalQueueCatalog
+import io.github.gamesbyian.chunks.model.LocalQueueFilter
+import io.github.gamesbyian.chunks.model.LocalQueueOrder
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoPreview
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader
 import java.io.ByteArrayOutputStream
@@ -196,8 +201,17 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
     val transfers = inventoryFrame.entries
     val inventoryStale = inventoryFrame.stale || LocalScreenReader.revision.blocksMutations()
     var transferPage by remember { mutableStateOf(0) }
-    val transferSlice = remember(transfers, transferPage) {
-        ManualCollectionPager.slice(transfers, transferPage, size = 20)
+    var transferSearch by remember { mutableStateOf("") }
+    var transferFilter by remember { mutableStateOf(LocalQueueFilter.ALL) }
+    var transferOrder by remember { mutableStateOf(LocalQueueOrder.NAME) }
+    val displayedTransfers = remember(transfers, transferSearch, transferFilter, transferOrder) {
+        LocalQueueCatalog.visible(transfers, transferSearch, transferFilter, transferOrder)
+    }
+    // Changing the result set or its order always returns to page one. A new
+    // engine observation does not change filter/search or silently select items.
+    LaunchedEffect(transferSearch, transferFilter, transferOrder) { transferPage = 0 }
+    val transferSlice = remember(displayedTransfers, transferPage) {
+        ManualCollectionPager.slice(displayedTransfers, transferPage, size = 20)
     }
     var collectionRevision by remember { mutableStateOf(0) }
     var knownLocalCollections by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -331,7 +345,7 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
                 scrollPx = scrollState.value,
                 maxScrollPx = scrollState.maxValue,
                 viewportHeightPx = viewportHeightPx,
-                hasTransfers = transfers.isNotEmpty()
+                hasTransfers = displayedTransfers.isNotEmpty()
             )
         }
     }
@@ -490,11 +504,52 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
             registeredNames = registeredNames,
             onNamesChanged = { registeredNames = it }
         )
+        Text("Phone transfers", style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold)
+        OutlinedTextField(
+            value = transferSearch,
+            onValueChange = { transferSearch = it },
+            label = { Text("Search local names, folders or hashes") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            LocalQueueFilter.entries.forEach { choice ->
+                FilterChip(
+                    selected = transferFilter == choice,
+                    onClick = { transferFilter = choice },
+                    label = { Text(choice.label) },
+                    modifier = Modifier.heightIn(min = 48.dp)
+                )
+            }
+        }
+        Text("Sort by", style = MaterialTheme.typography.labelLarge)
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            LocalQueueOrder.entries.forEach { choice ->
+                FilterChip(
+                    selected = transferOrder == choice,
+                    onClick = { transferOrder = choice },
+                    label = { Text(choice.label) },
+                    modifier = Modifier.heightIn(min = 48.dp)
+                )
+            }
+        }
+        Text("Showing ${displayedTransfers.size} of ${transfers.size} local transfers",
+            style = MaterialTheme.typography.bodySmall)
         if (transfers.isEmpty()) {
             Text("No transfers on this phone yet.", style = MaterialTheme.typography.bodySmall)
+        } else if (displayedTransfers.isEmpty()) {
+            Text("No transfers match this search or filter.",
+                style = MaterialTheme.typography.bodySmall)
         } else {
-            // Only 20 heavy cards are composed at a time. Rendering controls
-            // stays pure; a page change never mutates the native engine.
+            // Only 20 heavy cards are composed at a time. Search, filtering and
+            // sorting run against an immutable observed frame, never native JNI.
             LocalTransferPageControls(
                 page = transferSlice,
                 onPrevious = { transferPage = (transferSlice.pageIndex - 1).coerceAtLeast(0) },
