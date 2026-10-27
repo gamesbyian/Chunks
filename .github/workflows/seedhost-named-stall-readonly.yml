@@ -1,0 +1,66 @@
+name: Chunks protected two-reported-torrent read-only diagnosis
+# One-time on merge to trusted main. Do not fetch raw torrent details into
+# public logs. No Add/Start/Stop/Remove, tracker commands or filesystem writes.
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/seedhost-named-stall-readonly.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: chunks-protected-two-named-stalls
+  cancel-in-progress: false
+jobs:
+  two-stalls:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CHUNKS_LIVE_RUTORRENT_URL: "https://ianseeds.wood.seedhost.eu/rutorrent/"
+      CHUNKS_LIVE_RTORRENT_USER: ${{ secrets.rtorrent_user }}
+      CHUNKS_LIVE_RTORRENT_PASS: ${{ secrets.rtorrent_pass }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+      - name: Install Android API37 compile SDK
+        run: |
+          printf 'y\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
+          if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          fi
+      - name: Run strictly read-only named diagnosis with output allowlist
+        run: |
+          set -euo pipefail
+          test -n "$CHUNKS_LIVE_RUTORRENT_USER"
+          test -n "$CHUNKS_LIVE_RUTORRENT_PASS"
+          log=$(mktemp)
+          trap 'rm -f "$log"' EXIT
+          status=0
+          gradle --no-daemon --console=plain :app:testDebugUnitTest \
+            --tests 'io.github.gamesbyian.chunks.rpc.SeedhostNamedStallDiagnosticTest.assessTwoReportedNamesWithoutChangingServer' >"$log" 2>&1 || status=$?
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          import xml.etree.ElementTree as ET
+          p=Path("app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.SeedhostNamedStallDiagnosticTest.xml")
+          if not p.is_file():
+              print("CHUNKS_NAMED: report=missing")
+          else:
+              root=ET.parse(p).getroot()
+              for line in (root.findtext("system-out") or "").splitlines():
+                  if re.fullmatch(r"CHUNKS_NAMED: (uncle-buck|marshals) [A-Za-z0-9 _=.,:-]{1,380}",line):
+                      print(line)
+              print("CHUNKS_NAMED: tests="+root.attrib.get("tests","?")+
+                    " failed="+root.attrib.get("failures","?")+
+                    " errors="+root.attrib.get("errors","?")+
+                    " skipped="+root.attrib.get("skipped","?"))
+          PY
+          test "$status" -eq 0
