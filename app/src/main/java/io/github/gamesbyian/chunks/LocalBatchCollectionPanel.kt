@@ -97,7 +97,7 @@ internal fun LocalBatchCollectionPanel(
                     }
                 }
                 // One list of compact choices rather than duplicate heavy transfer cards.
-                shown.take(100).forEach { transfer ->
+                shown.take(20).forEach { transfer ->
                     Row(
                         Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(
                             value = transfer.infoHash in selected,
@@ -117,8 +117,8 @@ internal fun LocalBatchCollectionPanel(
                         Text(transfer.name, modifier = Modifier.weight(1f), maxLines = 2)
                     }
                 }
-                if (shown.size > 100) {
-                    Text("Only the first 100 results have individual checkboxes here. " +
+                if (shown.size > 20) {
+                    Text("Only the first 20 results have individual checkboxes here. " +
                         "Use Select shown for all ${shown.size} matching transfers.",
                         style = MaterialTheme.typography.bodySmall)
                 }
