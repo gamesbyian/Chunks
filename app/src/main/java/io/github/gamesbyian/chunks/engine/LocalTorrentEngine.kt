@@ -354,7 +354,17 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     }
 
     fun resume(infoHash: String, readbackTimeoutMs: Long = 5_000): LocalCommandResult =
-        command(infoHash, wantStopped = false, readbackTimeoutMs) { it.resume() }
+        command(infoHash, wantStopped = false, readbackTimeoutMs) {
+            // A magnet initially runs in upload-only mode so it can fetch
+            // metadata without downloading payload. If the user manually
+            // presses Start while that metadata is pending, preserve that
+            // explicit intent across the METADATA_RECEIVED callback. Otherwise
+            // the callback would pause the torrent even though Start was
+            // acknowledged earlier. A later explicit Stop clears this intent.
+            val key = normal(infoHash)
+            if (awaitingMetadata.contains(key)) startWhenMetadataArrives.add(key)
+            it.resume()
+        }
 
     fun pause(infoHash: String, readbackTimeoutMs: Long = 5_000): LocalCommandResult =
         command(infoHash, wantStopped = true, readbackTimeoutMs) {
