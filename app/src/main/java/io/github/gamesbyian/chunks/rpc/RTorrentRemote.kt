@@ -720,7 +720,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         var maxPeers = 0L
         for (raw in rows) {
             val row = raw as? List<*> ?: error("Malformed tracker row")
-            require(row.size == if (peerDataSupported) 4 else 3) {
+            require(row.size == (if (peerDataSupported) 4 else 3)) {
                 "Unsupported tracker field layout"
             }
             val isEnabled = number(row[0])
