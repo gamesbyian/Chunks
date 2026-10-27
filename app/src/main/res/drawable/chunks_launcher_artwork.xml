@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- GENERATED from docs/design/approved/chunks-app-icon-master.svg by tools/generate_launcher_vector.mjs.
+<!-- GENERATED from docs/design/approved/chunks-app-icon-master.svg by tools/generate_launcher_vector.cjs.
      SOURCE_SVG_GIT_BLOB=e638e48434233ed465d5592dd348126a530477a1; do not edit this Android rendering directly. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
         xmlns:aapt="http://schemas.android.com/aapt"
