@@ -230,6 +230,7 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
         }
     }
     var magnet by remember { mutableStateOf("") }
+    var startAfterAdd by remember { mutableStateOf(true) }
     var dht by remember { mutableStateOf(LocalEngineHolder.dhtPreferred(context)) }
     var dhtSaving by remember { mutableStateOf(false) }
     var dhtError by remember { mutableStateOf<String?>(null) }
@@ -353,17 +354,24 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
             }
             Switch(checked = dht, enabled = !dhtSaving, onCheckedChange = null)
         }
+        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
+            .toggleable(value = startAfterAdd, enabled = !busy && !inventoryStale,
+                role = Role.Checkbox, onValueChange = { startAfterAdd = it }),
+            verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(checked = startAfterAdd, enabled = !busy && !inventoryStale, onCheckedChange = null)
+            Text("Start downloading after Add (recommended)", modifier = Modifier.padding(start = 8.dp))
+        }
         OutlinedTextField(value = magnet, onValueChange = { magnet = it.trim() },
             label = { Text("Or paste a magnet link") }, singleLine = true,
             modifier = Modifier.fillMaxWidth())
         if (magnet.isNotEmpty() && destination != null) {
-            Text("Saves into Chunks' folder on phone storage. Chunks fetches only the torrent's description from the magnet's trackers and peers, then stops; no file data downloads until you press Start.",
+            Text("Saves into Chunks' folder. Magnets first discover metadata via peers/trackers; if Start after Add is selected, payload downloading begins after metadata arrives. Without peers, downloading cannot begin.",
                 style = MaterialTheme.typography.bodySmall)
             if (LocalMagnetDiscoveryAdvice.warn(magnet, dht)) {
                 Text("This magnet has no usable tracker address and DHT is off. " +
                     "Chunks may be unable to find peers and fetch its metadata. " +
                     "Enable DHT above or use a .torrent file with tracker information. " +
-                    "Adding it will not start downloading file data.",
+                    "Without metadata or peers, downloading cannot begin.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error)
             }
@@ -371,10 +379,23 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
                 performLocalMutation {
                     try {
                         val result = withContext(Dispatchers.IO) {
-                            LocalEngineHolder.get(context).addMagnet(magnet, destination)
+                            LocalEngineHolder.get(context).addMagnet(magnet, destination, autoStartAfterMetadata = startAfterAdd)
                         }
-                        message = (result as? LocalAddResult.Refused)?.reason
-                        if (result !is LocalAddResult.Refused) magnet = ""
+                        message = when (result) {
+                            is LocalAddResult.Refused -> result.reason
+                            is LocalAddResult.FetchingMetadata ->
+                                if (startAfterAdd) "Magnet added. Discovering metadata; download begins automatically when metadata arrives and peers are available."
+                                else "Magnet added in metadata-only mode. Use Start after the metadata is ready."
+                            is LocalAddResult.AddedStopped -> null
+                        }
+                        if (result !is LocalAddResult.Refused) {
+                            if (startAfterAdd) {
+                                try { LocalEngineService.start(context) } catch (_: Exception) {
+                                    message = "Magnet added, but Android did not start the background service. Keep Chunks open."
+                                }
+                            }
+                            magnet = ""
+                        }
                     } catch (cancel: kotlinx.coroutines.CancellationException) {
                         throw cancel
                     } catch (_: Exception) {
@@ -382,7 +403,7 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
                         message = "Magnet Add was not confirmed. Wait for a fresh transfer list and check for the magnet before retrying."
                     }
                 }
-            }, enabled = !busy && !inventoryStale && !dhtSaving, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Add magnet (metadata only)") }
+            }, enabled = !busy && !inventoryStale && !dhtSaving, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text(if (startAfterAdd) "Add magnet and start" else "Add magnet (metadata only)") }
         }
         if (destination == null) Text("Phone storage for Chunks is unavailable right now.",
             color = MaterialTheme.colorScheme.error)
@@ -397,19 +418,38 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
 
         val add = pending
         if (add != null && destination != null) LocalAddReview(add.preview, destination,
-            busy = busy || inventoryStale,
+            busy = busy || inventoryStale, startAfterAdd = startAfterAdd,
             onConfirm = {
                 performLocalMutation {
                     try {
                         val result = withContext(Dispatchers.IO) {
-                            LocalEngineHolder.get(context).addStopped(add.bytes, destination)
+                            val engine = LocalEngineHolder.get(context)
+                            val added = engine.addStopped(add.bytes, destination)
+                            if (startAfterAdd && added is LocalAddResult.AddedStopped)
+                                added to engine.resume(added.status.infoHash)
+                            else added to null
                         }
-                        message = when (result) {
-                            is LocalAddResult.AddedStopped, is LocalAddResult.FetchingMetadata -> null
-                            is LocalAddResult.Refused -> result.reason
+                        val (added, started) = result
+                        message = when (added) {
+                            is LocalAddResult.Refused -> added.reason
+                            is LocalAddResult.FetchingMetadata -> "Metadata is still loading."
+                            is LocalAddResult.AddedStopped -> when (started?.outcome) {
+                                LocalCommandOutcome.VERIFIED -> {
+                                    try { LocalEngineService.start(context) } catch (_: Exception) {
+                                        "Started on phone, but Android background service could not start. Keep Chunks open."
+                                    }
+                                    "Added and started. Peer availability and downloaded bytes need observation in the transfer list."
+                                }
+                                LocalCommandOutcome.UNCERTAIN -> {
+                                    inventoryFrame = inventoryFrame.copy(stale = true)
+                                    "Added, but Start was not confirmed. Check the next phone transfer list before trying again."
+                                }
+                                LocalCommandOutcome.NOT_FOUND ->
+                                    "Added but could not locate the torrent for Start. Inspect the list before retrying."
+                                null -> "Added stopped. Start manually from its transfer card."
+                            }
                         }
-                        // Keep the chosen document for correction/review if explicitly refused.
-                        if (result !is LocalAddResult.Refused) pending = null
+                        if (added !is LocalAddResult.Refused) pending = null
                     } catch (cancel: kotlinx.coroutines.CancellationException) {
                         throw cancel
                     } catch (_: Exception) {
