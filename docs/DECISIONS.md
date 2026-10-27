@@ -4,6 +4,7 @@ Reconciled 2026-10-26 after current implementation/evidence review. **Owner** me
 
 | ID | Status | Decision and boundaries | Reopen condition |
 |---|---|---|---|
+| D-LOCK-20261027 | Owner | Optional privacy lock for viewing/controlling local transfers and separate remote profiles. Once enabled, default once per app process session, customizable for security/convenience; use Android device-supported biometrics and device credentials. Remember remote server credentials by default with opt-out; UI unlock remains independent of server login. | Revisit after handset security/UX proof; contract in TRANSFER-PRIVACY-LOCK.md |
 | D01 | Owner | Chunks, Android-native BitTorrent client plus bulletproof rTorrent remote | Owner change |
 | D02 | Owner | Choose a download folder at Add; support live move and safe local-copy renames | Implementation must transparently disclose safe limits; never promise universal zero disk-I/O interruption |
 | D03 | Owner | Smart suggestions across TV/movies/music/Star Trek/Spider-Man/ebooks/comics and emergent categories | Consent/privacy architecture |

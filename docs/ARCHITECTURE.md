@@ -2,6 +2,10 @@
 
 Revised after CRITICAL-REVIEW-2026-10-24.md. **A design contract, not a claim of running implementation.** Product scope: PRODUCT.md; present work order: WORK-QUEUE.md; accepted evidence: QUALITY-LEDGER.md.
 
+## Privacy/auth architecture boundary (planned)
+
+Implement an in-memory process-session authorization coordinator keyed to local engine and specific remote profile identity, with policy generation, monotonic background-expiry timestamps, serialized BiometricPrompt transactions and explicit invalidation on process restart or policy changes. Enforce privacy both before screen composition and at protected command execution boundaries; do not rely on an overlay or persisted boolean. Use AndroidX BiometricPrompt and Android Keystore-backed secret storage behind Android-specific adapters, independently of typed rTorrent authentication transport. A locked UI may not tear down the independently managed native torrent engine/service or authorized background remote jobs. Redact recents/notifications/shortcuts/widgets/intents/TalkBack and reject stale callbacks, even through restored navigation. Unavailable biometric enrollment and invalidated keys must fail safely, with recoverable account/credential paths. See [TRANSFER-PRIVACY-LOCK.md](TRANSFER-PRIVACY-LOCK.md). **Design, not implementation.**
+
 ## Architecture: shared semantics, independent capabilities
 
 Android Compose UI and share intents → application command coordinator → Transfer / Place / Collection / Operation domain model → explicit local engine adapter OR rTorrent RPC adapter. Organization produces **proposals**, not filesystem side effects. Storage providers and the optional Companion execute only authorized, capability-proven operations.

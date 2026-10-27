@@ -10,6 +10,10 @@ Updated after CRITICAL-REVIEW-2026-10-24.md. Public source repository, untrusted
 4. User storage: active torrent backing bytes, resume/session state, library copies and metadata catalogs have distinct ownership and deletion rights.
 5. Third-party metadata, crash reports and telemetry: potentially reveal private content, trackers, file paths and behaviors. Local-first, opt-in and with inspectable redacted output.
 
+## Session privacy gate and biometric trust boundary (owner requirement)
+
+[TRANSFER-PRIVACY-LOCK.md](TRANSFER-PRIVACY-LOCK.md) governs the optional local-transfer and per-remote-profile interface privacy lock. Enabled scopes default to one authentication per **app process session**, never persisted across a process restart. Use Android BiometricPrompt (supported strong biometrics and/or device credentials); biometric success is a scoped UI authorization, **not rTorrent server authentication** and not proof that a remote password is securely encrypted. Protect content at route/action boundaries before first render, including recents, deep links, intents, notifications, widgets and accessibility exposure. Authenticate again for sensitive operations according to policy, while preserving separate exact-target destructive confirmation. A locked UI must not stop local seeding or approved background work. Store remembered server credentials by default with opt-out and explicit deletion only after reviewed Keystore-backed persistence, failure/recovery and backup analysis. Existing prototype volatility is a gap, not acceptable fulfillment. **Specification only; acceptance pending.**
+
 ## Connection and credentials
 
 - Never expose unauthenticated rTorrent SCGI to the public network. Prefer loopback/unix-socket SCGI behind a protected authenticated reverse proxy, private VPN or carefully scoped tunnel.
