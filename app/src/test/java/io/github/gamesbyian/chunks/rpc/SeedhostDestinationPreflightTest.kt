@@ -53,16 +53,16 @@ class SeedhostDestinationPreflightTest {
         val candidates = listOf("/", "/one", "/srv//child", "/srv/../other",
             "/srv/./other", "/srv/x;d.erase", "/srv/x=d.directory.set",
             "/srv/evil\\path", "/srv/quotes'bad", "/srv/" + ')
-        assertNull(SeedhostDestinationPreflight.select(null, candidates.map(::observed)))
+        assertNull(SeedhostDestinationPreflight.select(null, candidates.map { observed(it) }))
         assertEquals("/srv/valid path",
-            SeedhostDestinationPreflight.select(null, candidates.map(::observed) +
+            SeedhostDestinationPreflight.select(null, candidates.map { observed(it) } +
                 observed("/srv/valid path"))?.directory)
     }
 }
  + "d")
-        assertNull(SeedhostDestinationPreflight.select(null, candidates.map(::observed)))
+        assertNull(SeedhostDestinationPreflight.select(null, candidates.map { observed(it) }))
         assertEquals("/srv/valid path",
-            SeedhostDestinationPreflight.select(null, candidates.map(::observed) +
+            SeedhostDestinationPreflight.select(null, candidates.map { observed(it) } +
                 observed("/srv/valid path"))?.directory)
     }
 }
