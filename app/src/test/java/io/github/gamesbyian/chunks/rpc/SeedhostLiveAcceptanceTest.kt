@@ -202,6 +202,16 @@ class SeedhostLiveAcceptanceTest {
             log("start outcome=${start::class.simpleName}")
             assertTrue(start !is LifecycleOutcome.Uncertain)
             assertTrue("Did not start", waitFor(rtorrent, hash) { it?.started == true }?.started == true)
+            // d.state=1 alone includes paused transfers; this exact-host probe
+            // must also verify the engine actually activated the fixture.
+            var active = false
+            for (attempt in 1..25) {
+                active = rtorrent.readActivity(hash).active == true
+                if (active) break
+                kotlinx.coroutines.delay(400)
+            }
+            assertTrue("The development Seedhost never reported active after Start", active)
+            log("rTorrent active state verified after complete Open/Start/Resume")
             val stop = rtorrent.setStarted(hash, false)
             log("stop outcome=${stop::class.simpleName}")
             assertTrue(stop !is LifecycleOutcome.Uncertain)
