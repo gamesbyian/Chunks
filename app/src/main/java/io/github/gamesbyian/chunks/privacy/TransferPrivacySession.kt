@@ -108,6 +108,13 @@ internal class TransferPrivacySession(
     fun onBackground() {
         val now = elapsedRealtimeMillis()
         for (gate in gates.values) {
+            // A platform prompt that leaves the foreground must not deliver a
+            // delayed success to this session. Keep an existing once-per-process
+            // grant intact, but revoke the pending prompt generation everywhere.
+            if (gate.challengeNonce != null) {
+                gate.generation++
+                gate.challengeNonce = null
+            }
             when (gate.mode) {
                 TransferLockMode.EACH_FOREGROUND_RETURN -> {
                     gate.generation++
