@@ -14,6 +14,7 @@ import io.github.gamesbyian.chunks.rpc.LifecycleOutcome
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
+import io.github.gamesbyian.chunks.rpc.RemoteTransferActivity
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -77,6 +78,54 @@ class RemoteLifecycleRefreshInstrumentedTest {
         rule.onNodeWithText("Start transfer…").assertExists()
         assertEquals(listOf(true, false), calls)
         assertEquals(false, latest.started)
+    }
+
+    @Test fun stateSetButInactiveCanBeExplicitlyResumedAfterFreshActivityRead() {
+        val calls = mutableListOf<Boolean>()
+        var revision = 1L
+        var stale = false
+        rule.setContent {
+            var snapshotRevision by remember { mutableStateOf(1L) }
+            var snapshotStale by remember { mutableStateOf(false) }
+            revision = snapshotRevision
+            stale = snapshotStale
+            MaterialTheme {
+                TransferLifecycleControl(
+                    remote = remote,
+                    transfer = initial.copy(started = true),
+                    snapshotStale = snapshotStale,
+                    snapshotRevision = snapshotRevision,
+                    onMutationStarted = {
+                        if (snapshotStale) false else {
+                            snapshotStale = true
+                            true
+                        }
+                    },
+                    onSettled = {
+                        snapshotRevision++
+                        snapshotStale = false
+                    },
+                    performLifecycle = { _, desired ->
+                        calls.add(desired)
+                        LifecycleOutcome.Verified(desired)
+                    },
+                    observeActivity = {
+                        RemoteTransferActivity(active = false, open = true,
+                            connectedPeers = 0, downloadBytesPerSecond = 0)
+                    }
+                )
+            }
+        }
+        rule.onNodeWithText("Resume inactive transfer…").assertDoesNotExist()
+        rule.onNodeWithText("Diagnose download activity").performClick()
+        rule.onNodeWithText("Resume inactive transfer…").assertExists().performClick()
+        rule.onNodeWithText("Confirm resume").assertExists().performClick()
+        rule.waitUntil(5000) { revision == 2L && !stale }
+        assertEquals(listOf(true), calls)
+        // The earlier activity reading is stale after a newly accepted queue
+        // observation; no second Resume without a new explicit diagnosis.
+        rule.onNodeWithText("Resume inactive transfer…").assertDoesNotExist()
+        rule.onNodeWithText("Stop transfer…").assertExists()
     }
 
     @Test fun staleOrSameRevisionNeverRearmsASecondWrite() {
