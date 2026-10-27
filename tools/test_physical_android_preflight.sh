@@ -5,11 +5,11 @@ repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 temp="$(mktemp -d)"
 trap 'rm -rf "$temp"' EXIT
 mkdir -p "$temp/bin" "$temp/build"
-apk="$temp/build/app-debug.apk"
+apk="$temp/build/chunks-debug.apk"
 receipt="$temp/build/CHUNKS-BUILD-SHA256.txt"
 printf 'chunks synthetic debug apk bytes\n' > "$apk"
 commit="0123456789abcdef0123456789abcdef01234567"
-(cd "$temp/build" && sha256sum app-debug.apk) > "$receipt"
+(cd "$temp/build" && sha256sum chunks-debug.apk) > "$receipt"
 printf '# built_commit=%s\n# workflow_run=test\n' "$commit" >> "$receipt"
 
 cat > "$temp/bin/adb" <<'MOCK_ADB'
