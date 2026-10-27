@@ -3,7 +3,6 @@ package io.github.gamesbyian.chunks
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.atomic.AtomicReference
-import java.util.concurrent.atomic.AtomicLong
 
 /**
  * Screen-side single-flight adapter for potentially blocking JNI observations.
@@ -56,13 +55,44 @@ internal class LocalScreenObservationPump<T>(
 }
 
 /**
- * A read started before an uncertain native mutation is not evidence of the
- * post-mutation state, even when that read finishes after the failed command.
- * Only samples scheduled in the current revision can clear a stale UI.
+ * A JNI read started before OR during a command is not its post-command
+ * readback. The next command stays blocked until a successful, subsequent
+ * list observation is accepted. This state survives screen navigation.
+ *
+ * All UI calls are serialized on the Compose dispatcher, with synchronized
+ * methods also protecting the snapshot read from future worker-side callers.
  */
 internal class LocalScreenObservationRevision {
-    private val revision = AtomicLong(0L)
-    fun snapshot(): Long = revision.get()
-    fun invalidate() { revision.incrementAndGet() }
-    fun accepts(sampleRevision: Long): Boolean = sampleRevision == revision.get()
+    private var revision = 0L
+    private var commandPending = false
+    private var awaitingReadback = false
+
+    @Synchronized fun beginMutation(): Boolean {
+        if (commandPending || awaitingReadback) return false
+        commandPending = true
+        awaitingReadback = true
+        ++revision
+        return true
+    }
+
+    @Synchronized fun settledMutation() {
+        if (commandPending) {
+            commandPending = false
+            ++revision
+        }
+    }
+
+    @Synchronized fun snapshot(): Long = revision
+
+    @Synchronized fun accepts(sampleRevision: Long): Boolean =
+        !commandPending && sampleRevision == revision
+
+    /** Call only after a genuinely successful non-null list read. */
+    @Synchronized fun acceptSuccessfulRead(sampleRevision: Long): Boolean {
+        if (!accepts(sampleRevision)) return false
+        awaitingReadback = false
+        return true
+    }
+
+    @Synchronized fun blocksMutations(): Boolean = commandPending || awaitingReadback
 }
