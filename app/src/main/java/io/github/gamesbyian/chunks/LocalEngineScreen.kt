@@ -156,10 +156,11 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
         mutableStateOf(nameRegistry.names(TransferCollectionStore.LOCAL_ENGINE_SCOPE))
     }
     var inventoryFrame by remember {
-        mutableStateOf(LocalInventoryFrame<LocalTransferStatus>(emptyList(), stale = false))
+        mutableStateOf(LocalInventoryFrame<LocalTransferStatus>(emptyList(),
+            stale = LocalScreenReader.revision.blocksMutations()))
     }
     val transfers = inventoryFrame.entries
-    val inventoryStale = inventoryFrame.stale
+    val inventoryStale = inventoryFrame.stale || LocalScreenReader.revision.blocksMutations()
     var transferPage by remember { mutableStateOf(0) }
     val transferSlice = remember(transfers, transferPage) {
         ManualCollectionPager.slice(transfers, transferPage, size = 20)
@@ -180,6 +181,24 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
     var pending by remember { mutableStateOf<PendingLocalAdd?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
+
+    // The admission/observation gate is process-wide: navigating away and back
+    // must not revive controls before a post-command native read succeeds.
+    fun performLocalMutation(operation: suspend () -> Unit) {
+        if (busy || inventoryFrame.stale || !LocalScreenReader.revision.beginMutation()) {
+            message = "A prior native action needs a fresh confirmed transfer list before another change."
+            return
+        }
+        inventoryFrame = inventoryFrame.copy(stale = true)
+        busy = true
+        scope.launch {
+            try { operation() } finally {
+                LocalScreenReader.revision.settledMutation()
+                inventoryFrame = inventoryFrame.copy(stale = true)
+                busy = false
+            }
+        }
+    }
     var magnet by remember { mutableStateOf("") }
     var dht by remember { mutableStateOf(LocalEngineHolder.dhtPreferred(context)) }
     val destination = remember { LocalEngineHolder.appDownloads(context) }
@@ -197,10 +216,11 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
                     val frame = outcome.value
                     // A sample scheduled before an uncertain mutation cannot
                     // clear its safety latch, even if it finishes afterward.
-                    if (LocalScreenReader.revision.accepts(frame.revision)) {
+                    if (LocalScreenReader.revision.acceptObservation(frame.revision, frame.transfers)) {
                         inventoryFrame = LocalInventoryFreshness.advance(inventoryFrame, frame.transfers)
                         restoreNotice = frame.restoreNotice
-                        if (frame.filesHash != null && frame.filesHash == filesFor) files = frame.files
+                        if (frame.transfers != null && frame.filesHash != null &&
+                            frame.filesHash == filesFor) files = frame.files
                     }
                 }
                 LocalScreenPollOutcome.Unavailable ->
@@ -291,8 +311,7 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
             Text("Saves into Chunks' folder on phone storage. Chunks fetches only the torrent's description from the magnet's trackers and peers, then stops; no file data downloads until you press Start.",
                 style = MaterialTheme.typography.bodySmall)
             OutlinedButton(onClick = {
-                busy = true
-                scope.launch {
+                performLocalMutation {
                     try {
                         val result = withContext(Dispatchers.IO) {
                             LocalEngineHolder.get(context).addMagnet(magnet, destination)
@@ -304,8 +323,6 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
                     } catch (_: Exception) {
                         inventoryFrame = inventoryFrame.copy(stale = true)
                         message = "Magnet Add was not confirmed. Wait for a fresh transfer list and check for the magnet before retrying."
-                    } finally {
-                        busy = false
                     }
                 }
             }, enabled = !busy && !inventoryStale, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Add magnet (metadata only)") }
@@ -325,8 +342,7 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
         if (add != null && destination != null) LocalAddReview(add.preview, destination,
             busy = busy || inventoryStale,
             onConfirm = {
-                busy = true
-                scope.launch {
+                performLocalMutation {
                     try {
                         val result = withContext(Dispatchers.IO) {
                             LocalEngineHolder.get(context).addStopped(add.bytes, destination)
@@ -342,8 +358,6 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
                     } catch (_: Exception) {
                         inventoryFrame = inventoryFrame.copy(stale = true)
                         message = "Torrent Add was not confirmed. Wait for a fresh transfer list and check for this torrent before retrying."
-                    } finally {
-                        busy = false
                     }
                 }
             },
@@ -374,8 +388,7 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
                         PackageManager.PERMISSION_GRANTED) {
                         notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
                     }
-                    busy = true
-                    scope.launch {
+                    performLocalMutation {
                         try {
                             val outcome = withContext(Dispatchers.IO) {
                                 val engine = LocalEngineHolder.get(context)
@@ -402,8 +415,6 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
                             // Do not invite another write until a successful inventory read.
                             inventoryFrame = inventoryFrame.copy(stale = true)
                             message = "Start/Stop was not confirmed. Wait for fresh phone torrent status before trying again."
-                        } finally {
-                            busy = false
                         }
                     }
                 },
@@ -414,8 +425,7 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
                     filesFor = if (filesFor == transfer.infoHash) null else transfer.infoHash
                 },
                 onFileWanted = { index, wanted ->
-                    busy = true
-                    scope.launch {
+                    performLocalMutation {
                         try {
                             val outcome = withContext(Dispatchers.IO) {
                                 LocalEngineHolder.current()?.setFileWanted(transfer.infoHash, index, wanted)
@@ -436,14 +446,11 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
                             inventoryFrame = inventoryFrame.copy(stale = true)
                             files = null
                             message = "File selection or readback failed. Wait for fresh status before trying again."
-                        } finally {
-                            busy = false
                         }
                     }
                 },
                 onRemove = {
-                    busy = true
-                    scope.launch {
+                    performLocalMutation {
                         try {
                             val removed = withContext(Dispatchers.IO) {
                                 LocalEngineHolder.current()?.removeKeepingData(transfer.infoHash)
@@ -457,8 +464,6 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
                             // Session removal may have succeeded before the exception.
                             inventoryFrame = inventoryFrame.copy(stale = true)
                             message = "Session removal was not confirmed. Wait for fresh status before trying again. Downloaded files were not requested for deletion."
-                        } finally {
-                            busy = false
                         }
                     }
                 })
