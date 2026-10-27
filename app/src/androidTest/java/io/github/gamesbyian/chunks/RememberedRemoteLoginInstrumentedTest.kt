@@ -13,6 +13,8 @@ class RememberedRemoteLoginInstrumentedTest {
     @Test fun keystoreCiphertextSurvivesNewStoreInstanceUntilExplicitForget() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val vault = RememberedRemoteLogin(context)
+        val priorPolicy = vault.rememberingEnabled()
+        assertTrue(vault.setRememberingEnabled(true))
         assertTrue(vault.clear())
         val credentials = RemoteCredentials(
             "https://example.org/hosted%20account/rutorrent/", "viewer", "secret \u2603 password"
@@ -28,9 +30,37 @@ class RememberedRemoteLoginInstrumentedTest {
             assertFalse(raw.contains(credentials.endpoint))
         } finally {
             assertTrue(vault.clear())
+            assertTrue(vault.setRememberingEnabled(priorPolicy))
         }
         assertFalse(RememberedRemoteLogin(context).hasSavedLogin())
         assertNull(RememberedRemoteLogin(context).load())
+    }
+
+    @Test fun optOutPersistsAcrossInstancesAndBlocksAccidentalCredentialSave() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val vault = RememberedRemoteLogin(context)
+        val priorPolicy = vault.rememberingEnabled()
+        val creds = RemoteCredentials("https://example.org/RPC2", "viewer", "do-not-retain")
+        try {
+            assertTrue(vault.setRememberingEnabled(true))
+            assertTrue(vault.save(creds))
+            assertTrue(vault.hasSavedLogin())
+            assertTrue(vault.setRememberingEnabled(false))
+            val fresh = RememberedRemoteLogin(context)
+            assertFalse(fresh.rememberingEnabled())
+            assertFalse(fresh.hasSavedLogin())
+            assertNull(fresh.load())
+            assertFalse(fresh.save(creds))
+            assertFalse(fresh.hasSavedLogin())
+            assertTrue(fresh.setRememberingEnabled(true))
+            assertTrue(RememberedRemoteLogin(context).rememberingEnabled())
+            assertNull(fresh.load())
+            assertTrue(fresh.save(creds))
+            assertEquals(creds, RememberedRemoteLogin(context).load())
+        } finally {
+            assertTrue(vault.clear())
+            assertTrue(vault.setRememberingEnabled(priorPolicy))
+        }
     }
 
     @Test fun corruptedEncryptedBlobCannotBeUsedAsLogin() {

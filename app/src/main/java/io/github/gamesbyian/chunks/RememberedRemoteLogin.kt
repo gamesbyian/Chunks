@@ -27,9 +27,29 @@ internal class RememberedRemoteLogin(context: Context) {
     )
     private val alias = "io.github.gamesbyian.chunks.remembered-remote-login-v1"
 
+    /** Default-on only for users who have never explicitly opted out. */
+    @Synchronized fun rememberingEnabled(): Boolean =
+        prefs.getBoolean("remember_enabled", true)
+
+    /**
+     * Opting out is durable across process restarts. Commit both the policy
+     * and removal of encrypted credentials in a single preferences transaction.
+     * Losing the Keystore key is acceptable once no ciphertext can reference it.
+     */
+    @Synchronized fun setRememberingEnabled(enabled: Boolean): Boolean {
+        val editor = prefs.edit().putBoolean("remember_enabled", enabled)
+        if (!enabled) editor.remove("ciphertext")
+        if (!editor.commit()) return false
+        if (!enabled) {
+            runCatching { keyStore().deleteEntry(alias) }
+        }
+        return true
+    }
+
     @Synchronized fun hasSavedLogin(): Boolean = prefs.contains("ciphertext")
 
     @Synchronized fun load(): RemoteCredentials? {
+        if (!rememberingEnabled()) return null
         val text = prefs.getString("ciphertext", null) ?: return null
         return try {
             require(text.length in 16..32768)
@@ -58,6 +78,7 @@ internal class RememberedRemoteLogin(context: Context) {
 
     /** Return true only after encrypted state is durably committed. */
     @Synchronized fun save(credentials: RemoteCredentials): Boolean {
+        if (!rememberingEnabled()) return false
         require(credentials.endpoint.length in 1..2048 &&
             credentials.username.length <= 512 && credentials.password.length <= 4096)
         val encoded = JSONArray().put(credentials.endpoint).put(credentials.username)
