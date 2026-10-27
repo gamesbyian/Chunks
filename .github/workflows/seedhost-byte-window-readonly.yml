@@ -1,4 +1,4 @@
-name: Protected Seedhost read-only byte, tracker and file-selection witness
+name: Protected Seedhost read-only byte, tracker, selection and throttle witness
 
 # Trusted-main only. PRs never receive credentials. Source changes to this
 # workflow explicitly schedule ONE read-only witness on the approved dev host.
@@ -8,6 +8,7 @@ name: Protected Seedhost read-only byte, tracker and file-selection witness
 # reporting only aggregate traffic/peer/active evidence, not transfer identities.
 # 2026-10-27: also summarize bounded tracker announce counts, no URLs or passkeys.
 # Next accepted slice: review exact-hash file priorities/open flags, aggregate-only.
+# 2026-10-27: inspect global down throttle and server-wide traffic read-only.
 on:
   push:
     branches: [main]
@@ -56,7 +57,8 @@ jobs:
           gradle --no-daemon --console=plain :app:testDebugUnitTest \
             --tests 'io.github.gamesbyian.chunks.rpc.SeedhostLiveAcceptanceTest.readOnlyCurrentHostTrafficWindow' \
             --tests 'io.github.gamesbyian.chunks.rpc.SeedhostLiveAcceptanceTest.readOnlyCurrentHostTrackerHistory' \
-            --tests 'io.github.gamesbyian.chunks.rpc.SeedhostLiveAcceptanceTest.readOnlyCurrentHostFileSelectionAndOpenState' || status=$?
+            --tests 'io.github.gamesbyian.chunks.rpc.SeedhostLiveAcceptanceTest.readOnlyCurrentHostFileSelectionAndOpenState' \
+            --tests 'io.github.gamesbyian.chunks.rpc.SeedhostLiveAcceptanceTest.readOnlyGlobalDownloadThrottleContext' || status=$?
           # Sanitized whitelist only. Never print raw JUnit exception, tracker,
           # URL, path, infohash, XML fault or source server credentials.
           python3 - <<'PY'
@@ -68,13 +70,13 @@ jobs:
               raise SystemExit(1)
           root = ET.parse(p).getroot()
           for line in (root.findtext('system-out') or '').splitlines():
-              if line.startswith('CHUNKS_LIVE: traffic ') or line.startswith('CHUNKS_LIVE: trackers ') or line.startswith('CHUNKS_LIVE: selection '):
+              if line.startswith('CHUNKS_LIVE: traffic ') or line.startswith('CHUNKS_LIVE: trackers ') or line.startswith('CHUNKS_LIVE: selection ') or line.startswith('CHUNKS_LIVE: throttle '):
                   print(line[:280])
           print('CHUNKS_TRAFFIC_READONLY: tests=' + root.attrib.get('tests', '?') +
                 ' errors=' + root.attrib.get('errors', '?') +
                 ' failures=' + root.attrib.get('failures', '?') +
                 ' skipped=' + root.attrib.get('skipped', '?'))
-          assert int(root.attrib.get('tests', 0)) == 3
+          assert int(root.attrib.get('tests', 0)) == 4
           assert int(root.attrib.get('failures', 0)) == 0
           assert int(root.attrib.get('errors', 0)) == 0
           assert int(root.attrib.get('skipped', 0)) == 0
