@@ -6,6 +6,8 @@
 
 **Add location contract (2026-10-27):** The destination picker must be visible but optional. Resolve a valid local/remote default automatically; local target is Downloads/Chunks Downloads only when Android storage and engine writes are verified; remote uses its existing configured default and creates no Chunks folder. Surface per-scope validated recent destinations. Consult the product, UX, architecture and work-queue documents; do not treat historical mandatory-picker language as current intent.
 
+**Approved Android downloads approach:** Use Android's standard shared Downloads location as the preferred local Chunks Downloads parent, not an attempted lookup of Chrome's private download preference. Let users select and remember another verified location, including SD cards when supported. Public folder claims require real libtorrent write/resume/seed capability acceptance. Keep remote-server folder behavior unchanged. See PRODUCT, ARCHITECTURE, UX and WORK-QUEUE.
+
 ## Mandatory start and authority
 
 1. Inspect live `main`, open PRs, open issues, branch ownership, recent commits and CI **before** choosing a task. Read the one authoritative ranked [WORK-QUEUE](docs/WORK-QUEUE.md). Never assume a prior agent's PR is still pending/merged.
