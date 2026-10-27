@@ -504,6 +504,16 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
             },
             onCancel = { pending = null })
 
+        LocalBatchCollectionPanel(
+            transfers = transfers,
+            shown = displayedTransfers,
+            inventoryStale = inventoryStale || busy,
+            store = collectionStore,
+            onMembershipChanged = {
+                registeredNames = nameRegistry.names(TransferCollectionStore.LOCAL_ENGINE_SCOPE)
+                collectionRevision++
+            }
+        )
         CollectionNameManager(
             scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
             registry = nameRegistry,
