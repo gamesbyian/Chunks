@@ -8,6 +8,19 @@ The workflow installs Android API 37 with SDK 37.0; targeted real API35 instrume
 
 Evidence: [run 40057523588](https://github.com/gamesbyian/Chunks/actions/runs/40057523588) passed 42 Gradle tasks including JVM tests and assembly against source SHA `201b53fc3d16482cf2aa1a08c9c01d9e0351174b`; its artifact is `chunks-debug-prealpha`. Subsequent source changes require new proof. Build artifacts are debug only; a successful Gradle job is not a real-server or real-device acceptance.
 
+## Debug APK identity and device evidence
+
+The `Chunks Android foundation` workflow embeds the **exact Git commit checked out by the runner** into the debug APK's Android `versionName` as `0.1.0-dev+<12 hex digits>`. Developer-built APKs without `CHUNKS_SOURCE_SHA` keep `0.1.0-dev`, which intentionally carries no source claim.
+
+The seven-day `chunks-debug-prealpha` Actions artifact contains two files:
+
+- `app-debug.apk`: installable debug-only Android package.
+- `CHUNKS-BUILD-SHA256.txt`: independent SHA-256 checksum for the extracted APK, with commented full checked-out commit and Actions run ID. From the directory containing both files, run `sha256sum -c CHUNKS-BUILD-SHA256.txt`.
+
+The workflow verifies that the APK manifest exposes the expected revision **before** publishing the artifact. On a handset, Android Settings → Apps → Chunks → App info reports its version. Compare the suffix with the receipt and record the device model, actual Android release/API, artifact workflow run, APK digest, tested remote/engine mode and the sequence of visible outcomes. The suffix identifies the **built checkout**, which for pull requests is GitHub's temporary merge-ref commit; it is not automatically the PR head or the eventual squash-merge commit. For a beta APK corresponding directly to a commit on `main`, manually dispatch the workflow on that commit/ref and verify the receipt.
+
+Debug signing is unsuitable for production distribution. The exact APK receipt proves source/artifact traceability only; installation, SSL connection, actual bytes, foreground-service survival, and usability on a physical phone require separate recorded acceptance.
+
 ## Recovered second verified source
 
 Merged PR #12 provided read-only synthetic loopback RPC transport tests. [Run 40057876761](https://github.com/gamesbyian/Chunks/actions/runs/40057876761) passed `gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug` on head `5b5b75ed4abaa9f4e97ec4c7e4fa517130e8f681`. A `chunks-debug-prealpha` artifact was produced. These tests do **not** prove real rTorrent auth/proxy interoperability or Android on-device behavior.
