@@ -54,6 +54,7 @@ internal fun TransferFilePager(
     files: List<RemoteFile>,
     snapshotStale: Boolean,
     mainView: Boolean,
+    onMutationStarted: () -> Boolean,
     onSettled: () -> Unit
 ) {
     var requestedPage by rememberSaveable(hash, files) { mutableStateOf(0) }
@@ -121,6 +122,7 @@ internal fun TransferFilePager(
                         file = file,
                         snapshotStale = snapshotStale,
                         mainView = mainView,
+                        onMutationStarted = onMutationStarted,
                         onSettled = onSettled
                     )
                 }
