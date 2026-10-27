@@ -8,7 +8,7 @@ object RemoteEndpointHints {
         val uri = URI(input.trim())
         require(uri.scheme.equals("https", true) ||
             (uri.scheme.equals("http", true) &&
-              uri.host in listOf("localhost", "127.0.0.1", "::1"))) {
+              uri.host in listOf("localhost", "127.0.0.1", "[::1]"))) {
             "Use HTTPS for remote ruTorrent"
         }
         require(!uri.host.isNullOrBlank() && uri.userInfo == null &&
