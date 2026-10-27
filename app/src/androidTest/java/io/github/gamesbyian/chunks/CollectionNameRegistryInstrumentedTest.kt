@@ -8,6 +8,30 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class CollectionNameRegistryInstrumentedTest {
+    @Test fun concurrentIndependentInstancesDoNotLoseExplicitSavedNames() {
+        val ctx = InstrumentationRegistry.getInstrumentation().targetContext
+        val scope = "https://test.invalid/RPC2\\u0000registry-concurrency-test"
+        val names = (0 until 18).map { "Concurrent collection $it" }
+        val pool = java.util.concurrent.Executors.newFixedThreadPool(6)
+        val begin = java.util.concurrent.CountDownLatch(1)
+        try {
+            names.forEach { CollectionNameRegistry(ctx).forget(scope, it) }
+            val results = names.map { name ->
+                pool.submit<Boolean> {
+                    begin.await()
+                    CollectionNameRegistry(ctx).create(scope, name)
+                }
+            }
+            begin.countDown()
+            assertTrue(results.all { it.get(20, java.util.concurrent.TimeUnit.SECONDS) })
+            assertEquals(names.toSet(), CollectionNameRegistry(ctx).names(scope).toSet())
+        } finally {
+            begin.countDown()
+            pool.shutdownNow()
+            names.forEach { CollectionNameRegistry(ctx).forget(scope, it) }
+        }
+    }
+
     @Test fun emptyCollectionPersistsAcrossInstancesWithoutCrossingAccountsOrLocalEngine() {
         val ctx = InstrumentationRegistry.getInstrumentation().targetContext
         val store = CollectionNameRegistry(ctx)

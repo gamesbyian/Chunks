@@ -52,6 +52,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.model.TransferCatalog
 import io.github.gamesbyian.chunks.model.CollectionMembershipFilter
+import io.github.gamesbyian.chunks.model.CollectionNameRegistryRules
 import io.github.gamesbyian.chunks.model.ManualCollectionPager
 import io.github.gamesbyian.chunks.model.TransferFilter
 import io.github.gamesbyian.chunks.model.TransferOrder
@@ -679,6 +680,10 @@ private fun OrganizeScreen(
 ) {
     val context = LocalContext.current
     val membershipStore = remember(context) { TransferCollectionStore(context) }
+    val nameRegistry = remember(context) { CollectionNameRegistry(context) }
+    var registeredNames by remember(scope) {
+        mutableStateOf(if (scope.isBlank()) emptyList() else nameRegistry.names(scope))
+    }
     var manualQuery by remember(scope) { mutableStateOf("") }
     var membershipRevision by remember(scope) { mutableStateOf(0) }
     var selectedCollection by remember(scope) { mutableStateOf<String?>(null) }
@@ -708,7 +713,14 @@ private fun OrganizeScreen(
     val pagedMatches = remember(manualMatches, collectionPage) {
         ManualCollectionPager.slice(manualMatches, collectionPage)
     }
-    val knownRemoteCollections = remember(manualCounts) { manualCounts.map { it.first } }
+    val knownRemoteCollections = remember(manualCounts, registeredNames) {
+        CollectionNameRegistryRules.ordered(registeredNames + manualCounts.map { it.first })
+    }
+    val visibleCollectionCounts = remember(knownRemoteCollections, manualCounts) {
+        knownRemoteCollections.map { name ->
+            name to manualCounts.filter { it.first.equals(name, ignoreCase = true) }.sumOf { it.second }
+        }
+    }
     val collections = remember(list) { TransferCatalog.discoveredCollections(list) }
     val examples = remember(list) {
         list.map { it to Classifier.suggest(it.name) }
@@ -729,10 +741,15 @@ private fun OrganizeScreen(
             Text("Manual, device-local memberships. A transfer may belong to several collections; no filenames, folders, rTorrent categories or sharing change.",
                 style = MaterialTheme.typography.bodySmall)
         }
-        if (manualCounts.isEmpty()) item {
-            Text("No manual collection memberships in the current server view.")
+        if (scope.isNotBlank()) item {
+            CollectionNameManager(scope, nameRegistry, registeredNames) {
+                registeredNames = it
+            }
         }
-        items(manualCounts, key = { "manual-count-" + it.first }) { (name, count) ->
+        if (visibleCollectionCounts.isEmpty()) item {
+            Text("No collections yet. Save an empty name, or assign a transfer to a Collection.")
+        }
+        items(visibleCollectionCounts, key = { "manual-count-" + it.first }) { (name, count) ->
             FilterChip(
                 selected = selectedCollection?.equals(name, ignoreCase = true) == true,
                 onClick = {
@@ -745,7 +762,7 @@ private fun OrganizeScreen(
             )
         }
         if (selectedCollection != null) item {
-            Text("Showing only " + selectedCollection + " in this server view.",
+            Text("Showing only " + selectedCollection + " in this server view. A saved Collection may have no members in the loaded view.",
                 style = MaterialTheme.typography.bodySmall)
             OutlinedButton(onClick = { selectedCollection = null; collectionPage = 0 },
                 modifier = Modifier.heightIn(min = 48.dp)) { Text("Show all collections") }
@@ -786,6 +803,12 @@ private fun OrganizeScreen(
                     transfer.copy(name = alias ?: transfer.name), scope, membershipStore,
                     availableCollections = knownRemoteCollections
                 ) {
+                    // Persist only names explicitly saved via manual membership;
+                    // classifier hints never become Collection assignments.
+                    membershipStore.forTransfer(scope, transfer.hash).forEach {
+                        nameRegistry.create(scope, it)
+                    }
+                    registeredNames = nameRegistry.names(scope)
                     membershipRevision++
                 }
             }

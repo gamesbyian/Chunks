@@ -11,6 +11,7 @@ import java.io.File
 import java.net.InetSocketAddress
 import java.util.Random
 import org.junit.After
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
@@ -119,6 +120,25 @@ class LocalTorrentEngineInstrumentedTest {
         assertTrue(leecher.removeKeepingData(leech.infoHash))
         waitForVerifiedReadback(File(destination, "Chunks device fixture/payload.bin"),
             payload, "after-session-only-removal")
+    }
+
+    @Test fun nativeCompletedTorrentFlushesDiskCacheBeforeIndependentLibraryRead() {
+        val seedRoot = File(work, "flush/Flush fixture").apply { mkdirs() }
+        val payload = ByteArray(95_000).also { Random(19).nextBytes(it) }
+        File(seedRoot, "payload.bin").writeBytes(payload)
+        val torrent = TorrentBuilder().path(seedRoot).pieceSize(16 * 1024).generate().entry().bencode()
+        val instance = engine()
+        val status = (instance.addStopped(torrent, requireNotNull(seedRoot.parentFile))
+            as LocalAddResult.AddedStopped).status
+        assertTrue(!instance.flushCompletedForLibraryRead("A".repeat(40), 100L))
+        assertEquals(LocalCommandOutcome.VERIFIED, instance.resume(status.infoHash).outcome)
+        waitFor { instance.status(status.infoHash)?.state == LocalTransferState.SEEDING }
+        assertTrue("Cache-flushed native alert must arrive before external reads",
+            instance.flushCompletedForLibraryRead(status.infoHash, 15_000L))
+        assertArrayEquals(payload, File(seedRoot, "payload.bin").readBytes())
+        assertTrue(instance.removeKeepingData(status.infoHash))
+        assertTrue(!instance.flushCompletedForLibraryRead(status.infoHash, 100L))
+        assertArrayEquals(payload, File(seedRoot, "payload.bin").readBytes())
     }
 
     @Test fun androidEngineRestoresSavedTransfersStoppedAfterRestart() {
