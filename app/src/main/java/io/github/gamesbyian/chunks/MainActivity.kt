@@ -28,7 +28,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -589,10 +588,10 @@ private fun TransferCard(
                 originalName = transfer.name, hash = transfer.hash,
                 alias = alias, onSave = onAliasSave, session = aliasSession
             )
-            LinearProgressIndicator(
-                progress = { transfer.fractionComplete },
-                modifier = Modifier.fillMaxWidth().height(8.dp),
-                color = Blue, trackColor = Lilac
+            ChunkedProgressBar(
+                progress = transfer.fractionComplete,
+                modifier = Modifier.fillMaxWidth(),
+                activeColor = Blue, trackColor = Lilac
             )
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 Text((transfer.fractionComplete * 100).toInt().toString() + "% · " +
