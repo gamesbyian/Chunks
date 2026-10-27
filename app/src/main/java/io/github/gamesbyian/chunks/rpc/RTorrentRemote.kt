@@ -265,7 +265,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             // must be reconciled by a later explicit inventory refresh.
             return RemoteAddOutcome.Uncertain(plan.expectedInfoHash)
         }
-        return reconcileStoppedAdd(plan)
+        return awaitFreshStoppedAddReadback(plan)
     }
 
     /**
@@ -295,7 +295,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         } catch (_: IOException) {
             return RemoteAddOutcome.Uncertain(hash)
         }
-        return reconcileStoppedAdd(plan)
+        return awaitFreshStoppedAddReadback(plan)
     }
 
     /**
@@ -405,6 +405,25 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             @Suppress("UNREACHABLE_CODE")
             error("Upload challenge negotiation exhausted")
         }
+
+    /**
+     * rTorrent may acknowledge load.verbose/load.raw_verbose before the new
+     * torrent is visible through the main view. Wait a bounded ~2.8s using
+     * READ-ONLY exact-hash observations. This never repeats Add, changes a
+     * directory or silently starts a torrent. Start-after-Add may proceed
+     * once the original reviewed identity, stopped state and Place agree.
+     * A gateway error or unknown result exits immediately without retrying.
+     */
+    private suspend fun awaitFreshStoppedAddReadback(
+        plan: StoppedRemoteAddPlan
+    ): RemoteAddOutcome {
+        for (attempt in 0 until 8) {
+            val outcome = reconcileStoppedAdd(plan)
+            if (outcome !is RemoteAddOutcome.PendingVerification) return outcome
+            if (attempt < 7) kotlinx.coroutines.delay(400L)
+        }
+        return RemoteAddOutcome.PendingVerification(plan.expectedInfoHash)
+    }
 
     suspend fun reconcileStoppedAdd(plan: StoppedRemoteAddPlan): RemoteAddOutcome {
         return try {
