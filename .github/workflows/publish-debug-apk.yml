@@ -49,8 +49,10 @@ jobs:
           CHUNKS_SIDE_BY_SIDE: "1"
         run: |
           set -euo pipefail
-          gradle --no-daemon :app:assembleDebug
+          cp app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/chunks-original.apk"
+          gradle --no-daemon :app:assembleDebug --rerun-tasks
           cp app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/chunks-preview.apk
+          cp "$RUNNER_TEMP/chunks-original.apk" app/build/outputs/apk/debug/app-debug.apk
       - name: Verify embedded revision and compute APK SHA-256
         run: |
           apk="app/build/outputs/apk/debug/app-debug.apk"
@@ -58,6 +60,8 @@ jobs:
           test -s "$apk"
           test -s app/build/outputs/apk/debug/chunks-preview.apk
           short="${CHUNKS_SOURCE_SHA:0:12}"
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$apk" |
+            grep -F "package: name='io.github.gamesbyian.chunks'"
           "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$apk" |
             grep -F "versionName='0.1.0-dev+$short'"
           "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging app/build/outputs/apk/debug/chunks-preview.apk |
