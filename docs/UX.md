@@ -1,6 +1,6 @@
 # Chunks interaction and accessibility contract
 
-Reconciled 2026-10-26. Native Compose remote, experimental local engine, finished-file SAF library-copy and bounded manual ZIP-to-SAF extraction journeys exist with targeted JVM/API35 evidence. **An owner-selected six-image visual concept reference family now exists, but no implementation-level native visual acceptance, physical Android handset, real phone-to-Seedhost task, uncoached human usability or 200% TalkBack approval.** Advanced backing-file Move/Rename and cleanup remain design contracts.
+Reconciled 2026-10-26. Native Compose remote, experimental local engine, finished-file SAF library-copy and bounded manual ZIP-to-SAF extraction journeys exist with targeted JVM/API35 evidence. **The owner-selected six-image reference family has a first limited native implementation (#222: accessible geometric wordmark/header and high-contrast remote cards with Android/JVM, API35 and screenshot-atlas checks). Full reference-accurate layout, independent human screenshot review, physical Android handset, actual phone-to-Seedhost task, uncoached usability and 200% TalkBack approval remain open.** Advanced backing-file Move/Rename and cleanup remain design contracts.
 
 ## Mental model, first-run and navigation
 
