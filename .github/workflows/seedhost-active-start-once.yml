@@ -1,0 +1,59 @@
+name: One-time protected Seedhost active-Start acceptance
+
+# Manual in the future; initial push is gated to one deliberate merge title.
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/seedhost-active-start-once.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chunks-seedhost-active-start-acceptance
+  cancel-in-progress: false
+
+jobs:
+  exact-hash-start:
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, 'qa: one-time Seedhost active Start acceptance'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 23
+    env:
+      CHUNKS_LIVE_RUTORRENT_URL: "https://ianseeds.wood.seedhost.eu/rutorrent/"
+      CHUNKS_LIVE_RTORRENT_USER: ${{ secrets.rtorrent_user }}
+      CHUNKS_LIVE_RTORRENT_PASS: ${{ secrets.rtorrent_pass }}
+      CHUNKS_LIVE_MUTATION: "apply"
+      CHUNKS_LIVE_DIAGNOSE_ADD: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+      - name: Install Android API 37 SDK
+        run: |
+          printf "y\n" | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
+          if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          fi
+      - name: Run exact-target owner-approved synthetic mutation and always erase
+        run: |
+          set -euo pipefail
+          test -n "$CHUNKS_LIVE_RTORRENT_USER"
+          test -n "$CHUNKS_LIVE_RTORRENT_PASS"
+          gradle --no-daemon --console=plain :app:testDebugUnitTest \
+            --tests 'io.github.gamesbyian.chunks.rpc.SeedhostLiveAcceptanceTest.ownerAuthorizedExactTargetMutationRoundTrip'
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          p = 'app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.SeedhostLiveAcceptanceTest.xml'
+          r = ET.parse(p).getroot()
+          assert int(r.attrib['tests']) == 1, 'Expected exactly one guarded fixture acceptance'
+          assert int(r.attrib['skipped']) == 0, 'Seedhost acceptance must actually execute'
+          assert int(r.attrib['failures']) == 0 and int(r.attrib['errors']) == 0
+          print('CHUNKS_SEEDHOST_ACTIVE_START: guarded synthetic Add, active Start, Stop and erase passed')
+          PY
