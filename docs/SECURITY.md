@@ -18,6 +18,10 @@ Updated after CRITICAL-REVIEW-2026-10-24.md. Public source repository, untrusted
 
 The owner-directed on-device public **Downloads/Chunks Downloads** default is a product target, not a grant to bypass Android scoped storage. Modern Android restricts picking the Downloads root as an SAF tree, and torrent payload writes require engine-compatible durable random access. Do not request broad all-files permissions solely as a shortcut; validate API-compliant access, seekability, permissions, collisions, source/target identity and actual readback before advertising an active public folder. Never silently relabel app-private storage as public Downloads. For remote profiles, use only verified existing server defaults and do **not** create Chunks directories. Treat recents as scoped sensitive local metadata; keep per-engine/account, validate permissions/existence/capability on reuse, and prevent malicious saved paths or stale remote permissions from bypassing normal destination authorization. Full requirements: [PRODUCT.md](PRODUCT.md), [ARCHITECTURE.md](ARCHITECTURE.md).
 
+## Chrome-independent Android Downloads authorization
+
+The chosen local folder may coincide with Chrome's usual Android Downloads location, but Chunks must never scrape Chrome private data, request invasive permissions to discover another app's preference, or trust filenames as proof of Chrome's configured directory. Device-folder authority belongs to Android grants/public storage APIs and to Chunks' verified backing-store adapter. Treat SD card changes, URI grant expiry, absent volumes, unexpected providers and symlink/path collisions as invalidation events requiring checked recovery. The public Downloads target is not grounds for all-files-access permission by itself. Protect remembered location identifiers and avoid leaking sensitive paths in unauthenticated UI. See [ARCHITECTURE.md](ARCHITECTURE.md) for engine compatibility acceptance.
+
 ## Connection and credentials
 
 - Never expose unauthenticated rTorrent SCGI to the public network. Prefer loopback/unix-socket SCGI behind a protected authenticated reverse proxy, private VPN or carefully scoped tunnel.
