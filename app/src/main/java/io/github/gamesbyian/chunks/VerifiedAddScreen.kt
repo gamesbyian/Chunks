@@ -21,6 +21,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,7 +47,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * A deliberate destination-first stopped Add. A two-step confirmation gates
+ * An optional Place override and a two-step confirmation gate
  * any RPC write; unexpected or uncertain outcomes never auto-retry.
  * ByteArray from SAF stays in this screen's process memory only.
  */
@@ -76,6 +77,17 @@ fun VerifiedAddScreen(
     var startAfterAdd by remember { mutableStateOf(true) }
     var rechecking by remember { mutableStateOf(false) }
     var fileError by remember { mutableStateOf<String?>(null) }
+    var configuredDefault by remember(remote) { mutableStateOf<String?>(null) }
+    var defaultReadComplete by remember(remote) { mutableStateOf(false) }
+
+    LaunchedEffect(remote) {
+        configuredDefault = try {
+            withContext(Dispatchers.IO) { remote.defaultDirectory() }
+        } catch (_: Exception) {
+            null
+        }
+        defaultReadComplete = true
+    }
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null && !choosing && !submitting && !alreadyAttempted) {
@@ -117,12 +129,23 @@ fun VerifiedAddScreen(
     }
 
     var invalidDestination = false
-    var addGuidance = "Enter a valid v1 magnet or select a .torrent file, then provide an absolute server directory. Chunks cannot pre-verify server permissions."
+    val useServerDefault = destination.isBlank()
+    val effectiveDestination = if (useServerDefault) configuredDefault.orEmpty() else destination
+    var addGuidance = when {
+        useServerDefault && !defaultReadComplete -> "Checking the server's configured download folder…"
+        useServerDefault && configuredDefault == null ->
+            "This server did not expose a usable default download folder. Enter an absolute server folder to proceed."
+        else -> "Enter a valid v1 magnet or select a .torrent file. The Place override is optional."
+    }
     val plan = try {
-        val link = if (useFile && selectedTorrent != null && selectedBytes != null)
-            "magnet:?xt=urn:btih:" + selectedTorrent!!.infoHashV1
-        else magnet
-        StoppedRemoteAddPlan.fromMagnet(link, destination)
+        if (useServerDefault && (!defaultReadComplete || configuredDefault == null)) null
+        else {
+            val link = if (useFile && selectedTorrent != null && selectedBytes != null)
+                "magnet:?xt=urn:btih:" + selectedTorrent!!.infoHashV1
+            else magnet
+            if (useServerDefault) StoppedRemoteAddPlan.fromMagnetAtServerDefault(link, effectiveDestination)
+            else StoppedRemoteAddPlan.fromMagnet(link, effectiveDestination)
+        }
     } catch (failure: IllegalArgumentException) {
         // Match only our fixed validation messages, never display arbitrary
         // untrusted magnet input or server-provided exception text.
@@ -154,7 +177,7 @@ fun VerifiedAddScreen(
                 Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("A place for every download.", style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Black)
-                    Text("Choose a magnet or .torrent, review the exact server destination and decide whether to start downloading immediately after the stopped Add is verified.")
+                    Text("Choose a magnet or .torrent. The configured server download folder is used unless you change it. Review the exact Place and whether to start after verification.")
                 }
             }
         }
@@ -224,12 +247,21 @@ fun VerifiedAddScreen(
                         awaitingConfirmation = false
                     }
                 },
-                label = { Text("Absolute destination on rTorrent server") },
+                label = { Text("Custom server folder (optional)") },
                 enabled = !submitting && !alreadyAttempted,
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 1,
                 maxLines = 3
             )
+            Text(when {
+                destination.isNotBlank() ->
+                    "Using custom Place. Clear this field to return to the server default; this choice does not change the server setting."
+                !defaultReadComplete -> "Reading rTorrent's configured default Place…"
+                configuredDefault != null ->
+                    "Using rTorrent default Place: " + configuredDefault + ". No directory override will be sent."
+                else ->
+                    "No usable default Place was reported. Enter a custom absolute server folder before adding."
+            }, style = MaterialTheme.typography.bodySmall)
         }
         if (!alreadyAttempted && plan == null) {
             item {
@@ -268,7 +300,8 @@ fun VerifiedAddScreen(
                             Text("Confirm one server operation", fontWeight = FontWeight.Bold)
                             Text("Source: " + if (useFile) "Selected .torrent file" else "Magnet link")
                             Text("Infohash: " + plan.expectedInfoHash)
-                            Text("Destination: " + plan.destination)
+                            Text("Destination: " + plan.destination + if (plan.useServerDefault)
+                                " (server default; no directory override)" else " (custom parent folder)")
                             Text(if (startAfterAdd)
                                 "Step 1: Add stopped and verify exact hash and destination. Step 2: request Start once, and verify the server's running state. No retry if either result is uncertain."
                             else "Add stopped only; use Start later from Transfers. No file move or download is implied.")
@@ -293,7 +326,8 @@ fun VerifiedAddScreen(
                                     val result = RemoteAddStarter.run(
                                         startAfterVerifiedAdd = startAfterAdd,
                                         add = {
-                                            if (bytes != null) remote.loadStoppedTorrentBytes(bytes, plan.destination)
+                                            if (bytes != null) remote.loadStoppedTorrentBytes(
+                                                bytes, plan.destination, plan.useServerDefault)
                                             else remote.loadStopped(plan)
                                         },
                                         start = { hash -> remote.setStarted(hash, true) }
