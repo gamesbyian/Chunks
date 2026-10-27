@@ -143,6 +143,7 @@ private fun ChunksApp(sharedMagnet: String?) {
     var aliasRevision by remember { mutableStateOf(0) }
     val remoteFence = remember { RemoteUiRequestFence() }
     val inspectionFence = remember { RemoteUiRequestFence() }
+    val mutationGate = remember { RemoteMutationReadbackGate() }
 
     // Incoming Android Sharesheet/VIEW links prefill a local draft. Never auto-submit.
     LaunchedEffect(sharedMagnet) {
@@ -165,10 +166,12 @@ private fun ChunksApp(sharedMagnet: String?) {
                     var again: Boolean
                     do {
                         val ticket = remoteFence.begin(requestedView)
+                        val readbackTicket = mutationGate.ticket()
                         if (server === remote) error = null
                         try {
                             val snapshot = remote.listTransfers(ticket.view)
-                            if (server === remote && remoteFence.current(ticket)) {
+                            if (server === remote && remoteFence.current(ticket) &&
+                                mutationGate.accepts(readbackTicket)) {
                                 transfers = snapshot
                                 currentView = ticket.view
                                 stale = false
@@ -179,6 +182,10 @@ private fun ChunksApp(sharedMagnet: String?) {
                                 files = null
                                 filesError = null
                                 filesLoading = false
+                            } else if (server === remote && remoteFence.current(ticket)) {
+                                // A response from before/during an uncertain write
+                                // cannot clear its safety latch or replace the queue.
+                                stale = true
                             }
                         } catch (failure: Exception) {
                             if (server === remote && remoteFence.current(ticket)) {
@@ -233,6 +240,7 @@ private fun ChunksApp(sharedMagnet: String?) {
                                 val list = candidate.listTransfers(ticket.view)
                                 if (remoteFence.current(ticket) && server == null) {
                                     inspectionFence.invalidate()
+                                    mutationGate.reset()
                                     transfers = list
                                     version = v
                                     aliasScope = endpoint.trim() + "\u0000" + username.trim()
@@ -258,6 +266,20 @@ private fun ChunksApp(sharedMagnet: String?) {
                 }
             )
         } else {
+            val connectedRemote = requireNotNull(server)
+            val beginRemoteMutation: () -> Boolean = {
+                if (server === connectedRemote && !loading && !stale && mutationGate.tryStart()) {
+                    stale = true
+                    true
+                } else false
+            }
+            val settledRemoteMutation: () -> Unit = {
+                if (server === connectedRemote) {
+                    mutationGate.settled()
+                    stale = true
+                    refresh()
+                }
+            }
             Row(
                 modifier = Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -276,7 +298,8 @@ private fun ChunksApp(sharedMagnet: String?) {
             }
             when (section) {
                 Section.TRANSFERS -> TransfersScreen(
-                    remote = requireNotNull(server), onLifecycleSettled = refresh,
+                    remote = connectedRemote, onLifecycleSettled = settledRemoteMutation,
+                    onMutationStarted = beginRemoteMutation,
                     aliasStore = aliasStore, aliasScope = aliasScope,
                     aliasSessions = aliasSessions,
                     aliasRevision = aliasRevision, onAliasSaved = { aliasRevision++ },
@@ -348,6 +371,7 @@ private fun ChunksApp(sharedMagnet: String?) {
                         // Invalidate every in-flight read before clearing UI state.
                         remoteFence.invalidate()
                         inspectionFence.invalidate()
+                        mutationGate.reset()
                         server = null
                         aliasScope = ""
                         aliasSessions.clear()
@@ -365,10 +389,12 @@ private fun ChunksApp(sharedMagnet: String?) {
                     }
                 )
                 Section.ADD -> VerifiedAddScreen(
-                    remote = requireNotNull(server), magnet = magnet, destination = draftPath,
+                    remote = connectedRemote, magnet = magnet, destination = draftPath,
                     onMagnet = { magnet = it }, onDestination = { draftPath = it },
                     onBack = { section = Section.TRANSFERS },
-                    onComplete = refresh
+                    onComplete = refresh,
+                    onMutationStarted = beginRemoteMutation,
+                    onMutationSettled = settledRemoteMutation
                 )
             }
         }
@@ -453,6 +479,7 @@ private fun ConnectionScreen(
 @Composable
 private fun TransfersScreen(
     remote: RTorrentRemote, onLifecycleSettled: () -> Unit,
+    onMutationStarted: () -> Boolean,
     aliasStore: TransferAliasStore, aliasScope: String,
     aliasSessions: MutableMap<String, TransferAliasEditSession>,
     aliasRevision: Int, onAliasSaved: () -> Unit,
@@ -483,7 +510,8 @@ private fun TransfersScreen(
                     Lime
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = onAdd, modifier = Modifier.weight(1f).height(52.dp)) {
+                    Button(onClick = onAdd, enabled = !loading && !stale,
+                        modifier = Modifier.weight(1f).height(52.dp)) {
                         Text("+ Add torrent")
                     }
                     OutlinedButton(onClick = onRefresh, enabled = !loading,
@@ -538,7 +566,8 @@ private fun TransfersScreen(
         }
         items(visible, key = { it.hash }) { transfer ->
             TransferCard(
-                remote = remote, stale = stale, mainView = view == "main",
+                remote = remote, stale = stale || loading, mainView = view == "main",
+                onMutationStarted = onMutationStarted,
                 alias = aliasStore.get(aliasScope, transfer.hash),
                 aliasSession = aliasSessions.getOrPut(aliasScope + "\u0000" + transfer.hash) {
                     TransferAliasEditSession(aliasStore.get(aliasScope, transfer.hash))
@@ -564,6 +593,7 @@ private fun TransfersScreen(
 @Composable
 private fun TransferCard(
     remote: RTorrentRemote, stale: Boolean, mainView: Boolean,
+    onMutationStarted: () -> Boolean,
     alias: String?, aliasSession: TransferAliasEditSession,
     onAliasSave: (String?) -> Boolean,
     onLifecycleSettled: () -> Unit,
@@ -620,11 +650,13 @@ private fun TransferCard(
             }
             TransferLifecycleControl(
                 remote = remote, transfer = transfer, snapshotStale = stale,
+                onMutationStarted = onMutationStarted,
                 onSettled = onLifecycleSettled
             )
             TransferSessionRemoveControl(
                 remote = remote, transfer = transfer, snapshotStale = stale,
-                mainView = mainView, onSettled = onLifecycleSettled
+                mainView = mainView, onMutationStarted = onMutationStarted,
+                onSettled = onLifecycleSettled
             )
             if (expanded) {
                 if (filesLoading) Text("Reading server file list…")
@@ -633,6 +665,7 @@ private fun TransferCard(
                     TransferFilePager(
                         remote = remote, hash = transfer.hash, files = files,
                         snapshotStale = stale, mainView = mainView,
+                        onMutationStarted = onMutationStarted,
                         onSettled = onLifecycleSettled
                     )
                 }
