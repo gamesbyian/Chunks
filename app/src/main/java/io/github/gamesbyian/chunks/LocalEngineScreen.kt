@@ -316,22 +316,35 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
                     }
                     busy = true
                     scope.launch {
-                        val outcome = withContext(Dispatchers.IO) {
-                            val engine = LocalEngineHolder.get(context)
-                            if (transfer.stopped) engine.resume(transfer.infoHash) else engine.pause(transfer.infoHash)
-                        }
-                        var serviceProblem: String? = null
-                        if (transfer.stopped && outcome.outcome != LocalCommandOutcome.NOT_FOUND) {
-                            try { LocalEngineService.start(context) } catch (_: Exception) {
-                                serviceProblem = "Android did not allow background running; keep Chunks open."
+                        try {
+                            val outcome = withContext(Dispatchers.IO) {
+                                val engine = LocalEngineHolder.get(context)
+                                if (transfer.stopped) engine.resume(transfer.infoHash) else engine.pause(transfer.infoHash)
                             }
+                            var serviceProblem: String? = null
+                            if (transfer.stopped && outcome.outcome != LocalCommandOutcome.NOT_FOUND) {
+                                try { LocalEngineService.start(context) } catch (_: Exception) {
+                                    serviceProblem = "Android did not allow background running; keep Chunks open."
+                                }
+                            }
+                            message = when (outcome.outcome) {
+                                LocalCommandOutcome.VERIFIED -> serviceProblem
+                                LocalCommandOutcome.UNCERTAIN -> {
+                                    inventoryFrame = inventoryFrame.copy(stale = true)
+                                    "The engine has not confirmed the change yet. Wait for fresh status before trying again."
+                                }
+                                LocalCommandOutcome.NOT_FOUND -> "This transfer is no longer in the phone engine."
+                            }
+                        } catch (cancel: kotlinx.coroutines.CancellationException) {
+                            throw cancel
+                        } catch (_: Exception) {
+                            // The command may have reached libtorrent before the read or JNI call failed.
+                            // Do not invite another write until a successful inventory read.
+                            inventoryFrame = inventoryFrame.copy(stale = true)
+                            message = "Start/Stop was not confirmed. Wait for fresh phone torrent status before trying again."
+                        } finally {
+                            busy = false
                         }
-                        message = when (outcome.outcome) {
-                            LocalCommandOutcome.VERIFIED -> serviceProblem
-                            LocalCommandOutcome.UNCERTAIN -> "The engine has not confirmed the change yet. Check the status before trying again."
-                            LocalCommandOutcome.NOT_FOUND -> "This transfer is no longer in the phone engine."
-                        }
-                        busy = false
                     }
                 },
                 files = files.takeIf { filesFor == transfer.infoHash },
@@ -343,21 +356,50 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
                 onFileWanted = { index, wanted ->
                     busy = true
                     scope.launch {
-                        val outcome = withContext(Dispatchers.IO) {
-                            LocalEngineHolder.current()?.setFileWanted(transfer.infoHash, index, wanted)
-                                ?: LocalCommandOutcome.NOT_FOUND
+                        try {
+                            val outcome = withContext(Dispatchers.IO) {
+                                LocalEngineHolder.current()?.setFileWanted(transfer.infoHash, index, wanted)
+                                    ?: LocalCommandOutcome.NOT_FOUND
+                            }
+                            if (outcome != LocalCommandOutcome.VERIFIED) {
+                                inventoryFrame = inventoryFrame.copy(stale = true)
+                            }
+                            message = when (outcome) {
+                                LocalCommandOutcome.VERIFIED -> null
+                                LocalCommandOutcome.NOT_FOUND -> "This transfer or file is no longer available."
+                                LocalCommandOutcome.UNCERTAIN -> "File selection is unconfirmed. Wait for fresh status before trying again."
+                            }
+                            files = withContext(Dispatchers.IO) { LocalEngineHolder.current()?.files(transfer.infoHash) }
+                        } catch (cancel: kotlinx.coroutines.CancellationException) {
+                            throw cancel
+                        } catch (_: Exception) {
+                            inventoryFrame = inventoryFrame.copy(stale = true)
+                            files = null
+                            message = "File selection or readback failed. Wait for fresh status before trying again."
+                        } finally {
+                            busy = false
                         }
-                        message = if (outcome == LocalCommandOutcome.VERIFIED) null
-                            else "The engine has not confirmed the file selection yet."
-                        files = withContext(Dispatchers.IO) { LocalEngineHolder.current()?.files(transfer.infoHash) }
-                        busy = false
                     }
                 },
                 onRemove = {
                     busy = true
                     scope.launch {
-                        withContext(Dispatchers.IO) { LocalEngineHolder.current()?.removeKeepingData(transfer.infoHash) }
-                        busy = false
+                        try {
+                            val removed = withContext(Dispatchers.IO) {
+                                LocalEngineHolder.current()?.removeKeepingData(transfer.infoHash)
+                            }
+                            message = if (removed == true) null
+                                else "Session removal was not confirmed. Check the transfer list before trying again."
+                            if (removed != true) inventoryFrame = inventoryFrame.copy(stale = true)
+                        } catch (cancel: kotlinx.coroutines.CancellationException) {
+                            throw cancel
+                        } catch (_: Exception) {
+                            // Session removal may have succeeded before the exception.
+                            inventoryFrame = inventoryFrame.copy(stale = true)
+                            message = "Session removal was not confirmed. Wait for fresh status before trying again. Downloaded files were not requested for deletion."
+                        } finally {
+                            busy = false
+                        }
                     }
                 })
             TransferCollectionEditor(
