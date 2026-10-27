@@ -141,6 +141,33 @@ class LocalTorrentEngineInstrumentedTest {
         assertArrayEquals(payload, File(seedRoot, "payload.bin").readBytes())
     }
 
+    @Test fun sessionOnlyRemovalCannotLeaveResumeFileForRestart() {
+        val root = File(work, "remove-resume/Remove fixture").apply { mkdirs() }
+        val original = File(root, "source.bin").apply {
+            writeBytes(ByteArray(65_000).also { Random(61).nextBytes(it) })
+        }
+        val torrent = TorrentBuilder().path(root).pieceSize(16 * 1024).generate().entry().bencode()
+        val state = File(work, "remove-state").apply { mkdirs() }
+        val config = LocalEngineConfig(listenInterfaces = "127.0.0.1:0", stateDirectory = state)
+        val first = LocalTorrentEngine(config).also { it.start(); engines += it }
+        val added = (first.addStopped(torrent, requireNotNull(root.parentFile))
+            as LocalAddResult.AddedStopped).status
+
+        // Initiate an asynchronous native save then immediately Remove.
+        // A callback arriving after Remove must not recreate .resume.
+        first.saveResumeData(timeoutMs = 0)
+        assertTrue(first.removeKeepingData(added.infoHash))
+        Thread.sleep(250)
+        assertTrue(first.status(added.infoHash) == null)
+        assertTrue(!File(state, added.infoHash.lowercase() + ".resume").exists())
+        first.close()
+
+        val second = LocalTorrentEngine(config).also { it.start(); engines += it }
+        assertTrue(second.status(added.infoHash) == null)
+        assertTrue(second.restoreProblems.isEmpty())
+        assertTrue(original.isFile)
+    }
+
     @Test fun androidEngineRestoresSavedTransfersStoppedAfterRestart() {
         val seedRoot = File(work, "persist/Restart fixture").apply { mkdirs() }
         File(seedRoot, "a.bin").writeBytes(ByteArray(70_000).also { Random(5).nextBytes(it) })
