@@ -71,7 +71,8 @@ class VerifiedAddScreenAtlasTest {
                 VerifiedAddScreen(remote, magnet, destination,
                     onMagnet = { magnet = it },
                     onDestination = { destination = it },
-                    onBack = {}, onComplete = {})
+                    onBack = {}, onComplete = {},
+                    onMutationStarted = { true }, onMutationSettled = {})
             }
         }
         rule.onNode(hasScrollAction()).performScrollToNode(hasText("Review stopped Add"))
@@ -90,7 +91,8 @@ class VerifiedAddScreenAtlasTest {
                 VerifiedAddScreen(remote, magnet, destination,
                     onMagnet = { magnet = it },
                     onDestination = { destination = it },
-                    onBack = {}, onComplete = {})
+                    onBack = {}, onComplete = {},
+                    onMutationStarted = { true }, onMutationSettled = {})
             }
         }
         rule.onNode(hasScrollAction()).performScrollToNode(hasText("Review stopped Add"))
@@ -117,7 +119,7 @@ class VerifiedAddScreenAtlasTest {
         rule.setContent {
             MaterialTheme {
                 TransferSessionRemoveControl(remote, transfer,
-                    snapshotStale = false, mainView = true, onSettled = {})
+                    snapshotStale = false, mainView = true, onMutationStarted = { true }, onSettled = {})
             }
         }
         rule.onNodeWithText("Remove from rTorrent…").performClick()
@@ -139,7 +141,7 @@ class VerifiedAddScreenAtlasTest {
         rule.setContent {
             MaterialTheme {
                 TransferFilePager(remote, "ab".repeat(20), files,
-                    snapshotStale = false, mainView = true, onSettled = {})
+                    snapshotStale = false, mainView = true, onMutationStarted = { true }, onSettled = {})
             }
         }
         rule.onNodeWithText("Showing 1–40 of 105 files").assertExists()
@@ -164,7 +166,7 @@ class VerifiedAddScreenAtlasTest {
         rule.setContent {
             MaterialTheme {
                 TransferSessionRemoveControl(remote, transfer,
-                    snapshotStale = true, mainView = true, onSettled = {})
+                    snapshotStale = true, mainView = true, onMutationStarted = { true }, onSettled = {})
             }
         }
         rule.onNodeWithText("Refresh this stale server snapshot before removing a transfer.").assertExists()
@@ -177,7 +179,7 @@ class VerifiedAddScreenAtlasTest {
             MaterialTheme {
                 TransferFilePriorityControl(
                     remote, "ab".repeat(20), 7, file,
-                    snapshotStale = false, mainView = true, onSettled = {})
+                    snapshotStale = false, mainView = true, onMutationStarted = { true }, onSettled = {})
             }
         }
         rule.onNodeWithText("High").performClick()
@@ -194,7 +196,7 @@ class VerifiedAddScreenAtlasTest {
             MaterialTheme {
                 TransferFilePriorityControl(
                     remote, "ab".repeat(20), 0, file,
-                    snapshotStale = true, mainView = true, onSettled = {})
+                    snapshotStale = true, mainView = true, onMutationStarted = { true }, onSettled = {})
             }
         }
         rule.onNodeWithText("Review priority change").assertDoesNotExist()
@@ -209,7 +211,8 @@ class VerifiedAddScreenAtlasTest {
                 VerifiedAddScreen(remote, magnet, destination,
                     onMagnet = { magnet = it },
                     onDestination = { destination = it },
-                    onBack = {}, onComplete = {})
+                    onBack = {}, onComplete = {},
+                    onMutationStarted = { true }, onMutationSettled = {})
             }
         }
         rule.onNodeWithText("Review stopped Add").assertDoesNotExist()
