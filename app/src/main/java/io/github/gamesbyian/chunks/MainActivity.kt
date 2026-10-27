@@ -749,8 +749,29 @@ private fun TransfersScreen(
                     Modifier.weight(1f))
                 StatTile("Up", Units.bytes(list.sumOf { it.upBytesPerSecond ?: 0 }) + "/s", Coral,
                     Modifier.weight(1f))
-                StatTile("Active", list.count { it.started }.toString(), Lime, Modifier.weight(1f))
+                StatTile("Start set", list.count { it.started }.toString(),
+                    Lime, Modifier.weight(1f))
             }
+        }
+        item {
+            val transferring = list.count {
+                (it.downBytesPerSecond ?: 0L) > 0L ||
+                    (it.upBytesPerSecond ?: 0L) > 0L
+            }
+            val zeroDownloading = list.count {
+                it.started && it.sizeBytes > it.completedBytes &&
+                    it.downBytesPerSecond == 0L
+            }
+            val unknown = list.count {
+                it.started && it.sizeBytes > it.completedBytes &&
+                    it.downBytesPerSecond == null
+            }
+            Text("$transferring reporting traffic · $zeroDownloading started but 0 B/s down" +
+                (if (unknown > 0) " · $unknown without a reported download rate" else ""),
+                style = MaterialTheme.typography.bodySmall)
+            Text("Start set is a server flag, not proof the engine is active or peers are " +
+                "delivering data. Rates are a single loaded-view observation.",
+                style = MaterialTheme.typography.bodySmall)
         }
         item {
             OutlinedTextField(
