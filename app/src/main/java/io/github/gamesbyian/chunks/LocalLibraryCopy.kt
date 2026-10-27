@@ -128,8 +128,22 @@ internal fun LocalLibraryCopyPanel(transfer: LocalTransferStatus) {
                 scope.launch {
                     result = withContext(Dispatchers.IO) {
                         try {
-                            LocalZipExtraction.copyFinished(context, files.sourceRoot, files.files, transfer.name,
-                                destination, acknowledgedUnknownSpace) { cancel.get() }
+                            // Native completion may precede an asynchronous
+                            // filesystem cache flush. A self-consistent SHA-256
+                            // independent copy could otherwise preserve stale
+                            // zero bytes rather than verified torrent contents.
+                            val flushed = LocalEngineHolder.current()
+                                ?.flushCompletedForLibraryRead(transfer.infoHash) == true
+                            when {
+                                !flushed -> ZipExtractionResult(ZipExtractionStatus.BLOCKED,
+                                    null, null, 0, 0,
+                                    "Copy not started: the completed torrent's disk cache could not be confirmed flushed. No destination files were published; retry when status is fresh.")
+                                cancel.get() -> ZipExtractionResult(ZipExtractionStatus.BLOCKED,
+                                    null, null, 0, 0,
+                                    "Copy cancelled before source publication. No destination files were created.")
+                                else -> LocalZipExtraction.copyFinished(context, files.sourceRoot, files.files, transfer.name,
+                                    destination, acknowledgedUnknownSpace) { cancel.get() }
+                            }
                         } catch (_: Exception) {
                             ZipExtractionResult(ZipExtractionStatus.NEEDS_ATTENTION, null, null, 0, 0,
                                 "Copying stopped unexpectedly; check the destination folder")
