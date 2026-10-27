@@ -12,15 +12,15 @@ Evidence: [run 40057523588](https://github.com/gamesbyian/Chunks/actions/runs/40
 
 A dedicated [Publish Chunks installable Android debug APK](../.github/workflows/publish-debug-apk.yml) workflow builds and JVM-tests the exact checked-out `main` SHA, verifies the Android versionName suffix, produces a paired SHA-256 receipt and publishes both files as assets of an immutable pre-release tag `android-debug-<12-character-source-SHA>`. The workflow runs once when added to `main` and may later be dispatched manually. The release asset URL is stable, unlike the seven-day Actions artifact.
 
-The two GitHub release files are `app-debug.apk` and `CHUNKS-BUILD-SHA256.txt`. They must be kept together when running `sha256sum -c CHUNKS-BUILD-SHA256.txt` or the physical-handset preflight. These are development builds **signed with the Android debug key**, not signed publisher-authentic releases, verified handset compatibility, or ready-for-production APKs. Do not expose server credentials or infer real torrent/seeding acceptance merely because the APK installs.
+The GitHub release files are `chunks-debug.apk`, `chunks-preview.apk` (side-by-side install), and `CHUNKS-BUILD-SHA256.txt`. Gradle itself may still produce `app-debug.apk` internally; publication workflows copy and rename the distributable APKs. All uploaded APK filenames must contain `chunks`. They must be kept together when running `sha256sum -c CHUNKS-BUILD-SHA256.txt` or the physical-handset preflight. These are development builds **signed with the Android debug key**, not signed publisher-authentic releases, verified handset compatibility, or ready-for-production APKs. Do not expose server credentials or infer real torrent/seeding acceptance merely because the APK installs.
 
 ## Debug APK identity and device evidence
 
 The `Chunks Android foundation` workflow embeds the **exact Git commit checked out by the runner** into the debug APK's Android `versionName` as `0.1.0-dev+<12 hex digits>`. Developer-built APKs without `CHUNKS_SOURCE_SHA` keep `0.1.0-dev`, which intentionally carries no source claim.
 
-The seven-day `chunks-debug-prealpha` Actions artifact contains two files:
+The seven-day `chunks-debug-prealpha` Android foundation Actions artifact contains two files (the publishing workflow also includes `chunks-preview.apk`):
 
-- `app-debug.apk`: installable debug-only Android package.
+- `chunks-debug.apk`: installable debug-only Android package.
 - `CHUNKS-BUILD-SHA256.txt`: independent SHA-256 checksum for the extracted APK, with commented full checked-out commit and Actions run ID. From the directory containing both files, run `sha256sum -c CHUNKS-BUILD-SHA256.txt`.
 
 The workflow verifies that the APK manifest exposes the expected revision **before** publishing the artifact. On a handset, Android Settings → Apps → Chunks → App info reports its version. Compare the suffix with the receipt and record the device model, actual Android release/API, artifact workflow run, APK digest, tested remote/engine mode and the sequence of visible outcomes. The suffix identifies the **built checkout**, which for pull requests is GitHub's temporary merge-ref commit; it is not automatically the PR head or the eventual squash-merge commit. For a beta APK corresponding directly to a commit on `main`, manually dispatch the workflow on that commit/ref and verify the receipt.
@@ -33,7 +33,7 @@ After downloading and extracting **both** files from one `chunks-debug-prealpha`
 
 ```bash
 bash tools/test_physical_android_preflight.sh
-bash tools/physical_android_preflight.sh /path/to/extracted/app-debug.apk
+bash tools/physical_android_preflight.sh /path/to/extracted/chunks-debug.apk
 ```
 
 The preflight requires `adb`, `sha256sum` and Bash. It verifies that the exact APK bytes match the paired `CHUNKS-BUILD-SHA256.txt` receipt, extracts its 40-hex built-checkout SHA, rejects an emulator or ambiguous device selection, installs the debug APK, checks the installed package's versionName against that SHA and opens MainActivity. Use `ADB_SERIAL=...` to select one attached device when several are authorized; the script does not print the serial. It prints only source commit, APK SHA-256, Android version/API and model, plus clear **not verified** boundaries. The script deliberately does not capture logcat, screenshots, credentials, torrent paths or media.
