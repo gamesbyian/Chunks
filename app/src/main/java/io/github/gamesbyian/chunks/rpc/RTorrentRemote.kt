@@ -600,8 +600,8 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                     number(call("d.is_active", listOf(hash))) != 0L
                 } catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
                   catch (_: RpcFault) { null }
-                if (active == false) LifecycleOutcome.Pending(true, true)
-                else LifecycleOutcome.Verified(true)
+                if (active == true) LifecycleOutcome.Verified(true)
+                else LifecycleOutcome.Pending(true, true)
             } else LifecycleOutcome.Verified(false)
         } catch (_: java.io.IOException) {
             LifecycleOutcome.Uncertain(desiredStarted)
