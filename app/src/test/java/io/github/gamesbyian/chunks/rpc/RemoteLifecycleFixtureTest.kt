@@ -60,6 +60,36 @@ class RemoteLifecycleFixtureTest {
         } finally { server.stop(0) }
     }
 
+    @Test fun acceptedStartWithNoActiveEngineOrPeersDoesNotImplyDownloading() = runBlocking {
+        var startIssued = false
+        val server = HttpServer.create(InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0)
+        server.createContext("/RPC2") { exchange ->
+            val request = exchange.requestBody.bufferedReader().readText()
+            val method = Regex("<methodName>([^<]+)</methodName>").find(request)?.groupValues?.get(1) ?: ""
+            val response = when (method) {
+                "d.start" -> { startIssued = true; 0 }
+                "d.state" -> if (startIssued) 1 else 0
+                "d.is_active", "d.is_open", "d.peers_connected", "d.down.rate" -> 0
+                else -> 0
+            }
+            val xml = "<methodResponse><params><param><value><int>$response</int></value></param></params></methodResponse>".toByteArray()
+            exchange.sendResponseHeaders(200, xml.size.toLong())
+            exchange.responseBody.use { it.write(xml) }
+        }
+        server.start()
+        try {
+            val client = RTorrentRemote(RemoteCredentials(
+                "http://127.0.0.1:${server.address.port}/RPC2", "", ""))
+            assertEquals(LifecycleOutcome.Verified(true), client.setStarted(hash, true))
+            val activity = client.readActivity(hash)
+            assertEquals(false, activity.active)
+            assertEquals(false, activity.open)
+            assertEquals(0L, activity.connectedPeers)
+            assertEquals(0L, activity.downloadBytesPerSecond)
+            assertTrue(activity.summary().contains("not active"))
+        } finally { server.stop(0) }
+    }
+
     @Test fun invalidHashCannotIssueCommands() = runBlocking {
         try {
             RTorrentRemote(RemoteCredentials("http://127.0.0.1:1/RPC2", "", ""))
