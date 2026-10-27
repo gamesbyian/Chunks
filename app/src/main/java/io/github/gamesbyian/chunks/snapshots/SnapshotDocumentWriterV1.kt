@@ -36,10 +36,17 @@ internal object SnapshotDocumentWriterV1 {
             val digest = MessageDigest.getInstance("SHA-256")
             val buffer = ByteArray(8192)
             var total = 0
+            var emptyReads = 0
             while (true) {
                 val count = stream.read(buffer)
                 if (count == -1) break
-                if (count == 0) continue
+                if (count == 0) {
+                    if (++emptyReads > 16) {
+                        throw IOException("The document provider repeatedly returned empty reads")
+                    }
+                    continue
+                }
+                emptyReads = 0
                 total += count
                 if (total > MAX_BYTES || total > bytes.size) {
                     throw IOException("The document provider returned excessive snapshot bytes")
