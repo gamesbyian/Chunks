@@ -69,6 +69,26 @@ class LocalQueueCatalogTest {
                 LocalQueueOrder.NAME).map { it.infoHash })
     }
 
+    @Test fun aliasesAreSearchedAndSortedButOriginalNamesRemainSearchable() {
+        val sample = listOf(a, b, c)
+        val aliases = mapOf(a.infoHash to "000 new display", c.infoHash to "zz top")
+        fun visible(search: String, order: LocalQueueOrder = LocalQueueOrder.NAME) =
+            LocalQueueCatalog.visible(sample, search, LocalQueueFilter.ALL, order) { item ->
+                aliases[item.infoHash] ?: item.name
+            }
+        assertEquals(listOf(a.infoHash, b.infoHash, c.infoHash),
+            visible("").map { it.infoHash })
+        assertEquals(listOf(a.infoHash), visible("new display").map { it.infoHash })
+        assertEquals(listOf(a.infoHash), visible("Bravo").map { it.infoHash })
+        assertEquals(listOf(c.infoHash), visible("zz top").map { it.infoHash })
+        val observed = mutableMapOf<String, Int>()
+        LocalQueueCatalog.visible(sample, "", LocalQueueFilter.ALL, LocalQueueOrder.NAME) {
+            item -> observed[item.infoHash] = (observed[item.infoHash] ?: 0) + 1
+            aliases[item.infoHash] ?: item.name
+        }
+        assertTrue(observed.values.all { it == 1 })
+    }
+
     @Test fun sortsProgressSizeAndPeersWithoutMutationOrDroppedTransfers() {
         val before = data.toList()
         fun sort(order: LocalQueueOrder) =
