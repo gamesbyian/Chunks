@@ -42,7 +42,7 @@ if [ "$status" -ne 0 ] || ! grep -q '^INSTRUMENTATION_CODE: -1' "$log" ||
   # Enumerated milestones are generated in the test and contain no untrusted
   # strings. Never print raw stack traces, instrumentation output or logcat:
   # those could include user/pass or auth headers.
-  checkpoint=$(grep -E '^INSTRUMENTATION_STATUS: chunks_stage=' "$log" | tail -n 1 | sed 's/^INSTRUMENTATION_STATUS: chunks_stage=//' | tr -d '\\r' || true)
+  checkpoint=$(grep -E '^INSTRUMENTATION_STATUS: chunks_stage=' "$log" | tail -n 1 | sed 's/^INSTRUMENTATION_STATUS: chunks_stage=//' | sed 's/[[:cntrl:]]//g' || true)
   case "$checkpoint" in
     arguments|form|connect|queue|inventory|first-capture|refresh-click|refresh-busy|refresh-idle|final-capture) ;;
     *) checkpoint=unavailable ;;
