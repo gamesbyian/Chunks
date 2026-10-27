@@ -11,6 +11,10 @@
 | [05: UI components and states](05-ui-components-and-states.png) | Segmented progress bars, list cards, tabs, storage meters, action buttons, warning, disabled and error states |
 | [06: Colour, illustrations and stickers](06-colour-illustrations-and-stickers.png) | Palette, geometric background forms, 3D-style symbol family, playful stickers and empty-state art |
 
+## Implementation status (first limited native slice)
+
+[Merged #222](https://github.com/gamesbyian/Chunks/pull/222) introduces an actual Compose `ChunksBrandHeader` and stronger transfer-card outline. These consume the overview's bold modular silhouette with native text/geometry and accessibility rather than rasterizing any reference. Exact-head Android/JVM, API35 and emulator atlas checks passed (see [QUALITY-LEDGER](../../QUALITY-LEDGER.md)), but the screenshot pixels have not yet been independently reviewed and no owner sign-off is implied. Full font licensing and vector asset development, dense lists, all status states, and physical handset review remain open.
+
 ## Implementation notes
 
 - Reproduce the **segmented progress bar** as a proper progress indicator with a continuously accurate percent; segment boundaries are decorative and must not falsify completion or conceal intermediate values.
