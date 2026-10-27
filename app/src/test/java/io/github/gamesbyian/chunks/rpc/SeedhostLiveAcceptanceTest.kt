@@ -283,8 +283,12 @@ class SeedhostLiveAcceptanceTest {
         assumeTrue("Mutation requires apply", System.getenv("CHUNKS_LIVE_MUTATION") == "apply")
         assumeTrue("Diagnostic runs do not repeat writes", System.getenv("CHUNKS_LIVE_DIAGNOSE_ADD") != "true")
         val rtorrent = remote()
-        val base = rtorrent.defaultDirectory() ?: commonParent(rtorrent.listTransfers("main").map { it.directory })
-        requireNotNull(base) { "No safe base directory could be determined" }
+        // The host may have no directory.default and existing torrents may
+        // occupy unrelated parents. Only a fresh complete single-file readback
+        // may nominate a safe existing parent; fail closed without writing.
+        val selected = preflightExistingParent(rtorrent)
+        requireNotNull(selected) { "No verified existing single-file parent; no write permitted" }
+        val base = selected.directory
         val run = System.getenv("GITHUB_RUN_ID").orEmpty().filter { it.isDigit() }.ifEmpty { System.currentTimeMillis().toString() }
         val hash = MessageDigest.getInstance("SHA-1").digest("chunks-acceptance-magnet-$run".toByteArray())
             .joinToString("") { "%02x".format(it) }
@@ -317,8 +321,12 @@ class SeedhostLiveAcceptanceTest {
         assumeTrue("Mutation requires apply", System.getenv("CHUNKS_LIVE_MUTATION") == "apply")
         assumeTrue("Diagnostic runs do not repeat writes", System.getenv("CHUNKS_LIVE_DIAGNOSE_ADD") != "true")
         val rtorrent = remote()
-        val base = rtorrent.defaultDirectory() ?: commonParent(rtorrent.listTransfers("main").map { it.directory })
-        requireNotNull(base) { "No safe base directory could be determined" }
+        // The host may have no directory.default and existing torrents may
+        // occupy unrelated parents. Only a fresh complete single-file readback
+        // may nominate a safe existing parent; fail closed without writing.
+        val selected = preflightExistingParent(rtorrent)
+        requireNotNull(selected) { "No verified existing single-file parent; no write permitted" }
+        val base = selected.directory
         val run = System.getenv("GITHUB_RUN_ID").orEmpty().filter { it.isDigit() }.ifEmpty { System.currentTimeMillis().toString() }
         val name = "chunks-acceptance-$run-upload.txt"
         val bytes = syntheticTorrent(name)
