@@ -10,7 +10,7 @@
   },
   "totals": {
     "approved": 1,
-    "vectorDraft": 294,
+    "vectorDraft": 326,
     "planned": 495
   },
   "assets": [
@@ -5838,6 +5838,294 @@
       "status": "vector-draft",
       "path": "docs/design/svg/approved-derived/variants/storage-with-folder.svg",
       "source": "owner-approved icon master, exact underlying geometry; alternative compositions not approved"
+    },
+    {
+      "id": "palette/brand-essence/pink",
+      "category": "palette",
+      "label": "brand-essence: pink (#FF4EC4)",
+      "status": "vector-draft",
+      "path": "docs/design/svg/palettes/brand-essence/pink.svg",
+      "source": "Colour and illustrations sheet, values explicitly printed",
+      "sourceVariant": "brand-essence"
+    },
+    {
+      "id": "palette/brand-essence/purple",
+      "category": "palette",
+      "label": "brand-essence: purple (#A56BFF)",
+      "status": "vector-draft",
+      "path": "docs/design/svg/palettes/brand-essence/purple.svg",
+      "source": "Colour and illustrations sheet, values explicitly printed",
+      "sourceVariant": "brand-essence"
+    },
+    {
+      "id": "palette/brand-essence/blue",
+      "category": "palette",
+      "label": "brand-essence: blue (#3B82FF)",
+      "status": "vector-draft",
+      "path": "docs/design/svg/palettes/brand-essence/blue.svg",
+      "source": "Colour and illustrations sheet, values explicitly printed",
+      "sourceVariant": "brand-essence"
+    },
+    {
+      "id": "palette/brand-essence/yellow",
+      "category": "palette",
+      "label": "brand-essence: yellow (#FFD93D)",
+      "status": "vector-draft",
+      "path": "docs/design/svg/palettes/brand-essence/yellow.svg",
+      "source": "Colour and illustrations sheet, values explicitly printed",
+      "sourceVariant": "brand-essence"
+    },
+    {
+      "id": "palette/brand-essence/green",
+      "category": "palette",
+      "label": "brand-essence: green (#22D97A)",
+      "status": "vector-draft",
+      "path": "docs/design/svg/palettes/brand-essence/green.svg",
+      "source": "Colour and illustrations sheet, values explicitly printed",
+      "sourceVariant": "brand-essence"
+    },
+    {
+      "id": "palette/brand-essence/cyan",
+      "category": "palette",
+      "label": "brand-essence: cyan (#00D4FF)",
+      "status": "vector-draft",
+      "path": "docs/design/svg/palettes/brand-essence/cyan.svg",
+      "source": "Colour and illustrations sheet, values explicitly printed",
+      "sourceVariant": "brand-essence"
+    },
+    {
+      "id": "palette/brand-essence/near_black",
+      "category": "palette",
+      "label": "brand-essence: near_black (#0B0F17)",
+      "status": "vector-draft",
+      "path": "docs/design/svg/palettes/brand-essence/near_black.svg",
+      "source": "Colour and illustrations sheet, values explicitly printed",
+      "sourceVariant": "brand-essence"
+    },
+    {
+      "id": "palette/brand-essence/surface",
+      "category": "palette",
+      "label": "brand-essence: surface (#1A1F2B)",
+      "status": "vector-draft",
+      "path": "docs/design/svg/palettes/brand-essence/surface.svg",
+      "source": "Colour and illustrations sheet, values explicitly printed",
+      "sourceVariant": "brand-essence"
+    },
+    {
+      "id": "palette/brand-essence/muted",
+      "category": "palette",
+      "label": "brand-essence: muted (#2E3647)",
+      "status": "vector-draft",
+      "path": "docs/design/svg/palettes/brand-essence/muted.svg",
+      "source": "Colour and illustrations sheet, values explicitly printed",
+      "sourceVariant": "brand-essence"
+    },
+    {
+      "id": "palette/brand-essence/secondary",
+      "category": "palette",
+      "label": "brand-essence: secondary (#6B7280)",
+      "status": "vector-draft",
+      "path": "docs/design/svg/palettes/brand-essence/secondary.svg",
+      "source": "Colour and illustrations sheet, values explicitly printed",
+      "sourceVariant": "brand-essence"
+    },
+    {
+      "id": "palette/brand-essence/divider",
+      "category": "palette",
+      "label": "brand-essence: divider (#E5E7EB)",
+      "status": "vector-draft",
+      "path": "docs/design/svg/palettes/brand-essence/divider.svg",
+      "source": "Colour and illustrations sheet, values explicitly printed",
+      "sourceVariant": "brand-essence"
+    },
+    {
+      "id": "palette/brand-essence/light",
+      "category": "palette",
+      "label": "brand-essence: light (#F8FAFC)",
+      "status": "vector-draft",
+      "path": "docs/design/svg/palettes/brand-essence/light.svg",
+      "source": "Colour and illustrations sheet, values explicitly printed",
+      "sourceVariant": "brand-essence"
+    },
+    {
+      "id": "palette/brand-essence/full-strip",
+      "category": "palette",
+      "label": "brand-essence: complete swatch strip",
+      "status": "vector-draft",
+      "path": "docs/design/svg/palettes/brand-essence/full-strip.svg",
+      "source": "Colour and illustrations sheet, values explicitly printed",
+      "sourceVariant": "brand-essence"
+    },
+    {
+      "id": "palette/type-hierarchy/brand",
+      "category": "palette",
+      "label": "type-hierarchy: brand (#A855F7)",
+      "status": "vector-draft",
+      "path": "docs/design/svg/palettes/type-hierarchy/brand.svg",
+      "source": "Typography and colour hierarchy sheet, values interpreted from small raster labels; candidate values pending manual verification",
+      "sourceVariant": "type-hierarchy"
+    },
+    {
+      "id": "palette/type-hierarchy/pink",
+      "category": "palette",
+      "label": "type-hierarchy: pink (#FF4EB8)",
+      "status": "vector-draft",
+      "path": "docs/design/svg/palettes/type-hierarchy/pink.svg",
+      "source": "Typography and colour hierarchy sheet, values interpreted from small raster labels; candidate values pending manual verification",
+      "sourceVariant": "type-hierarchy"
+    },
+    {
+      "id": "palette/type-hierarchy/blue",
+      "category": "palette",
+      "label": "type-hierarchy: blue (#22C1FF)",
+      "status": "vector-draft",
+      "path": "docs/design/svg/palettes/type-hierarchy/blue.svg",
+      "source": "Typography and colour hierarchy sheet, values interpreted from small raster labels; candidate values pending manual verification",
+      "sourceVariant": "type-hierarchy"
+    },
+    {
+      "id": "palette/type-hierarchy/yellow",
+      "category": "palette",
+      "label": "type-hierarchy: yellow (#FFD400)",
+      "status": "vector-draft",
+      "path": "docs/design/svg/palettes/type-hierarchy/yellow.svg",
+      "source": "Typography and colour hierarchy sheet, values interpreted from small raster labels; candidate values pending manual verification",
+      "sourceVariant": "type-hierarchy"
+    },
+    {
+      "id": "palette/type-hierarchy/success",
+      "category": "palette",
+      "label": "type-hierarchy: success (#33D17A)",
+      "status": "vector-draft",
+      "path": "docs/design/svg/palettes/type-hierarchy/success.svg",
+      "source": "Typography and colour hierarchy sheet, values interpreted from small raster labels; candidate values pending manual verification",
+      "sourceVariant": "type-hierarchy"
+    },
+    {
+      "id": "palette/type-hierarchy/warning",
+      "category": "palette",
+      "label": "type-hierarchy: warning (#FF8A3D)",
+      "status": "vector-draft",
+      "path": "docs/design/svg/palettes/type-hierarchy/warning.svg",
+      "source": "Typography and colour hierarchy sheet, values interpreted from small raster labels; candidate values pending manual verification",
+      "sourceVariant": "type-hierarchy"
+    },
+    {
+      "id": "palette/type-hierarchy/error",
+      "category": "palette",
+      "label": "type-hierarchy: error (#FF4E5C)",
+      "status": "vector-draft",
+      "path": "docs/design/svg/palettes/type-hierarchy/error.svg",
+      "source": "Typography and colour hierarchy sheet, values interpreted from small raster labels; candidate values pending manual verification",
+      "sourceVariant": "type-hierarchy"
+    },
+    {
+      "id": "palette/type-hierarchy/neutral",
+      "category": "palette",
+      "label": "type-hierarchy: neutral (#E6EAF0)",
+      "status": "vector-draft",
+      "path": "docs/design/svg/palettes/type-hierarchy/neutral.svg",
+      "source": "Typography and colour hierarchy sheet, values interpreted from small raster labels; candidate values pending manual verification",
+      "sourceVariant": "type-hierarchy"
+    },
+    {
+      "id": "palette/type-hierarchy/full-strip",
+      "category": "palette",
+      "label": "type-hierarchy: complete swatch strip",
+      "status": "vector-draft",
+      "path": "docs/design/svg/palettes/type-hierarchy/full-strip.svg",
+      "source": "Typography and colour hierarchy sheet, values interpreted from small raster labels; candidate values pending manual verification",
+      "sourceVariant": "type-hierarchy"
+    },
+    {
+      "id": "palette/dimensional-materials/folder_front",
+      "category": "palette",
+      "label": "dimensional-materials: folder_front (#05BCFF)",
+      "status": "vector-draft",
+      "path": "docs/design/svg/palettes/dimensional-materials/folder_front.svg",
+      "source": "Artwork colours used by the independent draft 3D object library (not a replacement for the approved SVG gradients)",
+      "sourceVariant": "dimensional-materials"
+    },
+    {
+      "id": "palette/dimensional-materials/folder_back",
+      "category": "palette",
+      "label": "dimensional-materials: folder_back (#0A75E8)",
+      "status": "vector-draft",
+      "path": "docs/design/svg/palettes/dimensional-materials/folder_back.svg",
+      "source": "Artwork colours used by the independent draft 3D object library (not a replacement for the approved SVG gradients)",
+      "sourceVariant": "dimensional-materials"
+    },
+    {
+      "id": "palette/dimensional-materials/folder_side",
+      "category": "palette",
+      "label": "dimensional-materials: folder_side (#004EC8)",
+      "status": "vector-draft",
+      "path": "docs/design/svg/palettes/dimensional-materials/folder_side.svg",
+      "source": "Artwork colours used by the independent draft 3D object library (not a replacement for the approved SVG gradients)",
+      "sourceVariant": "dimensional-materials"
+    },
+    {
+      "id": "palette/dimensional-materials/storage_front",
+      "category": "palette",
+      "label": "dimensional-materials: storage_front (#A46AFF)",
+      "status": "vector-draft",
+      "path": "docs/design/svg/palettes/dimensional-materials/storage_front.svg",
+      "source": "Artwork colours used by the independent draft 3D object library (not a replacement for the approved SVG gradients)",
+      "sourceVariant": "dimensional-materials"
+    },
+    {
+      "id": "palette/dimensional-materials/storage_side",
+      "category": "palette",
+      "label": "dimensional-materials: storage_side (#6632D7)",
+      "status": "vector-draft",
+      "path": "docs/design/svg/palettes/dimensional-materials/storage_side.svg",
+      "source": "Artwork colours used by the independent draft 3D object library (not a replacement for the approved SVG gradients)",
+      "sourceVariant": "dimensional-materials"
+    },
+    {
+      "id": "palette/dimensional-materials/download_front",
+      "category": "palette",
+      "label": "dimensional-materials: download_front (#30E655)",
+      "status": "vector-draft",
+      "path": "docs/design/svg/palettes/dimensional-materials/download_front.svg",
+      "source": "Artwork colours used by the independent draft 3D object library (not a replacement for the approved SVG gradients)",
+      "sourceVariant": "dimensional-materials"
+    },
+    {
+      "id": "palette/dimensional-materials/download_side",
+      "category": "palette",
+      "label": "dimensional-materials: download_side (#00B83D)",
+      "status": "vector-draft",
+      "path": "docs/design/svg/palettes/dimensional-materials/download_side.svg",
+      "source": "Artwork colours used by the independent draft 3D object library (not a replacement for the approved SVG gradients)",
+      "sourceVariant": "dimensional-materials"
+    },
+    {
+      "id": "palette/dimensional-materials/media_front",
+      "category": "palette",
+      "label": "dimensional-materials: media_front (#FF5869)",
+      "status": "vector-draft",
+      "path": "docs/design/svg/palettes/dimensional-materials/media_front.svg",
+      "source": "Artwork colours used by the independent draft 3D object library (not a replacement for the approved SVG gradients)",
+      "sourceVariant": "dimensional-materials"
+    },
+    {
+      "id": "palette/dimensional-materials/media_side",
+      "category": "palette",
+      "label": "dimensional-materials: media_side (#E83C68)",
+      "status": "vector-draft",
+      "path": "docs/design/svg/palettes/dimensional-materials/media_side.svg",
+      "source": "Artwork colours used by the independent draft 3D object library (not a replacement for the approved SVG gradients)",
+      "sourceVariant": "dimensional-materials"
+    },
+    {
+      "id": "palette/dimensional-materials/full-strip",
+      "category": "palette",
+      "label": "dimensional-materials: complete swatch strip",
+      "status": "vector-draft",
+      "path": "docs/design/svg/palettes/dimensional-materials/full-strip.svg",
+      "source": "Artwork colours used by the independent draft 3D object library (not a replacement for the approved SVG gradients)",
+      "sourceVariant": "dimensional-materials"
     }
   ]
 }
