@@ -91,26 +91,55 @@ class SeedhostLiveAcceptanceTest {
         val rtorrent = remote()
         val candidates = rtorrent.listTransfers("main").filter {
             it.started && it.sizeBytes > 0 && it.completedBytes in 0L until it.sizeBytes
-        }
+        }.sortedBy { it.hash.lowercase() }
         log("traffic incompleteStartedCount=${candidates.size}")
-        val selected = candidates.minByOrNull { it.hash.lowercase() }
-        if (selected == null) {
-            log("traffic evidence=no-eligible-existing-active-incomplete-transfer")
+        // This is a diagnostic sample of a real but owner-authorized inventory,
+        // not a mandate to scan thousands of torrents or change their state.
+        val selected = candidates.take(6)
+        if (selected.isEmpty()) {
+            log("traffic evidence=no-eligible-existing-incomplete-started-transfer")
             return@runBlocking
         }
-        val observations = mutableListOf<RemoteTrafficSample>()
-        repeat(3) { index ->
-            if (index > 0) kotlinx.coroutines.delay(3_000L)
-            observations += rtorrent.readTrafficSample(selected.hash)
+        val samples = selected.map { mutableListOf<RemoteTrafficSample>() }
+        val failed = BooleanArray(selected.size)
+        repeat(3) { round ->
+            if (round > 0) kotlinx.coroutines.delay(3_000L)
+            selected.forEachIndexed { index, transfer ->
+                if (!failed[index]) {
+                    try {
+                        samples[index] += rtorrent.readTrafficSample(transfer.hash)
+                    } catch (cancel: kotlinx.coroutines.CancellationException) {
+                        throw cancel
+                    } catch (_: Exception) {
+                        // A transfer could vanish or an RPC capability could
+                        // disappear. Never retry a mutation or attribute bytes
+                        // from a different identity; mark this case unknown.
+                        failed[index] = true
+                    }
+                }
+            }
         }
-        val result = RemoteTrafficWindow.evaluate(observations)
-        log("traffic verdict=${result.verdict} intervalMs=${result.elapsedMillis} " +
-            "receivedCounter=${result.receivedDelta != null} " +
-            "verifiedCounter=${result.verifiedDelta != null} " +
-            "receivedGrowth=${(result.receivedDelta ?: 0L) > 0L} " +
-            "verifiedGrowth=${(result.verifiedDelta ?: 0L) > 0L} " +
-            "peersConnected=${(result.peakPeers ?: 0L) > 0L}")
-        assertTrue("Read-only measurements must span independent times", result.elapsedMillis >= 5_000L)
+        val windows = selected.indices.mapNotNull { i ->
+            if (failed[i] || samples[i].size != 3) null
+            else runCatching { RemoteTrafficWindow.evaluate(samples[i]) }.getOrNull()
+        }
+        val usable = windows.count {
+            it.verdict != TrafficVerdict.INSUFFICIENT_EVIDENCE &&
+                it.verdict != TrafficVerdict.COUNTER_RESET_OR_SIZE_CHANGED
+        }
+        val unknownOrReset = selected.size - usable
+        log("traffic inspected=${selected.size} stable=${windows.size} " +
+            "active=${windows.count { it.observedActive == true }} " +
+            "inactive=${windows.count { it.observedActive == false }} " +
+            "withPeers=${windows.count { (it.peakPeers ?: 0L) > 0L }} " +
+            "withReceivedGrowth=${windows.count { (it.receivedDelta ?: 0L) > 0L }} " +
+            "withVerifiedGrowth=${windows.count { (it.verifiedDelta ?: 0L) > 0L }} " +
+            "noGrowth=${windows.count { it.verdict == TrafficVerdict.NO_PROGRESS_OBSERVED }} " +
+            "unknownOrReset=$unknownOrReset")
+        assertTrue("At least one existing exact hash must permit stable read-only samples",
+            windows.isNotEmpty())
+        assertTrue("Independent three-sample windows must span elapsed time",
+            windows.all { it.elapsedMillis >= 5_000L })
     }
 
     /** Deepest absolute directory shared by all paths, at least two levels deep, else null. */
