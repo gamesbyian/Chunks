@@ -2,6 +2,8 @@
 
 **Mission:** Build Chunks into a colourful, deeply usable **Android-native BitTorrent client and first-class rTorrent remote**, with intuitive Places, independent Collections, clean optional display aliases and safe control of seeding data. No functionality is considered delivered merely because it is written into a specification.
 
+**Transfer privacy feature:** Before changing the protected transfer screens, Android authentication, credential persistence or notification visibility, consult [docs/TRANSFER-PRIVACY-LOCK.md](docs/TRANSFER-PRIVACY-LOCK.md). Keep its planned status distinct from verified functionality.
+
 ## Mandatory start and authority
 
 1. Inspect live `main`, open PRs, open issues, branch ownership, recent commits and CI **before** choosing a task. Read the one authoritative ranked [WORK-QUEUE](docs/WORK-QUEUE.md). Never assume a prior agent's PR is still pending/merged.
