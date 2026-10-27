@@ -681,6 +681,70 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         )
     }
 
+    /**
+     * Bounded privacy-safe tracker health. NEVER query t.url, t.id, t.message
+     * or any tracker passkey. Every command here is a read-only getter scoped
+     * to one freshly guarded infohash. Older servers may omit recent-peer
+     * counters; those become unknown rather than zero.
+     */
+    suspend fun readTrackerHealth(hash: String): RemoteTrackerHealth? {
+        require(Regex("[0-9a-fA-F]{40}").matches(hash)) { "Invalid v1 torrent hash" }
+        suspend fun guardIdentity() {
+            val returned = call("d.hash", listOf(hash)) as? String
+            check(returned?.equals(hash, ignoreCase = true) == true) {
+                "rTorrent transfer identity not confirmed"
+            }
+        }
+        guardIdentity()
+        val count = number(call("d.tracker_size", listOf(hash)))
+        require(count in 0L..256L) { "Unbounded or invalid tracker inventory" }
+        if (count == 0L) {
+            guardIdentity()
+            return RemoteTrackerHealth(0, 0, 0, 0, 0)
+        }
+        val core = listOf("t.is_enabled=", "t.success_counter=", "t.failed_counter=")
+        val withPeers = core + "t.latest_sum_peers="
+        var peerDataSupported = true
+        val rows = try {
+            extractRows(call("t.multicall", listOf(hash, "") + withPeers))
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: RpcFault) {
+            peerDataSupported = false
+            extractRows(call("t.multicall", listOf(hash, "") + core))
+        }
+        require(rows.size.toLong() == count) { "Tracker inventory changed during read" }
+        var enabled = 0
+        var successes = 0L
+        var failures = 0L
+        var maxPeers = 0L
+        for (raw in rows) {
+            val row = raw as? List<*> ?: error("Malformed tracker row")
+            require(row.size == (if (peerDataSupported) 4 else 3)) {
+                "Unsupported tracker field layout"
+            }
+            val isEnabled = number(row[0])
+            require(isEnabled == 0L || isEnabled == 1L) { "Invalid tracker enabled state" }
+            if (isEnabled == 1L) enabled++
+            val ok = number(row[1])
+            val failed = number(row[2])
+            require(ok >= 0L && failed >= 0L) { "Invalid tracker history counter" }
+            successes = Math.addExact(successes, ok)
+            failures = Math.addExact(failures, failed)
+            if (peerDataSupported) {
+                val peers = number(row[3])
+                require(peers >= 0L) { "Invalid announced-peer count" }
+                maxPeers = maxOf(maxPeers, peers)
+            }
+        }
+        guardIdentity()
+        return RemoteTrackerHealth(
+            total = count.toInt(), enabled = enabled,
+            successfulAnnounces = successes, failedAnnounces = failures,
+            maxAnnouncedPeers = if (peerDataSupported) maxPeers else null
+        )
+    }
+
     private fun extractRows(response: Any?): List<*> =
         response as? List<*> ?: error("Unexpected rTorrent array reply")
 

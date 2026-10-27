@@ -26,6 +26,7 @@ import io.github.gamesbyian.chunks.model.Units
 import io.github.gamesbyian.chunks.rpc.LifecycleOutcome
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteTransferActivity
+import io.github.gamesbyian.chunks.rpc.RemoteTrackerHealth
 import io.github.gamesbyian.chunks.rpc.RemoteTrafficWindow
 import io.github.gamesbyian.chunks.rpc.RemoteTrafficSample
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
@@ -55,6 +56,10 @@ fun TransferLifecycleControl(
     var verified by rememberSaveable(transfer.hash, transfer.name, transfer.directory) { mutableStateOf(false) }
     var activity by remember(transfer.hash) { mutableStateOf<RemoteTransferActivity?>(null) }
     var checkingActivity by remember(transfer.hash) { mutableStateOf(false) }
+    var trackerHealth by remember(remote, transfer.hash) { mutableStateOf<RemoteTrackerHealth?>(null) }
+    var checkingTrackers by remember(remote, transfer.hash) { mutableStateOf(false) }
+    var trackerUnavailable by remember(remote, transfer.hash) { mutableStateOf(false) }
+
     var trafficWindow by remember(remote, transfer.hash) { mutableStateOf<RemoteTrafficWindow?>(null) }
     var watchingTraffic by remember(remote, transfer.hash) { mutableStateOf(false) }
     var trafficError by remember(remote, transfer.hash) { mutableStateOf<String?>(null) }
@@ -216,6 +221,42 @@ fun TransferLifecycleControl(
                 val speed = report.downloadBytesPerSecond?.toString() ?: "unknown"
                 Text("Connected peers: $peers · download bytes/s: $speed",
                     style = MaterialTheme.typography.bodySmall)
+            }
+            if (activity?.connectedPeers == 0L) {
+                OutlinedButton(
+                    onClick = {
+                        checkingTrackers = true
+                        trackerHealth = null
+                        trackerUnavailable = false
+                        scope.launch {
+                            try {
+                                trackerHealth = remote.readTrackerHealth(transfer.hash)
+                                trackerUnavailable = trackerHealth == null
+                            } catch (cancel: CancellationException) {
+                                throw cancel
+                            } catch (_: Exception) {
+                                trackerUnavailable = true
+                            } finally {
+                                checkingTrackers = false
+                            }
+                        }
+                    },
+                    enabled = !checkingTrackers && !pending,
+                    modifier = Modifier.height(48.dp)
+                ) { Text(if (checkingTrackers) "Checking trackers…" else "Diagnose tracker availability") }
+                trackerHealth?.let {
+                    Text(it.summary(), style = MaterialTheme.typography.bodySmall)
+                    Text("Trackers: ${it.enabled} enabled of ${it.total} · recorded announce successes: " +
+                        "${it.successfulAnnounces} · failures: ${it.failedAnnounces}" +
+                        " · maximum peers from one announce: " +
+                        (it.maxAnnouncedPeers?.toString() ?: "unknown"),
+                        style = MaterialTheme.typography.bodySmall)
+                }
+                if (trackerUnavailable) {
+                    Text("This rTorrent gateway did not provide trustworthy tracker counters. " +
+                        "Inspect the server's tracker view for details.",
+                        style = MaterialTheme.typography.bodySmall)
+                }
             }
         }
         if (attempted) {
