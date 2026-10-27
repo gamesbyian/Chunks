@@ -7,6 +7,11 @@ on:
       - "tools/native_visual_atlas.py"
       - "tools/native_atlas_capture.sh"
       - "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt"
+      - "docs/design/approved/chunks-app-icon-master.svg"
+      - "app/src/main/res/drawable/chunks_launcher_artwork.xml"
+      - "app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/ChunksLauncherIconInstrumentedTest.kt"
+      - "tools/generate_launcher_vector.cjs"
   workflow_dispatch:
 
 permissions:
@@ -61,7 +66,9 @@ jobs:
           profile: pixel_6
           emulator-boot-timeout: 600
           disable-animations: true
-          script: bash tools/native_atlas_capture.sh
+          script: |
+            bash tools/native_atlas_capture.sh
+            gradle --no-daemon :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=io.github.gamesbyian.chunks.ChunksLauncherIconInstrumentedTest
       - name: Upload exact emulator screenshots and report
         if: always()
         uses: actions/upload-artifact@v4
