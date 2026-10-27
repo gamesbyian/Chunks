@@ -60,6 +60,7 @@ import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.model.TransferCatalog
 import io.github.gamesbyian.chunks.model.CollectionMembershipFilter
 import io.github.gamesbyian.chunks.model.CollectionNameRegistryRules
+import io.github.gamesbyian.chunks.model.CollectionMembershipRules
 import io.github.gamesbyian.chunks.model.ManualCollectionPager
 import io.github.gamesbyian.chunks.model.TransferFilter
 import io.github.gamesbyian.chunks.model.TransferOrder
@@ -649,6 +650,21 @@ private fun TransfersScreen(
     val listState = rememberLazyListState()
     val topControlScope = rememberCoroutineScope()
     val context = LocalContext.current
+    val membershipStore = remember(context) { TransferCollectionStore(context) }
+    // Selection is scoped to authenticated account + rTorrent view. A newly
+    // accepted queue revision clears it: never apply an old batch to new rows.
+    var selecting by remember(aliasScope, view) { mutableStateOf(false) }
+    var batchHashes by remember(aliasScope, view) { mutableStateOf<Set<String>>(emptySet()) }
+    var batchName by remember(aliasScope, view) { mutableStateOf("") }
+    var batchConfirm by remember(aliasScope, view) { mutableStateOf(false) }
+    var batchBusy by remember(aliasScope, view) { mutableStateOf(false) }
+    var batchMessage by remember(aliasScope, view) { mutableStateOf<String?>(null) }
+    LaunchedEffect(snapshotRevision, aliasScope, view) {
+        selecting = false
+        batchHashes = emptySet()
+        batchConfirm = false
+    }
+    val batchScope = rememberCoroutineScope()
     val showBackToTop by remember(listState, visible) {
         derivedStateOf {
             ReturnToTopPolicy.remote(
@@ -693,6 +709,18 @@ private fun TransfersScreen(
                     modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
                     Text("Save inventory-only snapshot")
                 }
+                OutlinedButton(
+                    onClick = {
+                        selecting = !selecting
+                        batchHashes = emptySet()
+                        batchConfirm = false
+                        batchMessage = null
+                    },
+                    enabled = !loading && !stale && !batchBusy && list.isNotEmpty(),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
+                ) {
+                    Text(if (selecting) "Exit batch selection" else "Select transfers for a batch")
+                }
             }
         }
         item {
@@ -731,10 +759,133 @@ private fun TransfersScreen(
                 }
             }
         }
+        if (selecting) item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Lilac),
+                shape = RoundedCornerShape(20.dp)
+            ) {
+                Column(
+                    Modifier.fillMaxWidth().padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text("Batch collections", fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleLarge)
+                    Text("${batchHashes.size} selected from the loaded '$view' view. " +
+                        "Select shown means only the ${visible.size} filtered matches " +
+                        "currently loaded by Chunks, not hidden views or unloaded transfers.")
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()) {
+                        OutlinedButton(onClick = {
+                            val next = batchHashes + visible.map { it.hash }
+                            if (next.size > 512) {
+                                batchMessage = "One batch supports at most 512 transfers. Narrow your filter."
+                            } else {
+                                batchHashes = next
+                                batchConfirm = false
+                                batchMessage = null
+                            }
+                        }, enabled = !stale && !loading && !batchBusy && visible.isNotEmpty(),
+                            modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                            Text("Select shown")
+                        }
+                        OutlinedButton(onClick = {
+                            batchHashes = emptySet()
+                            batchConfirm = false
+                        }, enabled = !batchBusy && batchHashes.isNotEmpty(),
+                            modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                            Text("Clear")
+                        }
+                    }
+                    OutlinedTextField(
+                        value = batchName,
+                        onValueChange = { batchName = it; batchConfirm = false },
+                        label = { Text("Collection name for selected transfers") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    if (batchConfirm) {
+                        Text("Confirm adding ${batchHashes.size} selected transfers to " +
+                            "'${batchName.trim()}' on this device. Already-present memberships " +
+                            "stay intact. No file, torrent name, rTorrent state or location changes.")
+                    }
+                    Button(onClick = {
+                        val cleaned = CollectionMembershipRules.cleanName(batchName)
+                        val targets = batchHashes.toList()
+                        if (cleaned == null || targets.isEmpty()) {
+                            batchMessage = "Select transfers and enter a valid Collection name."
+                        } else if (!batchConfirm) {
+                            batchConfirm = true
+                            batchMessage = null
+                        } else {
+                            batchBusy = true
+                            batchMessage = null
+                            batchScope.launch {
+                                val accepted = withContext(Dispatchers.IO) {
+                                    try {
+                                        membershipStore.addBatch(aliasScope, targets, cleaned) &&
+                                            targets.all { hash ->
+                                                membershipStore.forTransfer(aliasScope, hash)
+                                                    .any { it.equals(cleaned, ignoreCase = true) }
+                                            }
+                                    } catch (_: Exception) { false }
+                                }
+                                batchMessage = if (accepted)
+                                    "Saved ${targets.size} reviewed memberships on this phone. " +
+                                        "Seeding and server files are unchanged."
+                                else "Batch save was not confirmed. Inspect current Collection " +
+                                    "memberships before retrying; no server mutation was requested."
+                                if (accepted) {
+                                    batchHashes = emptySet()
+                                    selecting = false
+                                    batchName = ""
+                                }
+                                batchConfirm = false
+                                batchBusy = false
+                            }
+                        }
+                    }, enabled = !stale && !loading && !batchBusy &&
+                        batchHashes.isNotEmpty() &&
+                        CollectionMembershipRules.cleanName(batchName) != null,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+                        Text(if (batchBusy) "Saving…" else if (batchConfirm)
+                            "Confirm batch Collection assignment" else
+                            "Review Collection assignment")
+                    }
+                    batchMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+                }
+            }
+        }
         if (visible.isEmpty()) item {
             ColoredPanel("Nothing in this view.", "Try another filter, search, or server view.", Lilac)
         }
         items(visible, key = { it.hash }) { transfer ->
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (selecting) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                        .toggleable(
+                            value = transfer.hash in batchHashes,
+                            enabled = !stale && !loading && !batchBusy,
+                            role = Role.Checkbox,
+                            onValueChange = { checked ->
+                                batchHashes = if (checked) {
+                                    if (batchHashes.size >= 512) {
+                                        batchMessage = "A batch is limited to 512 selected transfers."
+                                        batchHashes
+                                    } else batchHashes + transfer.hash
+                                } else batchHashes - transfer.hash
+                                batchConfirm = false
+                            }
+                        ),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(checked = transfer.hash in batchHashes,
+                        onCheckedChange = null)
+                    Text("Select " + (aliasStore.get(aliasScope, transfer.hash) ?: transfer.name),
+                        modifier = Modifier.weight(1f), maxLines = 2,
+                        overflow = TextOverflow.Ellipsis)
+                }
+            }
             TransferCard(
                 remote = remote, stale = stale || loading, mainView = view == "main",
                 onMutationStarted = onMutationStarted,
@@ -756,6 +907,7 @@ private fun TransfersScreen(
                 files = files, filesLoading = filesLoading, filesError = filesError,
                 onInspect = { onInspect(transfer) }
             )
+            }
         }
         item {
             Text("Server snapshot. Start/stop and main-view session removal each require exact-target confirmation and readback. Session removal does not request payload deletion.",
