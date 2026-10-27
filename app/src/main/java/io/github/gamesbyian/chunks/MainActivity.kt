@@ -206,12 +206,7 @@ private fun ChunksApp(sharedMagnet: String?) {
         modifier = Modifier.fillMaxSize().background(Cream).safeDrawingPadding(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 10.dp)) {
-            Text("chunks.", style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.Black, color = Ink)
-            Text("Your downloads have places to be.", style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFF595575))
-        }
+        ChunksBrandHeader()
 
         if (section == Section.ARCHIVES) {
             LocalZipReviewScreen(onBack = { section = Section.TRANSFERS })
@@ -603,7 +598,8 @@ private fun TransferCard(
 ) {
     Card(
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(24.dp),
+        border = androidx.compose.foundation.BorderStroke(2.dp, Ink),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
