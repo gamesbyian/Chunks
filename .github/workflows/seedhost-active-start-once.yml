@@ -7,6 +7,12 @@ on:
     paths:
       - ".github/workflows/seedhost-active-start-once.yml"
   workflow_dispatch:
+    inputs:
+      apply_mutation:
+        description: "Explicitly authorize one synthetic Add/Start/Stop/Erase on development Seedhost"
+        type: boolean
+        required: true
+        default: false
 
 permissions:
   contents: read
@@ -19,8 +25,9 @@ jobs:
   exact-hash-start:
     if: >-
       ${{ github.ref == 'refs/heads/main' &&
-          (github.event_name == 'workflow_dispatch' ||
-           contains(github.event.head_commit.message, 'one-time Seedhost active Start acceptance')) }}
+          ((github.event_name == 'workflow_dispatch' && inputs.apply_mutation) ||
+           (github.event_name == 'push' &&
+            contains(github.event.head_commit.message, 'one-time Seedhost active Start acceptance'))) }}
     runs-on: ubuntu-latest
     timeout-minutes: 23
     env:
