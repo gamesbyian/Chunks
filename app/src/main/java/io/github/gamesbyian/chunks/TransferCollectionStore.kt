@@ -34,6 +34,41 @@ internal class TransferCollectionStore(context: Context) {
         return prefs.edit().putStringSet(key(scope, infoHash), updated.toHashSet()).commit()
     }
 
+    /**
+     * Exactly one reviewed metadata-only batch and one durable SharedPreferences
+     * commit. Validate all members before creating an Editor, so a full
+     * collection or malformed identity cannot partially update the batch.
+     *
+     * No Android torrent/network/filesystem API is called. This is independent
+     * of any future batch Move/Copy transaction.
+     */
+    @Synchronized
+    fun addBatch(scope: String, hashes: Collection<String>, proposedName: String): Boolean {
+        if (scope.isBlank() || hashes.isEmpty() || hashes.size > 512) return false
+        val collection = CollectionMembershipRules.cleanName(proposedName) ?: return false
+        val normalized = hashes.map { it.trim().uppercase(Locale.ROOT) }
+        if (normalized.any { !hashPattern.matches(it) } ||
+            normalized.distinct().size != normalized.size) return false
+
+        // In a single preflight, compute the entire write set with no writes.
+        val updates = ArrayList<Pair<String, Set<String>>>()
+        for (hash in normalized) {
+            val before = read(scope, hash)
+            val after = CollectionMembershipRules.add(before, collection) ?: return false
+            if (after != before) updates += key(scope, hash) to after
+        }
+        if (updates.isEmpty()) return true
+        return try {
+            val editor = prefs.edit()
+            for ((key, members) in updates) editor.putStringSet(key, members.toHashSet())
+            editor.commit()
+        } catch (_: RuntimeException) {
+            // A storage failure may have applied partly on pathological
+            // providers. The caller must reread state, never claim success.
+            false
+        }
+    }
+
     @Synchronized
     fun remove(scope: String, infoHash: String, name: String): Boolean {
         val original = read(scope, infoHash)
