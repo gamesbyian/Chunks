@@ -8,6 +8,10 @@ Cross-engine UI handoff is not proof of data transfer: torrent identity/metainfo
 
 Deleting a torrent-backed archive after extraction can invalidate torrent hashes and seeding. Presence of a similarly named extracted file or folder is **not** verification. Require trusted extraction provenance, independently checked output bytes and ownership, reference/active-writer analysis, durable deletion journal and postcondition verification. Refuse if a server lacks narrowly scoped delete capability. UI offers the action from transfer details/removal as well as cleanup, but it is never implicitly authorized by Remove transfer or successful extraction. Include explicit torrent-breakage language in the destructive confirmation. See STORAGE-AND-EXTRACTION and PRODUCT.
 
+## Batch copy/migration safety extension
+
+Bulk selection must not amplify authority: each transfer and destination is independently scoped, authenticated, permission-checked, preflighted and journaled. Handle mixed profiles, duplicate infohashes, overlapping payload files/hardlinks and stale selections without cross-account leakage or double deletion. Do not auto-retry ambiguous remote Adds or deletes; observe authoritative state first. Limit concurrent transfers and disk/network pressure. Provide aggregate and per-item cancellation and clear partial-success reporting. For batch Move, never delete any source merely because another child succeeded: require that exact child's destination integrity/resume/seeding proof and explicit, reviewable destructive approval. A batch-wide checkbox cannot bypass precise target confirmation or the separate archive deletion safety contract. No credentials in metadata transfers, manifests or logs.
+
 ## Trust boundaries and threats
 
 1. Android UI/import boundary: an untrusted magnet link, torrent metainfo, file name or tracker URL can carry malicious paths, giant strings, Unicode, private tracker passkeys or URLs. Never use torrent-provided paths for raw file writes without engine + filesystem containment checks.
