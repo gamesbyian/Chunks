@@ -8,7 +8,7 @@ During onboarding, explain and offer an optional transfer privacy lock; when ena
 
 ## Add destination: clear, never compulsory (owner requirement, 2026-10-27)
 
-**Accepted limited native slice (#245):** The remote Add view reads `directory.default`, uses it without `d.directory.set` after a fresh pre-mutation match, and offers an optional custom server folder. It keeps the exact stopped-state/hash/parent post-write checks and blocks absent defaults. This is not a universal per-host writable default, phone-download Place, or physical device acceptance; the development Seedhost currently reports no configured default. Recent custom-folder suggestions, local shared Downloads and direct public SAF backing are separate tracked slices.
+**Accepted limited native slice (#245):** The remote Add view reads `directory.default`, uses it without `d.directory.set` after a fresh pre-mutation match, and offers an optional custom server folder. It keeps the exact stopped-state/hash/parent post-write checks and blocks absent defaults. This is not a universal per-host writable default, phone-download Place, or physical device acceptance; the development Seedhost currently reports no configured default. **Remote recent custom-folder suggestions are now implemented (#246, limited):** up to eight account-scoped private-device shortcuts for paths previously confirmed by exact-hash stopped Add. The row is horizontally scrollable with a full-path accessibility label; selecting one never changes the server default, and successful reuse still demands new readback. The path can have gone stale since the earlier success. Local recent Places, local shared Downloads and direct public SAF backing remain separate unfinished slices.
 
 
 
