@@ -70,6 +70,7 @@ import io.github.gamesbyian.chunks.rpc.RemoteCredentials
 import io.github.gamesbyian.chunks.rpc.RemoteFile
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
 import io.github.gamesbyian.chunks.rpc.RemoteQueueActivityContext
+import io.github.gamesbyian.chunks.snapshots.SnapshotInventoryExportScreen
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -117,7 +118,7 @@ class MainActivity : ComponentActivity() {
 }
 
 private enum class Section(val label: String) {
-    TRANSFERS("Transfers"), PLACES("Places"), ORGANIZE("Organize"), SERVER("Server"), ARCHIVES("ZIP review"), LOCAL("On this phone"), ADD("Add"), NAMES("Names")
+    TRANSFERS("Transfers"), PLACES("Places"), ORGANIZE("Organize"), SERVER("Server"), ARCHIVES("ZIP review"), LOCAL("On this phone"), ADD("Add"), NAMES("Names"), SNAPSHOT("Inventory backup")
 }
 
 @Composable
@@ -355,7 +356,7 @@ private fun ChunksApp(sharedMagnet: String?) {
                 modifier = Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                for (tab in Section.entries.filter { it != Section.ADD && it != Section.NAMES }) {
+                for (tab in Section.entries.filter { it != Section.ADD && it != Section.NAMES && it != Section.SNAPSHOT }) {
                     FilterChip(
                         selected = section == tab,
                         onClick = { section = tab },
@@ -381,6 +382,7 @@ private fun ChunksApp(sharedMagnet: String?) {
                     order = order, onOrder = { order = it },
                     onRefresh = refresh, onAdd = { section = Section.ADD },
                     onReviewNames = { section = Section.NAMES },
+                    onExportSnapshot = { section = Section.SNAPSHOT },
                     selectedHash = expandedHash, files = files, filesError = filesError,
                     filesLoading = filesLoading,
                     onInspect = { transfer ->
@@ -420,6 +422,12 @@ private fun ChunksApp(sharedMagnet: String?) {
                             }
                         }
                     }
+                )
+                Section.SNAPSHOT -> SnapshotInventoryExportScreen(
+                    transfers = transfers, view = currentView,
+                    snapshotRevision = snapshotRevision,
+                    stale = stale, loading = loading,
+                    onBack = { section = Section.TRANSFERS }
                 )
                 Section.ARCHIVES -> LocalZipReviewScreen(onBack = { section = Section.TRANSFERS })
                 Section.LOCAL -> LocalEngineScreen(onBack = { section = Section.TRANSFERS })
@@ -626,7 +634,7 @@ private fun TransfersScreen(
     query: String, onQuery: (String) -> Unit, filter: TransferFilter,
     onFilter: (TransferFilter) -> Unit, order: TransferOrder,
     onOrder: (TransferOrder) -> Unit, onRefresh: () -> Unit, onAdd: () -> Unit,
-    onReviewNames: () -> Unit,
+    onReviewNames: () -> Unit, onExportSnapshot: () -> Unit,
     selectedHash: String?, files: List<RemoteFile>?, filesError: String?,
     filesLoading: Boolean, onInspect: (RemoteTransfer) -> Unit
 ) {
@@ -680,6 +688,10 @@ private fun TransfersScreen(
                 OutlinedButton(onClick = onReviewNames,
                     modifier = Modifier.fillMaxWidth().height(52.dp)) {
                     Text("Review suggested queue names")
+                }
+                OutlinedButton(onClick = onExportSnapshot, enabled = !loading && !stale,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+                    Text("Save inventory-only snapshot")
                 }
             }
         }
