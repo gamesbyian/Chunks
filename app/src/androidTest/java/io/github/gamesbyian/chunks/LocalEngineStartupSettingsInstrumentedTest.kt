@@ -21,9 +21,8 @@ class LocalEngineStartupSettingsInstrumentedTest {
         val candidate = LocalTorrentEngine(LocalEngineConfig(
             listenInterfaces = "127.0.0.1:0", enableDht = false))
         val requested = LocalRateLimits(128 * 1024, 64 * 1024)
-        var accepted: LocalTorrentEngine? = null
         try {
-            accepted = LocalEngineStartupSettings.open(
+            val accepted = LocalEngineStartupSettings.open(
                 candidate = candidate,
                 savedDht = false,
                 savedLimits = requested,
