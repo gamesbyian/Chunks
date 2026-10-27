@@ -11,10 +11,12 @@ package io.github.gamesbyian.chunks
 internal class RemoteMutationReadbackGate {
     private var generation = 0L
     private var commandPending = false
+    private var awaitingReadback = false
 
     fun tryStart(): Boolean {
-        if (commandPending) return false
+        if (commandPending || awaitingReadback) return false
         commandPending = true
+        awaitingReadback = true
         ++generation
         return true
     }
@@ -30,8 +32,16 @@ internal class RemoteMutationReadbackGate {
 
     fun accepts(ticket: Long): Boolean = !commandPending && ticket == generation
 
+    /** A failed/old read never releases the write lockout. */
+    fun acceptFreshRead(ticket: Long): Boolean {
+        if (!accepts(ticket)) return false
+        awaitingReadback = false
+        return true
+    }
+
     fun reset() {
         commandPending = false
+        awaitingReadback = false
         ++generation
     }
 }
