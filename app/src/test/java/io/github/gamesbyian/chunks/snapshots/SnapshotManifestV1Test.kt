@@ -77,7 +77,7 @@ class SnapshotManifestV1Test {
             item(SnapshotManifestV1.Recovery.INVENTORY)), mapOf(hash to torrent)) }
         rejected { SnapshotManifestV1.encode(manifest(item(), item()), mapOf(hash to torrent)) }
         val forged = SnapshotArchiveV1.encode(
-            validJsonForOneItem(), mapOf(falseHash to torrent))
+            validJsonForOneItem().toByteArray(), mapOf(falseHash to torrent))
         rejected { SnapshotManifestV1.decode(forged) }
     }
 
