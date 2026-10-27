@@ -30,3 +30,9 @@ The JSON output records weights, coverage, pair counts, recommended tracking in 
 - CI checks OpenType/CFF format, weight identity, fundamental accented Latin and punctuation coverage, native layout tables and deterministic output.
 - Device screenshot comparison, aesthetic silhouette match to the reference image, actual typography at 200% Android font scaling, collision stress testing on long international filenames and cross-app font installer testing remain open.
 - The headline wordmark SVG is authoritative for brand art until individually redrawn heavy-font glyphs pass a visual review; raster illustration is not an original font outline master.
+
+## Verified build snapshot · 2026-10-27
+
+GitHub Actions run [40605045342](https://github.com/gamesbyian/Chunks/actions/runs/40605045342) passed the actual five-font build and validation. The generated fonts have **1,601 glyphs and 856 mapped Unicode codepoints each**; all five files are true OpenType/CFF with GPOS/GDEF/GSUB tables, correct weight metadata, and preserved upstream Baloo 2 copyright. The optical probe examines **22,801 Latin and Latin-extended pairs per weight** (including punctuation, numbers and accent samples); other scripts retain source shaping/positioning without applying Latin optical corrections. Pair adjustments range from approximately 13,944 in ExtraBold to 18,951 in Regular.
+
+A larger number of corrected pairs is not automatically better typography. Review the generated preview at actual UI sizes and use native Android testing to evaluate collisions, diacritics and letter density before deciding this candidate is final. The available display SVG logo remains the authority for brand-faithful wordmark silhouettes.
