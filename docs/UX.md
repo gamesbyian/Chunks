@@ -1,5 +1,13 @@
 # Chunks interaction and accessibility contract
 
+## Official launcher icon (owner approval, 2026-10-27)
+
+- The owner-supplied canonical square PNG is `docs/design/approved/chunks-app-icon-master.png` (same original Git blob as `app/src/main/res/drawable-nodpi/chunks_launcher_artwork.png`). The generic seven-block icon is superseded. Preserve the original art unchanged, without inventing flaps/chunks, redrawing, optimizing the pixels or using older contact-sheet proposals as the installed icon.
+- Android uses `@mipmap/ic_launcher` for both normal and round launcher icons; its API 26+ adaptive foreground uses `@drawable/chunks_launcher_artwork` over the existing dark Chunks background. Android clips the outer region according to the launcher mask. The old seven-block monochrome artwork is intentionally no longer applied to themed icons, to avoid showing a different brand. The internal wordmark remains separate native UI.
+- The `verifyChunksLauncherArtwork` Gradle preBuild dependency pins the approved image Git blob identity, PNG signature and manifest/adaptive icon wiring. This protects **both** normal `chunks-debug.apk` and side-by-side `chunks-preview.apk` built from the same source. Changes to the icon must be expressly approved and update the pinned provenance, test and this spec.
+- The installed-app instrumented test checks adaptive launcher presence and PNG decode/resolution. Still require launcher mask/legibility and themed-icon visual review on physical Android; resource existence or a passing emulator alone does not establish all system launchers.
+
+
 Reconciled 2026-10-26. Native Compose remote, experimental local engine, finished-file SAF library-copy and bounded manual ZIP-to-SAF extraction journeys exist with targeted JVM/API35 evidence. **The owner-selected six-image reference family has a first limited native implementation (#222: accessible geometric wordmark/header and high-contrast remote cards with Android/JVM, API35 and screenshot-atlas checks). Full reference-accurate layout, independent human screenshot review, physical Android handset, actual phone-to-Seedhost task, uncoached usability and 200% TalkBack approval remain open.** Advanced backing-file Move/Rename and cleanup remain design contracts.
 
 ## Privacy lock journeys (specified, not shipped)
