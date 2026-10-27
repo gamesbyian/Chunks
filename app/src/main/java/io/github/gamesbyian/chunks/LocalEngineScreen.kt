@@ -122,6 +122,28 @@ internal object LocalEngineHolder {
         context.getExternalFilesDir("Downloads")?.apply { mkdirs() }?.takeIf { it.isDirectory }
 }
 
+private data class LocalScreenReadout(
+    val transfers: List<LocalTransferStatus>?,
+    val filesHash: String?,
+    val files: List<LocalTransferFile>?,
+    val restoreNotice: String?,
+    val revision: Long
+)
+
+/**
+ * One screen observation lane per process, not per navigation instance.
+ * If a libtorrent JNI call never returns, leaving and reopening the screen
+ * cannot create a second blocked worker or a growing backlog of reads.
+ */
+private object LocalScreenReader {
+    val revision = LocalScreenObservationRevision()
+    val pump = LocalScreenObservationPump<LocalScreenReadout>(
+        java.util.concurrent.Executors.newSingleThreadExecutor { task ->
+            Thread(task, "chunks-local-screen-status").apply { isDaemon = true }
+        }
+    )
+}
+
 private class PendingLocalAdd(val preview: TorrentMetainfoPreview, val bytes: ByteArray)
 
 @Composable
@@ -166,28 +188,52 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
 
     var restoreNotice by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) {
-        restoreNotice = withContext(Dispatchers.IO) {
-            try {
-                val engine = LocalEngineHolder.restoreIfSaved(context)
-                val problems = engine?.restoreProblems.orEmpty()
-                if (problems.isEmpty()) null
-                else problems.size.toString() + " saved transfer record(s) could not be restored and were left untouched."
-            } catch (_: Exception) { "Saved transfers could not be restored." }
-        }
         var tick = 0
         while (true) {
-            filesFor?.let { hash ->
-                files = withContext(Dispatchers.IO) {
-                    try { LocalEngineHolder.current()?.files(hash) } catch (_: Exception) { null }
+            // Consume exactly one completed native observation without awaiting JNI
+            // on this coroutine. A read that never returns must not freeze the UI.
+            when (val outcome = LocalScreenReader.pump.takeCompleted()) {
+                is LocalScreenPollOutcome.Fresh -> {
+                    val frame = outcome.value
+                    // A sample scheduled before an uncertain mutation cannot
+                    // clear its safety latch, even if it finishes afterward.
+                    if (LocalScreenReader.revision.accepts(frame.revision)) {
+                        inventoryFrame = LocalInventoryFreshness.advance(inventoryFrame, frame.transfers)
+                        restoreNotice = frame.restoreNotice
+                        if (frame.filesHash != null && frame.filesHash == filesFor) files = frame.files
+                    }
                 }
+                LocalScreenPollOutcome.Unavailable ->
+                    inventoryFrame = LocalInventoryFreshness.advance(inventoryFrame, null)
+                null -> Unit
             }
-            val observed = withContext(Dispatchers.IO) {
-                try { LocalEngineHolder.current()?.list().orEmpty() } catch (_: Exception) { null }
-            }
-            inventoryFrame = LocalInventoryFreshness.advance(inventoryFrame, observed)
-            // Refresh resume data about every 30 s so progress survives process death.
-            if (++tick % 30 == 0) withContext(Dispatchers.IO) {
-                try { LocalEngineHolder.current()?.saveResumeData() } catch (_: Exception) { }
+            // A hung native read cannot produce an exception or be cancelled.
+            // Retain the last known queue but withhold mutations until a new,
+            // genuinely successful observation eventually arrives.
+            if ((LocalScreenReader.pump.inFlightMillis() ?: 0L) >= 15_000L)
+                inventoryFrame = LocalInventoryFreshness.advance(inventoryFrame, null)
+
+            val chosenFilesHash = filesFor
+            val sampleRevision = LocalScreenReader.revision.snapshot()
+            val saveDue = ++tick % 30 == 0
+            LocalScreenReader.pump.tryObserve {
+                try {
+                    val engine = LocalEngineHolder.current() ?: LocalEngineHolder.restoreIfSaved(context)
+                    val problems = engine?.restoreProblems.orEmpty()
+                    val notice = if (problems.isEmpty()) null
+                        else problems.size.toString() + " saved transfer record(s) could not be restored and were left untouched."
+                    // A failed list is unknown, not an authoritative empty queue.
+                    val observed = try { engine?.list().orEmpty() } catch (_: Exception) { null }
+                    val observedFiles = chosenFilesHash?.let { hash ->
+                        try { engine?.files(hash) } catch (_: Exception) { null }
+                    }
+                    // Persist periodically off the screen coroutine. A blocked
+                    // native save occupies this same bounded observation slot.
+                    if (saveDue) try { engine?.saveResumeData() } catch (_: Exception) { }
+                    LocalScreenReadout(observed, chosenFilesHash, observedFiles, notice, sampleRevision)
+                } catch (_: Exception) {
+                    LocalScreenReadout(null, chosenFilesHash, null, "Saved transfers could not be restored.", sampleRevision)
+                }
             }
             delay(1_000)
         }
