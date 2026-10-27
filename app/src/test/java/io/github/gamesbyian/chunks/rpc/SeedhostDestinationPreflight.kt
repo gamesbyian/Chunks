@@ -26,7 +26,8 @@ internal object SeedhostDestinationPreflight {
         "magnet:?xt=urn:btih:0000000000000000000000000000000000000000"
 
     private fun acceptedParent(path: String): Boolean =
-        runCatching { StoppedRemoteAddPlan.fromMagnet(PROBE_MAGNET, path) }.isSuccess
+        path.count { it == '/' } >= 2 &&
+            runCatching { StoppedRemoteAddPlan.fromMagnet(PROBE_MAGNET, path) }.isSuccess
 
     fun select(configuredDefault: String?, observations: List<Observation>): Selection? {
         val counts = observations.asSequence()
