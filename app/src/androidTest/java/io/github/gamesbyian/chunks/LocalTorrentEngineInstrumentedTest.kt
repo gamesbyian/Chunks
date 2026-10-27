@@ -51,6 +51,44 @@ class LocalTorrentEngineInstrumentedTest {
         }
     }
 
+    /**
+     * libtorrent may report SEEDING before its asynchronous disk write queue
+     * becomes visible through an independent Java file read. Demand exact
+     * bytes within a bounded interval and report any temporary mismatch;
+     * never silently accept a persistent corrupt or missing payload.
+     */
+    private fun waitForVerifiedReadback(path: File, expected: ByteArray, phase: String) {
+        val started = System.nanoTime()
+        val deadline = started + java.util.concurrent.TimeUnit.SECONDS.toNanos(30)
+        var attempts = 0
+        var firstMismatch: String? = null
+        while (true) {
+            attempts++
+            val actual = try { path.takeIf { it.isFile }?.readBytes() } catch (_: Exception) { null }
+            if (actual != null && actual.contentEquals(expected)) {
+                if (attempts > 1) {
+                    val durationMs = java.util.concurrent.TimeUnit.NANOSECONDS
+                        .toMillis(System.nanoTime() - started)
+                    println("CHUNKS_NATIVE_READBACK delayed phase=$phase durationMs=$durationMs " +
+                        "attempts=$attempts firstMismatch=$firstMismatch")
+                }
+                return
+            }
+            if (firstMismatch == null) {
+                val mismatch = actual?.indices?.firstOrNull { index ->
+                    index >= expected.size || actual[index] != expected[index]
+                } ?: if (actual?.size == expected.size) null else
+                    minOf(actual?.size ?: 0, expected.size)
+                firstMismatch = "size=${actual?.size ?: -1} offset=${mismatch ?: -1}"
+            }
+            if (System.nanoTime() >= deadline) {
+                fail("Native $phase reached complete status but exact filesystem " +
+                    "readback did not converge within 30s: $firstMismatch")
+            }
+            Thread.sleep(150)
+        }
+    }
+
     @Test fun androidNativeEngineDownloadsAndSeedsRealBytesOverLoopback() {
         val seedRoot = File(work, "seed/Chunks device fixture").apply { mkdirs() }
         val payload = ByteArray(900_000).also { Random(11).nextBytes(it) }
@@ -74,12 +112,14 @@ class LocalTorrentEngineInstrumentedTest {
             val state = leecher.status(leech.infoHash)?.state
             state == LocalTransferState.SEEDING || state == LocalTransferState.FINISHED
         }
-        assertArrayEquals(payload, File(destination, "Chunks device fixture/payload.bin").readBytes())
+        waitForVerifiedReadback(File(destination, "Chunks device fixture/payload.bin"),
+            payload, "completed-transfer")
         waitFor { (seeder.status(seed.infoHash)?.payloadUploadedBytes ?: 0) >= payload.size }
 
         // Session-only removal keeps the downloaded bytes.
         assertTrue(leecher.removeKeepingData(leech.infoHash))
-        assertArrayEquals(payload, File(destination, "Chunks device fixture/payload.bin").readBytes())
+        waitForVerifiedReadback(File(destination, "Chunks device fixture/payload.bin"),
+            payload, "after-session-only-removal")
     }
 
     @Test fun nativeCompletedTorrentFlushesDiskCacheBeforeIndependentLibraryRead() {
