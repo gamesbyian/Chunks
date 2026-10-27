@@ -206,8 +206,12 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
     var transferSearch by remember { mutableStateOf("") }
     var transferFilter by remember { mutableStateOf(LocalQueueFilter.ALL) }
     var transferOrder by remember { mutableStateOf(LocalQueueOrder.NAME) }
-    val displayedTransfers = remember(transfers, transferSearch, transferFilter, transferOrder) {
-        LocalQueueCatalog.visible(transfers, transferSearch, transferFilter, transferOrder)
+    val displayedTransfers = remember(transfers, transferSearch, transferFilter,
+        transferOrder, aliasRevision) {
+        LocalQueueCatalog.visible(transfers, transferSearch, transferFilter, transferOrder) {
+            transfer -> aliasStore.get(TransferCollectionStore.LOCAL_ENGINE_SCOPE,
+                transfer.infoHash) ?: transfer.name
+        }
     }
     // Changing the result set or its order always returns to page one. A new
     // engine observation does not change filter/search or silently select items.
@@ -511,7 +515,7 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
         OutlinedTextField(
             value = transferSearch,
             onValueChange = { transferSearch = it },
-            label = { Text("Search local names, folders or hashes") },
+            label = { Text("Search local names, aliases, folders or hashes") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )

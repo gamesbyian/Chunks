@@ -18,7 +18,8 @@ internal object LocalQueueCatalog {
         items: List<LocalTransferStatus>,
         search: String,
         filter: LocalQueueFilter,
-        order: LocalQueueOrder
+        order: LocalQueueOrder,
+        displayName: (LocalTransferStatus) -> String = { it.name }
     ): List<LocalTransferStatus> {
         val needle = search.trim()
         val filtered = items.asSequence().filter { item ->
@@ -36,23 +37,34 @@ internal object LocalQueueCatalog {
                 LocalQueueFilter.NEEDS_ATTENTION -> !item.error.isNullOrBlank() ||
                     (!item.metadataKnown && item.stopped)
             }
-        }.filter { item ->
-            needle.isBlank() || item.name.contains(needle, ignoreCase = true) ||
+        }.map { item -> item to displayName(item) }.filter { (item, label) ->
+            needle.isBlank() || label.contains(needle, ignoreCase = true) ||
+                item.name.contains(needle, ignoreCase = true) ||
                 item.infoHash.contains(needle, ignoreCase = true) ||
                 item.savePath.contains(needle, ignoreCase = true)
         }.toList()
 
-        val stable: Comparator<LocalTransferStatus> =
-            compareBy(String.CASE_INSENSITIVE_ORDER) { item: LocalTransferStatus -> item.name }
-                .thenBy { it.infoHash }
-        return when (order) {
+        // Cached display labels are resolved once per candidate, never in a
+        // comparator's O(N log N) calls or via a native engine read.
+        val stable: Comparator<Pair<LocalTransferStatus, String>> =
+            compareBy(String.CASE_INSENSITIVE_ORDER) {
+                pair: Pair<LocalTransferStatus, String> -> pair.second
+            }.thenBy { it.first.infoHash }
+        val ordered = when (order) {
             LocalQueueOrder.NAME -> filtered.sortedWith(stable)
             LocalQueueOrder.PROGRESS -> filtered.sortedWith(
-                compareByDescending<LocalTransferStatus> { it.progressPpm }.then(stable))
+                compareByDescending<Pair<LocalTransferStatus, String>> {
+                    it.first.progressPpm
+                }.then(stable))
             LocalQueueOrder.SIZE -> filtered.sortedWith(
-                compareByDescending<LocalTransferStatus> { it.wantedBytes }.then(stable))
+                compareByDescending<Pair<LocalTransferStatus, String>> {
+                    it.first.wantedBytes
+                }.then(stable))
             LocalQueueOrder.PEERS -> filtered.sortedWith(
-                compareByDescending<LocalTransferStatus> { it.peers }.then(stable))
+                compareByDescending<Pair<LocalTransferStatus, String>> {
+                    it.first.peers
+                }.then(stable))
         }
+        return ordered.map { it.first }
     }
 }
