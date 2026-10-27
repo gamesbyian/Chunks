@@ -15,6 +15,8 @@ Chunks is an Android-native BitTorrent client and first-class rTorrent remote. I
 
 ## Documentation and engineering
 
+**Visual design:** [Six Chunks concept references and implementation notes](docs/design/reference-images/README.md) capture the owner-selected chunky, high-contrast direction. These visual studies do not supersede product capabilities, safety or accessibility contracts.
+
 Read [AGENTS.md](AGENTS.md), the **only live [WORK-QUEUE](docs/WORK-QUEUE.md)**, [PRODUCT](docs/PRODUCT.md), [SPEC-COVERAGE](docs/SPEC-COVERAGE.md), [ARCHITECTURE](docs/ARCHITECTURE.md), [UX](docs/UX.md), [SECURITY](docs/SECURITY.md) and [STORAGE-AND-EXTRACTION](docs/STORAGE-AND-EXTRACTION.md). [QUALITY-LEDGER](docs/QUALITY-LEDGER.md) is the evidence register, [DECISIONS](docs/DECISIONS.md) the choices register, [rTorrent matrix](docs/RTORRENT-COMPATIBILITY-MATRIX.md) the protocol detail, and [CI-POLICY](docs/CI-POLICY.md) the runner contract. The [historical October 24 critical review](docs/CRITICAL-REVIEW-2026-10-24.md) explains safety corrections, not current implementation status.
 
 Build with JDK 17, Gradle 9.3.1 and a configured Android SDK:
