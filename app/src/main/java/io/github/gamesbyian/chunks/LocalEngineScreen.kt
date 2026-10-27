@@ -185,6 +185,8 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val collectionStore = remember(context) { TransferCollectionStore(context) }
+    val aliasStore = remember(context) { TransferAliasStore(context) }
+    var aliasRevision by remember { mutableStateOf(0) }
     val nameRegistry = remember(context) { CollectionNameRegistry(context) }
     var registeredNames by remember {
         mutableStateOf(nameRegistry.names(TransferCollectionStore.LOCAL_ENGINE_SCOPE))
@@ -502,7 +504,19 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
             )
         }
         transferSlice.items.forEach { transfer ->
+            val displayedAlias = remember(transfer.infoHash, aliasRevision) {
+                aliasStore.get(TransferCollectionStore.LOCAL_ENGINE_SCOPE, transfer.infoHash)
+            }
             LocalTransferCard(transfer, busy || inventoryStale,
+                alias = displayedAlias,
+                onSaveAlias = { proposed ->
+                    val saved = try {
+                        aliasStore.save(TransferCollectionStore.LOCAL_ENGINE_SCOPE,
+                            transfer.infoHash, proposed)
+                    } catch (_: Exception) { false }
+                    if (saved) aliasRevision++
+                    saved
+                },
                 onToggle = {
                     if (transfer.stopped && Build.VERSION.SDK_INT >= 33 &&
                         context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
@@ -670,13 +684,26 @@ internal fun LocalTransferCard(
     files: List<LocalTransferFile>? = null,
     filesShown: Boolean = false,
     onShowFiles: () -> Unit = {},
-    onFileWanted: (Int, Boolean) -> Unit = { _, _ -> }
+    onFileWanted: (Int, Boolean) -> Unit = { _, _ -> },
+    alias: String? = null,
+    onSaveAlias: ((String?) -> Boolean)? = null
 ) {
     var confirmRemove by remember(transfer.infoHash) { mutableStateOf(false) }
     val percent = transfer.progressPpm / 10_000
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(transfer.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(alias ?: transfer.name, style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold)
+            if (alias != null) {
+                Text("Original torrent: " + transfer.name,
+                    style = MaterialTheme.typography.bodySmall)
+            }
+            if (onSaveAlias != null) {
+                TransferAliasEditor(
+                    originalName = transfer.name, hash = transfer.infoHash,
+                    alias = alias, onSave = onSaveAlias
+                )
+            }
             Text(stateLabel(transfer) + " · " + percent + "% · " + transfer.peers + " peers")
             ChunkedProgressBar(progress = transfer.progressPpm / 1_000_000f,
                 modifier = Modifier.fillMaxWidth().semantics { stateDescription = "$percent percent complete" })
