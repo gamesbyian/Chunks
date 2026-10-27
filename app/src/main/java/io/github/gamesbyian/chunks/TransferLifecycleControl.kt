@@ -100,7 +100,9 @@ fun TransferLifecycleControl(
                                                 "rTorrent reports " + (if (outcome.started) "Start state set" else "stopped") +
                                                     ". That does not prove a peer connection or downloaded bytes."
                                             is LifecycleOutcome.Pending ->
-                                                "Server reports " + (if (outcome.observedStarted) "started" else "stopped") +
+                                                if (requestedStarted && outcome.observedStarted)
+                                                    "rTorrent accepted Start, but active transfer state is not confirmed. It may be hashing, paused or queued. Inspect activity and server errors before any retry."
+                                                else "Server reports " + (if (outcome.observedStarted) "started" else "stopped") +
                                                     ", not the requested state. Refresh before considering another action."
                                             is LifecycleOutcome.Uncertain ->
                                                 "RPC outcome uncertain. The operation may already have happened. Refresh before considering another action."
