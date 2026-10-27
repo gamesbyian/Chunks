@@ -13,7 +13,9 @@ class RemoteQueueActivityContextTest {
         completedBytes = 250, started = true, directory = "/test",
         downBytesPerSecond = 400)
     private fun observed(target: RemoteTransfer, view: List<RemoteTransfer>, fresh: Boolean = true) =
-        RemoteQueueActivityContext.otherTransferReportsDownloading(target, view, fresh)
+        RemoteQueueActivityContext.otherTransferReportsDownloading(
+            target, RemoteQueueActivityContext.countReportingDownloadTraffic(view), fresh
+        )
 
     @Test fun onlyPositiveRateOnDifferentTransferInFreshViewQualifies() {
         assertTrue(observed(stalled, listOf(stalled, other)))
@@ -32,6 +34,17 @@ class RemoteQueueActivityContextTest {
         assertFalse(observed(stalled.copy(downBytesPerSecond = 10), view))
         assertFalse(observed(stalled.copy(sizeBytes = 0), view))
         assertFalse(observed(stalled, listOf(stalled, stalled.copy(downBytesPerSecond = 100))))
+    }
+
+    @Test fun countsOnlyKnownPositiveRatesOncePerLargeView() {
+        val lots = List(12_000) { index ->
+            other.copy(
+                hash = index.toString(16).padStart(40, '0'),
+                downBytesPerSecond = if (index == 11_999) 42L else null
+            )
+        }
+        assertEquals(1, RemoteQueueActivityContext.countReportingDownloadTraffic(lots))
+        assertTrue(observed(stalled, lots))
     }
 
     @Test fun noClaimOfGlobalTrafficFromAFilteredView() {
