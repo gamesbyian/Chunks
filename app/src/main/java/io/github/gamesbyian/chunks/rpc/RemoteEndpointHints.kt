@@ -16,6 +16,10 @@ object RemoteEndpointHints {
         val path = uri.rawPath.orEmpty().trimEnd('/')
         val mapped = if (path.endsWith("/rutorrent", true))
             path + "/plugins/httprpc/action.php" else path.ifEmpty { "/" }
-        return URI(uri.scheme.lowercase(), uri.rawAuthority, mapped, null, null).toASCIIString()
+        // mapped is already a RAW URI path. The component constructor treats
+        // '%' as literal text and would turn an account path like %20 into
+        // %2520, breaking hosted ruTorrent installations. These components
+        // were validated by URI above; assemble their raw spelling unchanged.
+        return URI.create("${uri.scheme.lowercase()}://${uri.rawAuthority}$mapped").toASCIIString()
     }
 }
