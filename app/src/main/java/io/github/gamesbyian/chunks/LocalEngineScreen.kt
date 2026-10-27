@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.StatFs
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -60,6 +61,9 @@ import io.github.gamesbyian.chunks.engine.LocalTransferFile
 import io.github.gamesbyian.chunks.engine.LocalTransferStatus
 import io.github.gamesbyian.chunks.model.Units
 import io.github.gamesbyian.chunks.model.LocalInventoryFrame
+import io.github.gamesbyian.chunks.model.LocalAddStoragePreflight
+import io.github.gamesbyian.chunks.model.LocalAddStoragePlanner
+import io.github.gamesbyian.chunks.model.LocalFolderInventoryProbe
 import io.github.gamesbyian.chunks.model.LocalInventoryFreshness
 import io.github.gamesbyian.chunks.model.CollectionNameRegistryRules
 import io.github.gamesbyian.chunks.model.ManualCollectionPager
@@ -233,6 +237,9 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
     var filesFor by remember { mutableStateOf<String?>(null) }
     var files by remember { mutableStateOf<List<LocalTransferFile>?>(null) }
     var pending by remember { mutableStateOf<PendingLocalAdd?>(null) }
+    var addStorage by remember {
+        mutableStateOf<Pair<String, LocalAddStoragePreflight>?>(null)
+    }
     var message by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
 
@@ -259,6 +266,29 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
     var dhtSaving by remember { mutableStateOf(false) }
     var dhtError by remember { mutableStateOf<String?>(null) }
     val destination = remember { LocalEngineHolder.appDownloads(context) }
+    LaunchedEffect(pending?.preview?.infoHashV1, destination) {
+        addStorage = null
+        val review = pending
+        val folder = destination
+        if (review != null && folder != null) {
+            val estimate = withContext(Dispatchers.IO) {
+                val survey = try {
+                    LocalFolderInventoryProbe.measure(folder)
+                } catch (cancel: kotlinx.coroutines.CancellationException) {
+                    throw cancel
+                } catch (_: Exception) { null }
+                val cap = try {
+                    LocalCapPreferenceStore(context).get(folder)
+                } catch (_: Exception) { null }
+                // Query *the selected download volume*, not filesDir's volume.
+                val free = try {
+                    StatFs(folder.absolutePath).availableBytes.takeIf { it >= 0L }
+                } catch (_: Exception) { null }
+                LocalAddStoragePlanner.assess(review.preview.sizeBytes, survey, cap, free)
+            }
+            addStorage = review.preview.infoHashV1 to estimate
+        }
+    }
     // The ongoing notification is how Android lets downloads continue in the background.
     val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
@@ -461,6 +491,7 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
         val add = pending
         if (add != null && destination != null) LocalAddReview(add.preview, destination,
             busy = busy || inventoryStale, startAfterAdd = startAfterAdd,
+            storagePreflight = addStorage?.takeIf { it.first == add.preview.infoHashV1 }?.second,
             onConfirm = {
                 performLocalMutation {
                     try {
@@ -709,6 +740,7 @@ internal fun LocalAddReview(
     destination: File,
     busy: Boolean,
     startAfterAdd: Boolean = false,
+    storagePreflight: LocalAddStoragePreflight? = null,
     onConfirm: () -> Unit,
     onCancel: () -> Unit
 ) {
@@ -720,6 +752,45 @@ internal fun LocalAddReview(
             Text(preview.fileCount.toString() + (if (preview.fileCount == 1) " file, " else " files, ") +
                 Units.bytes(preview.sizeBytes))
             Text("Saves into: Chunks' folder on phone storage (" + destination.absolutePath + "). Files here are removed if Chunks is uninstalled.")
+            Text("Storage preflight (advisory; no automatic blocking or deletion)",
+                style = MaterialTheme.typography.titleSmall)
+            val space = storagePreflight
+            if (space == null) Text("Checking the chosen download volume and folder…",
+                style = MaterialTheme.typography.bodySmall)
+            else {
+                val cap = space.folderCapBytes
+                if (cap != null) {
+                    val projected = space.projectedLogicalMaximum
+                    if (projected == null) Text("Saved folder limit: " + Units.bytes(cap) +
+                        ". Folder inventory is incomplete; a total cannot be projected.",
+                        style = MaterialTheme.typography.bodySmall)
+                    else Text("Saved folder advisory limit: " + Units.bytes(cap) +
+                        ". Up to " + Units.bytes(projected) +
+                        " logical bytes if all torrent bytes are additional.",
+                        style = MaterialTheme.typography.bodySmall)
+                    if (space.projectedCapExceeded == true)
+                        Text("Potentially above your advisory limit. " +
+                            "Check the phone storage panel before adding.",
+                            color = MaterialTheme.colorScheme.error)
+                }
+                val free = space.availableVolumeBytes
+                if (free == null)
+                    Text("Available space on this download volume could not be measured.",
+                        style = MaterialTheme.typography.bodySmall)
+                else {
+                    Text("Currently available on this download volume: " + Units.bytes(free),
+                        style = MaterialTheme.typography.bodySmall)
+                    if (space.additionalBytesExceedFree == true)
+                        Text("The torrent's full declared size exceeds currently available " +
+                            "space if all bytes must be written anew. " +
+                            "Choose files carefully or free space before starting.",
+                            color = MaterialTheme.colorScheme.error)
+                }
+                Text("This is a worst-case estimate, not a disk reservation. Existing " +
+                    "files, sparse allocation, other apps and later file selections " +
+                    "can change actual storage needs.",
+                    style = MaterialTheme.typography.bodySmall)
+            }
             Text(if (startAfterAdd)
                 "Chunks adds stopped, verifies the new transfer, then starts it. Download progress depends on available peers or web seeds."
                 else "It is added stopped. Nothing downloads until you press Start.",
