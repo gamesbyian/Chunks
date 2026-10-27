@@ -135,6 +135,8 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
 
     /** Magnets still fetching metadata in upload mode (no payload requests). */
     private val awaitingMetadata: MutableSet<String> = ConcurrentHashMap.newKeySet()
+    /** Explicit Add-and-start consent while magnet metadata is still unresolved. */
+    private val startWhenMetadataArrives: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
     private val engineListener = object : AlertListener {
         override fun types() = intArrayOf(AlertType.SAVE_RESUME_DATA.swig(),
@@ -148,10 +150,14 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                 return
             }
             if (alert.type() == AlertType.METADATA_RECEIVED) {
-                // Metadata only: stop before any payload is requested, then wait for Start.
+                // Metadata discovery uses upload-only mode, never payload pieces.
+                // A prior reviewed Add-and-start permits downloading AFTER the
+                // metadata arrives. Otherwise stop and require manual Start.
                 if (awaitingMetadata.remove(key)) {
-                    handle.pause()
+                    val startAfterMetadata = startWhenMetadataArrives.remove(key)
+                    if (!startAfterMetadata) handle.pause()
                     handle.unsetFlags(org.libtorrent4j.TorrentFlags.UPLOAD_MODE)
+                    if (startAfterMetadata) handle.resume()
                 }
                 return
             }
@@ -296,7 +302,11 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
      * DHT is used only if the engine was configured with it.
      */
     @Synchronized
-    fun addMagnet(magnet: String, saveDirectory: File, peers: List<InetSocketAddress> = emptyList()): LocalAddResult {
+    fun addMagnet(
+        magnet: String, saveDirectory: File,
+        peers: List<InetSocketAddress> = emptyList(),
+        autoStartAfterMetadata: Boolean = false
+    ): LocalAddResult {
         check(started) { "Engine not started" }
         if (!saveDirectory.isAbsolute || !saveDirectory.isDirectory)
             return LocalAddResult.Refused("Choose an existing folder for this download")
@@ -314,13 +324,16 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         val raw = session.swig().add_torrent(params.swig(), error)
         if (error.value() != 0 || !raw.is_valid)
             return LocalAddResult.Refused("The local engine refused this magnet: " + error.message())
+        if (autoStartAfterMetadata) startWhenMetadataArrives += hash
         awaitingMetadata += hash
         val handle = TorrentHandle(raw)
         handles[hash] = handle
         // Metadata may already have arrived before we registered interest.
         if (handle.status().hasMetadata() && awaitingMetadata.remove(hash)) {
-            handle.pause()
+            val autoStart = startWhenMetadataArrives.remove(hash)
+            if (!autoStart) handle.pause()
             handle.unsetFlags(org.libtorrent4j.TorrentFlags.UPLOAD_MODE)
+            if (autoStart) handle.resume()
         }
         val status = snapshot(hash, handle) ?: return LocalAddResult.Refused("Added magnet could not be read back")
         return LocalAddResult.FetchingMetadata(status)
@@ -344,7 +357,12 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         command(infoHash, wantStopped = false, readbackTimeoutMs) { it.resume() }
 
     fun pause(infoHash: String, readbackTimeoutMs: Long = 5_000): LocalCommandResult =
-        command(infoHash, wantStopped = true, readbackTimeoutMs) { it.pause() }
+        command(infoHash, wantStopped = true, readbackTimeoutMs) {
+            // User Stop overrides any earlier Add-and-start consent while
+            // magnet metadata is in flight.
+            startWhenMetadataArrives.remove(normal(infoHash))
+            it.pause()
+        }
 
     private fun command(
         infoHash: String,
@@ -431,6 +449,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         // late alert for this handle is refused by LocalResumeWriteFence.
         synchronized(handles) { handles.remove(key) }
         awaitingMetadata.remove(key)
+        startWhenMetadataArrives.remove(key)
         pendingFlushes.remove(key)?.refused()
         pendingSaves.remove(key)?.countDown()
         val saved = config.stateDirectory?.let { File(it, "$key.resume") } ?: return true
@@ -505,6 +524,8 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         pendingFlushes.values.forEach { it.refused() }
         pendingFlushes.clear()
         handles.clear()
+        awaitingMetadata.clear()
+        startWhenMetadataArrives.clear()
         session.stop()
         started = false
     }

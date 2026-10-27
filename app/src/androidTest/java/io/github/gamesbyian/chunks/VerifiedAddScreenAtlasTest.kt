@@ -75,10 +75,10 @@ class VerifiedAddScreenAtlasTest {
                     onMutationStarted = { true }, onMutationSettled = {})
             }
         }
-        rule.onNode(hasScrollAction()).performScrollToNode(hasText("Review stopped Add"))
-        rule.onNodeWithText("Review stopped Add").performClick()
-        rule.onNode(hasScrollAction()).performScrollToNode(hasText("Confirm: add stopped"))
-        rule.onNodeWithText("Confirm: add stopped").assertExists()
+        rule.onNode(hasScrollAction()).performScrollToNode(hasText("Review Add"))
+        rule.onNodeWithText("Review Add").performClick()
+        rule.onNode(hasScrollAction()).performScrollToNode(hasText("Confirm: add then start"))
+        rule.onNodeWithText("Confirm: add then start").assertExists()
         rule.onNodeWithText("Infohash: " + "ab".repeat(20)).assertExists()
         save("add-confirmation-real-compose")
     }
@@ -95,17 +95,17 @@ class VerifiedAddScreenAtlasTest {
                     onMutationStarted = { true }, onMutationSettled = {})
             }
         }
-        rule.onNode(hasScrollAction()).performScrollToNode(hasText("Review stopped Add"))
-        rule.onNodeWithText("Review stopped Add").performClick()
-        rule.onNode(hasScrollAction()).performScrollToNode(hasText("Confirm: add stopped"))
-        rule.onNodeWithText("Confirm: add stopped").performClick()
+        rule.onNode(hasScrollAction()).performScrollToNode(hasText("Review Add"))
+        rule.onNodeWithText("Review Add").performClick()
+        rule.onNode(hasScrollAction()).performScrollToNode(hasText("Confirm: add then start"))
+        rule.onNodeWithText("Confirm: add then start").performClick()
         rule.waitUntil(timeoutMillis = 15_000) {
             rule.onAllNodesWithText("Check server state (read only)")
                 .fetchSemanticsNodes().isNotEmpty()
         }
         rule.onNode(hasScrollAction()).performScrollToNode(
             hasText("Check server state (read only)"))
-        rule.onNodeWithText("Confirm: add stopped").assertDoesNotExist()
+        rule.onNodeWithText("Confirm: add then start").assertDoesNotExist()
         rule.onNodeWithText("Check server state (read only)").assertExists()
         save("add-uncertain-recheck-real-compose")
     }
@@ -215,7 +215,7 @@ class VerifiedAddScreenAtlasTest {
                     onMutationStarted = { true }, onMutationSettled = {})
             }
         }
-        rule.onNodeWithText("Review stopped Add").assertDoesNotExist()
+        rule.onNodeWithText("Review Add").assertDoesNotExist()
         rule.onNode(hasScrollAction()).performScrollToNode(hasText(
             "Invalid destination: remove repeated slashes, '.' and '..' path segments."
         ))

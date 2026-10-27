@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -26,11 +27,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteAddOutcome
+import io.github.gamesbyian.chunks.rpc.RemoteAddStarter
+import io.github.gamesbyian.chunks.rpc.RemoteAddAndStart
 import io.github.gamesbyian.chunks.rpc.StoppedRemoteAddPlan
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoPreview
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader
@@ -67,6 +73,7 @@ fun VerifiedAddScreen(
     var outcome by remember { mutableStateOf<String?>(null) }
     var uncertain by remember { mutableStateOf(false) }
     var alreadyAttempted by remember { mutableStateOf(false) }
+    var startAfterAdd by remember { mutableStateOf(true) }
     var rechecking by remember { mutableStateOf(false) }
     var fileError by remember { mutableStateOf<String?>(null) }
 
@@ -147,7 +154,7 @@ fun VerifiedAddScreen(
                 Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("A place for every download.", style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Black)
-                    Text("Choose one magnet or .torrent, pick its server directory, and confirm a stopped Add. No torrent starts automatically.")
+                    Text("Choose a magnet or .torrent, review the exact server destination and decide whether to start downloading immediately after the stopped Add is verified.")
                 }
             }
         }
@@ -233,13 +240,26 @@ fun VerifiedAddScreen(
             }
         }
         if (plan != null && !alreadyAttempted) {
+            item {
+                Row(
+                    Modifier.fillMaxWidth().toggleable(
+                        value = startAfterAdd, enabled = !submitting, role = Role.Checkbox,
+                        onValueChange = { startAfterAdd = it; awaitingConfirmation = false }
+                    ).padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(checked = startAfterAdd, onCheckedChange = null)
+                    Text("Start downloading after verified Add (recommended)",
+                        modifier = Modifier.padding(start = 8.dp))
+                }
+            }
             if (!awaitingConfirmation) {
                 item {
                     Button(
                         onClick = { awaitingConfirmation = true },
                         modifier = Modifier.fillMaxWidth().height(56.dp),
                         enabled = !submitting
-                    ) { Text("Review stopped Add") }
+                    ) { Text("Review Add") }
                 }
             } else {
                 item {
@@ -249,7 +269,9 @@ fun VerifiedAddScreen(
                             Text("Source: " + if (useFile) "Selected .torrent file" else "Magnet link")
                             Text("Infohash: " + plan.expectedInfoHash)
                             Text("Destination: " + plan.destination)
-                            Text("Loads stopped. It does not move existing files or guarantee that bytes are downloaded.")
+                            Text(if (startAfterAdd)
+                                "Step 1: Add stopped and verify exact hash and destination. Step 2: request Start once, and verify the server's running state. No retry if either result is uncertain."
+                            else "Add stopped only; use Start later from Transfers. No file move or download is implied.")
                             val trackers = if (useFile) selectedTorrent?.trackerCount ?: 0
                                 else TorrentMetainfoReader.magnetTrackerCount(magnet)
                             if (trackers == 0) {
@@ -268,20 +290,33 @@ fun VerifiedAddScreen(
                             val bytes = if (useFile) selectedBytes?.copyOf() else null
                             scope.launch {
                                 try {
-                                    val response = if (bytes != null)
-                                        remote.loadStoppedTorrentBytes(bytes, plan.destination)
-                                    else remote.loadStopped(plan)
-                                    uncertain = response !is RemoteAddOutcome.VerifiedStopped
-                                    outcome = when (response) {
-                                        is RemoteAddOutcome.VerifiedStopped ->
-                                            "Verified: rTorrent reports this infohash stopped at " +
-                                                response.destination + ". Data download is not yet proven."
-                                        is RemoteAddOutcome.AlreadyPresent ->
-                                            "Already present. No Add was sent. Check its existing directory before acting."
-                                        is RemoteAddOutcome.PendingVerification ->
-                                            "The server answered, but the new hash/destination/stopped state were not all verified. Refresh and inspect before retrying."
-                                        is RemoteAddOutcome.Uncertain ->
-                                            "Request outcome uncertain. It may have succeeded. Refresh by hash and do not blindly retry."
+                                    val result = RemoteAddStarter.run(
+                                        startAfterVerifiedAdd = startAfterAdd,
+                                        add = {
+                                            if (bytes != null) remote.loadStoppedTorrentBytes(bytes, plan.destination)
+                                            else remote.loadStopped(plan)
+                                        },
+                                        start = { hash -> remote.setStarted(hash, true) }
+                                    )
+                                    uncertain = result !is RemoteAddAndStart.Started &&
+                                        (result !is RemoteAddAndStart.AddedStopped ||
+                                            result.result !is RemoteAddOutcome.VerifiedStopped)
+                                    outcome = when (result) {
+                                        is RemoteAddAndStart.Started ->
+                                            "Verified: added and started on rTorrent. Peer availability and payload bytes still need observation in Transfers."
+                                        is RemoteAddAndStart.StartNotVerified ->
+                                            "Added and verified stopped. Start was requested but not verified; check server state before another Start. No automatic retry."
+                                        is RemoteAddAndStart.AddedStopped -> when (result.result) {
+                                            is RemoteAddOutcome.VerifiedStopped ->
+                                                "Verified: added stopped at " + result.result.destination +
+                                                    ". Start from Transfers whenever you're ready."
+                                            is RemoteAddOutcome.AlreadyPresent ->
+                                                "Already present. No new Add or Start was sent. Inspect the existing transfer."
+                                            is RemoteAddOutcome.PendingVerification ->
+                                                "The Add was not fully verified; no Start was sent. Inspect server state before retrying."
+                                            is RemoteAddOutcome.Uncertain ->
+                                                "Add uncertain; no Start was sent. Check the server before another operation."
+                                        }
                                     }
                                 } catch (_: Exception) {
                                     uncertain = true
@@ -301,7 +336,7 @@ fun VerifiedAddScreen(
                         },
                         enabled = !submitting,
                         modifier = Modifier.fillMaxWidth().height(56.dp)
-                    ) { Text("Confirm: add stopped") }
+                    ) { Text(if (startAfterAdd) "Confirm: add then start" else "Confirm: add stopped") }
                 }
                 item {
                     OutlinedButton(

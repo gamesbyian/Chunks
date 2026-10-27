@@ -224,6 +224,29 @@ class LocalTorrentEngineTest {
             File(destination, "Chunks public fixture/episode.bin").readBytes())
     }
 
+    @Test fun optedInMagnetStartsPayloadAfterMetadataAndDownloadsExactBytes() {
+        val fixture = fixture()
+        val seeder = engine()
+        val seeded = added(seeder.addStopped(fixture.torrent, fixture.root.parentFile))
+        assertEquals(LocalCommandOutcome.VERIFIED, seeder.resume(seeded.infoHash).outcome)
+        waitFor { seeder.status(seeded.infoHash)?.state == LocalTransferState.SEEDING }
+
+        val destination = temp.newFolder("auto magnet destination")
+        val leecher = engine()
+        val magnet = "magnet:?xt=urn:btih:${seeded.infoHash}"
+        val added = leecher.addMagnet(magnet, destination,
+            listOf(InetSocketAddress("127.0.0.1", seeder.listenPort())),
+            autoStartAfterMetadata = true)
+        assertTrue(added is LocalAddResult.FetchingMetadata)
+        waitFor {
+            val state = leecher.status(seeded.infoHash)
+            state != null && state.metadataKnown && !state.stopped
+        }
+        waitFor { leecher.status(seeded.infoHash)?.progressPpm == 1_000_000 }
+        assertArrayEquals(fixture.files.getValue("episode.bin"),
+            File(destination, "Chunks public fixture/episode.bin").readBytes())
+    }
+
     @Test fun refusesMagnetsWithoutExactlyOneV1Identity() {
         val engine = engine()
         val destination = temp.newFolder("d")
