@@ -38,6 +38,7 @@ fun TransferSessionRemoveControl(
     transfer: RemoteTransfer,
     snapshotStale: Boolean,
     mainView: Boolean,
+    onMutationStarted: () -> Boolean,
     onSettled: () -> Unit
 ) {
     val validHash = remember(transfer.hash) { Regex("[0-9a-fA-F]{40}").matches(transfer.hash) }
@@ -99,6 +100,7 @@ fun TransferSessionRemoveControl(
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
                             onClick = {
+                                if (onMutationStarted()) {
                                 confirming = false
                                 attempted = true
                                 pending = true
@@ -124,6 +126,12 @@ fun TransferSessionRemoveControl(
                                         pending = false
                                         onSettled()
                                     }
+                                }
+                                } else {
+                                    confirming = false
+                                    attempted = true
+                                    verified = false
+                                    feedback = "Another remote command needs fresh readback before any further action."
                                 }
                             },
                             enabled = !pending && mainView && !snapshotStale,

@@ -46,7 +46,7 @@ class TransferMutationRecyclingInstrumentedTest {
                     item(key = "operation") {
                         TransferLifecycleControl(
                             remote, transfer, snapshotStale = false,
-                            onSettled = {}
+                            onMutationStarted = { true }, onSettled = {}
                         )
                     }
                     items(40) { i -> Text("Row $i", Modifier.height(120.dp)) }
@@ -66,7 +66,7 @@ class TransferMutationRecyclingInstrumentedTest {
                     item(key = "operation") {
                         TransferSessionRemoveControl(
                             remote, transfer, snapshotStale = false,
-                            mainView = true, onSettled = {}
+                            mainView = true, onMutationStarted = { true }, onSettled = {}
                         )
                     }
                     items(40) { i -> Text("Row $i", Modifier.height(120.dp)) }
@@ -87,7 +87,7 @@ class TransferMutationRecyclingInstrumentedTest {
                         TransferFilePriorityControl(
                             remote = remote, hash = transfer.hash,
                             index = 0, file = RemoteFile("episode.mkv", 1000, 1),
-                            snapshotStale = false, mainView = true, onSettled = {}
+                            snapshotStale = false, mainView = true, onMutationStarted = { true }, onSettled = {}
                         )
                     }
                     items(40) { i -> Text("Row $i", Modifier.height(120.dp)) }
