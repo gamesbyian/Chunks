@@ -6,6 +6,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.core.view.WindowCompat
 import androidx.compose.foundation.background
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -27,6 +28,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -43,6 +45,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -62,6 +66,8 @@ import io.github.gamesbyian.chunks.rpc.RemoteCredentials
 import io.github.gamesbyian.chunks.rpc.RemoteFile
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 private val Ink = Color(0xFF262442)
 private val Cream = Color(0xFFFFF8EC)
@@ -111,9 +117,16 @@ private enum class Section(val label: String) {
 
 @Composable
 private fun ChunksApp(sharedMagnet: String?) {
-    var endpoint by remember { mutableStateOf("") }
-    var username by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
+    val context = LocalContext.current
+    val vault = remember(context) { RememberedRemoteLogin(context) }
+    val remembered = remember(vault) { vault.load() }
+    var endpoint by remember { mutableStateOf(remembered?.endpoint.orEmpty()) }
+    var username by remember { mutableStateOf(remembered?.username.orEmpty()) }
+    var password by remember { mutableStateOf(remembered?.password.orEmpty()) }
+    // Remembering is the default. Every user can opt out before Connect.
+    var rememberLogin by remember { mutableStateOf(true) }
+    var savedLoginPresent by remember { mutableStateOf(remembered != null) }
+    var credentialNotice by remember { mutableStateOf<String?>(null) }
     var server by remember { mutableStateOf<RTorrentRemote?>(null) }
     var version by remember { mutableStateOf("") }
     var transfers by remember { mutableStateOf<List<RemoteTransfer>>(emptyList()) }
@@ -133,7 +146,6 @@ private fun ChunksApp(sharedMagnet: String?) {
     var magnet by remember { mutableStateOf("") }
     var draftPath by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
-    val context = LocalContext.current
     val aliasStore = remember(context) { TransferAliasStore(context) }
     // Owned by the connected app, not the recyclable LazyColumn card.
     // A plain remembered map prevents getOrPut writes during composition from
@@ -216,6 +228,34 @@ private fun ChunksApp(sharedMagnet: String?) {
             ConnectionScreen(
                 endpoint = endpoint, username = username, password = password,
                 error = error, loading = loading,
+                rememberLogin = rememberLogin, savedLoginPresent = savedLoginPresent,
+                credentialNotice = credentialNotice,
+                onRememberLogin = { enabled ->
+                    rememberLogin = enabled
+                    if (!enabled) {
+                        scope.launch {
+                            val cleared = withContext(Dispatchers.IO) {
+                                try { vault.clear() } catch (_: Exception) { false }
+                            }
+                            savedLoginPresent = if (cleared) false else vault.hasSavedLogin()
+                            credentialNotice = if (cleared) "Saved login erased on this device."
+                                else "Could not erase saved login; retry Forget saved login."
+                        }
+                    } else credentialNotice = null
+                },
+                onForgetLogin = {
+                    rememberLogin = false
+                    scope.launch {
+                        val cleared = withContext(Dispatchers.IO) {
+                            try { vault.clear() } catch (_: Exception) { false }
+                        }
+                        savedLoginPresent = if (cleared) false else vault.hasSavedLogin()
+                        if (cleared) {
+                            password = ""
+                            credentialNotice = "Saved login erased. This session's password field was cleared."
+                        } else credentialNotice = "Could not erase saved login. Retry before leaving the app."
+                    }
+                },
                 onLocalZipReview = { section = Section.ARCHIVES },
                 onLocalEngine = { section = Section.LOCAL },
                 onEndpoint = { endpoint = it }, onUsername = { username = it },
@@ -244,7 +284,20 @@ private fun ChunksApp(sharedMagnet: String?) {
                                     section = if (magnet.isNotBlank()) Section.ADD else Section.TRANSFERS
                                     currentView = ticket.view
                                     requestedView = ticket.view
-                                    // Do not keep a second plaintext copy in the fields.
+                                    // A successful authenticated Connect is the only time
+                                    // the default-on vault may save fresh credentials.
+                                    // Failures never persist an unverified password.
+                                    val retained = withContext(Dispatchers.IO) {
+                                        try {
+                                            if (rememberLogin) vault.save(settings) else vault.clear()
+                                        } catch (_: Exception) { false }
+                                    }
+                                    savedLoginPresent = if (retained && rememberLogin) true
+                                        else vault.hasSavedLogin()
+                                    credentialNotice = if (retained) null
+                                        else "Connected, but saved-login storage could not be confirmed. " +
+                                            "You may need to enter your password again after restart."
+                                    // Do not retain another copy in the screen field.
                                     password = ""
                                 }
                             } catch (failure: Exception) {
@@ -361,6 +414,19 @@ private fun ChunksApp(sharedMagnet: String?) {
                     version = version, displayedView = currentView,
                     requestedView = requestedView, onRequestedView = { requestedView = it },
                     loading = loading, stale = stale, count = transfers.size,
+                    credentialNotice = credentialNotice,
+                    savedLoginPresent = savedLoginPresent,
+                    onForgetLogin = {
+                        rememberLogin = false
+                        scope.launch {
+                            val cleared = withContext(Dispatchers.IO) {
+                                try { vault.clear() } catch (_: Exception) { false }
+                            }
+                            savedLoginPresent = if (cleared) false else vault.hasSavedLogin()
+                            credentialNotice = if (cleared) "Saved login erased. Current connection remains active."
+                                else "Could not erase saved login."
+                        }
+                    },
                     onRefresh = refresh,
                     onDisconnect = {
                         // Invalidate every in-flight read before clearing UI state.
@@ -407,6 +473,8 @@ private fun readableFailure(failure: Exception): String = when (failure) {
 @Composable
 private fun ConnectionScreen(
     endpoint: String, username: String, password: String, error: String?, loading: Boolean,
+    rememberLogin: Boolean, savedLoginPresent: Boolean, credentialNotice: String?,
+    onRememberLogin: (Boolean) -> Unit, onForgetLogin: () -> Unit,
     onLocalZipReview: () -> Unit,
     onLocalEngine: () -> Unit,
     onEndpoint: (String) -> Unit, onUsername: (String) -> Unit,
@@ -444,6 +512,30 @@ private fun ConnectionScreen(
             )
         }
         item {
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(
+                    value = rememberLogin, enabled = !loading, role = Role.Checkbox,
+                    onValueChange = onRememberLogin
+                ), verticalAlignment = Alignment.CenterVertically
+            ) {
+                Checkbox(checked = rememberLogin, onCheckedChange = null)
+                Text("Remember this server and login on this device",
+                    modifier = Modifier.padding(start = 8.dp))
+            }
+            Text("On by default. Password encrypted with Android Keystore. " +
+                "Uncheck to use this connection without saving credentials.",
+                style = MaterialTheme.typography.bodySmall)
+        }
+        if (savedLoginPresent) item {
+            OutlinedButton(onClick = onForgetLogin, enabled = !loading,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                Text("Forget saved login")
+            }
+        }
+        if (credentialNotice != null) item {
+            Text(credentialNotice, style = MaterialTheme.typography.bodySmall)
+        }
+        item {
             Button(
                 onClick = onConnect,
                 enabled = !loading && endpoint.isNotBlank(),
@@ -465,7 +557,7 @@ private fun ConnectionScreen(
             }
         }
         item {
-            Text("Protected HTTPS is required for remote servers. Credentials stay in memory only. No torrents or files are changed.",
+            Text("Protected HTTPS is required for remote servers. Login is encrypted and stored only on this device unless you opt out. No torrents or files are changed by connecting.",
                 style = MaterialTheme.typography.bodySmall, color = Color(0xFF595575))
         }
     }
@@ -876,7 +968,9 @@ private fun OrganizeScreen(
 @Composable
 private fun ServerScreen(
     version: String, displayedView: String, requestedView: String, onRequestedView: (String) -> Unit,
-    loading: Boolean, stale: Boolean, count: Int, onRefresh: () -> Unit, onDisconnect: () -> Unit
+    loading: Boolean, stale: Boolean, count: Int,
+    credentialNotice: String?, savedLoginPresent: Boolean, onForgetLogin: () -> Unit,
+    onRefresh: () -> Unit, onDisconnect: () -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -912,13 +1006,21 @@ private fun ServerScreen(
                 Text(if (loading) "Refreshing…" else "Load selected view")
             }
         }
+        if (savedLoginPresent) item {
+            OutlinedButton(onClick = onForgetLogin, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                Text("Forget saved login")
+            }
+        }
+        if (credentialNotice != null) item {
+            Text(credentialNotice, style = MaterialTheme.typography.bodySmall)
+        }
         item {
             OutlinedButton(onClick = onDisconnect, modifier = Modifier.fillMaxWidth().height(54.dp)) {
                 Text("Disconnect")
             }
         }
         item {
-            Text("Credentials remain in memory only. Stopped Add and Start/Stop require confirmation. Moving or deleting physical files is not yet supported.",
+            Text("The current connection remains in memory. Unless opted out, the server login is encrypted on this device for later reconnection. Torrent operations remain separately confirmed.",
                 style = MaterialTheme.typography.bodySmall)
         }
     }
