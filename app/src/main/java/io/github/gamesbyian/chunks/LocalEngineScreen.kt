@@ -310,6 +310,14 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
         if (magnet.isNotEmpty() && destination != null) {
             Text("Saves into Chunks' folder on phone storage. Chunks fetches only the torrent's description from the magnet's trackers and peers, then stops; no file data downloads until you press Start.",
                 style = MaterialTheme.typography.bodySmall)
+            if (LocalMagnetDiscoveryAdvice.warn(magnet, dht)) {
+                Text("This magnet has no usable tracker address and DHT is off. " +
+                    "Chunks may be unable to find peers and fetch its metadata. " +
+                    "Enable DHT above or use a .torrent file with tracker information. " +
+                    "Adding it will not start downloading file data.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error)
+            }
             OutlinedButton(onClick = {
                 performLocalMutation {
                     try {
