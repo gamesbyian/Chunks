@@ -188,6 +188,69 @@ class SeedhostLiveAcceptanceTest {
             candidates.size <= 6)
     }
 
+    /**
+     * Read only exact-target file selection and engine-open state for the
+     * small incomplete started cohort. No file paths, names or hashes logged;
+     * use counts only. Unknown capabilities must not be treated as "skipped".
+     */
+    @Test fun readOnlyCurrentHostFileSelectionAndOpenState() = runBlocking {
+        val rtorrent = remote()
+        val candidates = rtorrent.listTransfers("main").filter {
+            it.started && it.sizeBytes > 0 && it.completedBytes in 0L until it.sizeBytes
+        }.sortedBy { it.hash.lowercase() }.take(6)
+        var filesRead = 0
+        var selected = 0
+        var allSkipped = 0
+        var mixed = 0
+        var open = 0
+        var notOpen = 0
+        var priorityUnknown = 0
+        var noFiles = 0
+        var selectedIncomplete = 0
+        for (transfer in candidates) {
+            val activity = try { rtorrent.readActivity(transfer.hash) }
+                catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
+                catch (_: Exception) { null }
+            when (activity?.open) {
+                true -> open++
+                false -> notOpen++
+                else -> Unit
+            }
+            val files = try {
+                val preHash = rtorrent.call("d.hash", listOf(transfer.hash)) as? String
+                check(preHash?.equals(transfer.hash, true) == true)
+                val items = rtorrent.listFiles(transfer.hash)
+                val postHash = rtorrent.call("d.hash", listOf(transfer.hash)) as? String
+                check(postHash?.equals(transfer.hash, true) == true)
+                items
+            } catch (cancel: kotlinx.coroutines.CancellationException) {
+                throw cancel
+            } catch (_: Exception) {
+                null
+            }
+            if (files == null || files.any { it.priority !in 0..2 }) {
+                priorityUnknown++
+                continue
+            }
+            filesRead++
+            if (files.isEmpty()) { noFiles++; continue }
+            val enabled = files.count { it.priority > 0 && it.sizeBytes > 0L }
+            val skipped = files.count { it.priority == 0 && it.sizeBytes > 0L }
+            if (enabled == 0) allSkipped++
+            else {
+                selected++
+                if (skipped > 0) mixed++
+                if (transfer.completedBytes < transfer.sizeBytes) selectedIncomplete++
+            }
+        }
+        log("selection candidates=${candidates.size} filesRead=$filesRead " +
+            "hasSelectedFiles=$selected allSkipped=$allSkipped mixed=$mixed " +
+            "noFiles=$noFiles priorityUnknown=$priorityUnknown " +
+            "open=$open notOpen=$notOpen " +
+            "hasSelectedFilesWhileIncomplete=$selectedIncomplete")
+        assertTrue("At most six existing transfers may be inspected", candidates.size <= 6)
+    }
+
     /** Deepest absolute directory shared by all paths, at least two levels deep, else null. */
     private fun commonParent(paths: List<String>): String? {
         val split = paths.filter { it.startsWith("/") }.map { it.trimEnd('/').split('/').drop(1) }
