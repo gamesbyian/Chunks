@@ -52,7 +52,9 @@ fun VerifiedAddScreen(
     onMagnet: (String) -> Unit,
     onDestination: (String) -> Unit,
     onBack: () -> Unit,
-    onComplete: () -> Unit
+    onComplete: () -> Unit,
+    onMutationStarted: () -> Boolean,
+    onMutationSettled: () -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -259,6 +261,7 @@ fun VerifiedAddScreen(
                 item {
                     Button(
                         onClick = {
+                            if (onMutationStarted()) {
                             awaitingConfirmation = false
                             submitting = true
                             alreadyAttempted = true
@@ -280,13 +283,20 @@ fun VerifiedAddScreen(
                                         is RemoteAddOutcome.Uncertain ->
                                             "Request outcome uncertain. It may have succeeded. Refresh by hash and do not blindly retry."
                                     }
-                                    onComplete()
                                 } catch (_: Exception) {
                                     uncertain = true
                                     outcome = "Could not verify the operation. Inspect the current server transfer list before attempting another Add. No automatic retry occurred."
                                 } finally {
                                     submitting = false
+                                    // Also request readback after a timeout/exception.
+                                    // The write might have happened without an RPC reply.
+                                    onMutationSettled()
                                 }
+                            }
+                            } else {
+                                awaitingConfirmation = false
+                                uncertain = true
+                                outcome = "An earlier remote command needs a fresh server read before another Add."
                             }
                         },
                         enabled = !submitting,
