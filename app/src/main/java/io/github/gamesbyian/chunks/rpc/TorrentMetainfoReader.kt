@@ -101,7 +101,7 @@ object TorrentMetainfoReader {
      */
     private fun plausibleTrackerUrl(value: String): Boolean {
         if (value.length !in 1..2048 || value.any { it.code < 32 || it.code == 127 }) return false
-        val uri = try { java.net.URI(value) } catch (_: IllegalArgumentException) { return false }
+        val uri = try { java.net.URI(value) } catch (_: java.net.URISyntaxException) { return false }
         val scheme = uri.scheme?.lowercase(java.util.Locale.ROOT) ?: return false
         if (scheme != "http" && scheme != "https" && scheme != "udp") return false
         if (uri.isOpaque || uri.host.isNullOrBlank() || uri.rawUserInfo != null ||
