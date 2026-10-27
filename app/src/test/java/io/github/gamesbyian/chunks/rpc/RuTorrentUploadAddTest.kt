@@ -52,6 +52,24 @@ class RuTorrentUploadAddTest {
         server.start()
     }
 
+    @Test fun uploadUrlRetainsEncodedHostedAccountPrefix() {
+        val remote = RTorrentRemote(RemoteCredentials(
+            "https://box.test/my%20account/rutorrent/", "", ""))
+        assertEquals(
+            "https://box.test/my%20account/rutorrent/php/addtorrent.php",
+            remote.ruTorrentUploadAddress().toString()
+        )
+        val percent = RTorrentRemote(RemoteCredentials(
+            "https://box.test/%25members/rutorrent/", "", ""))
+        assertEquals(
+            "https://box.test/%25members/rutorrent/php/addtorrent.php",
+            percent.ruTorrentUploadAddress().toString()
+        )
+        // An ordinary direct RPC endpoint must not invent a ruTorrent upload.
+        assertNull(RTorrentRemote(RemoteCredentials(
+            "https://box.test/my%20account/RPC2", "", "")).ruTorrentUploadAddress())
+    }
+
     @Test fun uploadsStoppedIntoTheChosenFolderAndVerifiesByReadback() = runBlocking {
         server(retain = true).use { fixture ->
             val remote = RTorrentRemote(RemoteCredentials(fixture.base, "", ""))
