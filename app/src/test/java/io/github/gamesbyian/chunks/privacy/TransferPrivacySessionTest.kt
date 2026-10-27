@@ -98,6 +98,25 @@ class TransferPrivacySessionTest {
         assertFalse(p.mayView(local))
     }
 
+    @Test fun backgroundCancelsPendingAuthWithoutRevokingExistingSessionGrant() {
+        val p = session()
+        p.configure(local, TransferLockMode.ONCE_PER_PROCESS, false)
+        p.configure(alice, TransferLockMode.AFTER_FIVE_MINUTES_BACKGROUND, false)
+        val pending = requireNotNull(p.beginUnlock(local))
+        val other = requireNotNull(p.beginUnlock(alice))
+        p.onBackground()
+        assertFalse(p.finishUnlock(pending, true))
+        assertFalse(p.finishUnlock(other, true))
+        assertFalse(p.mayView(local))
+        assertFalse(p.mayView(alice))
+        p.onForeground()
+        assertTrue(p.finishUnlock(requireNotNull(p.beginUnlock(local)), true))
+        p.onBackground()
+        p.onForeground()
+        // Once-per-process is retained only when auth COMPLETED while foregrounded.
+        assertTrue(p.mayView(local))
+    }
+
     @Test fun disabledByDefaultAndFailedAuthNeverUnlock() {
         val p = session()
         assertTrue(p.mayView("unconfigured"))
