@@ -2,6 +2,10 @@
 
 Reconciled 2026-10-26. Native Compose remote, experimental local engine, finished-file SAF library-copy and bounded manual ZIP-to-SAF extraction journeys exist with targeted JVM/API35 evidence. **The owner-selected six-image reference family has a first limited native implementation (#222: accessible geometric wordmark/header and high-contrast remote cards with Android/JVM, API35 and screenshot-atlas checks). Full reference-accurate layout, independent human screenshot review, physical Android handset, actual phone-to-Seedhost task, uncoached usability and 200% TalkBack approval remain open.** Advanced backing-file Move/Rename and cleanup remain design contracts.
 
+## Privacy lock journeys (specified, not shipped)
+
+During onboarding, explain and offer an optional transfer privacy lock; when enabled, authenticate once per app process session by default. Provide separate local-transfer and each rTorrent-profile policies: never, per session, on foreground return, after five minutes away, or each entry. The settings surface must give clear Android biometric/device credential selection and device capability/error explanation. Add **Lock now** to protected local and remote screens. Show a neutral locked screen with no title, alias, tracker, file path, collection, server identity, status detail or transfer controls leaking before authentication; guard actions as well as visuals, including back stack restoration, share/deep links, recents thumbnails, notifications and TalkBack. After unlock restore the user's context without forcing transfers to restart. Sensitive deletion, credential and policy-downgrade operations can require fresh verification without superseding precise confirmation. Remote login credential remembering remains opt-out by default and independent from this privacy gate. Full owner requirement: [TRANSFER-PRIVACY-LOCK.md](TRANSFER-PRIVACY-LOCK.md).
+
 ## Mental model, first-run and navigation
 
 - **Transfers**: what is downloading, completed, uploading, stuck and awaiting a safe move.
