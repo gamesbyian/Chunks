@@ -1,9 +1,6 @@
 name: Publish Chunks installable Android debug APK
 
-# Stable, immutable debug prerelease assets. A change to this workflow on
-# main intentionally publishes a newly identified APK, including the merged
-# default-encrypted-login, corrected ruTorrent Start and local byte-display fixes.
-# Further builds are explicit; do not spend CI on every ordinary source commit.
+# Debug releases are explicit, exact-main, immutable artifacts; no APK is automatically\n# built for ordinary source commits. See the side-by-side Preview release workflow.
 on:
   push:
     branches: [main]
