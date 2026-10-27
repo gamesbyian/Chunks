@@ -126,7 +126,8 @@ private data class LocalScreenReadout(
     val transfers: List<LocalTransferStatus>?,
     val filesHash: String?,
     val files: List<LocalTransferFile>?,
-    val restoreNotice: String?
+    val restoreNotice: String?,
+    val revision: Long
 )
 
 /**
@@ -135,6 +136,7 @@ private data class LocalScreenReadout(
  * cannot create a second blocked worker or a growing backlog of reads.
  */
 private object LocalScreenReader {
+    val revision = LocalScreenObservationRevision()
     val pump = LocalScreenObservationPump<LocalScreenReadout>(
         java.util.concurrent.Executors.newSingleThreadExecutor { task ->
             Thread(task, "chunks-local-screen-status").apply { isDaemon = true }
@@ -193,9 +195,13 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
             when (val outcome = LocalScreenReader.pump.takeCompleted()) {
                 is LocalScreenPollOutcome.Fresh -> {
                     val frame = outcome.value
-                    inventoryFrame = LocalInventoryFreshness.advance(inventoryFrame, frame.transfers)
-                    restoreNotice = frame.restoreNotice
-                    if (frame.filesHash != null && frame.filesHash == filesFor) files = frame.files
+                    // A sample scheduled before an uncertain mutation cannot
+                    // clear its safety latch, even if it finishes afterward.
+                    if (LocalScreenReader.revision.accepts(frame.revision)) {
+                        inventoryFrame = LocalInventoryFreshness.advance(inventoryFrame, frame.transfers)
+                        restoreNotice = frame.restoreNotice
+                        if (frame.filesHash != null && frame.filesHash == filesFor) files = frame.files
+                    }
                 }
                 LocalScreenPollOutcome.Unavailable ->
                     inventoryFrame = LocalInventoryFreshness.advance(inventoryFrame, null)
@@ -208,6 +214,7 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
                 inventoryFrame = LocalInventoryFreshness.advance(inventoryFrame, null)
 
             val chosenFilesHash = filesFor
+            val sampleRevision = LocalScreenReader.revision.snapshot()
             val saveDue = ++tick % 30 == 0
             LocalScreenReader.pump.tryObserve {
                 try {
@@ -223,9 +230,9 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
                     // Persist periodically off the screen coroutine. A blocked
                     // native save occupies this same bounded observation slot.
                     if (saveDue) try { engine?.saveResumeData() } catch (_: Exception) { }
-                    LocalScreenReadout(observed, chosenFilesHash, observedFiles, notice)
+                    LocalScreenReadout(observed, chosenFilesHash, observedFiles, notice, sampleRevision)
                 } catch (_: Exception) {
-                    LocalScreenReadout(null, chosenFilesHash, null, "Saved transfers could not be restored.")
+                    LocalScreenReadout(null, chosenFilesHash, null, "Saved transfers could not be restored.", sampleRevision)
                 }
             }
             delay(1_000)
