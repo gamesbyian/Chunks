@@ -209,6 +209,29 @@ class ChunksMainActivityAtlasTest {
         worker?.join(2500)
     }
 
+    /**
+     * An asynchronously refreshed LazyColumn may detach/recycle a semantics
+     * node between scrolling and dispatching its click action. Retry ONLY
+     * this specific pre-dispatch detachment; never retry a network mutation.
+     */
+    private fun openChangeListNameInPopulatedQueue() {
+        var detached = 0
+        while (detached < 3) {
+            rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Change list name"))
+            rule.waitForIdle()
+            try {
+                rule.onAllNodesWithText("Change list name").onFirst()
+                    .performSemanticsAction(SemanticsActions.OnClick)
+                return
+            } catch (ex: IllegalStateException) {
+                if (ex.message?.contains("Modifier node is not currently attached") != true) throw ex
+                detached++
+                rule.waitForIdle()
+            }
+        }
+        throw AssertionError("Alias editor repeatedly detached during native navigation")
+    }
+
     @Test fun installedAppNavigatesPopulatedReadOnlyRpcScreens() {
         val policy = NetworkSecurityPolicy.getInstance()
         assertTrue("Literal loopback must be permitted for controlled Android QA",
@@ -253,16 +276,15 @@ class ChunksMainActivityAtlasTest {
         // occasionally raced focus here and left the queue unfiltered.
         rule.onNodeWithText("Search names or Places").performTextReplacement("Public.Example")
         dismissSearchKeyboard()
-        rule.waitUntil(10_000) {
-            rule.onAllNodes(hasSetTextAction() and hasText("Public.Example")).fetchSemanticsNodes().isNotEmpty()
+        rule.waitUntil(15_000) {
+            rule.onAllNodes(hasSetTextAction() and hasText("Public.Example"))
+                .fetchSemanticsNodes().isNotEmpty() &&
+                rule.onAllNodesWithText("1 shown").fetchSemanticsNodes().isNotEmpty()
         }
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("1 shown"))
-        rule.onNodeWithText("1 shown").assertExists()
-        // An actual installed-app queue action, not only an isolated editor component.
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Change list name"))
-        // Scrolling can leave the button at the viewport edge, where a centre tap
-        // misses; invoke its real click action and wait for the editor instead.
-        rule.onAllNodesWithText("Change list name").onFirst().performSemanticsAction(SemanticsActions.OnClick)
+        // An actual installed-app queue action, not only an isolated editor
+        // component. Wait for the filtered count, not just the IME's text;
+        // rerendering the list can otherwise detach the click's modifier.
+        openChangeListNameInPopulatedQueue()
         rule.waitUntil(10_000) {
             rule.onAllNodesWithText("Extracted show title, season and episode from filename")
                 .fetchSemanticsNodes().isNotEmpty()
