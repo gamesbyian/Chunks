@@ -18,7 +18,9 @@ class RemoteMutationReadbackGateTest {
         // A completed response from an overlapping HTTP refresh is not readback.
         assertFalse(gate.accepts(earlierRead))
         assertFalse(gate.accepts(overlappingRead))
-        assertTrue(gate.accepts(gate.ticket()))
+        assertFalse(gate.tryStart()) // no next write before a successful read
+        assertTrue(gate.acceptFreshRead(gate.ticket()))
+        assertTrue(gate.tryStart())
     }
 
     @Test fun reconnectionInvalidatesOldResponsesAndAllowsNewWrites() {
@@ -29,6 +31,6 @@ class RemoteMutationReadbackGateTest {
         assertFalse(gate.accepts(oldSessionRead))
         assertTrue(gate.tryStart())
         gate.settled()
-        assertTrue(gate.accepts(gate.ticket()))
+        assertTrue(gate.acceptFreshRead(gate.ticket()))
     }
 }
