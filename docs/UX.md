@@ -50,6 +50,10 @@ Present three concrete actions with outcomes: **Change label in Chunks**, **Rena
 ### Smart organization
 Offer *Why this suggestion?* with observed filename facts and uncertain inference. Show category/collection membership and separate candidate destination; allow review by group, review conflicts, apply one, apply selected, teach an approved limited rule, ignore and cancel. A Star Trek TV episode and Star Trek comic can share a Collection but have different labels and Places. User's mixed-media root is legitimate. Never auto-create sprawling nested folders merely because an external catalog supplies a hierarchy.
 
+### Measured remote download progress (implemented, limited #253)
+
+For v1 rTorrent transfers with a started state or recently requested lifecycle action, **Measure download progress (3 samples)** is a cancellable, read-only per-transfer control. It separately displays the change in `d.down.total` received traffic and `d.completed_bytes` hash-verified completion over a measured interval, plus the peak reported connected peer count. It reports received+verified growth, received-only growth, verified-only growth that may be rechecking existing bytes, no observed positive growth, unsupported/missing counters and counter reset as different states. A brief non-growing observation is not proof that a server is permanently stuck; do not infer anything from a single nonzero speed sample or a Start flag. The exact-hash RPC guard and on-screen cancel do not restart, stop, move or delete a transfer. CI acceptance on synthetic fixtures, JVM and disposable rTorrent is recorded in QUALITY-LEDGER; actual Seedhost counter availability, large-font/TalkBack and physical handset display remain separate gates.
+
 ### Remote failure and reconnect
 Clearly distinguish Remote server offline, Auth failed, RPC unsupported, Filesystem unavailable, Permission denied, Operation pending and Operation uncertain. State whether this app, rTorrent, or file storage is still functioning. A server-side download may continue when the phone is offline.
 
