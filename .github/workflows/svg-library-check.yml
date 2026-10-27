@@ -6,6 +6,7 @@ on:
       - 'docs/design/svg/**'
       - 'docs/design/reference-images/**'
       - 'tools/validate_svg_library.py'
+      - 'tools/check_svg_approved_derivatives.py'
       - '.github/workflows/svg-library-check.yml'
   workflow_dispatch:
 
@@ -21,3 +22,5 @@ jobs:
         uses: actions/checkout@v4
       - name: Validate self-contained SVGs and full inventory
         run: python3 tools/validate_svg_library.py
+      - name: Check exact geometry of approved icon layer extracts
+        run: python3 tools/check_svg_approved_derivatives.py
