@@ -248,13 +248,20 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
             OutlinedButton(onClick = {
                 busy = true
                 scope.launch {
-                    val result = withContext(Dispatchers.IO) {
-                        try { LocalEngineHolder.get(context).addMagnet(magnet, destination) }
-                        catch (_: Exception) { LocalAddResult.Refused("The local engine could not add this magnet") }
+                    try {
+                        val result = withContext(Dispatchers.IO) {
+                            LocalEngineHolder.get(context).addMagnet(magnet, destination)
+                        }
+                        message = (result as? LocalAddResult.Refused)?.reason
+                        if (result !is LocalAddResult.Refused) magnet = ""
+                    } catch (cancel: kotlinx.coroutines.CancellationException) {
+                        throw cancel
+                    } catch (_: Exception) {
+                        inventoryFrame = inventoryFrame.copy(stale = true)
+                        message = "Magnet Add was not confirmed. Wait for a fresh transfer list and check for the magnet before retrying."
+                    } finally {
+                        busy = false
                     }
-                    message = (result as? LocalAddResult.Refused)?.reason
-                    if (result !is LocalAddResult.Refused) magnet = ""
-                    busy = false
                 }
             }, enabled = !busy && !inventoryStale, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Add magnet (metadata only)") }
         }
@@ -275,16 +282,24 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
             onConfirm = {
                 busy = true
                 scope.launch {
-                    val result = withContext(Dispatchers.IO) {
-                        try { LocalEngineHolder.get(context).addStopped(add.bytes, destination) }
-                        catch (_: Exception) { LocalAddResult.Refused("The local engine could not add this torrent") }
+                    try {
+                        val result = withContext(Dispatchers.IO) {
+                            LocalEngineHolder.get(context).addStopped(add.bytes, destination)
+                        }
+                        message = when (result) {
+                            is LocalAddResult.AddedStopped, is LocalAddResult.FetchingMetadata -> null
+                            is LocalAddResult.Refused -> result.reason
+                        }
+                        // Keep the chosen document for correction/review if explicitly refused.
+                        if (result !is LocalAddResult.Refused) pending = null
+                    } catch (cancel: kotlinx.coroutines.CancellationException) {
+                        throw cancel
+                    } catch (_: Exception) {
+                        inventoryFrame = inventoryFrame.copy(stale = true)
+                        message = "Torrent Add was not confirmed. Wait for a fresh transfer list and check for this torrent before retrying."
+                    } finally {
+                        busy = false
                     }
-                    message = when (result) {
-                        is LocalAddResult.AddedStopped, is LocalAddResult.FetchingMetadata -> null
-                        is LocalAddResult.Refused -> result.reason
-                    }
-                    pending = null
-                    busy = false
                 }
             },
             onCancel = { pending = null })
