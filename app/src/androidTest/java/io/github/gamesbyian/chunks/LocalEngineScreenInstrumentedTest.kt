@@ -76,6 +76,28 @@ class LocalEngineScreenInstrumentedTest {
         assertEquals(1, confirmed)
     }
 
+    @Test fun pendingOrStaleAddReviewDisablesSubmissionButAllowsCancellation() {
+        var confirmed = 0
+        var cancelled = 0
+        val destination = File("/storage/emulated/0/Android/data/io.github.gamesbyian.chunks/files/Downloads")
+        rule.setContent {
+            MaterialTheme {
+                LocalAddReview(
+                    TorrentMetainfoPreview("Retained after an uncertain Add", "c".repeat(40),
+                        1, 1_024, 16_384),
+                    destination, busy = true,
+                    onConfirm = { confirmed++ },
+                    onCancel = { cancelled++ }
+                )
+            }
+        }
+        rule.onNodeWithText("Retained after an uncertain Add").assertExists()
+        rule.onNodeWithText("Add stopped").assertIsNotEnabled()
+        rule.onNodeWithText("Cancel").assertIsEnabled().performClick()
+        assertEquals(0, confirmed)
+        assertEquals(1, cancelled)
+    }
+
     @Test fun transferCardRequiresConfirmationBeforeSessionOnlyRemoval() {
         var removed = 0
         val status = LocalTransferStatus("b".repeat(40), "Internet Archive public sample",
