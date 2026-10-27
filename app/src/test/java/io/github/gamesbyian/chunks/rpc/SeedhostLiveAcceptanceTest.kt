@@ -123,6 +123,11 @@ class SeedhostLiveAcceptanceTest {
             if (failed[i] || samples[i].size != 3) null
             else runCatching { RemoteTrafficWindow.evaluate(samples[i]) }.getOrNull()
         }
+        val usable = windows.count {
+            it.verdict != TrafficVerdict.INSUFFICIENT_EVIDENCE &&
+                it.verdict != TrafficVerdict.COUNTER_RESET_OR_SIZE_CHANGED
+        }
+        val unknownOrReset = selected.size - usable
         log("traffic inspected=${selected.size} stable=${windows.size} " +
             "active=${windows.count { it.observedActive == true }} " +
             "inactive=${windows.count { it.observedActive == false }} " +
@@ -130,10 +135,7 @@ class SeedhostLiveAcceptanceTest {
             "withReceivedGrowth=${windows.count { (it.receivedDelta ?: 0L) > 0L }} " +
             "withVerifiedGrowth=${windows.count { (it.verifiedDelta ?: 0L) > 0L }} " +
             "noGrowth=${windows.count { it.verdict == TrafficVerdict.NO_PROGRESS_OBSERVED }} " +
-            "unknownOrReset=${selected.size - windows.count {
-                it.verdict != TrafficVerdict.INSUFFICIENT_EVIDENCE &&
-                    it.verdict != TrafficVerdict.COUNTER_RESET_OR_SIZE_CHANGED
-            }}")
+            "unknownOrReset=$unknownOrReset")
         assertTrue("At least one existing exact hash must permit stable read-only samples",
             windows.isNotEmpty())
         assertTrue("Independent three-sample windows must span elapsed time",
