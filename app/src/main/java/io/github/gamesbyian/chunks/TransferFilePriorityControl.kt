@@ -41,6 +41,7 @@ internal fun TransferFilePriorityControl(
     file: RemoteFile,
     snapshotStale: Boolean,
     mainView: Boolean,
+    onMutationStarted: () -> Boolean,
     onSettled: () -> Unit
 ) {
     val valid = remember(hash, index) {
@@ -104,6 +105,7 @@ internal fun TransferFilePriorityControl(
                     style = MaterialTheme.typography.bodySmall)
                 Button(
                     onClick = {
+                        if (onMutationStarted()) {
                         confirming = false
                         attempted = true
                         pending = true
@@ -130,6 +132,12 @@ internal fun TransferFilePriorityControl(
                                 pending = false
                                 onSettled()
                             }
+                        }
+                        } else {
+                            confirming = false
+                            attempted = true
+                            verified = false
+                            feedback = "Another remote command needs fresh readback before any further action."
                         }
                     },
                     enabled = allowed && !pending,
