@@ -115,6 +115,16 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     // Guarded by its own monitor so the alert thread never needs the engine lock.
     private val handles: MutableMap<String, TorrentHandle> = Collections.synchronizedMap(LinkedHashMap())
     private val pendingSaves = ConcurrentHashMap<String, CountDownLatch>()
+
+    private class PendingFlush {
+        val latch = CountDownLatch(1)
+        @Volatile var success = false
+        fun completed() { success = true; latch.countDown() }
+        fun refused() { latch.countDown() }
+    }
+    // A timed-out native flush remains in the map until its actual callback:
+    // otherwise a late callback from attempt 1 might falsely confirm attempt 2.
+    private val pendingFlushes = ConcurrentHashMap<String, PendingFlush>()
     @Volatile private var started = false
 
     /** Resume files that could not be restored on start; they are left untouched. */
@@ -126,10 +136,15 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
 
     private val engineListener = object : AlertListener {
         override fun types() = intArrayOf(AlertType.SAVE_RESUME_DATA.swig(),
-            AlertType.SAVE_RESUME_DATA_FAILED.swig(), AlertType.METADATA_RECEIVED.swig())
+            AlertType.SAVE_RESUME_DATA_FAILED.swig(), AlertType.METADATA_RECEIVED.swig(),
+            AlertType.CACHE_FLUSHED.swig())
         override fun alert(alert: Alert<*>) {
             val handle = (alert as? TorrentAlert<*>)?.handle() ?: return
             val key = synchronized(handles) { handles.entries.firstOrNull { it.value == handle }?.key } ?: return
+            if (alert.type() == AlertType.CACHE_FLUSHED) {
+                pendingFlushes.remove(key)?.completed()
+                return
+            }
             if (alert.type() == AlertType.METADATA_RECEIVED) {
                 // Metadata only: stop before any payload is requested, then wait for Start.
                 if (awaitingMetadata.remove(key)) {
@@ -399,6 +414,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     fun removeKeepingData(infoHash: String): Boolean {
         val key = normal(infoHash)
         awaitingMetadata.remove(key)
+        pendingFlushes.remove(key)?.refused()
         val handle = handles.remove(key) ?: return false
         session.remove(handle)
         config.stateDirectory?.let { File(it, "$key.resume").delete() }
@@ -414,6 +430,41 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     @Synchronized
     fun list(): List<LocalTransferStatus> =
         synchronized(handles) { handles.toList() }.mapNotNull { (hash, handle) -> snapshot(hash, handle) }
+
+    /**
+     * Completion status alone does not mean libtorrent's asynchronous disk
+     * cache has been flushed. Before an independent SAF library publication,
+     * wait for the native cache_flushed_alert for THIS exact infohash.
+     *
+     * A timeout, missing callback, incomplete transfer or any other error
+     * blocks publication. The method never pauses/changes sharing or deletes
+     * source bytes. It must be called off the Android UI thread.
+     */
+    fun flushCompletedForLibraryRead(infoHash: String, timeoutMs: Long = 20_000L): Boolean {
+        if (!started || timeoutMs <= 0L) return false
+        val key = normal(infoHash)
+        val handle = synchronized(handles) { handles[key] } ?: return false
+        val before = try { status(key) } catch (_: Exception) { null } ?: return false
+        if (!before.metadataKnown || before.progressPpm != 1_000_000 ||
+            before.state !in setOf(LocalTransferState.SEEDING, LocalTransferState.FINISHED)) return false
+
+        val proposed = PendingFlush()
+        val existing = pendingFlushes.putIfAbsent(key, proposed)
+        val pending = existing ?: proposed
+        if (existing == null) {
+            try { handle.flushCache() } catch (_: Exception) {
+                pendingFlushes.remove(key, proposed)
+                proposed.refused()
+                return false
+            }
+        }
+        val completed = try { pending.latch.await(timeoutMs, TimeUnit.MILLISECONDS) }
+            catch (_: InterruptedException) { Thread.currentThread().interrupt(); false }
+        if (!completed || !pending.success) return false
+        val after = try { status(key) } catch (_: Exception) { null }
+        return after?.metadataKnown == true && after.progressPpm == 1_000_000 &&
+            after.state in setOf(LocalTransferState.SEEDING, LocalTransferState.FINISHED)
+    }
 
     /**
      * Ask libtorrent for fresh resume data for every transfer and write each
@@ -433,6 +484,8 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     override fun close() {
         if (!started) return
         saveResumeData()
+        pendingFlushes.values.forEach { it.refused() }
+        pendingFlushes.clear()
         handles.clear()
         session.stop()
         started = false
