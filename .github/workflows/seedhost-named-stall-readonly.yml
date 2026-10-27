@@ -39,8 +39,10 @@ jobs:
       - name: Run strictly read-only named diagnosis with output allowlist
         run: |
           set -euo pipefail
-          test -n "$CHUNKS_LIVE_RUTORRENT_USER"
-          test -n "$CHUNKS_LIVE_RUTORRENT_PASS"
+          if [ -z "${CHUNKS_LIVE_RTORRENT_USER:-}" ] || [ -z "${CHUNKS_LIVE_RTORRENT_PASS:-}" ]; then
+            echo "::error::Protected read-only Seedhost credentials unavailable. No connection or mutation attempted."
+            exit 1
+          fi
           log=$(mktemp)
           trap 'rm -f "$log"' EXIT
           status=0
