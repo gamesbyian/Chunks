@@ -1,6 +1,13 @@
 name: Protected Seedhost Android read-only journey
 
+# The one-time trusted-main workflow-self push uses the previously approved
+# development URL and protected secrets; all writes remain absent. Later runs
+# still require explicit workflow dispatch unless this file changes again.
 on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/seedhost-android-readonly.yml"
   workflow_dispatch:
     inputs:
       rutorrent_url:
@@ -32,7 +39,7 @@ jobs:
           gradle-version: "9.3.1"
       - name: Check protected access prerequisites
         env:
-          CHUNKS_LIVE_RUTORRENT_URL: ${{ inputs.rutorrent_url }}
+          CHUNKS_LIVE_RUTORRENT_URL: ${{ inputs.rutorrent_url || 'https://ianseeds.wood.seedhost.eu/rutorrent/' }}
           CHUNKS_LIVE_RTORRENT_USER: ${{ secrets.rtorrent_user }}
           CHUNKS_LIVE_RTORRENT_PASS: ${{ secrets.rtorrent_pass }}
         run: |
@@ -55,7 +62,7 @@ jobs:
       - name: Installed Android app reads real protected Seedhost over HTTPS
         uses: reactivecircus/android-emulator-runner@v2
         env:
-          CHUNKS_LIVE_RUTORRENT_URL: ${{ inputs.rutorrent_url }}
+          CHUNKS_LIVE_RUTORRENT_URL: ${{ inputs.rutorrent_url || 'https://ianseeds.wood.seedhost.eu/rutorrent/' }}
           CHUNKS_LIVE_RTORRENT_USER: ${{ secrets.rtorrent_user }}
           CHUNKS_LIVE_RTORRENT_PASS: ${{ secrets.rtorrent_pass }}
         with:
