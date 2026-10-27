@@ -1,6 +1,6 @@
 # Chunks interaction and accessibility contract
 
-Reconciled 2026-10-26. Native Compose remote, experimental local engine, finished-file SAF library-copy and bounded manual ZIP-to-SAF extraction journeys exist with targeted JVM/API35 evidence. **No complete visually approved reference family, physical Android handset, real phone-to-Seedhost task, uncoached human usability or 200% TalkBack approval.** Advanced backing-file Move/Rename and cleanup remain design contracts.
+Reconciled 2026-10-26. Native Compose remote, experimental local engine, finished-file SAF library-copy and bounded manual ZIP-to-SAF extraction journeys exist with targeted JVM/API35 evidence. **An owner-selected six-image visual concept reference family now exists, but no implementation-level native visual acceptance, physical Android handset, real phone-to-Seedhost task, uncoached human usability or 200% TalkBack approval.** Advanced backing-file Move/Rename and cleanup remain design contracts.
 
 ## Mental model, first-run and navigation
 
@@ -30,6 +30,8 @@ Offer *Why this suggestion?* with observed filename facts and uncertain inferenc
 Clearly distinguish Remote server offline, Auth failed, RPC unsupported, Filesystem unavailable, Permission denied, Operation pending and Operation uncertain. State whether this app, rTorrent, or file storage is still functioning. A server-side download may continue when the phone is offline.
 
 ## Information density and expressiveness
+
+The [Chunks visual design references](design/reference-images/README.md) set the aspirational in-app direction: high-contrast colour, bold geometric surfaces, chunky segmented progress and expressive lettering/icons. Implement accessible native components, preserve the actual Transfers / Places / Collections / Servers model and do not treat mockup actions as delivered functionality.
 
 Generous default controls (at least 48dp), expressive colour with text/icons redundant status, readable progress, activity, per-server identity and search. An opt-in denser list mode can display hundreds of transfers without sacrificing navigation; deep peer/tracker/file details progressively disclosed. Distinct loading, empty, offline, access-denied, confirmation, destructive, deferred and uncertain states need designs. Irreverent copy is welcome on delight surfaces but should never replace factual errors.
 
