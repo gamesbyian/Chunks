@@ -90,7 +90,7 @@ class SeedhostLiveAcceptanceTest {
     @Test fun readOnlyCurrentHostTrafficWindow() = runBlocking {
         val rtorrent = remote()
         val candidates = rtorrent.listTransfers("main").filter {
-            it.started && it.sizeBytes > 0 && it.completedBytes in 0 until it.sizeBytes
+            it.started && it.sizeBytes > 0 && it.completedBytes in 0L until it.sizeBytes
         }
         log("traffic incompleteStartedCount=${candidates.size}")
         val selected = candidates.minByOrNull { it.hash.lowercase() }
