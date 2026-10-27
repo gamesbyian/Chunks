@@ -619,6 +619,9 @@ private fun TransfersScreen(
     selectedHash: String?, files: List<RemoteFile>?, filesError: String?,
     filesLoading: Boolean, onInspect: (RemoteTransfer) -> Unit
 ) {
+    val knownDownloadingCount = remember(list) {
+        RemoteQueueActivityContext.countReportingDownloadTraffic(list)
+    }
     val visible = remember(list, query, filter, order, aliasRevision, aliasScope) {
         TransferCatalog.visible(list, query, filter, order) { transfer ->
             aliasStore.get(aliasScope, transfer.hash) ?: transfer.name
@@ -708,7 +711,7 @@ private fun TransfersScreen(
                 onLifecycleSettled = onLifecycleSettled,
                 transfer = transfer, expanded = selectedHash == transfer.hash,
                 otherTransferDownloading = RemoteQueueActivityContext.otherTransferReportsDownloading(
-                    transfer, list, !stale && !loading
+                    transfer, knownDownloadingCount, !stale && !loading
                 ),
                 files = files, filesLoading = filesLoading, filesError = filesError,
                 onInspect = { onInspect(transfer) }
