@@ -218,4 +218,97 @@ class RemoteStoppedAddTest {
         } finally { server.stop(0) }
     }
 
+    @Test fun acknowledgedButDelayedAddWaitsForVerifiedStoppedThenStartsExactlyOnce() = runBlocking {
+        var loaded = false
+        var afterLoadReads = 0
+        val calls = mutableListOf<String>()
+        val startedHashes = mutableListOf<String>()
+        val server = HttpServer.create(
+            InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0)
+        server.createContext("/RPC2") { exchange ->
+            val xml = exchange.requestBody.bufferedReader().use { it.readText() }
+            val method = Regex("<methodName>([^<]+)</methodName>")
+                .find(xml)?.groupValues?.get(1).orEmpty()
+            calls.add(method)
+            val value = when (method) {
+                "d.multicall2" -> {
+                    if (!loaded) "<value><array><data></data></array></value>"
+                    else {
+                        afterLoadReads++
+                        if (afterLoadReads < 3) "<value><array><data></data></array></value>"
+                        else rowXml()
+                    }
+                }
+                "load.verbose" -> { loaded = true; num(0) }
+                "d.directory" -> value(dir)
+                "d.is_multi_file", "d.state" -> num(0)
+                else -> throw AssertionError("Unexpected RPC")
+            }
+            val body = "<methodResponse><params><param>$value</param></params></methodResponse>"
+                .toByteArray(Charsets.UTF_8)
+            exchange.sendResponseHeaders(200, body.size.toLong())
+            exchange.responseBody.use { it.write(body) }
+        }
+        server.start()
+        try {
+            val remote = RTorrentRemote(RemoteCredentials(
+                "http://127.0.0.1:${server.address.port}/RPC2", "", ""))
+            val result = RemoteAddStarter.run(
+                startAfterVerifiedAdd = true,
+                add = { remote.loadStopped(StoppedRemoteAddPlan.fromMagnet(magnet, dir)) },
+                start = { requested ->
+                    startedHashes.add(requested)
+                    LifecycleOutcome.Verified(true)
+                }
+            )
+            assertEquals(RemoteAddAndStart.Started(hash), result)
+            assertEquals(listOf(hash), startedHashes)
+            assertEquals(1, calls.count { it == "load.verbose" })
+            assertEquals(3, afterLoadReads)
+        } finally { server.stop(0) }
+    }
+
+    @Test fun pendingAddNeverRetriesMutationOrInventsStartAfterReadbackDeadline() = runBlocking {
+        var loads = 0
+        var inventoryReads = 0
+        var startCount = 0
+        val server = HttpServer.create(
+            InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0)
+        server.createContext("/RPC2") { exchange ->
+            val request = exchange.requestBody.bufferedReader().use { it.readText() }
+            val method = Regex("<methodName>([^<]+)</methodName>")
+                .find(request)?.groupValues?.get(1).orEmpty()
+            val value = when (method) {
+                "d.multicall2" -> {
+                    inventoryReads++
+                    "<value><array><data></data></array></value>"
+                }
+                "load.verbose" -> { loads++; num(0) }
+                else -> throw AssertionError("Unexpected RPC")
+            }
+            val body = "<methodResponse><params><param>$value</param></params></methodResponse>"
+                .toByteArray(Charsets.UTF_8)
+            exchange.sendResponseHeaders(200, body.size.toLong())
+            exchange.responseBody.use { it.write(body) }
+        }
+        server.start()
+        try {
+            val remote = RTorrentRemote(RemoteCredentials(
+                "http://127.0.0.1:${server.address.port}/RPC2", "", ""))
+            val result = RemoteAddStarter.run(
+                startAfterVerifiedAdd = true,
+                add = { remote.loadStopped(StoppedRemoteAddPlan.fromMagnet(magnet, dir)) },
+                start = {
+                    startCount++
+                    LifecycleOutcome.Verified(true)
+                }
+            )
+            assertEquals(RemoteAddAndStart.AddedStopped(
+                RemoteAddOutcome.PendingVerification(hash)), result)
+            assertEquals(1, loads)
+            assertEquals(9, inventoryReads) // preflight + eight bounded exact-hash reads
+            assertEquals(0, startCount)
+        } finally { server.stop(0) }
+    }
+
 }
