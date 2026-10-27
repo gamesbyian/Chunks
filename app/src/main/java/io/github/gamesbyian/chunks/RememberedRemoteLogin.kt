@@ -35,7 +35,8 @@ internal class RememberedRemoteLogin(context: Context) {
             require(text.length in 16..32768)
             val packed = Base64.decode(text, Base64.NO_WRAP)
             require(packed.size in 13..16384)
-            val key = keyStore().getKey(alias, null) as? SecretKey ?: return null
+            val key = keyStore().getKey(alias, null) as? SecretKey
+                ?: throw IllegalStateException("Saved encryption key unavailable")
             val decipher = Cipher.getInstance("AES/GCM/NoPadding")
             decipher.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(128, packed, 0, 12))
             val decoded = decipher.doFinal(packed, 12, packed.size - 12)
