@@ -728,8 +728,14 @@ private fun TransferCard(
                 Text((transfer.fractionComplete * 100).toInt().toString() + "% · " +
                     Units.bytes(transfer.completedBytes) + " of " + Units.bytes(transfer.sizeBytes),
                     style = MaterialTheme.typography.bodySmall)
-                Text(if (transfer.started) "Active" else "Stopped",
+                Text(if (transfer.started) "Start state set" else "Stopped",
                     style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+            }
+            if (transfer.started && transfer.downBytesPerSecond == 0L &&
+                transfer.fractionComplete < 1f) {
+                Text("No download traffic in this snapshot. Start state alone does not prove " +
+                    "the torrent is active or connected; use Diagnose download activity below.",
+                    style = MaterialTheme.typography.bodySmall)
             }
             if (transfer.downBytesPerSecond != null) {
                 Text("↓ " + Units.bytes(transfer.downBytesPerSecond) + "/s" +

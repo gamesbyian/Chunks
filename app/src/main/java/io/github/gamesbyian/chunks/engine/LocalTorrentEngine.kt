@@ -79,7 +79,9 @@ data class LocalTransferStatus(
     val savePath: String,
     val error: String?,
     /** False while a magnet is still fetching its metadata. */
-    val metadataKnown: Boolean = true
+    val metadataKnown: Boolean = true,
+    /** libtorrent can be running without requesting payload when in upload-only mode. */
+    val uploadOnly: Boolean = false
 )
 
 /** One file inside a local transfer; `wanted = false` means libtorrent will not download it. */
@@ -566,6 +568,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             payloadUploadedBytes = status.allTimeUpload(),
             peers = status.numPeers(),
             metadataKnown = status.hasMetadata(),
+            uploadOnly = status.flags().and_(org.libtorrent4j.TorrentFlags.UPLOAD_MODE).non_zero(),
             savePath = handle.savePath(),
             error = error
         )

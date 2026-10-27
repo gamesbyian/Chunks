@@ -88,6 +88,13 @@ class RTorrentDisposableMutationTest {
             Thread.sleep(400)
         }
         assertTrue("Real rTorrent did not enter started state", running)
+        var active = false
+        for (index in 1..15) {
+            active = rtorrent.readActivity(hash).active == true
+            if (active) break
+            Thread.sleep(400)
+        }
+        assertTrue("d.state=1 is not enough; real rTorrent must report active after full Start", active)
 
         val stop = rtorrent.setStarted(hash, false)
         assertTrue("Stop should not have uncertain transport outcome", stop is LifecycleOutcome.Verified ||

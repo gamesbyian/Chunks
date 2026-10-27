@@ -24,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.rpc.LifecycleOutcome
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
+import io.github.gamesbyian.chunks.rpc.RemoteTransferActivity
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
 import kotlinx.coroutines.launch
 
@@ -46,6 +47,8 @@ fun TransferLifecycleControl(
     var pending by remember(transfer.hash, transfer.name, transfer.directory) { mutableStateOf(false) }
     var feedback by remember(transfer.hash) { mutableStateOf<String?>(null) }
     var verified by rememberSaveable(transfer.hash, transfer.name, transfer.directory) { mutableStateOf(false) }
+    var activity by remember(transfer.hash) { mutableStateOf<RemoteTransferActivity?>(null) }
+    var checkingActivity by remember(transfer.hash) { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val requestedStarted = !transfer.started
     val verb = if (requestedStarted) "Start" else "Stop"
@@ -94,9 +97,12 @@ fun TransferLifecycleControl(
                                         verified = outcome is LifecycleOutcome.Verified
                                         feedback = when (outcome) {
                                             is LifecycleOutcome.Verified ->
-                                                "Verified on server: " + (if (outcome.started) "started" else "stopped") + "."
+                                                "rTorrent reports " + (if (outcome.started) "Start state set" else "stopped") +
+                                                    ". That does not prove a peer connection or downloaded bytes."
                                             is LifecycleOutcome.Pending ->
-                                                "Server reports " + (if (outcome.observedStarted) "started" else "stopped") +
+                                                if (requestedStarted && outcome.observedStarted)
+                                                    "rTorrent accepted Start, but active transfer state is not confirmed. It may be hashing, paused or queued. Inspect activity and server errors before any retry."
+                                                else "Server reports " + (if (outcome.observedStarted) "started" else "stopped") +
                                                     ", not the requested state. Refresh before considering another action."
                                             is LifecycleOutcome.Uncertain ->
                                                 "RPC outcome uncertain. The operation may already have happened. Refresh before considering another action."
@@ -107,6 +113,12 @@ fun TransferLifecycleControl(
                                     } finally {
                                         pending = false
                                         onSettled()
+                                    }
+                                    if (requestedStarted) {
+                                        checkingActivity = true
+                                        try { activity = remote.readActivity(transfer.hash) }
+                                        catch (_: Exception) { activity = null }
+                                        finally { checkingActivity = false }
                                     }
                                 }
                                 } else {
@@ -126,6 +138,27 @@ fun TransferLifecycleControl(
                         ) { Text("Cancel") }
                     }
                 }
+            }
+        }
+        if (transfer.started || attempted) {
+            OutlinedButton(
+                onClick = {
+                    checkingActivity = true
+                    scope.launch {
+                        try { activity = remote.readActivity(transfer.hash) }
+                        catch (_: Exception) { activity = null }
+                        finally { checkingActivity = false }
+                    }
+                },
+                enabled = !checkingActivity && !pending,
+                modifier = Modifier.height(48.dp)
+            ) { Text(if (checkingActivity) "Checking engine activity…" else "Diagnose download activity") }
+            activity?.let { report ->
+                Text(report.summary(), style = MaterialTheme.typography.bodySmall)
+                val peers = report.connectedPeers?.toString() ?: "unknown"
+                val speed = report.downloadBytesPerSecond?.toString() ?: "unknown"
+                Text("Connected peers: $peers · download bytes/s: $speed",
+                    style = MaterialTheme.typography.bodySmall)
             }
         }
         if (attempted) {
