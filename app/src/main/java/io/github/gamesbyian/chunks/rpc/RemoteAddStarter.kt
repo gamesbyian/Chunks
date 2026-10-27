@@ -27,6 +27,9 @@ internal object RemoteAddStarter {
         // The newly added exact hash, never a filename, supplies the target.
         val followup = try {
             start(result.hash)
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            // Coroutine cancellation must not be disguised as a settled result.
+            throw cancel
         } catch (_: Exception) {
             null // Start might have applied. Do not retry.
         }
