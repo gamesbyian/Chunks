@@ -4,7 +4,9 @@ import io.github.gamesbyian.chunks.rpc.RemoteTransfer
 import io.github.gamesbyian.chunks.organize.Classifier
 
 enum class TransferFilter(val label: String) {
-    ALL("All"), ACTIVE("Active"), COMPLETE("Complete"), STOPPED("Stopped"), NEEDS_SORTING("Needs sorting")
+    ALL("All"), ACTIVE("Start set"), TRANSFERRING("Traffic now"),
+    ZERO_DOWNLOAD("0 B/s down"), COMPLETE("Complete"), STOPPED("Stopped"),
+    NEEDS_SORTING("Needs sorting")
 }
 
 enum class TransferOrder(val label: String) {
@@ -27,6 +29,16 @@ object TransferCatalog {
             when (filter) {
                 TransferFilter.ALL -> true
                 TransferFilter.ACTIVE -> item.started
+                // Positive observed rates are evidence of traffic for one
+                // loaded view; a missing rate is unknown, not measured zero.
+                TransferFilter.TRANSFERRING ->
+                    (item.downBytesPerSecond ?: 0L) > 0L ||
+                    (item.upBytesPerSecond ?: 0L) > 0L
+                // This is a diagnostic snapshot filter, not proof of a failed
+                // tracker, dead swarm, or an inactive rTorrent engine.
+                TransferFilter.ZERO_DOWNLOAD ->
+                    item.started && item.sizeBytes > item.completedBytes &&
+                        item.downBytesPerSecond == 0L
                 TransferFilter.COMPLETE -> item.sizeBytes > 0 && item.completedBytes >= item.sizeBytes
                 TransferFilter.STOPPED -> !item.started
                 TransferFilter.NEEDS_SORTING -> Classifier.suggest(item.name).category == "Unsorted"
