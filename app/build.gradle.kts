@@ -1,3 +1,5 @@
+import java.security.MessageDigest
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
@@ -81,8 +83,8 @@ val verifyChunksLauncherArtwork by tasks.registering {
         check(bytes.size >= 100_000 && bytes.take(8) == signature.toList()) {
             "Approved launcher artwork must be the high-resolution PNG"
         }
-        val sha1 = java.security.MessageDigest.getInstance("SHA-1")
-        sha1.update("blob ${bytes.size}\\u0000".replace("\\u0000", "\u0000").toByteArray(Charsets.UTF_8))
+        val sha1 = MessageDigest.getInstance("SHA-1")
+        sha1.update("blob ${bytes.size}\u0000".toByteArray(Charsets.UTF_8))
         sha1.update(bytes)
         val blob = sha1.digest().joinToString("") { "%02x".format(it.toInt() and 0xff) }
         check(blob == approvedLauncherArtwork) {
