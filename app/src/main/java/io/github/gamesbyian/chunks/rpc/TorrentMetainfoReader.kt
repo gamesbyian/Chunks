@@ -94,26 +94,51 @@ object TorrentMetainfoReader {
         return TorrentMetainfoPreview(name, hash, fileCount, total, pieceLength, trackerCount(root))
     }
 
-    /** Counts only plausible tracker URLs; malformed entries are ignored, never fatal. */
+    /**
+     * Tracker presence is advisory for hosts that discard trackerless Adds.
+     * Never let an untrusted tracker URL crash the confirmation screen or
+     * count arbitrary text as a usable tracker.
+     */
+    private fun plausibleTrackerUrl(value: String): Boolean {
+        if (value.length !in 1..2048 || value.any { it.code < 32 || it.code == 127 }) return false
+        val uri = try { java.net.URI(value) } catch (_: IllegalArgumentException) { return false }
+        val scheme = uri.scheme?.lowercase(java.util.Locale.ROOT) ?: return false
+        if (scheme != "http" && scheme != "https" && scheme != "udp") return false
+        if (uri.isOpaque || uri.host.isNullOrBlank() || uri.rawUserInfo != null ||
+            uri.rawFragment != null || uri.port > 65535 || uri.port == 0) return false
+        return scheme != "udp" || uri.port in 1..65535
+    }
+
     private fun trackerCount(root: Map<*, *>): Int {
         val urls = HashSet<String>()
         fun add(value: Any?) {
             val text = (value as? ByteArray)?.toString(Charsets.UTF_8)?.trim() ?: return
-            if (text.length <= 2048 && Regex("^(https?|udp)://[^\\s]+$", RegexOption.IGNORE_CASE).matches(text))
-                urls += text.lowercase()
+            if (plausibleTrackerUrl(text)) urls += text.lowercase(java.util.Locale.ROOT)
         }
         add(root["announce"])
         (root["announce-list"] as? List<*>)?.forEach { tier -> (tier as? List<*>)?.forEach(::add) }
         return urls.size
     }
 
-    /** Number of distinct `tr=` tracker parameters in a magnet link. */
-    fun magnetTrackerCount(magnet: String): Int =
-        magnet.substringAfter('?', "").split('&').mapNotNull { part ->
+    /**
+     * Only well-formed, usable tracker URLs count toward the magnet preview.
+     * A malformed percent escape is ignored rather than throwing from Compose.
+     */
+    fun magnetTrackerCount(magnet: String): Int {
+        if (magnet.length > 8192 || !magnet.startsWith("magnet:?", ignoreCase = true)) return 0
+        val trackers = HashSet<String>()
+        magnet.substringAfter('?').split('&').forEach { part ->
             val pair = part.split('=', limit = 2)
-            if (pair.size == 2 && pair[0].equals("tr", ignoreCase = true) && pair[1].isNotBlank())
-                java.net.URLDecoder.decode(pair[1], "UTF-8").lowercase() else null
-        }.toSet().size
+            if (pair.size != 2 || !pair[0].equals("tr", ignoreCase = true)) return@forEach
+            val value = try {
+                java.net.URLDecoder.decode(pair[1], "UTF-8")
+            } catch (_: IllegalArgumentException) {
+                return@forEach
+            }
+            if (plausibleTrackerUrl(value)) trackers += value.lowercase(java.util.Locale.ROOT)
+        }
+        return trackers.size
+    }
 
     private fun positive(value: Any?): Long {
         val number = value as? Long ?: error("Invalid positive torrent integer")
