@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - "app/**"
+      - "docs/design/approved/chunks-app-icon-master.svg"
+      - "tools/generate_launcher_vector.cjs"
       - "gradle/**"
       - "*.gradle.kts"
       - "gradle.properties"
@@ -30,6 +32,13 @@ jobs:
       - uses: actions/checkout@v4
       - name: Exercise physical APK provenance preflight with mock adb (no device)
         run: bash tools/test_physical_android_preflight.sh
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Verify SVG-derived launcher vector is up to date
+        run: |
+          node tools/generate_launcher_vector.cjs --check
+          test ! -e app/src/main/res/drawable-nodpi/chunks_launcher_artwork.png
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
