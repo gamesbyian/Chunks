@@ -80,6 +80,39 @@ class SeedhostLiveAcceptanceTest {
         fast.take(5).forEach { log("sample name=\"${it.name}\" started=${it.started} complete=${it.completedBytes == it.sizeBytes}") }
     }
 
+    /**
+     * Pure read-only window on an existing, incomplete started transfer. This
+     * may be someone else's already-running authorized development torrent:
+     * never send a lifecycle or tracker command, print its hash/name/path, or
+     * claim that the sample itself created traffic. A zero eligible count is
+     * useful coverage data but explicitly not a download success.
+     */
+    @Test fun readOnlyCurrentHostTrafficWindow() = runBlocking {
+        val rtorrent = remote()
+        val candidates = rtorrent.listTransfers("main").filter {
+            it.started && it.sizeBytes > 0 && it.completedBytes in 0L until it.sizeBytes
+        }
+        log("traffic incompleteStartedCount=${candidates.size}")
+        val selected = candidates.minByOrNull { it.hash.lowercase() }
+        if (selected == null) {
+            log("traffic evidence=no-eligible-existing-active-incomplete-transfer")
+            return@runBlocking
+        }
+        val observations = mutableListOf<RemoteTrafficSample>()
+        repeat(3) { index ->
+            if (index > 0) kotlinx.coroutines.delay(3_000L)
+            observations += rtorrent.readTrafficSample(selected.hash)
+        }
+        val result = RemoteTrafficWindow.evaluate(observations)
+        log("traffic verdict=${result.verdict} intervalMs=${result.elapsedMillis} " +
+            "receivedCounter=${result.receivedDelta != null} " +
+            "verifiedCounter=${result.verifiedDelta != null} " +
+            "receivedGrowth=${(result.receivedDelta ?: 0L) > 0L} " +
+            "verifiedGrowth=${(result.verifiedDelta ?: 0L) > 0L} " +
+            "peersConnected=${(result.peakPeers ?: 0L) > 0L}")
+        assertTrue("Read-only measurements must span independent times", result.elapsedMillis >= 5_000L)
+    }
+
     /** Deepest absolute directory shared by all paths, at least two levels deep, else null. */
     private fun commonParent(paths: List<String>): String? {
         val split = paths.filter { it.startsWith("/") }.map { it.trimEnd('/').split('/').drop(1) }

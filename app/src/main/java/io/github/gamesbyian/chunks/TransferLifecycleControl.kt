@@ -22,10 +22,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import io.github.gamesbyian.chunks.model.Units
 import io.github.gamesbyian.chunks.rpc.LifecycleOutcome
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteTransferActivity
+import io.github.gamesbyian.chunks.rpc.RemoteTrafficWindow
+import io.github.gamesbyian.chunks.rpc.RemoteTrafficSample
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -49,6 +55,11 @@ fun TransferLifecycleControl(
     var verified by rememberSaveable(transfer.hash, transfer.name, transfer.directory) { mutableStateOf(false) }
     var activity by remember(transfer.hash) { mutableStateOf<RemoteTransferActivity?>(null) }
     var checkingActivity by remember(transfer.hash) { mutableStateOf(false) }
+    var trafficWindow by remember(remote, transfer.hash) { mutableStateOf<RemoteTrafficWindow?>(null) }
+    var watchingTraffic by remember(remote, transfer.hash) { mutableStateOf(false) }
+    var trafficError by remember(remote, transfer.hash) { mutableStateOf<String?>(null) }
+    var watchJob by remember(remote, transfer.hash) { mutableStateOf<Job?>(null) }
+
     val scope = rememberCoroutineScope()
     val requestedStarted = !transfer.started
     val verb = if (requestedStarted) "Start" else "Stop"
@@ -153,6 +164,52 @@ fun TransferLifecycleControl(
                 enabled = !checkingActivity && !pending,
                 modifier = Modifier.height(48.dp)
             ) { Text(if (checkingActivity) "Checking engine activity…" else "Diagnose download activity") }
+            OutlinedButton(
+                onClick = {
+                    watchingTraffic = true
+                    trafficWindow = null
+                    trafficError = null
+                    watchJob = scope.launch {
+                        try {
+                            val observations = ArrayList<RemoteTrafficSample>(3)
+                            repeat(3) { index ->
+                                if (index > 0) delay(3_000L)
+                                observations.add(remote.readTrafficSample(transfer.hash))
+                            }
+                            trafficWindow = RemoteTrafficWindow.evaluate(observations)
+                        } catch (cancel: CancellationException) {
+                            throw cancel
+                        } catch (_: Exception) {
+                            trafficError = "Could not obtain three stable exact-hash readings. No byte progress is inferred. Check server connectivity and retry read-only."
+                        } finally {
+                            watchingTraffic = false
+                            watchJob = null
+                        }
+                    }
+                },
+                enabled = !watchingTraffic && !checkingActivity && !pending,
+                modifier = Modifier.height(48.dp)
+            ) { Text(if (watchingTraffic) "Measuring bytes…" else "Measure download progress (3 samples)") }
+            if (watchingTraffic) {
+                OutlinedButton(
+                    onClick = {
+                        watchJob?.cancel()
+                        trafficError = "Measurement cancelled. No progress conclusion recorded."
+                    },
+                    modifier = Modifier.height(48.dp)
+                ) { Text("Cancel measurement") }
+            }
+            trafficError?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+            trafficWindow?.let { evidence ->
+                Text(evidence.summary(), style = MaterialTheme.typography.bodySmall)
+                Text(
+                    "Measured interval: " + (evidence.elapsedMillis / 1000.0) + " s" +
+                        " · Received traffic: " + (evidence.receivedDelta?.let(Units::bytes) ?: "unknown") +
+                        " · New verified bytes: " + (evidence.verifiedDelta?.let(Units::bytes) ?: "unknown") +
+                        " · Max connected peers: " + (evidence.peakPeers?.toString() ?: "unknown"),
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
             activity?.let { report ->
                 Text(report.summary(), style = MaterialTheme.typography.bodySmall)
                 val peers = report.connectedPeers?.toString() ?: "unknown"
