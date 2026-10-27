@@ -21,7 +21,7 @@ class RemoteLifecycleFixtureTest {
             val body = when (method) {
                 "d.start" -> { started = true; "<value><int>0</int></value>" }
                 "d.stop" -> { started = false; "<value><int>0</int></value>" }
-                "d.state" -> "<value><int>${if (started) 1 else 0}</int></value>"
+                "d.state", "d.is_active" -> "<value><int>${if (started) 1 else 0}</int></value>"
                 else -> "<value><int>0</int></value>"
             }
             val xml = "<methodResponse><params><param>$body</param></params></methodResponse>".toByteArray()
@@ -33,7 +33,8 @@ class RemoteLifecycleFixtureTest {
             val client = RTorrentRemote(RemoteCredentials("http://127.0.0.1:${server.address.port}/RPC2", "", ""))
             assertEquals(LifecycleOutcome.Verified(true), client.setStarted(hash, true))
             assertEquals(LifecycleOutcome.Verified(false), client.setStarted(hash, false))
-            assertEquals(listOf("d.start", "d.state", "d.stop", "d.state"), calls)
+            assertEquals(listOf("d.open", "d.start", "d.resume", "d.state", "d.is_active",
+                "d.stop", "d.close", "d.state"), calls)
         } finally { server.stop(0) }
     }
 
@@ -45,7 +46,7 @@ class RemoteLifecycleFixtureTest {
             val xml = exchange.requestBody.bufferedReader().use { it.readText() }
             val method = Regex("<methodName>([^<]+)</methodName>").find(xml)?.groupValues?.get(1) ?: ""
             calls.add(method)
-            if (method == "d.start") applied = true
+            if (method == "d.open") applied = true
             // Simulate a proxy losing the acknowledgement after the engine applied Start.
             exchange.sendResponseHeaders(502, -1)
             exchange.close()
@@ -56,7 +57,7 @@ class RemoteLifecycleFixtureTest {
                 "http://127.0.0.1:${server.address.port}/RPC2", "", ""))
             assertEquals(LifecycleOutcome.Uncertain(true), client.setStarted(hash, true))
             assertTrue("The remote command might already be applied", applied)
-            assertEquals("No retry or speculative read after failed ACK", listOf("d.start"), calls)
+            assertEquals("No retry or speculative read after failed ACK", listOf("d.open"), calls)
         } finally { server.stop(0) }
     }
 
@@ -80,7 +81,7 @@ class RemoteLifecycleFixtureTest {
         try {
             val client = RTorrentRemote(RemoteCredentials(
                 "http://127.0.0.1:${server.address.port}/RPC2", "", ""))
-            assertEquals(LifecycleOutcome.Verified(true), client.setStarted(hash, true))
+            assertEquals(LifecycleOutcome.Pending(true, true), client.setStarted(hash, true))
             val activity = client.readActivity(hash)
             assertEquals(false, activity.active)
             assertEquals(false, activity.open)
