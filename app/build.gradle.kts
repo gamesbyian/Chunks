@@ -24,7 +24,7 @@ android {
         versionName = "0.1.0-dev" + (builtCommit?.let { "+$it" } ?: "")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
-    buildFeatures { compose = true }
+    buildFeatures { compose = true; resValues = true }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
