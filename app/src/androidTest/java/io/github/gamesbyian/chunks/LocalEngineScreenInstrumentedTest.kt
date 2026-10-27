@@ -11,6 +11,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -112,6 +115,11 @@ class LocalEngineScreenInstrumentedTest {
             }
         }
         rule.onNodeWithText("Downloading · 42% · 3 peers").assertExists()
+        // Chunk boundaries are decorative; TalkBack receives continuous 42% progress.
+        rule.onNode(SemanticsMatcher.expectValue(
+            SemanticsProperties.ProgressBarRangeInfo,
+            ProgressBarRangeInfo(0.42f, 0f..1f)
+        )).assertExists()
         rule.onNodeWithText("Stop").assertExists()
         rule.onNodeWithText("Remove…").performClick()
         assertEquals(0, removed)

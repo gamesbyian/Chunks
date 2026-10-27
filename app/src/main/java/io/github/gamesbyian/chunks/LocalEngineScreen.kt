@@ -19,7 +19,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -492,7 +491,7 @@ internal fun LocalTransferCard(
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(transfer.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Text(stateLabel(transfer) + " · " + percent + "% · " + transfer.peers + " peers")
-            LinearProgressIndicator(progress = { transfer.progressPpm / 1_000_000f },
+            ChunkedProgressBar(progress = transfer.progressPpm / 1_000_000f,
                 modifier = Modifier.fillMaxWidth().semantics { stateDescription = "$percent percent complete" })
             Text("Downloaded " + Units.bytes(transfer.payloadDownloadedBytes) + " · Shared " +
                 Units.bytes(transfer.payloadUploadedBytes), style = MaterialTheme.typography.bodySmall)
