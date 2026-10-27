@@ -147,6 +147,8 @@ private fun ChunksApp(sharedMagnet: String?) {
     var draftPath by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     val aliasStore = remember(context) { TransferAliasStore(context) }
+    val recentPlaceStore = remember(context) { RecentRemotePlaceStore(context) }
+    var recentPlaceRevision by remember { mutableStateOf(0) }
     // Owned by the connected app, not the recyclable LazyColumn card.
     // A plain remembered map prevents getOrPut writes during composition from
     // being rolled back; each value has observable Compose state fields.
@@ -473,14 +475,28 @@ private fun ChunksApp(sharedMagnet: String?) {
                         }
                     }
                 )
-                Section.ADD -> VerifiedAddScreen(
-                    remote = connectedRemote, magnet = magnet, destination = draftPath,
-                    onMagnet = { magnet = it }, onDestination = { draftPath = it },
-                    onBack = { draftPath = ""; section = Section.TRANSFERS },
-                    onComplete = refresh,
-                    onMutationStarted = beginRemoteMutation,
-                    onMutationSettled = settledRemoteMutation
-                )
+                Section.ADD -> {
+                    val recentPlaces = remember(aliasScope, recentPlaceRevision) {
+                        if (aliasScope.isBlank()) emptyList()
+                        else recentPlaceStore.places(aliasScope)
+                    }
+                    VerifiedAddScreen(
+                        remote = connectedRemote, magnet = magnet, destination = draftPath,
+                        onMagnet = { magnet = it }, onDestination = { draftPath = it },
+                        onBack = { draftPath = ""; section = Section.TRANSFERS },
+                        onComplete = refresh,
+                        onMutationStarted = beginRemoteMutation,
+                        onMutationSettled = settledRemoteMutation,
+                        recentPlaces = recentPlaces,
+                        onCustomPlaceVerified = { path ->
+                            val saved = runCatching {
+                                recentPlaceStore.recordVerifiedCustom(aliasScope, path)
+                            }.getOrDefault(false)
+                            if (saved) recentPlaceRevision++
+                            saved
+                        }
+                    )
+                }
             }
         }
     }
