@@ -2,6 +2,7 @@ package io.github.gamesbyian.chunks
 
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -34,7 +35,7 @@ class RemoteTrafficControlsInstrumentedTest {
         }
         rule.onNodeWithText("Measure download progress (3 samples)").assertExists()
         rule.onNodeWithText("Diagnose download activity").assertExists()
-        rule.onNodeWithText("Stop transfer…").assertDoesNotExist()
+        rule.onNodeWithText("Stop transfer…").assertIsNotEnabled()
     }
 
     @Test fun stoppedTorrentDoesNotImplyItsBytesAreDownloading() {
