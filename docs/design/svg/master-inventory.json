@@ -10,8 +10,8 @@
   },
   "totals": {
     "approved": 1,
-    "vectorDraft": 198,
-    "planned": 591
+    "vectorDraft": 294,
+    "planned": 495
   },
   "assets": [
     {
@@ -2249,673 +2249,769 @@
       "id": "ui-components/compact-torrent-card",
       "category": "ui-components",
       "label": "compact torrent card",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/compact-torrent-card.svg"
     },
     {
       "id": "ui-components/expanded-torrent-card",
       "category": "ui-components",
       "label": "expanded torrent card",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/expanded-torrent-card.svg"
     },
     {
       "id": "ui-components/transfer-downloading-card",
       "category": "ui-components",
       "label": "transfer downloading card",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/transfer-downloading-card.svg"
     },
     {
       "id": "ui-components/transfer-seeding-card",
       "category": "ui-components",
       "label": "transfer seeding card",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/transfer-seeding-card.svg"
     },
     {
       "id": "ui-components/transfer-paused-card",
       "category": "ui-components",
       "label": "transfer paused card",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/transfer-paused-card.svg"
     },
     {
       "id": "ui-components/transfer-error-card",
       "category": "ui-components",
       "label": "transfer error card",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/transfer-error-card.svg"
     },
     {
       "id": "ui-components/transfer-complete-card",
       "category": "ui-components",
       "label": "transfer complete card",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/transfer-complete-card.svg"
     },
     {
       "id": "ui-components/transfer-media-thumbnail-frame",
       "category": "ui-components",
       "label": "transfer media thumbnail frame",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/transfer-media-thumbnail-frame.svg"
     },
     {
       "id": "ui-components/transfer-title-block",
       "category": "ui-components",
       "label": "transfer title block",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/transfer-title-block.svg"
     },
     {
       "id": "ui-components/transfer-metrics-row",
       "category": "ui-components",
       "label": "transfer metrics row",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/transfer-metrics-row.svg"
     },
     {
       "id": "ui-components/transfer-status-pill-slot",
       "category": "ui-components",
       "label": "transfer status-pill slot",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/transfer-status-pill-slot.svg"
     },
     {
       "id": "ui-components/transfer-trailing-action-control",
       "category": "ui-components",
       "label": "transfer trailing action control",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/transfer-trailing-action-control.svg"
     },
     {
       "id": "ui-components/mini-floating-transfer-panel",
       "category": "ui-components",
       "label": "mini floating transfer panel",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/mini-floating-transfer-panel.svg"
     },
     {
       "id": "ui-components/segmented-progress-track",
       "category": "ui-components",
       "label": "segmented progress track",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/segmented-progress-track.svg"
     },
     {
       "id": "ui-components/segmented-progress-filled-unit",
       "category": "ui-components",
       "label": "segmented progress filled unit",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/segmented-progress-filled-unit.svg"
     },
     {
       "id": "ui-components/segmented-progress-empty-unit",
       "category": "ui-components",
       "label": "segmented progress empty unit",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/segmented-progress-empty-unit.svg"
     },
     {
       "id": "ui-components/segmented-progress-partial-unit",
       "category": "ui-components",
       "label": "segmented progress partial unit",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/segmented-progress-partial-unit.svg"
     },
     {
       "id": "ui-components/segmented-progress-downloading",
       "category": "ui-components",
       "label": "segmented progress downloading",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/segmented-progress-downloading.svg"
     },
     {
       "id": "ui-components/segmented-progress-paused",
       "category": "ui-components",
       "label": "segmented progress paused",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/segmented-progress-paused.svg"
     },
     {
       "id": "ui-components/segmented-progress-complete",
       "category": "ui-components",
       "label": "segmented progress complete",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/segmented-progress-complete.svg"
     },
     {
       "id": "ui-components/segmented-progress-seeding",
       "category": "ui-components",
       "label": "segmented progress seeding",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/segmented-progress-seeding.svg"
     },
     {
       "id": "ui-components/segmented-progress-error",
       "category": "ui-components",
       "label": "segmented progress error",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/segmented-progress-error.svg"
     },
     {
       "id": "ui-components/segmented-progress-disabled",
       "category": "ui-components",
       "label": "segmented progress disabled",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/segmented-progress-disabled.svg"
     },
     {
       "id": "ui-components/multicolour-segmented-progress",
       "category": "ui-components",
       "label": "multicolour segmented progress",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/multicolour-segmented-progress.svg"
     },
     {
       "id": "ui-components/inline-file-progress",
       "category": "ui-components",
       "label": "inline file progress",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/inline-file-progress.svg"
     },
     {
       "id": "ui-components/storage-capacity-bar",
       "category": "ui-components",
       "label": "storage capacity bar",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/storage-capacity-bar.svg"
     },
     {
       "id": "ui-components/storage-capacity-legend",
       "category": "ui-components",
       "label": "storage capacity legend",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/storage-capacity-legend.svg"
     },
     {
       "id": "ui-components/small-download-speed-strip",
       "category": "ui-components",
       "label": "small download speed strip",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/small-download-speed-strip.svg"
     },
     {
       "id": "ui-components/small-upload-speed-strip",
       "category": "ui-components",
       "label": "small upload speed strip",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/small-upload-speed-strip.svg"
     },
     {
       "id": "ui-components/progress-percentage-label",
       "category": "ui-components",
       "label": "progress percentage label",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/progress-percentage-label.svg"
     },
     {
       "id": "ui-components/stepper-completed-step",
       "category": "ui-components",
       "label": "stepper completed step",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/stepper-completed-step.svg"
     },
     {
       "id": "ui-components/stepper-current-step",
       "category": "ui-components",
       "label": "stepper current step",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/stepper-current-step.svg"
     },
     {
       "id": "ui-components/stepper-pending-step",
       "category": "ui-components",
       "label": "stepper pending step",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/stepper-pending-step.svg"
     },
     {
       "id": "ui-components/top-navigation-tabs",
       "category": "ui-components",
       "label": "top navigation tabs",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/top-navigation-tabs.svg"
     },
     {
       "id": "ui-components/bottom-navigation-rail",
       "category": "ui-components",
       "label": "bottom navigation rail",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/bottom-navigation-rail.svg"
     },
     {
       "id": "ui-components/selected-bottom-tab",
       "category": "ui-components",
       "label": "selected bottom tab",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/selected-bottom-tab.svg"
     },
     {
       "id": "ui-components/unselected-bottom-tab",
       "category": "ui-components",
       "label": "unselected bottom tab",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/unselected-bottom-tab.svg"
     },
     {
       "id": "ui-components/filter-chip-selected",
       "category": "ui-components",
       "label": "filter chip selected",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/filter-chip-selected.svg"
     },
     {
       "id": "ui-components/filter-chip-unselected",
       "category": "ui-components",
       "label": "filter chip unselected",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/filter-chip-unselected.svg"
     },
     {
       "id": "ui-components/filter-chip-count",
       "category": "ui-components",
       "label": "filter chip count",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/filter-chip-count.svg"
     },
     {
       "id": "ui-components/file-category-chip",
       "category": "ui-components",
       "label": "file category chip",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/file-category-chip.svg"
     },
     {
       "id": "ui-components/status-chip",
       "category": "ui-components",
       "label": "status chip",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/status-chip.svg"
     },
     {
       "id": "ui-components/cyan-local-workspace-panel",
       "category": "ui-components",
       "label": "cyan local workspace panel",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/cyan-local-workspace-panel.svg"
     },
     {
       "id": "ui-components/purple-remote-workspace-panel",
       "category": "ui-components",
       "label": "purple remote workspace panel",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/purple-remote-workspace-panel.svg"
     },
     {
       "id": "ui-components/workspace-file-row",
       "category": "ui-components",
       "label": "workspace file row",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/workspace-file-row.svg"
     },
     {
       "id": "ui-components/workspace-folder-row",
       "category": "ui-components",
       "label": "workspace folder row",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/workspace-folder-row.svg"
     },
     {
       "id": "ui-components/workspace-swap-button",
       "category": "ui-components",
       "label": "workspace swap button",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/workspace-swap-button.svg"
     },
     {
       "id": "ui-components/workspace-action-row",
       "category": "ui-components",
       "label": "workspace action row",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/workspace-action-row.svg"
     },
     {
       "id": "ui-components/transfer-between-devices-dropzone",
       "category": "ui-components",
       "label": "transfer-between-devices dropzone",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/transfer-between-devices-dropzone.svg"
     },
     {
       "id": "ui-components/yellow-storage-overview",
       "category": "ui-components",
       "label": "yellow storage overview",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/yellow-storage-overview.svg"
     },
     {
       "id": "ui-components/cleanup-wizard-card",
       "category": "ui-components",
       "label": "cleanup wizard card",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/cleanup-wizard-card.svg"
     },
     {
       "id": "ui-components/green-auto-extract-card",
       "category": "ui-components",
       "label": "green auto-extract card",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/green-auto-extract-card.svg"
     },
     {
       "id": "ui-components/cyan-keep-original-card",
       "category": "ui-components",
       "label": "cyan keep-original card",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/cyan-keep-original-card.svg"
     },
     {
       "id": "ui-components/orange-large-torrent-warning",
       "category": "ui-components",
       "label": "orange large-torrent warning",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/orange-large-torrent-warning.svg"
     },
     {
       "id": "ui-components/yellow-low-space-warning",
       "category": "ui-components",
       "label": "yellow low-space warning",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/yellow-low-space-warning.svg"
     },
     {
       "id": "ui-components/key-value-detail-row",
       "category": "ui-components",
       "label": "key-value detail row",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/key-value-detail-row.svg"
     },
     {
       "id": "ui-components/file-checklist-row",
       "category": "ui-components",
       "label": "file checklist row",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/file-checklist-row.svg"
     },
     {
       "id": "ui-components/indented-folder-row",
       "category": "ui-components",
       "label": "indented folder row",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/indented-folder-row.svg"
     },
     {
       "id": "ui-components/dark-rounded-modal-shell",
       "category": "ui-components",
       "label": "dark rounded modal shell",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/dark-rounded-modal-shell.svg"
     },
     {
       "id": "ui-components/add-torrent-dialog",
       "category": "ui-components",
       "label": "add-torrent dialog",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/add-torrent-dialog.svg"
     },
     {
       "id": "ui-components/warning-banner",
       "category": "ui-components",
       "label": "warning banner",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/warning-banner.svg"
     },
     {
       "id": "ui-components/error-banner",
       "category": "ui-components",
       "label": "error banner",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/error-banner.svg"
     },
     {
       "id": "ui-components/success-banner",
       "category": "ui-components",
       "label": "success banner",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/success-banner.svg"
     },
     {
       "id": "ui-components/empty-transfer-state",
       "category": "ui-components",
       "label": "empty transfer state",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/empty-transfer-state.svg"
     },
     {
       "id": "ui-components/empty-downloads-state",
       "category": "ui-components",
       "label": "empty downloads state",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-components/empty-downloads-state.svg"
     },
     {
       "id": "ui-controls/toggle-track-on",
       "category": "ui-controls",
       "label": "toggle track on",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-controls/toggle-track-on.svg"
     },
     {
       "id": "ui-controls/toggle-track-off",
       "category": "ui-controls",
       "label": "toggle track off",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-controls/toggle-track-off.svg"
     },
     {
       "id": "ui-controls/toggle-thumb-on",
       "category": "ui-controls",
       "label": "toggle thumb on",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-controls/toggle-thumb-on.svg"
     },
     {
       "id": "ui-controls/toggle-thumb-off",
       "category": "ui-controls",
       "label": "toggle thumb off",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-controls/toggle-thumb-off.svg"
     },
     {
       "id": "ui-controls/toggle-disabled",
       "category": "ui-controls",
       "label": "toggle disabled",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-controls/toggle-disabled.svg"
     },
     {
       "id": "ui-controls/checkbox-checked",
       "category": "ui-controls",
       "label": "checkbox checked",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-controls/checkbox-checked.svg"
     },
     {
       "id": "ui-controls/checkbox-unchecked",
       "category": "ui-controls",
       "label": "checkbox unchecked",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-controls/checkbox-unchecked.svg"
     },
     {
       "id": "ui-controls/checkbox-disabled-checked",
       "category": "ui-controls",
       "label": "checkbox disabled checked",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-controls/checkbox-disabled-checked.svg"
     },
     {
       "id": "ui-controls/checkbox-disabled-unchecked",
       "category": "ui-controls",
       "label": "checkbox disabled unchecked",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-controls/checkbox-disabled-unchecked.svg"
     },
     {
       "id": "ui-controls/radio-selected",
       "category": "ui-controls",
       "label": "radio selected",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-controls/radio-selected.svg"
     },
     {
       "id": "ui-controls/radio-unselected",
       "category": "ui-controls",
       "label": "radio unselected",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-controls/radio-unselected.svg"
     },
     {
       "id": "ui-controls/focused-field-outline",
       "category": "ui-controls",
       "label": "focused field outline",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-controls/focused-field-outline.svg"
     },
     {
       "id": "ui-controls/purple-primary-button",
       "category": "ui-controls",
       "label": "purple primary button",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-controls/purple-primary-button.svg"
     },
     {
       "id": "ui-controls/pink-floating-add-button",
       "category": "ui-controls",
       "label": "pink floating add button",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-controls/pink-floating-add-button.svg"
     },
     {
       "id": "ui-controls/green-resume-button",
       "category": "ui-controls",
       "label": "green resume button",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-controls/green-resume-button.svg"
     },
     {
       "id": "ui-controls/purple-pause-button",
       "category": "ui-controls",
       "label": "purple pause button",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-controls/purple-pause-button.svg"
     },
     {
       "id": "ui-controls/purple-queue-button",
       "category": "ui-controls",
       "label": "purple queue button",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-controls/purple-queue-button.svg"
     },
     {
       "id": "ui-controls/cyan-move-button",
       "category": "ui-controls",
       "label": "cyan move button",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-controls/cyan-move-button.svg"
     },
     {
       "id": "ui-controls/cyan-copy-button",
       "category": "ui-controls",
       "label": "cyan copy button",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-controls/cyan-copy-button.svg"
     },
     {
       "id": "ui-controls/green-sync-button",
       "category": "ui-controls",
       "label": "green sync button",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-controls/green-sync-button.svg"
     },
     {
       "id": "ui-controls/orange-remove-button",
       "category": "ui-controls",
       "label": "orange remove button",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-controls/orange-remove-button.svg"
     },
     {
       "id": "ui-controls/black-edit-button",
       "category": "ui-controls",
       "label": "black edit button",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-controls/black-edit-button.svg"
     },
     {
       "id": "ui-controls/black-share-button",
       "category": "ui-controls",
       "label": "black share button",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-controls/black-share-button.svg"
     },
     {
       "id": "ui-controls/dark-copy-magnet-button",
       "category": "ui-controls",
       "label": "dark copy-magnet button",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-controls/dark-copy-magnet-button.svg"
     },
     {
       "id": "ui-controls/grey-disabled-button",
       "category": "ui-controls",
       "label": "grey disabled button",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-controls/grey-disabled-button.svg"
     },
     {
       "id": "ui-controls/cyan-browse-button",
       "category": "ui-controls",
       "label": "cyan browse button",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-controls/cyan-browse-button.svg"
     },
     {
       "id": "ui-controls/purple-paste-button",
       "category": "ui-controls",
       "label": "purple paste button",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-controls/purple-paste-button.svg"
     },
     {
       "id": "ui-controls/yellow-round-add-button",
       "category": "ui-controls",
       "label": "yellow round add button",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-controls/yellow-round-add-button.svg"
     },
     {
       "id": "ui-controls/cyan-round-pause-button",
       "category": "ui-controls",
       "label": "cyan round pause button",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-controls/cyan-round-pause-button.svg"
     },
     {
       "id": "ui-controls/green-round-play-button",
       "category": "ui-controls",
       "label": "green round play button",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-controls/green-round-play-button.svg"
     },
     {
       "id": "ui-controls/red-error-circle-button",
       "category": "ui-controls",
       "label": "red error circle button",
-      "status": "planned",
-      "source": "05-ui-components-and-states.png"
+      "status": "vector-draft",
+      "source": "05-ui-components-and-states.png; vector specimen; native interactive Compose required",
+      "path": "docs/design/svg/ui/ui-controls/red-error-circle-button.svg"
     },
     {
       "id": "promotional-compositions/brand-hero",

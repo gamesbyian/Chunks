@@ -1,0 +1,678 @@
+{
+  "schema": 1,
+  "intent": "Visual reusable component specimens only. Never use as flattened Android interactive controls.",
+  "assets": [
+    {
+      "id": "ui-components/segmented-progress-track",
+      "path": "ui/ui-components/segmented-progress-track.svg",
+      "category": "ui-components",
+      "label": "ui components segmented progress track",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/segmented-progress-filled-unit",
+      "path": "ui/ui-components/segmented-progress-filled-unit.svg",
+      "category": "ui-components",
+      "label": "ui components segmented progress filled unit",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/segmented-progress-empty-unit",
+      "path": "ui/ui-components/segmented-progress-empty-unit.svg",
+      "category": "ui-components",
+      "label": "ui components segmented progress empty unit",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/segmented-progress-partial-unit",
+      "path": "ui/ui-components/segmented-progress-partial-unit.svg",
+      "category": "ui-components",
+      "label": "ui components segmented progress partial unit",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/segmented-progress-downloading",
+      "path": "ui/ui-components/segmented-progress-downloading.svg",
+      "category": "ui-components",
+      "label": "ui components segmented progress downloading",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/segmented-progress-paused",
+      "path": "ui/ui-components/segmented-progress-paused.svg",
+      "category": "ui-components",
+      "label": "ui components segmented progress paused",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/segmented-progress-complete",
+      "path": "ui/ui-components/segmented-progress-complete.svg",
+      "category": "ui-components",
+      "label": "ui components segmented progress complete",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/segmented-progress-seeding",
+      "path": "ui/ui-components/segmented-progress-seeding.svg",
+      "category": "ui-components",
+      "label": "ui components segmented progress seeding",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/segmented-progress-error",
+      "path": "ui/ui-components/segmented-progress-error.svg",
+      "category": "ui-components",
+      "label": "ui components segmented progress error",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/segmented-progress-disabled",
+      "path": "ui/ui-components/segmented-progress-disabled.svg",
+      "category": "ui-components",
+      "label": "ui components segmented progress disabled",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/multicolour-segmented-progress",
+      "path": "ui/ui-components/multicolour-segmented-progress.svg",
+      "category": "ui-components",
+      "label": "ui components multicolour segmented progress",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/inline-file-progress",
+      "path": "ui/ui-components/inline-file-progress.svg",
+      "category": "ui-components",
+      "label": "ui components inline file progress",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/storage-capacity-bar",
+      "path": "ui/ui-components/storage-capacity-bar.svg",
+      "category": "ui-components",
+      "label": "ui components storage capacity bar",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/storage-capacity-legend",
+      "path": "ui/ui-components/storage-capacity-legend.svg",
+      "category": "ui-components",
+      "label": "ui components storage capacity legend",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/small-download-speed-strip",
+      "path": "ui/ui-components/small-download-speed-strip.svg",
+      "category": "ui-components",
+      "label": "ui components small download speed strip",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/small-upload-speed-strip",
+      "path": "ui/ui-components/small-upload-speed-strip.svg",
+      "category": "ui-components",
+      "label": "ui components small upload speed strip",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/progress-percentage-label",
+      "path": "ui/ui-components/progress-percentage-label.svg",
+      "category": "ui-components",
+      "label": "ui components progress percentage label",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/stepper-completed-step",
+      "path": "ui/ui-components/stepper-completed-step.svg",
+      "category": "ui-components",
+      "label": "ui components stepper completed step",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/stepper-current-step",
+      "path": "ui/ui-components/stepper-current-step.svg",
+      "category": "ui-components",
+      "label": "ui components stepper current step",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/stepper-pending-step",
+      "path": "ui/ui-components/stepper-pending-step.svg",
+      "category": "ui-components",
+      "label": "ui components stepper pending step",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/transfer-downloading-card",
+      "path": "ui/ui-components/transfer-downloading-card.svg",
+      "category": "ui-components",
+      "label": "ui components transfer downloading card",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/transfer-seeding-card",
+      "path": "ui/ui-components/transfer-seeding-card.svg",
+      "category": "ui-components",
+      "label": "ui components transfer seeding card",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/transfer-paused-card",
+      "path": "ui/ui-components/transfer-paused-card.svg",
+      "category": "ui-components",
+      "label": "ui components transfer paused card",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/transfer-error-card",
+      "path": "ui/ui-components/transfer-error-card.svg",
+      "category": "ui-components",
+      "label": "ui components transfer error card",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/transfer-complete-card",
+      "path": "ui/ui-components/transfer-complete-card.svg",
+      "category": "ui-components",
+      "label": "ui components transfer complete card",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/compact-torrent-card",
+      "path": "ui/ui-components/compact-torrent-card.svg",
+      "category": "ui-components",
+      "label": "ui components compact torrent card",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/expanded-torrent-card",
+      "path": "ui/ui-components/expanded-torrent-card.svg",
+      "category": "ui-components",
+      "label": "ui components expanded torrent card",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/transfer-media-thumbnail-frame",
+      "path": "ui/ui-components/transfer-media-thumbnail-frame.svg",
+      "category": "ui-components",
+      "label": "ui components transfer media thumbnail frame",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/transfer-title-block",
+      "path": "ui/ui-components/transfer-title-block.svg",
+      "category": "ui-components",
+      "label": "ui components transfer title block",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/transfer-metrics-row",
+      "path": "ui/ui-components/transfer-metrics-row.svg",
+      "category": "ui-components",
+      "label": "ui components transfer metrics row",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/transfer-status-pill-slot",
+      "path": "ui/ui-components/transfer-status-pill-slot.svg",
+      "category": "ui-components",
+      "label": "ui components transfer status pill slot",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/transfer-trailing-action-control",
+      "path": "ui/ui-components/transfer-trailing-action-control.svg",
+      "category": "ui-components",
+      "label": "ui components transfer trailing action control",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/mini-floating-transfer-panel",
+      "path": "ui/ui-components/mini-floating-transfer-panel.svg",
+      "category": "ui-components",
+      "label": "ui components mini floating transfer panel",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/cyan-local-workspace-panel",
+      "path": "ui/ui-components/cyan-local-workspace-panel.svg",
+      "category": "ui-components",
+      "label": "ui components cyan local workspace panel",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/purple-remote-workspace-panel",
+      "path": "ui/ui-components/purple-remote-workspace-panel.svg",
+      "category": "ui-components",
+      "label": "ui components purple remote workspace panel",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/workspace-file-row",
+      "path": "ui/ui-components/workspace-file-row.svg",
+      "category": "ui-components",
+      "label": "ui components workspace file row",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/workspace-folder-row",
+      "path": "ui/ui-components/workspace-folder-row.svg",
+      "category": "ui-components",
+      "label": "ui components workspace folder row",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/workspace-swap-button",
+      "path": "ui/ui-components/workspace-swap-button.svg",
+      "category": "ui-components",
+      "label": "ui components workspace swap button",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/workspace-action-row",
+      "path": "ui/ui-components/workspace-action-row.svg",
+      "category": "ui-components",
+      "label": "ui components workspace action row",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/transfer-between-devices-dropzone",
+      "path": "ui/ui-components/transfer-between-devices-dropzone.svg",
+      "category": "ui-components",
+      "label": "ui components transfer between devices dropzone",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/yellow-storage-overview",
+      "path": "ui/ui-components/yellow-storage-overview.svg",
+      "category": "ui-components",
+      "label": "ui components yellow storage overview",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/cleanup-wizard-card",
+      "path": "ui/ui-components/cleanup-wizard-card.svg",
+      "category": "ui-components",
+      "label": "ui components cleanup wizard card",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/green-auto-extract-card",
+      "path": "ui/ui-components/green-auto-extract-card.svg",
+      "category": "ui-components",
+      "label": "ui components green auto extract card",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/cyan-keep-original-card",
+      "path": "ui/ui-components/cyan-keep-original-card.svg",
+      "category": "ui-components",
+      "label": "ui components cyan keep original card",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/orange-large-torrent-warning",
+      "path": "ui/ui-components/orange-large-torrent-warning.svg",
+      "category": "ui-components",
+      "label": "ui components orange large torrent warning",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/yellow-low-space-warning",
+      "path": "ui/ui-components/yellow-low-space-warning.svg",
+      "category": "ui-components",
+      "label": "ui components yellow low space warning",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/warning-banner",
+      "path": "ui/ui-components/warning-banner.svg",
+      "category": "ui-components",
+      "label": "ui components warning banner",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/error-banner",
+      "path": "ui/ui-components/error-banner.svg",
+      "category": "ui-components",
+      "label": "ui components error banner",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/success-banner",
+      "path": "ui/ui-components/success-banner.svg",
+      "category": "ui-components",
+      "label": "ui components success banner",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/key-value-detail-row",
+      "path": "ui/ui-components/key-value-detail-row.svg",
+      "category": "ui-components",
+      "label": "ui components key value detail row",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/file-checklist-row",
+      "path": "ui/ui-components/file-checklist-row.svg",
+      "category": "ui-components",
+      "label": "ui components file checklist row",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/indented-folder-row",
+      "path": "ui/ui-components/indented-folder-row.svg",
+      "category": "ui-components",
+      "label": "ui components indented folder row",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/dark-rounded-modal-shell",
+      "path": "ui/ui-components/dark-rounded-modal-shell.svg",
+      "category": "ui-components",
+      "label": "ui components dark rounded modal shell",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/add-torrent-dialog",
+      "path": "ui/ui-components/add-torrent-dialog.svg",
+      "category": "ui-components",
+      "label": "ui components add torrent dialog",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/empty-transfer-state",
+      "path": "ui/ui-components/empty-transfer-state.svg",
+      "category": "ui-components",
+      "label": "ui components empty transfer state",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/empty-downloads-state",
+      "path": "ui/ui-components/empty-downloads-state.svg",
+      "category": "ui-components",
+      "label": "ui components empty downloads state",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/top-navigation-tabs",
+      "path": "ui/ui-components/top-navigation-tabs.svg",
+      "category": "ui-components",
+      "label": "ui components top navigation tabs",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/bottom-navigation-rail",
+      "path": "ui/ui-components/bottom-navigation-rail.svg",
+      "category": "ui-components",
+      "label": "ui components bottom navigation rail",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/selected-bottom-tab",
+      "path": "ui/ui-components/selected-bottom-tab.svg",
+      "category": "ui-components",
+      "label": "ui components selected bottom tab",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/unselected-bottom-tab",
+      "path": "ui/ui-components/unselected-bottom-tab.svg",
+      "category": "ui-components",
+      "label": "ui components unselected bottom tab",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/filter-chip-selected",
+      "path": "ui/ui-components/filter-chip-selected.svg",
+      "category": "ui-components",
+      "label": "ui components filter chip selected",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/filter-chip-unselected",
+      "path": "ui/ui-components/filter-chip-unselected.svg",
+      "category": "ui-components",
+      "label": "ui components filter chip unselected",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/filter-chip-count",
+      "path": "ui/ui-components/filter-chip-count.svg",
+      "category": "ui-components",
+      "label": "ui components filter chip count",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/file-category-chip",
+      "path": "ui/ui-components/file-category-chip.svg",
+      "category": "ui-components",
+      "label": "ui components file category chip",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-components/status-chip",
+      "path": "ui/ui-components/status-chip.svg",
+      "category": "ui-components",
+      "label": "ui components status chip",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-controls/toggle-track-on",
+      "path": "ui/ui-controls/toggle-track-on.svg",
+      "category": "ui-controls",
+      "label": "ui controls toggle track on",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-controls/toggle-track-off",
+      "path": "ui/ui-controls/toggle-track-off.svg",
+      "category": "ui-controls",
+      "label": "ui controls toggle track off",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-controls/toggle-thumb-on",
+      "path": "ui/ui-controls/toggle-thumb-on.svg",
+      "category": "ui-controls",
+      "label": "ui controls toggle thumb on",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-controls/toggle-thumb-off",
+      "path": "ui/ui-controls/toggle-thumb-off.svg",
+      "category": "ui-controls",
+      "label": "ui controls toggle thumb off",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-controls/toggle-disabled",
+      "path": "ui/ui-controls/toggle-disabled.svg",
+      "category": "ui-controls",
+      "label": "ui controls toggle disabled",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-controls/checkbox-checked",
+      "path": "ui/ui-controls/checkbox-checked.svg",
+      "category": "ui-controls",
+      "label": "ui controls checkbox checked",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-controls/checkbox-unchecked",
+      "path": "ui/ui-controls/checkbox-unchecked.svg",
+      "category": "ui-controls",
+      "label": "ui controls checkbox unchecked",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-controls/checkbox-disabled-checked",
+      "path": "ui/ui-controls/checkbox-disabled-checked.svg",
+      "category": "ui-controls",
+      "label": "ui controls checkbox disabled checked",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-controls/checkbox-disabled-unchecked",
+      "path": "ui/ui-controls/checkbox-disabled-unchecked.svg",
+      "category": "ui-controls",
+      "label": "ui controls checkbox disabled unchecked",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-controls/radio-selected",
+      "path": "ui/ui-controls/radio-selected.svg",
+      "category": "ui-controls",
+      "label": "ui controls radio selected",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-controls/radio-unselected",
+      "path": "ui/ui-controls/radio-unselected.svg",
+      "category": "ui-controls",
+      "label": "ui controls radio unselected",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-controls/focused-field-outline",
+      "path": "ui/ui-controls/focused-field-outline.svg",
+      "category": "ui-controls",
+      "label": "ui controls focused field outline",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-controls/purple-primary-button",
+      "path": "ui/ui-controls/purple-primary-button.svg",
+      "category": "ui-controls",
+      "label": "ui controls purple primary button",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-controls/pink-floating-add-button",
+      "path": "ui/ui-controls/pink-floating-add-button.svg",
+      "category": "ui-controls",
+      "label": "ui controls pink floating add button",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-controls/green-resume-button",
+      "path": "ui/ui-controls/green-resume-button.svg",
+      "category": "ui-controls",
+      "label": "ui controls green resume button",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-controls/purple-pause-button",
+      "path": "ui/ui-controls/purple-pause-button.svg",
+      "category": "ui-controls",
+      "label": "ui controls purple pause button",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-controls/purple-queue-button",
+      "path": "ui/ui-controls/purple-queue-button.svg",
+      "category": "ui-controls",
+      "label": "ui controls purple queue button",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-controls/cyan-move-button",
+      "path": "ui/ui-controls/cyan-move-button.svg",
+      "category": "ui-controls",
+      "label": "ui controls cyan move button",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-controls/cyan-copy-button",
+      "path": "ui/ui-controls/cyan-copy-button.svg",
+      "category": "ui-controls",
+      "label": "ui controls cyan copy button",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-controls/green-sync-button",
+      "path": "ui/ui-controls/green-sync-button.svg",
+      "category": "ui-controls",
+      "label": "ui controls green sync button",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-controls/orange-remove-button",
+      "path": "ui/ui-controls/orange-remove-button.svg",
+      "category": "ui-controls",
+      "label": "ui controls orange remove button",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-controls/black-edit-button",
+      "path": "ui/ui-controls/black-edit-button.svg",
+      "category": "ui-controls",
+      "label": "ui controls black edit button",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-controls/black-share-button",
+      "path": "ui/ui-controls/black-share-button.svg",
+      "category": "ui-controls",
+      "label": "ui controls black share button",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-controls/dark-copy-magnet-button",
+      "path": "ui/ui-controls/dark-copy-magnet-button.svg",
+      "category": "ui-controls",
+      "label": "ui controls dark copy magnet button",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-controls/grey-disabled-button",
+      "path": "ui/ui-controls/grey-disabled-button.svg",
+      "category": "ui-controls",
+      "label": "ui controls grey disabled button",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-controls/cyan-browse-button",
+      "path": "ui/ui-controls/cyan-browse-button.svg",
+      "category": "ui-controls",
+      "label": "ui controls cyan browse button",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-controls/purple-paste-button",
+      "path": "ui/ui-controls/purple-paste-button.svg",
+      "category": "ui-controls",
+      "label": "ui controls purple paste button",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-controls/yellow-round-add-button",
+      "path": "ui/ui-controls/yellow-round-add-button.svg",
+      "category": "ui-controls",
+      "label": "ui controls yellow round add button",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-controls/cyan-round-pause-button",
+      "path": "ui/ui-controls/cyan-round-pause-button.svg",
+      "category": "ui-controls",
+      "label": "ui controls cyan round pause button",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-controls/green-round-play-button",
+      "path": "ui/ui-controls/green-round-play-button.svg",
+      "category": "ui-controls",
+      "label": "ui controls green round play button",
+      "status": "vector-draft"
+    },
+    {
+      "id": "ui-controls/red-error-circle-button",
+      "path": "ui/ui-controls/red-error-circle-button.svg",
+      "category": "ui-controls",
+      "label": "ui controls red error circle button",
+      "status": "vector-draft"
+    }
+  ]
+}
