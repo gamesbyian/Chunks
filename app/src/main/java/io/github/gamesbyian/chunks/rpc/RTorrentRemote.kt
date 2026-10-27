@@ -591,6 +591,28 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         }
     }
 
+    /**
+     * Read-only post-Start diagnosis. Optional calls are best-effort so older
+     * restricted RPC gateways remain usable; do not emit server fault text.
+     * This does not imply progress from rTorrent's started bit.
+     */
+    suspend fun readActivity(hash: String): RemoteTransferActivity {
+        require(Regex("[0-9a-fA-F]{40}").matches(hash)) { "Invalid v1 torrent hash" }
+        suspend fun get(method: String): Long? = try {
+            number(call(method, listOf(hash))).takeIf { it >= 0L }
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            null
+        }
+        return RemoteTransferActivity(
+            active = get("d.is_active")?.let { it != 0L },
+            open = get("d.is_open")?.let { it != 0L },
+            connectedPeers = get("d.peers_connected"),
+            downloadBytesPerSecond = get("d.down.rate")
+        )
+    }
+
     private fun extractRows(response: Any?): List<*> =
         response as? List<*> ?: error("Unexpected rTorrent array reply")
 
