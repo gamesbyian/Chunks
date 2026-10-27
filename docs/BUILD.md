@@ -21,6 +21,21 @@ The workflow verifies that the APK manifest exposes the expected revision **befo
 
 Debug signing is unsuitable for production distribution. The exact APK receipt proves source/artifact traceability only; installation, SSL connection, actual bytes, foreground-service survival, and usability on a physical phone require separate recorded acceptance.
 
+## Receipt-checked install on a physical Android handset
+
+After downloading and extracting **both** files from one `chunks-debug-prealpha` Actions artifact, attach one authorized handset with USB debugging enabled. Run:
+
+```bash
+bash tools/test_physical_android_preflight.sh
+bash tools/physical_android_preflight.sh /path/to/extracted/app-debug.apk
+```
+
+The preflight requires `adb`, `sha256sum` and Bash. It verifies that the exact APK bytes match the paired `CHUNKS-BUILD-SHA256.txt` receipt, extracts its 40-hex built-checkout SHA, rejects an emulator or ambiguous device selection, installs the debug APK, checks the installed package's versionName against that SHA and opens MainActivity. Use `ADB_SERIAL=...` to select one attached device when several are authorized; the script does not print the serial. It prints only source commit, APK SHA-256, Android version/API and model, plus clear **not verified** boundaries. The script deliberately does not capture logcat, screenshots, credentials, torrent paths or media.
+
+The device is ready for **manual acceptance**, not yet accepted. Separately record on the physical handset: a protected Seedhost connect/list/refresh/offline-reconnect journey; deliberate tracker-bearing public stopped Add with user-selected parent Place, post-command exact-hash verification, Start/Stop, file priority and session-only Remove; real on-phone download, exact downloaded bytes/seeding, foreground notification and Stop-all; and screen-off, background/quota, network/VPN, process death/reboot and SAF scenarios. Use the controlled fixture scope in [SEEDHOST-REMOTE-TESTING](SEEDHOST-REMOTE-TESTING.md), and keep any credentials or private device screenshot evidence outside public repository artifacts. No connected API35 emulator or this preflight substitutes for device acceptance.
+
+The receipt is **not a publisher signature**. The version suffix identifies the GitHub CI checkout, which may be a synthetic PR merge commit rather than `main`; use a manually dispatched `main` build for a precisely identified beta and preserve its original checksum receipt.
+
 ## Recovered second verified source
 
 Merged PR #12 provided read-only synthetic loopback RPC transport tests. [Run 40057876761](https://github.com/gamesbyian/Chunks/actions/runs/40057876761) passed `gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug` on head `5b5b75ed4abaa9f4e97ec4c7e4fa517130e8f681`. A `chunks-debug-prealpha` artifact was produced. These tests do **not** prove real rTorrent auth/proxy interoperability or Android on-device behavior.

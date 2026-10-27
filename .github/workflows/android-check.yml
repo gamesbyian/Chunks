@@ -28,6 +28,8 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+      - name: Exercise physical APK provenance preflight with mock adb (no device)
+        run: bash tools/test_physical_android_preflight.sh
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
