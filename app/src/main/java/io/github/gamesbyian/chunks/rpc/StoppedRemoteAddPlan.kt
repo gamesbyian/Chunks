@@ -9,7 +9,9 @@ class StoppedRemoteAddPlan private constructor(
     val source: String,
     val expectedInfoHash: String,
     val destination: String,
-    val kind: Kind
+    val kind: Kind,
+    /** True means omit d.directory.set after re-reading this server default. */
+    val useServerDefault: Boolean = false
 ) {
     enum class Kind { MAGNET, ARCHIVE_TORRENT_URL }
 
@@ -42,6 +44,17 @@ class StoppedRemoteAddPlan private constructor(
             require(hashPattern.matches(hash)) { "Only 40-character v1 info hashes supported" }
             return StoppedRemoteAddPlan(magnet, hash.lowercase(Locale.ROOT),
                 validatePath(destination), Kind.MAGNET)
+        }
+
+        /**
+         * Leave the server's configured destination untouched. The observed
+         * default must still be a concrete valid absolute parent for exact
+         * post-Add readback; the remote adapter rechecks it before writing.
+         */
+        fun fromMagnetAtServerDefault(magnet: String, observedDefault: String): StoppedRemoteAddPlan {
+            val validated = fromMagnet(magnet, observedDefault)
+            return StoppedRemoteAddPlan(validated.source, validated.expectedInfoHash,
+                validated.destination, validated.kind, useServerDefault = true)
         }
 
         /** The expected hash MUST come from validated fixture metainfo, never a filename. */

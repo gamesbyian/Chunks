@@ -145,4 +145,77 @@ class RemoteStoppedAddTest {
             server.stop(0)
         }
     }
+
+    @Test fun defaultAddOmitsDirectorySetterButRequiresExactObservedDestination() = runBlocking {
+        var loaded = false
+        val requests = mutableListOf<Pair<String, String>>()
+        val server = HttpServer.create(
+            InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0)
+        server.createContext("/RPC2") { exchange ->
+            val xml = exchange.requestBody.bufferedReader().use { it.readText() }
+            val method = Regex("<methodName>([^<]+)</methodName>").find(xml)?.groupValues?.get(1).orEmpty()
+            requests.add(method to xml)
+            val value = when (method) {
+                "d.multicall2" -> if (loaded) rowXml() else "<value><array><data></data></array></value>"
+                "directory.default" -> value(dir)
+                "load.verbose" -> {
+                    if (xml.contains("d.directory.set=")) throw AssertionError("Default must not override path")
+                    loaded = true
+                    num(0)
+                }
+                "d.directory" -> value(dir)
+                "d.is_multi_file" -> num(0)
+                "d.state" -> num(0)
+                else -> throw AssertionError("Unexpected method")
+            }
+            val response = "<methodResponse><params><param>" + value + "</param></params></methodResponse>"
+            val bytes = response.toByteArray(Charsets.UTF_8)
+            exchange.sendResponseHeaders(200, bytes.size.toLong())
+            exchange.responseBody.use { it.write(bytes) }
+        }
+        server.start()
+        try {
+            val remote = RTorrentRemote(RemoteCredentials(
+                "http://127.0.0.1:" + server.address.port + "/RPC2", "", ""))
+            val plan = StoppedRemoteAddPlan.fromMagnetAtServerDefault(magnet, dir)
+            assertTrue(plan.useServerDefault)
+            assertEquals(RemoteAddOutcome.VerifiedStopped(hash, dir), remote.loadStopped(plan))
+            assertEquals(listOf("d.multicall2", "directory.default", "load.verbose",
+                "d.multicall2", "d.directory", "d.is_multi_file", "d.state"),
+                requests.map { it.first })
+            assertFalse(requests.first { it.first == "load.verbose" }.second.contains("d.directory.set"))
+        } finally { server.stop(0) }
+    }
+
+    @Test fun changedDefaultRefusesAddBeforeSendingMutation() = runBlocking {
+        val methods = mutableListOf<String>()
+        val server = HttpServer.create(
+            InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0)
+        server.createContext("/RPC2") { exchange ->
+            val xml = exchange.requestBody.bufferedReader().use { it.readText() }
+            val method = Regex("<methodName>([^<]+)</methodName>").find(xml)?.groupValues?.get(1).orEmpty()
+            methods.add(method)
+            val responseValue = when (method) {
+                "d.multicall2" -> "<value><array><data></data></array></value>"
+                "directory.default" -> value("/other/server/default")
+                else -> throw AssertionError("Mutation sent after default changed")
+            }
+            val body = ("<methodResponse><params><param>" + responseValue +
+                "</param></params></methodResponse>").toByteArray(Charsets.UTF_8)
+            exchange.sendResponseHeaders(200, body.size.toLong())
+            exchange.responseBody.use { it.write(body) }
+        }
+        server.start()
+        try {
+            val remote = RTorrentRemote(RemoteCredentials(
+                "http://127.0.0.1:" + server.address.port + "/RPC2", "", ""))
+            val plan = StoppedRemoteAddPlan.fromMagnetAtServerDefault(magnet, dir)
+            try {
+                remote.loadStopped(plan)
+                fail("Must refuse a stale server default before load.verbose")
+            } catch (_: IllegalStateException) { }
+            assertEquals(listOf("d.multicall2", "directory.default"), methods)
+        } finally { server.stop(0) }
+    }
+
 }

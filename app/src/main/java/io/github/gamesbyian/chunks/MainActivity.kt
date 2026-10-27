@@ -280,6 +280,9 @@ private fun ChunksApp(sharedMagnet: String?) {
                                     transfers = list
                                     version = v
                                     aliasScope = endpoint.trim() + "\u0000" + username.trim()
+                                    // Never carry another server/account's custom destination
+                                    // into this Add draft. Blank selects the new server default.
+                                    draftPath = ""
                                     server = candidate
                                     stale = false
                                     section = if (magnet.isNotBlank()) Section.ADD else Section.TRANSFERS
@@ -435,6 +438,7 @@ private fun ChunksApp(sharedMagnet: String?) {
                         inspectionFence.invalidate()
                         mutationGate.reset()
                         server = null
+                        draftPath = ""
                         aliasScope = ""
                         aliasSessions.clear()
                         version = ""
@@ -465,7 +469,7 @@ private fun ChunksApp(sharedMagnet: String?) {
                 Section.ADD -> VerifiedAddScreen(
                     remote = connectedRemote, magnet = magnet, destination = draftPath,
                     onMagnet = { magnet = it }, onDestination = { draftPath = it },
-                    onBack = { section = Section.TRANSFERS },
+                    onBack = { draftPath = ""; section = Section.TRANSFERS },
                     onComplete = refresh,
                     onMutationStarted = beginRemoteMutation,
                     onMutationSettled = settledRemoteMutation

@@ -240,14 +240,25 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
      * external content download, filesystem move, or silent duplicate edit.
      * Real hosted-server acceptance is still required.
      */
+    /** Refuse a stale default preview before sending even the first Add write. */
+    private suspend fun requireCurrentServerDefault(plan: StoppedRemoteAddPlan) {
+        if (plan.useServerDefault) {
+            check(defaultDirectory() == plan.destination) {
+                "Server default location is missing or changed. Review this Add again."
+            }
+        }
+    }
+
     suspend fun loadStopped(plan: StoppedRemoteAddPlan): RemoteAddOutcome {
         val existing = listTransfers("main")
         if (existing.any { it.hash.equals(plan.expectedInfoHash, ignoreCase = true) }) {
             return RemoteAddOutcome.AlreadyPresent(plan.expectedInfoHash)
         }
+        requireCurrentServerDefault(plan)
         try {
-            call("load.verbose", listOf("", plan.source,
-                "d.directory.set=" + plan.destination))
+            val params: List<Any> = if (plan.useServerDefault) listOf("", plan.source)
+                else listOf("", plan.source, "d.directory.set=" + plan.destination)
+            call("load.verbose", params)
         } catch (_: IOException) {
             // Timeout or gateway loss can occur *after* load was applied.
             // Never repeat the call automatically: duplicates or path drift
@@ -266,18 +277,21 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
      * post-failure cleanup. Live Seedhost acceptance remains separate.
      */
     suspend fun loadStoppedTorrentBytes(
-        torrentBytes: ByteArray, destination: String
+        torrentBytes: ByteArray, destination: String, useServerDefault: Boolean = false
     ): RemoteAddOutcome {
         val inspected = TorrentMetainfoReader.preview(torrentBytes)
         val hash = inspected.infoHashV1
-        val plan = StoppedRemoteAddPlan.fromMagnet(
-            "magnet:?xt=urn:btih:" + hash, destination)
+        val link = "magnet:?xt=urn:btih:" + hash
+        val plan = if (useServerDefault) StoppedRemoteAddPlan.fromMagnetAtServerDefault(link, destination)
+            else StoppedRemoteAddPlan.fromMagnet(link, destination)
         if (listTransfers("main").any { it.hash.equals(hash, ignoreCase = true) }) {
             return RemoteAddOutcome.AlreadyPresent(hash)
         }
+        requireCurrentServerDefault(plan)
         try {
-            call("load.raw_verbose", listOf("", torrentBytes,
-                "d.directory.set=" + plan.destination))
+            val params: List<Any> = if (plan.useServerDefault) listOf("", torrentBytes)
+                else listOf("", torrentBytes, "d.directory.set=" + plan.destination)
+            call("load.raw_verbose", params)
         } catch (_: IOException) {
             return RemoteAddOutcome.Uncertain(hash)
         }
