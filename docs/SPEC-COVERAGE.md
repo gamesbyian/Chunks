@@ -10,6 +10,8 @@
 
 **2026-10-27 owner addition, planned:** Transfer details must offer a straightforward local↔remote copy path, with metadata-only Add distinguished from actual verified byte-copy and migration requiring independently confirmed target resume/seeding plus separately authorized source removal. Also show archive-deletion-after-verified-extraction directly beside individual Remove / Remove & data and in cleanup, with provenance/readback/ownership proof, explicit seeding-breakage acknowledgement and scoped remote filesystem permission. Neither capability is implemented/accepted. See PRODUCT, UX, ARCHITECTURE, SECURITY, STORAGE-AND-EXTRACTION and WORK-QUEUE.
 
+**2026-10-27 batch scope added (planned):** Cross-engine local↔remote Copy/Move must be accessible for selected batches from queues, search and Collections, not only transfer details. Snapshot exact selection, distinguish metadata handoff/payload copy/verified move, show batch and item estimates/progress, handle duplicates, per-item destinations, bounded concurrency, partial failures and durable recovery. No source deletion unless individually verified and explicitly approved. Refer to PRODUCT, UX, ARCHITECTURE, SECURITY and WORK-QUEUE; no implementation acceptance yet.
+
 Legend: **Implemented (limited)** = code merged, may have some suitable specific test evidence; **Unproven** = feature exists but material real-world acceptance missing; **Planned** = normative owner/engineering requirement with no qualified executor. Never use the table to upgrade a capability's evidence class.
 
 | Product promise / boundary | Current state at audited main | Source authority; remaining acceptance |
