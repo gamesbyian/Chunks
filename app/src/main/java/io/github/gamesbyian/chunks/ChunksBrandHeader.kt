@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -36,6 +37,9 @@ internal fun ChunksBrandHeader(modifier: Modifier = Modifier) {
     val lime = Color(0xFFDDF1A7)
     val coral = Color(0xFFFFB69D)
     val blue = Color(0xFF90A7FF)
+    // At 200% text scaling the headline owns the width; ornamental blocks
+    // yield space rather than clipping the actual navigational identity.
+    val showArtwork = LocalDensity.current.fontScale < 1.5f
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -74,14 +78,16 @@ internal fun ChunksBrandHeader(modifier: Modifier = Modifier) {
                 color = lilac
             )
         }
-        Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                BrandBlock(lime)
-                BrandBlock(blue)
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                BrandBlock(coral)
-                BrandBlock(lilac)
+        if (showArtwork) {
+            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                    BrandBlock(lime)
+                    BrandBlock(blue)
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                    BrandBlock(coral)
+                    BrandBlock(lilac)
+                }
             }
         }
     }
