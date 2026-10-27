@@ -28,7 +28,7 @@ Offer an optional privacy lock that protects **viewing and interacting with loca
 
 ### 1. First-class rTorrent remote, no mandatory Companion
 
-Multiple server profiles, authenticated encrypted connections, clear status, trustworthy lists and filtering, adding magnets and .torrent files with explicit destination, transfer start/stop, per-file selections/priorities, trackers, speeds, errors, appropriate queue settings and expert details **as capabilities are demonstrated**. If a server disallows an operation, explain why and present safe alternatives.
+Multiple server profiles, authenticated encrypted connections, clear status, trustworthy lists and filtering, adding magnets and .torrent files with an automatically resolved default or explicitly chosen destination, transfer start/stop, per-file selections/priorities, trackers, speeds, errors, appropriate queue settings and expert details **as capabilities are demonstrated**. If a server disallows an operation, explain why and present safe alternatives.
 
 Server management continues with or without a companion. Chunks does not require cloud sign-in. Real seedbox variants must be verified before claiming compatibility. Transport support is measured per installation, not inferred from its stated release alone.
 
@@ -38,7 +38,7 @@ Server management continues with or without a companion. Chunks does not require
 
 ### 2. Destination selection whenever a transfer begins
 
-Start/Add places destination choice prominently within the Add journey. Show device/server and full human-readable destination, with recent/favorite folders and a new-folder action only when supported. Validate destination scope, permissions and collisions before submission; show pending/unknown server response honestly. The action is not complete merely because an RPC returned success.
+Start/Add prominently shows the current default destination and an optional Change action; users need not select a folder to proceed when the default is valid. Show device/server and full human-readable destination, with recent/favorite folders and a new-folder action only when supported. Validate destination scope, permissions and collisions before submission; show pending/unknown server response honestly. The action is not complete merely because an RPC returned success.
 
 ### 3. Move any time it can be done safely
 
