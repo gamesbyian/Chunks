@@ -137,7 +137,7 @@ class SeedhostLiveAcceptanceTest {
     @Test fun readOnlyExistingDestinationPreflight() = runBlocking {
         val rtorrent = remote()
         val chosen = preflightExistingParent(rtorrent)
-        requireNotNull(chosen) { "No sufficiently corroborated existing single-file destination; no write permitted" }
+        assertNotNull("No sufficiently corroborated existing single-file destination; no write permitted", chosen)
     }
 
     /** One unique synthetic transfer per run, so repeats never collide or touch existing data. */
