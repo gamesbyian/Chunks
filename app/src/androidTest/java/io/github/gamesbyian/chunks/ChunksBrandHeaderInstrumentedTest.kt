@@ -1,6 +1,9 @@
 package io.github.gamesbyian.chunks
 
 import androidx.activity.ComponentActivity
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -15,6 +18,16 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class ChunksBrandHeaderInstrumentedTest {
     @get:Rule val rule = createAndroidComposeRule<ComponentActivity>()
+
+    @Test fun largeAccessibilityTypeStillExposesTheWholeHeader() {
+        rule.setContent {
+            CompositionLocalProvider(LocalDensity provides Density(1f, 2f)) {
+                MaterialTheme { ChunksBrandHeader() }
+            }
+        }
+        rule.onNodeWithContentDescription("chunks. Your downloads have places to be.")
+            .assertIsDisplayed()
+    }
 
     @Test fun brandAndTaglineAreOneAccessibleHeading() {
         rule.setContent {
