@@ -93,8 +93,11 @@ class LocalEngineWebSeedTest {
         waitFor(180_000) { engine.status(added.infoHash)?.progressPpm == 1_000_000 }
         val finished = requireNotNull(engine.status(added.infoHash))
         assertFalse("Start was acknowledged but libtorrent is still paused", finished.stopped)
-        assertTrue("Completed real HTTPS transfer must account for received payload",
-            finished.payloadDownloadedBytes > 0L)
+        // allTimeDownload may exclude HTTP web-seed payload; completed wanted
+        // bytes and independent SHA-256 are the authoritative file evidence.
+        assertTrue("External web seed must have wanted bytes", finished.wantedBytes > 0L)
+        assertEquals("Full payload must be piece-verified on disk",
+            finished.wantedBytes, finished.doneBytes)
         assertEquals(expectedSha256, sha256(File(destination, expectedName).readBytes()))
         println("CHUNKS_LOCAL_ENGINE_WEBSEED: verified ${added.infoHash} sha256=$expectedSha256")
     }
