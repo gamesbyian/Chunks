@@ -120,7 +120,7 @@ class LocalEngineScreenInstrumentedTest {
         rule.onNodeWithText("Previously observed transfer").assertExists()
         rule.onNodeWithText("Stop").assertIsNotEnabled()
         rule.onNodeWithText("Remove…").assertIsNotEnabled()
-        rule.onNodeWithText("Files").assertIsNotEnabled()
+        rule.onNodeWithText("Hide files").assertIsNotEnabled()
         rule.onNodeWithText("complete.bin").assertExists().assertIsNotEnabled()
         assertEquals(0, toggles)
         assertEquals(0, removals)
