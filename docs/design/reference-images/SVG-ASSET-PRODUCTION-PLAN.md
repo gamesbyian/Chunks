@@ -2,7 +2,7 @@
 
 **Owner directive · 2026-10-27:** Every inconsistent reference-image variant is to receive its **own** independent SVG. Do not resolve away alternatives or select an undocumented winner. All six reference PNGs remain untouched, immediately alongside this plan.
 
-**Authoritative per-asset ledger:** [Master inventory](../svg/master-inventory.json) has **775 named entries** (173 SVG draft files, 601 planned slots, and one existing approved SVG). Each entry has an ID, category, origin, status and exact file path when present. The inventory is the exhaustive tracking index; this document explains how to make and test assets. The CSV-like task list is *not* a competing product work queue: [WORK-QUEUE](../../WORK-QUEUE.md) remains the repo's ranked authority.
+**Authoritative per-asset ledger:** [Master inventory](../svg/master-inventory.json) has **822 named entries** (326 SVG draft files, 495 planned slots, and one existing approved SVG). Each entry has an ID, category, origin, status and exact file path when present. The inventory is the exhaustive tracking index; this document explains how to make and test assets. The CSV-like task list is *not* a competing product work queue: [WORK-QUEUE](../../WORK-QUEUE.md) remains the repo's ranked authority.
 
 ## Reference map
 
@@ -60,9 +60,9 @@
 
 ## Current delivery checkpoint
 
-- **Delivered as vector drafts:** 108 icons and doodles, plus 26 alternative logos/stickers/launcher concepts/illustration and 39 layer-separated character assets. All are independent SVG files and are explicitly provisional with respect to fidelity.
+- **Delivered as vector drafts:** 108 icons and doodles, 26 alternative logos/stickers/launcher concepts/illustration, 39 preliminary character assets, 25 exact-geometry approved-icon derivatives, 96 standalone UI component/state specimens and 32 independent palette samples. All are independent SVG files and are explicitly provisional with respect to fidelity.
 - **Already approved unchanged:** the official full-colour transparent launcher SVG, generated into the Android launcher via the existing pipeline.
-- **Remaining:** 601 individually named reference-fidelity targets. The first dimensional mascots now have layered vector drafts, but their exact reference matching is still outstanding; other major areas include the reference-faithful wordmark/font work, fully illustrated promotional scenes, and UI state specimens.
+- **Remaining:** 495 individually named reference-fidelity targets. The first dimensional mascots now have layered vector drafts, but their exact reference matching is still outstanding; other major areas include the reference-faithful wordmark/font work, fully illustrated promotional scenes, and UI state specimens.
 - **Important limitations:** stylized wordmark paths are an original first interpretation, not exact tracing. Several tagline/sticker SVGs use editable SVG `<text>` and system font fallbacks, so appearance will vary until type licensing and true outline conversion. Experimental logo/launcher alternatives are **not** wired into the app.
 
-**Next practical step:** use the now-present light/dark asset gallery to inspect and refine the layer-separated 3D characters against the six PNGs, then produce reference-faithful wordmark and typography specimens and reusable Compose equivalents. Keep other development lanes independent.
+**Next practical step:** use the newly expanded all-asset gallery and side-by-side compare tray to refine the dimensional characters and the UI component illustrations against the six PNGs, then produce reference-faithful wordmark and typography specimens and reusable Compose equivalents. Keep other development lanes independent.

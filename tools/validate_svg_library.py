@@ -52,12 +52,22 @@ def main():
     assert inv["totals"]["approved"] == 1
     assert len(actual) == inv["totals"]["vectorDraft"], (len(actual), inv["totals"]["vectorDraft"])
     assert pending == inv["totals"]["planned"], (pending, inv["totals"]["planned"])
-    for cat in ["icons/catalog.json", "variants-catalog.json"]:
+    for cat in ["icons/catalog.json", "variants-catalog.json", "ui/catalog.json"]:
         collection=json.loads((BASE / cat).read_text(encoding="utf-8"))
         for item in collection["assets"]:
             path="docs/design/svg/" + item["path"]
             assert path in actual, f"catalog references missing file: {path}"
-    print(f"SVG library PASS: {len(actual)} vector drafts, 1 unchanged approved external master, {pending} planned targets.")
+    # Gallery may be opened as a static file, so its embedded inventory must be complete.
+    import re
+    gallery = (BASE / "gallery.html").read_text(encoding="utf-8")
+    match = re.search(r'<script type="application/json" id="svg-catalog">(.*?)</script>', gallery, re.S)
+    assert match, "missing static gallery JSON catalogue"
+    gallery_assets = json.loads(match.group(1))
+    gallery_paths = [item["src"] for item in gallery_assets]
+    expected_gallery = {str(p.relative_to(BASE)) for p in BASE.rglob("*.svg")}
+    assert len(gallery_paths) == len(set(gallery_paths)), "duplicate gallery SVG paths"
+    assert set(gallery_paths) == expected_gallery, f"gallery mismatch: missing {sorted(expected_gallery-set(gallery_paths))}, extra {sorted(set(gallery_paths)-expected_gallery)}"
+    print(f"SVG library PASS: {len(actual)} vector drafts and gallery entries, 1 unchanged approved external master, {pending} planned targets.")
 if __name__ == "__main__":
     try:
         main()
