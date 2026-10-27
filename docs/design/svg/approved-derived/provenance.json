@@ -1,0 +1,108 @@
+{
+  "generator": "Exact geometry extracted (without raster) from approved Chunks SVG",
+  "canonicalFile": "docs/design/approved/chunks-app-icon-master.svg",
+  "canonicalGitBlob": "e638e48434233ed465d5592dd348126a530477a1",
+  "variants": [
+    {
+      "id": "approved-derived/layers/purple-document",
+      "path": "docs/design/svg/approved-derived/layers/purple-document.svg"
+    },
+    {
+      "id": "approved-derived/layers/green-download-tile",
+      "path": "docs/design/svg/approved-derived/layers/green-download-tile.svg"
+    },
+    {
+      "id": "approved-derived/layers/white-emphasis-rays",
+      "path": "docs/design/svg/approved-derived/layers/white-emphasis-rays.svg"
+    },
+    {
+      "id": "approved-derived/layers/folder-rear-wall",
+      "path": "docs/design/svg/approved-derived/layers/folder-rear-wall.svg"
+    },
+    {
+      "id": "approved-derived/layers/coral-media-tile",
+      "path": "docs/design/svg/approved-derived/layers/coral-media-tile.svg"
+    },
+    {
+      "id": "approved-derived/layers/folder-front-face",
+      "path": "docs/design/svg/approved-derived/layers/folder-front-face.svg"
+    },
+    {
+      "id": "approved-derived/layers/folder-face-features",
+      "path": "docs/design/svg/approved-derived/layers/folder-face-features.svg"
+    },
+    {
+      "id": "approved-derived/layers/left-eye",
+      "path": "docs/design/svg/approved-derived/layers/left-eye.svg"
+    },
+    {
+      "id": "approved-derived/layers/right-eye",
+      "path": "docs/design/svg/approved-derived/layers/right-eye.svg"
+    },
+    {
+      "id": "approved-derived/layers/smile",
+      "path": "docs/design/svg/approved-derived/layers/smile.svg"
+    },
+    {
+      "id": "approved-derived/layers/green-download-symbol",
+      "path": "docs/design/svg/approved-derived/layers/green-download-symbol.svg"
+    },
+    {
+      "id": "approved-derived/layers/purple-storage-symbol",
+      "path": "docs/design/svg/approved-derived/layers/purple-storage-symbol.svg"
+    },
+    {
+      "id": "approved-derived/layers/coral-media-symbol",
+      "path": "docs/design/svg/approved-derived/layers/coral-media-symbol.svg"
+    },
+    {
+      "id": "approved-derived/variants/folder-only",
+      "path": "docs/design/svg/approved-derived/variants/folder-only.svg"
+    },
+    {
+      "id": "approved-derived/variants/folder-only-no-face",
+      "path": "docs/design/svg/approved-derived/variants/folder-only-no-face.svg"
+    },
+    {
+      "id": "approved-derived/variants/folder-with-storage-and-download",
+      "path": "docs/design/svg/approved-derived/variants/folder-with-storage-and-download.svg"
+    },
+    {
+      "id": "approved-derived/variants/folder-with-media",
+      "path": "docs/design/svg/approved-derived/variants/folder-with-media.svg"
+    },
+    {
+      "id": "approved-derived/variants/full-transparent",
+      "path": "docs/design/svg/approved-derived/variants/full-transparent.svg"
+    },
+    {
+      "id": "approved-derived/variants/full-on-cream",
+      "path": "docs/design/svg/approved-derived/variants/full-on-cream.svg"
+    },
+    {
+      "id": "approved-derived/variants/full-on-yellow",
+      "path": "docs/design/svg/approved-derived/variants/full-on-yellow.svg"
+    },
+    {
+      "id": "approved-derived/variants/full-on-near-black",
+      "path": "docs/design/svg/approved-derived/variants/full-on-near-black.svg"
+    },
+    {
+      "id": "approved-derived/variants/full-monochrome",
+      "path": "docs/design/svg/approved-derived/variants/full-monochrome.svg"
+    },
+    {
+      "id": "approved-derived/variants/folder-front-only",
+      "path": "docs/design/svg/approved-derived/variants/folder-front-only.svg"
+    },
+    {
+      "id": "approved-derived/variants/download-with-folder",
+      "path": "docs/design/svg/approved-derived/variants/download-with-folder.svg"
+    },
+    {
+      "id": "approved-derived/variants/storage-with-folder",
+      "path": "docs/design/svg/approved-derived/variants/storage-with-folder.svg"
+    }
+  ],
+  "note": "Canonical SVG stays untouched. Every derivative is experimental; no change to Android launcher."
+}

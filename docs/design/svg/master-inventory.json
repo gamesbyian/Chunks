@@ -10,8 +10,8 @@
   },
   "totals": {
     "approved": 1,
-    "vectorDraft": 173,
-    "planned": 601
+    "vectorDraft": 198,
+    "planned": 591
   },
   "assets": [
     {
@@ -1098,15 +1098,17 @@
       "id": "character-parts/folder-front-panel",
       "category": "character-parts",
       "label": "folder front panel",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "owner-approved icon master, exact underlying geometry; alternative compositions not approved",
+      "path": "docs/design/svg/approved-derived/layers/folder-front-face.svg"
     },
     {
       "id": "character-parts/folder-rear-wall",
       "category": "character-parts",
       "label": "folder rear wall",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "owner-approved icon master, exact underlying geometry; alternative compositions not approved",
+      "path": "docs/design/svg/approved-derived/layers/folder-rear-wall.svg"
     },
     {
       "id": "character-parts/folder-top-tab",
@@ -1168,22 +1170,25 @@
       "id": "character-parts/folder-left-eye",
       "category": "character-parts",
       "label": "folder left eye",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "owner-approved icon master, exact underlying geometry; alternative compositions not approved",
+      "path": "docs/design/svg/approved-derived/layers/left-eye.svg"
     },
     {
       "id": "character-parts/folder-right-eye",
       "category": "character-parts",
       "label": "folder right eye",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "owner-approved icon master, exact underlying geometry; alternative compositions not approved",
+      "path": "docs/design/svg/approved-derived/layers/right-eye.svg"
     },
     {
       "id": "character-parts/folder-smile",
       "category": "character-parts",
       "label": "folder smile",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "owner-approved icon master, exact underlying geometry; alternative compositions not approved",
+      "path": "docs/design/svg/approved-derived/layers/smile.svg"
     },
     {
       "id": "character-parts/folder-ground-shadow",
@@ -1210,15 +1215,17 @@
       "id": "character-parts/folder-with-colourful-contents",
       "category": "character-parts",
       "label": "folder with colourful contents",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "owner-approved icon master, exact underlying geometry; alternative compositions not approved",
+      "path": "docs/design/svg/approved-derived/variants/folder-with-storage-and-download.svg"
     },
     {
       "id": "character-parts/folder-without-contents",
       "category": "character-parts",
       "label": "folder without contents",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "owner-approved icon master, exact underlying geometry; alternative compositions not approved",
+      "path": "docs/design/svg/approved-derived/variants/folder-only.svg"
     },
     {
       "id": "character-parts/folder-black-white-mark",
@@ -1273,8 +1280,9 @@
       "id": "character-parts/purple-cube-three-disc-pictogram",
       "category": "character-parts",
       "label": "purple cube three-disc pictogram",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "owner-approved icon master, exact underlying geometry; alternative compositions not approved",
+      "path": "docs/design/svg/approved-derived/layers/purple-storage-symbol.svg"
     },
     {
       "id": "character-parts/green-download-cube-front",
@@ -1315,8 +1323,9 @@
       "id": "character-parts/green-cube-arrow-pictogram",
       "category": "character-parts",
       "label": "green cube arrow pictogram",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "owner-approved icon master, exact underlying geometry; alternative compositions not approved",
+      "path": "docs/design/svg/approved-derived/layers/green-download-symbol.svg"
     },
     {
       "id": "character-parts/coral-media-cube-front",
@@ -1357,8 +1366,9 @@
       "id": "character-parts/coral-cube-mountain-sun-pictogram",
       "category": "character-parts",
       "label": "coral cube mountain-sun pictogram",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "owner-approved icon master, exact underlying geometry; alternative compositions not approved",
+      "path": "docs/design/svg/approved-derived/layers/coral-media-symbol.svg"
     },
     {
       "id": "character-parts/plain-pink-3d-block",
@@ -5612,6 +5622,126 @@
       "path": "docs/design/svg/characters/four-character-lineup/storage-first.svg",
       "status": "vector-draft",
       "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "approved-derived/layers/purple-document",
+      "category": "approved-derived",
+      "label": "Approved artwork purple storage document as layer",
+      "status": "vector-draft",
+      "path": "docs/design/svg/approved-derived/layers/purple-document.svg",
+      "source": "owner-approved icon master, exact underlying geometry; alternative compositions not approved"
+    },
+    {
+      "id": "approved-derived/layers/green-download-tile",
+      "category": "approved-derived",
+      "label": "Approved artwork green download tile as layer",
+      "status": "vector-draft",
+      "path": "docs/design/svg/approved-derived/layers/green-download-tile.svg",
+      "source": "owner-approved icon master, exact underlying geometry; alternative compositions not approved"
+    },
+    {
+      "id": "approved-derived/layers/white-emphasis-rays",
+      "category": "approved-derived",
+      "label": "Approved artwork white rays as layer",
+      "status": "vector-draft",
+      "path": "docs/design/svg/approved-derived/layers/white-emphasis-rays.svg",
+      "source": "owner-approved icon master, exact underlying geometry; alternative compositions not approved"
+    },
+    {
+      "id": "approved-derived/layers/coral-media-tile",
+      "category": "approved-derived",
+      "label": "Approved artwork coral media card as layer",
+      "status": "vector-draft",
+      "path": "docs/design/svg/approved-derived/layers/coral-media-tile.svg",
+      "source": "owner-approved icon master, exact underlying geometry; alternative compositions not approved"
+    },
+    {
+      "id": "approved-derived/layers/folder-face-features",
+      "category": "approved-derived",
+      "label": "Approved artwork smiling face as layer",
+      "status": "vector-draft",
+      "path": "docs/design/svg/approved-derived/layers/folder-face-features.svg",
+      "source": "owner-approved icon master, exact underlying geometry; alternative compositions not approved"
+    },
+    {
+      "id": "approved-derived/variants/folder-only-no-face",
+      "category": "approved-derived",
+      "label": "Approved-art derived folder without face",
+      "status": "vector-draft",
+      "path": "docs/design/svg/approved-derived/variants/folder-only-no-face.svg",
+      "source": "owner-approved icon master, exact underlying geometry; alternative compositions not approved"
+    },
+    {
+      "id": "approved-derived/variants/folder-with-media",
+      "category": "approved-derived",
+      "label": "Approved-art derived folder with coral media tile",
+      "status": "vector-draft",
+      "path": "docs/design/svg/approved-derived/variants/folder-with-media.svg",
+      "source": "owner-approved icon master, exact underlying geometry; alternative compositions not approved"
+    },
+    {
+      "id": "approved-derived/variants/full-transparent",
+      "category": "approved-derived",
+      "label": "Approved-art derived full composite transparent",
+      "status": "vector-draft",
+      "path": "docs/design/svg/approved-derived/variants/full-transparent.svg",
+      "source": "owner-approved icon master, exact underlying geometry; alternative compositions not approved"
+    },
+    {
+      "id": "approved-derived/variants/full-on-cream",
+      "category": "approved-derived",
+      "label": "Approved-art derived composite on cream",
+      "status": "vector-draft",
+      "path": "docs/design/svg/approved-derived/variants/full-on-cream.svg",
+      "source": "owner-approved icon master, exact underlying geometry; alternative compositions not approved"
+    },
+    {
+      "id": "approved-derived/variants/full-on-yellow",
+      "category": "approved-derived",
+      "label": "Approved-art derived composite on yellow",
+      "status": "vector-draft",
+      "path": "docs/design/svg/approved-derived/variants/full-on-yellow.svg",
+      "source": "owner-approved icon master, exact underlying geometry; alternative compositions not approved"
+    },
+    {
+      "id": "approved-derived/variants/full-on-near-black",
+      "category": "approved-derived",
+      "label": "Approved-art derived composite on near-black",
+      "status": "vector-draft",
+      "path": "docs/design/svg/approved-derived/variants/full-on-near-black.svg",
+      "source": "owner-approved icon master, exact underlying geometry; alternative compositions not approved"
+    },
+    {
+      "id": "approved-derived/variants/full-monochrome",
+      "category": "approved-derived",
+      "label": "Approved-art derived full composition grayscale",
+      "status": "vector-draft",
+      "path": "docs/design/svg/approved-derived/variants/full-monochrome.svg",
+      "source": "owner-approved icon master, exact underlying geometry; alternative compositions not approved"
+    },
+    {
+      "id": "approved-derived/variants/folder-front-only",
+      "category": "approved-derived",
+      "label": "Approved-art derived folder front and face features",
+      "status": "vector-draft",
+      "path": "docs/design/svg/approved-derived/variants/folder-front-only.svg",
+      "source": "owner-approved icon master, exact underlying geometry; alternative compositions not approved"
+    },
+    {
+      "id": "approved-derived/variants/download-with-folder",
+      "category": "approved-derived",
+      "label": "Approved-art derived download cube behind folder",
+      "status": "vector-draft",
+      "path": "docs/design/svg/approved-derived/variants/download-with-folder.svg",
+      "source": "owner-approved icon master, exact underlying geometry; alternative compositions not approved"
+    },
+    {
+      "id": "approved-derived/variants/storage-with-folder",
+      "category": "approved-derived",
+      "label": "Approved-art derived storage cube behind folder",
+      "status": "vector-draft",
+      "path": "docs/design/svg/approved-derived/variants/storage-with-folder.svg",
+      "source": "owner-approved icon master, exact underlying geometry; alternative compositions not approved"
     }
   ]
 }
