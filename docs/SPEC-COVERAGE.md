@@ -2,6 +2,8 @@
 
 **Reconciled 2026-10-26 from project conversations, [owner decisions](DECISIONS.md), [PRODUCT](PRODUCT.md), [UX](UX.md), [ARCHITECTURE](ARCHITECTURE.md), [SECURITY](SECURITY.md), [STORAGE-AND-EXTRACTION](STORAGE-AND-EXTRACTION.md), code names, merged PRs and live open issues.** This is a traceability map, **not a second work queue**. Ordering lives only in [WORK-QUEUE](WORK-QUEUE.md); exact test evidence only in [QUALITY-LEDGER](QUALITY-LEDGER.md).
 
+**2026-10-27 added owner scope:** Optional session privacy lock for local transfers and independently each rTorrent profile (once per process session by default once enabled), supported Android strong biometrics/device credential fallback, quick lock, redaction, and separate opt-out-by-default secure remote login persistence are **Planned / unproven**. Requirements: [TRANSFER-PRIVACY-LOCK.md](TRANSFER-PRIVACY-LOCK.md), [PRODUCT.md](PRODUCT.md), [SECURITY.md](SECURITY.md), [UX.md](UX.md). Implementation and physical acceptance remain open; do not count this text as code.
+
 Legend: **Implemented (limited)** = code merged, may have some suitable specific test evidence; **Unproven** = feature exists but material real-world acceptance missing; **Planned** = normative owner/engineering requirement with no qualified executor. Never use the table to upgrade a capability's evidence class.
 
 | Product promise / boundary | Current state at audited main | Source authority; remaining acceptance |
