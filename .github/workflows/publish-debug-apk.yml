@@ -5,8 +5,10 @@ name: Publish Chunks installable Android debug APK
 # 2026-10-27 republish only after merged Add-default, verified-recent Place,
 # remembered-credential policy and documentation pass their exact-head gates.
 # This is an installable DEBUG pre-alpha, never physical handset acceptance.
-# 2026-10-27 diagnosis build: exact-main read-only traffic + tracker evidence UI,
-# protected Android acceptance remains a separate unverified device-host gate.
+# 2026-10-27 newer diagnostic/navigation build: publish only AFTER local/remote
+# Back to top passes exact-head JVM and native gates, alongside verified remote
+# loaded-view diagnostics and successful protected Android read-only Add preview.
+# This DEBUG pre-alpha still has NO real peer payload or physical phone proof.
 on:
   push:
     branches: [main]
