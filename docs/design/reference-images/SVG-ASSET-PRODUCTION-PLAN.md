@@ -62,7 +62,7 @@
 
 - **Delivered as vector drafts:** 108 icons and doodles, plus 26 alternative logos/stickers/launcher concepts/illustration and 39 layer-separated character assets. All are independent SVG files and are explicitly provisional with respect to fidelity.
 - **Already approved unchanged:** the official full-colour transparent launcher SVG, generated into the Android launcher via the existing pipeline.
-- **Remaining:** 601 individually named master-ledger entries, foremost the decomposed 3D mascots, the reference-faithful wordmark/font work, fully illustrated promotional scenes, and UI state specimens.
+- **Remaining:** 601 individually named reference-fidelity targets. The first dimensional mascots now have layered vector drafts, but their exact reference matching is still outstanding; other major areas include the reference-faithful wordmark/font work, fully illustrated promotional scenes, and UI state specimens.
 - **Important limitations:** stylized wordmark paths are an original first interpretation, not exact tracing. Several tagline/sticker SVGs use editable SVG `<text>` and system font fallbacks, so appearance will vary until type licensing and true outline conversion. Experimental logo/launcher alternatives are **not** wired into the app.
 
-**Next practical step:** capture a light/dark comparison gallery and refine the four 3D characters as layer-separated SVG masters; then produce exact/finalized wordmark and typography specimens and reusable Compose equivalents. Keep other development lanes independent.
+**Next practical step:** use the now-present light/dark asset gallery to inspect and refine the layer-separated 3D characters against the six PNGs, then produce reference-faithful wordmark and typography specimens and reusable Compose equivalents. Keep other development lanes independent.
