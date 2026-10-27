@@ -13,39 +13,43 @@ import java.security.MessageDigest
  * from unloaded remote views remain visible once explicitly registered.
  */
 internal class CollectionNameRegistry(context: Context) {
+    private companion object {
+        // Several activities/tests may construct independent registry instances
+        // sharing one Preferences file. Per-instance @Synchronized would lose
+        // read/modify/write updates from concurrent instances in this process.
+        val editLock = Any()
+    }
     private val prefs = context.applicationContext.getSharedPreferences(
         "chunks_collection_names_v1", Context.MODE_PRIVATE
     )
 
-    @Synchronized
-    fun names(scope: String): List<String> {
+    fun names(scope: String): List<String> = synchronized(editLock) {
         val stored = try { prefs.getStringSet(key(scope), null)?.toSet().orEmpty() }
         catch (_: ClassCastException) { emptySet() }
-        return CollectionNameRegistryRules.ordered(stored)
+        CollectionNameRegistryRules.ordered(stored)
     }
 
     /** True only if the validated name was already present or was saved. */
-    @Synchronized
-    fun create(scope: String, proposed: String): Boolean {
+    fun create(scope: String, proposed: String): Boolean = synchronized(editLock) {
         val previous = names(scope)
-        val updated = CollectionNameRegistryRules.add(previous, proposed) ?: return false
-        if (updated == previous) return true
-        return prefs.edit().putStringSet(key(scope), updated.toSet()).commit()
+        val updated = CollectionNameRegistryRules.add(previous, proposed)
+            ?: return@synchronized false
+        if (updated == previous) true
+        else prefs.edit().putStringSet(key(scope), updated.toSet()).commit()
     }
 
     /**
      * Forget a reusable name, not any membership. Transfers carrying this
      * Collection are unaffected and may still show the same name.
      */
-    @Synchronized
-    fun forget(scope: String, name: String): Boolean {
+    fun forget(scope: String, name: String): Boolean = synchronized(editLock) {
         val previous = names(scope)
-        if (previous.none { it.equals(name, ignoreCase = true) }) return false
+        if (previous.none { it.equals(name, ignoreCase = true) }) return@synchronized false
         val updated = previous.filterNot { it.equals(name, ignoreCase = true) }
         val edit = prefs.edit()
         if (updated.isEmpty()) edit.remove(key(scope))
         else edit.putStringSet(key(scope), updated.toSet())
-        return edit.commit()
+        edit.commit()
     }
 
     private fun key(scope: String): String {
