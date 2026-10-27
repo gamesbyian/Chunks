@@ -8,7 +8,7 @@ This is an original, **all-variants-preserved** SVG collection. No source PNG is
 
 - `icons/`: 108 64×64 glyph/doodle masters with stable category/name and `icons/catalog.json`.
 - `brand/`, `launcher-alternatives/`, `illustrations/`: 26 independently renderable alternatives, catalogued in `variants-catalog.json`.
-- `master-inventory.json`: 736 named targets, including not-yet-created glyphs, lettering, characters, UI components and reference-derived variants. `planned` entries are not files.
+- `characters/`: 39 dimensional/flat/monochrome character composites and separable face/top/side/pictogram layers.\n- `master-inventory.json`: 775 named targets, including not-yet-created glyphs, lettering, characters, UI components and reference-derived variants. `planned` entries are not files.
 - `gallery.html`: static searchable viewer of all present SVG drafts with dark/light previews.
 - `python3 tools/validate_svg_library.py`: validates manifest, XML, self-contained SVG structure and file coverage. CI runs it on relevant PRs.
 

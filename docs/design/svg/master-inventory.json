@@ -10,7 +10,7 @@
   },
   "totals": {
     "approved": 1,
-    "vectorDraft": 134,
+    "vectorDraft": 173,
     "planned": 601
   },
   "assets": [
@@ -5300,6 +5300,318 @@
       "label": "compact-ui-specimen punctuation check ✓",
       "status": "planned",
       "source": "03-typography-and-wordmark.png"
+    },
+    {
+      "id": "vector/green-download/dimensional",
+      "category": "character-combinations",
+      "label": "green download complete dimensional",
+      "path": "docs/design/svg/characters/green-download/dimensional.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/green-download/flat",
+      "category": "character-combinations",
+      "label": "green download simplified flat",
+      "path": "docs/design/svg/characters/green-download/flat.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/green-download/monochrome",
+      "category": "character-combinations",
+      "label": "green download monochrome",
+      "path": "docs/design/svg/characters/green-download/monochrome.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/green-download/front",
+      "category": "character-parts",
+      "label": "green download front standalone layer",
+      "path": "docs/design/svg/characters/green-download/front.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/green-download/top",
+      "category": "character-parts",
+      "label": "green download top standalone layer",
+      "path": "docs/design/svg/characters/green-download/top.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/green-download/side",
+      "category": "character-parts",
+      "label": "green download side standalone layer",
+      "path": "docs/design/svg/characters/green-download/side.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/green-download/highlight",
+      "category": "character-parts",
+      "label": "green download highlight standalone layer",
+      "path": "docs/design/svg/characters/green-download/highlight.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/green-download/ground-shadow",
+      "category": "character-parts",
+      "label": "green download ground-shadow standalone layer",
+      "path": "docs/design/svg/characters/green-download/ground-shadow.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/green-download/pictogram",
+      "category": "character-parts",
+      "label": "green download pictogram standalone layer",
+      "path": "docs/design/svg/characters/green-download/pictogram.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/purple-storage/dimensional",
+      "category": "character-combinations",
+      "label": "purple storage complete dimensional",
+      "path": "docs/design/svg/characters/purple-storage/dimensional.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/purple-storage/flat",
+      "category": "character-combinations",
+      "label": "purple storage simplified flat",
+      "path": "docs/design/svg/characters/purple-storage/flat.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/purple-storage/monochrome",
+      "category": "character-combinations",
+      "label": "purple storage monochrome",
+      "path": "docs/design/svg/characters/purple-storage/monochrome.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/purple-storage/front",
+      "category": "character-parts",
+      "label": "purple storage front standalone layer",
+      "path": "docs/design/svg/characters/purple-storage/front.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/purple-storage/top",
+      "category": "character-parts",
+      "label": "purple storage top standalone layer",
+      "path": "docs/design/svg/characters/purple-storage/top.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/purple-storage/side",
+      "category": "character-parts",
+      "label": "purple storage side standalone layer",
+      "path": "docs/design/svg/characters/purple-storage/side.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/purple-storage/highlight",
+      "category": "character-parts",
+      "label": "purple storage highlight standalone layer",
+      "path": "docs/design/svg/characters/purple-storage/highlight.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/purple-storage/ground-shadow",
+      "category": "character-parts",
+      "label": "purple storage ground-shadow standalone layer",
+      "path": "docs/design/svg/characters/purple-storage/ground-shadow.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/purple-storage/pictogram",
+      "category": "character-parts",
+      "label": "purple storage pictogram standalone layer",
+      "path": "docs/design/svg/characters/purple-storage/pictogram.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/coral-media/dimensional",
+      "category": "character-combinations",
+      "label": "coral media complete dimensional",
+      "path": "docs/design/svg/characters/coral-media/dimensional.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/coral-media/flat",
+      "category": "character-combinations",
+      "label": "coral media simplified flat",
+      "path": "docs/design/svg/characters/coral-media/flat.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/coral-media/monochrome",
+      "category": "character-combinations",
+      "label": "coral media monochrome",
+      "path": "docs/design/svg/characters/coral-media/monochrome.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/coral-media/front",
+      "category": "character-parts",
+      "label": "coral media front standalone layer",
+      "path": "docs/design/svg/characters/coral-media/front.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/coral-media/top",
+      "category": "character-parts",
+      "label": "coral media top standalone layer",
+      "path": "docs/design/svg/characters/coral-media/top.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/coral-media/side",
+      "category": "character-parts",
+      "label": "coral media side standalone layer",
+      "path": "docs/design/svg/characters/coral-media/side.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/coral-media/highlight",
+      "category": "character-parts",
+      "label": "coral media highlight standalone layer",
+      "path": "docs/design/svg/characters/coral-media/highlight.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/coral-media/ground-shadow",
+      "category": "character-parts",
+      "label": "coral media ground-shadow standalone layer",
+      "path": "docs/design/svg/characters/coral-media/ground-shadow.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/coral-media/pictogram",
+      "category": "character-parts",
+      "label": "coral media pictogram standalone layer",
+      "path": "docs/design/svg/characters/coral-media/pictogram.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/blue-folder/dimensional",
+      "category": "character-combinations",
+      "label": "Blue happy folder standalone dimensional mascot",
+      "path": "docs/design/svg/characters/blue-folder/dimensional.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/blue-folder/flat",
+      "category": "character-combinations",
+      "label": "Blue smiling folder flat variant",
+      "path": "docs/design/svg/characters/blue-folder/flat.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/blue-folder/monochrome",
+      "category": "character-combinations",
+      "label": "Blue folder monochrome black silhouette",
+      "path": "docs/design/svg/characters/blue-folder/monochrome.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/blue-folder/ground",
+      "category": "character-parts",
+      "label": "Blue happy folder ground standalone layer",
+      "path": "docs/design/svg/characters/blue-folder/ground.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/blue-folder/rear",
+      "category": "character-parts",
+      "label": "Blue happy folder rear standalone layer",
+      "path": "docs/design/svg/characters/blue-folder/rear.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/blue-folder/side",
+      "category": "character-parts",
+      "label": "Blue happy folder side standalone layer",
+      "path": "docs/design/svg/characters/blue-folder/side.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/blue-folder/front",
+      "category": "character-parts",
+      "label": "Blue happy folder front standalone layer",
+      "path": "docs/design/svg/characters/blue-folder/front.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/blue-folder/shine",
+      "category": "character-parts",
+      "label": "Blue happy folder shine standalone layer",
+      "path": "docs/design/svg/characters/blue-folder/shine.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/blue-folder/eyes",
+      "category": "character-parts",
+      "label": "Blue happy folder eyes standalone layer",
+      "path": "docs/design/svg/characters/blue-folder/eyes.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/blue-folder/smile",
+      "category": "character-parts",
+      "label": "Blue happy folder smile standalone layer",
+      "path": "docs/design/svg/characters/blue-folder/smile.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/four-character-lineup/dimensional",
+      "category": "character-combinations",
+      "label": "Four-character dimensional lineup",
+      "path": "docs/design/svg/characters/four-character-lineup/dimensional.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
+    },
+    {
+      "id": "vector/four-character-lineup/storage-first",
+      "category": "character-combinations",
+      "label": "Four-character lineup storage-first variant",
+      "path": "docs/design/svg/characters/four-character-lineup/storage-first.svg",
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png"
     }
   ]
 }

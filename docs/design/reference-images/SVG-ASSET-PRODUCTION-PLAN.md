@@ -2,7 +2,7 @@
 
 **Owner directive · 2026-10-27:** Every inconsistent reference-image variant is to receive its **own** independent SVG. Do not resolve away alternatives or select an undocumented winner. All six reference PNGs remain untouched, immediately alongside this plan.
 
-**Authoritative per-asset ledger:** [Master inventory](../svg/master-inventory.json) has **736 named entries** (134 SVG draft files, 601 planned slots, and one existing approved SVG). Each entry has an ID, category, origin, status and exact file path when present. The inventory is the exhaustive tracking index; this document explains how to make and test assets. The CSV-like task list is *not* a competing product work queue: [WORK-QUEUE](../../WORK-QUEUE.md) remains the repo's ranked authority.
+**Authoritative per-asset ledger:** [Master inventory](../svg/master-inventory.json) has **775 named entries** (173 SVG draft files, 601 planned slots, and one existing approved SVG). Each entry has an ID, category, origin, status and exact file path when present. The inventory is the exhaustive tracking index; this document explains how to make and test assets. The CSV-like task list is *not* a competing product work queue: [WORK-QUEUE](../../WORK-QUEUE.md) remains the repo's ranked authority.
 
 ## Reference map
 
@@ -60,7 +60,7 @@
 
 ## Current delivery checkpoint
 
-- **Delivered as vector drafts:** 108 icons and doodles, plus 26 alternative logos/stickers/launcher concepts/illustration. All are independent SVG files and are explicitly provisional with respect to fidelity.
+- **Delivered as vector drafts:** 108 icons and doodles, plus 26 alternative logos/stickers/launcher concepts/illustration and 39 layer-separated character assets. All are independent SVG files and are explicitly provisional with respect to fidelity.
 - **Already approved unchanged:** the official full-colour transparent launcher SVG, generated into the Android launcher via the existing pipeline.
 - **Remaining:** 601 individually named master-ledger entries, foremost the decomposed 3D mascots, the reference-faithful wordmark/font work, fully illustrated promotional scenes, and UI state specimens.
 - **Important limitations:** stylized wordmark paths are an original first interpretation, not exact tracing. Several tagline/sticker SVGs use editable SVG `<text>` and system font fallbacks, so appearance will vary until type licensing and true outline conversion. Experimental logo/launcher alternatives are **not** wired into the app.
