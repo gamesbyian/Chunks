@@ -142,6 +142,52 @@ class SeedhostLiveAcceptanceTest {
             windows.all { it.elapsedMillis >= 5_000L })
     }
 
+    /**
+     * Read-only tracker announce-history witness for the same bounded
+     * incomplete/started subset as the traffic window. URL, announce message,
+     * peer IP and passkey getters are not called. Report aggregate counts only.
+     * A failed or unsupported getter means unknown, never zero or success.
+     */
+    @Test fun readOnlyCurrentHostTrackerHistory() = runBlocking {
+        val remote = remote()
+        val candidates = remote.listTransfers("main").filter {
+            it.started && it.sizeBytes > 0 && it.completedBytes in 0L until it.sizeBytes
+        }.sortedBy { it.hash.lowercase() }.take(6)
+        var supported = 0
+        var trackerless = 0
+        var allDisabled = 0
+        var successSeen = 0
+        var failureOnly = 0
+        var announcedPeers = 0
+        var peerCountersMissing = 0
+        for (transfer in candidates) {
+            val history = try {
+                remote.readTrackerHealth(transfer.hash)
+            } catch (cancel: kotlinx.coroutines.CancellationException) {
+                throw cancel
+            } catch (_: Exception) {
+                null
+            }
+            if (history != null) {
+                supported++
+                if (history.total == 0) trackerless++
+                if (history.total > 0 && history.enabled == 0) allDisabled++
+                if (history.successfulAnnounces > 0L) successSeen++
+                if (history.successfulAnnounces == 0L && history.failedAnnounces > 0L) failureOnly++
+                if ((history.maxAnnouncedPeers ?: 0L) > 0L) announcedPeers++
+                if (history.maxAnnouncedPeers == null) peerCountersMissing++
+            }
+        }
+        log("trackers candidates=${candidates.size} supported=$supported " +
+            "trackerless=$trackerless allDisabled=$allDisabled " +
+            "successfulHistory=$successSeen failuresOnly=$failureOnly " +
+            "withAnnouncedPeers=$announcedPeers peerCountersMissing=$peerCountersMissing " +
+            "unknown=${candidates.size - supported}")
+        // This is a capability witness, not a proof of peer availability.
+        assertTrue("Bounded read-only diagnostic must use at most six existing torrents",
+            candidates.size <= 6)
+    }
+
     /** Deepest absolute directory shared by all paths, at least two levels deep, else null. */
     private fun commonParent(paths: List<String>): String? {
         val split = paths.filter { it.startsWith("/") }.map { it.trimEnd('/').split('/').drop(1) }
