@@ -31,7 +31,7 @@ receipt="$folder/CHUNKS-BUILD-SHA256.txt"
 # Restrict the checksum to the one expected filename. Do not execute any
 # arbitrary path entries from an untrusted checksum manifest.
 first_line="$(head -n 1 "$receipt")"
-if [[ ! "$first_line" =~ ^([[:xdigit:]]{64})[[:space:]][[:space:]]app-debug\.apk$ ]]; then
+if [[ ! "$first_line" =~ ^([[:xdigit:]]{64})[[:space:]][[:space:]]chunks-debug\.apk$ ]]; then
     echo "Unexpected APK checksum receipt format" >&2
     exit 2
 fi
