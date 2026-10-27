@@ -9,6 +9,10 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.hasScrollToIndexAction
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onNode
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -46,7 +50,7 @@ class SeedhostAndroidReadOnlyInstrumentedTest {
      */
     private fun checkpoint(stage: String) {
         require(stage in setOf(
-            "arguments", "form", "connect", "queue", "inventory",
+            "arguments", "form", "connect-visible", "connect", "queue", "inventory",
             "first-capture", "refresh-click", "refresh-busy",
             "refresh-idle", "final-capture"
         ))
@@ -91,7 +95,13 @@ class SeedhostAndroidReadOnlyInstrumentedTest {
         rule.onNodeWithText("Username, if required").performTextReplacement(user!!)
         rule.onNodeWithText("Password").performTextReplacement(password!!)
         checkpoint("form")
-        rule.onNodeWithText("Connect to rTorrent").performScrollTo().performClick()
+        // Connect is below several text fields inside a LazyColumn. After the
+        // password IME opens, its item can be completely uncomposed, so
+        // onNodeWithText(...).performScrollTo() cannot find it. Ask the lazy
+        // container to compose and scroll to the item BEFORE finding the node.
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Connect to rTorrent"))
+        checkpoint("connect-visible")
+        rule.onNodeWithText("Connect to rTorrent").performClick()
         checkpoint("connect")
         try {
             rule.waitUntil(90_000) {
