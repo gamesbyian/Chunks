@@ -57,7 +57,7 @@ internal object SnapshotRestorePreviewV1 {
             "Target inventory too large for a bounded restore comparison"
         }
         val normalized = targetObservedHashes.map { it.lowercase(Locale.ROOT) }
-        require(normalized.all { Regex("[0-9a-f]{40}").matches(it) }) {
+        require(normalized.all { Regex("[0-9a-f]{40}([0-9a-f]{24})?").matches(it) }) {
             "Target inventory contains unsupported or malformed v1 identity"
         }
         require(normalized.size == normalized.toSet().size) {
