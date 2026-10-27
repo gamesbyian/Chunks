@@ -44,7 +44,7 @@ jobs:
           gradle-version: "9.3.1"
       - name: Install Android API 37 SDK
         run: |
-          printf "y\\n" | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
+          printf "y\n" | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
           if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
             ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
           fi
@@ -54,7 +54,7 @@ jobs:
           test -n "$CHUNKS_LIVE_RTORRENT_USER"
           test -n "$CHUNKS_LIVE_RTORRENT_PASS"
           status=0
-          gradle --no-daemon --console=plain :app:testDebugUnitTest \\
+          gradle --no-daemon --console=plain :app:testDebugUnitTest \
             --tests 'io.github.gamesbyian.chunks.rpc.SeedhostLiveAcceptanceTest.readOnlyExistingDestinationPreflight' || status=$?
           # Never print raw exception messages, host paths or private logs.
           python3 - <<'PY'
