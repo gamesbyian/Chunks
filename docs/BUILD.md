@@ -8,6 +8,12 @@ The workflow installs Android API 37 with SDK 37.0; targeted real API35 instrume
 
 Evidence: [run 40057523588](https://github.com/gamesbyian/Chunks/actions/runs/40057523588) passed 42 Gradle tasks including JVM tests and assembly against source SHA `201b53fc3d16482cf2aa1a08c9c01d9e0351174b`; its artifact is `chunks-debug-prealpha`. Subsequent source changes require new proof. Build artifacts are debug only; a successful Gradle job is not a real-server or real-device acceptance.
 
+## Downloadable APK in GitHub Releases
+
+A dedicated [Publish Chunks installable Android debug APK](../.github/workflows/publish-debug-apk.yml) workflow builds and JVM-tests the exact checked-out `main` SHA, verifies the Android versionName suffix, produces a paired SHA-256 receipt and publishes both files as assets of an immutable pre-release tag `android-debug-<12-character-source-SHA>`. The workflow runs once when added to `main` and may later be dispatched manually. The release asset URL is stable, unlike the seven-day Actions artifact.
+
+The two GitHub release files are `app-debug.apk` and `CHUNKS-BUILD-SHA256.txt`. They must be kept together when running `sha256sum -c CHUNKS-BUILD-SHA256.txt` or the physical-handset preflight. These are development builds **signed with the Android debug key**, not signed publisher-authentic releases, verified handset compatibility, or ready-for-production APKs. Do not expose server credentials or infer real torrent/seeding acceptance merely because the APK installs.
+
 ## Debug APK identity and device evidence
 
 The `Chunks Android foundation` workflow embeds the **exact Git commit checked out by the runner** into the debug APK's Android `versionName` as `0.1.0-dev+<12 hex digits>`. Developer-built APKs without `CHUNKS_SOURCE_SHA` keep `0.1.0-dev`, which intentionally carries no source claim.
