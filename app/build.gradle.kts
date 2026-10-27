@@ -6,7 +6,13 @@ android {
     namespace = "io.github.gamesbyian.chunks"
     compileSdk = 37
     defaultConfig {
-        applicationId = "io.github.gamesbyian.chunks"
+        // GitHub CI debug signing keys need not match between builds.
+        // CHUNKS_SIDE_BY_SIDE=1 produces a separately installable preview app:
+        // never require uninstalling a previous Chunks with app-owned torrents.
+        val sideBySide = providers.environmentVariable("CHUNKS_SIDE_BY_SIDE").orNull == "1"
+        applicationId = if (sideBySide) "io.github.gamesbyian.chunks.preview"
+                        else "io.github.gamesbyian.chunks"
+        resValue("string", "chunks_app_name", if (sideBySide) "Chunks Preview" else "Chunks")
         minSdk = 29
         targetSdk = 37
         versionCode = 1
@@ -18,7 +24,7 @@ android {
         versionName = "0.1.0-dev" + (builtCommit?.let { "+$it" } ?: "")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
-    buildFeatures { compose = true }
+    buildFeatures { compose = true; resValues = true }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
