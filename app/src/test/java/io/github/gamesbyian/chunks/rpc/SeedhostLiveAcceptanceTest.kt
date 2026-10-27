@@ -251,6 +251,48 @@ class SeedhostLiveAcceptanceTest {
         assertTrue("At most six existing transfers may be inspected", candidates.size <= 6)
     }
 
+    /**
+     * Global throttle is another plausible reason that currently started
+     * torrents have no byte progress. Read-only named getters only; no
+     * server control writes, no raw XML faults and no torrent identities.
+     * Zero max rate is rTorrent's documented unlimited sentinel.
+     */
+    @Test fun readOnlyGlobalDownloadThrottleContext() = runBlocking {
+        val rtorrent = remote()
+        suspend fun nonnegative(method: String): Long? = try {
+            (rtorrent.call(method) as? Number)?.toLong()?.takeIf { it >= 0L }
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            null
+        }
+        val limit = nonnegative("throttle.global_down.max_rate")
+        val first = nonnegative("throttle.global_down.total")
+        kotlinx.coroutines.delay(2_000L)
+        val second = nonnegative("throttle.global_down.total")
+        val immediate = nonnegative("throttle.global_down.rate")
+        val limitState = when {
+            limit == null -> "unknown"
+            limit == 0L -> "unlimited"
+            else -> "limited"
+        }
+        val globalGrowth = when {
+            first == null || second == null -> "unknown"
+            second < first -> "reset"
+            second > first -> "yes"
+            else -> "no"
+        }
+        val rateState = when {
+            immediate == null -> "unknown"
+            immediate > 0L -> "nonzero"
+            else -> "zero"
+        }
+        log("throttle downLimit=$limitState globalByteGrowth=$globalGrowth " +
+            "instantGlobalRate=$rateState")
+        assertTrue("Only fixed capability labels may leave protected CI",
+            limitState in setOf("unknown", "unlimited", "limited"))
+    }
+
     /** Deepest absolute directory shared by all paths, at least two levels deep, else null. */
     private fun commonParent(paths: List<String>): String? {
         val split = paths.filter { it.startsWith("/") }.map { it.trimEnd('/').split('/').drop(1) }
