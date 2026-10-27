@@ -63,7 +63,7 @@ jobs:
           short="${CHUNKS_SOURCE_SHA:0:12}"
           "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$apk" | grep -F "versionName='0.1.0-dev+$short'"
           sha256sum "$apk" > "$receipt"
-          printf 'built_commit=%s\\nworkflow_run=%s\\n' "$CHUNKS_SOURCE_SHA" "$GITHUB_RUN_ID" >> "$receipt"
+          printf 'built_commit=%s\nworkflow_run=%s\n' "$CHUNKS_SOURCE_SHA" "$GITHUB_RUN_ID" >> "$receipt"
       - uses: actions/upload-artifact@v4
         if: success()
         with:
