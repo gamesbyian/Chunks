@@ -46,7 +46,7 @@ Support traditional XML-RPC through authenticated, certificate-validated HTTPS p
 - Enumeration: devise bounded batches/paging or view-based partitioning compatible with observed RPC behavior; mark incomplete lists clearly. Never solve a 4 MiB response cap merely by unboundedly raising it.
 - Control: allowlist individual operations, validate argument types, concurrency and observed acknowledgements, use command-specific retry policies. No unbounded command concurrency or rapid polling; apply backoff and server health information.
 - Parse: reject DTD/XXE, deep nesting, huge arrays, malformed data, excessive strings, Unicode/path oddities and unexpected integer representations; validate in Android runtime as well as JVM.
-- Secret retention: current prototype holds only volatile credentials; a durable account feature must introduce reviewed encrypted storage/Android Keystore and credential revocation before release.
+- Secret retention: one remembered rTorrent profile is now enabled by default (#232), with Android Keystore AES-GCM device-bound encryption, backup disabled, and explicit opt-out/Forget. The profile pre-fills connection details on restart; it never silently reauthenticates or leaks into logs. Multi-profile rotation/expiry, biometric UI privacy lock and physical handset recovery remain separate planned work.
 
 Remote connection alone proves nothing about directory creation or host filesystem access. An rTorrent directory-setter changes metadata; do not infer moved bytes from it.
 
