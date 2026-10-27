@@ -10,6 +10,8 @@
 
 **Transfer detail requirements (2026-10-27):** Read PRODUCT, UX, ARCHITECTURE, SECURITY, STORAGE-AND-EXTRACTION and WORK-QUEUE before changing local↔remote Copy/Move or archive deletion. Never confuse magnet/metainfo handoff with copied bytes, or successful extraction with permission to delete torrent-backed archives; exact verified destination and seeding consequences are release gates.
 
+**APK filename invariant:** Every downloadable Android APK in CI artifacts and GitHub Releases must include `chunks` in the filename (`chunks-debug.apk` for the normal app and `chunks-preview.apk` for side-by-side builds). Gradle's internal `app-debug.apk` is allowed only as an intermediate. Regenerate paired SHA-256 receipts after renaming, and keep physical-device preflight filename checks and docs in sync.
+
 ## Mandatory start and authority
 
 1. Inspect live `main`, open PRs, open issues, branch ownership, recent commits and CI **before** choosing a task. Read the one authoritative ranked [WORK-QUEUE](docs/WORK-QUEUE.md). Never assume a prior agent's PR is still pending/merged.
