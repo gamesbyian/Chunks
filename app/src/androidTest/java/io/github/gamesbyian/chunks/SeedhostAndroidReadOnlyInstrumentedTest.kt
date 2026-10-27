@@ -51,7 +51,8 @@ class SeedhostAndroidReadOnlyInstrumentedTest {
         require(stage in setOf(
             "arguments", "form", "connect-visible", "connect", "queue", "inventory",
             "first-capture", "refresh-click", "refresh-busy",
-            "refresh-idle", "final-capture", "add-open", "add-preview", "add-return"
+            "refresh-idle", "final-capture", "add-open", "add-preview", "add-return",
+            "connect-error", "connect-busy", "connect-login-form", "connect-no-visible-state"
         ))
         InstrumentationRegistry.getInstrumentation().sendStatus(
             2, Bundle().apply { putString("chunks_stage", stage) }
@@ -107,9 +108,22 @@ class SeedhostAndroidReadOnlyInstrumentedTest {
                 rule.onAllNodesWithText("It's all here.").fetchSemanticsNodes().isNotEmpty()
             }
         } catch (failure: androidx.compose.ui.test.ComposeTimeoutException) {
-            // Do not dump the still-visible credential fields or HTTP headers.
-            throw AssertionError("Real Android app did not reach the transfer queue. " +
-                "Inspect the protected runner locally; no credentials are included.", failure)
+            // Only branch on fixed, nonsecret UI titles. Never emit the actual
+            // server error text, login values, screen hierarchy or throwable.
+            // Compose LazyColumn virtualizes offscreen children: absence of a
+            // visible error title alone cannot prove there was no error.
+            val stage = when {
+                rule.onAllNodesWithText("Connection unsuccessful").fetchSemanticsNodes().isNotEmpty() ->
+                    "connect-error"
+                rule.onAllNodesWithText("Connecting…").fetchSemanticsNodes().isNotEmpty() ->
+                    "connect-busy"
+                rule.onAllNodesWithText("Connect to rTorrent").fetchSemanticsNodes().isNotEmpty() ->
+                    "connect-login-form"
+                else -> "connect-no-visible-state"
+            }
+            checkpoint(stage)
+            throw AssertionError("The installed app did not reach the real server queue. " +
+                "See only the fixed private-safe stage marker; raw failure withheld.")
         }
         checkpoint("queue")
         rule.onNodeWithText("It's all here.").assertExists()
