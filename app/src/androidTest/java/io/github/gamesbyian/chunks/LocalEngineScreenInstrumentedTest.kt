@@ -222,10 +222,12 @@ class LocalEngineScreenInstrumentedTest {
             rule.onNodeWithText("Save speed limits").assertIsEnabled()
             capture("local-engine-speed-limits-real-compose")
             rule.onNodeWithText("Save speed limits").performClick()
-            // "Applied." when another test left the process engine running.
+            // Native settings now require confirmed readback before durable save.
+            // Never accept the older optimistic "Saved"/"Applied" strings.
             rule.waitUntil(10_000) {
-                rule.onAllNodesWithText("Saved. Applies when the engine starts.").fetchSemanticsNodes().isNotEmpty() ||
-                    rule.onAllNodesWithText("Applied.").fetchSemanticsNodes().isNotEmpty()
+                rule.onAllNodesWithText(
+                    "Speed limits verified (if the engine is running) and saved on this phone."
+                ).fetchSemanticsNodes().isNotEmpty()
             }
             assertEquals(512 * 1024, prefs.getInt("download-limit", -1))
             assertEquals(64 * 1024, prefs.getInt("upload-limit", -1))
