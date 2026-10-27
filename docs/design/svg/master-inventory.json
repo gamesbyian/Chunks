@@ -10,8 +10,8 @@
   },
   "totals": {
     "approved": 1,
-    "vectorDraft": 692,
-    "planned": 129
+    "vectorDraft": 726,
+    "planned": 95
   },
   "assets": [
     {
@@ -1612,99 +1612,113 @@
       "id": "launcher-concepts/folder-with-cubes-dimensional-concept",
       "category": "launcher-concepts",
       "label": "folder-with-cubes dimensional concept",
-      "status": "planned",
-      "source": "04-brand-lockups-and-app-icon.png"
+      "status": "vector-draft",
+      "source": "04-brand-lockups-and-app-icon.png; standalone SVG design draft, not a shipped Android system UI",
+      "path": "docs/design/svg/further-variants/launcher-concepts/folder-with-cubes-dimensional-concept.svg"
     },
     {
       "id": "launcher-concepts/white-simple-folder-on-black",
       "category": "launcher-concepts",
       "label": "white simple folder on black",
-      "status": "planned",
-      "source": "04-brand-lockups-and-app-icon.png"
+      "status": "vector-draft",
+      "source": "04-brand-lockups-and-app-icon.png; standalone SVG design draft, not a shipped Android system UI",
+      "path": "docs/design/svg/further-variants/launcher-concepts/white-simple-folder-on-black.svg"
     },
     {
       "id": "launcher-concepts/black-simple-folder-on-white",
       "category": "launcher-concepts",
       "label": "black simple folder on white",
-      "status": "planned",
-      "source": "04-brand-lockups-and-app-icon.png"
+      "status": "vector-draft",
+      "source": "04-brand-lockups-and-app-icon.png; standalone SVG design draft, not a shipped Android system UI",
+      "path": "docs/design/svg/further-variants/launcher-concepts/black-simple-folder-on-white.svg"
     },
     {
       "id": "launcher-concepts/grey-monochrome-folder",
       "category": "launcher-concepts",
       "label": "grey monochrome folder",
-      "status": "planned",
-      "source": "04-brand-lockups-and-app-icon.png"
+      "status": "vector-draft",
+      "source": "04-brand-lockups-and-app-icon.png; standalone SVG design draft, not a shipped Android system UI",
+      "path": "docs/design/svg/further-variants/launcher-concepts/grey-monochrome-folder.svg"
     },
     {
       "id": "launcher-concepts/micro-smile-only-8px",
       "category": "launcher-concepts",
       "label": "micro smile-only 8px",
-      "status": "planned",
-      "source": "04-brand-lockups-and-app-icon.png"
+      "status": "vector-draft",
+      "source": "04-brand-lockups-and-app-icon.png; standalone SVG design draft, not a shipped Android system UI",
+      "path": "docs/design/svg/further-variants/launcher-concepts/micro-smile-only-8px.svg"
     },
     {
       "id": "launcher-concepts/launcher-micro-16px",
       "category": "launcher-concepts",
       "label": "launcher micro 16px",
-      "status": "planned",
-      "source": "04-brand-lockups-and-app-icon.png"
+      "status": "vector-draft",
+      "source": "04-brand-lockups-and-app-icon.png; standalone SVG design draft, not a shipped Android system UI",
+      "path": "docs/design/svg/further-variants/launcher-concepts/launcher-micro-16px.svg"
     },
     {
       "id": "launcher-concepts/launcher-micro-24px",
       "category": "launcher-concepts",
       "label": "launcher micro 24px",
-      "status": "planned",
-      "source": "04-brand-lockups-and-app-icon.png"
+      "status": "vector-draft",
+      "source": "04-brand-lockups-and-app-icon.png; standalone SVG design draft, not a shipped Android system UI",
+      "path": "docs/design/svg/further-variants/launcher-concepts/launcher-micro-24px.svg"
     },
     {
       "id": "launcher-concepts/launcher-micro-32px",
       "category": "launcher-concepts",
       "label": "launcher micro 32px",
-      "status": "planned",
-      "source": "04-brand-lockups-and-app-icon.png"
+      "status": "vector-draft",
+      "source": "04-brand-lockups-and-app-icon.png; standalone SVG design draft, not a shipped Android system UI",
+      "path": "docs/design/svg/further-variants/launcher-concepts/launcher-micro-32px.svg"
     },
     {
       "id": "launcher-concepts/launcher-micro-48px",
       "category": "launcher-concepts",
       "label": "launcher micro 48px",
-      "status": "planned",
-      "source": "04-brand-lockups-and-app-icon.png"
+      "status": "vector-draft",
+      "source": "04-brand-lockups-and-app-icon.png; standalone SVG design draft, not a shipped Android system UI",
+      "path": "docs/design/svg/further-variants/launcher-concepts/launcher-micro-48px.svg"
     },
     {
       "id": "launcher-concepts/launcher-micro-64px",
       "category": "launcher-concepts",
       "label": "launcher micro 64px",
-      "status": "planned",
-      "source": "04-brand-lockups-and-app-icon.png"
+      "status": "vector-draft",
+      "source": "04-brand-lockups-and-app-icon.png; standalone SVG design draft, not a shipped Android system UI",
+      "path": "docs/design/svg/further-variants/launcher-concepts/launcher-micro-64px.svg"
     },
     {
       "id": "launcher-concepts/notification-monochrome-folder",
       "category": "launcher-concepts",
       "label": "notification monochrome folder",
-      "status": "planned",
-      "source": "04-brand-lockups-and-app-icon.png"
+      "status": "vector-draft",
+      "source": "04-brand-lockups-and-app-icon.png; standalone SVG design draft, not a shipped Android system UI",
+      "path": "docs/design/svg/further-variants/launcher-concepts/notification-monochrome-folder.svg"
     },
     {
       "id": "launcher-concepts/light-adaptive-foreground",
       "category": "launcher-concepts",
       "label": "light adaptive foreground",
-      "status": "planned",
-      "source": "04-brand-lockups-and-app-icon.png"
+      "status": "vector-draft",
+      "source": "04-brand-lockups-and-app-icon.png; standalone SVG design draft, not a shipped Android system UI",
+      "path": "docs/design/svg/further-variants/launcher-concepts/light-adaptive-foreground.svg"
     },
     {
       "id": "launcher-concepts/dark-adaptive-foreground",
       "category": "launcher-concepts",
       "label": "dark adaptive foreground",
-      "status": "planned",
-      "source": "04-brand-lockups-and-app-icon.png"
+      "status": "vector-draft",
+      "source": "04-brand-lockups-and-app-icon.png; standalone SVG design draft, not a shipped Android system UI",
+      "path": "docs/design/svg/further-variants/launcher-concepts/dark-adaptive-foreground.svg"
     },
     {
       "id": "launcher-concepts/monochrome-adaptive-foreground",
       "category": "launcher-concepts",
       "label": "monochrome adaptive foreground",
-      "status": "planned",
-      "source": "04-brand-lockups-and-app-icon.png"
+      "status": "vector-draft",
+      "source": "04-brand-lockups-and-app-icon.png; standalone SVG design draft, not a shipped Android system UI",
+      "path": "docs/design/svg/further-variants/launcher-concepts/monochrome-adaptive-foreground.svg"
     },
     {
       "id": "missing-glyph-icons/stop-transfer-circular",
@@ -3189,141 +3203,161 @@
       "id": "media-art/orange-landscape-cover",
       "category": "media-art",
       "label": "orange landscape cover",
-      "status": "planned",
-      "source": "01-overview-visual-direction.png"
+      "status": "vector-draft",
+      "source": "01-overview-visual-direction.png; standalone SVG design draft, not a shipped Android system UI",
+      "path": "docs/design/svg/further-variants/media-art/orange-landscape-cover.svg"
     },
     {
       "id": "media-art/green-mountain-valley-cover",
       "category": "media-art",
       "label": "green mountain valley cover",
-      "status": "planned",
-      "source": "01-overview-visual-direction.png"
+      "status": "vector-draft",
+      "source": "01-overview-visual-direction.png; standalone SVG design draft, not a shipped Android system UI",
+      "path": "docs/design/svg/further-variants/media-art/green-mountain-valley-cover.svg"
     },
     {
       "id": "media-art/dark-purple-planet-cover",
       "category": "media-art",
       "label": "dark purple planet cover",
-      "status": "planned",
-      "source": "01-overview-visual-direction.png"
+      "status": "vector-draft",
+      "source": "01-overview-visual-direction.png; standalone SVG design draft, not a shipped Android system UI",
+      "path": "docs/design/svg/further-variants/media-art/dark-purple-planet-cover.svg"
     },
     {
       "id": "media-art/spacecraft-over-planet-cover",
       "category": "media-art",
       "label": "spacecraft over planet cover",
-      "status": "planned",
-      "source": "01-overview-visual-direction.png"
+      "status": "vector-draft",
+      "source": "01-overview-visual-direction.png; standalone SVG design draft, not a shipped Android system UI",
+      "path": "docs/design/svg/further-variants/media-art/spacecraft-over-planet-cover.svg"
     },
     {
       "id": "media-art/generic-image-cover",
       "category": "media-art",
       "label": "generic image cover",
-      "status": "planned",
-      "source": "01-overview-visual-direction.png"
+      "status": "vector-draft",
+      "source": "01-overview-visual-direction.png; standalone SVG design draft, not a shipped Android system UI",
+      "path": "docs/design/svg/further-variants/media-art/generic-image-cover.svg"
     },
     {
       "id": "media-art/generic-video-cover",
       "category": "media-art",
       "label": "generic video cover",
-      "status": "planned",
-      "source": "01-overview-visual-direction.png"
+      "status": "vector-draft",
+      "source": "01-overview-visual-direction.png; standalone SVG design draft, not a shipped Android system UI",
+      "path": "docs/design/svg/further-variants/media-art/generic-video-cover.svg"
     },
     {
       "id": "media-art/generic-audio-cover",
       "category": "media-art",
       "label": "generic audio cover",
-      "status": "planned",
-      "source": "01-overview-visual-direction.png"
+      "status": "vector-draft",
+      "source": "01-overview-visual-direction.png; standalone SVG design draft, not a shipped Android system UI",
+      "path": "docs/design/svg/further-variants/media-art/generic-audio-cover.svg"
     },
     {
       "id": "media-art/missing-cover-placeholder",
       "category": "media-art",
       "label": "missing-cover placeholder",
-      "status": "planned",
-      "source": "01-overview-visual-direction.png"
+      "status": "vector-draft",
+      "source": "01-overview-visual-direction.png; standalone SVG design draft, not a shipped Android system UI",
+      "path": "docs/design/svg/further-variants/media-art/missing-cover-placeholder.svg"
     },
     {
       "id": "media-art/media-thumbnail-rounded-frame",
       "category": "media-art",
       "label": "media thumbnail rounded frame",
-      "status": "planned",
-      "source": "01-overview-visual-direction.png"
+      "status": "vector-draft",
+      "source": "01-overview-visual-direction.png; standalone SVG design draft, not a shipped Android system UI",
+      "path": "docs/design/svg/further-variants/media-art/media-thumbnail-rounded-frame.svg"
     },
     {
       "id": "android-specimens/system-status-time",
       "category": "android-specimens",
       "label": "system status time",
-      "status": "planned",
-      "source": "01-overview-visual-direction.png"
+      "status": "vector-draft",
+      "source": "01-overview-visual-direction.png; standalone SVG design draft, not a shipped Android system UI",
+      "path": "docs/design/svg/further-variants/android-specimens/system-status-time.svg"
     },
     {
       "id": "android-specimens/wifi-symbol",
       "category": "android-specimens",
       "label": "WiFi symbol",
-      "status": "planned",
-      "source": "01-overview-visual-direction.png"
+      "status": "vector-draft",
+      "source": "01-overview-visual-direction.png; standalone SVG design draft, not a shipped Android system UI",
+      "path": "docs/design/svg/further-variants/android-specimens/wifi-symbol.svg"
     },
     {
       "id": "android-specimens/signal-bars",
       "category": "android-specimens",
       "label": "signal bars",
-      "status": "planned",
-      "source": "01-overview-visual-direction.png"
+      "status": "vector-draft",
+      "source": "01-overview-visual-direction.png; standalone SVG design draft, not a shipped Android system UI",
+      "path": "docs/design/svg/further-variants/android-specimens/signal-bars.svg"
     },
     {
       "id": "android-specimens/battery-symbol",
       "category": "android-specimens",
       "label": "battery symbol",
-      "status": "planned",
-      "source": "01-overview-visual-direction.png"
+      "status": "vector-draft",
+      "source": "01-overview-visual-direction.png; standalone SVG design draft, not a shipped Android system UI",
+      "path": "docs/design/svg/further-variants/android-specimens/battery-symbol.svg"
     },
     {
       "id": "android-specimens/phone-punch-hole-cutout",
       "category": "android-specimens",
       "label": "phone punch-hole cutout",
-      "status": "planned",
-      "source": "01-overview-visual-direction.png"
+      "status": "vector-draft",
+      "source": "01-overview-visual-direction.png; standalone SVG design draft, not a shipped Android system UI",
+      "path": "docs/design/svg/further-variants/android-specimens/phone-punch-hole-cutout.svg"
     },
     {
       "id": "android-specimens/phone-portrait-bezel",
       "category": "android-specimens",
       "label": "phone portrait bezel",
-      "status": "planned",
-      "source": "01-overview-visual-direction.png"
+      "status": "vector-draft",
+      "source": "01-overview-visual-direction.png; standalone SVG design draft, not a shipped Android system UI",
+      "path": "docs/design/svg/further-variants/android-specimens/phone-portrait-bezel.svg"
     },
     {
       "id": "android-specimens/adaptive-icon-mask-specimen",
       "category": "android-specimens",
       "label": "adaptive icon mask specimen",
-      "status": "planned",
-      "source": "01-overview-visual-direction.png"
+      "status": "vector-draft",
+      "source": "01-overview-visual-direction.png; standalone SVG design draft, not a shipped Android system UI",
+      "path": "docs/design/svg/further-variants/android-specimens/adaptive-icon-mask-specimen.svg"
     },
     {
       "id": "android-specimens/android-system-back-arrow-specimen",
       "category": "android-specimens",
       "label": "Android system back-arrow specimen",
-      "status": "planned",
-      "source": "01-overview-visual-direction.png"
+      "status": "vector-draft",
+      "source": "01-overview-visual-direction.png; standalone SVG design draft, not a shipped Android system UI",
+      "path": "docs/design/svg/further-variants/android-specimens/android-system-back-arrow-specimen.svg"
     },
     {
       "id": "android-specimens/native-document-picker-symbol",
       "category": "android-specimens",
       "label": "native document picker symbol",
-      "status": "planned",
-      "source": "01-overview-visual-direction.png"
+      "status": "vector-draft",
+      "source": "01-overview-visual-direction.png; standalone SVG design draft, not a shipped Android system UI",
+      "path": "docs/design/svg/further-variants/android-specimens/native-document-picker-symbol.svg"
     },
     {
       "id": "android-specimens/touch-target-48dp-reference",
       "category": "android-specimens",
       "label": "touch target 48dp reference",
-      "status": "planned",
-      "source": "01-overview-visual-direction.png"
+      "status": "vector-draft",
+      "source": "01-overview-visual-direction.png; standalone SVG design draft, not a shipped Android system UI",
+      "path": "docs/design/svg/further-variants/android-specimens/touch-target-48dp-reference.svg"
     },
     {
       "id": "android-specimens/focus-ring-reference",
       "category": "android-specimens",
       "label": "focus ring reference",
-      "status": "planned",
-      "source": "01-overview-visual-direction.png"
+      "status": "vector-draft",
+      "source": "01-overview-visual-direction.png; standalone SVG design draft, not a shipped Android system UI",
+      "path": "docs/design/svg/further-variants/android-specimens/focus-ring-reference.svg"
     },
     {
       "id": "typography/display-rounded/uppercase/A",
