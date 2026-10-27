@@ -300,7 +300,10 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         val suffix = "/plugins/httprpc/action.php"
         val path = endpoint.rawPath ?: return null
         if (!path.endsWith(suffix)) return null
-        return URI(endpoint.scheme, endpoint.rawAuthority, path.removeSuffix(suffix) + "/php/addtorrent.php", null, null)
+        // endpoint.rawPath is already percent encoded; the multi-argument URI
+        // constructor would encode '%' again and break hosted account roots.
+        val rawUploadPath = path.removeSuffix(suffix) + "/php/addtorrent.php"
+        return URI.create("${endpoint.scheme}://${endpoint.rawAuthority}$rawUploadPath")
     }
 
     /**
