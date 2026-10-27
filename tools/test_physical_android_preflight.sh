@@ -57,19 +57,22 @@ output="$(bash "$repo/tools/physical_android_preflight.sh" "$apk")"
 [[ "$output" == *"NOT VERIFIED:"* ]]
 rm "$MOCK_INSTALL_FILE"
 
-MOCK_QEMU=1 bash "$repo/tools/physical_android_preflight.sh" "$apk" >/dev/null 2>&1 && {
-    echo "Emulated device was accepted" >&2; exit 1;
-}
+if MOCK_QEMU=1 bash "$repo/tools/physical_android_preflight.sh" "$apk" >/dev/null 2>&1; then
+    echo "Emulated device was accepted" >&2
+    exit 1
+fi
 [[ ! -e "$MOCK_INSTALL_FILE" ]]
 
-MOCK_MULTIPLE=1 bash "$repo/tools/physical_android_preflight.sh" "$apk" >/dev/null 2>&1 && {
-    echo "Ambiguous device selection was accepted" >&2; exit 1;
-}
+if MOCK_MULTIPLE=1 bash "$repo/tools/physical_android_preflight.sh" "$apk" >/dev/null 2>&1; then
+    echo "Ambiguous device selection was accepted" >&2
+    exit 1
+fi
 [[ ! -e "$MOCK_INSTALL_FILE" ]]
 
 printf 'tampered APK' >> "$apk"
-bash "$repo/tools/physical_android_preflight.sh" "$apk" >/dev/null 2>&1 && {
-    echo "Modified APK was installed" >&2; exit 1;
-}
+if bash "$repo/tools/physical_android_preflight.sh" "$apk" >/dev/null 2>&1; then
+    echo "Modified APK was installed" >&2
+    exit 1
+fi
 [[ ! -e "$MOCK_INSTALL_FILE" ]]
 echo "CHUNKS_PHYSICAL_PREFLIGHT_TEST: verified success and fail-closed emulator, multi-device and tampered APK"
