@@ -72,6 +72,7 @@ import io.github.gamesbyian.chunks.rpc.RemoteFile
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
 import io.github.gamesbyian.chunks.rpc.RemoteQueueActivityContext
 import io.github.gamesbyian.chunks.snapshots.SnapshotInventoryExportScreen
+import io.github.gamesbyian.chunks.snapshots.SnapshotDocumentInspectScreen
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -119,7 +120,7 @@ class MainActivity : ComponentActivity() {
 }
 
 private enum class Section(val label: String) {
-    TRANSFERS("Transfers"), PLACES("Places"), ORGANIZE("Organize"), SERVER("Server"), ARCHIVES("ZIP review"), LOCAL("On this phone"), ADD("Add"), NAMES("Names"), SNAPSHOT("Inventory backup")
+    TRANSFERS("Transfers"), PLACES("Places"), ORGANIZE("Organize"), SERVER("Server"), ARCHIVES("ZIP review"), LOCAL("On this phone"), ADD("Add"), NAMES("Names"), SNAPSHOT("Inventory backup"), SNAPSHOT_INSPECT("Inspect backup")
 }
 
 @Composable
@@ -235,6 +236,8 @@ private fun ChunksApp(sharedMagnet: String?) {
 
         if (section == Section.ARCHIVES) {
             LocalZipReviewScreen(onBack = { section = Section.TRANSFERS })
+        } else if (section == Section.SNAPSHOT_INSPECT) {
+            SnapshotDocumentInspectScreen(onBack = { section = Section.TRANSFERS })
         } else if (section == Section.LOCAL && server == null) {
             LocalEngineScreen(onBack = { section = Section.TRANSFERS })
         } else if (server == null) {
@@ -273,6 +276,7 @@ private fun ChunksApp(sharedMagnet: String?) {
                     }
                 },
                 onLocalZipReview = { section = Section.ARCHIVES },
+                onInspectSnapshot = { section = Section.SNAPSHOT_INSPECT },
                 onLocalEngine = { section = Section.LOCAL },
                 onEndpoint = { endpoint = it }, onUsername = { username = it },
                 onPassword = { password = it },
@@ -357,7 +361,8 @@ private fun ChunksApp(sharedMagnet: String?) {
                 modifier = Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                for (tab in Section.entries.filter { it != Section.ADD && it != Section.NAMES && it != Section.SNAPSHOT }) {
+                for (tab in Section.entries.filter { it != Section.ADD && it != Section.NAMES && it != Section.SNAPSHOT &&
+                    it != Section.SNAPSHOT_INSPECT }) {
                     FilterChip(
                         selected = section == tab,
                         onClick = { section = tab },
@@ -384,6 +389,7 @@ private fun ChunksApp(sharedMagnet: String?) {
                     onRefresh = refresh, onAdd = { section = Section.ADD },
                     onReviewNames = { section = Section.NAMES },
                     onExportSnapshot = { section = Section.SNAPSHOT },
+                    onInspectSnapshot = { section = Section.SNAPSHOT_INSPECT },
                     selectedHash = expandedHash, files = files, filesError = filesError,
                     filesLoading = filesLoading,
                     onInspect = { transfer ->
@@ -430,6 +436,8 @@ private fun ChunksApp(sharedMagnet: String?) {
                     stale = stale, loading = loading,
                     onBack = { section = Section.TRANSFERS }
                 )
+                Section.SNAPSHOT_INSPECT -> SnapshotDocumentInspectScreen(
+                    onBack = { section = Section.TRANSFERS })
                 Section.ARCHIVES -> LocalZipReviewScreen(onBack = { section = Section.TRANSFERS })
                 Section.LOCAL -> LocalEngineScreen(onBack = { section = Section.TRANSFERS })
                 Section.PLACES -> PlacesScreen(transfers) { path ->
@@ -536,6 +544,7 @@ private fun ConnectionScreen(
     rememberLogin: Boolean, savedLoginPresent: Boolean, credentialNotice: String?,
     onRememberLogin: (Boolean) -> Unit, onForgetLogin: () -> Unit,
     onLocalZipReview: () -> Unit,
+    onInspectSnapshot: () -> Unit,
     onLocalEngine: () -> Unit,
     onEndpoint: (String) -> Unit, onUsername: (String) -> Unit,
     onPassword: (String) -> Unit, onConnect: () -> Unit
@@ -611,6 +620,12 @@ private fun ConnectionScreen(
             }
         }
         item {
+            OutlinedButton(onClick = onInspectSnapshot,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+                Text("Inspect .chunksnap backup (offline)")
+            }
+        }
+        item {
             OutlinedButton(onClick = onLocalEngine,
                 modifier = Modifier.fillMaxWidth().height(52.dp)) {
                 Text("Download on this phone (experimental)")
@@ -636,6 +651,7 @@ private fun TransfersScreen(
     onFilter: (TransferFilter) -> Unit, order: TransferOrder,
     onOrder: (TransferOrder) -> Unit, onRefresh: () -> Unit, onAdd: () -> Unit,
     onReviewNames: () -> Unit, onExportSnapshot: () -> Unit,
+    onInspectSnapshot: () -> Unit,
     selectedHash: String?, files: List<RemoteFile>?, filesError: String?,
     filesLoading: Boolean, onInspect: (RemoteTransfer) -> Unit
 ) {
@@ -708,6 +724,10 @@ private fun TransfersScreen(
                 OutlinedButton(onClick = onExportSnapshot, enabled = !loading && !stale,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
                     Text("Save inventory-only snapshot")
+                }
+                OutlinedButton(onClick = onInspectSnapshot,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+                    Text("Inspect saved .chunksnap file")
                 }
                 OutlinedButton(
                     onClick = {
