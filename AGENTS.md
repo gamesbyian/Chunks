@@ -12,6 +12,8 @@
 
 **APK filename invariant:** Every downloadable Android APK in CI artifacts and GitHub Releases must include `chunks` in the filename (`chunks-debug.apk` for the normal app and `chunks-preview.apk` for side-by-side builds). Gradle's internal `app-debug.apk` is allowed only as an intermediate. Regenerate paired SHA-256 receipts after renaming, and keep physical-device preflight filename checks and docs in sync.
 
+**Batch transfer requirement (2026-10-27):** Local ↔ remote Copy/Move must support multi-select batches as well as individual details. Reuse per-transfer integrity and explicit source-deletion gates; retain scope-aware selection, per-item destination/conflict checks and durable partial-failure recovery. Consult PRODUCT, UX, ARCHITECTURE, SECURITY and WORK-QUEUE before implementing.
+
 ## Mandatory start and authority
 
 1. Inspect live `main`, open PRs, open issues, branch ownership, recent commits and CI **before** choosing a task. Read the one authoritative ranked [WORK-QUEUE](docs/WORK-QUEUE.md). Never assume a prior agent's PR is still pending/merged.
