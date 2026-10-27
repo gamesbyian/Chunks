@@ -313,8 +313,7 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
             Text("Saves into Chunks' folder on phone storage. Chunks fetches only the torrent's description from the magnet's trackers and peers, then stops; no file data downloads until you press Start.",
                 style = MaterialTheme.typography.bodySmall)
             OutlinedButton(onClick = {
-                busy = true
-                scope.launch {
+                performLocalMutation {
                     try {
                         val result = withContext(Dispatchers.IO) {
                             LocalEngineHolder.get(context).addMagnet(magnet, destination)
@@ -326,8 +325,6 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
                     } catch (_: Exception) {
                         inventoryFrame = inventoryFrame.copy(stale = true)
                         message = "Magnet Add was not confirmed. Wait for a fresh transfer list and check for the magnet before retrying."
-                    } finally {
-                        busy = false
                     }
                 }
             }, enabled = !busy && !inventoryStale, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Add magnet (metadata only)") }
@@ -347,8 +344,7 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
         if (add != null && destination != null) LocalAddReview(add.preview, destination,
             busy = busy || inventoryStale,
             onConfirm = {
-                busy = true
-                scope.launch {
+                performLocalMutation {
                     try {
                         val result = withContext(Dispatchers.IO) {
                             LocalEngineHolder.get(context).addStopped(add.bytes, destination)
@@ -364,8 +360,6 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
                     } catch (_: Exception) {
                         inventoryFrame = inventoryFrame.copy(stale = true)
                         message = "Torrent Add was not confirmed. Wait for a fresh transfer list and check for this torrent before retrying."
-                    } finally {
-                        busy = false
                     }
                 }
             },
@@ -396,8 +390,7 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
                         PackageManager.PERMISSION_GRANTED) {
                         notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
                     }
-                    busy = true
-                    scope.launch {
+                    performLocalMutation {
                         try {
                             val outcome = withContext(Dispatchers.IO) {
                                 val engine = LocalEngineHolder.get(context)
@@ -424,8 +417,6 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
                             // Do not invite another write until a successful inventory read.
                             inventoryFrame = inventoryFrame.copy(stale = true)
                             message = "Start/Stop was not confirmed. Wait for fresh phone torrent status before trying again."
-                        } finally {
-                            busy = false
                         }
                     }
                 },
@@ -436,8 +427,7 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
                     filesFor = if (filesFor == transfer.infoHash) null else transfer.infoHash
                 },
                 onFileWanted = { index, wanted ->
-                    busy = true
-                    scope.launch {
+                    performLocalMutation {
                         try {
                             val outcome = withContext(Dispatchers.IO) {
                                 LocalEngineHolder.current()?.setFileWanted(transfer.infoHash, index, wanted)
@@ -458,14 +448,11 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
                             inventoryFrame = inventoryFrame.copy(stale = true)
                             files = null
                             message = "File selection or readback failed. Wait for fresh status before trying again."
-                        } finally {
-                            busy = false
                         }
                     }
                 },
                 onRemove = {
-                    busy = true
-                    scope.launch {
+                    performLocalMutation {
                         try {
                             val removed = withContext(Dispatchers.IO) {
                                 LocalEngineHolder.current()?.removeKeepingData(transfer.infoHash)
@@ -479,8 +466,6 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
                             // Session removal may have succeeded before the exception.
                             inventoryFrame = inventoryFrame.copy(stale = true)
                             message = "Session removal was not confirmed. Wait for fresh status before trying again. Downloaded files were not requested for deletion."
-                        } finally {
-                            busy = false
                         }
                     }
                 })
