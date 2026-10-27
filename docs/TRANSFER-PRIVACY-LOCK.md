@@ -1,0 +1,33 @@
+# Transfer privacy lock and Android biometric authentication
+
+Owner directive: 2026-10-27. This contract covers **both local torrent transfers and every remote rTorrent profile**. It extends, rather than replaces, remote server authentication and the credential persistence contract.
+
+## Policy and defaults
+
+- Offer a transfer-privacy lock during onboarding, and later under Privacy & authentication. Initial enablement is the user's choice. **When the lock is enabled, default to one authentication per app session** for local and remote views.
+- Independently configurable local and per-remote-profile policy: Never, Once per app session, On each return from background, After five minutes away (elapsed monotonic clock), and Every time entering the protected transfer surface. Consider additional timeouts only if UI remains understandable.
+- Support native Android biometric prompt where device capabilities allow, preferring strong biometric authentication (fingerprint or eligible face/iris), with device PIN/pattern/password fallback by default. Offer device-credential-only and strong-biometric-only options only when actually supported; explain enrollment or unavailable sensor and supply a safe recovery path.
+- Local transfer access is an **app privacy gate** based on established device authentication, not a remote credential challenge. Do not invent a mandatory server password for an on-device torrent engine. If an optional dedicated Chunks passcode is ever added, design its enrollment, loss/recovery, rate limits and key handling separately.
+- Per-profile remote server login remains conceptually separate from the Chunks privacy gate. Remember remote connection credentials by default after explicit initial connection, with a visible opt-out and erase capability, stored encrypted with Android Keystore-backed keys; do not treat a successful biometric prompt as the server's identity proof or claim it changes the remote server's auth protocol.
+- A successful local unlock may unlock multiple policies only when the user has opted into shared session authorization and all protected scopes' security levels allow it; never silently unlock a separately stricter remote scope.
+
+## Operational safeguards
+
+- Start every new **process session** locked for enabled scopes, even if the process is restored from saved state. Defining session as process lifetime avoids confusing UI activity recreation, and is distinct from an Android background service's lifetime. App task removal may end UI but not service; service survival never grants UI access.
+- Keep auth state in memory, not DataStore, SavedStateHandle, backups, a deep link, intent extras, or persisted Compose state. A configuration change is not a new session; process death is.
+- Apply lock and redaction *before* protected UI is composed or exposed on cold start, navigation, sharing intents, widgets and restored deep links. Guard route and action execution, not just an overlay. Cancel/stale-out in-flight UI reads and reject protected mutations while locked.
+- Locking affects visibility and manual control; **must not stop local downloading, seeding or authorized background remote activities**. A manual Lock now command should be accessible from remote and local views.
+- Hide transfer titles/aliases, infohashes, trackers, filenames, paths, collection names, thumbnails, progress details and endpoint identity in locked UI and app-switcher previews. Consider FLAG_SECURE or a dedicated neutral snapshot cover while protected data is visible; document trade-offs for screenshots and accessibility. Protect notification content, widgets, shortcuts, clipboard/share/intent return paths and TalkBack descriptions with a cohesive disclosure policy.
+- Allow optional separate re-authentication before destructive commands (delete backing data, delete remote torrent + data, broad bulk changes, credentials export/change, disabling lock); default this safeguard on when lock is enabled. Never conflate auth confirmation with precise destructive target confirmation.
+- Handle prompt cancellation, screen lock, enrollment changes, backgrounding, device credential unavailability and simultaneous prompts without granting access. Serialize unlock attempts and attach success to exact requested scope, current session and policy generation. Disabling or weakening a policy requires current authentication.
+- Treat BiometricPrompt as a UI authentication gate; for confidential credential/key release, use Android Keystore user-auth-bound cryptographic operations or an equivalently reviewed design as the threat model warrants. Do not describe a boolean callback alone as hardened secret protection. Strong biometric/device credential authenticator combinations must be API/version tested, including Android 10 and earlier compatibility constraints.
+- Never log biometric data (Android does not supply fingerprints), user passcodes, remote credentials or authentication tokens. No proprietary biometric enrollment, server-side biometric upload or fingerprint collection.
+
+## Minimum acceptance
+
+1. JVM state-machine tests for first launch, enabled/disabled policies, local vs two remote profiles, scoped unlock, configuration recreation, process-restart lock, background timeout, clock changes, prompt cancellation/error, and lock-policy downgrade.
+2. Instrumented Android tests of supported and unsupported biometrics, device credential fallback, lock-before-render, deep-link/notification/recents redaction, accessibility, and blocking protected mutation paths while locked.
+3. Physical Android handset test: fingerprint and device PIN fallback; locked foreground/background navigation; local seed/downloading activity and remote connection persistence both survive UI locking; app force-stop and fresh launch relock. Record Android API, exact APK SHA, and QA limitations.
+4. End-to-end credential-storage acceptance: remember remote credentials by default where consent was given, survive app restart, opt out, explicitly forget, handle Keystore invalidation securely. These outcomes are separate from the privacy lock and are not currently claimed implemented.
+
+References: AndroidX BiometricPrompt and Android Keystore official documentation; see docs/SECURITY.md, docs/PRODUCT.md and docs/WORK-QUEUE.md. Implementation status: **specification only**, not built or accepted.
