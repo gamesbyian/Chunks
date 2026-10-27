@@ -6,6 +6,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -33,6 +36,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteAddOutcome
@@ -61,7 +67,10 @@ fun VerifiedAddScreen(
     onBack: () -> Unit,
     onComplete: () -> Unit,
     onMutationStarted: () -> Boolean,
-    onMutationSettled: () -> Unit
+    onMutationSettled: () -> Unit,
+    recentPlaces: List<String> = emptyList(),
+    /** Return whether the already-verified custom Place shortcut was persisted. */
+    onCustomPlaceVerified: (String) -> Boolean = { true }
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -263,6 +272,33 @@ fun VerifiedAddScreen(
                     "No usable default Place was reported. Enter a custom absolute server folder before adding."
             }, style = MaterialTheme.typography.bodySmall)
         }
+        if (!alreadyAttempted && recentPlaces.isNotEmpty()) {
+            item {
+                Text("Recently used custom folders", fontWeight = FontWeight.Bold)
+                Row(
+                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    recentPlaces.forEach { parent ->
+                        OutlinedButton(
+                            onClick = {
+                                onDestination(parent)
+                                awaitingConfirmation = false
+                            },
+                            enabled = !submitting,
+                            modifier = Modifier.height(48.dp)
+                                .semantics { contentDescription = "Use recent server folder: $parent" }
+                        ) {
+                            Text(parent, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.widthIn(max = 255.dp))
+                        }
+                    }
+                }
+                Text("Previously verified folders may have changed on the server. " +
+                    "Chunks checks each Add again before reporting success.",
+                    style = MaterialTheme.typography.bodySmall)
+            }
+        }
         if (!alreadyAttempted && plan == null) {
             item {
                 Text(addGuidance,
@@ -351,6 +387,17 @@ fun VerifiedAddScreen(
                                             is RemoteAddOutcome.Uncertain ->
                                                 "Add uncertain; no Start was sent. Check the server before another operation."
                                         }
+                                    }
+                                    if (!plan.useServerDefault &&
+                                        (result is RemoteAddAndStart.Started ||
+                                         result is RemoteAddAndStart.StartNotVerified ||
+                                         (result is RemoteAddAndStart.AddedStopped &&
+                                          result.result is RemoteAddOutcome.VerifiedStopped))) {
+                                        val saved = runCatching {
+                                            onCustomPlaceVerified(plan.destination)
+                                        }.getOrDefault(false)
+                                        if (!saved) outcome = outcome.orEmpty() +
+                                            " This folder was used but its Recent shortcut could not be saved."
                                     }
                                 } catch (_: Exception) {
                                     uncertain = true
