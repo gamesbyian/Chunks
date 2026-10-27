@@ -5,6 +5,8 @@ name: Publish Chunks installable Android debug APK
 # 2026-10-27 republish only after merged Add-default, verified-recent Place,
 # remembered-credential policy and documentation pass their exact-head gates.
 # This is an installable DEBUG pre-alpha, never physical handset acceptance.
+# 2026-10-27 diagnosis build: exact-main read-only traffic + tracker evidence UI,
+# protected Android acceptance remains a separate unverified device-host gate.
 on:
   push:
     branches: [main]
