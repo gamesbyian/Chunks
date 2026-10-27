@@ -4,6 +4,7 @@ name: Protected Seedhost Android read-only journey
 # development URL and protected secrets; all writes remain absent. Later runs
 # still require explicit workflow dispatch unless this file changes again.
 # Another read-only retry following LazyColumn Connect scroll fix; no writes.
+# 2026-10-27: verify live Add destination/default preview and return navigation, no Add/Start/Stop.
 on:
   push:
     branches: [main]
