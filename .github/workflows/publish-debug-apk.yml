@@ -58,7 +58,8 @@ jobs:
           cp "$RUNNER_TEMP/chunks-original.apk" app/build/outputs/apk/debug/app-debug.apk
       - name: Verify embedded revision and compute APK SHA-256
         run: |
-          apk="app/build/outputs/apk/debug/app-debug.apk"
+          apk="app/build/outputs/apk/debug/chunks-debug.apk"
+          cp app/build/outputs/apk/debug/app-debug.apk "$apk"
           receipt="app/build/outputs/apk/debug/CHUNKS-BUILD-SHA256.txt"
           test -s "$apk"
           test -s app/build/outputs/apk/debug/chunks-preview.apk
@@ -69,7 +70,7 @@ jobs:
             grep -F "versionName='0.1.0-dev+$short'"
           "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging app/build/outputs/apk/debug/chunks-preview.apk |
             grep -F "package: name='io.github.gamesbyian.chunks.preview'"
-          (cd "$(dirname "$apk")" && sha256sum app-debug.apk chunks-preview.apk) > "$receipt"
+          (cd "$(dirname "$apk")" && sha256sum chunks-debug.apk chunks-preview.apk) > "$receipt"
           printf '# built_commit=%s\n# workflow_run=%s\n' "$CHUNKS_SOURCE_SHA" "$GITHUB_RUN_ID" >> "$receipt"
           (cd "$(dirname "$apk")" && sha256sum -c CHUNKS-BUILD-SHA256.txt)
       - name: Publish immutable pre-release assets inside this repository
@@ -82,7 +83,7 @@ jobs:
             exit 1
           fi
           gh release create "$tag" \
-            "app/build/outputs/apk/debug/app-debug.apk#app-debug.apk" \
+            "app/build/outputs/apk/debug/chunks-debug.apk#chunks-debug.apk" \
             "app/build/outputs/apk/debug/chunks-preview.apk#chunks-preview.apk" \
             "app/build/outputs/apk/debug/CHUNKS-BUILD-SHA256.txt#CHUNKS-BUILD-SHA256.txt" \
             --repo "$GITHUB_REPOSITORY" --target "$CHUNKS_SOURCE_SHA" \
@@ -93,7 +94,7 @@ jobs:
         with:
           name: chunks-debug-prealpha
           path: |
-            app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/debug/chunks-debug.apk
             app/build/outputs/apk/debug/chunks-preview.apk
             app/build/outputs/apk/debug/CHUNKS-BUILD-SHA256.txt
           retention-days: 7
