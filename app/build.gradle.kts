@@ -87,7 +87,7 @@ abstract class VerifyChunksLauncherArtwork : DefaultTask() {
     fun verify() {
         fun gitBlob(bytes: ByteArray): String {
             val sha1 = MessageDigest.getInstance("SHA-1")
-            sha1.update("blob ${bytes.size}\\u0000".toByteArray(Charsets.UTF_8))
+            sha1.update(("blob ${bytes.size}" + 0.toChar()).toByteArray(Charsets.UTF_8))
             sha1.update(bytes)
             return sha1.digest().joinToString("") { "%02x".format(it.toInt() and 0xff) }
         }
@@ -112,8 +112,9 @@ abstract class VerifyChunksLauncherArtwork : DefaultTask() {
             "Adaptive launcher foreground must consume the SVG-derived native vector"
         }
         val app = manifest.get().asFile.readText()
-        check(app.contains("android:icon=\\\"@mipmap/ic_launcher\\\"") &&
-            app.contains("android:roundIcon=\\\"@mipmap/ic_launcher\\\"")) {
+        val quote = 34.toChar().toString()
+        check(app.contains("android:icon=" + quote + "@mipmap/ic_launcher" + quote) &&
+            app.contains("android:roundIcon=" + quote + "@mipmap/ic_launcher" + quote)) {
             "Application and round icons must both use ic_launcher"
         }
     }
