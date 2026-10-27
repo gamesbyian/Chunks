@@ -60,3 +60,46 @@ tasks.withType<Test>().configureEach {
     val signalChaining = File(System.getProperty("java.home"), "lib/libjsig.so")
     if (signalChaining.isFile) environment("LD_PRELOAD", signalChaining.absolutePath)
 }
+
+/**
+ * Owner-approved launcher icon is an immutable source asset.
+ * Refuse ordinary and preview APK builds when its reference is missing,
+ * replaced by a different PNG, or no longer wired through the adaptive icon.
+ */
+val approvedLauncherArtwork = "03a8677e9c90f4b455e67683fcc4a2b79517b1ea"
+val verifyChunksLauncherArtwork by tasks.registering {
+    group = "verification"
+    description = "Check owner-approved Chunks launcher artwork and manifest wiring"
+    inputs.file(layout.projectDirectory.file("src/main/res/drawable-nodpi/chunks_launcher_artwork.png"))
+    inputs.file(layout.projectDirectory.file("src/main/res/mipmap-anydpi-v26/ic_launcher.xml"))
+    inputs.file(layout.projectDirectory.file("src/main/AndroidManifest.xml"))
+    doLast {
+        val file = layout.projectDirectory.file("src/main/res/drawable-nodpi/chunks_launcher_artwork.png").asFile
+        check(file.isFile) { "Approved Chunks launcher PNG missing" }
+        val bytes = file.readBytes()
+        val signature = byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10)
+        check(bytes.size >= 100_000 && bytes.take(8) == signature.toList()) {
+            "Approved launcher artwork must be the high-resolution PNG"
+        }
+        val sha1 = java.security.MessageDigest.getInstance("SHA-1")
+        sha1.update("blob ${bytes.size}\\u0000".replace("\\u0000", "\u0000").toByteArray(Charsets.UTF_8))
+        sha1.update(bytes)
+        val blob = sha1.digest().joinToString("") { "%02x".format(it.toInt() and 0xff) }
+        check(blob == approvedLauncherArtwork) {
+            "The committed launcher art differs from the owner-approved original. Review replacement explicitly."
+        }
+        val iconXml = layout.projectDirectory.file("src/main/res/mipmap-anydpi-v26/ic_launcher.xml")
+            .asFile.readText()
+        check(iconXml.contains("@drawable/chunks_launcher_artwork") &&
+            !iconXml.contains("@drawable/ic_chunks_foreground") &&
+            !iconXml.contains("@drawable/ic_chunks_monochrome")) {
+            "Android adaptive icon must use the owner-approved artwork"
+        }
+        val manifest = layout.projectDirectory.file("src/main/AndroidManifest.xml").asFile.readText()
+        check(manifest.contains("android:icon=\\\"@mipmap/ic_launcher\\\"".replace("\\\"", "\"")) &&
+            manifest.contains("android:roundIcon=\\\"@mipmap/ic_launcher\\\"".replace("\\\"", "\""))) {
+            "The application and round icon must both use ic_launcher"
+        }
+    }
+}
+tasks.named("preBuild").configure { dependsOn(verifyChunksLauncherArtwork) }
