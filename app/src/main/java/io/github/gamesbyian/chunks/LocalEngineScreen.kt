@@ -54,6 +54,7 @@ import io.github.gamesbyian.chunks.engine.LocalTransferState
 import io.github.gamesbyian.chunks.engine.LocalTransferFile
 import io.github.gamesbyian.chunks.engine.LocalTransferStatus
 import io.github.gamesbyian.chunks.model.Units
+import io.github.gamesbyian.chunks.model.CollectionNameRegistryRules
 import io.github.gamesbyian.chunks.model.ManualCollectionPager
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoPreview
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader
@@ -127,6 +128,10 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val collectionStore = remember(context) { TransferCollectionStore(context) }
+    val nameRegistry = remember(context) { CollectionNameRegistry(context) }
+    var registeredNames by remember {
+        mutableStateOf(nameRegistry.names(TransferCollectionStore.LOCAL_ENGINE_SCOPE))
+    }
     var transfers by remember { mutableStateOf<List<LocalTransferStatus>>(emptyList()) }
     var transferPage by remember { mutableStateOf(0) }
     val transferSlice = remember(transfers, transferPage) {
@@ -135,11 +140,12 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
     var collectionRevision by remember { mutableStateOf(0) }
     var knownLocalCollections by remember { mutableStateOf<List<String>>(emptyList()) }
     val localHashes = remember(transfers) { transfers.map { it.infoHash } }
-    LaunchedEffect(localHashes, collectionRevision) {
+    LaunchedEffect(localHashes, collectionRevision, registeredNames) {
         knownLocalCollections = withContext(Dispatchers.IO) {
-            localHashes.asSequence()
-                .flatMap { collectionStore.forTransfer(TransferCollectionStore.LOCAL_ENGINE_SCOPE, it).asSequence() }
-                .distinct().sortedWith(String.CASE_INSENSITIVE_ORDER).toList()
+            CollectionNameRegistryRules.ordered(registeredNames + localHashes.asSequence()
+                .flatMap {
+                    collectionStore.forTransfer(TransferCollectionStore.LOCAL_ENGINE_SCOPE, it).asSequence()
+                }.toList())
         }
     }
     var filesFor by remember { mutableStateOf<String?>(null) }
@@ -270,6 +276,12 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
             },
             onCancel = { pending = null })
 
+        CollectionNameManager(
+            scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
+            registry = nameRegistry,
+            registeredNames = registeredNames,
+            onNamesChanged = { registeredNames = it }
+        )
         if (transfers.isEmpty()) {
             Text("No transfers on this phone yet.", style = MaterialTheme.typography.bodySmall)
         } else {
@@ -341,7 +353,12 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
                 scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
                 store = collectionStore,
                 availableCollections = knownLocalCollections,
-                onMembershipChanged = { collectionRevision++ }
+                onMembershipChanged = {
+                    collectionStore.forTransfer(TransferCollectionStore.LOCAL_ENGINE_SCOPE, transfer.infoHash)
+                        .forEach { nameRegistry.create(TransferCollectionStore.LOCAL_ENGINE_SCOPE, it) }
+                    registeredNames = nameRegistry.names(TransferCollectionStore.LOCAL_ENGINE_SCOPE)
+                    collectionRevision++
+                }
             )
             if (transfer.metadataKnown && transfer.progressPpm == 1_000_000) LocalLibraryCopyPanel(transfer)
         }
