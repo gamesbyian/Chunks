@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-label="Concept: smiling blue folder on dark"><rect width="160" height="160" rx="34" fill="#0B0F17"/><g>
+<defs><linearGradient id="front" x2="0.8" y2="1"><stop stop-color="#24E2FF"/><stop offset=".65" stop-color="#00AEFF"/><stop offset="1" stop-color="#0078EE"/></linearGradient><linearGradient id="side" x2="1" y2="1"><stop stop-color="#00B6FF"/><stop offset="1" stop-color="#0047C5"/></linearGradient></defs>
+<path d="M31 52 Q31 37 48 37 H75 Q82 37 87 45 L95 55 H117 Q134 55 134 72 V133 Q134 150 120 151 L41 140 Q27 138 27 124 Z" fill="url(#side)"/>
+<path d="M20 64 Q20 49 37 51 L66 53 Q77 54 80 64 L83 70 Q85 74 91 74 L120 78 Q135 80 135 95 L135 126 Q135 143 119 143 L34 133 Q20 131 20 115 Z" fill="url(#front)"/>
+<circle cx="56" cy="96" r="5.5" fill="#0B0F17"/><circle cx="99" cy="99" r="5.5" fill="#0B0F17"/>
+<path d="M63 112 Q77 134 94 114" fill="none" stroke="#0B0F17" stroke-width="7" stroke-linecap="round"/>
+</g></svg>

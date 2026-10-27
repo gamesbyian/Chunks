@@ -1,0 +1,189 @@
+{
+  "schema": 1,
+  "source": "Reference sheets 01, 03, 04, 06. These are alternates, not the installed launcher.",
+  "canonicalLauncher": "docs/design/approved/chunks-app-icon-master.svg",
+  "assets": [
+    {
+      "id": "brand/wordmark-black",
+      "path": "brand/wordmark-black.svg",
+      "kind": "wordmark",
+      "status": "vector-draft",
+      "review": "visual approval and typography refinement pending"
+    },
+    {
+      "id": "brand/wordmark-purple-offset",
+      "path": "brand/wordmark-purple-offset.svg",
+      "kind": "wordmark",
+      "status": "vector-draft",
+      "review": "visual approval and typography refinement pending"
+    },
+    {
+      "id": "brand/wordmark-purple-lilac",
+      "path": "brand/wordmark-purple-lilac.svg",
+      "kind": "wordmark",
+      "status": "vector-draft",
+      "review": "visual approval and typography refinement pending"
+    },
+    {
+      "id": "brand/wordmark-white-reverse",
+      "path": "brand/wordmark-white-reverse.svg",
+      "kind": "wordmark",
+      "status": "vector-draft",
+      "review": "visual approval and typography refinement pending"
+    },
+    {
+      "id": "brand/wordmark-grey-monochrome",
+      "path": "brand/wordmark-grey-monochrome.svg",
+      "kind": "wordmark",
+      "status": "vector-draft",
+      "review": "visual approval and typography refinement pending"
+    },
+    {
+      "id": "brand/wordmark-white-purple-offset",
+      "path": "brand/wordmark-white-purple-offset.svg",
+      "kind": "wordmark",
+      "status": "vector-draft",
+      "review": "visual approval and typography refinement pending"
+    },
+    {
+      "id": "brand/wordmark-with-emphasis",
+      "path": "brand/wordmark-with-emphasis.svg",
+      "kind": "wordmark",
+      "status": "vector-draft",
+      "review": "visual approval and typography refinement pending"
+    },
+    {
+      "id": "brand/primary-lockup",
+      "path": "brand/primary-lockup.svg",
+      "kind": "lockup",
+      "status": "vector-draft",
+      "review": "visual approval and typography refinement pending"
+    },
+    {
+      "id": "brand/dark-reversed-lockup",
+      "path": "brand/dark-reversed-lockup.svg",
+      "kind": "lockup",
+      "status": "vector-draft",
+      "review": "visual approval and typography refinement pending"
+    },
+    {
+      "id": "brand/monochrome-lockup",
+      "path": "brand/monochrome-lockup.svg",
+      "kind": "lockup",
+      "status": "vector-draft",
+      "review": "visual approval and typography refinement pending"
+    },
+    {
+      "id": "brand/stacked-lockup",
+      "path": "brand/stacked-lockup.svg",
+      "kind": "lockup",
+      "status": "vector-draft",
+      "review": "visual approval and typography refinement pending"
+    },
+    {
+      "id": "brand/compact-horizontal-lockup",
+      "path": "brand/compact-horizontal-lockup.svg",
+      "kind": "lockup",
+      "status": "vector-draft",
+      "review": "visual approval and typography refinement pending"
+    },
+    {
+      "id": "brand/yellow-sticker-lockup",
+      "path": "brand/yellow-sticker-lockup.svg",
+      "kind": "sticker",
+      "status": "vector-draft",
+      "review": "visual approval and typography refinement pending"
+    },
+    {
+      "id": "brand/purple-sticker-lockup",
+      "path": "brand/purple-sticker-lockup.svg",
+      "kind": "sticker",
+      "status": "vector-draft",
+      "review": "visual approval and typography refinement pending"
+    },
+    {
+      "id": "brand/green-sticker-lockup",
+      "path": "brand/green-sticker-lockup.svg",
+      "kind": "sticker",
+      "status": "vector-draft",
+      "review": "visual approval and typography refinement pending"
+    },
+    {
+      "id": "brand/pink-sticker-lockup",
+      "path": "brand/pink-sticker-lockup.svg",
+      "kind": "sticker",
+      "status": "vector-draft",
+      "review": "visual approval and typography refinement pending"
+    },
+    {
+      "id": "launcher-alternatives/smiling-folder-yellow",
+      "path": "launcher-alternatives/smiling-folder-yellow.svg",
+      "kind": "launcher-alternative",
+      "status": "vector-draft",
+      "review": "visual approval and typography refinement pending"
+    },
+    {
+      "id": "launcher-alternatives/smiling-folder-light",
+      "path": "launcher-alternatives/smiling-folder-light.svg",
+      "kind": "launcher-alternative",
+      "status": "vector-draft",
+      "review": "visual approval and typography refinement pending"
+    },
+    {
+      "id": "launcher-alternatives/smiling-folder-dark",
+      "path": "launcher-alternatives/smiling-folder-dark.svg",
+      "kind": "launcher-alternative",
+      "status": "vector-draft",
+      "review": "visual approval and typography refinement pending"
+    },
+    {
+      "id": "launcher-alternatives/smiling-folder-transparent",
+      "path": "launcher-alternatives/smiling-folder-transparent.svg",
+      "kind": "launcher-alternative",
+      "status": "vector-draft",
+      "review": "visual approval and typography refinement pending"
+    },
+    {
+      "id": "launcher-alternatives/smiling-folder-flat",
+      "path": "launcher-alternatives/smiling-folder-flat.svg",
+      "kind": "launcher-alternative",
+      "status": "vector-draft",
+      "review": "visual approval and typography refinement pending"
+    },
+    {
+      "id": "launcher-alternatives/c-monogram-purple",
+      "path": "launcher-alternatives/c-monogram-purple.svg",
+      "kind": "launcher-alternative",
+      "status": "vector-draft",
+      "review": "visual approval and typography refinement pending"
+    },
+    {
+      "id": "launcher-alternatives/c-monogram-confetti-dark",
+      "path": "launcher-alternatives/c-monogram-confetti-dark.svg",
+      "kind": "launcher-alternative",
+      "status": "vector-draft",
+      "review": "visual approval and typography refinement pending"
+    },
+    {
+      "id": "launcher-alternatives/multicolour-blocks-dark",
+      "path": "launcher-alternatives/multicolour-blocks-dark.svg",
+      "kind": "launcher-alternative",
+      "status": "vector-draft",
+      "review": "visual approval and typography refinement pending"
+    },
+    {
+      "id": "launcher-alternatives/folder-with-blocks",
+      "path": "launcher-alternatives/folder-with-blocks.svg",
+      "kind": "launcher-alternative",
+      "status": "vector-draft",
+      "review": "visual approval and typography refinement pending"
+    },
+    {
+      "id": "illustrations/four-colour-character-combo",
+      "path": "illustrations/four-colour-character-combo.svg",
+      "kind": "illustration",
+      "status": "vector-draft",
+      "review": "visual approval and typography refinement pending"
+    }
+  ]
+}

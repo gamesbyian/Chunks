@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-label="stacked-lockup"><rect width="1200" height="630" rx="32" fill="#F8FAFC"/>
+<g transform="translate(430 10) scale(1.9)"><g>
+
+<path d="M31 52 Q31 37 48 37 H75 Q82 37 87 45 L95 55 H117 Q134 55 134 72 V133 Q134 150 120 151 L41 140 Q27 138 27 124 Z" fill="#3B82FF"/>
+<path d="M20 64 Q20 49 37 51 L66 53 Q77 54 80 64 L83 70 Q85 74 91 74 L120 78 Q135 80 135 95 L135 126 Q135 143 119 143 L34 133 Q20 131 20 115 Z" fill="#00D4FF"/>
+<circle cx="56" cy="96" r="5.5" fill="#0B0F17"/><circle cx="99" cy="99" r="5.5" fill="#0B0F17"/>
+<path d="M63 112 Q77 134 94 114" fill="none" stroke="#0B0F17" stroke-width="7" stroke-linecap="round"/>
+</g></g>
+<g transform="translate(60 225)"><g transform="translate(0 16)" fill="none" stroke="#A56BFF" stroke-width="94" stroke-linecap="round" stroke-linejoin="round"><path d="M190 76 C152 45 88 53 68 121 C47 192 101 244 184 208"/><path d="M282 49 V220 M282 154 C292 109 370 106 370 166 V220"/><path d="M468 135 V184 C468 252 549 252 549 185 V135"/><path d="M645 137 V219 M645 162 C655 118 735 116 735 173 V219"/><path d="M827 52 V222 M912 133 L831 185 L919 223"/><path d="M1005 142 C951 119 942 157 963 170 C984 182 1048 172 1047 204 C1046 246 975 241 950 219"/></g><g transform="translate(0 0)" fill="none" stroke="#0B0F17" stroke-width="70" stroke-linecap="round" stroke-linejoin="round"><path d="M190 76 C152 45 88 53 68 121 C47 192 101 244 184 208"/><path d="M282 49 V220 M282 154 C292 109 370 106 370 166 V220"/><path d="M468 135 V184 C468 252 549 252 549 185 V135"/><path d="M645 137 V219 M645 162 C655 118 735 116 735 173 V219"/><path d="M827 52 V222 M912 133 L831 185 L919 223"/><path d="M1005 142 C951 119 942 157 963 170 C984 182 1048 172 1047 204 C1046 246 975 241 950 219"/></g></g><text x="600" y="560" text-anchor="middle" font-family="'Trebuchet MS','Arial Rounded MT Bold',system-ui,sans-serif" font-weight="900" font-style="italic" font-size="38" letter-spacing="2" fill="#0B0F17">TORRENTS, YOUR WAY.</text>
+<path d="M328 586 Q575 570 900 580" stroke="#FFD93D" stroke-width="14" stroke-linecap="round" fill="none"/></svg>
