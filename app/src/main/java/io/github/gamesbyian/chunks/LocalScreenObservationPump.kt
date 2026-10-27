@@ -3,6 +3,7 @@ package io.github.gamesbyian.chunks
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * Screen-side single-flight adapter for potentially blocking JNI observations.
@@ -52,4 +53,16 @@ internal class LocalScreenObservationPump<T>(
     fun shutdown() {
         executor.shutdown()
     }
+}
+
+/**
+ * A read started before an uncertain native mutation is not evidence of the
+ * post-mutation state, even when that read finishes after the failed command.
+ * Only samples scheduled in the current revision can clear a stale UI.
+ */
+internal class LocalScreenObservationRevision {
+    private val revision = AtomicLong(0L)
+    fun snapshot(): Long = revision.get()
+    fun invalidate() { revision.incrementAndGet() }
+    fun accepts(sampleRevision: Long): Boolean = sampleRevision == revision.get()
 }
