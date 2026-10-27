@@ -576,7 +576,14 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
     suspend fun setStarted(hash: String, desiredStarted: Boolean): LifecycleOutcome {
         require(Regex("[0-9a-fA-F]{40}").matches(hash)) { "Invalid v1 torrent hash" }
         try {
-            call(if (desiredStarted) "d.start" else "d.stop", listOf(hash))
+            // Mirror ruTorrent's proven lifecycle commands. d.start alone
+            // can leave state=1 yet paused/inactive; the server UI sends
+            // d.open, d.start, d.resume to actually begin traffic.
+            // Stop likewise closes after stopping. Every step targets
+            // the exact hash; a lost ACK aborts without any retries.
+            val commands = if (desiredStarted) listOf("d.open", "d.start", "d.resume")
+                else listOf("d.stop", "d.close")
+            for (method in commands) call(method, listOf(hash))
         } catch (_: IOException) {
             // The gateway may lose its reply after rTorrent applied the mutation.
             // Conservatively report uncertainty, and never retry automatically.
@@ -584,8 +591,18 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         }
         return try {
             val observed = number(call("d.state", listOf(hash))) != 0L
-            if (observed == desiredStarted) LifecycleOutcome.Verified(observed)
-            else LifecycleOutcome.Pending(desiredStarted, observed)
+            if (observed != desiredStarted) {
+                LifecycleOutcome.Pending(desiredStarted, observed)
+            } else if (desiredStarted) {
+                // state=1 includes paused torrents. Only the separate active
+                // bit establishes that the engine is actually running.
+                val active = try {
+                    number(call("d.is_active", listOf(hash))) != 0L
+                } catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
+                  catch (_: RpcFault) { null }
+                if (active == false) LifecycleOutcome.Pending(true, true)
+                else LifecycleOutcome.Verified(true)
+            } else LifecycleOutcome.Verified(false)
         } catch (_: java.io.IOException) {
             LifecycleOutcome.Uncertain(desiredStarted)
         }
