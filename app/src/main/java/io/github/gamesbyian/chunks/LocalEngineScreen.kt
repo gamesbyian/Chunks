@@ -435,10 +435,12 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
                             is LocalAddResult.FetchingMetadata -> "Metadata is still loading."
                             is LocalAddResult.AddedStopped -> when (started?.outcome) {
                                 LocalCommandOutcome.VERIFIED -> {
-                                    try { LocalEngineService.start(context) } catch (_: Exception) {
-                                        "Started on phone, but Android background service could not start. Keep Chunks open."
-                                    }
-                                    "Added and started. Peer availability and downloaded bytes need observation in the transfer list."
+                                    val serviceOk = try {
+                                        LocalEngineService.start(context)
+                                        true
+                                    } catch (_: Exception) { false }
+                                    if (serviceOk) "Added and started. Check peer availability and downloaded bytes in the transfer list."
+                                    else "Added and started, but Android refused background service. Keep Chunks open."
                                 }
                                 LocalCommandOutcome.UNCERTAIN -> {
                                     inventoryFrame = inventoryFrame.copy(stale = true)
@@ -590,6 +592,7 @@ internal fun LocalAddReview(
     preview: TorrentMetainfoPreview,
     destination: File,
     busy: Boolean,
+    startAfterAdd: Boolean = false,
     onConfirm: () -> Unit,
     onCancel: () -> Unit
 ) {
@@ -601,11 +604,14 @@ internal fun LocalAddReview(
             Text(preview.fileCount.toString() + (if (preview.fileCount == 1) " file, " else " files, ") +
                 Units.bytes(preview.sizeBytes))
             Text("Saves into: Chunks' folder on phone storage (" + destination.absolutePath + "). Files here are removed if Chunks is uninstalled.")
-            Text("It is added stopped. Nothing downloads until you press Start.", style = MaterialTheme.typography.bodySmall)
+            Text(if (startAfterAdd)
+                "Chunks adds stopped, verifies the new transfer, then starts it. Download progress depends on available peers or web seeds."
+                else "It is added stopped. Nothing downloads until you press Start.",
+                style = MaterialTheme.typography.bodySmall)
             if (preview.trackerCount == 0) Text("This torrent lists no tracker, so peers can only be found through DHT (if turned on) or its web sources.",
                 color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             Button(onClick = onConfirm, enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
-                Text("Add stopped")
+                Text(if (startAfterAdd) "Add and start downloading" else "Add stopped")
             }
             OutlinedButton(onClick = onCancel, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Cancel") }
         }
