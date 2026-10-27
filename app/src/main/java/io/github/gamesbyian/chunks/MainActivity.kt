@@ -44,6 +44,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -134,6 +135,9 @@ private fun ChunksApp(sharedMagnet: String?) {
     var server by remember { mutableStateOf<RTorrentRemote?>(null) }
     var version by remember { mutableStateOf("") }
     var transfers by remember { mutableStateOf<List<RemoteTransfer>>(emptyList()) }
+    // Advances ONLY when the server has delivered a fresh, accepted queue read.
+    // The operation UI can then allow another separately confirmed lifecycle command.
+    var snapshotRevision by remember { mutableLongStateOf(0L) }
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var stale by remember { mutableStateOf(false) }
@@ -191,6 +195,7 @@ private fun ChunksApp(sharedMagnet: String?) {
                             if (server === remote && remoteFence.current(ticket) &&
                                 mutationGate.acceptFreshRead(readbackTicket)) {
                                 transfers = snapshot
+                                snapshotRevision++
                                 currentView = ticket.view
                                 stale = false
                                 // Previous file inspections belong to the OLD
@@ -287,6 +292,7 @@ private fun ChunksApp(sharedMagnet: String?) {
                                     inspectionFence.invalidate()
                                     mutationGate.reset()
                                     transfers = list
+                                    snapshotRevision++
                                     version = v
                                     aliasScope = endpoint.trim() + "\u0000" + username.trim()
                                     // Never carry another server/account's custom destination
@@ -369,6 +375,7 @@ private fun ChunksApp(sharedMagnet: String?) {
                     aliasSessions = aliasSessions,
                     aliasRevision = aliasRevision, onAliasSaved = { aliasRevision++ },
                     list = transfers, view = currentView, loading = loading, stale = stale,
+                    snapshotRevision = snapshotRevision,
                     query = query, onQuery = { query = it },
                     filter = filter, onFilter = { filter = it },
                     order = order, onOrder = { order = it },
@@ -615,6 +622,7 @@ private fun TransfersScreen(
     aliasSessions: MutableMap<String, TransferAliasEditSession>,
     aliasRevision: Int, onAliasSaved: () -> Unit,
     list: List<RemoteTransfer>, view: String, loading: Boolean, stale: Boolean,
+    snapshotRevision: Long,
     query: String, onQuery: (String) -> Unit, filter: TransferFilter,
     onFilter: (TransferFilter) -> Unit, order: TransferOrder,
     onOrder: (TransferOrder) -> Unit, onRefresh: () -> Unit, onAdd: () -> Unit,
@@ -729,6 +737,7 @@ private fun TransfersScreen(
                 },
                 onLifecycleSettled = onLifecycleSettled,
                 transfer = transfer, expanded = selectedHash == transfer.hash,
+                snapshotRevision = snapshotRevision,
                 otherTransferDownloading = RemoteQueueActivityContext.otherTransferReportsDownloading(
                     transfer, knownDownloadingHashes, !stale && !loading
                 ),
@@ -762,6 +771,7 @@ private fun TransferCard(
     onAliasSave: (String?) -> Boolean,
     onLifecycleSettled: () -> Unit,
     transfer: RemoteTransfer, expanded: Boolean,
+    snapshotRevision: Long,
     otherTransferDownloading: Boolean,
     files: List<RemoteFile>?, filesLoading: Boolean, filesError: String?,
     onInspect: () -> Unit
@@ -830,6 +840,7 @@ private fun TransferCard(
             }
             TransferLifecycleControl(
                 remote = remote, transfer = transfer, snapshotStale = stale,
+                snapshotRevision = snapshotRevision,
                 onMutationStarted = onMutationStarted,
                 onSettled = onLifecycleSettled
             )

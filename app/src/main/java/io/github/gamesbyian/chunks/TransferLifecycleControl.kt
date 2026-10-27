@@ -46,11 +46,22 @@ fun TransferLifecycleControl(
     transfer: RemoteTransfer,
     snapshotStale: Boolean,
     onMutationStarted: () -> Boolean,
-    onSettled: () -> Unit
+    onSettled: () -> Unit,
+    snapshotRevision: Long = 0L,
+    // Test seam. Production always sends one exact-hash RPC lifecycle request.
+    performLifecycle: suspend (String, Boolean) -> LifecycleOutcome = remote::setStarted
 ) {
     val validV1Hash = remember(transfer.hash) { Regex("[0-9a-fA-F]{40}").matches(transfer.hash) }
     var confirming by rememberSaveable(transfer.hash, transfer.name, transfer.directory) { mutableStateOf(false) }
     var attempted by rememberSaveable(transfer.hash, transfer.name, transfer.directory) { mutableStateOf(false) }
+    // An attempt stays locked until a NEW authoritative post-command queue read.
+    // The revision is not a Compose recomposition or filter/search change.
+    var attemptedAtRevision by rememberSaveable(transfer.hash, transfer.name, transfer.directory) {
+        mutableStateOf(-1L)
+    }
+    var confirmingAtRevision by rememberSaveable(transfer.hash, transfer.name, transfer.directory) {
+        mutableStateOf(-1L)
+    }
     var pending by remember(transfer.hash, transfer.name, transfer.directory) { mutableStateOf(false) }
     var feedback by remember(transfer.hash) { mutableStateOf<String?>(null) }
     var verified by rememberSaveable(transfer.hash, transfer.name, transfer.directory) { mutableStateOf(false) }
@@ -68,6 +79,10 @@ fun TransferLifecycleControl(
     val scope = rememberCoroutineScope()
     val requestedStarted = !transfer.started
     val verb = if (requestedStarted) "Start" else "Stop"
+    val confirmationFresh = confirming && confirmingAtRevision == snapshotRevision
+    val freshAfterAttempt = attempted && !pending && !snapshotStale &&
+        attemptedAtRevision != snapshotRevision
+    val canOfferAction = !pending && (!attempted || freshAfterAttempt)
 
     if (!validV1Hash) {
         Text("This transfer hash format is not yet supported for lifecycle controls.",
@@ -76,18 +91,24 @@ fun TransferLifecycleControl(
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (!confirming && !attempted) {
+        if (!confirmationFresh && canOfferAction) {
             OutlinedButton(
-                onClick = { confirming = true },
+                onClick = {
+                    confirmingAtRevision = snapshotRevision
+                    confirming = true
+                },
                 enabled = !snapshotStale,
                 modifier = Modifier.height(48.dp)
             ) { Text(verb + " transfer…") }
-            if (snapshotStale) {
-                Text("Refresh this stale server snapshot before changing a transfer.",
-                    style = MaterialTheme.typography.bodySmall)
-            }
         }
-        if (confirming) {
+        if (snapshotStale) {
+            Text("Refresh this stale server snapshot before changing a transfer.",
+                style = MaterialTheme.typography.bodySmall)
+        } else if (attempted && !freshAfterAttempt && !pending) {
+            Text("This operation needs a new confirmed server snapshot before another Start or Stop.",
+                style = MaterialTheme.typography.bodySmall)
+        }
+        if (confirmationFresh) {
             Card(colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.tertiaryContainer)) {
                 Column(Modifier.fillMaxWidth().padding(12.dp),
@@ -103,13 +124,15 @@ fun TransferLifecycleControl(
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
                             onClick = {
-                                if (onMutationStarted()) {
+                                if (!snapshotStale && confirmingAtRevision == snapshotRevision &&
+                                    onMutationStarted()) {
                                 confirming = false
                                 attempted = true
+                                attemptedAtRevision = snapshotRevision
                                 pending = true
                                 scope.launch {
                                     try {
-                                        val outcome = remote.setStarted(transfer.hash, requestedStarted)
+                                        val outcome = performLifecycle(transfer.hash, requestedStarted)
                                         verified = outcome is LifecycleOutcome.Verified
                                         feedback = when (outcome) {
                                             is LifecycleOutcome.Verified ->
@@ -139,9 +162,9 @@ fun TransferLifecycleControl(
                                 }
                                 } else {
                                     confirming = false
-                                    attempted = true
-                                    verified = false
-                                    feedback = "Another remote command needs fresh readback before any further action."
+                                    // No command was sent, so do not manufacture an
+                                    // attempted operation or a permanent UI lockout.
+                                    feedback = "The server snapshot changed or another command is pending. Refresh before trying again."
                                 }
                             },
                             enabled = !pending && !snapshotStale,
