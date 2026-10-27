@@ -22,6 +22,13 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Verify SVG-derived launcher vector is up to date
+        run: |
+          node tools/generate_launcher_vector.cjs --check
+          test ! -e app/src/main/res/drawable-nodpi/chunks_launcher_artwork.png
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
