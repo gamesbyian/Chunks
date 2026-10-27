@@ -1,0 +1,80 @@
+name: Publish Chunks installable Android debug APK
+
+# Deliberately one-time on initial installation of this workflow; further
+# builds are explicit, not a new public release for every source commit.
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/publish-debug-apk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: chunks-release-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CHUNKS_SOURCE_SHA: ${{ github.sha }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify test helper before producing debug APK
+        run: bash tools/test_physical_android_preflight.sh
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+      - name: Install Android API 37 SDK
+        run: |
+          printf "y\n" | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
+          if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          fi
+      - name: Test and build exact main checkout
+        run: gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug
+      - name: Verify embedded revision and compute APK SHA-256
+        run: |
+          apk="app/build/outputs/apk/debug/app-debug.apk"
+          receipt="app/build/outputs/apk/debug/CHUNKS-BUILD-SHA256.txt"
+          test -s "$apk"
+          short="${CHUNKS_SOURCE_SHA:0:12}"
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$apk" |
+            grep -F "versionName='0.1.0-dev+$short'"
+          (cd "$(dirname "$apk")" && sha256sum app-debug.apk) > "$receipt"
+          printf '# built_commit=%s\n# workflow_run=%s\n' "$CHUNKS_SOURCE_SHA" "$GITHUB_RUN_ID" >> "$receipt"
+          sha256sum -c "$receipt" --ignore-missing
+      - name: Publish immutable pre-release assets inside this repository
+        run: |
+          set -euo pipefail
+          short="${CHUNKS_SOURCE_SHA:0:12}"
+          tag="android-debug-$short"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $tag already exists; refusing to replace APK bytes"
+            exit 1
+          fi
+          gh release create "$tag" \
+            "app/build/outputs/apk/debug/app-debug.apk#app-debug.apk" \
+            "app/build/outputs/apk/debug/CHUNKS-BUILD-SHA256.txt#CHUNKS-BUILD-SHA256.txt" \
+            --repo "$GITHUB_REPOSITORY" --target "$CHUNKS_SOURCE_SHA" \
+            --title "Chunks Android debug build $short" --prerelease \
+            --notes "Installable Android pre-alpha debug APK built and JVM-tested from exact main commit $CHUNKS_SOURCE_SHA. Download BOTH assets and verify SHA-256 using sha256sum -c CHUNKS-BUILD-SHA256.txt. Debug signing only: no publisher identity, production security guarantee, physical-device validation, Seedhost end-to-end acceptance, or guaranteed Android background seeding. See docs/BUILD.md and docs/QUALITY-LEDGER.md. Never publish private server credentials."
+      - name: Keep conventional short-lived CI artifact as an alternative
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-debug-prealpha
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/debug/CHUNKS-BUILD-SHA256.txt
+          retention-days: 7
