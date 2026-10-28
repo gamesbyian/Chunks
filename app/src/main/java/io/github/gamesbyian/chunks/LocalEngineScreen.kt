@@ -1313,7 +1313,8 @@ internal fun LocalTransferCard(
                     Text(if (filesShown) "Hide files" else "Files")
                 }
             }
-            if (onRepairTrackers != null) {
+            if (onRepairTrackers != null && transfer.stopped &&
+                transfer.metadataKnown && transfer.trackers?.total == 0) {
                 OutlinedButton(
                     onClick = onRepairTrackers,
                     enabled = !busy,
