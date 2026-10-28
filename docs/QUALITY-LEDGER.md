@@ -1,5 +1,16 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-28 latest verified results and unresolved gates
+
+- #420 MERGED at 7c1e378010fcb025622c6678e8f09dd02dd60b12. Exact head 18d2c18fc241dafe9ad280baf78351ec6066ef98, Android/JVM run 40639911487 and API35 run 40639911464 both success. Two Android libtorrent JNI sessions exchanged 900,000 genuine BitTorrent TCP peer bytes over emulator localhost; finished pieces, exact native CACHE_FLUSHED and independent filesystem SHA-256 verified. Physical handset and external swarm NOT proven.
+- #419 MERGED at ebbe54b8ab54b193a990807f235e5ee70b5a6d40. Android/JVM 40639753493 and real public Wikimedia Commons HTTPS BEP19 web-seed 40639753440 both successful, whole-file SHA-256 after cache flush. This is external HTTP web-seeding, not ordinary Internet peer acceptance.
+- #422 MERGED at 7a4af50c779a55f0950651be6993e1483b4b20d8; Android/JVM 40640662592 passed. ZIP member decompression read refuses indefinite zero-byte streams while retaining limits.
+- #413 MERGED at c476e54bc7e0421be3bef2ad50b20c21db139399 (legacy tracker repair); #412 MERGED at c6cee90537818a7c9a92d7a50656c80117f22db2 (actual file Low/Normal/High); #414 MERGED at cedc07c1528ea8dabeab7e3b79453e9a8d621f3e (Stop all isolation). Exact-head Android/JVM and installed API35 passed; #412/#413 also passed both real disposable rTorrent variants. Controlled tests, not physical device acceptance.
+- #425 MERGED at 0f5a17f82604da41c1601f340cd448d5be5eedc7, preserving all owner-approved adaptive Finish in Order specifications across seven documents, superseding conflicted #417. Complete scheduler NOT implemented.
+- #418 OPEN, latest head b4ed2d03f0ef36f616b13a747160d92670b1da58, one-item verified stopped snapshot restore with durable pre-Add IN_FLIGHT journal, exact hash+Place, no automatic retries; exact-head CI pending. #423 OPEN, latest head 8a963b9dbb0418197f96008d364c1fe3e0f39123, user-reviewed one-time episode focus. Earlier JVM failed 1 of 487 tests from adjacent conflicting episode labels; parser fixed and exact-head CI pending. Neither is field accepted or merged.
+
+**Still required:** physical Android public swarm and hash-verified bytes, FGS/Doze/process death/shared Downloads, authenticated handset-to-Seedhost stopped Add and independent host byte readback, journalled remote/batch restore, safe actual payload Copy/Move, archive provenance, signed release, biometric/recents and accessibility acceptance.
+
 ## 2026-10-27 owner request: ordered completion (#415)
 
 **Specification-only:** Finish in Order was added to PRODUCT, UX, ARCHITECTURE, WORK-QUEUE, SPEC-COVERAGE and DECISIONS in a focused documentation PR. No scheduler implementation, CI proof, native swarm first-file completion measurement, remote capability verification, or physical-device acceptance is implied. Existing per-file priorities and #412 candidate remain separate. Release gates and evidence requirements are listed in SPEC-COVERAGE and #415.
