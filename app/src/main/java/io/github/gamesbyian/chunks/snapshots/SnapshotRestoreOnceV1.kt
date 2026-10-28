@@ -44,8 +44,8 @@ internal object SnapshotRestoreOnceV1 {
     interface LocalTarget {
         /** Must be one successful COMPLETE engine inventory; null means unavailable. */
         fun completeHashes(): List<String>?
-        /** Independent status readback; null is unavailable, never success. */
-        fun stoppedAfterReadback(infoHashV1: String): Boolean?
+        /** Independently observed stopped transfer's actual save directory. */
+        fun observedStoppedPlace(infoHashV1: String): File?
         /** An attempted native Add. False is uncertain, never proof of no mutation. */
         fun submitStopped(originalTorrent: ByteArray, chosenPlace: File): Boolean
     }
@@ -54,8 +54,9 @@ internal object SnapshotRestoreOnceV1 {
         override fun completeHashes(): List<String>? =
             try { engine.completeIdentityInventory() } catch (_: Exception) { null }
 
-        override fun stoppedAfterReadback(infoHashV1: String): Boolean? =
-            try { engine.status(infoHashV1)?.stopped } catch (_: Exception) { null }
+        override fun observedStoppedPlace(infoHashV1: String): File? =
+            try { engine.status(infoHashV1)?.takeIf { it.stopped }?.savePath?.let(::File) }
+            catch (_: Exception) { null }
 
         override fun submitStopped(originalTorrent: ByteArray, chosenPlace: File): Boolean =
             try {
@@ -124,8 +125,15 @@ internal object SnapshotRestoreOnceV1 {
         val after = canonicalInventory(try { target.completeHashes() }
             catch (_: Exception) { null } ?: return Outcome.UNCERTAIN)
             ?: return Outcome.UNCERTAIN
-        if (hash !in after || try { target.stoppedAfterReadback(hash) != true }
-            catch (_: Exception) { true }) return Outcome.UNCERTAIN
+        if (hash !in after) return Outcome.UNCERTAIN
+        // Verifying identity and stopped state without the actual *new* Place
+        // could claim success after a concurrent Add or native path drift.
+        val verifiedPlace = try { target.observedStoppedPlace(hash)?.canonicalPath }
+            catch (_: Exception) { null }
+        val expectedPlace = try { chosenPlace.canonicalPath }
+            catch (_: Exception) { null }
+        if (verifiedPlace == null || verifiedPlace != expectedPlace)
+            return Outcome.UNCERTAIN
         // Presence does not establish downloaded payload or completed files.
         try { journal.reconcileWithCompleteTarget(after, true) }
         catch (_: Exception) { return Outcome.UNCERTAIN }
