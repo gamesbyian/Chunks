@@ -9,7 +9,11 @@ import io.github.gamesbyian.chunks.engine.LocalTransferState
 import io.github.gamesbyian.chunks.model.ServerToPhoneCopy
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
+import java.net.ConnectException
 import java.net.InetAddress
+import java.net.InetSocketAddress
+import java.net.Socket
+import java.net.SocketTimeoutException
 import java.net.URI
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -80,13 +84,14 @@ class SeedhostServerToPhoneCopyProbeTest {
             .sortedBy { it.sizeBytes }.take(40)
         var chosen: ServerToPhoneCopy.Ready? = null
         var chosenName = ""
+        var chosenHash = ""
         var privateCount = 0
         var inactiveCount = 0
         var otherCount = 0
         for (row in candidates) {
             val source = remote.peerSource(row.hash)
             val plan = ServerToPhoneCopy.plan(row, source) { InetAddress.getAllByName(it).toList() }
-            if (plan is ServerToPhoneCopy.Ready) { chosen = plan; chosenName = row.name; break }
+            if (plan is ServerToPhoneCopy.Ready) { chosen = plan; chosenName = row.name; chosenHash = row.hash; break }
             when {
                 source.isPrivate -> privateCount++
                 !source.isActive -> inactiveCount++
@@ -117,11 +122,31 @@ class SeedhostServerToPhoneCopyProbeTest {
         val summary = "name=\"$chosenName\" hash=$hash peer=${plan.peer} bytes=${plan.bytes} " +
             "metadata=${latest.metadataKnown} verified=${latest.doneBytes} maxPeers=$maxPeers seconds=$elapsed"
         if (!latest.metadataKnown || latest.doneBytes != plan.bytes) {
-            println("CHUNKS_SEEDHOST_COPY: INCONCLUSIVE $summary")
+            // Read-only diagnosis: can a plain TCP connect reach the server's
+            // peer port, and is the server itself connected to any peers?
+            val tcp = tcpReach(plan.peer)
+            val serverPeers = runCatching { remote.readActivity(chosenHash).connectedPeers }.getOrNull()
+            println("CHUNKS_SEEDHOST_COPY: INCONCLUSIVE $summary tcp=$tcp serverPeers=$serverPeers")
             fail("INCONCLUSIVE server peer reachability or copy: $summary")
         }
         assertTrue(phone.flushCompletedForLibraryRead(hash, 30_000))
         assertEquals(plan.bytes, latest.wantedBytes)
         println("CHUNKS_SEEDHOST_COPY: VERIFIED $summary")
+    }
+
+    /** One 10 s TCP connect to "ip:port" or "[ip6]:port"; sends no bytes. */
+    private fun tcpReach(peer: String): String {
+        val port = peer.substringAfterLast(':').toInt()
+        val host = peer.substringBeforeLast(':').removePrefix("[").removeSuffix("]")
+        return try {
+            Socket().use { it.connect(InetSocketAddress(host, port), 10_000) }
+            "open"
+        } catch (_: ConnectException) {
+            "refused"
+        } catch (_: SocketTimeoutException) {
+            "timeout"
+        } catch (e: java.io.IOException) {
+            "error:${e.javaClass.simpleName}"
+        }
     }
 }
