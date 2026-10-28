@@ -37,11 +37,10 @@ jobs:
           directory.default.set = $RUNNER_TEMP/chunks-data
           session.path.set = $RUNNER_TEMP/chunks-session
           network.scgi.open_port = 127.0.0.1:5000
-          # Fixed peer port for the interop test; no DHT/PEX/UDP trackers, so
+          # Fixed peer port for the interop test; no PEX/UDP trackers, so
           # peers are found only through the test's own loopback tracker.
           network.port_range.set = 6890-6890
           network.port_random.set = no
-          dht.mode.set = disable
           protocol.pex.set = no
           trackers.use_udp.set = no
           system.daemon.set = true

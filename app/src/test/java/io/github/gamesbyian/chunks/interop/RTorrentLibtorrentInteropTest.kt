@@ -99,9 +99,9 @@ class RTorrentLibtorrentInteropTest {
     }
 
     private fun torrentFor(root: File) =
-        // rTorrent 0.9.x and Chunks' remote Add accept BitTorrent v1 metainfo only,
-        // and rTorrent 0.9.8 refuses trackerless metainfo ("Could not find any
-        // trackers"). The tracker is this test's own loopback HTTP tracker.
+        // rTorrent 0.9.x and Chunks' remote Add accept BitTorrent v1 metainfo only.
+        // The tracker is this test's own loopback HTTP tracker, so peer
+        // discovery never depends on DHT or the public Internet.
         TorrentBuilder().path(root).flags(TorrentBuilder.V1_ONLY).pieceSize(64 * 1024)
             .addTracker(tracker.announceUrl).generate().entry().bencode()
 
