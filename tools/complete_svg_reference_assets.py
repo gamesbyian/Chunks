@@ -58,7 +58,8 @@ def trace_colored(im,rect,letter,reference,fill):
         if 2<=area<600 and w<65 and h<35:letters[l==i]=255
     fg=contour(letters,(tx-x0,ty-y0))
     if not bg or not fg:raise RuntimeError('Missing source lettering contour')
-    return f'<path d="{bg}" fill="{fill}"/><path d="{fg}" fill="#0B0F17" fill-rule="evenodd"/>',x1-x0,y1-y0
+    stroke=' stroke="#0B0F17" stroke-width="1"' if fill in ('#B66CF2','#FF5EAA') else ''
+    return f'<path d="{bg}" fill="{fill}"/><path d="{fg}" fill="#0B0F17" fill-rule="evenodd"{stroke}/>',x1-x0,y1-y0
 def outlines(message,font):
     face=font.getGlyphSet(); cmap=font.getBestCmap();hmtx=font['hmtx'].metrics
     scale=51/font['head'].unitsPerEm
