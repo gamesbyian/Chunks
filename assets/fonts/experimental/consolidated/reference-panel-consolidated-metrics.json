@@ -13,7 +13,7 @@
       "font": "ChunksReferencePanel-Regular-Consolidated.otf",
       "weight": 400,
       "input_sha256": "da35bb88d9d8f9e1801e0b61f2ad2b71632f0b4e30a75bb27081e2c10ba5100d",
-      "output_sha256": "87aeec8475e3be767bef995ac840f2bddba1dd96c214830ff8e0bc5a738734df",
+      "output_sha256": "6710110847b322de87e00969bbc9bfa9a0fc1803810286df5745199fdf413acd",
       "unicode_count": 856,
       "preserved_source_shaping": true,
       "punctuation": {
@@ -590,7 +590,7 @@
       "font": "ChunksReferencePanel-Medium-Consolidated.otf",
       "weight": 500,
       "input_sha256": "ef41c2356684e60e72ec2eb72510a76021de2db2caec3d5022a3fe5891b8bc10",
-      "output_sha256": "0f07dd4152f58cf5585c29a9c1597c3344b00c20b4110ee8dd51abbd9eb9e05f",
+      "output_sha256": "f738ac0e9a2ce5a3a8968c2c738255fd7eea7db33f3b7a46306ebd13400c9cb9",
       "unicode_count": 856,
       "preserved_source_shaping": true,
       "punctuation": {
@@ -1167,7 +1167,7 @@
       "font": "ChunksReferencePanel-Semibold-Consolidated.otf",
       "weight": 600,
       "input_sha256": "d379666be3a186a1a59a86c5dc96ece2161dbe9edbe4ccea0b2dad3a4aa6d6d0",
-      "output_sha256": "db0a043885979adacaa52b1d6c4646d59ad2308476af84cd71f7dc8ea85a6007",
+      "output_sha256": "b6a164f82c76403ce7e9d19506871fa84ec1223a00f74bcfe992b72942cfa25e",
       "unicode_count": 856,
       "preserved_source_shaping": true,
       "punctuation": {
@@ -1744,7 +1744,7 @@
       "font": "ChunksReferencePanel-Bold-Consolidated.otf",
       "weight": 700,
       "input_sha256": "f2e85000fedf06dfec47f4ca82588f19d3a1ff0ef8881848f68d1aec2e2080ad",
-      "output_sha256": "cd9c938b14e503c392d5c41aff9cd357ee02087762199e34dd71869b96aa3f49",
+      "output_sha256": "842d1ac96d99a5205d2bbdae2129e4ff59d74f58e284f74539e209325a1ed509",
       "unicode_count": 856,
       "preserved_source_shaping": true,
       "punctuation": {
@@ -2321,7 +2321,7 @@
       "font": "ChunksReferencePanel-ExtraBold-Consolidated.otf",
       "weight": 800,
       "input_sha256": "52904a660f587830753e644f6e4980e14396ffea9b300913949bbc081051ff54",
-      "output_sha256": "5f9538ca45c36b657255bc569a5ead5f945ac218357cd92e44fd98c8823c9479",
+      "output_sha256": "df2ea07e005427ee1379bc79dbe457d6c254b310be73f755c1fc4726a7095940",
       "unicode_count": 856,
       "preserved_source_shaping": true,
       "punctuation": {
