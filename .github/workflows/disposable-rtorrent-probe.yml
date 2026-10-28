@@ -123,6 +123,11 @@ jobs:
           CHUNKS_DISPOSABLE_TARGET_DIR: ${{ runner.temp }}/chunks-data
         run: |
           gradle --no-daemon :app:testDebugUnitTest --tests 'io.github.gamesbyian.chunks.interop.RTorrentLibtorrentInteropTest'
+          # The test skips itself outside the rig: a green step must mean both ran.
+          report=app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.interop.RTorrentLibtorrentInteropTest.xml
+          grep -o 'tests="[0-9]*" skipped="[0-9]*" failures="[0-9]*" errors="[0-9]*"' "$report" | head -1
+          grep -q 'tests="2" skipped="0" failures="0" errors="0"' "$report"
+          echo "CHUNKS_INTEROP: rTorrent->phone and phone->rTorrent exact-byte transfers passed" >> "$GITHUB_STEP_SUMMARY"
       - name: Evidence summary
         if: always()
         run: |
