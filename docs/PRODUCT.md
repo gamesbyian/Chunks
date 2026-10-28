@@ -1,5 +1,14 @@
 # Chunks canonical product contract
 
+## Multi-file completion order: Finish in Order (owner direction, 2026-10-27)
+
+Chunks shall provide an optional **Finish in Order** scheduling policy for multi-file torrents, making earlier selected files *complete and usable sooner*, rather than merely setting a static High file priority. Offer natural-order suggestions for episodic seasons, ordered film series, audiobooks, lessons and numbered document sets; non-media torrents may also use custom order. This is a user-visible policy distinct from the engine's individual Low/Normal/High file priorities. Preserve standard BitTorrent scheduling as the default until users explicitly select a mode or opt into category defaults.
+
+Offer **Normal**, **Balanced** (the suggested order-aware default), **Finish First**, and capability-gated **Sequential Playback** choices. The active file advances only after its selected content is hash-verified complete; allow modest next-file lookahead, opportunistic background progress, fallback if early pieces are unavailable, and visible explanation of inability to guarantee first-file completion. Natural order is editable, and filenames/directory structure are suggestions, not authoritative metadata. Extras, subtitles and dependencies may be grouped with an episode, with explicit selection/skip handling. Users may pin a file next, reorder or pause automated scheduling without altering original torrent identities, paths or contents.
+
+On the Add review after metainfo is known, present order preview and optional preset; also allow per-torrent Files control and a global preference for supported categories, with no surprise side effects on existing torrents. Persist policy and ordering separately in Chunks-only metadata keyed by scope and verified infohash and restore only after identity/readback checks. Never silently override user-set priority, auto-delete, rename backing files, or promise that unseeded pieces will arrive. Explicitly disclose reduced swarm efficiency for aggressive sequential downloading. Phone-local and rTorrent remote support are separately capability-gated; unsupported remote methods receive honest fallback controls, never false claims of enforced ordering. See issue #415 and UX/ARCHITECTURE; no implementation or device acceptance is claimed by this contract.
+
+
 Reconciled 2026-10-26 against live code and owner intent. Owner-approved **vision** and engineering **proposals** are distinguished in DECISIONS.md. Read CRITICAL-REVIEW-2026-10-24.md before implementing any mutation. This document is the product authority; WORK-QUEUE.md alone owns task priority.
 
 ## Product identity
