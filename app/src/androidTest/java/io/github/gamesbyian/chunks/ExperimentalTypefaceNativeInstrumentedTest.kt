@@ -47,7 +47,7 @@ class ExperimentalTypefaceNativeInstrumentedTest {
         }.orEmpty()
         // A dedicated font CI run sets this argument to make absent fixtures
         // a hard error, not an ignored assumption or a false green test.
-        if (inst.arguments.getString("chunks_font_fixture") == "required") {
+        if (InstrumentationRegistry.getArguments().getString("chunks_font_fixture") == "required") {
             assertEquals("Experimental CFFs absent in native debug app assets: $staged",
                 5, staged.size)
         } else {
