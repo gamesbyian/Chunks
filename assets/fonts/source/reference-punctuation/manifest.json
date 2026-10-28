@@ -1,0 +1,437 @@
+{
+  "status": "NONSHIPPING original reference punctuation contours",
+  "source_image": "docs/design/reference-images/03-typography-and-wordmark.png",
+  "source_sha256": "c8f1cff6afb51ac4380573d4b140ca5767bd2f981c4fe4b0be6c10e9c923f8b5",
+  "normalized_image_size": [
+    1536,
+    1152
+  ],
+  "glyph_count": 28,
+  "source_ink_segments": 29,
+  "glyphs": {
+    "!": {
+      "row": "punctuation",
+      "source_bbox": [
+        38,
+        542,
+        46,
+        568
+      ],
+      "height": 26,
+      "width": 8,
+      "contours": 2,
+      "runs": [
+        0
+      ]
+    },
+    "?": {
+      "row": "punctuation",
+      "source_bbox": [
+        52,
+        542,
+        67,
+        568
+      ],
+      "height": 26,
+      "width": 15,
+      "contours": 2,
+      "runs": [
+        1
+      ]
+    },
+    ".": {
+      "row": "punctuation",
+      "source_bbox": [
+        72,
+        560,
+        80,
+        568
+      ],
+      "height": 8,
+      "width": 8,
+      "contours": 1,
+      "runs": [
+        2
+      ]
+    },
+    ",": {
+      "row": "punctuation",
+      "source_bbox": [
+        85,
+        560,
+        93,
+        568
+      ],
+      "height": 8,
+      "width": 8,
+      "contours": 1,
+      "runs": [
+        3
+      ]
+    },
+    ":": {
+      "row": "punctuation",
+      "source_bbox": [
+        99,
+        549,
+        107,
+        568
+      ],
+      "height": 19,
+      "width": 8,
+      "contours": 2,
+      "runs": [
+        4
+      ]
+    },
+    ";": {
+      "row": "punctuation",
+      "source_bbox": [
+        113,
+        549,
+        121,
+        568
+      ],
+      "height": 19,
+      "width": 8,
+      "contours": 2,
+      "runs": [
+        5
+      ]
+    },
+    "“": {
+      "row": "punctuation",
+      "source_bbox": [
+        126,
+        542,
+        142,
+        555
+      ],
+      "height": 13,
+      "width": 16,
+      "contours": 2,
+      "runs": [
+        6,
+        7
+      ]
+    },
+    "”": {
+      "row": "punctuation",
+      "source_bbox": [
+        147,
+        542,
+        163,
+        555
+      ],
+      "height": 13,
+      "width": 16,
+      "contours": 2,
+      "runs": [
+        8,
+        9
+      ]
+    },
+    "(": {
+      "row": "punctuation",
+      "source_bbox": [
+        167,
+        540,
+        176,
+        568
+      ],
+      "height": 28,
+      "width": 9,
+      "contours": 1,
+      "runs": [
+        10
+      ]
+    },
+    ")": {
+      "row": "punctuation",
+      "source_bbox": [
+        183,
+        540,
+        192,
+        568
+      ],
+      "height": 28,
+      "width": 9,
+      "contours": 1,
+      "runs": [
+        11
+      ]
+    },
+    "[": {
+      "row": "punctuation",
+      "source_bbox": [
+        197,
+        541,
+        208,
+        568
+      ],
+      "height": 27,
+      "width": 11,
+      "contours": 1,
+      "runs": [
+        12
+      ]
+    },
+    "]": {
+      "row": "punctuation",
+      "source_bbox": [
+        212,
+        541,
+        223,
+        568
+      ],
+      "height": 27,
+      "width": 11,
+      "contours": 1,
+      "runs": [
+        13
+      ]
+    },
+    "{": {
+      "row": "punctuation",
+      "source_bbox": [
+        228,
+        541,
+        241,
+        568
+      ],
+      "height": 27,
+      "width": 13,
+      "contours": 1,
+      "runs": [
+        14
+      ]
+    },
+    "}": {
+      "row": "punctuation",
+      "source_bbox": [
+        245,
+        541,
+        257,
+        568
+      ],
+      "height": 27,
+      "width": 12,
+      "contours": 1,
+      "runs": [
+        15
+      ]
+    },
+    "@": {
+      "row": "punctuation",
+      "source_bbox": [
+        262,
+        544,
+        289,
+        568
+      ],
+      "height": 24,
+      "width": 27,
+      "contours": 2,
+      "runs": [
+        16
+      ]
+    },
+    "#": {
+      "row": "punctuation",
+      "source_bbox": [
+        293,
+        544,
+        312,
+        568
+      ],
+      "height": 24,
+      "width": 19,
+      "contours": 2,
+      "runs": [
+        17
+      ]
+    },
+    "$": {
+      "row": "punctuation",
+      "source_bbox": [
+        316,
+        542,
+        333,
+        568
+      ],
+      "height": 26,
+      "width": 17,
+      "contours": 1,
+      "runs": [
+        18
+      ]
+    },
+    "%": {
+      "row": "punctuation",
+      "source_bbox": [
+        337,
+        544,
+        363,
+        568
+      ],
+      "height": 24,
+      "width": 26,
+      "contours": 5,
+      "runs": [
+        19
+      ]
+    },
+    "&": {
+      "row": "punctuation",
+      "source_bbox": [
+        367,
+        544,
+        388,
+        568
+      ],
+      "height": 24,
+      "width": 21,
+      "contours": 3,
+      "runs": [
+        20
+      ]
+    },
+    "*": {
+      "row": "punctuation",
+      "source_bbox": [
+        394,
+        544,
+        407,
+        558
+      ],
+      "height": 14,
+      "width": 13,
+      "contours": 1,
+      "runs": [
+        21
+      ]
+    },
+    "+": {
+      "row": "punctuation",
+      "source_bbox": [
+        413,
+        547,
+        430,
+        567
+      ],
+      "height": 20,
+      "width": 17,
+      "contours": 1,
+      "runs": [
+        22
+      ]
+    },
+    "-": {
+      "row": "punctuation",
+      "source_bbox": [
+        434,
+        554,
+        446,
+        560
+      ],
+      "height": 6,
+      "width": 12,
+      "contours": 1,
+      "runs": [
+        23
+      ]
+    },
+    "=": {
+      "row": "punctuation",
+      "source_bbox": [
+        451,
+        551,
+        467,
+        564
+      ],
+      "height": 13,
+      "width": 16,
+      "contours": 2,
+      "runs": [
+        24
+      ]
+    },
+    "<": {
+      "row": "punctuation",
+      "source_bbox": [
+        474,
+        546,
+        485,
+        568
+      ],
+      "height": 22,
+      "width": 11,
+      "contours": 1,
+      "runs": [
+        25
+      ]
+    },
+    ">": {
+      "row": "punctuation",
+      "source_bbox": [
+        493,
+        546,
+        505,
+        568
+      ],
+      "height": 22,
+      "width": 12,
+      "contours": 1,
+      "runs": [
+        26
+      ]
+    },
+    "/": {
+      "row": "punctuation",
+      "source_bbox": [
+        511,
+        543,
+        523,
+        568
+      ],
+      "height": 25,
+      "width": 12,
+      "contours": 1,
+      "runs": [
+        27
+      ]
+    },
+    "\\": {
+      "row": "punctuation",
+      "source_bbox": [
+        527,
+        544,
+        538,
+        568
+      ],
+      "height": 24,
+      "width": 11,
+      "contours": 1,
+      "runs": [
+        28
+      ]
+    },
+    "\"": {
+      "row": "punctuation",
+      "source_bbox": [
+        126,
+        542,
+        142,
+        555
+      ],
+      "height": 13,
+      "width": 16,
+      "contours": 2,
+      "runs": [
+        6,
+        7
+      ],
+      "derived_variant_of": "“"
+    }
+  }
+}
