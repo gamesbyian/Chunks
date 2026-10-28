@@ -314,14 +314,27 @@ internal fun LocalEngineScreen(
             dhtSaving = false
         }
     }
-    val destination = remember { LocalEngineHolder.appDownloads(context) }
+    // The resolved default Place for new Adds, write-probed on the IO lane.
+    // Choosing another Place is optional and only offered once verified.
+    var placeResolution by remember { mutableStateOf<LocalPlaceResolution?>(null) }
+    LaunchedEffect(Unit) {
+        placeResolution = withContext(Dispatchers.IO) {
+            try { LocalDownloadPlaces.resolve(context) } catch (_: Exception) {
+                LocalPlaceResolution(null, emptyList(),
+                    "Chunks could not check phone download locations.")
+            }
+        }
+    }
+    val place = placeResolution?.selected
+    val destination = place?.root
     val proposedAddDestination = remember(destination, addFolderDraft) {
         LocalOwnedAddFolder.proposed(destination, addFolderDraft)
     }
     LaunchedEffect(pending?.preview?.infoHashV1, destination) {
         addStorage = null
         val review = pending
-        val folder = destination
+        // A lazily created public folder may not exist yet: measure its volume.
+        val folder = destination?.let { if (it.isDirectory) it else it.parentFile }
         if (review != null && folder != null) {
             val estimate = withContext(Dispatchers.IO) {
                 val survey = try {
@@ -475,6 +488,19 @@ internal fun LocalEngineScreen(
         Text("Downloads and seeds with Chunks' own engine. While a transfer runs, an ongoing notification keeps it going in the background, with Stop all; Android may still stop it, and from Android 15 limits this kind of background transfer to about 6 hours a day, after which Chunks pauses everything. Nothing connects to the network until you add a torrent. Transfers are remembered and come back stopped after Chunks restarts. Peers and trackers can see this phone's IP address.")
         Button(onClick = { picker.launch(arrayOf("*/*")) }, enabled = !busy && !inventoryStale && destination != null,
             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Choose .torrent file") }
+        LocalDownloadPlacePicker(
+            resolution = placeResolution,
+            enabled = !busy && !inventoryStale,
+            onChoose = { choice ->
+                scope.launch {
+                    val saved = withContext(Dispatchers.IO) {
+                        try { LocalDownloadPlaces.remember(context, choice) } catch (_: Exception) { false }
+                    }
+                    if (saved) placeResolution = placeResolution?.copy(selected = choice.place, notice = null)
+                    else message = "That download location could not be saved. The previous default is unchanged."
+                }
+            }
+        )
         OutlinedTextField(
             value = addFolderDraft,
             onValueChange = { addFolderDraft = it },
@@ -485,11 +511,11 @@ internal fun LocalEngineScreen(
             enabled = !busy && !inventoryStale,
             modifier = Modifier.fillMaxWidth()
         )
-        Text("Optional: give this new local transfer its own subfolder inside " +
-            "Chunks' app-owned Downloads. Leave blank for the default. " +
+        Text("Optional: give this new local transfer its own subfolder inside the " +
+            "download location above. Leave blank to save directly there. " +
             "An empty existing subfolder can be reused; a nonempty folder is " +
-            "refused to prevent collisions. No folder is created until Add is confirmed. " +
-            "This does not choose public Downloads, SD-card SAF storage, or a remote Place.",
+            "refused to prevent collisions. No folder is created until Add is confirmed, " +
+            "and nothing is ever created on a remote server.",
             style = MaterialTheme.typography.bodySmall)
         if (proposedAddDestination == null)
             Text("Use one plain folder name, without slashes, dot-prefixed names, " +
@@ -521,7 +547,7 @@ internal fun LocalEngineScreen(
             label = { Text("Or paste a magnet link") }, singleLine = true,
             modifier = Modifier.fillMaxWidth())
         if (magnet.isNotEmpty() && destination != null) {
-            Text("Saves into the selected Chunks-owned phone folder. Magnets first discover metadata via peers/trackers; if Start after Add is selected, payload downloading begins after metadata arrives. Without peers, downloading cannot begin.",
+            Text("Saves into the download location shown above. Magnets first discover metadata via peers/trackers; if Start after Add is selected, payload downloading begins after metadata arrives. Without peers, downloading cannot begin.",
                 style = MaterialTheme.typography.bodySmall)
             LocalMagnetDiscoveryPrompt(
                 magnet = magnet,
@@ -532,14 +558,16 @@ internal fun LocalEngineScreen(
             )
             OutlinedButton(onClick = {
                 val selectedDraft = addFolderDraft
+                val selectedPlace = place
                 val selectedMagnet = magnet
                 val autoStart = startAfterAdd
                 performLocalMutation {
                     try {
                         val result = withContext(Dispatchers.IO) {
-                            val chosen = LocalOwnedAddFolder.prepare(destination, selectedDraft)
+                            val chosen = LocalOwnedAddFolder.prepare(
+                                selectedPlace?.let(LocalDownloadPlaces::materialize), selectedDraft)
                             if (chosen == null) LocalAddResult.Refused(
-                                "Chosen local subfolder is unavailable, nonempty or unsafe.")
+                                "The download location or subfolder is unavailable, nonempty or unsafe. Nothing was added.")
                             else LocalEngineHolder.get(context).addMagnet(
                                 selectedMagnet, chosen, autoStartAfterMetadata = autoStart)
                         }
@@ -570,8 +598,9 @@ internal fun LocalEngineScreen(
                 proposedAddDestination != null,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text(if (startAfterAdd) "Add magnet and start" else "Add magnet (metadata only)") }
         }
-        if (destination == null) Text("Phone storage for Chunks is unavailable right now.",
-            color = MaterialTheme.colorScheme.error)
+        if (placeResolution != null && destination == null)
+            Text("Phone storage for Chunks is unavailable right now.",
+                color = MaterialTheme.colorScheme.error)
         message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         restoreNotice?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         if (inventoryStale) {
@@ -584,19 +613,22 @@ internal fun LocalEngineScreen(
         val add = pending
         if (add != null && destination != null) LocalAddReview(
             add.preview, proposedAddDestination ?: destination,
+            placeTitle = place?.title,
             busy = busy || inventoryStale || proposedAddDestination == null,
             startAfterAdd = startAfterAdd,
             storagePreflight = addStorage?.takeIf { it.first == add.preview.infoHashV1 }?.second,
             onConfirm = {
                 val selectedDraft = addFolderDraft
+                val selectedPlace = place
                 val autoStart = startAfterAdd
                 performLocalMutation {
                     try {
                         val result = withContext(Dispatchers.IO) {
-                            val chosen = LocalOwnedAddFolder.prepare(destination, selectedDraft)
+                            val chosen = LocalOwnedAddFolder.prepare(
+                                selectedPlace?.let(LocalDownloadPlaces::materialize), selectedDraft)
                             if (chosen == null)
                                 LocalAddResult.Refused(
-                                    "Chosen local subfolder is unavailable, nonempty or unsafe.") to null
+                                    "The download location or subfolder is unavailable, nonempty or unsafe. Nothing was added.") to null
                             else {
                                 val engine = LocalEngineHolder.get(context)
                                 val added = engine.addStopped(add.bytes, chosen)
@@ -917,6 +949,7 @@ internal fun LocalEngineScreen(
 internal fun LocalAddReview(
     preview: TorrentMetainfoPreview,
     destination: File,
+    placeTitle: String? = null,
     busy: Boolean,
     startAfterAdd: Boolean = false,
     storagePreflight: LocalAddStoragePreflight? = null,
@@ -930,7 +963,9 @@ internal fun LocalAddReview(
             Text(preview.name, fontWeight = FontWeight.Bold)
             Text(preview.fileCount.toString() + (if (preview.fileCount == 1) " file, " else " files, ") +
                 Units.bytes(preview.sizeBytes))
-            Text("Saves into: Chunks' folder on phone storage (" + destination.absolutePath + "). Files here are removed if Chunks is uninstalled.")
+            Text(if (placeTitle == null)
+                "Saves into: Chunks' folder on phone storage (" + destination.absolutePath + "). Files here are removed if Chunks is uninstalled."
+            else "Saves into: " + placeTitle + " (" + destination.absolutePath + ").")
             Text("Storage preflight (advisory; no automatic blocking or deletion)",
                 style = MaterialTheme.typography.titleSmall)
             val space = storagePreflight
