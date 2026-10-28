@@ -52,9 +52,29 @@ class SeedhostServerToPhoneCopyProbeTest {
         val seconds = System.getenv("CHUNKS_COPY_PROBE_SECONDS")?.toLongOrNull() ?: 300L
         require(maxBytes in 1L..(1024L shl 20) && seconds in 30L..1800L)
 
+        val target = System.getenv("CHUNKS_COPY_PROBE_HASH").orEmpty().lowercase()
+        require(target.isEmpty() || Regex("[0-9a-f]{40}").matches(target))
+
         val remote = RTorrentRemote(RemoteCredentials(rawUrl, user, password))
-        val candidates = remote.listTransfers("main")
-            .filter { it.started && it.sizeBytes in 1..maxBytes && it.completedBytes == it.sizeBytes &&
+        val inventory = remote.listTransfers("main")
+        if (target.isNotEmpty()) {
+            // An exact owner-named transfer: say why it is not eligible yet.
+            val row = inventory.firstOrNull { it.hash.equals(target, true) }
+            val reason = when {
+                row == null -> "not in the main view"
+                !row.started -> "not started"
+                row.completedBytes != row.sizeBytes -> "incomplete ${row.completedBytes}/${row.sizeBytes} bytes"
+                row.sizeBytes !in 1..maxBytes -> "larger than the cap ($maxBytes bytes)"
+                else -> null
+            }
+            if (reason != null) {
+                println("CHUNKS_SEEDHOST_COPY: INCONCLUSIVE target $target $reason")
+                fail("INCONCLUSIVE: target $reason")
+            }
+        }
+        val candidates = inventory
+            .filter { (target.isEmpty() || it.hash.equals(target, true)) &&
+                it.started && it.sizeBytes in 1..maxBytes && it.completedBytes == it.sizeBytes &&
                 Regex("[0-9a-fA-F]{40}").matches(it.hash) }
             // Private transfers are common on this host; look past them.
             .sortedBy { it.sizeBytes }.take(40)
