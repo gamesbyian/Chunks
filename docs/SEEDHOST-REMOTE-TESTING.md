@@ -163,10 +163,49 @@ remain authoritative for deeper primary acceptance. Never run live probes on PR
 heads, conflate a passing fixture/unit test with the dispatched live test, or
 send mutations to instances 2/3 simply because credentials work.
 
-**Peer networking is separate:** rTorrent's randomized incoming BitTorrent
-peer port (owner observed TCP `53281` with refused incoming connections)
-is neither HTTP remote-management port 443 nor the SCGI mount path. A
-successful XML-RPC connection establishes *control-plane* reachability only,
-not inbound peer connectivity, torrent availability, seeding, or file transfer
-between the phone and seedbox. Keep the Seedhost hosting-firewall question
-separately tracked in WORK-QUEUE and await a provider-confirmed port policy.
+**Peer networking is separate:** HTTP(S) RPC and BitTorrent peer-wire
+reachability are different. The initial TCP refusal at
+`5.79.112.210:53281` was to the **ruTorrent web hostname IP**, whereas
+this rTorrent daemon was actually bound to `5.79.112.219` (SeedHost
+Client Area **Check IP**, owner verified). Merged #460 reads
+`network.bind_address` before falling back to the web host. The
+runner-to-SeedHost single-peer Copy then **verified all 792,723,456
+bytes** in [run 40756284173](https://github.com/gamesbyian/Chunks/actions/runs/40756284173).
+This disproves the earlier hypothesis that incoming TCP to the *correct*
+rTorrent address was necessarily forbidden. It does not establish a
+provider-wide permitted port range or physical-phone connectivity. Never
+reuse the web host IP as the peer IP by assumption, never confuse
+incoming peer port `53281` with the HTTPS management port `443`.
+
+## Smart Connect handoff and next verification (2026-10-28)
+
+[SMART-REMOTE-CONNECTION](SMART-REMOTE-CONNECTION.md) now defines the general
+user-facing provider discovery process. The first Android implementation
+is [open PR #463](https://github.com/gamesbyian/Chunks/pull/463):
+hostname-only inputs plan bounded, same-origin HTTPS RPC candidates;
+complete `/rutorrent/`, `/rutorrent2/` and `/rutorrent3/` input must
+stay on the exact selected instance. The connection is accepted only
+after authenticated `system.client_version` **and** a valid complete
+`main` view, with verified per-profile credentials saved to Android
+Keystore if the user has not opted out. The working Transdrone direct
+`/ianseeds/RPC1` HTTP profile does not establish its HTTPS availability.
+
+After merging and verifying #463's exact Android head:
+(1) use the protected, manual-only three-instance HTTPS profiles
+without changing their case-sensitive GitHub secrets;
+(2) test both hostname-only primary discovery and exact numbered ruTorrent
+URLs with live version/list verification, including empty secondary lists;
+(3) test `https://wood.seedhost.eu/ianseeds/RPC1` separately as an
+**unverified HTTPS candidate**;
+(4) record exact run/SHA, route, authenticated listing counts,
+auth/challenge class and failure categories without credentials, private
+URLs, tokens or passkeys; and (5) run the native API35 UI and physical
+handset separately. Never run discovery mutations or allow a
+failed `/rutorrent2/` attempt to switch to the primary instance.
+Later provider capabilities and guided connection repair are tracked in
+[#464](https://github.com/gamesbyian/Chunks/issues/464).
+
+The earlier manual-workflow and test-gate wording elsewhere in this
+chronological document describes the state when each section was written.
+Current verified evidence in QUALITY-LEDGER and live main supersede older
+pending statements.
