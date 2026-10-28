@@ -2,7 +2,7 @@
 """Prototype reference-faithful dotless i/j accent composites in five independent CFF OTFs.
 
 The existing custom i and j contain detachable dots. Remove only those dots
-when a native, independently detached accent is available above the source stem.
+when a native separable accent is available; below accents preserve the dot.
 Pass all i/j compounds plus existing accent glyphs through the normal bounded
 contextual kerning optimizer, leaving approved fonts and other outlines intact.
 """
@@ -59,26 +59,39 @@ def build_dotless(source:Path,base:Path,dest:Path)->list[dict]:
             if not ud.name(ch,'').startswith('LATIN '):continue
             nfd=ud.normalize('NFD',ch)
             if len(nfd)!=2 or nfd[0]!=bare or ud.category(nfd[1])!='Mn':continue
-            # Below-mark forms retain the native i/j dot and require a distinct
-            # composed master; otherwise the old dot could masquerade as a mark.
+            # Above marks replace the custom dot; below marks preserve it.
+            # The old source dot is never mistaken for a new lower mark.
             mark_label=ud.name(nfd[1],'')
-            if 'BELOW' in mark_label or 'OGONEK' in mark_label:continue
+            is_below=mark_label in ('COMBINING DOT BELOW','COMBINING OGONEK')
+            if ('BELOW' in mark_label or 'OGONEK' in mark_label) and not is_below:
+                continue
             compound=glyph_record(oldset,gn)
             marks=[]
             for part in contours(compound):
                 markbox=bounds(part,oldset)
-                if markbox is not None and markbox[1]>500 and markbox[3]>525:
+                if markbox is None:continue
+                if is_below and markbox[1]<-45:
+                    marks.append((part,markbox))
+                elif not is_below and markbox[1]>500 and markbox[3]>525:
                     marks.append((part,markbox))
             if not marks:continue
             # A single mark can consist of multiple disjoint contours, e.g. double grave.
             mark_min_y=min(b[1] for _,b in marks)
-            yshift=round(max(0,stem_box[3]+GAP-mark_min_y))
-            all_boxes=[stem_box]+[(b[0]+xshift,b[1]+yshift,b[2]+xshift,b[3]+yshift) for _,b in marks]
+            if is_below:
+                old_bottom=min(b[1] for b in old_stem_boxes)
+                if 'OGONEK' in mark_label:
+                    yshift=round(stem_box[1]-old_bottom)
+                else:
+                    yshift=round(stem_box[1]-GAP-max(b[3] for _,b in marks))
+            else:
+                yshift=round(max(0,stem_box[3]+GAP-mark_min_y))
+            all_boxes=([stem_box,dot_box] if is_below else [stem_box])+[(b[0]+xshift,b[1]+yshift,b[2]+xshift,b[3]+yshift) for _,b in marks]
             bbox=(min(b[0] for b in all_boxes),min(b[1] for b in all_boxes),
                   max(b[2] for b in all_boxes),max(b[3] for b in all_boxes))
             if bbox[1]<MIN_BOTTOM or bbox[3]>MAX_TOP:continue
             pen=T2CharStringPen(width=0,glyphSet=inset)
             replayRecording(stem_part,pen)
+            if is_below:replayRecording(dot_part,pen)
             tpen=TransformPen(pen,(1,0,0,1,xshift,yshift))
             for part,_ in marks:replayRecording(part,tpen)
             cs=pen.getCharString(private=output['CFF '].cff.topDictIndex[0].Private,
@@ -89,7 +102,7 @@ def build_dotless(source:Path,base:Path,dest:Path)->list[dict]:
             output['hmtx'][gn]=(output['hmtx'][cm[ord(bare)]][0],round(bbox[0]))
             built.append({'glyph':ch,'base':bare,'cp':f'U+{cp:04X}',
                           'x_shift':xshift,'y_shift':yshift,
-                          'marks':len(marks),'bbox':[round(v,2) for v in bbox],
+                          'below_mark':is_below,'marks':len(marks),'bbox':[round(v,2) for v in bbox],
                           'source_dot_bounds':[round(v,2) for v in dot_box]})
     if len(built)<10:raise AssertionError(f'Only {len(built)} dotless accent compounds')
     output.recalcTimestamp=False
@@ -111,7 +124,7 @@ def separate_tight_dotless_pairs(path:Path):
     kerning at a particular size. Add a *bounded positive* GPOS correction
     for the precise pair and preserve other contexts and source glyph shapes.
     """
-    glyphs='ìíîïĩīĭǐȉȋỉĵ'
+    glyphs='ìíîïĩīĭǐȉȋỉĵįị'
     required=[]
     for left,right in zip(glyphs,glyphs[1:]):
         gaps=[(size,min(ink_gaps_at_size(path,[left+right],px=size))) for size in (14,24,48,82)]
@@ -156,7 +169,7 @@ def run(source_dir:Path,base_dir:Path,out:Path,weights=None):
         for nid,txt in ((1,'Chunks Reference Panel Dotless'),(16,'Chunks Reference Panel Dotless'),
                         (4,f'Chunks Reference Panel Dotless {style}'),
                         (6,f'ChunksReferencePanelDotless-{style}'),
-                        (3,f'Version 0.300; ChunksReferencePanelDotless-{style}')):
+                        (3,f'Version 0.310; ChunksReferencePanelDotless-{style}')):
             for platform,encoding,lang in ((3,1,0x409),(1,0,0)):
                 font['name'].setName(txt,nid,platform,encoding,lang)
         font.recalcTimestamp=False
