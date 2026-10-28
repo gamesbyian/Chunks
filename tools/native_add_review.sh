@@ -5,7 +5,11 @@ adb shell wm size 1080x2400
 adb shell wm density 420
 adb shell settings put system font_scale 1.0
 set +e
-gradle --no-daemon :app:connectedDebugAndroidTest
+# The dedicated 200% Compose acceptance class intentionally rejects a normal
+# system font scale; run it only through run_compose_system_font_200pct.sh.
+# Keep ALL ordinary Add/transfer instrumentation here, excluding only that class.
+gradle --no-daemon :app:connectedDebugAndroidTest \\
+  -Pandroid.testInstrumentationRunnerArguments.notClass=io.github.gamesbyian.chunks.SystemFontScaleComposeInstrumentedTest
 test_status=$?
 set -e
 mkdir -p "$RUNNER_TEMP/chunks-add-native-review"
