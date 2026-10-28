@@ -1,6 +1,6 @@
 # Cross-engine Copy/Move Transfer: authoritative owner contract (2026-10-28)
 
-This document supersedes earlier local↔remote Copy/Move designs involving downloaded payload bytes, file migration, CopyTransferPayload or MigrateTransfer. **Transfer means the torrent job, not its downloaded files.** The independent storage relocation, extraction and library-copy features are unaffected.
+This document supersedes earlier local↔remote Copy/Move designs involving downloaded payload bytes, file migration, CopyTransferPayload or MigrateTransfer. **Transfer means the torrent job, not its downloaded files.** The independent storage relocation, extraction and library-copy features are unaffected. The separately named, explicitly labelled **payload Copy** from a Seedhost/rTorrent transfer to the phone (merged #460/#462/#465, real-host verified 792,723,456-byte exact-hash Copy in run [40756284173](https://github.com/gamesbyian/Chunks/actions/runs/40756284173)) is a **distinct capability** that does transfer bytes over the BitTorrent peer wire; it must keep its own label, code path and evidence, and must never be presented as Copy/Move Transfer.
 
 ## User-visible behavior
 
