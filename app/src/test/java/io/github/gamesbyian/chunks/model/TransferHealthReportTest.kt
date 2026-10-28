@@ -92,7 +92,7 @@ class TransferHealthReportTest {
         assertTrue(text.contains("\"omittedDueToLimit\":38"))
         assertFalse(text.contains("owners"))
         assertTrue(r.bytes.size <= TransferHealthReport.MAX_BYTES)
-        assertEquals(512, Regex("\\"index\\":").findAll(text).count())
+        assertEquals(512, text.split("index").size - 1)
     }
 
     @Test fun unknownRemoteRateDoesNotMasqueradeAsZero() {
