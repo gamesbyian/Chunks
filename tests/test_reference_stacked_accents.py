@@ -81,10 +81,17 @@ class StackedAccentTests(unittest.TestCase):
                     self.assertGreaterEqual(item['bbox'][1],-480)
                 source=TTFont(original)
                 self.assertEqual(len(list(stacked_candidates(source))),row['eligible_stacked_non_ij'])
-                for char in 'Chunks0123456789Áàíĵįị“”!?.हिन्दी':
-                    if ord(char) in after.getBestCmap() and char not in rebuilt:
-                        self.assertEqual(char_record(before,char),char_record(after,char),
-                                         (style,char,'must retain previously accepted contours'))
+                # Exhaustive preservation: replacing stacked accent charstrings
+                # must not quietly edit any other one of the 856 cmap glyphs.
+                for cp in before.getBestCmap():
+                    char=chr(cp)
+                    if char in rebuilt:
+                        continue
+                    with self.subTest(style=style, preserved=f'U+{cp:04X}'):
+                        glyph=before.getBestCmap()[cp]
+                        self.assertEqual(char_record(before,char),char_record(after,char))
+                        self.assertEqual(before['hmtx'][glyph],
+                                         after['hmtx'][after.getBestCmap()[cp]])
 
     def test_complex_scripts_remain_native_and_unchanged(self):
         for style in WEIGHTS.values():
