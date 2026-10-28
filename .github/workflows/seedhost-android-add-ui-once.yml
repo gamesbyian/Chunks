@@ -1,0 +1,68 @@
+name: Protected installed Android Add UI on development Seedhost
+# Owner-authorized development-host-only (docs/SEEDHOST-REMOTE-TESTING.md):
+# the real Add screen adds ONE unique synthetic magnet at the server default
+# Place; the test then Stops and session-erases only that exact identity.
+# Dispatch-only, main-only, dry by default. Never runs on push or pull requests.
+on:
+  workflow_dispatch:
+    inputs:
+      apply_add:
+        description: "Permit one synthetic magnet Add + Start, then exact Stop and session-only erase, on development Seedhost"
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chunks-android-seedhost-scope-mutation
+  cancel-in-progress: false
+
+jobs:
+  installed-add-ui:
+    if: ${{ github.ref == 'refs/heads/main' && inputs.apply_add }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CHUNKS_LIVE_RUTORRENT_URL: "https://ianseeds.wood.seedhost.eu/rutorrent/"
+      CHUNKS_LIVE_RTORRENT_USER: ${{ secrets.rtorrent_user }}
+      CHUNKS_LIVE_RTORRENT_PASS: ${{ secrets.rtorrent_pass }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+      - name: Compile with Android API37 SDK
+        run: |
+          printf "y\n" | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
+          if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          fi
+          gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
+      - name: Permit hardware accelerated emulator
+        run: |
+          test -c /dev/kvm
+          sudo chmod 0666 /dev/kvm
+      - name: Installed app Add UI with exact-identity cleanup
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          emulator-boot-timeout: 600
+          disable-animations: true
+          script: bash tools/seedhost_android_add_ui_once.sh
+      - name: Keep Add review and outcome screenshots (no login screen)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-seedhost-android-add-ui
+          path: ${{ runner.temp }}/chunks-seedhost-add-ui/*.png
+          retention-days: 7
+          if-no-files-found: ignore
