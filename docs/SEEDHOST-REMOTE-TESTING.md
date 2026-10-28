@@ -65,3 +65,16 @@ The [protected Android read-only workflow](../.github/workflows/seedhost-android
 To run, manually dispatch on reviewed **main** using the prefilled approved credential-free `https://` development ruTorrent URL, or explicitly override it with another authorized development endpoint. The URL is public and contains no credentials. This is a one-click input default only, **not** an automated or already accepted server test. Existing protected `rtorrent_user` and `rtorrent_pass` secrets supply login. The workflow is deliberately **manual-only, main-only**: PR emulator runs see no credentials, skip the live test and establish only source compilation. The runner passes base64-encoded arguments to Android to preserve shell syntax; base64 is **not encryption**, and the script never prints arguments, persists them in the repo, publishes its raw instrumentation logs or uploads a login screenshot. The two connected-screen images are retained for seven days. The user-approved development inventory may be present, but screenshots must still be inspected for reusable tracker passkeys if present in visible names before external republication.
 
 **Acceptance is pending until a protected run completes successfully.** An ordinary successful native Compose fixture run or an unexecuted workflow does not prove Android-to-Seedhost networking, Android platform TLS/Digest behaviour, real transferred names, responsive queue rendering or authentication. Even a successful API35 emulator run does not prove a Pixel handset, TalkBack, screen-off or physical background lifecycle.
+
+## Additional owner-provisioned snapshot test servers (2026-10-27)
+
+The owner created two more rTorrent/ruTorrent instances for cross-instance snapshot QA:
+
+| Instance | Credential-free ruTorrent URL | Username | Password GitHub Actions secret |
+|---|---|---|---|
+| 2 | https://ianseeds.wood.seedhost.eu/rutorrent2/ | ianseeds | `rTorrent_pass2` |
+| 3 | https://ianseeds.wood.seedhost.eu/rutorrent3/ | ianseeds | `rtorrent_pass3` |
+
+**Secret names are case-sensitive**, including the capital R and T in `rTorrent_pass2`. Keep actual passwords in repository secrets only; never place them in tracked files, snapshot archives, workflow inputs or logs. Existing primary instance `/rutorrent/` uses the separate `rtorrent_user` and `rtorrent_pass` secrets. Existing CI workflows wired to that primary pair must not be pointed at the new URLs without explicitly mapping the correct credentials. Derive and verify each new instance's XML-RPC endpoint and capabilities independently.
+
+These two instances are configured by the owner for testing but Chunks connectivity, inventory, and restore have **not yet been verified**. Read-only probes, exports, and snapshot previews are suitable initial tests. Do not infer blanket permission for destructive operations on their existing inventory or payload files. Future restore acceptance should use explicitly reviewed disposable public test torrents, target-scoped preflight, clear opt-in, exact-hash verification, and failure journaling. Neither snapshot import nor a remote Add implies payload bytes were migrated.
