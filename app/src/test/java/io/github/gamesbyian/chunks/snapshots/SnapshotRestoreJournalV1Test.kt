@@ -16,8 +16,10 @@ class SnapshotRestoreJournalV1Test {
         val content = mutableMapOf<String, String>()
         var canCommit = true
         override fun read(key: String): String? = content[key]
-        override fun commit(key: String, value: String): Boolean {
-            if (!canCommit) return false
+        override fun compareAndCommit(
+            key: String, expected: String?, value: String
+        ): Boolean {
+            if (!canCommit || content[key] != expected) return false
             content[key] = value
             return true
         }
@@ -103,6 +105,20 @@ class SnapshotRestoreJournalV1Test {
         journal.reconcileWithCompleteTarget(listOf(one.uppercase()), true)
         assertEquals(SnapshotRestoreJournalV1.Phase.VERIFIED,
             journal.entries()[0].phase)
+    }
+
+    @Test fun aStaleScreenCannotRollBackAnotherScreensJournal() {
+        val store = MemoryStore()
+        val oldScreen = open(store)
+        val newScreen = open(store)
+        newScreen.prepare(one, place)
+        reject {
+            oldScreen.refuse(two)
+        }
+        assertEquals(SnapshotRestoreJournalV1.Phase.READY,
+            open(store).entries().first().phase)
+        assertEquals(SnapshotRestoreJournalV1.Phase.REVIEW,
+            open(store).entries()[1].phase)
     }
 
     @Test fun persistedTamperingOrUnknownVersionIsRejectedBeforeUse() {
