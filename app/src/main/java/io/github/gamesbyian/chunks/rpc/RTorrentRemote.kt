@@ -740,9 +740,46 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         )
     }
 
+    /** Tracker addresses of a public transfer, or [Private] (never read). */
+    sealed class PublicTrackers {
+        object Private : PublicTrackers()
+        data class Urls(val urls: List<String>) : PublicTrackers()
+    }
+
+    /**
+     * Read-only: enabled tracker URLs for an explicit user Copy of one
+     * **non-private** transfer. Private transfers return [PublicTrackers.Private]
+     * before any t.url is read, so passkeys are never fetched. Identity is
+     * guarded before and after; the caller still filters credential-like URLs.
+     */
+    suspend fun readPublicTrackers(hash: String): PublicTrackers {
+        require(Regex("[0-9a-fA-F]{40}").matches(hash)) { "Invalid v1 torrent hash" }
+        suspend fun guardIdentity() {
+            val returned = call("d.hash", listOf(hash)) as? String
+            check(returned?.equals(hash, ignoreCase = true) == true) {
+                "rTorrent transfer identity not confirmed"
+            }
+        }
+        guardIdentity()
+        if (number(call("d.is_private", listOf(hash))) != 0L) return PublicTrackers.Private
+        val count = number(call("d.tracker_size", listOf(hash)))
+        require(count in 0L..64L) { "Unbounded or invalid tracker inventory" }
+        if (count == 0L) return PublicTrackers.Urls(emptyList())
+        val rows = extractRows(call("t.multicall", listOf(hash, "", "t.url=", "t.is_enabled=")))
+        require(rows.size.toLong() == count) { "Tracker inventory changed during read" }
+        val urls = rows.mapNotNull { raw ->
+            val row = raw as? List<*> ?: error("Malformed tracker row")
+            require(row.size == 2) { "Unsupported tracker field layout" }
+            (row[0] as? String)?.takeIf { number(row[1]) == 1L }
+        }
+        guardIdentity()
+        return PublicTrackers.Urls(urls)
+    }
+
     /**
      * Bounded privacy-safe tracker health. NEVER query t.url, t.id, t.message
-     * or any tracker passkey. Every command here is a read-only getter scoped
+     * or any tracker passkey here (only [readPublicTrackers], for an explicit
+     * Copy of a non-private transfer, reads t.url). Every command here is a read-only getter scoped
      * to one freshly guarded infohash. Older servers may omit recent-peer
      * counters; those become unknown rather than zero.
      */

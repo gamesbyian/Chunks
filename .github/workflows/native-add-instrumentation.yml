@@ -3,6 +3,10 @@ name: Chunks native Add review instrumentation
 on:
   pull_request:
     paths:
+      # Production sources too: instrumented fakes and UI tests assert exact
+      # RPC calls and labels, so main-only changes (#460, #463) broke them
+      # without this suite ever running on those PRs.
+      - "app/src/main/**"
       - "app/src/androidTest/**"
       - "app/build.gradle.kts"
       - ".github/workflows/native-add-instrumentation.yml"
