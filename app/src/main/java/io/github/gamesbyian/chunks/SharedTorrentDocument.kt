@@ -19,7 +19,7 @@ internal object SharedTorrentDocument {
     )
 
     fun fromIntent(intent: Intent?): Uri? {
-        if (intent == null || intent.type?.lowercase() !in acceptedTypes) return null
+        if (intent == null) return null
         val uri = when (intent.action) {
             Intent.ACTION_VIEW -> intent.data
             Intent.ACTION_SEND -> @Suppress("DEPRECATION")
@@ -27,9 +27,16 @@ internal object SharedTorrentDocument {
                     ?: intent.clipData?.takeIf { it.itemCount == 1 }?.getItemAt(0)?.uri)
             else -> null
         } ?: return null
-        // file:// or http(s) from an external app must never become an arbitrary
-        // local file or remote network read. ContentResolver grants handle access.
-        return uri.takeIf { it.scheme == ContentResolver.SCHEME_CONTENT }
+        // No file:// or HTTP(S) source, even when a caller lies about its type.
+        if (uri.scheme != ContentResolver.SCHEME_CONTENT) return null
+        val mime = intent.type?.trim()?.lowercase()
+        val namedTorrentBinary = intent.action == Intent.ACTION_VIEW &&
+            mime == "application/octet-stream" &&
+            uri.lastPathSegment?.endsWith(".torrent", ignoreCase = true) == true
+        if (mime !in acceptedTypes && !namedTorrentBinary) return null
+        // The displayed filename is NEVER proof of valid metainfo. The Add
+        // draft still requires the same size-bounded, strict v1 bencode parse.
+        return uri
     }
 
     data class Reviewed(val preview: TorrentMetainfoPreview, val bytes: ByteArray)
