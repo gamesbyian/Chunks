@@ -152,6 +152,52 @@ class ReferencePanelWeightTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'transforms'):
                 source_polygons(svg,0.01)
 
+    def test_eight_weight_specific_vertical_stem_masters_are_native_curves(self):
+        """Nonshipping I/l candidates must have real editable Bezier paths.
+
+        Verify source provenance and an ordered four-weight design gradient.
+        This does not imply that their visual style has been owner approved.
+        """
+        masters=GLYPHS/'weight-overrides'
+        original={ch:source_polygons(GLYPHS/f'U+{ord(ch):04X}.svg',3)
+                  for ch in ('I','l')}
+        manifest=json.loads((STUDIES/'reference-panel-weight-study-metrics.json').read_text())
+        self.assertEqual(manifest['overrides_used'],8)
+        for ch in ('I','l'):
+            ratios=[]
+            native_areas=[]
+            for weight,style in WEIGHTS.items():
+                with self.subTest(char=ch,weight=weight):
+                    source=masters/str(weight)/f'U+{ord(ch):04X}.svg'
+                    self.assertTrue(source.is_file(),source)
+                    geom=source_polygons(source,3)
+                    self.assertEqual(topology(geom),topology(original[ch]))
+                    ratios.append(geom.area/original[ch].area)
+                    native_areas.append(geom.area)
+                    self.assertTrue(.30<=ratios[-1]<=1.20)
+                    oldbox=original[ch].bounds
+                    newbox=geom.bounds
+                    self.assertTrue(all(abs(oldbox[i]-newbox[i])<=3.0
+                                        for i in range(4)),(style,ch,newbox))
+                    root=ET.fromstring(source.read_text())
+                    element=next(el for el in root.iter() if el.tag.endswith('path'))
+                    pen=RecordingPen()
+                    parse_path(element.attrib['d'],pen)
+                    self.assertGreater(sum(cmd=='qCurveTo' for cmd,_ in pen.value),0)
+                    face=TTFont(STUDIES/f'ChunksReferencePanel-{style}-Study.otf')
+                    record=RecordingPen()
+                    face.getGlyphSet()[face.getBestCmap()[ord(ch)]].draw(record)
+                    self.assertGreater(sum(cmd=='curveTo' for cmd,_ in record.value),0)
+                    info=manifest['weights'][style]['glyph_geometry'][ch]
+                    self.assertEqual(info['outline_source'],'weight-specific-svg-master')
+                    self.assertEqual(info['outline_encoding'],'native-bezier-curves')
+                    self.assertEqual(info['override_svg_sha256'],
+                                     hashlib.sha256(source.read_bytes()).hexdigest())
+            self.assertEqual(sorted(native_areas),native_areas,
+                             f'{ch} must gain source ink monotonically with weight')
+            self.assertLess(ratios[0],ratios[-1])
+            self.assertLess(ratios[-1],1.0)
+
     def test_raw_build_is_deterministic_without_touching_accepted_masters(self):
         with tempfile.TemporaryDirectory() as d:
             a=Path(d)/'a.otf';b=Path(d)/'b.otf'
