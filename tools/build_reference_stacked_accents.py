@@ -159,6 +159,8 @@ def build(originals: Path, consolidated: Path, out: Path, weights=None):
             result = create(source, base, raw)
             optimization = optimize(raw, target, result['built'], max_delta=120)
         rename(target, style)
+        optimization['pre_final_name_sha256'] = optimization.pop('output_sha256')
+        optimization['output_sha256'] = sha(target)
         after = TTFont(target)
         if (after.getBestCmap() != TTFont(source).getBestCmap()
                 or len(after.getBestCmap()) != 856 or after['OS/2'].usWeightClass != w):
