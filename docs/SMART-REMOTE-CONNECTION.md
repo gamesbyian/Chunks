@@ -47,6 +47,11 @@ independent and never depend on a server connection.
 | QuickBox | https://quickbox.io/docs/applications/download-clients/rtorrent | `/USERNAME` nginx SCGI (preferred where HTTP-RPC is untrusted) |
 | GigaDrive | https://docs.giga-rapid.com/en/guides/beginners/how-to-control-your-bittorrent-client-using-mobile-apps | `/rt/plugins/httprpc/action.php` |
 | Appbox | https://billing.appbox.co/knowledgebase/166/ruTorrent-and-Transdroid.html?language=english | `/RPC2` |
+| Feral Hosting | https://www.feralhosting.com/wiki/software/transdrone | `/slotusername/rtorrent/rpc`, with HTTP auth username often literally `rutorrent`; slot name must come from the pasted URL, never the auth username |
+| RapidSeedbox | https://help.rapidseedbox.com/en/articles/8504545-connecting-your-home-sonarr-radarr-to-rsb-s-deluge-and-rutorrent | `/plugins/rpc/rpc.php` on documented `rt-*.seedbox.vip` HTTPS host |
+| Bytesized Hosting | https://bytesized-hosting.com/pages/remote-torrent-adder | hosted `/rutorrent` browser route on `*.bysh.me`; HTTP-RPC route requires separate proof |
+| Seedbox.io | https://docs.seedbox.io/shared-storage/applications/transdroid/ | provider-assigned `/RPC/<digits>`; do not guess a different tenant from a nonnumeric/unknown account |
+
 | Generic nginx/Apache/rTorrent | https://github.com/rakshasa/rtorrent-doc/blob/master/RPC-Setup-XMLRPC.md | `/RPC2`, `/xmlrpc`, ruTorrent plugin, explicit custom path |
 
 **Catalog rules:** Data-driven templates should include source URL, reviewed
