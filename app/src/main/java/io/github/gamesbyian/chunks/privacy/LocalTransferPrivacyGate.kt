@@ -1,11 +1,14 @@
 package io.github.gamesbyian.chunks.privacy
 
 import android.app.Activity
+import android.os.Build
 import android.content.Context
 import android.content.ContextWrapper
 import android.os.CancellationSignal
 import android.view.WindowManager
 import io.github.gamesbyian.chunks.LocalEngineService
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,6 +31,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+
+private data class Android10CredentialChallenge(
+    val ticket: TransferPrivacySession.Ticket,
+    val originalMode: TransferLockMode,
+    val requestedMode: TransferLockMode?
+)
 
 private fun Context.activityOrNull(): Activity? {
     var here: Context? = this
@@ -74,9 +83,11 @@ internal fun LocalTransferPrivacyGate(
     var signal by remember { mutableStateOf<CancellationSignal?>(null) }
     var unlockTicket by remember { mutableStateOf<TransferPrivacySession.Ticket?>(null) }
     var policyTicket by remember { mutableStateOf<TransferPrivacySession.Ticket?>(null) }
+    var android10Challenge by remember { mutableStateOf<Android10CredentialChallenge?>(null) }
     val currentSignal by rememberUpdatedState(signal)
     val currentUnlockTicket by rememberUpdatedState(unlockTicket)
     val currentPolicyTicket by rememberUpdatedState(policyTicket)
+    val currentAndroid10Challenge by rememberUpdatedState(android10Challenge)
 
     // Read both revisions so a background policy revocation or an auth callback
     // updates the visible gate immediately, without polling or persisted tokens.
@@ -97,10 +108,103 @@ internal fun LocalTransferPrivacyGate(
             currentSignal?.cancel()
             currentUnlockTicket?.let { session.onCancelUnlock(it) }
             currentPolicyTicket?.let { session.onCancelPolicyChange(it) }
+            currentAndroid10Challenge?.let { challenge ->
+                if (challenge.requestedMode == null)
+                    session.onCancelUnlock(challenge.ticket)
+                else session.onCancelPolicyChange(challenge.ticket)
+            }
             // An Android rotation preserves the process's once-per-session
             // grant. An actual exit from the transfer route does not satisfy
             // EVERY_ENTRY on the next visit.
             if (activity?.isChangingConfigurations != true) session.onExit(scope)
+        }
+    }
+
+    // Android 10's credential confirmation returns via a distinct system
+    // Activity. Its prelaunch ticket is invalidated when Chunks backgrounds;
+    // after RESULT_OK, require the same scope/policy and issue a NEW ticket
+    // in this foreground. This never reuses a stale callback authorization.
+    val android10Credential = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { outcome ->
+        val challenge = android10Challenge
+        android10Challenge = null
+        signal = null
+        busy = false
+        if (challenge != null) {
+            if (challenge.requestedMode == null)
+                session.onCancelUnlock(challenge.ticket)
+            else session.onCancelPolicyChange(challenge.ticket)
+            unlockTicket = null
+            policyTicket = null
+            val successful = outcome.resultCode == Activity.RESULT_OK &&
+                mode == challenge.originalMode &&
+                store.mode(scope) == challenge.originalMode &&
+                activity != null && TransferDeviceAuthenticator.hasSecureLock(activity)
+            if (!successful) {
+                notice = "Android screen-lock confirmation cancelled or out of date."
+            } else if (challenge.requestedMode == null) {
+                val fresh = session.beginUnlock(scope)
+                val admitted = fresh != null && session.finishUnlock(fresh, true)
+                notice = if (admitted) null else
+                    "A fresh transfer-session authorization could not be confirmed."
+            } else {
+                // A foreground-return policy may revoke the earlier view grant.
+                // The trusted OS result first restores it, then authorizes one
+                // exact requested policy change, never another scope's state.
+                if (!session.mayView(scope)) {
+                    session.beginUnlock(scope)?.let { session.finishUnlock(it, true) }
+                }
+                val fresh = session.beginPolicyChange(scope)
+                val admitted = fresh != null && session.finishPolicyChange(fresh, true)
+                val requested = challenge.requestedMode
+                if (admitted &&
+                    store.setMode(scope, requested, authenticatedForChange = true) &&
+                    session.configure(scope, requested, authenticatedForChange = true)) {
+                    mode = requested
+                    settingsOpen = false
+                    if (requested != TransferLockMode.NEVER)
+                        LocalEngineService.redactActiveNotification(context)
+                    notice = "Privacy policy updated after device credential confirmation."
+                } else {
+                    notice = "Privacy policy unchanged. The verified device " +
+                        "credential could not authorize the requested change."
+                }
+            }
+        }
+        localRevision++
+    }
+
+    fun launchAndroid10Credential(
+        ticket: TransferPrivacySession.Ticket,
+        requestedMode: TransferLockMode?
+    ) {
+        val activityNow = activity
+        val confirmation = activityNow?.let {
+            TransferDeviceAuthenticator.android10CredentialIntent(
+                it, if (requestedMode == null)
+                    "Unlock Chunks phone transfers" else "Confirm Chunks privacy change")
+        }
+        if (confirmation == null) {
+            if (requestedMode == null) session.onCancelUnlock(ticket)
+            else session.onCancelPolicyChange(ticket)
+            busy = false
+            notice = "Android 10 could not open device credential confirmation."
+            return
+        }
+        android10Challenge = Android10CredentialChallenge(ticket, mode, requestedMode)
+        busy = true
+        notice = null
+        try {
+            android10Credential.launch(confirmation)
+        } catch (_: Exception) {
+            android10Challenge = null
+            if (requestedMode == null) session.onCancelUnlock(ticket)
+            else session.onCancelPolicyChange(ticket)
+            unlockTicket = null
+            policyTicket = null
+            busy = false
+            notice = "Android could not start screen-lock verification."
         }
     }
 
@@ -114,6 +218,10 @@ internal fun LocalTransferPrivacyGate(
         unlockTicket = ticket
         busy = true
         notice = null
+        if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q) {
+            launchAndroid10Credential(ticket, requestedMode = null)
+            return
+        }
         signal = TransferDeviceAuthenticator.authenticate(activity,
             "Unlock Chunks phone transfers") { success ->
             val authorized = session.finishUnlock(ticket, success)
@@ -161,6 +269,10 @@ internal fun LocalTransferPrivacyGate(
         busy = true
         policyTicket = ticket
         notice = null
+        if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q) {
+            launchAndroid10Credential(ticket, requestedMode = requested)
+            return
+        }
         signal = TransferDeviceAuthenticator.authenticate(activity,
             "Confirm Chunks privacy policy change") { success ->
             val fresh = session.finishPolicyChange(ticket, success)
