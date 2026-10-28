@@ -2,6 +2,7 @@ package io.github.gamesbyian.chunks
 
 import android.Manifest
 import android.content.Context
+import android.net.Uri
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.SystemClock
@@ -74,6 +75,7 @@ import io.github.gamesbyian.chunks.model.ManualCollectionPager
 import io.github.gamesbyian.chunks.model.LocalQueueCatalog
 import io.github.gamesbyian.chunks.model.LocalQueueFilter
 import io.github.gamesbyian.chunks.model.LocalQueueOrder
+import io.github.gamesbyian.chunks.snapshots.LocalSnapshotRestorePreviewPanel
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoPreview
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader
 import java.io.ByteArrayOutputStream
@@ -197,6 +199,8 @@ private class PendingLocalAdd(val preview: TorrentMetainfoPreview, val bytes: By
 internal fun LocalEngineScreen(
     onBack: (() -> Unit)? = null,
     initialMagnet: String? = null,
+    initialTorrentUri: Uri? = null,
+    onTorrentConsumed: () -> Unit = {},
     onPrefillConsumed: () -> Unit = {},
     onPrepareRemote: ((String) -> Unit)? = null
 ) {
@@ -213,6 +217,9 @@ internal fun LocalEngineScreen(
         mutableStateOf(LocalInventoryFrame<LocalTransferStatus>(emptyList(),
             stale = LocalScreenReader.revision.blocksMutations()))
     }
+    // An initial empty Compose list is not an observed empty engine. Restore
+    // comparisons require at least one actually accepted native list read.
+    var hasConfirmedLocalInventory by remember { mutableStateOf(false) }
     val transfers = inventoryFrame.entries
     val inventoryStale = inventoryFrame.stale || LocalScreenReader.revision.blocksMutations()
     var transferPage by remember { mutableStateOf(0) }
@@ -288,6 +295,24 @@ internal fun LocalEngineScreen(
     var dht by remember { mutableStateOf(LocalEngineHolder.dhtPreferred(context)) }
     var dhtSaving by remember { mutableStateOf(false) }
     var dhtError by remember { mutableStateOf<String?>(null) }
+    // Both the preferences switch and a trackerless-magnet shortcut use this
+    // same readback-gated transaction. Never flip the UI state optimistically.
+    fun requestDhtSetting(wanted: Boolean) {
+        if (dhtSaving) return
+        dhtSaving = true
+        dhtError = null
+        scope.launch {
+            val confirmed = withContext(Dispatchers.IO) {
+                try { LocalEngineHolder.setDhtPreferred(context, wanted) }
+                catch (_: Exception) { false }
+            }
+            dht = LocalEngineHolder.dhtPreferred(context)
+            dhtError = if (confirmed) null else
+                "DHT setting could not be confirmed. The live network state may be uncertain; " +
+                "do not assume discovery is enabled or disabled until you check again."
+            dhtSaving = false
+        }
+    }
     val destination = remember { LocalEngineHolder.appDownloads(context) }
     val proposedAddDestination = remember(destination, addFolderDraft) {
         LocalOwnedAddFolder.proposed(destination, addFolderDraft)
@@ -330,6 +355,7 @@ internal fun LocalEngineScreen(
                     // A sample scheduled before an uncertain mutation cannot
                     // clear its safety latch, even if it finishes afterward.
                     if (LocalScreenReader.revision.acceptObservation(frame.revision, frame.transfers)) {
+                        if (frame.transfers != null) hasConfirmedLocalInventory = true
                         inventoryFrame = LocalInventoryFreshness.advance(inventoryFrame, frame.transfers)
                         observedDeltas = if (frame.transfers != null) {
                             progressHistory.observe(frame.transfers, SystemClock.elapsedRealtime())
@@ -390,22 +416,35 @@ internal fun LocalEngineScreen(
         scope.launch {
             pending = withContext(Dispatchers.IO) {
                 try {
-                    val input = context.contentResolver.openInputStream(uri) ?: return@withContext null
-                    val bytes = input.use {
-                        val out = ByteArrayOutputStream()
-                        val buffer = ByteArray(16_384)
-                        while (true) {
-                            val count = it.read(buffer)
-                            if (count < 0) break
-                            require(out.size() + count <= TorrentMetainfoReader.MAX_BYTES)
-                            out.write(buffer, 0, count)
-                        }
-                        out.toByteArray()
-                    }
-                    PendingLocalAdd(TorrentMetainfoReader.preview(bytes), bytes)
+                    val reviewed = SharedTorrentDocument.read(context.contentResolver, uri)
+                    PendingLocalAdd(reviewed.preview, reviewed.bytes)
+                } catch (cancel: kotlinx.coroutines.CancellationException) {
+                    throw cancel
                 } catch (_: Exception) { null }
             }
-            if (pending == null) message = "This document is not a supported v1 .torrent file or exceeds 2 MiB."
+            if (pending == null) message =
+                "This document is not a supported v1 .torrent file, was inaccessible or exceeds 2 MiB."
+        }
+    }
+
+    LaunchedEffect(initialTorrentUri) {
+        val externalUri = initialTorrentUri ?: return@LaunchedEffect
+        // Never start the torrent from an external VIEW/SEND Intent. Only
+        // prepare the same explicit Add review reached through the picker.
+        pending = null
+        message = "Opening shared .torrent for review. No download has started."
+        try {
+            val reviewed = withContext(Dispatchers.IO) {
+                SharedTorrentDocument.read(context.contentResolver, externalUri)
+            }
+            pending = PendingLocalAdd(reviewed.preview, reviewed.bytes)
+            message = "Shared torrent reviewed locally. Confirm its destination and Add below."
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            message = "The shared file was unavailable, invalid or not supported v1 .torrent metadata. No torrent was added."
+        } finally {
+            onTorrentConsumed()
         }
     }
 
@@ -458,24 +497,8 @@ internal fun LocalEngineScreen(
         else Text("Planned local Place: " + proposedAddDestination.absolutePath,
             style = MaterialTheme.typography.bodySmall)
         Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
-            .toggleable(value = dht, enabled = !dhtSaving, role = Role.Switch, onValueChange = { wanted ->
-                if (!dhtSaving) {
-                    dhtSaving = true
-                    dhtError = null
-                    scope.launch {
-                        val confirmed = withContext(Dispatchers.IO) {
-                            try { LocalEngineHolder.setDhtPreferred(context, wanted) }
-                            catch (_: Exception) { false }
-                        }
-                        // Switch only after confirmed native readback + durable preference.
-                        dht = LocalEngineHolder.dhtPreferred(context)
-                        dhtError = if (confirmed) null else
-                            "DHT setting could not be confirmed. The live network state may be uncertain; " +
-                            "do not assume discovery is enabled or disabled until you check again."
-                        dhtSaving = false
-                    }
-                }
-            }), verticalAlignment = Alignment.CenterVertically) {
+            .toggleable(value = dht, enabled = !dhtSaving, role = Role.Switch,
+                onValueChange = ::requestDhtSetting), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text("Find peers without trackers (DHT)")
                 Text("Needed for most magnet links. Off by default: when on, this phone's IP address is shared with the public DHT network.",
@@ -499,14 +522,13 @@ internal fun LocalEngineScreen(
         if (magnet.isNotEmpty() && destination != null) {
             Text("Saves into the selected Chunks-owned phone folder. Magnets first discover metadata via peers/trackers; if Start after Add is selected, payload downloading begins after metadata arrives. Without peers, downloading cannot begin.",
                 style = MaterialTheme.typography.bodySmall)
-            if (LocalMagnetDiscoveryAdvice.warn(magnet, dht)) {
-                Text("This magnet has no usable tracker address and DHT is off. " +
-                    "Chunks may be unable to find peers and fetch its metadata. " +
-                    "Enable DHT above or use a .torrent file with tracker information. " +
-                    "Without metadata or peers, downloading cannot begin.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error)
-            }
+            LocalMagnetDiscoveryPrompt(
+                magnet = magnet,
+                dhtEnabled = dht,
+                applying = dhtSaving,
+                blocked = busy || inventoryStale,
+                onEnable = { requestDhtSetting(true) }
+            )
             OutlinedButton(onClick = {
                 val selectedDraft = addFolderDraft
                 val selectedMagnet = magnet
@@ -618,6 +640,13 @@ internal fun LocalEngineScreen(
             },
             onCancel = { pending = null })
 
+        LocalSnapshotRestorePreviewPanel(
+            transfers = transfers,
+            inventoryConfirmed = hasConfirmedLocalInventory,
+            inventoryStale = inventoryStale,
+            busyEngine = busy,
+            mutationGeneration = LocalScreenReader.revision.snapshot()
+        )
         LocalInventorySnapshotPanel(
             transfers = transfers,
             stale = inventoryStale,

@@ -9,3 +9,7 @@ The source-traced Chunks wordmark, primary tagline and Big Files lettering still
 **Automated evidence:** `tools/validate_svg_library.py` checks manifests, XML and safe self-contained geometry; `tools/complete_svg_reference_assets.py` checks the 12 source-derived generator outputs; `tools/render_svg_atlas.py` renders all 815 at 32/160 pixels; `tools/svg_sticker_comparison.py` emits reference/source/overlay comparisons; `tools/svg_small_size_atlas.py` renders selected navigation, notification and launcher concept families at 16/24/32/48/64 pixels, with warnings for invisible and full-bleed candidates. A warning is a review lead, not a reason to delete an alternative.
 
 No SVG wraps a reference bitmap. No static SVG specimen should replace live status text, progress controls or other functional native Android UI.
+
+## Reusable mixing and exports (#355)
+
+The reference gallery can now export an independently editable one-file SVG mix and import its embedded JSON recipe. See [vector library README](../README.md) for the local same-origin server and safety limitations. Provenance is preserved as source IDs, while exported artwork is explicitly experimental. There is **no change to the 815-asset inventory** and no advancement of the native handset visual-acceptance gate from this editor-only improvement.

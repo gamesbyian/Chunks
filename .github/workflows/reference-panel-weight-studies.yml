@@ -1,0 +1,69 @@
+name: Build experimental Chunks Reference Panel weight studies
+on:
+  push:
+    paths:
+      - 'tools/build_reference_panel_weight_studies.py'
+      - 'tools/reference_weight_profiles.json'
+      - 'tools/render_reference_panel_weights.py'
+      - 'tools/requirements-reference-panel-weights.txt'
+      - 'tests/test_reference_panel_weights.py'
+      - 'assets/fonts/source/reference-alphabet/**'
+      - 'assets/fonts/chunks/**'
+      - 'assets/fonts/experimental/ChunksReferencePanel-ExtraBold-Optical.otf'
+      - 'assets/fonts/experimental/weight-studies/**'
+      - '.github/workflows/reference-panel-weight-studies.yml'
+  pull_request:
+    paths:
+      - 'tools/build_reference_panel_weight_studies.py'
+      - 'tools/reference_weight_profiles.json'
+      - 'tools/render_reference_panel_weights.py'
+      - 'tools/requirements-reference-panel-weights.txt'
+      - 'tests/test_reference_panel_weights.py'
+      - 'assets/fonts/source/reference-alphabet/**'
+      - 'assets/fonts/chunks/**'
+      - 'assets/fonts/experimental/weight-studies/**'
+      - '.github/workflows/reference-panel-weight-studies.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: chunks-panel-weight-studies-${{ github.event_name }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+jobs:
+  build-weight-studies:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -r tools/requirements-reference-panel-weights.txt
+      - name: Build four distinct topology-safe CFF weight studies and recompute optical kerning
+        run: python tools/build_reference_panel_weight_studies.py
+      - name: Verify format, all glyphs, accents, shaping, line metrics and deterministic CFF sources
+        run: python -m unittest discover -s tests -p test_reference_panel_weights.py -v
+      - name: Render five-weight actual-OTF comparison atlas
+        run: python tools/render_reference_panel_weights.py
+      - name: Publish only nonshipping study assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-reference-panel-five-weight-studies
+          path: |
+            assets/fonts/experimental/weight-studies/*
+            assets/fonts/experimental/ChunksReferencePanel-ExtraBold-Optical.otf
+            reference-panel-five-weights.png
+            assets/fonts/source/OFL.txt
+          retention-days: 30
+      - name: Commit reproducible studies from source branch, never main
+        if: github.event_name == 'push' && github.ref != 'refs/heads/main'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add assets/fonts/experimental/weight-studies
+          if ! git diff --cached --quiet; then
+            git commit -m 'build(fonts): check in four reference-panel CFF weight studies'
+            git push
+          fi

@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "status": "experimental optical weight studies, not individually drawn masters",
+  "per_weight_erosion_in_reference_pixels": {
+    "400": 1.6,
+    "500": 1.25,
+    "600": 0.85,
+    "700": 0.43,
+    "800": 0.0
+  },
+  "per_glyph_multiplier": {
+    "i": 0.65,
+    "j": 0.65,
+    "l": 0.68,
+    "r": 0.75,
+    "t": 0.75,
+    "f": 0.75,
+    "e": 0.78,
+    "g": 0.82,
+    "8": 0.85,
+    "6": 0.90,
+    "9": 0.90
+  },
+  "min_valid_component_area": 3.0,
+  "min_simplify_tolerance_px": 0.10,
+  "max_simplify_tolerance_px": 0.17,
+  "notes": "Editable engineering interim. Multiplied offsets retain narrow strokes and small counters, with per-glyph topology preservation; distinct manually designed masters are still required."
+}

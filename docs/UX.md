@@ -1,5 +1,12 @@
 # Chunks interaction and accessibility contract
 
+## Android Open with .torrent and magnet: implemented subset (2026-10-27)
+
+- Chunks accepts Android `magnet:` links and recognized `.torrent` content documents opened via `ACTION_VIEW` or sent via `ACTION_SEND` with `application/x-bittorrent`, `application/x-torrent` or `application/vnd.bittorrent`. Read a granted single `content://` URI only, validate v1 torrent metadata (2 MiB maximum), and show the same explicit local Add review as the internal picker. Opening alone must never submit or start a download. #353 accepted at Android/JVM/API35/visual tiers, not physical resolver/Files provider QA.
+- Android chooses the appropriate capable application, including Always/Just once default handling where offered. Chunks must not override the OS resolver. Users should see origin, verified torrent name/hash and optional destination review before confirming Add, with meaningful inaccessible/revoked/unsupported errors. Other MIME types, generic `application/octet-stream`, `file://` or direct remote target selection are **still unspecified at implementation tier**, even though broader intent compatibility is required in PRODUCT. Do not broadly register a binary catchall and hijack unrelated files.
+- Local trackerless magnets show a **voluntary** one-tap DHT choice and an address-disclosure warning; choice takes effect only after verified native readback and never asserts that seeders exist (#357). Existing default DHT remains off.
+- Offline verified snapshot inspector searches and pages all manifest entries (#359). A user may individually export an exact-verified original v1 .torrent to their chosen SAF provider (#363); warn that raw tracker URLs can contain passkeys, and clearly distinguish independent document export from restoring a torrent to a running engine. No payload bytes move.
+
 ## Official launcher icon (owner SVG update, 2026-10-27)
 
 - **Canonical brand artwork:** `docs/design/approved/chunks-app-icon-master.svg` is the editable, transparent master. It contains the happy cyan folder, purple document, green download and coral image tile; exclude the black rounded-square bezel from the image source.
@@ -86,6 +93,13 @@ Verify on actual Android handset and where appropriate tablet: TalkBack traversa
 ## Early Add preview history versus current confirmed Add
 
 The historical #14 dashboard initially supported read-only server views and a **non-submitting** Add preview. This was superseded by the merged two-step stopped Add implementation described below (#44 and following). Current native Compose also has exact-hash confirmed Start/Stop, session-only Remove, selected file priority and paged file listings. These require protected hosted Seedhost and physical handset journey acceptance; there is no filesystem Move or backed-file Rename executor.
+
+## Open with Chunks from Android (owner requirement, 2026-10-27)
+
+- Opening a `.torrent` attachment or file in Android Files, Downloads, browser or another app must show **Chunks** as an eligible **Open with** destination; tapping a `magnet:` link must likewise allow Chunks as a handler. Use Android's own chooser/default-handler selection. When Android resolves Chunks as the only eligible or preferred handler, it should launch directly, subject to OS resolver policy. A Share action should also work, independently.
+- Handle cold launch, an existing Chunks activity (`onNewIntent`), a locked app, no connected rTorrent profile, local-only configuration and multiple engines. Carry the inbound item into the Add draft without discarding the existing data or silently choosing a remote server. Show source/name/hash when verified, engine/Place, optional Change/recent and reviewed Add. Do not auto-start/add before user confirmation.
+- If a provider grants temporary URI access, read promptly through ContentResolver under bounded size limits rather than treating `content://` as a filesystem path. Respect scoped storage, reject invalid files, handle revoked permission or unsupported hybrid/v2 torrents with readable recovery; do not expose private magnets, passkeys, or filenames while locked.
+- Test API-level resolver matches for `magnet:` with `ACTION_VIEW` and `.torrent` from multiple providers with `application/x-bittorrent`, `application/octet-stream`, and missing/generic MIME where feasible. Verify **Open with**, **Always/Just once** where offered, direct default dispatch, Share, fresh/warm launch, lock/unlock, TalkBack, invalid data, and competing torrent apps on a real device. OS behavior determines whether the chooser is displayed, never an app promise.
 
 ## Android share-entry state
 

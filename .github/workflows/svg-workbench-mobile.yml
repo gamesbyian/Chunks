@@ -1,0 +1,38 @@
+name: Chunks SVG mobile workbench browser acceptance
+on:
+  pull_request:
+    paths:
+      - 'docs/design/svg/gallery.html'
+      - 'docs/design/svg/mix-ui.js'
+      - 'docs/design/svg/mix-engine.js'
+      - 'tools/tests/svg_workbench_mobile.cjs'
+      - '.github/workflows/svg-workbench-mobile.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: chunks-svg-mobile-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+jobs:
+  chromium:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pinned browser tooling
+        run: npm install --no-save --ignore-scripts --no-package-lock 'playwright@1.56.1'
+      - name: Install Chromium and dependencies
+        run: npx playwright install --with-deps chromium
+      - name: Capture mobile screenshot and interaction evidence
+        run: node tools/tests/svg_workbench_mobile.cjs generated/svg-workbench-mobile
+      - name: Upload exact browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-svg-mobile-${{ github.sha }}
+          path: generated/svg-workbench-mobile/
+          retention-days: 14
+          if-no-files-found: warn

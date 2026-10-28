@@ -18,10 +18,32 @@ This is an original, **all-variants-preserved** SVG collection. No source PNG is
 - `character-parts/`: 16 new standalone folder/material/cube layers; 19 equivalent planned roles reuse their existing SVG masters without duplicating files.
 - `scenes/`: 36 character combinations, promotional scenes and editable empty sticker shapes.
 - `brand/reference-traced/`: original PNG-silhouette-derived Chunks lettering, fixed taglines and alternate logo lockups, including constituent glyphs. Only source-contour precision is measured; manual approval remains open.
-- `fidelity/`: 12 additional independently renderable sticker and brand-screen SVG candidates, generated deterministically from original reference contours, checked-in Chunks font outlines and approved SVG geometry; no live text or embedded PNGs. [Fidelity and review notes](fidelity/README.md).\n- `master-inventory.json`: 836 named targets: 815 distinct SVG drafts, 20 exact graphic aliases, zero missing first-pass slots (optical review and native integration are still outstanding), 1 protected launcher source.
+- `fidelity/`: 12 additional independently renderable sticker and brand-screen SVG candidates, generated deterministically from original reference contours, checked-in Chunks font outlines and approved SVG geometry; no live text or embedded PNGs. [Fidelity and review notes](fidelity/README.md).
+- `master-inventory.json`: 836 named targets: 815 distinct SVG drafts, 20 exact graphic aliases, zero missing first-pass slots (optical review and native integration are still outstanding), 1 protected launcher source.
 - `gallery.html`: fully searchable static library of 815 current SVG drafts, with category filters, dark/light/checkerboard surfaces, side-by-side comparison and an experimental layer preview.
 - `python3 tools/validate_svg_library.py`: validates manifest, XML, self-contained SVG structure, gallery coverage and file coverage. CI runs it on relevant PRs.
+
+## Experimental layer composition workbench
+
+The [gallery](gallery.html) supports a four-layer, **non-destructive vector workbench**: select differing logo, mascot, sticker or icon variants; drag the active layer on the preview or use keyboard-accessible sliders to adjust position, scale, rotation and opacity; reorder layers; change the background; and export a **self-contained SVG** containing actual source paths and gradients. Save or reload a compact JSON recipe to preserve editable layer identities and settings. Each exported SVG also embeds its validated recipe as inert XML metadata, so the same SVG can be loaded back into the gallery and edited again. Identical internal IDs are namespaced in exported files.
+
+For browser SVG export, load the gallery from an HTTP(S) origin that also serves the whole `docs/design/svg/` tree (browser security normally disallows `fetch()` of adjacent local `file://` SVGs):
+
+```bash
+python3 -m http.server 8765 --directory docs/design/svg
+# Open http://localhost:8765/gallery.html
+```
+
+No external image loading, bitmap embedding or executable SVG content is permitted. The browser refuses unknown recipe asset IDs and unsafe/path-traversing paths. The composed SVG is a new user-created **experimental** asset, not an approved brand file; original variants, reference PNGs and Android launcher resources remain untouched. This is an in-browser editor of static SVG sources, not native Compose component generation.
+
+The engine has an independent Node/stdlib-XML test: `node --test tools/tests/svg_mixer.test.cjs`. The gallery preserves its existing 96-at-a-time lazy-card pagination.
 
 Palette experiments are retained rather than reconciled by fiat: Brand Essence uses pink #FF4EC4, purple #A56BFF, blue #3B82FF, yellow #FFD93D, green #22D97A, cyan #00D4FF. The typography sheet supplies a distinct colour/type hierarchy (for example slightly different purple/pink/cyan and separate warning/error colours). A visual token-selection pass is still pending.
 
 **Honest fidelity:** these are carefully named original vector interpretations, not automatic tracings or guaranteed exact reproductions. The hand-drawn logo is vector-outlined; some fixed tagline and sticker lettering still has SVG text fallback until approved font outlines are available. Native Android text and controls must not be substituted with screenshots.
+
+## Real Chromium mobile acceptance
+
+A dedicated browser workflow tests the vector workbench at 320×700, 412×892 and 791×900 CSS pixels, with additional 200% font-size simulation at 320 px. Its artifacts capture light/dark screens, an exported self-contained SVG and JSON evidence. Tests cover horizontal overflow, 96-card pagination, keyboard Arrow/Shift+Arrow editing, pointer dragging, 44 px touch target minimums, console errors, and SVG export/embedded recipe.
+
+These are real **Chromium browser** tests, not physical Android phone testing, TalkBack certification, native Compose acceptance or optical signoff. To reproduce locally, serve docs/design/svg using the HTTP command above, then install playwright and its Chromium browser and run node tools/tests/svg_workbench_mobile.cjs. A Playwright-hosted temporary server is used by the test; it does not change the app.

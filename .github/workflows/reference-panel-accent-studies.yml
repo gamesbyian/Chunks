@@ -1,0 +1,65 @@
+name: Build experimental Chunks Reference Panel accent studies
+on:
+  push:
+    paths:
+      - 'tools/build_reference_accent_studies.py'
+      - 'tools/render_reference_accent_studies.py'
+      - 'tests/test_reference_accent_studies.py'
+      - 'assets/fonts/chunks/**'
+      - 'assets/fonts/experimental/weight-studies/**'
+      - 'assets/fonts/experimental/ChunksReferencePanel-ExtraBold-Optical.otf'
+      - 'docs/design/CHUNKS-REFERENCE-ACCENT-STUDIES.md'
+      - '.github/workflows/reference-panel-accent-studies.yml'
+  pull_request:
+    paths:
+      - 'tools/build_reference_accent_studies.py'
+      - 'tools/render_reference_accent_studies.py'
+      - 'tests/test_reference_accent_studies.py'
+      - 'assets/fonts/chunks/**'
+      - 'assets/fonts/experimental/weight-studies/**'
+      - 'assets/fonts/experimental/accent-studies/**'
+      - '.github/workflows/reference-panel-accent-studies.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: chunks-accent-study-${{ github.event_name }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+jobs:
+  five-accent-studies:
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install font validation libraries
+        run: python -m pip install -r tools/requirements-reference-panel-weights.txt
+      - name: Rebuild five accent-fusion CFF prototypes
+        run: python tools/build_reference_accent_studies.py
+      - name: Validate 856 Unicode characters, deterministic CFF and non-Latin shaping
+        run: python -m unittest discover -s tests -p test_reference_accent_studies.py -v
+      - name: Render actual 5-font accent specimen
+        run: python tools/render_reference_accent_studies.py
+      - name: Publish non-shipping font study only
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-reference-panel-five-accent-studies
+          path: |
+            assets/fonts/experimental/accent-studies/*
+            reference-accent-five-weights.png
+            assets/fonts/source/OFL.txt
+          retention-days: 30
+      - name: Check in reproducible experimental fonts on source branches only
+        if: github.event_name == 'push' && github.ref != 'refs/heads/main'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add assets/fonts/experimental/accent-studies
+          if ! git diff --cached --quiet; then
+            git commit -m 'build(fonts): generate five separate accent prototype OTFs'
+            git push
+          fi

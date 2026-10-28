@@ -1,0 +1,29 @@
+name: Test Chunks SVG composition workbench
+on:
+  pull_request:
+    paths:
+      - 'docs/design/svg/gallery.html'
+      - 'docs/design/svg/mix-engine.js'
+      - 'docs/design/svg/mix-ui.js'
+      - 'tools/tests/svg_mixer.test.cjs'
+      - '.github/workflows/svg-mixer.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  svg-mixer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install isolated DOM testing dependency
+        run: npm install --no-save --ignore-scripts --no-package-lock 'jsdom@26.1.0'
+      - name: Smoke-test gallery search, controls, selection and layer stacking
+        run: node --test tools/tests/svg_mixer_browser.test.cjs
+      - name: Test safe SVG export, XML parsing and editable JSON recipes
+        run: node --test tools/tests/svg_mixer.test.cjs
+      - name: Check full SVG manifest and gallery
+        run: python3 tools/validate_svg_library.py
