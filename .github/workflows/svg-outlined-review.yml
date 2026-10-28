@@ -1,0 +1,27 @@
+name: Verify Chunks outlined SVG variants
+on:
+  pull_request:
+    paths:
+      - 'docs/design/svg/**'
+      - 'tools/build_svg_outlined_alternatives.py'
+      - 'tools/audit_svg_inventory.py'
+      - '.github/workflows/svg-outlined-review.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python3 -m pip install 'fonttools>=4.55,<5'
+      - name: Confirm every preserved original and outlined alternative
+        run: |
+          python3 tools/build_svg_outlined_alternatives.py
+          python3 tools/audit_svg_inventory.py
+          python3 tools/validate_svg_library.py
+          python3 tools/check_svg_approved_derivatives.py
