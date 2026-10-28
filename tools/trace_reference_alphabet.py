@@ -106,7 +106,7 @@ def extract(source):
 
 def render_svg(char,data):
     v=data
-    body=f'<path d="{" ".join(v['paths'])}"/>'
+    body='<path d="' + " ".join(v["paths"]) + '"/>'
     return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {v["width"]} {v["height"]}" '
             f'role="img" aria-label="Chunks reference glyph U+{ord(char):04X}">\n'
             f'<title>Reference-derived U+{ord(char):04X} glyph variant</title>\n'
