@@ -202,6 +202,8 @@ internal fun LocalEngineScreen(
     onBack: (() -> Unit)? = null,
     initialMagnet: String? = null,
     initialTorrentUri: Uri? = null,
+    /** A connected, independently privacy-gated rTorrent Add screen is available. */
+    canReviewOnConnectedServer: Boolean = false,
     onTorrentConsumed: () -> Unit = {},
     onPrefillConsumed: () -> Unit = {},
     onPrepareRemote: ((String) -> Unit)? = null,
@@ -614,6 +616,19 @@ internal fun LocalEngineScreen(
         }
 
         val add = pending
+        if (add != null && canReviewOnConnectedServer &&
+            onPrepareRemoteTorrent != null) {
+            ReviewedTorrentTargetChooser(
+                verifiedTorrentBytes = add.bytes,
+                enabled = !busy && !inventoryStale,
+                onPrepareServerReview = { original ->
+                    // The parent only enables this action for an authenticated,
+                    // independently privacy-gated remote target.
+                    onPrepareRemoteTorrent(original)
+                    pending = null
+                }
+            )
+        }
         if (add != null && destination != null) LocalAddReview(
             add.preview, proposedAddDestination ?: destination,
             placeTitle = place?.title,

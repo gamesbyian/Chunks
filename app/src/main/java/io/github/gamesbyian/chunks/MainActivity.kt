@@ -442,7 +442,11 @@ private fun ChunksApp(
                                     draftPath = ""
                                     server = candidate
                                     stale = false
-                                    section = if (magnet.isNotBlank()) Section.ADD else Section.TRANSFERS
+                                    // A phone-origin .torrent can be prepared before a
+                                    // remote login. Keep its reviewed Add draft visible
+                                    // after connecting, without submitting any RPC.
+                                    section = if (magnet.isNotBlank() ||
+                                        serverHandoffTorrent != null) Section.ADD else Section.TRANSFERS
                                     currentView = ticket.view
                                     requestedView = ticket.view
                                     // A successful authenticated Connect is the only time
@@ -501,6 +505,7 @@ private fun ChunksApp(
                         onBack = { section = Section.TRANSFERS },
                         initialMagnet = phoneHandoffMagnet,
                         initialTorrentUri = incomingTorrent,
+                        canReviewOnConnectedServer = true,
                         onTorrentConsumed = onIncomingTorrentConsumed,
                         onPrefillConsumed = { phoneHandoffMagnet = null },
                         onPrepareRemote = { draft ->
