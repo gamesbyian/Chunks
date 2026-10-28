@@ -24,9 +24,38 @@ internal data class LocalDownloadPlace(
     val detail: String
 )
 
-/** [failure] is null only when the Place passed its write probe this session. */
-internal data class LocalPlaceChoice(val place: LocalDownloadPlace, val failure: String?) {
+/**
+ * [failure] is null only when the Place passed its write probe this session.
+ * [needsStoragePermission] marks a refusal the user can lift by granting
+ * Android 10's storage permission; it never makes the Place usable by itself.
+ */
+internal data class LocalPlaceChoice(
+    val place: LocalDownloadPlace,
+    val failure: String?,
+    val needsStoragePermission: Boolean = false
+) {
     val verified get() = failure == null
+}
+
+/**
+ * Android 11+ lets any app write its own files into shared Downloads. Android
+ * 10 does so only with legacy external storage (granted at install from the
+ * manifest flag) AND the user's runtime storage permissions (read to seed,
+ * write to download). Returns the
+ * refusal reason, or null when the regular write probe should decide.
+ */
+internal object LocalPublicDownloadsAccess {
+    const val ANDROID_10 = 29
+    const val NEEDS_PERMISSION =
+        "On Android 10, Chunks needs your permission to save into shared Downloads"
+
+    fun refusal(sdk: Int, legacyStorage: Boolean, storagePermissionGranted: Boolean): String? = when {
+        sdk > ANDROID_10 -> null
+        sdk < ANDROID_10 -> "This Android version is not supported for shared Downloads"
+        !legacyStorage -> "Android 10 placed Chunks in scoped storage, so shared Downloads is unavailable"
+        !storagePermissionGranted -> NEEDS_PERMISSION
+        else -> null
+    }
 }
 
 internal data class LocalPlaceResolution(
