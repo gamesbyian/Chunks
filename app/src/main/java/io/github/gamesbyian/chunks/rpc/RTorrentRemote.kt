@@ -574,6 +574,57 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         }
     }
 
+    /** One file with rTorrent's own hash-verified chunk counts. */
+    data class FileCompletion(
+        val path: String, val sizeBytes: Long, val priority: Int,
+        val completedChunks: Long, val sizeChunks: Long
+    ) {
+        /** Every chunk touching this file has passed rTorrent's hash check. */
+        val verifiedComplete: Boolean get() = sizeChunks > 0 && completedChunks >= sizeChunks
+    }
+
+    /**
+     * Read-only, identity-guarded per-file completion for Finish in Order.
+     * Completion comes from the torrent's hash-verified chunk bitfield over
+     * each file's half-open chunk range [f.range_first, f.range_second).
+     * rTorrent 0.9.8's f.completed_chunks over-counts at file boundaries
+     * (seen on the disposable rig), so it is not used.
+     */
+    suspend fun readFileCompletion(hash: String): List<FileCompletion> {
+        require(Regex("[0-9a-fA-F]{40}").matches(hash)) { "Invalid v1 torrent hash" }
+        suspend fun guardIdentity() {
+            check((call("d.hash", listOf(hash)) as? String)?.equals(hash, ignoreCase = true) == true) {
+                "rTorrent transfer identity not confirmed"
+            }
+        }
+        guardIdentity()
+        val totalChunks = number(call("d.size_chunks", listOf(hash)))
+        require(totalChunks in 0L..10_000_000L) { "Invalid chunk count" }
+        val bitfield = (call("d.bitfield", listOf(hash)) as? String).orEmpty().trim()
+        require(bitfield.all { it.isDigit() || it.lowercaseChar() in 'a'..'f' } &&
+            bitfield.length.toLong() * 4 >= totalChunks) { "Invalid chunk bitfield" }
+        fun have(chunk: Long): Boolean {
+            val nibble = Character.digit(bitfield[(chunk / 4).toInt()], 16)
+            return nibble and (8 shr (chunk % 4).toInt()) != 0
+        }
+        val rows = extractRows(call("f.multicall", listOf(hash, "", "f.path=", "f.size_bytes=",
+            "f.priority=", "f.range_first=", "f.range_second=")))
+        require(rows.size <= 12000) { "Too many files in torrent" }
+        val files = rows.map { item ->
+            val c = item as? List<*> ?: error("Invalid remote file")
+            require(c.size == 5) { "Invalid remote file fields" }
+            val first = number(c[3])
+            val second = number(c[4])
+            require(first in 0..totalChunks && second in first..totalChunks) { "Invalid file chunk range" }
+            FileCompletion((c[0] as? String ?: error("Missing file path")).take(4096),
+                number(c[1]).coerceAtLeast(0), number(c[2]).toInt(),
+                completedChunks = (first until second).count { have(it) }.toLong(),
+                sizeChunks = second - first)
+        }
+        guardIdentity()
+        return files
+    }
+
     /**
      * Change exactly one file's download priority after independently reading
      * and checking its index, path, byte length and expected old priority.

@@ -26,9 +26,9 @@ class FinishInOrderRunnerTest {
             changes.forEach { c -> files.replaceAll { if (it.index == c.index) it.copy(priority = c.requestedPriority) else it } }
             LocalFileBatchOutcome.VERIFIED
         }
-        override fun observe(infoHash: String) =
+        override suspend fun observe(infoHash: String) =
             files.map { Observed(it, verified[it.index] ?: 0L) }
-        override fun apply(infoHash: String, record: FinishInOrderRecord, changes: List<Change>): LocalFileBatchOutcome {
+        override suspend fun apply(infoHash: String, record: FinishInOrderRecord, changes: List<Change>): LocalFileBatchOutcome {
             log += "apply:" + changes.joinToString { "${it.index}>${it.requestedPriority}" }
             assertEquals("journal must be durable before the native write", changes, stored?.pending)
             return outcome(changes)
@@ -46,7 +46,7 @@ class FinishInOrderRunnerTest {
     private fun record(port: FakePort, mode: Mode = Mode.BALANCED) = FinishInOrderRecord(
         FinishInOrderPlanner.policyFor(mode, port.files, port.files.map { it.index }))
 
-    @Test fun journalsThenAppliesThenAdvancesAfterVerifiedCompletion() {
+    @Test fun journalsThenAppliesThenAdvancesAfterVerifiedCompletion() = kotlinx.coroutines.runBlocking {
         val port = FakePort(episodes(3))
         val first = FinishInOrderRunner(port).step(hash, record(port)) as Step.Applied
         assertEquals(listOf("save", "apply:3>7, 9>1", "save"), port.log)
@@ -62,14 +62,14 @@ class FinishInOrderRunnerTest {
         assertEquals(mapOf(6 to 7, 9 to 4), second.plan.changes.associate { it.index to it.requestedPriority })
     }
 
-    @Test fun journalFailurePreventsAnyNativeWrite() {
+    @Test fun journalFailurePreventsAnyNativeWrite() = kotlinx.coroutines.runBlocking {
         val port = FakePort(episodes(3)).apply { saveWorks = false }
         assertTrue(FinishInOrderRunner(port).step(hash, record(port)) is Step.StorageFailed)
         assertTrue(port.log.none { it.startsWith("apply") })
         assertTrue(port.files.all { it.priority == 4 })
     }
 
-    @Test fun uncertainApplySuspendsAndIsNeverRetried() {
+    @Test fun uncertainApplySuspendsAndIsNeverRetried() = kotlinx.coroutines.runBlocking {
         val port = FakePort(episodes(3))
         port.outcome = { LocalFileBatchOutcome.UNCERTAIN }
         val suspended = FinishInOrderRunner(port).step(hash, record(port)) as Step.Suspended
@@ -80,7 +80,7 @@ class FinishInOrderRunnerTest {
         assertTrue(port.log.isEmpty())
     }
 
-    @Test fun restartAfterCrashReconcilesJournalFromObservationOnly() {
+    @Test fun restartAfterCrashReconcilesJournalFromObservationOnly() = kotlinx.coroutines.runBlocking {
         val port = FakePort(episodes(3))
         val base = record(port)
         val pending = listOf(Change(3, 4, 7), Change(9, 4, 1))
@@ -101,7 +101,7 @@ class FinishInOrderRunnerTest {
         assertTrue(half.log.none { it.startsWith("apply") })
     }
 
-    @Test fun userPriorityChangeIsPinnedAndLeftAlone() {
+    @Test fun userPriorityChangeIsPinnedAndLeftAlone() = kotlinx.coroutines.runBlocking {
         val port = FakePort(episodes(3))
         val applied = (FinishInOrderRunner(port).step(hash, record(port)) as Step.Applied).record
         port.files.replaceAll { if (it.index == 9) it.copy(priority = 7) else it }
@@ -117,7 +117,7 @@ class FinishInOrderRunnerTest {
     @Before fun native() = DesktopLibtorrent.ensureLoaded()
     @After fun stop() { engines.forEach { it.close() } }
 
-    @Test fun realNativeEngineAdvancesPastHashVerifiedEpisodesAndRefusesStaleBatches() {
+    @Test fun realNativeEngineAdvancesPastHashVerifiedEpisodesAndRefusesStaleBatches() = kotlinx.coroutines.runBlocking {
         val source = File(temp.newFolder("fio-source"), "Season 1").apply { mkdirs() }
         // Piece-aligned files, so a missing episode cannot spoil a neighbour's pieces.
         for (episode in 1..4) File(source, "Public S01E0$episode.mkv")
@@ -150,8 +150,8 @@ class FinishInOrderRunnerTest {
         var stored: FinishInOrderRecord? = FinishInOrderRecord(FinishInOrderPlanner.policyFor(
             Mode.FINISH_FIRST, files, requireNotNull(FinishInOrderPlanner.suggest(files)).order))
         val runner = FinishInOrderRunner(object : FinishInOrderRunner.Port {
-            override fun observe(infoHash: String) = engine.observeFinishInOrder(infoHash)
-            override fun apply(infoHash: String, record: FinishInOrderRecord, changes: List<Change>) =
+            override suspend fun observe(infoHash: String) = engine.observeFinishInOrder(infoHash)
+            override suspend fun apply(infoHash: String, record: FinishInOrderRecord, changes: List<Change>) =
                 engine.applyFinishInOrder(infoHash, record, changes)
             override fun save(infoHash: String, record: FinishInOrderRecord): Boolean {
                 stored = record; return true

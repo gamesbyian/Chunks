@@ -5,6 +5,7 @@ import io.github.gamesbyian.chunks.engine.FinishInOrderRecord
 import io.github.gamesbyian.chunks.engine.FinishInOrderRunner
 import io.github.gamesbyian.chunks.engine.LocalTorrentEngine
 import java.security.MessageDigest
+import kotlinx.coroutines.sync.withLock
 import java.util.Locale
 
 /**
@@ -57,19 +58,19 @@ internal class FinishInOrderStore(context: Context) {
 internal object FinishInOrderController {
     private const val MIN_INTERVAL_MS = 10_000L
     private val lastStep = HashMap<String, Long>()
-    private val lock = Any()
+    private val lock = kotlinx.coroutines.sync.Mutex()
 
     /** Serializes scheduler steps with user enable/resume/turn-off edits. */
-    fun <T> exclusive(block: () -> T): T = synchronized(lock) { block() }
+    suspend fun <T> exclusive(block: suspend () -> T): T = lock.withLock { block() }
 
     fun runner(engine: LocalTorrentEngine, store: FinishInOrderStore) =
         FinishInOrderRunner(object : FinishInOrderRunner.Port {
-            override fun observe(infoHash: String) = engine.observeFinishInOrder(infoHash)
-            override fun apply(infoHash: String, record: FinishInOrderRecord,
+            override suspend fun observe(infoHash: String) = engine.observeFinishInOrder(infoHash)
+            override suspend fun apply(infoHash: String, record: FinishInOrderRecord,
                                changes: List<io.github.gamesbyian.chunks.engine.FinishInOrderPlanner.Change>) =
                 engine.applyFinishInOrder(infoHash, record, changes)
             override fun save(infoHash: String, record: FinishInOrderRecord) = store.update(infoHash, record)
-            override fun persistNativeState() { try { engine.saveResumeData(2_000L) } catch (_: Exception) {} }
+            override suspend fun persistNativeState() { try { engine.saveResumeData(2_000L) } catch (_: Exception) {} }
         })
 
     /** Called off the main thread. Never starts an engine. */
@@ -87,17 +88,20 @@ internal object FinishInOrderController {
                 Unit
             } ?: continue
             try {
-                exclusive {
-                    // Re-read under the lock: the user may have edited it.
-                    store.get(hash)?.takeIf { it.suspendedReason == null }
-                        ?.let { runner(engine, store).step(hash, it) }
+                // The service poll lane is a plain worker thread.
+                kotlinx.coroutines.runBlocking {
+                    exclusive {
+                        // Re-read under the lock: the user may have edited it.
+                        store.get(hash)?.takeIf { it.suspendedReason == null }
+                            ?.let { runner(engine, store).step(hash, it) }
+                    }
                 }
             } catch (_: Exception) {}
         }
     }
 
     /** An explicit user action (enable/resume) runs one step immediately. */
-    fun stepNow(context: Context, infoHash: String): FinishInOrderRunner.Step? {
+    suspend fun stepNow(context: Context, infoHash: String): FinishInOrderRunner.Step? {
         val engine = LocalEngineHolder.current() ?: return null
         val store = FinishInOrderStore(context)
         synchronized(lastStep) { lastStep[infoHash] = System.nanoTime() / 1_000_000L }

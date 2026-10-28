@@ -13,12 +13,14 @@ import io.github.gamesbyian.chunks.engine.FinishInOrderPlanner.Decision
  */
 internal class FinishInOrderRunner(private val port: Port) {
     interface Port {
-        fun observe(infoHash: String): List<FinishInOrderPlanner.Observed>?
-        fun apply(infoHash: String, record: FinishInOrderRecord,
-                  changes: List<FinishInOrderPlanner.Change>): LocalFileBatchOutcome
+        suspend fun observe(infoHash: String): List<FinishInOrderPlanner.Observed>?
+        suspend fun apply(infoHash: String, record: FinishInOrderRecord,
+                          changes: List<FinishInOrderPlanner.Change>): LocalFileBatchOutcome
         fun save(infoHash: String, record: FinishInOrderRecord): Boolean
         /** Best effort: persist native priorities so a restart restores them. */
-        fun persistNativeState() {}
+        suspend fun persistNativeState() {}
+        /** Engines with only off/normal/high priorities (rTorrent). */
+        val twoBands: Boolean get() = false
     }
 
     sealed class Step {
@@ -31,7 +33,7 @@ internal class FinishInOrderRunner(private val port: Port) {
         data class StorageFailed(val record: FinishInOrderRecord) : Step()
     }
 
-    fun step(infoHash: String, current: FinishInOrderRecord): Step {
+    suspend fun step(infoHash: String, current: FinishInOrderRecord): Step {
         if (current.suspendedReason != null) return Step.Suspended(current)
         val observed = port.observe(infoHash) ?: return Step.NotObservable
         val byIndex = observed.associateBy { it.file.index }
@@ -56,7 +58,7 @@ internal class FinishInOrderRunner(private val port: Port) {
         }
 
         val decision = FinishInOrderPlanner.plan(current.policy, observed,
-            current.lastApplied, current.pinned)
+            current.lastApplied, current.pinned, port.twoBands)
         if (decision is Decision.Refused) {
             val suspended = current.copy(suspendedReason = decision.reason +
                 ". Choose the order again to continue.")
@@ -80,6 +82,9 @@ internal class FinishInOrderRunner(private val port: Port) {
         if (!port.save(infoHash, journaled)) return Step.StorageFailed(record)
         val outcome = try {
             port.apply(infoHash, journaled, plan.changes)
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            // The journal stays; the next step reconciles it by observation.
+            throw cancel
         } catch (_: Exception) { LocalFileBatchOutcome.UNCERTAIN }
         return when (outcome) {
             LocalFileBatchOutcome.VERIFIED, LocalFileBatchOutcome.UNCHANGED -> {
