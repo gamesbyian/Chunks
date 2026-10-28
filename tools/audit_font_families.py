@@ -56,9 +56,11 @@ def audit(root: Path):
         raise AssertionError('Android installed font is no longer original Chunks ExtraBold')
 
     accent_metrics = json.loads((accent_path/'reference-accent-study-metrics.json').read_text())
+    kerned_path = experiments/'accent-kerned'
+    kerned_metrics = json.loads((kerned_path/'reference-accent-kerned-metrics.json').read_text())
     weight_metrics = json.loads((study_path/'reference-panel-weight-study-metrics.json').read_text())
     summary = {'status':'experimental variants isolated; audit does not promote them',
-               'families':{},'android':{'font_sha256':_sha(android_font),'license_sha256':_sha(source_license)}}
+               'families':{},'audit_scope':'20 total CFF family/weight binaries; 5 accepted + 15 experiments', 'android':{'font_sha256':_sha(android_font),'license_sha256':_sha(source_license)}}
     original_cm = None
     originals = {}
     for style, weight in WEIGHTS.items():
@@ -84,6 +86,7 @@ def audit(root: Path):
         else:
             candidates.append(('reference-optical',experiments/'ChunksReferencePanel-ExtraBold-Optical.otf'))
         candidates.append(('accent-study',accent_path/f'ChunksReferencePanel-{style}-AccentStudy.otf'))
+        candidates.append(('accent-kerned',kerned_path/f'ChunksReferencePanel-{style}-AccentKerned.otf'))
         for family,path in candidates:
             candidate = _font(path)
             if candidate['OS/2'].usWeightClass != weight:
@@ -107,6 +110,25 @@ def audit(root: Path):
                 if not 220 <= m['built'] <= 350:
                     raise AssertionError(f'{path}: unexpected accent graft count {m["built"]}')
                 info['accent_grafts']=m['built']
+            if family=='accent-kerned':
+                audit=kerned_metrics['weights'][style]
+                original_accent=accent_path/f'ChunksReferencePanel-{style}-AccentStudy.otf'
+                if audit['output_sha256']!=info['sha256']:
+                    raise AssertionError(f'{path}: kerned manifest references stale OTF')
+                if audit['input_sha256']!=_sha(original_accent):
+                    raise AssertionError(f'{path}: source accent study hash mismatch')
+                if audit['reference_accent_glyphs']!=accent_metrics['weights'][style]['built']:
+                    raise AssertionError(f'{path}: reconstructed glyph coverage drift')
+                if audit['adjusted_pairs']<75000 or audit['bounded_subtables']<10:
+                    raise AssertionError(f'{path}: missing compact accent pair calibration')
+                if candidate['hmtx'].metrics!=_font(original_accent)['hmtx'].metrics:
+                    raise AssertionError(f'{path}: altered glyph horizontal metrics')
+                if candidate['name'].getDebugName(1)!='Chunks Reference Panel Kerned':
+                    raise AssertionError(f'{path}: family name must be independently installable')
+                if bool(candidate['OS/2'].fsSelection & 32) and bool(candidate['OS/2'].fsSelection & 64):
+                    raise AssertionError(f'{path}: both Bold and Regular flags set')
+                info['constructed_accent_glyphs']=audit['reference_accent_glyphs']
+                info['new_bounded_pair_rules']=audit['adjusted_pairs']
             if family=='weight-study':
                 m=weight_metrics['weights'][style]
                 if m['sha256'] != info['sha256']:
