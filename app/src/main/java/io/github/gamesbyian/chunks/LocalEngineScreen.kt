@@ -61,6 +61,7 @@ import io.github.gamesbyian.chunks.engine.LocalTransferFile
 import io.github.gamesbyian.chunks.engine.LocalTransferStatus
 import io.github.gamesbyian.chunks.model.Units
 import io.github.gamesbyian.chunks.model.LocalInventoryFrame
+import io.github.gamesbyian.chunks.model.TorrentIdentityHandoff
 import io.github.gamesbyian.chunks.model.LocalAddStoragePreflight
 import io.github.gamesbyian.chunks.model.LocalAddStoragePlanner
 import io.github.gamesbyian.chunks.model.LocalFolderInventoryProbe
@@ -190,7 +191,12 @@ private object LocalScreenReader {
 private class PendingLocalAdd(val preview: TorrentMetainfoPreview, val bytes: ByteArray)
 
 @Composable
-internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
+internal fun LocalEngineScreen(
+    onBack: (() -> Unit)? = null,
+    initialMagnet: String? = null,
+    onPrefillConsumed: () -> Unit = {},
+    onPrepareRemote: ((String) -> Unit)? = null
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val collectionStore = remember(context) { TransferCollectionStore(context) }
@@ -261,6 +267,12 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
         }
     }
     var magnet by remember { mutableStateOf("") }
+    LaunchedEffect(initialMagnet) {
+        if (initialMagnet != null && initialMagnet.startsWith("magnet:?")) {
+            magnet = initialMagnet
+            onPrefillConsumed()
+        }
+    }
     var startAfterAdd by remember { mutableStateOf(true) }
     var dht by remember { mutableStateOf(LocalEngineHolder.dhtPreferred(context)) }
     var dhtSaving by remember { mutableStateOf(false) }
@@ -684,6 +696,14 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
                         }
                     }
                 },
+                onPrepareRemote = onPrepareRemote?.let { send ->
+                    {
+                        val prepared = TorrentIdentityHandoff.prepare(
+                            transfer.infoHash, transfer.name)
+                        if (prepared != null) send(prepared)
+                        else message = "This torrent has no supported v1 identity to hand off."
+                    }
+                },
                 onRemove = {
                     performLocalMutation {
                         try {
@@ -826,9 +846,11 @@ internal fun LocalTransferCard(
     onShowFiles: () -> Unit = {},
     onFileWanted: (Int, Boolean) -> Unit = { _, _ -> },
     alias: String? = null,
-    onSaveAlias: ((String?) -> Boolean)? = null
+    onSaveAlias: ((String?) -> Boolean)? = null,
+    onPrepareRemote: (() -> Unit)? = null
 ) {
     var confirmRemove by remember(transfer.infoHash) { mutableStateOf(false) }
+    var confirmHandoff by remember(transfer.infoHash) { mutableStateOf(false) }
     val percent = transfer.progressPpm / 10_000
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -876,6 +898,31 @@ internal fun LocalTransferCard(
                 if (transfer.metadataKnown) OutlinedButton(onClick = onShowFiles,
                     enabled = !busy, modifier = Modifier.heightIn(min = 48.dp)) {
                     Text(if (filesShown) "Hide files" else "Files")
+                }
+            }
+            if (onPrepareRemote != null &&
+                TorrentIdentityHandoff.prepare(transfer.infoHash, transfer.name) != null) {
+                OutlinedButton(onClick = { confirmHandoff = true }, enabled = !busy,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                    Text("Prepare torrent on rTorrent (identity only)")
+                }
+                if (confirmHandoff) {
+                    Text("Only the magnet identity goes to Chunks' server Add draft. " +
+                        "No payload bytes move; the server may need to download again. " +
+                        "Private/tracker-only torrents may not find metadata or peers. " +
+                        "The phone transfer remains untouched.",
+                        style = MaterialTheme.typography.bodySmall)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = {
+                            confirmHandoff = false
+                            onPrepareRemote()
+                        }, enabled = !busy, modifier = Modifier.weight(1f)
+                            .heightIn(min = 48.dp)) { Text("Review server Add") }
+                        OutlinedButton(onClick = { confirmHandoff = false },
+                            modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                            Text("Cancel")
+                        }
+                    }
                 }
             }
             if (filesShown) LocalFileSelection(files, busy, transferKey = transfer.infoHash, onFileWanted = onFileWanted)
