@@ -1,5 +1,7 @@
 # chunks.
 
+> **Owner correction (2026-10-28):** Cross-engine **Copy Transfer** and **Move Transfer** operate on torrent **jobs only**, never downloaded file bytes. Move adds and verifies the target job, then separately confirms session-only removal of the source job, leaving all source files untouched. Destination downloads independently. Prior text proposing payload transfer, file migration or waiting for target seeding under these names is superseded by [the authoritative transfer-job contract](docs/CROSS-ENGINE-TRANSFER-JOBS.md).
+
 **Your downloads have places to be.**
 
 Chunks is an Android-native BitTorrent client and first-class rTorrent remote. Its Transfers represent torrent jobs; Places represent **actual** server/device destinations and their permissions; Collections are semantic groups. Original torrent names, Chunks-only display aliases, actual backing file paths and independent library copies are distinct so that a cosmetic rename never breaks seeding.
@@ -12,6 +14,12 @@ Chunks is an Android-native BitTorrent client and first-class rTorrent remote. I
 - **Local client:** Experimental libtorrent4j engine with resume, explicit download/save directory in app-private storage, metadata magnets, real licensed web-seed download, opt-in DHT, file priority, speed limits and Android dataSync foreground service. A completed file can be **copied** to chosen SAF library storage, keeping the original available to seed. #154 improves transient engine-read error handling. Neither direct arbitrary SAF download nor reliable Doze/OEM/background physical phone behavior has been proven.
 - **Organization:** Editable, reversible local display aliases, source-only explained clean-title proposals and limited batch review/conditional Undo. No automated physical backing rename or unsourced episode guest-name inference.
 - **Storage and ZIP:** Advisory storage caps/warnings/cleanup-impact models and a read-only phone-space card. Bounded local ZIP preflight and **manual verified extraction into a newly created SAF folder**, with cancel/journal/recovery and source kept intact, have tested emulator/fixture-provider paths. No real quota enforcement, destructive cleanup wizard, general remote file operations or auto-extract. Physical provider and process-kill acceptance is pending.
+
+## Connecting Chunks to rTorrent
+
+**Smart Connect** aims to let users paste their seedbox hostname or ruTorrent URL, enter a username and password, and have Chunks automatically discover an authenticated HTTPS rTorrent endpoint. An exact numbered ruTorrent URL must stay within its instance; custom self-hosted XML-RPC URLs remain available. Verified profiles use Android Keystore, with opt-out and Forget controls. The connection handshake reads only server identity/inventory, never mutates transfers.
+
+**Status:** [PR #463](https://github.com/gamesbyian/Chunks/pull/463) contains the first discovery implementation, pending final merge and exact-head acceptance. Provider catalog, capability-ranked gateways, actionable repair, SSO/custom certificates/VPN and full Android/real-provider tests remain in [issue #464](https://github.com/gamesbyian/Chunks/issues/464). See the [Smart Connect contract](docs/SMART-REMOTE-CONNECTION.md), [coverage matrix](docs/SPEC-COVERAGE.md), and [three-instance SeedHost connection guide](docs/SEEDHOST-REMOTE-TESTING.md). The remote-control HTTPS port is separate from incoming BitTorrent peer ports.
 
 ## Documentation and engineering
 

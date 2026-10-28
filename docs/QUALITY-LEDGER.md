@@ -1,5 +1,45 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-28 Smart Connect specification/implementation and connection evidence
+
+- **Owner direction:** a user should be able to connect rTorrent with a seedbox
+  hostname or ruTorrent URL and ordinary account credentials, without knowing
+  SCGI/HTTP-RPC mount points. The canonical specification is
+  [SMART-REMOTE-CONNECTION](SMART-REMOTE-CONNECTION.md), covered by PRODUCT,
+  UX, ARCHITECTURE, SECURITY, SPEC-COVERAGE, DECISIONS, CI-POLICY, WORK-QUEUE,
+  RESEARCH, README and issue [#464](https://github.com/gamesbyian/Chunks/issues/464).
+- **PR #461 MERGED:** exact prior head `49af3ad5ca897a40c7ab7643c07ea8002f1eb15b`,
+  Android foundation [40758152431](https://github.com/gamesbyian/Chunks/actions/runs/40758152431)
+  **successful**. Records three distinct SeedHost HTTPS profiles and
+  case-sensitive protected credential secrets; manual trusted-main-only
+  endpoint test. The owner's successful Transdrone
+  `wood.seedhost.eu/ianseeds/RPC1` configuration has SSL unchecked, so
+  the equivalent HTTPS direct-SCGI path is **unverified**.
+- **PR #463 OPEN at documentation checkpoint:** source-based
+  `RemoteSmartConnect` candidate planning and actual Android Connect
+  integration, bounded to HTTPS and the same supplied origin; explicit
+  numbered ruTorrent URLs do not fall back to another tenant. Its
+  prior exact head `8922760cf81a11fb299a96c0013ea833f2845896`
+  passed [Android/JVM 40760083435](https://github.com/gamesbyian/Chunks/actions/runs/40760083435)
+  and [native visual 40760083286](https://github.com/gamesbyian/Chunks/actions/runs/40760083286).
+  These are source/emulator-tier checks and **not** credentialed live
+  provider or physical Android acceptance. A subsequent documentation
+  reconciliation head requires a fresh exact-head gate before merge.
+- **Remaining:** four protected SeedHost endpoint-route probes (three
+  authenticated HTTP-RPC profiles plus separate HTTPS SCGI candidate)
+  with per-tenant read-only version/list, other-provider real integration,
+  read-only capability ranking, cancellation/repair UI, TLS CA/pin/SSO/VPN
+  support, 200%/TalkBack/physical Pixel acceptance and actual
+  multi-provider parity. No secure-connection downgrade or destructive
+  command is authorized during discovery.
+- **Distinct peer-wire evidence:** live SeedHost `network.bind_address`
+  `5.79.112.219` versus ruTorrent hostname `5.79.112.210` explained the
+  previous refused TCP probe. Merged #460 and
+  [real single-peer verified 792,723,456-byte Copy 40756284173](https://github.com/gamesbyian/Chunks/actions/runs/40756284173)
+  establish this host's accessible BitTorrent peer path, **not**
+  management RPC compatibility on another route or a global allowed
+  incoming-port range.
+
 **Layered CFF Latin source-art audit, 2026-10-28:** [#469](https://github.com/gamesbyian/Chunks/pull/469) MERGED at `4df818cc916c2d1e880205e228ad35bef9f20ce9`, exact PR head `70ad0253bf4a05cdbf807e085ee713e102949173`, all six independent font/build/visual/source checks passed. Each of the 495 mapped Latin letters across five actual 856-cmap CFF weights now carries exhaustive provenance through Consolidated, Stacked and Mixed Marks, source and font SHA receipts and deterministic UTF-8 JSON: remaining reference-specific glyph designs **102/104/105/116/126** per weight. This is nonshipping source-art metadata, not editorial, Compose, handset or TalkBack acceptance. [#445](https://github.com/gamesbyian/Chunks/pull/445) remains blocked on exact Android 30-screenshot export evidence; do not promote to accepted typography until manual contours and device results are approved.
 
 **Reference Mixed Marks experimental completion, 2026-10-28:** [#466](https://github.com/gamesbyian/Chunks/pull/466) MERGED at `e243e46303d4d5db9054623cbbdd94e0cd97b5fd`. Exact PR head `c5703c7b6aed53ef5a4e9f8db3d73264be3cb63c` passed all five font-family, experimental-font, visual stress, independent audit and mixed native-CFF checks. A separately named **nonshipping** 5-weight experimental family built 14 mixed above/below Unicode canonical mark combinations per face, including the difficult Vietnamese `Ậ/ậ`, `Ặ/ặ`, `Ệ/ệ`, `Ộ/ộ`, retaining attached/unclear marks as original source fallbacks. Tested entire 856-glyph CFF/hmtx preservation outside those variants, Hindi shaping, bounded GPOS and four native 14/24/48/82px specimens; input/output hashes captured. Work-in-progress [#445](https://github.com/gamesbyian/Chunks/pull/445) API35 emulator fixture/export fix is **unmerged and not accepted**, pending exact-head instrumentation and thirty actual Android captures. Real Compose, 200% system accessibility, TalkBack and hand-drawn Regular–Bold remain issue #347.
