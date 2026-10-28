@@ -10,7 +10,7 @@
 - **Seedhost → phone Copy VERIFIED on the real host** (run [40756284173](https://github.com/gamesbyian/Chunks/actions/runs/40756284173)): all 792,723,456 bytes of the owner-added Debian ISO were piece-verified from the server as the only peer, in 782 s. The earlier refusals came from the ruTorrent hostname's address. rTorrent is bound to `5.79.112.219`, which #460 now discovers from `network.bind_address`.
 - **Next executable:**
   A repeat with no override, [40759247300](https://github.com/gamesbyian/Chunks/actions/runs/40759247300), also VERIFIED (748 s), using the app's own address choice.
-  1. Add an editable server peer address to the Copy review, for hosts that report neither address.
+  1. ~~Add an editable server peer address to the Copy review~~ — implemented in the Copy peer-address PR (bare host/IP only, labelled source, JVM + API35 tests); real-host use still unverified.
   2. Batch server-to-phone Copy.
   3. Owner: a physical-handset swarm and Copy.
 
