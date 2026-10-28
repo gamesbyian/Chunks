@@ -162,7 +162,7 @@ class ReferencePanelWeightTests(unittest.TestCase):
         original={ch:source_polygons(GLYPHS/f'U+{ord(ch):04X}.svg',3)
                   for ch in ('I','l')}
         manifest=json.loads((STUDIES/'reference-panel-weight-study-metrics.json').read_text())
-        self.assertEqual(manifest['overrides_used'],24)
+        self.assertEqual(manifest['overrides_used'],32)
         for ch in ('I','l'):
             ratios=[]
             native_areas=[]
@@ -315,6 +315,49 @@ class ReferencePanelWeightTests(unittest.TestCase):
                              f'{letter}: independent designs must gain ink from 400 to 700')
             self.assertLess(areas[-1],reference.area,
                             f'{letter}: Bold candidate must not exceed source ExtraBold')
+
+
+    def test_eight_independent_E_F_crossbar_masters_and_cff_provenance(self):
+        """Three-level E/two-level F bar silhouettes must stay curved and joined."""
+        ledger=json.loads((STUDIES/'reference-panel-weight-study-metrics.json').read_text())
+        self.assertEqual(ledger['overrides_used'],32)
+        for letter in ('E','F'):
+            original=source_polygons(GLYPHS/f'U+{ord(letter):04X}.svg',3)
+            self.assertEqual(topology(original),(1,0))
+            areas=[]
+            for weight,style in WEIGHTS.items():
+                with self.subTest(letter=letter,weight=weight):
+                    path=GLYPHS/'weight-overrides'/str(weight)/f'U+{ord(letter):04X}.svg'
+                    self.assertTrue(path.is_file(),path)
+                    geom=source_polygons(path,3)
+                    self.assertTrue(geom.is_valid)
+                    self.assertEqual(topology(geom),(1,0))
+                    self.assertTrue(all(abs(a-b)<=3 for a,b in
+                                        zip(geom.bounds,original.bounds)))
+                    self.assertGreater(geom.area,250)
+                    self.assertTrue(.30<=geom.area/original.area<=1.0)
+                    areas.append(geom.area)
+                    svg=ET.fromstring(path.read_text())
+                    path_node=next(el for el in svg.iter() if el.tag.endswith('path'))
+                    commands=RecordingPen()
+                    parse_path(path_node.attrib['d'],commands)
+                    self.assertEqual(sum(op=='moveTo' for op,_ in commands.value),1)
+                    self.assertGreaterEqual(sum(op=='qCurveTo' for op,_ in commands.value),12)
+                    info=ledger['weights'][style]['glyph_geometry'][letter]
+                    self.assertEqual(info['outline_source'],'weight-specific-svg-master')
+                    self.assertEqual(info['outline_encoding'],'native-bezier-curves')
+                    self.assertEqual(info['components'],1)
+                    self.assertEqual(info['counters'],0)
+                    self.assertEqual(info['override_svg_sha256'],
+                                     hashlib.sha256(path.read_bytes()).hexdigest())
+                    face=TTFont(STUDIES/f'ChunksReferencePanel-{style}-Study.otf')
+                    pen=RecordingPen()
+                    face.getGlyphSet()[face.getBestCmap()[ord(letter)]].draw(pen)
+                    self.assertEqual(sum(op=='moveTo' for op,_ in pen.value),1)
+                    self.assertGreaterEqual(sum(op=='curveTo' for op,_ in pen.value),12)
+            self.assertEqual(areas,sorted(areas))
+            self.assertLess(areas[-1],original.area,
+                            f'{letter}: heaviest draft cannot exceed ExtraBold reference')
 
     def test_raw_build_is_deterministic_without_touching_accepted_masters(self):
         with tempfile.TemporaryDirectory() as d:
