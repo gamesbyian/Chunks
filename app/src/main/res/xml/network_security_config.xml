@@ -4,8 +4,8 @@
          literal loopback addresses supported by RTorrentRemote for local QA. -->
     <base-config cleartextTrafficPermitted="false" />
     <domain-config cleartextTrafficPermitted="true">
-        <domain>localhost</domain>
-        <domain>127.0.0.1</domain>
-        <domain>::1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">::1</domain>
     </domain-config>
 </network-security-config>
