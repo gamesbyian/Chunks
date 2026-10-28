@@ -1,5 +1,7 @@
 # Chunks security, privacy and operation authority
 
+**User artwork uploads/URLs and group scope:** Use Android Photo Picker/SAF or validated HTTPS URL with strict file/image/redirect limits, no credentials in arbitrary URLs, and no injection or server-side fetch/SSRF through user-supplied URLs. Store artwork/app-private derivatives with privacy-lock isolation; exclude protected imagery from lockscreen/notifications/diagnostics. Related-transfer scope previews must not expose locked remote inventories, and artist/author/series matches cannot be guessed from weak text. Settings and rules never mutate rTorrent or torrent payload. See [TRANSFER-ARTWORK.md](TRANSFER-ARTWORK.md).
+
 **Cross-media/privacy expansion:** Category inference must not accidentally trigger remote queries; adult catalogs and explicit thumbnails require separate affirmative switches and safe default art. General image search may send only sanitized and consented inferred title/edition/platform/artist terms to a compliant image API; never expose raw filename, infohash, tracker, paths, server details, credentials, private content or user IDs. Treat search-engine results as untrusted candidates with independent license, host, pixel and safety validation, never blindly download arbitrary image URLs. See [TRANSFER-ARTWORK](TRANSFER-ARTWORK.md).
 
 ## External artwork privacy and untrusted-image boundary (planned)
