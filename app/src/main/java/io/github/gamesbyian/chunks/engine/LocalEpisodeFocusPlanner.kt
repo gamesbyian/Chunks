@@ -27,16 +27,19 @@ internal object LocalEpisodeFocusPlanner {
         if (extras.containsMatchIn(path)) return null
         if (name.substringAfterLast('.', "").lowercase(Locale.ROOT) in
             setOf("srt", "ass", "ssa", "sub", "nfo", "txt", "jpg", "png")) return null
-        val match = seasonEpisode.find(name)
-        val x = xEpisode.find(name)
-        val ep = episode.find(name)
-        // Conflicting name evidence is ambiguous and should never be guessed.
+        // Use ALL matches: S01E01.S02E02 is ambiguous, not episode one.
         val candidates = buildList {
-            match?.let { add(EpisodeKey(it.groupValues[1].toInt(),
-                it.groupValues[2].toInt())) }
-            x?.let { add(EpisodeKey(it.groupValues[1].toInt(),
-                it.groupValues[2].toInt())) }
-            ep?.let { add(EpisodeKey(0, it.groupValues[1].toInt())) }
+            seasonEpisode.findAll(name).forEach {
+                add(EpisodeKey(it.groupValues[1].toInt(),
+                    it.groupValues[2].toInt()))
+            }
+            xEpisode.findAll(name).forEach {
+                add(EpisodeKey(it.groupValues[1].toInt(),
+                    it.groupValues[2].toInt()))
+            }
+            episode.findAll(name).forEach {
+                add(EpisodeKey(0, it.groupValues[1].toInt()))
+            }
         }.distinct()
         return candidates.singleOrNull()?.takeIf {
             it.season in 0..99 && it.episode in 1..999
