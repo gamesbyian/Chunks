@@ -10,6 +10,7 @@ import io.github.gamesbyian.chunks.model.ServerToPhoneCopy
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
 import java.net.ConnectException
+import java.net.Inet6Address
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.Socket
@@ -126,7 +127,19 @@ class SeedhostServerToPhoneCopyProbeTest {
             // peer port, and is the server itself connected to any peers?
             val tcp = tcpReach(plan.peer)
             val serverPeers = runCatching { remote.readActivity(chosenHash).connectedPeers }.getOrNull()
-            println("CHUNKS_SEEDHOST_COPY: INCONCLUSIVE $summary tcp=$tcp serverPeers=$serverPeers")
+            // The announced address may not be the one that accepts peers on a
+            // multi-address host: try the same port on every address the RPC
+            // hostname resolves to, and re-read the port in case it changed.
+            val portNow = runCatching { remote.peerSource(chosenHash).listenPort }.getOrNull()
+            val port = plan.peer.substringAfterLast(':')
+            val rpcHostTcp = runCatching { InetAddress.getAllByName(url.host).toList() }.getOrDefault(emptyList())
+                .take(4).joinToString(",") { a ->
+                    val literal = a.hostAddress.substringBefore('%')
+                    val peer = (if (a is Inet6Address) "[$literal]" else literal) + ":" + port
+                    "$peer=${tcpReach(peer)}"
+                }
+            println("CHUNKS_SEEDHOST_COPY: INCONCLUSIVE $summary tcp=$tcp serverPeers=$serverPeers " +
+                "listenPortNow=$portNow rpcHostTcp=[$rpcHostTcp]")
             fail("INCONCLUSIVE server peer reachability or copy: $summary")
         }
         assertTrue(phone.flushCompletedForLibraryRead(hash, 30_000))
