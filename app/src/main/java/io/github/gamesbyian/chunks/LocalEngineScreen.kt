@@ -1114,9 +1114,16 @@ internal fun LocalFileSelection(
     val page = requestedPage.coerceIn(0, pageCount - 1)
     val pageFiles = files.drop(page * pageSize).take(pageSize)
     var pendingBatch by remember(transferKey, page) { mutableStateOf<Boolean?>(null) }
-    // A new native file readback or size/selection change invalidates any old
-    // review; it must be explicitly reopened against the latest page.
-    LaunchedEffect(files) { pendingBatch = null }
+    // Native download progress can change every second. Do not dismiss a
+    // user's confirmation merely because doneBytes advances. Only a change
+    // to file identity, total size or wanted selection invalidates review.
+    val reviewFingerprint = remember(files) {
+        files.map { file ->
+            listOf(file.index.toString(), file.path, file.sizeBytes.toString(),
+                file.wanted.toString())
+        }
+    }
+    LaunchedEffect(reviewFingerprint) { pendingBatch = null }
     Text("Untick a file to skip downloading it. Already downloaded parts are kept.",
         style = MaterialTheme.typography.bodySmall)
     if (pageCount > 1) {
