@@ -5,6 +5,12 @@
 set -euo pipefail
 dest="${RUNNER_TEMP:?}/chunks-stacked-android-font"
 mkdir -p "$dest"
+echo 'Native Android font evidence preflight:'
+adb shell pm path io.github.gamesbyian.chunks || true
+adb shell run-as io.github.gamesbyian.chunks ls -la files || true
+adb shell run-as io.github.gamesbyian.chunks ls -la files/font-acceptance || true
+find app/build/outputs/androidTest-results/connected -type f -name '*.xml' -print -exec grep -Eh 'testsuite|testcase|skipped|failure' {} \; | tail -30 || true
+set -x
 for style in Regular Medium Semibold Bold ExtraBold; do
   for size in 100pct 200pct; do
     for sample in long_filename stacked_marks transfer_stats; do
