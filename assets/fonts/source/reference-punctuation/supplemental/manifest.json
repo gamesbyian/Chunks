@@ -1,0 +1,69 @@
+{
+  "status": "NONSHIPPING derived punctuation SVG drafts, not original source contours",
+  "source_original_manifest_sha256": "abbf1e343e6349be1a8c098faa56ae3321af928103233b207277801a73a75b8a",
+  "source_image_sha256": "c8f1cff6afb51ac4380573d4b140ca5767bd2f981c4fe4b0be6c10e9c923f8b5",
+  "glyph_count": 4,
+  "period_step_reference_px": 13.0,
+  "glyphs": {
+    "'": {
+      "source_glyph": "”",
+      "source_svg_sha256": "0736151073ed1bc907b6d8c3792d3e7b31f09129b790ee5ae6b434a135e76aed",
+      "source_strategy": "rightmost",
+      "source_bbox": [
+        0,
+        542,
+        8,
+        555
+      ],
+      "width": 8,
+      "height": 13,
+      "reference_baseline_row": 568,
+      "derived_from_original_reference": true
+    },
+    "‘": {
+      "source_glyph": "“",
+      "source_svg_sha256": "f40081c1896c6a0de052d7c526f62fa9eb4ffd442dac1ab25f072026b008ce2b",
+      "source_strategy": "leftmost",
+      "source_bbox": [
+        0,
+        542,
+        7,
+        555
+      ],
+      "width": 7,
+      "height": 13,
+      "reference_baseline_row": 568,
+      "derived_from_original_reference": true
+    },
+    "’": {
+      "source_glyph": "”",
+      "source_svg_sha256": "0736151073ed1bc907b6d8c3792d3e7b31f09129b790ee5ae6b434a135e76aed",
+      "source_strategy": "rightmost",
+      "source_bbox": [
+        0,
+        542,
+        8,
+        555
+      ],
+      "width": 8,
+      "height": 13,
+      "reference_baseline_row": 568,
+      "derived_from_original_reference": true
+    },
+    "…": {
+      "source_glyph": ".",
+      "source_svg_sha256": "33e0d4c6ba9ca7da9d72ddd54ac7d7b397d2ddd402a582e98d59d942f5cf9709",
+      "source_strategy": "three-periods",
+      "source_bbox": [
+        0,
+        560,
+        34,
+        568
+      ],
+      "width": 34,
+      "height": 8,
+      "reference_baseline_row": 568,
+      "derived_from_original_reference": true
+    }
+  }
+}
