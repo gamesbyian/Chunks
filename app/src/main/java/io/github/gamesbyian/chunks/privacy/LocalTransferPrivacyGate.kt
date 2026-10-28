@@ -48,15 +48,38 @@ private fun Context.activityOrNull(): Activity? {
 }
 
 /**
- * Protection is enforced BEFORE composing any local torrent UI, not merely
- * drawn as a translucent overlay. It does not affect the native engine or
- * background seeding service. Only the known local scope is enabled here;
- * remote per-account gating requires a distinct protected route.
+ * These wrappers deliberately have separate scopes and UI captions. An OS
+ * authentication grants only the exact scope whose ticket was verified.
+ * Local/remote engine lifecycles are NEVER tied to this Compose gate.
  */
 @Composable
 internal fun LocalTransferPrivacyGate(
     scope: String,
     onBack: () -> Unit = {},
+    content: @Composable () -> Unit
+) {
+    TransferPrivacyGate(scope, onBack, "Phone transfers", "Phone transfer",
+        redactLocalService = true, content = content)
+}
+
+@Composable
+internal fun RemoteTransferPrivacyGate(
+    scope: String,
+    onBack: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    TransferPrivacyGate(scope, onBack, "rTorrent profile", "rTorrent profile",
+        redactLocalService = false, content = content)
+}
+
+/** Never composes protected content while a scope is locked. */
+@Composable
+private fun TransferPrivacyGate(
+    scope: String,
+    onBack: () -> Unit,
+    lockedTitle: String,
+    subject: String,
+    redactLocalService: Boolean,
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
@@ -163,7 +186,7 @@ internal fun LocalTransferPrivacyGate(
                     session.configure(scope, requested, authenticatedForChange = true)) {
                     mode = requested
                     settingsOpen = false
-                    if (requested != TransferLockMode.NEVER)
+                    if (requested != TransferLockMode.NEVER && redactLocalService)
                         LocalEngineService.redactActiveNotification(context)
                     notice = "Privacy policy updated after device credential confirmation."
                 } else {
@@ -183,7 +206,7 @@ internal fun LocalTransferPrivacyGate(
         val confirmation = activityNow?.let {
             TransferDeviceAuthenticator.android10CredentialIntent(
                 it, if (requestedMode == null)
-                    "Unlock Chunks phone transfers" else "Confirm Chunks privacy change")
+                    "Unlock Chunks " + subject else "Confirm Chunks privacy change")
         }
         if (confirmation == null) {
             if (requestedMode == null) session.onCancelUnlock(ticket)
@@ -223,7 +246,7 @@ internal fun LocalTransferPrivacyGate(
             return
         }
         signal = TransferDeviceAuthenticator.authenticate(activity,
-            "Unlock Chunks phone transfers") { success ->
+            "Unlock Chunks " + subject) { success ->
             val authorized = session.finishUnlock(ticket, success)
             unlockTicket = null
             signal = null
@@ -248,7 +271,8 @@ internal fun LocalTransferPrivacyGate(
                 mode = requested
                 // Remove stale, clickable foreground-service Stop all actions
                 // immediately when protection becomes enabled.
-                LocalEngineService.redactActiveNotification(context)
+                if (redactLocalService)
+                    LocalEngineService.redactActiveNotification(context)
                 settingsOpen = false
                 notice = null
                 localRevision++
@@ -282,7 +306,7 @@ internal fun LocalTransferPrivacyGate(
             if (fresh && store.setMode(scope, requested, authenticatedForChange = true) &&
                 session.configure(scope, requested, authenticatedForChange = true)) {
                 mode = requested
-                if (requested != TransferLockMode.NEVER)
+                if (requested != TransferLockMode.NEVER && redactLocalService)
                     LocalEngineService.redactActiveNotification(context)
                 settingsOpen = false
                 notice = "Privacy setting saved. Re-authentication may be required."
@@ -302,21 +326,23 @@ internal fun LocalTransferPrivacyGate(
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                 Text("Back to Chunks")
             }
-            Text("Phone transfers locked", style = MaterialTheme.typography.headlineMedium)
+            Text(lockedTitle + " locked", style = MaterialTheme.typography.headlineMedium)
             Text("Your torrent names, files, folders, Collections and transfer controls " +
                 "are hidden until Android verifies your fingerprint, face or device screen lock.")
             OutlinedButton(
                 onClick = ::authenticateUnlock, enabled = !busy,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
             ) {
-                Text(if (busy) "Authenticating…" else "Unlock phone transfers")
+                Text(if (busy) "Authenticating…" else "Unlock " + lockedTitle.lowercase())
             }
             if (activity == null || !TransferDeviceAuthenticator.hasSecureLock(activity))
                 Text("This device currently has no usable secure screen lock. " +
                     "Set up a PIN, pattern or password in Android Settings, then retry.",
                     color = MaterialTheme.colorScheme.error)
             notice?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            Text("Locked Chunks UI does not pause or stop already-running local torrents.",
+            Text(if (redactLocalService)
+                "Locked Chunks UI does not pause or stop already-running local torrents."
+                else "This lock neither disconnects the rTorrent server nor stops phone transfers.",
                 style = MaterialTheme.typography.bodySmall)
         }
     } else {
@@ -348,7 +374,7 @@ internal fun LocalTransferPrivacyGate(
                 }
                 if (settingsOpen) {
                     Text(if (mode == TransferLockMode.NEVER)
-                        "Phone transfer privacy is off. Enabling it requires a device " +
+                        subject + " privacy is off. Enabling it requires a device " +
                             "screen lock and will immediately hide transfers."
                         else "Current privacy mode: " + mode.name.replace('_', ' ').lowercase() +
                             ". Every change, including disabling, requires fresh Android authentication.",
