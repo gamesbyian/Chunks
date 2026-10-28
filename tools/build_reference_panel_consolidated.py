@@ -9,6 +9,7 @@ punctuation on those *final* CFF curves. Earlier experiments remain byte intact.
 from __future__ import annotations
 
 import argparse
+import gzip
 import hashlib
 import json
 import tempfile
@@ -137,6 +138,7 @@ def punctuation_kern(raw: Path, output: Path, weight: int) -> dict:
     records = []
     sampled = 0
     clipped = 0
+    clipped_pairs = []
     for first in chars:
         if not masks[first]:
             continue
