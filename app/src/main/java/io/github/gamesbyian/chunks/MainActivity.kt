@@ -557,9 +557,19 @@ private fun ChunksApp(
                     stale = stale, loading = loading,
                     onBack = { section = Section.TRANSFERS }
                 )
-                Section.SNAPSHOT_INSPECT -> SnapshotDocumentInspectScreen(
-                    onBack = { section = Section.TRANSFERS })
-                Section.ARCHIVES -> LocalZipReviewScreen(onBack = { section = Section.TRANSFERS })
+                Section.SNAPSHOT_INSPECT -> LocalTransferPrivacyGate(
+                    scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
+                    onBack = { section = Section.TRANSFERS }
+                ) {
+                    SnapshotDocumentInspectScreen(
+                        onBack = { section = Section.TRANSFERS })
+                }
+                Section.ARCHIVES -> LocalTransferPrivacyGate(
+                    scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
+                    onBack = { section = Section.TRANSFERS }
+                ) {
+                    LocalZipReviewScreen(onBack = { section = Section.TRANSFERS })
+                }
                 Section.LOCAL -> LocalTransferPrivacyGate(
                     scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
                     onBack = { section = Section.TRANSFERS }
