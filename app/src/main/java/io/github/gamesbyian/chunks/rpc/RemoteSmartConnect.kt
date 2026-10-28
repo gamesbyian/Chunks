@@ -82,6 +82,13 @@ object RemoteSmartConnect {
             else -> null
         }
         if (webRoot != null) {
+            // Feral documents a separate /ACCOUNT/rtorrent/rpc gateway.
+            // ACCOUNT is taken only from the pasted ruTorrent path, *not*
+            // from the HTTP auth username (often literally "rutorrent").
+            if (uri.host.endsWith(".feralhosting.com", true) &&
+                Regex("^/[^/]+/rutorrent$", RegexOption.IGNORE_CASE).matches(webRoot)) {
+                add(webRoot.removeSuffix("/rutorrent") + "/rtorrent/rpc", "Feral nginx XML-RPC")
+            }
             add("$webRoot/plugins/httprpc/action.php", "This ruTorrent instance")
             return entries.values.toList()
         }
@@ -125,6 +132,12 @@ object RemoteSmartConnect {
             host == "appboxes.co" || host.endsWith(".appboxes.co") -> {
                 add("/RPC2", "Appbox direct RPC")
                 add("/rutorrent/plugins/httprpc/action.php", "ruTorrent HTTP-RPC")
+            }
+            // RapidSeedbox's dedicated HTTPS rt-* service uses rpc.php,
+            // not the usual httprpc/action.php name.
+            host.endsWith(".seedbox.vip") && host.startsWith("rt-") -> {
+                add("/plugins/rpc/rpc.php", "RapidSeedbox ruTorrent RPC")
+                add("/rutorrent/plugins/rpc/rpc.php", "RapidSeedbox prefixed RPC")
             }
             else -> {
                 // Bounded generic nginx/Apache patterns. Custom providers
