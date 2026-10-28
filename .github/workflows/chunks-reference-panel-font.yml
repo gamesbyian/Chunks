@@ -10,6 +10,7 @@ on:
       - 'assets/fonts/source/reference-alphabet/**'
       - 'assets/fonts/chunks/Chunks-ExtraBold.otf'
       - 'assets/fonts/experimental/**'
+      - 'docs/design/CHUNKS-REFERENCE-PANEL-FONT.md'
       - '.github/workflows/chunks-reference-panel-font.yml'
   pull_request:
     paths:
@@ -21,6 +22,7 @@ on:
       - 'assets/fonts/source/reference-alphabet/**'
       - 'assets/fonts/chunks/Chunks-ExtraBold.otf'
       - 'assets/fonts/experimental/**'
+      - 'docs/design/CHUNKS-REFERENCE-PANEL-FONT.md'
       - '.github/workflows/chunks-reference-panel-font.yml'
   workflow_dispatch:
 concurrency:
