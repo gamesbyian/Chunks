@@ -5,6 +5,7 @@ on:
       - 'tools/build_reference_panel_consolidated.py'
       - 'tools/build_reference_punctuation_supplements.py'
       - 'tools/render_reference_panel_consolidated.py'
+      - 'tools/render_reference_punctuation_clamps.py'
       - 'tools/build_reference_panel_weight_studies.py'
       - 'tools/build_reference_accent_kerned.py'
       - 'tools/build_chunks_fonts.py'
@@ -20,6 +21,7 @@ on:
       - 'tools/build_reference_panel_consolidated.py'
       - 'tools/build_reference_punctuation_supplements.py'
       - 'tools/render_reference_panel_consolidated.py'
+      - 'tools/render_reference_punctuation_clamps.py'
       - 'tools/build_reference_panel_weight_studies.py'
       - 'tools/build_reference_accent_kerned.py'
       - 'tools/build_chunks_fonts.py'
@@ -59,6 +61,8 @@ jobs:
         run: python -m unittest discover -s tests -p test_reference_panel_consolidated.py -v
       - name: Render five-weight native CFF typography specimen
         run: python tools/render_reference_panel_consolidated.py
+      - name: Render actual-font specimen of the most severely clipped optical pairs
+        run: python tools/render_reference_punctuation_clamps.py
       - name: Upload candidates, full per-glyph metrics and source license
         uses: actions/upload-artifact@v4
         with:
@@ -66,6 +70,7 @@ jobs:
           path: |
             assets/fonts/experimental/consolidated/*
             reference-panel-consolidated-five-weights.png
+            reference-punctuation-clamp-review.png
             assets/fonts/source/reference-punctuation/supplemental/*
             assets/fonts/source/OFL.txt
           retention-days: 30
