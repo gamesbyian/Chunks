@@ -14,12 +14,12 @@ class LocalZipOfflineNavigationInstrumentedTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
 
     @Test fun offlineZipReviewIsAvailableWithoutCredentialsAndReturnsToConnection() {
-        rule.onNodeWithText("Connect to rTorrent").assertExists()
+        rule.onNodeWithText("Hello, server.").assertExists()
         rule.onNodeWithText("Inspect a local ZIP without connecting").performClick()
         rule.onNodeWithText("Local ZIP review").assertExists()
         rule.onNodeWithText("Choose local ZIP").assertExists()
         rule.onNodeWithText("Read-only limits:", substring = true).assertExists()
         rule.onNodeWithText("Back").performClick()
-        rule.onNodeWithText("Connect to rTorrent").assertExists()
+        rule.onNodeWithText("Hello, server.").assertExists()
     }
 }
