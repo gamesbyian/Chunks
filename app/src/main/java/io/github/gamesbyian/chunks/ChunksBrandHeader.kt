@@ -72,7 +72,8 @@ internal fun ChunksBrandHeader(modifier: Modifier = Modifier) {
                 )
                 Text(
                     ".",
-                    fontWeight = FontWeight.Black,
+                    fontFamily = ChunksDisplayTypeface,
+                    fontWeight = FontWeight.ExtraBold,
                     fontSize = 35.sp,
                     lineHeight = 40.sp,
                     color = coral
