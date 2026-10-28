@@ -501,25 +501,13 @@ internal fun LocalEngineScreen(
         if (magnet.isNotEmpty() && destination != null) {
             Text("Saves into the selected Chunks-owned phone folder. Magnets first discover metadata via peers/trackers; if Start after Add is selected, payload downloading begins after metadata arrives. Without peers, downloading cannot begin.",
                 style = MaterialTheme.typography.bodySmall)
-            if (LocalMagnetDiscoveryAdvice.warn(magnet, dht)) {
-                Text("This magnet has no usable tracker address and DHT is off. " +
-                    "Chunks may be unable to find peers and fetch its metadata. " +
-                    "Enable DHT above or use a .torrent file with tracker information. " +
-                    "Without metadata or peers, downloading cannot begin.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error)
-                OutlinedButton(
-                    onClick = { requestDhtSetting(true) },
-                    enabled = !dhtSaving && !busy && !inventoryStale,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
-                ) {
-                    Text(if (dhtSaving) "Enabling DHT…" else
-                        "Enable DHT to help this magnet find peers")
-                }
-                Text("Opt-in: DHT shares this phone's IP address with public DHT nodes. " +
-                    "This does not guarantee peers, metadata or download progress.",
-                    style = MaterialTheme.typography.bodySmall)
-            }
+            LocalMagnetDiscoveryPrompt(
+                magnet = magnet,
+                dhtEnabled = dht,
+                applying = dhtSaving,
+                blocked = busy || inventoryStale,
+                onEnable = { requestDhtSetting(true) }
+            )
             OutlinedButton(onClick = {
                 val selectedDraft = addFolderDraft
                 val selectedMagnet = magnet
