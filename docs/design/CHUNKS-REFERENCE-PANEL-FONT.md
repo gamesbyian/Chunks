@@ -29,3 +29,12 @@ The temporary inherited source kerning should not be interpreted as finished opt
 ## Verified experiment
 
 [Exact source-head run 40612081763](https://github.com/gamesbyian/Chunks/actions/runs/40612081763) passed reference glyph compilation, a second byte-identical rebuild, CFF/Unicode/GPOS/GSUB parity checks, shape changes for all 62 Basic Latin letters/numerals and unchanged Hindi shaping. Measured 14/24/48px sample gaps were positive. The experiment produced a separately named installable OTF and a real-font comparison PNG. The approved five Chunks weights and Android header are still unchanged.
+
+
+## Reference-panel optical kerning, second experimental pass
+
+The 62-glyph reference-panel trial now has an **independently optically re-spaced alternate** (a separate OTF, not a replacement for the approved Chunks family or the unkerned reference-panel candidate). `tools/optimize_reference_panel_kerning.py` shapes 151 Latin/currency/punctuation probe characters at the final 800-weight outlines, evaluates 22,801 candidate pairs, and appends bounded *additional* GPOS `kern` corrections **only when at least one glyph is among the 62 altered letters/numerals**. It preserves every existing source GPOS, GDEF, GSUB and cmap table and the original Unicode references.
+
+Measured local prototype: 13,796 candidate-only pairs received bounded corrections. Smallest sampled visible ink gap (14, 24, 48px) changed from **1.44, 2.66, 5.31px** to **0.61, 1.70, 3.17px**. These are positive, although tighter spacing alone does not establish superior readability. CI rebuilds twice and compares binary hashes; authentic Android and multilingual editorial tests remain open.
+
+Generated output: `assets/fonts/experimental/ChunksReferencePanel-ExtraBold-Optical.otf`, separate from `ChunksReferencePanel-ExtraBold.otf` and from all production `Chunks-*.otf`. `assets/fonts/experimental/reference-panel-spacing.json` preserves exact source/optimized SHA-256 and measured results. Keep the experimental source and approved master distinguishable in UI and design discussions.
