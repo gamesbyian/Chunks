@@ -105,6 +105,13 @@ class ReferencePanelWeightTests(unittest.TestCase):
             b_rec=RecordingPen()
             a_font.getGlyphSet()[a_glyph].draw(a_rec)
             a_font.getGlyphSet()[b_glyph].draw(b_rec)
+            self.assertEqual(a_font.getBestCmap(),
+                             TTFont(BASE/'Chunks-Regular.otf').getBestCmap())
+            rendered=ImageFont.truetype(str(raw),24,layout_engine=ImageFont.Layout.RAQM)
+            baseline=ImageFont.truetype(str(BASE/'Chunks-Regular.otf'),24,
+                                        layout_engine=ImageFont.Layout.RAQM)
+            self.assertAlmostEqual(rendered.getlength('हिन्दी'),
+                                   baseline.getlength('हिन्दी'),delta=.02)
             self.assertGreater(sum(op=='curveTo' for op,_ in a_rec.value),0,
                                'Reviewed SVG master must retain native Bezier curves')
             self.assertEqual(sum(op=='curveTo' for op,_ in b_rec.value),0,
