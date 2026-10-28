@@ -9,12 +9,14 @@ const gallery=fs.readFileSync(path.join(root,"docs/design/svg/gallery.html"),"ut
 const engine=fs.readFileSync(path.join(root,"docs/design/svg/mix-engine.js"),"utf8");
 const ui=fs.readFileSync(path.join(root,"docs/design/svg/mix-ui.js"),"utf8");
 function open(){
- const dom=new JSDOM(gallery,{url:"https://example.test/gallery.html",runScripts:"outside-only",pretendToBeVisual:true});
- const inline=gallery.match(/<script>\s*"use strict";([\s\S]*?)<\/script>/);
- assert.ok(inline,"inline static gallery script missing");
- dom.window.eval('"use strict";\n'+inline[1]);
- dom.window.eval(engine);
- dom.window.eval(ui);
+ const dom=new JSDOM(gallery,{url:"https://example.test/gallery.html",runScripts:"dangerously",pretendToBeVisual:true});
+ // Classic browser scripts share a global lexical environment. Strict eval()
+ // deliberately does not; inject script elements to reproduce actual browser behaviour.
+ for(const source of [engine,ui]){
+  const element=dom.window.document.createElement("script");
+  element.textContent=source;
+  dom.window.document.body.append(element);
+ }
  return dom;
 }
 function search(d,id){
