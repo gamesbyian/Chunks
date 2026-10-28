@@ -4,6 +4,8 @@ on:
     paths:
       - 'tools/build_reference_panel_candidate.py'
       - 'tools/render_reference_panel_comparison.py'
+      - 'tools/optimize_reference_panel_kerning.py'
+      - 'tests/test_reference_panel_kerning.py'
       - 'tests/test_reference_panel_font.py'
       - 'assets/fonts/source/reference-alphabet/**'
       - 'assets/fonts/chunks/Chunks-ExtraBold.otf'
@@ -13,6 +15,8 @@ on:
     paths:
       - 'tools/build_reference_panel_candidate.py'
       - 'tools/render_reference_panel_comparison.py'
+      - 'tools/optimize_reference_panel_kerning.py'
+      - 'tests/test_reference_panel_kerning.py'
       - 'tests/test_reference_panel_font.py'
       - 'assets/fonts/source/reference-alphabet/**'
       - 'assets/fonts/chunks/Chunks-ExtraBold.otf'
@@ -37,13 +41,19 @@ jobs:
         run: python tools/build_reference_panel_candidate.py
       - name: Run nonshipping font construction and shaping parity tests
         run: python -m unittest discover -s tests -p test_reference_panel_font.py -v
+      - name: Optically refine changed letter and numeral pairs
+        run: python tools/optimize_reference_panel_kerning.py
+      - name: Test optical spacing and non-Latin invariants
+        run: python -m unittest discover -s tests -p test_reference_panel_kerning.py -v
       - name: Render side-by-side specimen from actual compiled OTFs
-        run: python tools/render_reference_panel_comparison.py
+        run: python tools/render_reference_panel_comparison.py --candidate assets/fonts/experimental/ChunksReferencePanel-ExtraBold-Optical.otf
       - uses: actions/upload-artifact@v4
         with:
           name: chunks-reference-panel-otf-candidate
           path: |
             assets/fonts/experimental/ChunksReferencePanel-ExtraBold.otf
+            assets/fonts/experimental/ChunksReferencePanel-ExtraBold-Optical.otf
+            assets/fonts/experimental/reference-panel-spacing.json
             chunks-reference-panel-otf-comparison.png
           retention-days: 30
       - name: Commit deterministic experimental OTF on source branch
@@ -51,11 +61,11 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add assets/fonts/experimental/ChunksReferencePanel-ExtraBold.otf
+          git add assets/fonts/experimental
           if ! git diff --cached --quiet; then
             git commit -m 'build(fonts): compile 62-reference-glyph experimental CFF OTF'
             git push
           fi
       - name: Guard binary reproducibility on main
         if: github.ref == 'refs/heads/main'
-        run: git diff --exit-code -- assets/fonts/experimental/ChunksReferencePanel-ExtraBold.otf
+        run: git diff --exit-code -- assets/fonts/experimental
