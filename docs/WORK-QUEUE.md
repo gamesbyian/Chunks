@@ -6,10 +6,10 @@
 - Owner approved ordinary-seeder fixtures. The official Debian netinst swarm gave the phone engine core (JVM, GitHub runner) **51 MB hash-verified from up to 27 ordinary peers in 6 s**, with web seeds stripped (run [40739680990](https://github.com/gamesbyian/Chunks/actions/runs/40739680990)). The app's native engine on an **Android API35 emulator** then verified 37 MB from up to 49 peers in 18 s (#453, run [40742469530](https://github.com/gamesbyian/Chunks/actions/runs/40742469530)). A physical handset swarm, mobile networks and background seeding remain open.
 - **Seedhost → phone Copy VERIFIED on the real host** (run [40756284173](https://github.com/gamesbyian/Chunks/actions/runs/40756284173)): all 792,723,456 bytes of the owner-added Debian ISO were piece-verified from the server as the only peer, in 782 s. The earlier refusals came from the ruTorrent hostname's address. rTorrent is bound to `5.79.112.219`, which #460 now discovers from `network.bind_address`.
 - **Next executable:**
-  1. Repeat the copy without the override, to prove auto-discovery end to end.
-  2. Add an editable server peer address to the Copy review, for hosts that report neither address.
-  3. Batch server-to-phone Copy.
-  4. Owner: a physical-handset swarm and Copy.
+  A repeat with no override, [40759247300](https://github.com/gamesbyian/Chunks/actions/runs/40759247300), also VERIFIED (748 s), using the app's own address choice.
+  1. Add an editable server peer address to the Copy review, for hosts that report neither address.
+  2. Batch server-to-phone Copy.
+  3. Owner: a physical-handset swarm and Copy.
 
 **2026-10-28 Android 10 and remote Add UI checkpoint:**
 - #436 MERGED Android 10 shared `Downloads/Chunks Downloads` behind an explicit "Allow storage access" button. It passed an API 29 native write/resume/seed job.
