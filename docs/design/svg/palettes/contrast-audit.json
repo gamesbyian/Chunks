@@ -7,7 +7,7 @@
   },
   "thresholds": {
     "normalText": 4.5,
-    "largeTextOrIcon": 3
+    "largeTextOrIcon": 3.0
   },
   "variants": [
     {
