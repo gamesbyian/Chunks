@@ -58,6 +58,7 @@ import io.github.gamesbyian.chunks.engine.LocalCommandOutcome
 import io.github.gamesbyian.chunks.engine.LocalFileBatchOutcome
 import io.github.gamesbyian.chunks.engine.LocalEngineConfig
 import io.github.gamesbyian.chunks.engine.LocalRateLimits
+import io.github.gamesbyian.chunks.engine.LocalTrackerRepairOutcome
 import io.github.gamesbyian.chunks.engine.LocalTorrentEngine
 import io.github.gamesbyian.chunks.engine.LocalTransferState
 import io.github.gamesbyian.chunks.engine.LocalTransferFile
@@ -259,6 +260,11 @@ internal fun LocalEngineScreen(
     var filesFor by remember { mutableStateOf<String?>(null) }
     var files by remember { mutableStateOf<List<LocalTransferFile>?>(null) }
     var pending by remember { mutableStateOf<PendingLocalAdd?>(null) }
+    var repairSelectionHash by remember { mutableStateOf<String?>(null) }
+    var repairSelectionBusy by remember { mutableStateOf(false) }
+    var repairReview by remember {
+        mutableStateOf<Pair<String, SharedTorrentDocument.Reviewed>?>(null)
+    }
     var addStorage by remember {
         mutableStateOf<Pair<String, LocalAddStoragePreflight>?>(null)
     }
@@ -446,6 +452,37 @@ internal fun LocalEngineScreen(
         }
     }
 
+    val trackerRepairPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        val selectedHash = repairSelectionHash
+        repairSelectionHash = null
+        if (uri == null || selectedHash == null) return@rememberLauncherForActivityResult
+        repairSelectionBusy = true
+        repairReview = null
+        scope.launch {
+            try {
+                val reviewed = withContext(Dispatchers.IO) {
+                    SharedTorrentDocument.read(context.contentResolver, uri)
+                }
+                if (reviewed.preview.infoHashV1 != selectedHash) {
+                    message = "This .torrent has a different infohash. The existing phone transfer was untouched."
+                } else if (reviewed.preview.trackerCount < 1) {
+                    message = "That .torrent contains no usable tracker announce endpoints. Nothing changed."
+                } else {
+                    repairReview = selectedHash to reviewed
+                    message = "Original identity verified. Review the tracker repair below before confirming."
+                }
+            } catch (cancel: kotlinx.coroutines.CancellationException) {
+                throw cancel
+            } catch (_: Exception) {
+                message = "This .torrent was unavailable, invalid or unsupported. No tracker change occurred."
+            } finally {
+                repairSelectionBusy = false
+            }
+        }
+    }
+
     LaunchedEffect(initialTorrentUri) {
         val externalUri = initialTorrentUri ?: return@LaunchedEffect
         // Never start the torrent from an external VIEW/SEND Intent. Only
@@ -602,6 +639,84 @@ internal fun LocalEngineScreen(
             }, enabled = !busy && !inventoryStale && !dhtSaving &&
                 proposedAddDestination != null,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text(if (startAfterAdd) "Add magnet and start" else "Add magnet (metadata only)") }
+        }
+        repairReview?.let { prepared ->
+            val (hash, source) = prepared
+            val observed = transfers.singleOrNull { it.infoHash == hash }
+            val eligible = observed?.stopped == true && observed.metadataKnown &&
+                observed.trackers?.total == 0 && !inventoryStale && !busy &&
+                !repairSelectionBusy
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.fillMaxWidth().padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Review missing-tracker repair",
+                        style = MaterialTheme.typography.titleMedium)
+                    Text("Original: " + source.preview.name + " · " +
+                        source.preview.trackerCount + " usable tracker(s)")
+                    Text("Matching exact infohash: " + hash,
+                        style = MaterialTheme.typography.bodySmall)
+                    Text("Only the missing tracker list in this stopped phone torrent " +
+                        "will be restored, then saved to its existing resume record. " +
+                        "No downloaded files, destination, file priorities, or running " +
+                        "state are changed. Tracker addresses may contain private " +
+                        "passkeys and can disclose your IP if you later Start. " +
+                        "Repair never starts a torrent or makes an rTorrent request.",
+                        style = MaterialTheme.typography.bodySmall)
+                    if (!eligible) {
+                        Text("The phone queue changed, became stale, or the transfer " +
+                            "already has trackers or is running. The repair cannot proceed.",
+                            color = MaterialTheme.colorScheme.error)
+                    }
+                    Row(Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = {
+                                // One confirmed native operation. The engine repeats
+                                // all identity/stop/empty-tracker checks atomically.
+                                repairReview = null
+                                performLocalMutation {
+                                    try {
+                                        val result = withContext(Dispatchers.IO) {
+                                            LocalEngineHolder.current()
+                                                ?.repairMissingTrackers(hash, source.bytes)
+                                                ?: LocalTrackerRepairOutcome.NOT_FOUND
+                                        }
+                                        message = when (result) {
+                                            LocalTrackerRepairOutcome.VERIFIED ->
+                                                "Missing trackers restored and verified in the " +
+                                                "saved phone session. The torrent is still stopped; " +
+                                                "press Start separately when ready."
+                                            LocalTrackerRepairOutcome.REFUSED ->
+                                                "Tracker repair refused: the original or current " +
+                                                "stopped transfer did not satisfy the safety checks."
+                                            LocalTrackerRepairOutcome.NOT_FOUND ->
+                                                "That torrent is no longer in the phone engine."
+                                            LocalTrackerRepairOutcome.UNCERTAIN -> {
+                                                inventoryFrame = inventoryFrame.copy(stale = true)
+                                                "Tracker repair or resume persistence was not verified. " +
+                                                "Refresh the phone list before making another change; " +
+                                                "do not blindly retry."
+                                            }
+                                        }
+                                    } catch (cancel: kotlinx.coroutines.CancellationException) {
+                                        throw cancel
+                                    } catch (_: Exception) {
+                                        inventoryFrame = inventoryFrame.copy(stale = true)
+                                        message = "Tracker repair was not confirmed. Check a fresh " +
+                                            "phone status before any other change."
+                                    }
+                                }
+                            },
+                            enabled = eligible, modifier = Modifier.weight(1f)
+                                .heightIn(min = 48.dp)
+                        ) { Text("Confirm repair") }
+                        OutlinedButton(
+                            onClick = { repairReview = null },
+                            modifier = Modifier.weight(1f).heightIn(min = 48.dp)
+                        ) { Text("Cancel") }
+                    }
+                }
+            }
         }
         if (placeResolution != null && destination == null)
             Text("Phone storage for Chunks is unavailable right now.",
@@ -825,6 +940,13 @@ internal fun LocalEngineScreen(
                 aliasStore.get(TransferCollectionStore.LOCAL_ENGINE_SCOPE, transfer.infoHash)
             }
             LocalTransferCard(transfer, busy || inventoryStale,
+                onRepairTrackers = if (transfer.stopped && transfer.metadataKnown &&
+                    transfer.trackers?.total == 0) ({
+                    repairReview = null
+                    repairSelectionHash = transfer.infoHash
+                    message = null
+                    trackerRepairPicker.launch(arrayOf("*/*"))
+                }) else null,
                 observedGrowth = observedDeltas[transfer.infoHash].takeIf {
                     !inventoryStale && !busy
                 },
@@ -1116,6 +1238,7 @@ internal fun LocalTransferCard(
     alias: String? = null,
     onSaveAlias: ((String?) -> Boolean)? = null,
     onPrepareRemote: (() -> Unit)? = null,
+    onRepairTrackers: (() -> Unit)? = null,
     observedGrowth: LocalProgressHistory.ObservedDelta? = null
 ) {
     var confirmRemove by remember(transfer.infoHash) { mutableStateOf(false) }
@@ -1189,6 +1312,13 @@ internal fun LocalTransferCard(
                     enabled = !busy, modifier = Modifier.heightIn(min = 48.dp)) {
                     Text(if (filesShown) "Hide files" else "Files")
                 }
+            }
+            if (onRepairTrackers != null) {
+                OutlinedButton(
+                    onClick = onRepairTrackers,
+                    enabled = !busy,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                ) { Text("Repair missing trackers from original .torrent…") }
             }
             if (onPrepareRemote != null &&
                 TorrentIdentityHandoff.prepare(transfer.infoHash, transfer.name) != null) {
