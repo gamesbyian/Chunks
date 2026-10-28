@@ -263,7 +263,19 @@ class ChunksMainActivityAtlasTest {
         // The remembered-login row pushes Connect below the initially composed
         // LazyColumn viewport. Scroll to compose it, then invoke its semantics
         // action without injecting a touch into a moving/closing IME viewport.
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Connect to rTorrent"))
+        // A late IME/viewport settle can still recycle the item between the
+        // scroll and the lookup. Re-scroll until the node is composed; the
+        // click itself is issued exactly once, so no duplicate connect occurs.
+        var connectComposed = false
+        for (attempt in 1..5) {
+            rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Connect to rTorrent"))
+            rule.waitForIdle()
+            if (rule.onAllNodesWithText("Connect to rTorrent").fetchSemanticsNodes().size == 1) {
+                connectComposed = true
+                break
+            }
+        }
+        assertTrue("Connect to rTorrent was never composed after scrolling", connectComposed)
         rule.onNodeWithText("Connect to rTorrent").performSemanticsAction(SemanticsActions.OnClick)
         try {
             rule.waitUntil(20_000) {
