@@ -59,8 +59,12 @@ internal fun LocalTransferPrivacyGate(
     // content can be composed. The new process session begins locked by default.
     var mode by remember(scope, store) {
         val saved = store.mode(scope)
-        session.configure(scope, saved, authenticatedForChange = false)
-        mutableStateOf(saved)
+        val synchronized = session.configure(
+            scope, saved, authenticatedForChange = false)
+        // If a saved policy and an already-live process gate disagree,
+        // a failed configure must NEVER cause a stale opt-out to reveal
+        // transfer content. The user must reauthenticate/reconcile.
+        mutableStateOf(if (synchronized) saved else TransferLockMode.ONCE_PER_PROCESS)
     }
     var localRevision by remember { mutableIntStateOf(0) }
     val foregroundRevision = TransferPrivacyRuntime.lifecycleRevision
