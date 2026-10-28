@@ -4,6 +4,8 @@ import java.net.URI
 
 /** Convert a user-entered ruTorrent web URL into a candidate HTTP-RPC URL. */
 object RemoteEndpointHints {
+    private val rutorrentRoot = Regex("(?i)/rutorrent[0-9]{0,3}$")
+
     fun rpcAddress(input: String): String {
         val uri = URI(input.trim())
         require(uri.scheme.equals("https", true) ||
@@ -14,7 +16,8 @@ object RemoteEndpointHints {
         require(!uri.host.isNullOrBlank() && uri.userInfo == null &&
             uri.rawQuery == null && uri.rawFragment == null) { "Invalid ruTorrent address" }
         val path = uri.rawPath.orEmpty().trimEnd('/')
-        val mapped = if (path.endsWith("/rutorrent", true))
+        // Hosts serve additional instances as /rutorrent2/, /rutorrent3/, ...
+        val mapped = if (rutorrentRoot.containsMatchIn(path))
             path + "/plugins/httprpc/action.php" else path.ifEmpty { "/" }
         // mapped is already a RAW URI path. The component constructor treats
         // '%' as literal text and would turn an account path like %20 into
