@@ -21,6 +21,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -69,6 +70,12 @@ internal fun LocalInventorySnapshotPanel(
     val reviewIdentity = transfers.map {
         Triple(it.infoHash, it.name, if (historicalPaths) it.savePath else "")
     }
+    // Long-running IO must check the latest Compose state rather than a closure
+    // frozen before Android's document picker / native resume decode.
+    val currentReviewIdentity by rememberUpdatedState(reviewIdentity)
+    val currentStale by rememberUpdatedState(stale)
+    val currentBusyEngine by rememberUpdatedState(busyEngine)
+    val currentOptIn by rememberUpdatedState(includeDefinitions)
     LaunchedEffect(reviewIdentity, historicalPaths, stale, busyEngine) {
         verifiedResumes = null
         resumeProblem = null
@@ -187,8 +194,8 @@ internal fun LocalInventorySnapshotPanel(
                                                 frozen, Instant.now(), usePaths)
                                         }
                                         // Never advertise a preview from a now-stale source.
-                                        if (!stale && !busyEngine && includeDefinitions &&
-                                            reviewIdentity == frozen.map {
+                                        if (!currentStale && !currentBusyEngine && currentOptIn &&
+                                            currentReviewIdentity == frozen.map {
                                                 Triple(it.infoHash, it.name,
                                                     if (usePaths) it.savePath else "")
                                             }) {
@@ -231,7 +238,12 @@ internal fun LocalInventorySnapshotPanel(
                                             val encoded = withContext(Dispatchers.IO) {
                                                 selected.toArchive()
                                             }
-                                            if (stale || busyEngine || !includeDefinitions) {
+                                            if (currentStale || currentBusyEngine || !currentOptIn ||
+                                                currentReviewIdentity != selected.manifest.items.map {
+                                                    Triple(it.infoHashV1, it.originalName,
+                                                        if (historicalPaths)
+                                                            it.sourceDirectoryHint.orEmpty() else "")
+                                                }) {
                                                 result = "Source became stale. Preview again before saving."
                                                 saving = false
                                             } else {
