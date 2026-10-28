@@ -404,6 +404,30 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         }
     }
 
+    /**
+     * A complete .torrent for this transfer: its exact info dictionary (so the
+     * infohash is unchanged) plus the trackers and web seeds the session holds
+     * now. Null while magnet metadata is unknown. Contains tracker URLs, which
+     * for private torrents may embed a passkey: callers must disclose that
+     * before sending it anywhere. Read-only; never changes the transfer.
+     */
+    @Synchronized
+    fun exportTorrentFile(infoHash: String): ByteArray? {
+        val handle = handles[normal(infoHash)]?.takeIf { it.isValid } ?: return null
+        val info = handle.torrentFile()?.takeIf { it.isValid } ?: return null
+        val params = AddTorrentParams()
+        params.setTorrentInfo(info)
+        val trackers = handle.trackers()
+        params.setTrackers(trackers.map { it.url() })
+        params.setTrackerTiers(trackers.map { it.tier() })
+        val seeds = handle.urlSeeds()
+        if (seeds.isNotEmpty()) params.setUrlSeeds(seeds)
+        val bytes = Vectors.byte_vector2bytes(libtorrent.write_torrent_file_buf_ex(params.swig()))
+        // Never hand out a document whose identity drifted from this transfer.
+        val check = TorrentInfo.bdecode(bytes)
+        return bytes.takeIf { check.isValid && identity(check) == normal(infoHash) }
+    }
+
     /** Files with progress and selection, or null if unknown or metadata is not yet known. */
     @Synchronized
     fun files(infoHash: String, limit: Int = 10_000): List<LocalTransferFile>? {

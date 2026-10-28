@@ -203,7 +203,9 @@ internal fun LocalEngineScreen(
     initialTorrentUri: Uri? = null,
     onTorrentConsumed: () -> Unit = {},
     onPrefillConsumed: () -> Unit = {},
-    onPrepareRemote: ((String) -> Unit)? = null
+    onPrepareRemote: ((String) -> Unit)? = null,
+    /** Receives a verified exported .torrent for the server's Add review. */
+    onPrepareRemoteTorrent: ((ByteArray) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -905,10 +907,28 @@ internal fun LocalEngineScreen(
                 },
                 onPrepareRemote = onPrepareRemote?.let { send ->
                     {
-                        val prepared = TorrentIdentityHandoff.prepare(
-                            transfer.infoHash, transfer.name)
-                        if (prepared != null) send(prepared)
-                        else message = "This torrent has no supported v1 identity to hand off."
+                        scope.launch {
+                            // Prefer the complete .torrent (identity + trackers):
+                            // rTorrent cannot find peers for a bare hash unless
+                            // DHT happens to be usable on that server.
+                            val document = onPrepareRemoteTorrent?.let {
+                                withContext(Dispatchers.IO) {
+                                    try {
+                                        LocalEngineHolder.current()?.exportTorrentFile(transfer.infoHash)
+                                            ?.takeIf { bytes ->
+                                                TorrentMetainfoReader.preview(bytes).infoHashV1
+                                                    .equals(transfer.infoHash, ignoreCase = true)
+                                            }
+                                    } catch (_: Exception) { null }
+                                }
+                            }
+                            val prepared = TorrentIdentityHandoff.prepare(transfer.infoHash, transfer.name)
+                            when {
+                                document != null -> onPrepareRemoteTorrent(document)
+                                prepared != null -> send(prepared)
+                                else -> message = "This torrent has no supported v1 identity to hand off."
+                            }
+                        }
                     }
                 },
                 onRemove = {
@@ -1133,13 +1153,16 @@ internal fun LocalTransferCard(
                 TorrentIdentityHandoff.prepare(transfer.infoHash, transfer.name) != null) {
                 OutlinedButton(onClick = { confirmHandoff = true }, enabled = !busy,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                    Text("Prepare torrent on rTorrent (identity only)")
+                    Text("Prepare torrent on rTorrent")
                 }
                 if (confirmHandoff) {
-                    Text("Only the magnet identity goes to Chunks' server Add draft. " +
-                        "No payload bytes move; the server may need to download again. " +
-                        "Private/tracker-only torrents may not find metadata or peers. " +
-                        "The phone transfer remains untouched.",
+                    Text("Chunks opens your rTorrent server's Add review with this torrent's " +
+                        ".torrent definition, including its tracker addresses. For private " +
+                        "trackers these can contain your personal passkey; they are sent only " +
+                        "to the server you are signed in to, and nothing is added until you " +
+                        "confirm there. If the definition is unavailable, only the magnet " +
+                        "identity is used, which may not find peers. No payload bytes move; " +
+                        "the server downloads from peers itself. The phone transfer is untouched.",
                         style = MaterialTheme.typography.bodySmall)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(onClick = {
