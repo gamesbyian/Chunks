@@ -38,8 +38,7 @@ class ExperimentalTypefaceNativeInstrumentedTest {
         val inst = InstrumentationRegistry.getInstrumentation()
         val context = inst.targetContext
         val assets = inst.context.assets
-        val dir = File(context.getExternalFilesDir(null) ?: context.filesDir,
-            "font-acceptance")
+        val dir = File(context.filesDir, "font-acceptance")
         assertTrue("Native font review output directory", dir.isDirectory || dir.mkdirs())
         val density = context.resources.displayMetrics.density
         val width = (340f * density).toInt().coerceAtLeast(300)
