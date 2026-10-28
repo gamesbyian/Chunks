@@ -246,7 +246,22 @@ def run(source_dir: Path, masters: Path, profile_file: Path, out: Path,
         with tempfile.TemporaryDirectory() as temp:
             raw = Path(temp) / 'punctuation-raw.otf'
             geometry = apply_punctuation(source, masters, raw, weight, profile)
-            kern = punctuation_kern(raw, output, weight)
+            kern, clipped_pairs = punctuation_kern(raw, output, weight)
+        # Preserve every out-of-bounds desired delta in a deterministic
+        # compressed sidecar, rather than silently dropping raw measurements.
+        audit_path = out / f'reference-punctuation-clipped-{style}.json.gz'
+        audit = {'schema': 1, 'weight': weight, 'style': style,
+                 'source_font_sha256': digest(source),
+                 'punctuation_references': len(ALL_PUNCTUATION),
+                 'unit': 'font units per 1000 em; optical gaps sampled at 126px',
+                 'pairs': clipped_pairs}
+        audit_data = json.dumps(audit, ensure_ascii=False, sort_keys=True,
+                                separators=(',', ':')).encode('utf-8')
+        audit_path.write_bytes(gzip.compress(audit_data, compresslevel=9, mtime=0))
+        kern['clipped_pair_report'] = {'file': audit_path.name,
+                                       'sha256': digest(audit_path),
+                                       'count': len(clipped_pairs),
+                                       'uncompressed_bytes': len(audit_data)}
         final = TTFont(output)
         first = TTFont(source)
         if final.getBestCmap() != first.getBestCmap():
