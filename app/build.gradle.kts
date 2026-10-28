@@ -23,14 +23,48 @@ android {
         resValue("string", "chunks_app_name", if (sideBySide) "Chunks Preview" else "Chunks")
         minSdk = 29
         targetSdk = 37
-        versionCode = 1
+        // Release builds supply a monotonically increasing code; dev stays 1.
+        versionCode = providers.environmentVariable("CHUNKS_VERSION_CODE").orNull
+            ?.toIntOrNull()?.takeIf { it in 1..2_100_000_000 } ?: 1
         // CI provides the actual checked-out commit, including the synthetic PR merge
         // commit when applicable. Local builds without this environment variable
         // retain the plain development version and must not invent provenance.
         val builtCommit = providers.environmentVariable("CHUNKS_SOURCE_SHA").orNull
             ?.trim()?.takeIf { it.matches(Regex("[0-9a-fA-F]{40}")) }?.take(12)
-        versionName = "0.1.0-dev" + (builtCommit?.let { "+$it" } ?: "")
+        // A release workflow may supply a plain semantic version instead.
+        val releaseName = providers.environmentVariable("CHUNKS_VERSION_NAME").orNull
+            ?.trim()?.takeIf { it.matches(Regex("[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.]+)?")) }
+        versionName = releaseName ?: ("0.1.0-dev" + (builtCommit?.let { "+$it" } ?: ""))
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+    // Release signing is opt-in and secret-driven: all four values must come
+    // from the environment (CI secrets), never from the repository. Without
+    // them assembleRelease yields only an *unsigned* APK, which the release
+    // workflow refuses to publish.
+    val releaseKeystore = providers.environmentVariable("CHUNKS_RELEASE_KEYSTORE").orNull
+    val releaseStorePassword = providers.environmentVariable("CHUNKS_RELEASE_STORE_PASSWORD").orNull
+    val releaseKeyAlias = providers.environmentVariable("CHUNKS_RELEASE_KEY_ALIAS").orNull
+    val releaseKeyPassword = providers.environmentVariable("CHUNKS_RELEASE_KEY_PASSWORD").orNull
+    val releaseSigningAvailable = listOf(releaseKeystore, releaseStorePassword,
+        releaseKeyAlias, releaseKeyPassword).all { !it.isNullOrEmpty() }
+    signingConfigs {
+        if (releaseSigningAvailable) create("release") {
+            storeFile = file(releaseKeystore!!)
+            storePassword = releaseStorePassword
+            keyAlias = releaseKeyAlias
+            keyPassword = releaseKeyPassword
+            enableV2Signing = true
+            enableV3Signing = true
+        }
+    }
+    buildTypes {
+        getByName("release") {
+            // No shrinking yet: libtorrent4j's JNI bindings need audited keep
+            // rules before R8 can be trusted with them.
+            isMinifyEnabled = false
+            isDebuggable = false
+            if (releaseSigningAvailable) signingConfig = signingConfigs.getByName("release")
+        }
     }
     buildFeatures { compose = true; resValues = true }
     compileOptions {
