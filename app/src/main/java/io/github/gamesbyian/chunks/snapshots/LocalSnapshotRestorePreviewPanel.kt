@@ -42,7 +42,8 @@ internal fun LocalSnapshotRestorePreviewPanel(
     transfers: List<LocalTransferStatus>,
     inventoryConfirmed: Boolean,
     inventoryStale: Boolean,
-    busyEngine: Boolean
+    busyEngine: Boolean,
+    mutationGeneration: Long
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -58,7 +59,8 @@ internal fun LocalSnapshotRestorePreviewPanel(
     val targetReady = inventoryConfirmed && !inventoryStale && !busyEngine
     val latestHashes by rememberUpdatedState(observedHashes)
     val latestReady by rememberUpdatedState(targetReady)
-    LaunchedEffect(observedHashes, targetReady) {
+    val latestGeneration by rememberUpdatedState(mutationGeneration)
+    LaunchedEffect(observedHashes, targetReady, mutationGeneration) {
         result = null
         if (!targetReady) error = "A fresh, complete phone transfer list is required before comparison."
     }
@@ -70,6 +72,7 @@ internal fun LocalSnapshotRestorePreviewPanel(
             // Freeze exactly the local inventory that was present when the
             // document picker returned. Later native updates revoke the result.
             val frozen = latestHashes.toList()
+            val frozenGeneration = latestGeneration
             if (!latestReady) {
                 reading = false
                 result = null
@@ -86,7 +89,8 @@ internal fun LocalSnapshotRestorePreviewPanel(
                             SnapshotRestorePreviewV1.plan(
                                 inspected, frozen, targetInventoryComplete = true)
                         }
-                        if (latestReady && latestHashes == frozen) {
+                        if (latestReady && latestHashes == frozen &&
+                            latestGeneration == frozenGeneration) {
                             result = candidate
                         } else {
                             error = "Phone torrent identities changed during review. " +
