@@ -2,22 +2,22 @@
   "status": "NONSHIPPING interim weight study: automated offsets; manual masters still required",
   "source_manifest_sha256": "34413dfabd6d1f846b2dd833e21fa2b57e9b03b06330e4e9a479d082150fca83",
   "profile_sha256": "7da88e239d51208e052c8a359ddf04c724b3aa70e6cd7ad686d64b7f27425e46",
-  "overrides_sha256": "f6d094c6a7da607bec585ebaf561f3e2ea63316a1302e498aa4493370c5d7517",
-  "overrides_used": 12,
+  "overrides_sha256": "e732f191283b01345a86d11ec3688dfd8350699bd23cea88a12f8b9652e31dde",
+  "overrides_used": 16,
   "source_svg_sha256": "f475ea924418981a766978dde97ebb97ba7b0866110e1b72b17ac026fbad7aba",
   "accepted_extra_bold_remains_separate": "assets/fonts/experimental/ChunksReferencePanel-ExtraBold-Optical.otf",
   "weights": {
     "Regular": {
       "weight": 400,
       "file": "ChunksReferencePanel-Regular-Study.otf",
-      "sha256": "29c6fd6861967a7c21d76891b32fb68e8e04d20c1aa41a25ded52782d97cd2b8",
+      "sha256": "9306183115efc90e4191a7bc0d791c6de426de1aeb82feadf8278f5311422e3e",
       "glyphs_changed": 62,
       "codepoints": 856,
-      "kerning_direct_pairs": 14110,
+      "kerning_direct_pairs": 14115,
       "kerning_probe": {
         "measured_glyphs": 151,
         "examined_pairs": 22801,
-        "adjusted_pairs": 14792,
+        "adjusted_pairs": 14797,
         "median_absolute_adjustment": 62.0,
         "residual_90pct": 41.42
       },
@@ -43,7 +43,7 @@
       "tracking_details": {
         "ink_gap_measurements": {
           "display": {
-            "observed_20pct_ink_gap_em": 0.1148,
+            "observed_20pct_ink_gap_em": 0.115,
             "target_ink_gap_em": 0.078,
             "sampled_pairs": 21,
             "lower_limit_em": -0.022,
@@ -151,11 +151,11 @@
         "H": {
           "components": 1,
           "counters": 0,
-          "ink_area_ratio": 0.7562,
-          "stroke_offset_px": 1.6,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.7187,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "db34af83dc623783baf971eeca2cc61af58203ae30d6190b68f92bc325636d7e",
           "topology_adjustments": []
         },
         "I": {
@@ -703,16 +703,16 @@
     "Medium": {
       "weight": 500,
       "file": "ChunksReferencePanel-Medium-Study.otf",
-      "sha256": "704673d28ef7a8081673d0f95a4fded5049f39e59c78f6655f2f409f137cf70f",
+      "sha256": "4206a2bc920a91f315ac6f94f31ec199c46d5031615510f75907c4fdaa6bbd96",
       "glyphs_changed": 62,
       "codepoints": 856,
-      "kerning_direct_pairs": 14219,
+      "kerning_direct_pairs": 14224,
       "kerning_probe": {
         "measured_glyphs": 151,
         "examined_pairs": 22801,
-        "adjusted_pairs": 14701,
-        "median_absolute_adjustment": 59.0,
-        "residual_90pct": 34.41
+        "adjusted_pairs": 14706,
+        "median_absolute_adjustment": 60.0,
+        "residual_90pct": 34.33
       },
       "min_sampled_gap_px": {
         "14": 0.594,
@@ -736,7 +736,7 @@
       "tracking_details": {
         "ink_gap_measurements": {
           "display": {
-            "observed_20pct_ink_gap_em": 0.1078,
+            "observed_20pct_ink_gap_em": 0.1075,
             "target_ink_gap_em": 0.078,
             "sampled_pairs": 21,
             "lower_limit_em": -0.022,
@@ -844,11 +844,11 @@
         "H": {
           "components": 1,
           "counters": 0,
-          "ink_area_ratio": 0.8072,
-          "stroke_offset_px": 1.25,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.7856,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "9b4b0ea2305acd4c7b12e3395286e9aabcc2a55ec7f0c82b2c79786bd4227a02",
           "topology_adjustments": []
         },
         "I": {
@@ -1396,16 +1396,16 @@
     "Semibold": {
       "weight": 600,
       "file": "ChunksReferencePanel-Semibold-Study.otf",
-      "sha256": "98e307a12ae19433760be3d7d8fb04780e554258d1c55dc45ee96de16c01f1dc",
+      "sha256": "05e86e41709522e4d0c2f1a0191c489b675b3539959bc1e3409e062eb1f5617a",
       "glyphs_changed": 62,
       "codepoints": 856,
-      "kerning_direct_pairs": 13897,
+      "kerning_direct_pairs": 13920,
       "kerning_probe": {
         "measured_glyphs": 151,
         "examined_pairs": 22801,
-        "adjusted_pairs": 14242,
+        "adjusted_pairs": 14265,
         "median_absolute_adjustment": 57.0,
-        "residual_90pct": 29.47
+        "residual_90pct": 29.39
       },
       "min_sampled_gap_px": {
         "14": 0.609,
@@ -1413,7 +1413,7 @@
         "48": 4.125
       },
       "tracking_em": {
-        "display": -0.0218,
+        "display": -0.0219,
         "heading": -0.0003,
         "body": 0.018,
         "small_labels": 0.024
@@ -1429,7 +1429,7 @@
       "tracking_details": {
         "ink_gap_measurements": {
           "display": {
-            "observed_20pct_ink_gap_em": 0.0998,
+            "observed_20pct_ink_gap_em": 0.0999,
             "target_ink_gap_em": 0.078,
             "sampled_pairs": 21,
             "lower_limit_em": -0.022,
@@ -1537,11 +1537,11 @@
         "H": {
           "components": 1,
           "counters": 0,
-          "ink_area_ratio": 0.8671,
-          "stroke_offset_px": 0.85,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.8557,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "630c4854d99c6c66860a49cd4c7f0c54a44eca2a7ebbe09f9a7d275686b0424d",
           "topology_adjustments": []
         },
         "I": {
@@ -2089,16 +2089,16 @@
     "Bold": {
       "weight": 700,
       "file": "ChunksReferencePanel-Bold-Study.otf",
-      "sha256": "a20ec53c8b14380813c81b9338ee3ee9a9ae48798edaca7feebf3cf942b230ae",
+      "sha256": "5adbec0e0508784f5f83addc7fa108f4d92af66fe897f6100778393fe330e08e",
       "glyphs_changed": 62,
       "codepoints": 856,
-      "kerning_direct_pairs": 13887,
+      "kerning_direct_pairs": 13933,
       "kerning_probe": {
         "measured_glyphs": 151,
         "examined_pairs": 22801,
-        "adjusted_pairs": 14047,
+        "adjusted_pairs": 14093,
         "median_absolute_adjustment": 56.0,
-        "residual_90pct": 27.35
+        "residual_90pct": 27.34
       },
       "min_sampled_gap_px": {
         "14": 0.705,
@@ -2230,11 +2230,11 @@
         "H": {
           "components": 1,
           "counters": 0,
-          "ink_area_ratio": 0.9304,
-          "stroke_offset_px": 0.43,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.9193,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "1f987aa618425942b7bd6dfb7b7c8ef3b04f76e3ae737c97279da1adcf3039bc",
           "topology_adjustments": []
         },
         "I": {
