@@ -1,0 +1,39 @@
+name: Audit Chunks production and experimental OpenType families
+on:
+  pull_request:
+    paths:
+      - 'assets/fonts/**'
+      - 'app/src/main/res/font/**'
+      - 'app/src/main/assets/licenses/**'
+      - 'tools/audit_font_families.py'
+      - '.github/workflows/chunks-cross-family-font-audit.yml'
+  push:
+    paths:
+      - 'assets/fonts/**'
+      - 'app/src/main/res/font/**'
+      - 'app/src/main/assets/licenses/**'
+      - 'tools/audit_font_families.py'
+      - '.github/workflows/chunks-cross-family-font-audit.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install OpenType inspection and HarfBuzz shaping support
+        run: python -m pip install -r tools/requirements-chunks-font.txt
+      - name: Compare 15 actual OTFs, app package, shaping, hashes and metadata
+        run: python tools/audit_font_families.py --output chunks-font-cross-family-audit.json
+      - name: Publish machine-readable evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-font-cross-family-audit
+          path: chunks-font-cross-family-audit.json
+          if-no-files-found: warn
