@@ -1,5 +1,7 @@
 # Chunks evidence and release gate ledger
 
+**Individually authored reference weight contours, 2026-10-28:** [#483](https://github.com/gamesbyian/Chunks/pull/483) **MERGED** at `ebc09f136ee31e48ac579361e35ccdb9ceea708d`. Source branch exact head `347929838f21423963ba66ee28f4b8dab338e489` passed seven native CFF/provenance/optical-kerning/weight/visual/Latin acceptance checks. Eight editable Bézier SVGs for uppercase `I` and lowercase `l` across 400–700 were compiled into four checked-in, nonshipping OTFs; all 856 Unicode mappings and original ExtraBold remain intact. New per-glyph `outline_source=weight-specific-svg-master` and `outline_encoding=native-bezier-curves` are evidenced in source-hashed weight metrics. [#484](https://github.com/gamesbyian/Chunks/pull/484) adds four prospective two-contour dotted-`i` variants but remains **OPEN** until all exact-head CI and binary/source parity are verified. Remaining automatically derived reference glyphs: 60/62 per lighter weight before #484, 59/62 only after it merges. No new source master has received final editorial/user artwork or Android Compose/TalkBack approval; #347 remains open.
+
 ## 2026-10-28 evening PR reconciliation (app lane)
 
 - **#463 MERGED** `ea5833e` (Smart Connect discovery) — see entry below; merge conflicts were documentation-only (both sides' ledger/queue paragraphs kept).
