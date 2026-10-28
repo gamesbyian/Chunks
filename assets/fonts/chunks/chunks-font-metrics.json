@@ -5,7 +5,7 @@
   "weights": {
     "Regular": {
       "file": "Chunks-Regular.otf",
-      "bytes": 592548,
+      "bytes": 631924,
       "glyphs": 1601,
       "mapped_codepoints": 856,
       "vertical_metrics": {
@@ -20,6 +20,14 @@
         "adjusted_pairs": 18826,
         "median_absolute_adjustment": 40.0,
         "residual_90pct": 34.6
+      },
+      "latin_accent_inheritance": {
+        "eligible_accent_variants": 333,
+        "class_lookups": 2,
+        "base_classes": 93,
+        "unrecovered_latin": 45,
+        "direct_probe_characters": 151,
+        "matrix_nonzero_pairs": 7214
       },
       "wordmark_glyphs": {
         "C": {
@@ -155,7 +163,7 @@
     },
     "Medium": {
       "file": "Chunks-Medium.otf",
-      "bytes": 594472,
+      "bytes": 633856,
       "glyphs": 1601,
       "mapped_codepoints": 856,
       "vertical_metrics": {
@@ -170,6 +178,14 @@
         "adjusted_pairs": 18402,
         "median_absolute_adjustment": 34.0,
         "residual_90pct": 15.8
+      },
+      "latin_accent_inheritance": {
+        "eligible_accent_variants": 332,
+        "class_lookups": 2,
+        "base_classes": 93,
+        "unrecovered_latin": 46,
+        "direct_probe_characters": 151,
+        "matrix_nonzero_pairs": 7022
       },
       "wordmark_glyphs": {
         "C": {
@@ -305,7 +321,7 @@
     },
     "Semibold": {
       "file": "Chunks-Semibold.otf",
-      "bytes": 593688,
+      "bytes": 633100,
       "glyphs": 1601,
       "mapped_codepoints": 856,
       "vertical_metrics": {
@@ -320,6 +336,14 @@
         "adjusted_pairs": 17551,
         "median_absolute_adjustment": 32.0,
         "residual_90pct": 1.74
+      },
+      "latin_accent_inheritance": {
+        "eligible_accent_variants": 327,
+        "class_lookups": 2,
+        "base_classes": 93,
+        "unrecovered_latin": 51,
+        "direct_probe_characters": 151,
+        "matrix_nonzero_pairs": 6543
       },
       "wordmark_glyphs": {
         "C": {
@@ -455,7 +479,7 @@
     },
     "Bold": {
       "file": "Chunks-Bold.otf",
-      "bytes": 585964,
+      "bytes": 625336,
       "glyphs": 1601,
       "mapped_codepoints": 856,
       "vertical_metrics": {
@@ -470,6 +494,14 @@
         "adjusted_pairs": 15586,
         "median_absolute_adjustment": 27.0,
         "residual_90pct": 0.48
+      },
+      "latin_accent_inheritance": {
+        "eligible_accent_variants": 321,
+        "class_lookups": 2,
+        "base_classes": 93,
+        "unrecovered_latin": 57,
+        "direct_probe_characters": 151,
+        "matrix_nonzero_pairs": 5839
       },
       "wordmark_glyphs": {
         "C": {
@@ -605,7 +637,7 @@
     },
     "ExtraBold": {
       "file": "Chunks-ExtraBold.otf",
-      "bytes": 579636,
+      "bytes": 619008,
       "glyphs": 1601,
       "mapped_codepoints": 856,
       "vertical_metrics": {
@@ -620,6 +652,14 @@
         "adjusted_pairs": 14017,
         "median_absolute_adjustment": 24.0,
         "residual_90pct": 0.48
+      },
+      "latin_accent_inheritance": {
+        "eligible_accent_variants": 321,
+        "class_lookups": 2,
+        "base_classes": 93,
+        "unrecovered_latin": 57,
+        "direct_probe_characters": 151,
+        "matrix_nonzero_pairs": 5189
       },
       "wordmark_glyphs": {
         "C": {

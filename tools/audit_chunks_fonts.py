@@ -44,6 +44,16 @@ def analyze(font_dir: Path, reference_dir:Path|None=None, preview: Path|None=Non
             raise AssertionError(f'{style}: glyph coverage regressed')
         if any(t not in f for t in ('GPOS','GDEF','GSUB','hhea','OS/2','name')):
             raise AssertionError(f'{style}: missing essential OpenType tables')
+        acc_lookups=f['GPOS'].table.LookupList.Lookup[-2:]
+        def is_class_pair_lookup(lookup):
+            sub=lookup.SubTable[0]
+            if lookup.LookupType==9:
+                if sub.ExtensionLookupType!=2:return False
+                sub=sub.ExtSubTable
+            elif lookup.LookupType!=2:return False
+            return sub.Format==2
+        if any(not is_class_pair_lookup(x) for x in acc_lookups):
+            raise AssertionError(f'{style}: compact Latin accent PairPos Class kerning missing')
         if f['OS/2'].sTypoAscender!=f['hhea'].ascent or f['OS/2'].sTypoDescender!=f['hhea'].descent:
             raise AssertionError(f'{style}: inconsistent leading metrics')
         if not (f['OS/2'].fsSelection & (1<<7)):
