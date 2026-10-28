@@ -100,6 +100,19 @@ class LocalResumeMetainfoSourceV1Test {
         } finally { root.deleteRecursively(); outside.deleteRecursively() }
     }
 
+    @Test fun oversizedResumeIsRefusedWithoutAllocatingOrParsingAsMetainfo() {
+        val root = fresh()
+        try {
+            File(root, "$hash.resume").writeBytes(ByteArray(4 * 1024 * 1024 + 1) { 1 })
+            val result = LocalResumeMetainfoSourceV1.capture(root,
+                listOf(status()), date)
+            assertEquals(0, result.verifiedRestorableCount)
+            assertEquals(1, result.inventoryOnlyCount)
+            assertEquals(LocalResumeMetainfoSourceV1.Unavailable.MISSING_OR_UNSAFE_RECORD,
+                result.unavailableByHash[hash])
+        } finally { root.deleteRecursively() }
+    }
+
     @Test fun unsupportedIdentityNeverGetsForgedAsV1Torrent() {
         val root = fresh()
         try {
