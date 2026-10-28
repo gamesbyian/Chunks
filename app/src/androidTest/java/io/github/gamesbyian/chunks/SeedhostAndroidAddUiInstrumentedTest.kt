@@ -176,15 +176,27 @@ class SeedhostAndroidAddUiInstrumentedTest {
 
             rule.onNodeWithText("+ Add torrent").performClick()
             rule.waitUntil(30_000) { visible("A place for every download.") }
-            rule.onNodeWithText("Magnet link").performTextReplacement(magnet)
-            rule.waitUntil(30_000) {
-                visible("Using rTorrent default Place:") || visible("No usable default Place was reported.")
-            }
-            // The app must agree with the preflight about the server default.
-            assertEquals(serverDefault != null, visible("Using rTorrent default Place:"))
-            if (serverDefault == null) {
+            checkpoint("add-open")
+            try {
+                rule.onNodeWithText("Magnet link").performTextReplacement(magnet)
+                checkpoint("magnet-entered")
+                // The Add screen is a LazyColumn: the Place status line under the
+                // folder field is not composed until scrolled into view.
                 scrollTo("Custom server folder (optional)")
-                rule.onNodeWithText("Custom server folder (optional)").performTextReplacement(parent)
+                rule.waitUntil(30_000) {
+                    visible("Using rTorrent default Place:") || visible("No usable default Place was reported.")
+                }
+                // The app must agree with the preflight about the server default.
+                assertEquals(serverDefault != null, visible("Using rTorrent default Place:"))
+                checkpoint("place-status")
+                if (serverDefault == null) {
+                    rule.onNodeWithText("Custom server folder (optional)").performTextReplacement(parent)
+                    rule.waitUntil(10_000) { visible("Using custom Place.") }
+                }
+            } catch (failure: Throwable) {
+                // Post-login Add screen only (no credential is on screen).
+                runCatching { capture("seedhost-android-add-ui-draft-failure") }
+                throw failure
             }
             checkpoint("add-draft")
 
@@ -252,7 +264,8 @@ class SeedhostAndroidAddUiInstrumentedTest {
 
     private companion object {
         val STAGES = setOf("arguments", "preflight-inventory", "preflight-default-place",
-            "preflight-custom-place", "preflight", "connect-failed", "queue", "add-draft",
+            "preflight-custom-place", "preflight", "connect-failed", "queue", "add-open",
+            "magnet-entered", "place-status", "add-draft",
             "review", "confirmed", "outcome-not-verified", "app-verified",
             "independent-readback", "erase-attempted", "inventory-restored")
     }
