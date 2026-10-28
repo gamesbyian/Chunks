@@ -144,6 +144,11 @@ internal class SnapshotRestoreJournalV1 private constructor(
     }
 
     private fun save(next: State) {
+        // A second UI/session may have advanced this batch. Never overwrite its
+        // verified or in-flight state from an older in-memory snapshot.
+        check(store.read(key) == encode(state)) {
+            "Import journal changed; reopen and reconcile before any Add"
+        }
         if (!store.commit(key, encode(next))) {
             throw IOException("Import journal was not committed; no Add is authorized")
         }
