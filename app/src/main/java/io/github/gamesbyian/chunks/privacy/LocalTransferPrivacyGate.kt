@@ -100,11 +100,14 @@ internal fun LocalTransferPrivacyGate(
     val allowed = mode == TransferLockMode.NEVER ||
         (deviceStillSecure && session.mayView(scope))
 
-    DisposableEffect(activity, mode != TransferLockMode.NEVER) {
-        if (mode != TransferLockMode.NEVER)
+    // Capture the mode this effect applied: onDispose must undo exactly that,
+    // not re-read state that may already say NEVER after a policy change.
+    val secureWindow = mode != TransferLockMode.NEVER
+    DisposableEffect(activity, secureWindow) {
+        if (secureWindow)
             activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         onDispose {
-            if (mode != TransferLockMode.NEVER)
+            if (secureWindow)
                 activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
         }
     }
