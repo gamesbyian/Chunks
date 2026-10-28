@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "note": "Deliberately inconsistent reference variants retained. Alternative raster sheet values need source-label verification; no palette overrides app theme until reviewed.",
+  "variants": [
+    {
+      "key": "brand-essence",
+      "description": "Colour and illustrations sheet, values explicitly printed",
+      "certainty": "printed-reference",
+      "colors": {
+        "pink": "#FF4EC4",
+        "purple": "#A56BFF",
+        "blue": "#3B82FF",
+        "yellow": "#FFD93D",
+        "green": "#22D97A",
+        "cyan": "#00D4FF",
+        "near_black": "#0B0F17",
+        "surface": "#1A1F2B",
+        "muted": "#2E3647",
+        "secondary": "#6B7280",
+        "divider": "#E5E7EB",
+        "light": "#F8FAFC"
+      }
+    },
+    {
+      "key": "type-hierarchy",
+      "description": "Typography and colour hierarchy sheet, values interpreted from small raster labels; candidate values pending manual verification",
+      "certainty": "visually-interpreted-needs-verification",
+      "colors": {
+        "brand": "#A855F7",
+        "pink": "#FF4EB8",
+        "blue": "#22C1FF",
+        "yellow": "#FFD400",
+        "success": "#33D17A",
+        "warning": "#FF8A3D",
+        "error": "#FF4E5C",
+        "neutral": "#E6EAF0"
+      }
+    },
+    {
+      "key": "dimensional-materials",
+      "description": "Artwork colours used by the independent draft 3D object library (not a replacement for the approved SVG gradients)",
+      "certainty": "design-exploration",
+      "colors": {
+        "folder_front": "#05BCFF",
+        "folder_back": "#0A75E8",
+        "folder_side": "#004EC8",
+        "storage_front": "#A46AFF",
+        "storage_side": "#6632D7",
+        "download_front": "#30E655",
+        "download_side": "#00B83D",
+        "media_front": "#FF5869",
+        "media_side": "#E83C68"
+      }
+    }
+  ]
+}

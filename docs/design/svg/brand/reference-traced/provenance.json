@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "source": "docs/design/reference-images/03-typography-and-wordmark.png",
+  "selection": {
+    "left": 42,
+    "top": 5,
+    "right": 723,
+    "bottom": 157
+  },
+  "segmentation": {
+    "blackMask": "red < 90, green < 90, blue < 105",
+    "method": "cv2 external contours, discard area <= 1000 px, approxPolyDP epsilon 0.85",
+    "curves": "quadratic midpoint smoothing through selected original silhouette points"
+  },
+  "geometry": "Six independent glyphs in native black reference, no font dependency or raster data",
+  "review": "Reference-derived outlines are carefully traced pixel silhouettes but still require human contour/kerning approval, especially edges and offset/shadow",
+  "notShipped": true
+}

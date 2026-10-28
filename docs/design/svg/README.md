@@ -9,9 +9,18 @@ This is an original, **all-variants-preserved** SVG collection. No source PNG is
 - `icons/`: 108 64×64 glyph/doodle masters with stable category/name and `icons/catalog.json`.
 - `brand/`, `launcher-alternatives/`, `illustrations/`: 26 independently renderable alternatives, catalogued in `variants-catalog.json`.
 - `characters/`: 39 dimensional/flat/monochrome character composites and separable face/top/side/pictogram layers.
-- `master-inventory.json`: 775 named targets, including not-yet-created glyphs, lettering, characters, UI components and reference-derived variants. `planned` entries are not files.
-- `gallery.html`: static searchable viewer of all present SVG drafts with dark/light previews.
-- `python3 tools/validate_svg_library.py`: validates manifest, XML, self-contained SVG structure and file coverage. CI runs it on relevant PRs.
+- `approved-derived/`: 25 exact-geometry layers/alternative compositions extracted from the existing canonical launcher SVG (still non-shipping variants).
+- `ui/`: 96 reusable vector UI **specimens**, not actual input controls; Android must implement them with dynamic semantics and text.
+- `palettes/`: 32 standalone swatches/strips, preserving competing colour tokens and flagging approximate labels.
+- `typography/`: 306 individual exploratory stroke-path glyphs spanning A–Z, a–z, digits, punctuation and symbols in three stylistic families. Not a licensed font or faithful final wordmark; stroke-expansion and full font metrics remain future requirements.
+- `new-variants/`: 60 independent action-symbol and decorative alternatives.
+- `further-variants/`: 34 launcher-resolution, media-cover and Android design specimens.
+- `character-parts/`: 16 new standalone folder/material/cube layers; 19 equivalent planned roles reuse their existing SVG masters without duplicating files.
+- `scenes/`: 36 character combinations, promotional scenes and editable empty sticker shapes.
+- `brand/reference-traced/`: original PNG-silhouette-derived Chunks lettering, fixed taglines and alternate logo lockups, including constituent glyphs. Only source-contour precision is measured; manual approval remains open.
+- `master-inventory.json`: 836 named targets: 803 distinct SVGs, 20 exact graphic aliases, 12 unresolved reference-fidelity tasks, 1 protected launcher source.
+- `gallery.html`: fully searchable static library of 803 current SVG drafts, with category filters, dark/light/checkerboard surfaces, side-by-side comparison and an experimental layer preview.
+- `python3 tools/validate_svg_library.py`: validates manifest, XML, self-contained SVG structure, gallery coverage and file coverage. CI runs it on relevant PRs.
 
 Palette experiments are retained rather than reconciled by fiat: Brand Essence uses pink #FF4EC4, purple #A56BFF, blue #3B82FF, yellow #FFD93D, green #22D97A, cyan #00D4FF. The typography sheet supplies a distinct colour/type hierarchy (for example slightly different purple/pink/cyan and separate warning/error colours). A visual token-selection pass is still pending.
 

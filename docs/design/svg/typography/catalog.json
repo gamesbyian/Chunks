@@ -1,0 +1,2454 @@
+{
+  "schema": 1,
+  "disclaimer": "Exploratory round/marker/UI vector skeletons, built as native SVG paths; NOT traced reference typography, NOT approved wordmark, NOT an installable OTF/TTF.",
+  "glyphs": [
+    {
+      "id": "typography/display-rounded/uppercase/A",
+      "path": "typography/display-rounded/uppercase/A.svg",
+      "glyph": "A",
+      "style": "display-rounded",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/uppercase/B",
+      "path": "typography/display-rounded/uppercase/B.svg",
+      "glyph": "B",
+      "style": "display-rounded",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/uppercase/C",
+      "path": "typography/display-rounded/uppercase/C.svg",
+      "glyph": "C",
+      "style": "display-rounded",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/uppercase/D",
+      "path": "typography/display-rounded/uppercase/D.svg",
+      "glyph": "D",
+      "style": "display-rounded",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/uppercase/E",
+      "path": "typography/display-rounded/uppercase/E.svg",
+      "glyph": "E",
+      "style": "display-rounded",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/uppercase/F",
+      "path": "typography/display-rounded/uppercase/F.svg",
+      "glyph": "F",
+      "style": "display-rounded",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/uppercase/G",
+      "path": "typography/display-rounded/uppercase/G.svg",
+      "glyph": "G",
+      "style": "display-rounded",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/uppercase/H",
+      "path": "typography/display-rounded/uppercase/H.svg",
+      "glyph": "H",
+      "style": "display-rounded",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/uppercase/I",
+      "path": "typography/display-rounded/uppercase/I.svg",
+      "glyph": "I",
+      "style": "display-rounded",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/uppercase/J",
+      "path": "typography/display-rounded/uppercase/J.svg",
+      "glyph": "J",
+      "style": "display-rounded",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/uppercase/K",
+      "path": "typography/display-rounded/uppercase/K.svg",
+      "glyph": "K",
+      "style": "display-rounded",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/uppercase/L",
+      "path": "typography/display-rounded/uppercase/L.svg",
+      "glyph": "L",
+      "style": "display-rounded",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/uppercase/M",
+      "path": "typography/display-rounded/uppercase/M.svg",
+      "glyph": "M",
+      "style": "display-rounded",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/uppercase/N",
+      "path": "typography/display-rounded/uppercase/N.svg",
+      "glyph": "N",
+      "style": "display-rounded",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/uppercase/O",
+      "path": "typography/display-rounded/uppercase/O.svg",
+      "glyph": "O",
+      "style": "display-rounded",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/uppercase/P",
+      "path": "typography/display-rounded/uppercase/P.svg",
+      "glyph": "P",
+      "style": "display-rounded",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/uppercase/Q",
+      "path": "typography/display-rounded/uppercase/Q.svg",
+      "glyph": "Q",
+      "style": "display-rounded",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/uppercase/R",
+      "path": "typography/display-rounded/uppercase/R.svg",
+      "glyph": "R",
+      "style": "display-rounded",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/uppercase/S",
+      "path": "typography/display-rounded/uppercase/S.svg",
+      "glyph": "S",
+      "style": "display-rounded",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/uppercase/T",
+      "path": "typography/display-rounded/uppercase/T.svg",
+      "glyph": "T",
+      "style": "display-rounded",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/uppercase/U",
+      "path": "typography/display-rounded/uppercase/U.svg",
+      "glyph": "U",
+      "style": "display-rounded",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/uppercase/V",
+      "path": "typography/display-rounded/uppercase/V.svg",
+      "glyph": "V",
+      "style": "display-rounded",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/uppercase/W",
+      "path": "typography/display-rounded/uppercase/W.svg",
+      "glyph": "W",
+      "style": "display-rounded",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/uppercase/X",
+      "path": "typography/display-rounded/uppercase/X.svg",
+      "glyph": "X",
+      "style": "display-rounded",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/uppercase/Y",
+      "path": "typography/display-rounded/uppercase/Y.svg",
+      "glyph": "Y",
+      "style": "display-rounded",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/uppercase/Z",
+      "path": "typography/display-rounded/uppercase/Z.svg",
+      "glyph": "Z",
+      "style": "display-rounded",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/lowercase/a",
+      "path": "typography/display-rounded/lowercase/a.svg",
+      "glyph": "a",
+      "style": "display-rounded",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/lowercase/b",
+      "path": "typography/display-rounded/lowercase/b.svg",
+      "glyph": "b",
+      "style": "display-rounded",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/lowercase/c",
+      "path": "typography/display-rounded/lowercase/c.svg",
+      "glyph": "c",
+      "style": "display-rounded",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/lowercase/d",
+      "path": "typography/display-rounded/lowercase/d.svg",
+      "glyph": "d",
+      "style": "display-rounded",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/lowercase/e",
+      "path": "typography/display-rounded/lowercase/e.svg",
+      "glyph": "e",
+      "style": "display-rounded",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/lowercase/f",
+      "path": "typography/display-rounded/lowercase/f.svg",
+      "glyph": "f",
+      "style": "display-rounded",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/lowercase/g",
+      "path": "typography/display-rounded/lowercase/g.svg",
+      "glyph": "g",
+      "style": "display-rounded",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/lowercase/h",
+      "path": "typography/display-rounded/lowercase/h.svg",
+      "glyph": "h",
+      "style": "display-rounded",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/lowercase/i",
+      "path": "typography/display-rounded/lowercase/i.svg",
+      "glyph": "i",
+      "style": "display-rounded",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/lowercase/j",
+      "path": "typography/display-rounded/lowercase/j.svg",
+      "glyph": "j",
+      "style": "display-rounded",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/lowercase/k",
+      "path": "typography/display-rounded/lowercase/k.svg",
+      "glyph": "k",
+      "style": "display-rounded",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/lowercase/l",
+      "path": "typography/display-rounded/lowercase/l.svg",
+      "glyph": "l",
+      "style": "display-rounded",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/lowercase/m",
+      "path": "typography/display-rounded/lowercase/m.svg",
+      "glyph": "m",
+      "style": "display-rounded",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/lowercase/n",
+      "path": "typography/display-rounded/lowercase/n.svg",
+      "glyph": "n",
+      "style": "display-rounded",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/lowercase/o",
+      "path": "typography/display-rounded/lowercase/o.svg",
+      "glyph": "o",
+      "style": "display-rounded",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/lowercase/p",
+      "path": "typography/display-rounded/lowercase/p.svg",
+      "glyph": "p",
+      "style": "display-rounded",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/lowercase/q",
+      "path": "typography/display-rounded/lowercase/q.svg",
+      "glyph": "q",
+      "style": "display-rounded",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/lowercase/r",
+      "path": "typography/display-rounded/lowercase/r.svg",
+      "glyph": "r",
+      "style": "display-rounded",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/lowercase/s",
+      "path": "typography/display-rounded/lowercase/s.svg",
+      "glyph": "s",
+      "style": "display-rounded",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/lowercase/t",
+      "path": "typography/display-rounded/lowercase/t.svg",
+      "glyph": "t",
+      "style": "display-rounded",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/lowercase/u",
+      "path": "typography/display-rounded/lowercase/u.svg",
+      "glyph": "u",
+      "style": "display-rounded",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/lowercase/v",
+      "path": "typography/display-rounded/lowercase/v.svg",
+      "glyph": "v",
+      "style": "display-rounded",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/lowercase/w",
+      "path": "typography/display-rounded/lowercase/w.svg",
+      "glyph": "w",
+      "style": "display-rounded",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/lowercase/x",
+      "path": "typography/display-rounded/lowercase/x.svg",
+      "glyph": "x",
+      "style": "display-rounded",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/lowercase/y",
+      "path": "typography/display-rounded/lowercase/y.svg",
+      "glyph": "y",
+      "style": "display-rounded",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/lowercase/z",
+      "path": "typography/display-rounded/lowercase/z.svg",
+      "glyph": "z",
+      "style": "display-rounded",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/digit/0",
+      "path": "typography/display-rounded/digit/0.svg",
+      "glyph": "0",
+      "style": "display-rounded",
+      "kind": "digit",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/digit/1",
+      "path": "typography/display-rounded/digit/1.svg",
+      "glyph": "1",
+      "style": "display-rounded",
+      "kind": "digit",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/digit/2",
+      "path": "typography/display-rounded/digit/2.svg",
+      "glyph": "2",
+      "style": "display-rounded",
+      "kind": "digit",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/digit/3",
+      "path": "typography/display-rounded/digit/3.svg",
+      "glyph": "3",
+      "style": "display-rounded",
+      "kind": "digit",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/digit/4",
+      "path": "typography/display-rounded/digit/4.svg",
+      "glyph": "4",
+      "style": "display-rounded",
+      "kind": "digit",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/digit/5",
+      "path": "typography/display-rounded/digit/5.svg",
+      "glyph": "5",
+      "style": "display-rounded",
+      "kind": "digit",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/digit/6",
+      "path": "typography/display-rounded/digit/6.svg",
+      "glyph": "6",
+      "style": "display-rounded",
+      "kind": "digit",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/digit/7",
+      "path": "typography/display-rounded/digit/7.svg",
+      "glyph": "7",
+      "style": "display-rounded",
+      "kind": "digit",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/digit/8",
+      "path": "typography/display-rounded/digit/8.svg",
+      "glyph": "8",
+      "style": "display-rounded",
+      "kind": "digit",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/digit/9",
+      "path": "typography/display-rounded/digit/9.svg",
+      "glyph": "9",
+      "style": "display-rounded",
+      "kind": "digit",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/punctuation/exclamation",
+      "path": "typography/display-rounded/punctuation/exclamation.svg",
+      "glyph": "exclamation",
+      "style": "display-rounded",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/punctuation/question",
+      "path": "typography/display-rounded/punctuation/question.svg",
+      "glyph": "question",
+      "style": "display-rounded",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/punctuation/period",
+      "path": "typography/display-rounded/punctuation/period.svg",
+      "glyph": "period",
+      "style": "display-rounded",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/punctuation/comma",
+      "path": "typography/display-rounded/punctuation/comma.svg",
+      "glyph": "comma",
+      "style": "display-rounded",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/punctuation/colon",
+      "path": "typography/display-rounded/punctuation/colon.svg",
+      "glyph": "colon",
+      "style": "display-rounded",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/punctuation/semicolon",
+      "path": "typography/display-rounded/punctuation/semicolon.svg",
+      "glyph": "semicolon",
+      "style": "display-rounded",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/punctuation/apostrophe",
+      "path": "typography/display-rounded/punctuation/apostrophe.svg",
+      "glyph": "apostrophe",
+      "style": "display-rounded",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/punctuation/double-quote",
+      "path": "typography/display-rounded/punctuation/double-quote.svg",
+      "glyph": "double-quote",
+      "style": "display-rounded",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/punctuation/open-paren",
+      "path": "typography/display-rounded/punctuation/open-paren.svg",
+      "glyph": "open-paren",
+      "style": "display-rounded",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/punctuation/close-paren",
+      "path": "typography/display-rounded/punctuation/close-paren.svg",
+      "glyph": "close-paren",
+      "style": "display-rounded",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/punctuation/open-square",
+      "path": "typography/display-rounded/punctuation/open-square.svg",
+      "glyph": "open-square",
+      "style": "display-rounded",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/punctuation/close-square",
+      "path": "typography/display-rounded/punctuation/close-square.svg",
+      "glyph": "close-square",
+      "style": "display-rounded",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/punctuation/open-curly",
+      "path": "typography/display-rounded/punctuation/open-curly.svg",
+      "glyph": "open-curly",
+      "style": "display-rounded",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/punctuation/close-curly",
+      "path": "typography/display-rounded/punctuation/close-curly.svg",
+      "glyph": "close-curly",
+      "style": "display-rounded",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/punctuation/at",
+      "path": "typography/display-rounded/punctuation/at.svg",
+      "glyph": "at",
+      "style": "display-rounded",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/punctuation/hash",
+      "path": "typography/display-rounded/punctuation/hash.svg",
+      "glyph": "hash",
+      "style": "display-rounded",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/punctuation/dollar",
+      "path": "typography/display-rounded/punctuation/dollar.svg",
+      "glyph": "dollar",
+      "style": "display-rounded",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/punctuation/percent",
+      "path": "typography/display-rounded/punctuation/percent.svg",
+      "glyph": "percent",
+      "style": "display-rounded",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/punctuation/ampersand",
+      "path": "typography/display-rounded/punctuation/ampersand.svg",
+      "glyph": "ampersand",
+      "style": "display-rounded",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/punctuation/asterisk",
+      "path": "typography/display-rounded/punctuation/asterisk.svg",
+      "glyph": "asterisk",
+      "style": "display-rounded",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/punctuation/plus",
+      "path": "typography/display-rounded/punctuation/plus.svg",
+      "glyph": "plus",
+      "style": "display-rounded",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/punctuation/minus",
+      "path": "typography/display-rounded/punctuation/minus.svg",
+      "glyph": "minus",
+      "style": "display-rounded",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/punctuation/equals",
+      "path": "typography/display-rounded/punctuation/equals.svg",
+      "glyph": "equals",
+      "style": "display-rounded",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/punctuation/less-than",
+      "path": "typography/display-rounded/punctuation/less-than.svg",
+      "glyph": "less-than",
+      "style": "display-rounded",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/punctuation/greater-than",
+      "path": "typography/display-rounded/punctuation/greater-than.svg",
+      "glyph": "greater-than",
+      "style": "display-rounded",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/punctuation/slash",
+      "path": "typography/display-rounded/punctuation/slash.svg",
+      "glyph": "slash",
+      "style": "display-rounded",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/punctuation/backslash",
+      "path": "typography/display-rounded/punctuation/backslash.svg",
+      "glyph": "backslash",
+      "style": "display-rounded",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/punctuation/bar",
+      "path": "typography/display-rounded/punctuation/bar.svg",
+      "glyph": "bar",
+      "style": "display-rounded",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/punctuation/underscore",
+      "path": "typography/display-rounded/punctuation/underscore.svg",
+      "glyph": "underscore",
+      "style": "display-rounded",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/punctuation/en-dash",
+      "path": "typography/display-rounded/punctuation/en-dash.svg",
+      "glyph": "en-dash",
+      "style": "display-rounded",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/punctuation/em-dash",
+      "path": "typography/display-rounded/punctuation/em-dash.svg",
+      "glyph": "em-dash",
+      "style": "display-rounded",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/punctuation/bullet",
+      "path": "typography/display-rounded/punctuation/bullet.svg",
+      "glyph": "bullet",
+      "style": "display-rounded",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/punctuation/ellipsis",
+      "path": "typography/display-rounded/punctuation/ellipsis.svg",
+      "glyph": "ellipsis",
+      "style": "display-rounded",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/punctuation/multiply",
+      "path": "typography/display-rounded/punctuation/multiply.svg",
+      "glyph": "multiply",
+      "style": "display-rounded",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/punctuation/degree",
+      "path": "typography/display-rounded/punctuation/degree.svg",
+      "glyph": "degree",
+      "style": "display-rounded",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/punctuation/arrow-up",
+      "path": "typography/display-rounded/punctuation/arrow-up.svg",
+      "glyph": "arrow-up",
+      "style": "display-rounded",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/punctuation/arrow-down",
+      "path": "typography/display-rounded/punctuation/arrow-down.svg",
+      "glyph": "arrow-down",
+      "style": "display-rounded",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/punctuation/arrow-left",
+      "path": "typography/display-rounded/punctuation/arrow-left.svg",
+      "glyph": "arrow-left",
+      "style": "display-rounded",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/punctuation/arrow-right",
+      "path": "typography/display-rounded/punctuation/arrow-right.svg",
+      "glyph": "arrow-right",
+      "style": "display-rounded",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/display-rounded/punctuation/check",
+      "path": "typography/display-rounded/punctuation/check.svg",
+      "glyph": "check",
+      "style": "display-rounded",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/A",
+      "path": "typography/marker-handdrawn/uppercase/A.svg",
+      "glyph": "A",
+      "style": "marker-handdrawn",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/B",
+      "path": "typography/marker-handdrawn/uppercase/B.svg",
+      "glyph": "B",
+      "style": "marker-handdrawn",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/C",
+      "path": "typography/marker-handdrawn/uppercase/C.svg",
+      "glyph": "C",
+      "style": "marker-handdrawn",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/D",
+      "path": "typography/marker-handdrawn/uppercase/D.svg",
+      "glyph": "D",
+      "style": "marker-handdrawn",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/E",
+      "path": "typography/marker-handdrawn/uppercase/E.svg",
+      "glyph": "E",
+      "style": "marker-handdrawn",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/F",
+      "path": "typography/marker-handdrawn/uppercase/F.svg",
+      "glyph": "F",
+      "style": "marker-handdrawn",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/G",
+      "path": "typography/marker-handdrawn/uppercase/G.svg",
+      "glyph": "G",
+      "style": "marker-handdrawn",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/H",
+      "path": "typography/marker-handdrawn/uppercase/H.svg",
+      "glyph": "H",
+      "style": "marker-handdrawn",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/I",
+      "path": "typography/marker-handdrawn/uppercase/I.svg",
+      "glyph": "I",
+      "style": "marker-handdrawn",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/J",
+      "path": "typography/marker-handdrawn/uppercase/J.svg",
+      "glyph": "J",
+      "style": "marker-handdrawn",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/K",
+      "path": "typography/marker-handdrawn/uppercase/K.svg",
+      "glyph": "K",
+      "style": "marker-handdrawn",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/L",
+      "path": "typography/marker-handdrawn/uppercase/L.svg",
+      "glyph": "L",
+      "style": "marker-handdrawn",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/M",
+      "path": "typography/marker-handdrawn/uppercase/M.svg",
+      "glyph": "M",
+      "style": "marker-handdrawn",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/N",
+      "path": "typography/marker-handdrawn/uppercase/N.svg",
+      "glyph": "N",
+      "style": "marker-handdrawn",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/O",
+      "path": "typography/marker-handdrawn/uppercase/O.svg",
+      "glyph": "O",
+      "style": "marker-handdrawn",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/P",
+      "path": "typography/marker-handdrawn/uppercase/P.svg",
+      "glyph": "P",
+      "style": "marker-handdrawn",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/Q",
+      "path": "typography/marker-handdrawn/uppercase/Q.svg",
+      "glyph": "Q",
+      "style": "marker-handdrawn",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/R",
+      "path": "typography/marker-handdrawn/uppercase/R.svg",
+      "glyph": "R",
+      "style": "marker-handdrawn",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/S",
+      "path": "typography/marker-handdrawn/uppercase/S.svg",
+      "glyph": "S",
+      "style": "marker-handdrawn",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/T",
+      "path": "typography/marker-handdrawn/uppercase/T.svg",
+      "glyph": "T",
+      "style": "marker-handdrawn",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/U",
+      "path": "typography/marker-handdrawn/uppercase/U.svg",
+      "glyph": "U",
+      "style": "marker-handdrawn",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/V",
+      "path": "typography/marker-handdrawn/uppercase/V.svg",
+      "glyph": "V",
+      "style": "marker-handdrawn",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/W",
+      "path": "typography/marker-handdrawn/uppercase/W.svg",
+      "glyph": "W",
+      "style": "marker-handdrawn",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/X",
+      "path": "typography/marker-handdrawn/uppercase/X.svg",
+      "glyph": "X",
+      "style": "marker-handdrawn",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/Y",
+      "path": "typography/marker-handdrawn/uppercase/Y.svg",
+      "glyph": "Y",
+      "style": "marker-handdrawn",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/uppercase/Z",
+      "path": "typography/marker-handdrawn/uppercase/Z.svg",
+      "glyph": "Z",
+      "style": "marker-handdrawn",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/a",
+      "path": "typography/marker-handdrawn/lowercase/a.svg",
+      "glyph": "a",
+      "style": "marker-handdrawn",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/b",
+      "path": "typography/marker-handdrawn/lowercase/b.svg",
+      "glyph": "b",
+      "style": "marker-handdrawn",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/c",
+      "path": "typography/marker-handdrawn/lowercase/c.svg",
+      "glyph": "c",
+      "style": "marker-handdrawn",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/d",
+      "path": "typography/marker-handdrawn/lowercase/d.svg",
+      "glyph": "d",
+      "style": "marker-handdrawn",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/e",
+      "path": "typography/marker-handdrawn/lowercase/e.svg",
+      "glyph": "e",
+      "style": "marker-handdrawn",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/f",
+      "path": "typography/marker-handdrawn/lowercase/f.svg",
+      "glyph": "f",
+      "style": "marker-handdrawn",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/g",
+      "path": "typography/marker-handdrawn/lowercase/g.svg",
+      "glyph": "g",
+      "style": "marker-handdrawn",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/h",
+      "path": "typography/marker-handdrawn/lowercase/h.svg",
+      "glyph": "h",
+      "style": "marker-handdrawn",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/i",
+      "path": "typography/marker-handdrawn/lowercase/i.svg",
+      "glyph": "i",
+      "style": "marker-handdrawn",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/j",
+      "path": "typography/marker-handdrawn/lowercase/j.svg",
+      "glyph": "j",
+      "style": "marker-handdrawn",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/k",
+      "path": "typography/marker-handdrawn/lowercase/k.svg",
+      "glyph": "k",
+      "style": "marker-handdrawn",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/l",
+      "path": "typography/marker-handdrawn/lowercase/l.svg",
+      "glyph": "l",
+      "style": "marker-handdrawn",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/m",
+      "path": "typography/marker-handdrawn/lowercase/m.svg",
+      "glyph": "m",
+      "style": "marker-handdrawn",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/n",
+      "path": "typography/marker-handdrawn/lowercase/n.svg",
+      "glyph": "n",
+      "style": "marker-handdrawn",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/o",
+      "path": "typography/marker-handdrawn/lowercase/o.svg",
+      "glyph": "o",
+      "style": "marker-handdrawn",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/p",
+      "path": "typography/marker-handdrawn/lowercase/p.svg",
+      "glyph": "p",
+      "style": "marker-handdrawn",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/q",
+      "path": "typography/marker-handdrawn/lowercase/q.svg",
+      "glyph": "q",
+      "style": "marker-handdrawn",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/r",
+      "path": "typography/marker-handdrawn/lowercase/r.svg",
+      "glyph": "r",
+      "style": "marker-handdrawn",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/s",
+      "path": "typography/marker-handdrawn/lowercase/s.svg",
+      "glyph": "s",
+      "style": "marker-handdrawn",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/t",
+      "path": "typography/marker-handdrawn/lowercase/t.svg",
+      "glyph": "t",
+      "style": "marker-handdrawn",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/u",
+      "path": "typography/marker-handdrawn/lowercase/u.svg",
+      "glyph": "u",
+      "style": "marker-handdrawn",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/v",
+      "path": "typography/marker-handdrawn/lowercase/v.svg",
+      "glyph": "v",
+      "style": "marker-handdrawn",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/w",
+      "path": "typography/marker-handdrawn/lowercase/w.svg",
+      "glyph": "w",
+      "style": "marker-handdrawn",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/x",
+      "path": "typography/marker-handdrawn/lowercase/x.svg",
+      "glyph": "x",
+      "style": "marker-handdrawn",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/y",
+      "path": "typography/marker-handdrawn/lowercase/y.svg",
+      "glyph": "y",
+      "style": "marker-handdrawn",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/lowercase/z",
+      "path": "typography/marker-handdrawn/lowercase/z.svg",
+      "glyph": "z",
+      "style": "marker-handdrawn",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/digit/0",
+      "path": "typography/marker-handdrawn/digit/0.svg",
+      "glyph": "0",
+      "style": "marker-handdrawn",
+      "kind": "digit",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/digit/1",
+      "path": "typography/marker-handdrawn/digit/1.svg",
+      "glyph": "1",
+      "style": "marker-handdrawn",
+      "kind": "digit",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/digit/2",
+      "path": "typography/marker-handdrawn/digit/2.svg",
+      "glyph": "2",
+      "style": "marker-handdrawn",
+      "kind": "digit",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/digit/3",
+      "path": "typography/marker-handdrawn/digit/3.svg",
+      "glyph": "3",
+      "style": "marker-handdrawn",
+      "kind": "digit",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/digit/4",
+      "path": "typography/marker-handdrawn/digit/4.svg",
+      "glyph": "4",
+      "style": "marker-handdrawn",
+      "kind": "digit",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/digit/5",
+      "path": "typography/marker-handdrawn/digit/5.svg",
+      "glyph": "5",
+      "style": "marker-handdrawn",
+      "kind": "digit",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/digit/6",
+      "path": "typography/marker-handdrawn/digit/6.svg",
+      "glyph": "6",
+      "style": "marker-handdrawn",
+      "kind": "digit",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/digit/7",
+      "path": "typography/marker-handdrawn/digit/7.svg",
+      "glyph": "7",
+      "style": "marker-handdrawn",
+      "kind": "digit",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/digit/8",
+      "path": "typography/marker-handdrawn/digit/8.svg",
+      "glyph": "8",
+      "style": "marker-handdrawn",
+      "kind": "digit",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/digit/9",
+      "path": "typography/marker-handdrawn/digit/9.svg",
+      "glyph": "9",
+      "style": "marker-handdrawn",
+      "kind": "digit",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/exclamation",
+      "path": "typography/marker-handdrawn/punctuation/exclamation.svg",
+      "glyph": "exclamation",
+      "style": "marker-handdrawn",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/question",
+      "path": "typography/marker-handdrawn/punctuation/question.svg",
+      "glyph": "question",
+      "style": "marker-handdrawn",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/period",
+      "path": "typography/marker-handdrawn/punctuation/period.svg",
+      "glyph": "period",
+      "style": "marker-handdrawn",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/comma",
+      "path": "typography/marker-handdrawn/punctuation/comma.svg",
+      "glyph": "comma",
+      "style": "marker-handdrawn",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/colon",
+      "path": "typography/marker-handdrawn/punctuation/colon.svg",
+      "glyph": "colon",
+      "style": "marker-handdrawn",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/semicolon",
+      "path": "typography/marker-handdrawn/punctuation/semicolon.svg",
+      "glyph": "semicolon",
+      "style": "marker-handdrawn",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/apostrophe",
+      "path": "typography/marker-handdrawn/punctuation/apostrophe.svg",
+      "glyph": "apostrophe",
+      "style": "marker-handdrawn",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/double-quote",
+      "path": "typography/marker-handdrawn/punctuation/double-quote.svg",
+      "glyph": "double-quote",
+      "style": "marker-handdrawn",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/open-paren",
+      "path": "typography/marker-handdrawn/punctuation/open-paren.svg",
+      "glyph": "open-paren",
+      "style": "marker-handdrawn",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/close-paren",
+      "path": "typography/marker-handdrawn/punctuation/close-paren.svg",
+      "glyph": "close-paren",
+      "style": "marker-handdrawn",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/open-square",
+      "path": "typography/marker-handdrawn/punctuation/open-square.svg",
+      "glyph": "open-square",
+      "style": "marker-handdrawn",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/close-square",
+      "path": "typography/marker-handdrawn/punctuation/close-square.svg",
+      "glyph": "close-square",
+      "style": "marker-handdrawn",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/open-curly",
+      "path": "typography/marker-handdrawn/punctuation/open-curly.svg",
+      "glyph": "open-curly",
+      "style": "marker-handdrawn",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/close-curly",
+      "path": "typography/marker-handdrawn/punctuation/close-curly.svg",
+      "glyph": "close-curly",
+      "style": "marker-handdrawn",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/at",
+      "path": "typography/marker-handdrawn/punctuation/at.svg",
+      "glyph": "at",
+      "style": "marker-handdrawn",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/hash",
+      "path": "typography/marker-handdrawn/punctuation/hash.svg",
+      "glyph": "hash",
+      "style": "marker-handdrawn",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/dollar",
+      "path": "typography/marker-handdrawn/punctuation/dollar.svg",
+      "glyph": "dollar",
+      "style": "marker-handdrawn",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/percent",
+      "path": "typography/marker-handdrawn/punctuation/percent.svg",
+      "glyph": "percent",
+      "style": "marker-handdrawn",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/ampersand",
+      "path": "typography/marker-handdrawn/punctuation/ampersand.svg",
+      "glyph": "ampersand",
+      "style": "marker-handdrawn",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/asterisk",
+      "path": "typography/marker-handdrawn/punctuation/asterisk.svg",
+      "glyph": "asterisk",
+      "style": "marker-handdrawn",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/plus",
+      "path": "typography/marker-handdrawn/punctuation/plus.svg",
+      "glyph": "plus",
+      "style": "marker-handdrawn",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/minus",
+      "path": "typography/marker-handdrawn/punctuation/minus.svg",
+      "glyph": "minus",
+      "style": "marker-handdrawn",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/equals",
+      "path": "typography/marker-handdrawn/punctuation/equals.svg",
+      "glyph": "equals",
+      "style": "marker-handdrawn",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/less-than",
+      "path": "typography/marker-handdrawn/punctuation/less-than.svg",
+      "glyph": "less-than",
+      "style": "marker-handdrawn",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/greater-than",
+      "path": "typography/marker-handdrawn/punctuation/greater-than.svg",
+      "glyph": "greater-than",
+      "style": "marker-handdrawn",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/slash",
+      "path": "typography/marker-handdrawn/punctuation/slash.svg",
+      "glyph": "slash",
+      "style": "marker-handdrawn",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/backslash",
+      "path": "typography/marker-handdrawn/punctuation/backslash.svg",
+      "glyph": "backslash",
+      "style": "marker-handdrawn",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/bar",
+      "path": "typography/marker-handdrawn/punctuation/bar.svg",
+      "glyph": "bar",
+      "style": "marker-handdrawn",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/underscore",
+      "path": "typography/marker-handdrawn/punctuation/underscore.svg",
+      "glyph": "underscore",
+      "style": "marker-handdrawn",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/en-dash",
+      "path": "typography/marker-handdrawn/punctuation/en-dash.svg",
+      "glyph": "en-dash",
+      "style": "marker-handdrawn",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/em-dash",
+      "path": "typography/marker-handdrawn/punctuation/em-dash.svg",
+      "glyph": "em-dash",
+      "style": "marker-handdrawn",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/bullet",
+      "path": "typography/marker-handdrawn/punctuation/bullet.svg",
+      "glyph": "bullet",
+      "style": "marker-handdrawn",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/ellipsis",
+      "path": "typography/marker-handdrawn/punctuation/ellipsis.svg",
+      "glyph": "ellipsis",
+      "style": "marker-handdrawn",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/multiply",
+      "path": "typography/marker-handdrawn/punctuation/multiply.svg",
+      "glyph": "multiply",
+      "style": "marker-handdrawn",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/degree",
+      "path": "typography/marker-handdrawn/punctuation/degree.svg",
+      "glyph": "degree",
+      "style": "marker-handdrawn",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/arrow-up",
+      "path": "typography/marker-handdrawn/punctuation/arrow-up.svg",
+      "glyph": "arrow-up",
+      "style": "marker-handdrawn",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/arrow-down",
+      "path": "typography/marker-handdrawn/punctuation/arrow-down.svg",
+      "glyph": "arrow-down",
+      "style": "marker-handdrawn",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/arrow-left",
+      "path": "typography/marker-handdrawn/punctuation/arrow-left.svg",
+      "glyph": "arrow-left",
+      "style": "marker-handdrawn",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/arrow-right",
+      "path": "typography/marker-handdrawn/punctuation/arrow-right.svg",
+      "glyph": "arrow-right",
+      "style": "marker-handdrawn",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/marker-handdrawn/punctuation/check",
+      "path": "typography/marker-handdrawn/punctuation/check.svg",
+      "glyph": "check",
+      "style": "marker-handdrawn",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/A",
+      "path": "typography/compact-ui-specimen/uppercase/A.svg",
+      "glyph": "A",
+      "style": "compact-ui-specimen",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/B",
+      "path": "typography/compact-ui-specimen/uppercase/B.svg",
+      "glyph": "B",
+      "style": "compact-ui-specimen",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/C",
+      "path": "typography/compact-ui-specimen/uppercase/C.svg",
+      "glyph": "C",
+      "style": "compact-ui-specimen",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/D",
+      "path": "typography/compact-ui-specimen/uppercase/D.svg",
+      "glyph": "D",
+      "style": "compact-ui-specimen",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/E",
+      "path": "typography/compact-ui-specimen/uppercase/E.svg",
+      "glyph": "E",
+      "style": "compact-ui-specimen",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/F",
+      "path": "typography/compact-ui-specimen/uppercase/F.svg",
+      "glyph": "F",
+      "style": "compact-ui-specimen",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/G",
+      "path": "typography/compact-ui-specimen/uppercase/G.svg",
+      "glyph": "G",
+      "style": "compact-ui-specimen",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/H",
+      "path": "typography/compact-ui-specimen/uppercase/H.svg",
+      "glyph": "H",
+      "style": "compact-ui-specimen",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/I",
+      "path": "typography/compact-ui-specimen/uppercase/I.svg",
+      "glyph": "I",
+      "style": "compact-ui-specimen",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/J",
+      "path": "typography/compact-ui-specimen/uppercase/J.svg",
+      "glyph": "J",
+      "style": "compact-ui-specimen",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/K",
+      "path": "typography/compact-ui-specimen/uppercase/K.svg",
+      "glyph": "K",
+      "style": "compact-ui-specimen",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/L",
+      "path": "typography/compact-ui-specimen/uppercase/L.svg",
+      "glyph": "L",
+      "style": "compact-ui-specimen",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/M",
+      "path": "typography/compact-ui-specimen/uppercase/M.svg",
+      "glyph": "M",
+      "style": "compact-ui-specimen",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/N",
+      "path": "typography/compact-ui-specimen/uppercase/N.svg",
+      "glyph": "N",
+      "style": "compact-ui-specimen",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/O",
+      "path": "typography/compact-ui-specimen/uppercase/O.svg",
+      "glyph": "O",
+      "style": "compact-ui-specimen",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/P",
+      "path": "typography/compact-ui-specimen/uppercase/P.svg",
+      "glyph": "P",
+      "style": "compact-ui-specimen",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/Q",
+      "path": "typography/compact-ui-specimen/uppercase/Q.svg",
+      "glyph": "Q",
+      "style": "compact-ui-specimen",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/R",
+      "path": "typography/compact-ui-specimen/uppercase/R.svg",
+      "glyph": "R",
+      "style": "compact-ui-specimen",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/S",
+      "path": "typography/compact-ui-specimen/uppercase/S.svg",
+      "glyph": "S",
+      "style": "compact-ui-specimen",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/T",
+      "path": "typography/compact-ui-specimen/uppercase/T.svg",
+      "glyph": "T",
+      "style": "compact-ui-specimen",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/U",
+      "path": "typography/compact-ui-specimen/uppercase/U.svg",
+      "glyph": "U",
+      "style": "compact-ui-specimen",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/V",
+      "path": "typography/compact-ui-specimen/uppercase/V.svg",
+      "glyph": "V",
+      "style": "compact-ui-specimen",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/W",
+      "path": "typography/compact-ui-specimen/uppercase/W.svg",
+      "glyph": "W",
+      "style": "compact-ui-specimen",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/X",
+      "path": "typography/compact-ui-specimen/uppercase/X.svg",
+      "glyph": "X",
+      "style": "compact-ui-specimen",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/Y",
+      "path": "typography/compact-ui-specimen/uppercase/Y.svg",
+      "glyph": "Y",
+      "style": "compact-ui-specimen",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/uppercase/Z",
+      "path": "typography/compact-ui-specimen/uppercase/Z.svg",
+      "glyph": "Z",
+      "style": "compact-ui-specimen",
+      "kind": "uppercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/a",
+      "path": "typography/compact-ui-specimen/lowercase/a.svg",
+      "glyph": "a",
+      "style": "compact-ui-specimen",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/b",
+      "path": "typography/compact-ui-specimen/lowercase/b.svg",
+      "glyph": "b",
+      "style": "compact-ui-specimen",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/c",
+      "path": "typography/compact-ui-specimen/lowercase/c.svg",
+      "glyph": "c",
+      "style": "compact-ui-specimen",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/d",
+      "path": "typography/compact-ui-specimen/lowercase/d.svg",
+      "glyph": "d",
+      "style": "compact-ui-specimen",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/e",
+      "path": "typography/compact-ui-specimen/lowercase/e.svg",
+      "glyph": "e",
+      "style": "compact-ui-specimen",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/f",
+      "path": "typography/compact-ui-specimen/lowercase/f.svg",
+      "glyph": "f",
+      "style": "compact-ui-specimen",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/g",
+      "path": "typography/compact-ui-specimen/lowercase/g.svg",
+      "glyph": "g",
+      "style": "compact-ui-specimen",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/h",
+      "path": "typography/compact-ui-specimen/lowercase/h.svg",
+      "glyph": "h",
+      "style": "compact-ui-specimen",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/i",
+      "path": "typography/compact-ui-specimen/lowercase/i.svg",
+      "glyph": "i",
+      "style": "compact-ui-specimen",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/j",
+      "path": "typography/compact-ui-specimen/lowercase/j.svg",
+      "glyph": "j",
+      "style": "compact-ui-specimen",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/k",
+      "path": "typography/compact-ui-specimen/lowercase/k.svg",
+      "glyph": "k",
+      "style": "compact-ui-specimen",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/l",
+      "path": "typography/compact-ui-specimen/lowercase/l.svg",
+      "glyph": "l",
+      "style": "compact-ui-specimen",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/m",
+      "path": "typography/compact-ui-specimen/lowercase/m.svg",
+      "glyph": "m",
+      "style": "compact-ui-specimen",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/n",
+      "path": "typography/compact-ui-specimen/lowercase/n.svg",
+      "glyph": "n",
+      "style": "compact-ui-specimen",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/o",
+      "path": "typography/compact-ui-specimen/lowercase/o.svg",
+      "glyph": "o",
+      "style": "compact-ui-specimen",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/p",
+      "path": "typography/compact-ui-specimen/lowercase/p.svg",
+      "glyph": "p",
+      "style": "compact-ui-specimen",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/q",
+      "path": "typography/compact-ui-specimen/lowercase/q.svg",
+      "glyph": "q",
+      "style": "compact-ui-specimen",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/r",
+      "path": "typography/compact-ui-specimen/lowercase/r.svg",
+      "glyph": "r",
+      "style": "compact-ui-specimen",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/s",
+      "path": "typography/compact-ui-specimen/lowercase/s.svg",
+      "glyph": "s",
+      "style": "compact-ui-specimen",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/t",
+      "path": "typography/compact-ui-specimen/lowercase/t.svg",
+      "glyph": "t",
+      "style": "compact-ui-specimen",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/u",
+      "path": "typography/compact-ui-specimen/lowercase/u.svg",
+      "glyph": "u",
+      "style": "compact-ui-specimen",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/v",
+      "path": "typography/compact-ui-specimen/lowercase/v.svg",
+      "glyph": "v",
+      "style": "compact-ui-specimen",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/w",
+      "path": "typography/compact-ui-specimen/lowercase/w.svg",
+      "glyph": "w",
+      "style": "compact-ui-specimen",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/x",
+      "path": "typography/compact-ui-specimen/lowercase/x.svg",
+      "glyph": "x",
+      "style": "compact-ui-specimen",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/y",
+      "path": "typography/compact-ui-specimen/lowercase/y.svg",
+      "glyph": "y",
+      "style": "compact-ui-specimen",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/lowercase/z",
+      "path": "typography/compact-ui-specimen/lowercase/z.svg",
+      "glyph": "z",
+      "style": "compact-ui-specimen",
+      "kind": "lowercase",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/digit/0",
+      "path": "typography/compact-ui-specimen/digit/0.svg",
+      "glyph": "0",
+      "style": "compact-ui-specimen",
+      "kind": "digit",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/digit/1",
+      "path": "typography/compact-ui-specimen/digit/1.svg",
+      "glyph": "1",
+      "style": "compact-ui-specimen",
+      "kind": "digit",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/digit/2",
+      "path": "typography/compact-ui-specimen/digit/2.svg",
+      "glyph": "2",
+      "style": "compact-ui-specimen",
+      "kind": "digit",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/digit/3",
+      "path": "typography/compact-ui-specimen/digit/3.svg",
+      "glyph": "3",
+      "style": "compact-ui-specimen",
+      "kind": "digit",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/digit/4",
+      "path": "typography/compact-ui-specimen/digit/4.svg",
+      "glyph": "4",
+      "style": "compact-ui-specimen",
+      "kind": "digit",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/digit/5",
+      "path": "typography/compact-ui-specimen/digit/5.svg",
+      "glyph": "5",
+      "style": "compact-ui-specimen",
+      "kind": "digit",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/digit/6",
+      "path": "typography/compact-ui-specimen/digit/6.svg",
+      "glyph": "6",
+      "style": "compact-ui-specimen",
+      "kind": "digit",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/digit/7",
+      "path": "typography/compact-ui-specimen/digit/7.svg",
+      "glyph": "7",
+      "style": "compact-ui-specimen",
+      "kind": "digit",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/digit/8",
+      "path": "typography/compact-ui-specimen/digit/8.svg",
+      "glyph": "8",
+      "style": "compact-ui-specimen",
+      "kind": "digit",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/digit/9",
+      "path": "typography/compact-ui-specimen/digit/9.svg",
+      "glyph": "9",
+      "style": "compact-ui-specimen",
+      "kind": "digit",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/exclamation",
+      "path": "typography/compact-ui-specimen/punctuation/exclamation.svg",
+      "glyph": "exclamation",
+      "style": "compact-ui-specimen",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/question",
+      "path": "typography/compact-ui-specimen/punctuation/question.svg",
+      "glyph": "question",
+      "style": "compact-ui-specimen",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/period",
+      "path": "typography/compact-ui-specimen/punctuation/period.svg",
+      "glyph": "period",
+      "style": "compact-ui-specimen",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/comma",
+      "path": "typography/compact-ui-specimen/punctuation/comma.svg",
+      "glyph": "comma",
+      "style": "compact-ui-specimen",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/colon",
+      "path": "typography/compact-ui-specimen/punctuation/colon.svg",
+      "glyph": "colon",
+      "style": "compact-ui-specimen",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/semicolon",
+      "path": "typography/compact-ui-specimen/punctuation/semicolon.svg",
+      "glyph": "semicolon",
+      "style": "compact-ui-specimen",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/apostrophe",
+      "path": "typography/compact-ui-specimen/punctuation/apostrophe.svg",
+      "glyph": "apostrophe",
+      "style": "compact-ui-specimen",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/double-quote",
+      "path": "typography/compact-ui-specimen/punctuation/double-quote.svg",
+      "glyph": "double-quote",
+      "style": "compact-ui-specimen",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/open-paren",
+      "path": "typography/compact-ui-specimen/punctuation/open-paren.svg",
+      "glyph": "open-paren",
+      "style": "compact-ui-specimen",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/close-paren",
+      "path": "typography/compact-ui-specimen/punctuation/close-paren.svg",
+      "glyph": "close-paren",
+      "style": "compact-ui-specimen",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/open-square",
+      "path": "typography/compact-ui-specimen/punctuation/open-square.svg",
+      "glyph": "open-square",
+      "style": "compact-ui-specimen",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/close-square",
+      "path": "typography/compact-ui-specimen/punctuation/close-square.svg",
+      "glyph": "close-square",
+      "style": "compact-ui-specimen",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/open-curly",
+      "path": "typography/compact-ui-specimen/punctuation/open-curly.svg",
+      "glyph": "open-curly",
+      "style": "compact-ui-specimen",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/close-curly",
+      "path": "typography/compact-ui-specimen/punctuation/close-curly.svg",
+      "glyph": "close-curly",
+      "style": "compact-ui-specimen",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/at",
+      "path": "typography/compact-ui-specimen/punctuation/at.svg",
+      "glyph": "at",
+      "style": "compact-ui-specimen",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/hash",
+      "path": "typography/compact-ui-specimen/punctuation/hash.svg",
+      "glyph": "hash",
+      "style": "compact-ui-specimen",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/dollar",
+      "path": "typography/compact-ui-specimen/punctuation/dollar.svg",
+      "glyph": "dollar",
+      "style": "compact-ui-specimen",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/percent",
+      "path": "typography/compact-ui-specimen/punctuation/percent.svg",
+      "glyph": "percent",
+      "style": "compact-ui-specimen",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/ampersand",
+      "path": "typography/compact-ui-specimen/punctuation/ampersand.svg",
+      "glyph": "ampersand",
+      "style": "compact-ui-specimen",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/asterisk",
+      "path": "typography/compact-ui-specimen/punctuation/asterisk.svg",
+      "glyph": "asterisk",
+      "style": "compact-ui-specimen",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/plus",
+      "path": "typography/compact-ui-specimen/punctuation/plus.svg",
+      "glyph": "plus",
+      "style": "compact-ui-specimen",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/minus",
+      "path": "typography/compact-ui-specimen/punctuation/minus.svg",
+      "glyph": "minus",
+      "style": "compact-ui-specimen",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/equals",
+      "path": "typography/compact-ui-specimen/punctuation/equals.svg",
+      "glyph": "equals",
+      "style": "compact-ui-specimen",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/less-than",
+      "path": "typography/compact-ui-specimen/punctuation/less-than.svg",
+      "glyph": "less-than",
+      "style": "compact-ui-specimen",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/greater-than",
+      "path": "typography/compact-ui-specimen/punctuation/greater-than.svg",
+      "glyph": "greater-than",
+      "style": "compact-ui-specimen",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/slash",
+      "path": "typography/compact-ui-specimen/punctuation/slash.svg",
+      "glyph": "slash",
+      "style": "compact-ui-specimen",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/backslash",
+      "path": "typography/compact-ui-specimen/punctuation/backslash.svg",
+      "glyph": "backslash",
+      "style": "compact-ui-specimen",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/bar",
+      "path": "typography/compact-ui-specimen/punctuation/bar.svg",
+      "glyph": "bar",
+      "style": "compact-ui-specimen",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/underscore",
+      "path": "typography/compact-ui-specimen/punctuation/underscore.svg",
+      "glyph": "underscore",
+      "style": "compact-ui-specimen",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/en-dash",
+      "path": "typography/compact-ui-specimen/punctuation/en-dash.svg",
+      "glyph": "en-dash",
+      "style": "compact-ui-specimen",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/em-dash",
+      "path": "typography/compact-ui-specimen/punctuation/em-dash.svg",
+      "glyph": "em-dash",
+      "style": "compact-ui-specimen",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/bullet",
+      "path": "typography/compact-ui-specimen/punctuation/bullet.svg",
+      "glyph": "bullet",
+      "style": "compact-ui-specimen",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/ellipsis",
+      "path": "typography/compact-ui-specimen/punctuation/ellipsis.svg",
+      "glyph": "ellipsis",
+      "style": "compact-ui-specimen",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/multiply",
+      "path": "typography/compact-ui-specimen/punctuation/multiply.svg",
+      "glyph": "multiply",
+      "style": "compact-ui-specimen",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/degree",
+      "path": "typography/compact-ui-specimen/punctuation/degree.svg",
+      "glyph": "degree",
+      "style": "compact-ui-specimen",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/arrow-up",
+      "path": "typography/compact-ui-specimen/punctuation/arrow-up.svg",
+      "glyph": "arrow-up",
+      "style": "compact-ui-specimen",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/arrow-down",
+      "path": "typography/compact-ui-specimen/punctuation/arrow-down.svg",
+      "glyph": "arrow-down",
+      "style": "compact-ui-specimen",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/arrow-left",
+      "path": "typography/compact-ui-specimen/punctuation/arrow-left.svg",
+      "glyph": "arrow-left",
+      "style": "compact-ui-specimen",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/arrow-right",
+      "path": "typography/compact-ui-specimen/punctuation/arrow-right.svg",
+      "glyph": "arrow-right",
+      "style": "compact-ui-specimen",
+      "kind": "punctuation",
+      "referenceApproved": false
+    },
+    {
+      "id": "typography/compact-ui-specimen/punctuation/check",
+      "path": "typography/compact-ui-specimen/punctuation/check.svg",
+      "glyph": "check",
+      "style": "compact-ui-specimen",
+      "kind": "punctuation",
+      "referenceApproved": false
+    }
+  ]
+}

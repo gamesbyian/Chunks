@@ -1,0 +1,13 @@
+{
+  "source": "docs/design/reference-images/03-typography-and-wordmark.png",
+  "crop": [
+    765,
+    35,
+    930,
+    180
+  ],
+  "threshold": "red<105 green<102 blue<105",
+  "contour": "cv2.findContours RETR_LIST, min-area>2, approxPolyDP eps0.7",
+  "path": "Midpoint-smoothed quadratic contour, evenodd counters; source sticker shape is independent vector approximation",
+  "approved": false
+}
