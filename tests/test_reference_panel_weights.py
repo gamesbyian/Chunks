@@ -2,11 +2,15 @@
 """Reproducibility and safety gates for four non-shipping optical weight studies."""
 from __future__ import annotations
 import hashlib,json,sys,tempfile,unittest
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from PIL import ImageFont
 from fontTools.ttLib import TTFont
 from fontTools.pens.recordingPen import RecordingPen
 from fontTools.pens.boundsPen import BoundsPen
+from fontTools.pens.qu2cuPen import Qu2CuPen
+from fontTools.pens.svgPathPen import SVGPathPen
+from fontTools.svgLib.path import parse_path
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
@@ -92,7 +96,18 @@ class ReferencePanelWeightTests(unittest.TestCase):
             folder.mkdir(parents=True)
             # A placeholder 400 design uses the source heavy geometry. This tests
             # precedence, provenance and safety, NOT aesthetic approval.
-            (folder/'U+0041.svg').write_bytes((GLYPHS/'U+0041.svg').read_bytes())
+            # A realistic editorial file from a cubic-native SVG editor.
+            # Re-encode the exact source quadratic reference as cubic Beziers.
+            # This preserves identical silhouette/topology while exercising
+            # the actual direct cubic CFF import, not polygonized Q samples.
+            root=ET.fromstring((GLYPHS/'U+0041.svg').read_text())
+            path_node=next(x for x in root.iter() if x.tag.endswith('path'))
+            cubic=SVGPathPen(None)
+            parse_path(path_node.attrib['d'],
+                       Qu2CuPen(cubic,max_err=0.001,all_cubic=True))
+            path_node.attrib['d']=cubic.getCommands()
+            self.assertIn('C',path_node.attrib['d'])
+            (folder/'U+0041.svg').write_text(ET.tostring(root,encoding='unicode'))
             raw=Path(d)/'override.otf'
             result=make_weight(BASE/'Chunks-Regular.otf',GLYPHS,PROFILE,400,raw,folder.parent)
             self.assertEqual(result['A']['outline_source'],'weight-specific-svg-master')
