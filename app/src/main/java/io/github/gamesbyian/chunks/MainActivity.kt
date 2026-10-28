@@ -1114,6 +1114,13 @@ private fun TransfersScreen(
                             "Review Collection assignment")
                     }
                     batchMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+                    RemoteBatchLifecyclePanel(
+                        selected = list.filter { it.hash in batchHashes },
+                        enabled = !stale && !loading && !batchBusy && batchHashes.isNotEmpty(),
+                        onMutationStarted = onMutationStarted,
+                        onSettled = onLifecycleSettled,
+                        performLifecycle = remote::setStarted
+                    )
                 }
             }
         }
