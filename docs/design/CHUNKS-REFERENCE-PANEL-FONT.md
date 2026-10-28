@@ -41,3 +41,7 @@ Generated output: `assets/fonts/experimental/ChunksReferencePanel-ExtraBold-Opti
 ## Exact repository build evidence
 
 [Run 40612815302](https://github.com/gamesbyian/Chunks/actions/runs/40612815302) completed successfully: both experimental OTFs and `reference-panel-spacing.json` were generated. The checked-in optimized file is 683,192 bytes and retains the same 856-character repertoire. The optimized version measures 13,796 additional GPOS pairs involving replaced glyphs; sample gaps remain positive across 14/24/48px. All approved Android resources are unchanged. Run the full experiment again before release if the approved master fonts or 62 traced SVG inputs change.
+
+### Measured tracking and leading (experimental face)
+
+The optical audit also computes role-specific *application* tracking and full-glyph vertical bounds, not just pair kerning. Prototype ExtraBold 800 tracking: display −0.007em; headings +0.014em; body +0.018em; compact labels +0.024em. The latter two hit the configured positive tracking limit, a useful warning that dense UI copy needs more editorial work. Initial Latin line-height ratios remain 1.14/1.22/1.36/1.42 by role; a complete multiscript glyph-extents scan recommends **at least 1.67em** for unrestricted strings. These are recorded in the reproducible `reference-panel-spacing.json` and must be applied in Android TextStyle or another client, rather than misrepresented as a universal font-internal tracking value.
