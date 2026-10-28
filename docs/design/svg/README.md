@@ -22,6 +22,21 @@ This is an original, **all-variants-preserved** SVG collection. No source PNG is
 - `gallery.html`: fully searchable static library of 815 current SVG drafts, with category filters, dark/light/checkerboard surfaces, side-by-side comparison and an experimental layer preview.
 - `python3 tools/validate_svg_library.py`: validates manifest, XML, self-contained SVG structure, gallery coverage and file coverage. CI runs it on relevant PRs.
 
+## Experimental layer composition workbench
+
+The [gallery](gallery.html) supports a four-layer, **non-destructive vector workbench**: select differing logo, mascot, sticker or icon variants; drag the active layer on the preview or use keyboard-accessible sliders to adjust position, scale, rotation and opacity; reorder layers; change the background; and export a **self-contained SVG** containing actual source paths and gradients. Save or reload a compact JSON recipe to preserve editable layer identities and settings. Identical internal IDs are namespaced in exported files.
+
+For browser SVG export, load the gallery from an HTTP(S) origin that also serves the whole `docs/design/svg/` tree (browser security normally disallows `fetch()` of adjacent local `file://` SVGs):
+
+```bash
+python3 -m http.server 8765 --directory docs/design/svg
+# Open http://localhost:8765/gallery.html
+```
+
+No external image loading, bitmap embedding or executable SVG content is permitted. The browser refuses unknown recipe asset IDs and unsafe/path-traversing paths. The composed SVG is a new user-created **experimental** asset, not an approved brand file; original variants, reference PNGs and Android launcher resources remain untouched. This is an in-browser editor of static SVG sources, not native Compose component generation.
+
+The engine has an independent Node/stdlib-XML test: `node --test tools/tests/svg_mixer.test.cjs`. The gallery preserves its existing 96-at-a-time lazy-card pagination.
+
 Palette experiments are retained rather than reconciled by fiat: Brand Essence uses pink #FF4EC4, purple #A56BFF, blue #3B82FF, yellow #FFD93D, green #22D97A, cyan #00D4FF. The typography sheet supplies a distinct colour/type hierarchy (for example slightly different purple/pink/cyan and separate warning/error colours). A visual token-selection pass is still pending.
 
 **Honest fidelity:** these are carefully named original vector interpretations, not automatic tracings or guaranteed exact reproductions. The hand-drawn logo is vector-outlined; some fixed tagline and sticker lettering still has SVG text fallback until approved font outlines are available. Native Android text and controls must not be substituted with screenshots.
