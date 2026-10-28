@@ -1,0 +1,18 @@
+{
+  "base_sha256": "617faca03c2766ef39260c56cf6f2f1d6e2638465aa33ccba88703422374b8a8",
+  "optimized_sha256": "6f99adeba2e8a9f1cc2b8938fd33ed3861b511cd3119fc28cf80b56c8474d3bc",
+  "modified_glyphs": 62,
+  "measured_pairs": 22801,
+  "additional_optical_pairs": 13796,
+  "minimum_ink_gaps_px_before": {
+    "14": 1.4375,
+    "24": 2.65625,
+    "48": 5.3125
+  },
+  "minimum_ink_gaps_px_after": {
+    "14": 0.609375,
+    "24": 1.703125,
+    "48": 3.171875
+  },
+  "condition": "experimental; native proof required; source non-Latin native shaping retained"
+}
