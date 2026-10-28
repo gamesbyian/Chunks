@@ -64,6 +64,10 @@ class ConsolidatedReferenceTests(unittest.TestCase):
                 self.assertTrue({'GPOS', 'GSUB', 'GDEF'}.issubset(f.keys()))
                 self.assertEqual(f['OS/2'].usWeightClass, weight)
                 self.assertEqual(f['name'].getDebugName(1), 'Chunks Reference Panel Consolidated')
+                self.assertEqual(f['CFF '].cff.fontNames[0],
+                                 f'ChunksReferencePanelConsolidated-{style}')
+                self.assertEqual(f['CFF '].cff.topDictIndex[0].FamilyName,
+                                 'Chunks Reference Panel Consolidated')
                 self.assertEqual(f['name'].getDebugName(6),
                                  f'ChunksReferencePanelConsolidated-{style}')
                 self.assertGreater(row['kerning']['adjusted_punctuation_pairs'], 0)
