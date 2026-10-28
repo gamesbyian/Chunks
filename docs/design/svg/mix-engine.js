@@ -97,6 +97,10 @@
     result += '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" ';
     result += 'role="img" aria-labelledby="mix-title"><title id="mix-title">Chunks SVG layer composition</title>';
     result += '<desc>Experimental vector composition; source variants remain separate and unapproved.</desc>';
+    // Keeping the validated layer recipe inside the exported SVG makes it
+    // re-editable without a second file. This is inert XML metadata, never JS.
+    result += '<metadata id="chunks-mix-recipe" data-version="1">'
+      + escape(JSON.stringify(validated)) + '</metadata>';
     if (validated.background !== "transparent") {
       result += '<rect width="1000" height="1000" fill="' + escape(validated.background) + '"/>';
     }
