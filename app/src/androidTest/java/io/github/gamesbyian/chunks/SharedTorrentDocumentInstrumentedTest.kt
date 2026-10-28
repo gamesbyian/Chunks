@@ -70,6 +70,47 @@ class SharedTorrentDocumentInstrumentedTest {
             Intent(Intent.ACTION_SEND_MULTIPLE).apply { type = "application/x-bittorrent" }))
     }
 
+    @Test fun conflictingOrMultipleSharedUrisNeverPickAnArbitraryTorrent() {
+        val first = document(goodBytes)
+        val second = Uri.parse("content://fixture.documents/download/other.torrent")
+        val matching = android.content.ClipData.newUri(
+            context.contentResolver, "torrent", first)
+        assertEquals(first, SharedTorrentDocument.fromIntent(
+            Intent(Intent.ACTION_SEND).apply {
+                type = "application/x-bittorrent"
+                putExtra(Intent.EXTRA_STREAM, first)
+                clipData = matching
+            }))
+        // EXTRA_STREAM alone and one valid ClipData URI remain supported.
+        assertEquals(first, SharedTorrentDocument.fromIntent(
+            Intent(Intent.ACTION_SEND).apply {
+                type = "application/x-bittorrent"
+                putExtra(Intent.EXTRA_STREAM, first)
+            }))
+        assertNull(SharedTorrentDocument.fromIntent(
+            Intent(Intent.ACTION_SEND).apply {
+                type = "application/x-bittorrent"
+                putExtra(Intent.EXTRA_STREAM, first)
+                clipData = android.content.ClipData.newUri(
+                    context.contentResolver, "different torrent", second)
+            }))
+        val multiple = android.content.ClipData.newUri(
+            context.contentResolver, "first torrent", first).apply {
+            addItem(android.content.ClipData.Item(second))
+        }
+        assertNull(SharedTorrentDocument.fromIntent(
+            Intent(Intent.ACTION_SEND).apply {
+                type = "application/x-bittorrent"
+                putExtra(Intent.EXTRA_STREAM, first)
+                clipData = multiple
+            }))
+        assertNull(SharedTorrentDocument.fromIntent(
+            Intent(Intent.ACTION_SEND).apply {
+                type = "application/x-bittorrent"
+                clipData = multiple
+            }))
+    }
+
     @Test fun grantedDocumentUsesExistingStrictV1MetainfoParserOnly() {
         val uri = document(goodBytes)
         val result = SharedTorrentDocument.read(context.contentResolver, uri)
