@@ -5,8 +5,13 @@ on:
     paths:
       - 'docs/design/svg/**'
       - 'tools/render_svg_atlas.py'
+      - 'tools/check_svg_trace_fidelity.py'
       - '.github/workflows/svg-render-atlas.yml'
   workflow_dispatch:
+
+concurrency:
+  group: chunks-svg-render-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -21,8 +26,12 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends librsvg2-bin
+      - name: Install reference silhouette comparator
+        run: python3 -m pip install --disable-pip-version-check 'Pillow>=11,<13'
       - name: Rasterize every vector at two acceptance sizes
         run: python3 tools/render_svg_atlas.py --out generated/svg-atlas --sizes 32,160
+      - name: Measure traced lettering against the original reference PNG
+        run: python3 tools/check_svg_trace_fidelity.py
       - name: Preserve browseable render proof
         if: always()
         uses: actions/upload-artifact@v4
