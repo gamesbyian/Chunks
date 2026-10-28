@@ -1,5 +1,7 @@
 # chunks.
 
+> **Owner correction (2026-10-28):** Cross-engine **Copy Transfer** and **Move Transfer** operate on torrent **jobs only**, never downloaded file bytes. Move adds and verifies the target job, then separately confirms session-only removal of the source job, leaving all source files untouched. Destination downloads independently. Prior text proposing payload transfer, file migration or waiting for target seeding under these names is superseded by [the authoritative transfer-job contract](docs/CROSS-ENGINE-TRANSFER-JOBS.md).
+
 **Your downloads have places to be.**
 
 Chunks is an Android-native BitTorrent client and first-class rTorrent remote. Its Transfers represent torrent jobs; Places represent **actual** server/device destinations and their permissions; Collections are semantic groups. Original torrent names, Chunks-only display aliases, actual backing file paths and independent library copies are distinct so that a cosmetic rename never breaks seeding.
