@@ -62,6 +62,11 @@ object RemoteSmartConnect {
         }
         val origin = "${uri.scheme.lowercase()}://${uri.rawAuthority}"
         val rawPath = uri.rawPath.orEmpty().trimEnd('/')
+        // Avoid URI normalization/path traversal changing the intended tenant
+        // or accidentally selecting a different backend mount.
+        require(!Regex("(?i)(?:^|/)(?:\\.|%2e){1,2}(?:/|$)").containsMatchIn(rawPath)) {
+            "Unsafe path segments in server address"
+        }
         val entries = linkedMapOf<String, Candidate>()
         fun add(path: String, description: String) {
             if (entries.size >= 6) return
@@ -96,6 +101,12 @@ object RemoteSmartConnect {
             host == "seedhost.eu" || host.endsWith(".seedhost.eu") -> {
                 // SeedHost documents both /username/RPC1 and an HTTP-RPC
                 // route under the ruTorrent root, with deployment variance.
+                // Some provider installations put the account in the host,
+                // others in the path. Keep the exact host the user entered.
+                if (safeUser != null && host.startsWith(safeUser.lowercase() + ".")) {
+                    add("/rutorrent/plugins/httprpc/action.php", "SeedHost ruTorrent")
+                    add("/RPC1", "SeedHost direct RPC")
+                }
                 if (safeUser != null) {
                     add("/$safeUser/rutorrent/plugins/httprpc/action.php", "SeedHost account ruTorrent")
                     add("/$safeUser/RPC1", "SeedHost account SCGI")
