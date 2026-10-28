@@ -2,35 +2,35 @@
   "status": "NONSHIPPING interim weight study: automated offsets; manual masters still required",
   "source_manifest_sha256": "34413dfabd6d1f846b2dd833e21fa2b57e9b03b06330e4e9a479d082150fca83",
   "profile_sha256": "7da88e239d51208e052c8a359ddf04c724b3aa70e6cd7ad686d64b7f27425e46",
-  "overrides_sha256": "b159a178d96034189d8b60e73083a0c32b6699013bd879cc95ee2966e72e5f6e",
-  "overrides_used": 8,
+  "overrides_sha256": "f6d094c6a7da607bec585ebaf561f3e2ea63316a1302e498aa4493370c5d7517",
+  "overrides_used": 12,
   "source_svg_sha256": "f475ea924418981a766978dde97ebb97ba7b0866110e1b72b17ac026fbad7aba",
   "accepted_extra_bold_remains_separate": "assets/fonts/experimental/ChunksReferencePanel-ExtraBold-Optical.otf",
   "weights": {
     "Regular": {
       "weight": 400,
       "file": "ChunksReferencePanel-Regular-Study.otf",
-      "sha256": "aa0ecf0464aa7c716244c007a5df3059bf788d2b5b3946aeb7f312b3982992b3",
+      "sha256": "29c6fd6861967a7c21d76891b32fb68e8e04d20c1aa41a25ded52782d97cd2b8",
       "glyphs_changed": 62,
       "codepoints": 856,
-      "kerning_direct_pairs": 14102,
+      "kerning_direct_pairs": 14110,
       "kerning_probe": {
         "measured_glyphs": 151,
         "examined_pairs": 22801,
-        "adjusted_pairs": 14784,
+        "adjusted_pairs": 14792,
         "median_absolute_adjustment": 62.0,
-        "residual_90pct": 41.3
+        "residual_90pct": 41.42
       },
       "min_sampled_gap_px": {
         "14": 0.828,
         "24": 1.797,
-        "48": 4.984
+        "48": 5.094
       },
       "tracking_em": {
         "display": -0.022,
         "heading": -0.015,
         "body": 0.0068,
-        "small_labels": 0.0229
+        "small_labels": 0.0223
       },
       "leading_em": {
         "display_latin": 1.14,
@@ -50,7 +50,7 @@
             "upper_limit_em": 0.01
           },
           "heading": {
-            "observed_20pct_ink_gap_em": 0.1151,
+            "observed_20pct_ink_gap_em": 0.1198,
             "target_ink_gap_em": 0.1,
             "sampled_pairs": 44,
             "lower_limit_em": -0.015,
@@ -64,7 +64,7 @@
             "upper_limit_em": 0.018
           },
           "small_labels": {
-            "observed_20pct_ink_gap_em": 0.1151,
+            "observed_20pct_ink_gap_em": 0.1157,
             "target_ink_gap_em": 0.138,
             "sampled_pairs": 28,
             "lower_limit_em": 0,
@@ -421,11 +421,11 @@
         "i": {
           "components": 2,
           "counters": 0,
-          "ink_area_ratio": 0.7509,
-          "stroke_offset_px": 1.04,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.7249,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "940eeb437d81f8e61dfa90a4025b34f41ea069abec4453dce583445a8919cd15",
           "topology_adjustments": []
         },
         "j": {
@@ -703,25 +703,25 @@
     "Medium": {
       "weight": 500,
       "file": "ChunksReferencePanel-Medium-Study.otf",
-      "sha256": "96ce2c078d36174d5fc416b02bf645f0d0911bec029fe198841e0a83dc0ff845",
+      "sha256": "704673d28ef7a8081673d0f95a4fded5049f39e59c78f6655f2f409f137cf70f",
       "glyphs_changed": 62,
       "codepoints": 856,
-      "kerning_direct_pairs": 14214,
+      "kerning_direct_pairs": 14219,
       "kerning_probe": {
         "measured_glyphs": 151,
         "examined_pairs": 22801,
-        "adjusted_pairs": 14696,
+        "adjusted_pairs": 14701,
         "median_absolute_adjustment": 59.0,
-        "residual_90pct": 34.2
+        "residual_90pct": 34.41
       },
       "min_sampled_gap_px": {
-        "14": 0.609,
+        "14": 0.594,
         "24": 1.875,
         "48": 4.328
       },
       "tracking_em": {
         "display": -0.022,
-        "heading": -0.0078,
+        "heading": -0.0079,
         "body": 0.0145,
         "small_labels": 0.024
       },
@@ -743,7 +743,7 @@
             "upper_limit_em": 0.01
           },
           "heading": {
-            "observed_20pct_ink_gap_em": 0.1078,
+            "observed_20pct_ink_gap_em": 0.1079,
             "target_ink_gap_em": 0.1,
             "sampled_pairs": 44,
             "lower_limit_em": -0.015,
@@ -1114,11 +1114,11 @@
         "i": {
           "components": 2,
           "counters": 0,
-          "ink_area_ratio": 0.8006,
-          "stroke_offset_px": 0.812,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.8043,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "cea135634fef7e992b1895c04ba2d7a13954e1935c6453020a9afa3b949bb70a",
           "topology_adjustments": []
         },
         "j": {
@@ -1396,25 +1396,25 @@
     "Semibold": {
       "weight": 600,
       "file": "ChunksReferencePanel-Semibold-Study.otf",
-      "sha256": "1ffa5dc7142736e96929db056cb852f3da39d3852330cee411a45ac766cb5247",
+      "sha256": "98e307a12ae19433760be3d7d8fb04780e554258d1c55dc45ee96de16c01f1dc",
       "glyphs_changed": 62,
       "codepoints": 856,
-      "kerning_direct_pairs": 13865,
+      "kerning_direct_pairs": 13897,
       "kerning_probe": {
         "measured_glyphs": 151,
         "examined_pairs": 22801,
-        "adjusted_pairs": 14210,
+        "adjusted_pairs": 14242,
         "median_absolute_adjustment": 57.0,
-        "residual_90pct": 29.51
+        "residual_90pct": 29.47
       },
       "min_sampled_gap_px": {
-        "14": 0.625,
+        "14": 0.609,
         "24": 1.797,
         "48": 4.125
       },
       "tracking_em": {
         "display": -0.0218,
-        "heading": -0.0002,
+        "heading": -0.0003,
         "body": 0.018,
         "small_labels": 0.024
       },
@@ -1436,7 +1436,7 @@
             "upper_limit_em": 0.01
           },
           "heading": {
-            "observed_20pct_ink_gap_em": 0.1002,
+            "observed_20pct_ink_gap_em": 0.1003,
             "target_ink_gap_em": 0.1,
             "sampled_pairs": 44,
             "lower_limit_em": -0.015,
@@ -1450,7 +1450,7 @@
             "upper_limit_em": 0.018
           },
           "small_labels": {
-            "observed_20pct_ink_gap_em": 0.1001,
+            "observed_20pct_ink_gap_em": 0.1,
             "target_ink_gap_em": 0.138,
             "sampled_pairs": 28,
             "lower_limit_em": 0,
@@ -1807,11 +1807,11 @@
         "i": {
           "components": 2,
           "counters": 0,
-          "ink_area_ratio": 0.8596,
-          "stroke_offset_px": 0.552,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.8859,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "88e68ddb98794e7d6b205275a6ce205bf414c87e9841050a71c2612df2bcece3",
           "topology_adjustments": []
         },
         "j": {
@@ -2089,16 +2089,16 @@
     "Bold": {
       "weight": 700,
       "file": "ChunksReferencePanel-Bold-Study.otf",
-      "sha256": "7def67441cae9efd03488db63c3e1b3fda67cb70eb2dd1c5375b06aa96ce3d64",
+      "sha256": "a20ec53c8b14380813c81b9338ee3ee9a9ae48798edaca7feebf3cf942b230ae",
       "glyphs_changed": 62,
       "codepoints": 856,
-      "kerning_direct_pairs": 13885,
+      "kerning_direct_pairs": 13887,
       "kerning_probe": {
         "measured_glyphs": 151,
         "examined_pairs": 22801,
-        "adjusted_pairs": 14045,
+        "adjusted_pairs": 14047,
         "median_absolute_adjustment": 56.0,
-        "residual_90pct": 27.59
+        "residual_90pct": 27.35
       },
       "min_sampled_gap_px": {
         "14": 0.705,
@@ -2107,7 +2107,7 @@
       },
       "tracking_em": {
         "display": -0.0143,
-        "heading": 0.0073,
+        "heading": 0.007,
         "body": 0.018,
         "small_labels": 0.024
       },
@@ -2129,7 +2129,7 @@
             "upper_limit_em": 0.01
           },
           "heading": {
-            "observed_20pct_ink_gap_em": 0.0927,
+            "observed_20pct_ink_gap_em": 0.093,
             "target_ink_gap_em": 0.1,
             "sampled_pairs": 44,
             "lower_limit_em": -0.015,
@@ -2143,7 +2143,7 @@
             "upper_limit_em": 0.018
           },
           "small_labels": {
-            "observed_20pct_ink_gap_em": 0.0928,
+            "observed_20pct_ink_gap_em": 0.0929,
             "target_ink_gap_em": 0.138,
             "sampled_pairs": 28,
             "lower_limit_em": 0,
@@ -2500,11 +2500,11 @@
         "i": {
           "components": 2,
           "counters": 0,
-          "ink_area_ratio": 0.9262,
-          "stroke_offset_px": 0.28,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.9677,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "2d50c07ac2a764526b931cbde2722aeedc90e6aa401183de34e1946a270a5368",
           "topology_adjustments": []
         },
         "j": {
