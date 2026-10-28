@@ -33,3 +33,16 @@ CI in `.github/workflows/reference-panel-stacked-studies.yml` builds, tests, ren
 ## Remaining acceptance
 
 Geometric detachment cannot establish optical style coherence, mark semantics, correct stacked accent ordering for every language, or Android accessibility. Any glyph skipped because of attached marks, too-tall composition or i/j ambiguity needs independent design work. Even accepted composites need visual checks at 14/24/48/82px and native Android normal/200% font scaling, wrapping, truncation and TalkBack. Do **not** install this font into the app or call issue #347 complete on the strength of a green source build alone.
+
+## Complete per-glyph acceptance sheets and remaining coverage
+
+The short 33px sentence specimen is only a smoke test. `tools/render_reference_stacked_grid.py` now renders **all 107 non-i/j stacked candidates** as side-by-side actual native CFF glyphs across Regular, Medium, Semibold, Bold and ExtraBold, repeated at **14/24/48/82px**. Each glyph/weight cell is explicitly marked **B** (rebuilt) or **F** (retained original/fallback). Rows are Unicode-labelled and aligned to common weight baselines, with 60 rows per page to prevent unwieldy artwork.
+
+The same deterministic report compares each compiled Stacked face to the previous [Latin coverage ledger](../../tools/audit_reference_latin_coverage.py), verifying that only characters previously classified as unresolved stacked Latin marks were reconstructed. It calculates *remaining uncustomized Latin letters* per weight after this experimental augmentation, alongside the original counts. All five font SHA-256 hashes, original reconstruction report SHA, per-page PNG dimensions/hashes and explicit nonshipping status are preserved in `reference-stacked-grid-metrics.json`. Generate the report with:
+
+```sh
+python tools/render_reference_stacked_grid.py
+python -m unittest discover -s tests -p test_reference_stacked_grid.py -v
+```
+
+The CI workflow publishes the eight PNG sheets and JSON report with the five OTFs. Classification as **B** means safely processed by the conservative source-geometry rules, not that the glyph has received visual or linguistic design approval. Android normal/200% sizing and TalkBack remain untested.
