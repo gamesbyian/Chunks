@@ -31,6 +31,15 @@ test("rejects executable content, remote references and bitmap embeddings",()=>{
   assert.throws(()=>mix.compose([{id:"files/folder",svg:'<svg viewBox="0 0 64 64">'+fragment+'</svg>'}]));
  }
 });
+test("standalone SVG carries a recoverable inert JSON layer recipe",()=>{
+ const source=mix.compose([{...a,x:17,scale:145,opacity:80},{...c,y:-9}],"#FFD93D");
+ const script='import sys,json,xml.etree.ElementTree as E;root=E.fromstring(sys.stdin.read());node=root.find("{http://www.w3.org/2000/svg}metadata");assert node is not None and node.attrib["id"]=="chunks-mix-recipe";print(node.text)';
+ const p=spawnSync("python3",["-c",script],{input:source,encoding:"utf8"});
+ assert.equal(p.status,0,p.stderr);
+ const data=JSON.parse(p.stdout);
+ assert.deepEqual(data,mix.recipe([{id:a.id,x:17,scale:145,opacity:80},{id:c.id,y:-9}],"#FFD93D"));
+ assert.doesNotMatch(source,/<script\b|data:image/i);
+});
 test("roundtrip recipes, duplicate/unknown/reckless controls rejected",()=>{
  const ids=[a.id,b.id,c.id];
  const recipe=mix.recipe([{id:a.id,x:13,opacity:70},{id:c.id,y:-20,scale:135}],"#0B0F17");

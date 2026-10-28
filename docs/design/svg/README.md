@@ -24,7 +24,7 @@ This is an original, **all-variants-preserved** SVG collection. No source PNG is
 
 ## Experimental layer composition workbench
 
-The [gallery](gallery.html) supports a four-layer, **non-destructive vector workbench**: select differing logo, mascot, sticker or icon variants; drag the active layer on the preview or use keyboard-accessible sliders to adjust position, scale, rotation and opacity; reorder layers; change the background; and export a **self-contained SVG** containing actual source paths and gradients. Save or reload a compact JSON recipe to preserve editable layer identities and settings. Identical internal IDs are namespaced in exported files.
+The [gallery](gallery.html) supports a four-layer, **non-destructive vector workbench**: select differing logo, mascot, sticker or icon variants; drag the active layer on the preview or use keyboard-accessible sliders to adjust position, scale, rotation and opacity; reorder layers; change the background; and export a **self-contained SVG** containing actual source paths and gradients. Save or reload a compact JSON recipe to preserve editable layer identities and settings. Each exported SVG also embeds its validated recipe as inert XML metadata, so the same SVG can be loaded back into the gallery and edited again. Identical internal IDs are namespaced in exported files.
 
 For browser SVG export, load the gallery from an HTTP(S) origin that also serves the whole `docs/design/svg/` tree (browser security normally disallows `fetch()` of adjacent local `file://` SVGs):
 

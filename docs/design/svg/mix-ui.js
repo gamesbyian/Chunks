@@ -26,7 +26,7 @@ workbench.innerHTML=
  }).join('')+'</div></fieldset>'+
  '<div class="mix-tools"><button type="button" id="mix-export">Export standalone SVG</button>'+
  '<button type="button" id="mix-save">Save editable recipe</button>'+
- '<button type="button" id="mix-load">Load recipe</button>'+
+ '<button type="button" id="mix-load">Load recipe or SVG</button>'+
  '<input id="mix-recipe-file" type="file" accept=".json,application/json,.svg,image/svg+xml" hidden/></div>'+
  '<p id="mix-message" role="status" aria-live="polite" class="note"></p>';
 mix.insertAdjacentElement("afterend",workbench);
