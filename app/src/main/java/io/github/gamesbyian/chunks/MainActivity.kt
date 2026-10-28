@@ -588,7 +588,11 @@ private fun ChunksApp(
                         selected = section == tab,
                         onClick = { section = tab },
                         label = { Text(tab.label) },
-                        modifier = Modifier.height(48.dp)
+                        // A hard 48dp height clips enlarged Compose labels when
+                        // Android system font scale reaches 200%. Keep the
+                        // minimum touch target while letting text determine
+                        // the natural height on large-font devices.
+                        modifier = Modifier.heightIn(min = 48.dp)
                     )
                 }
             }

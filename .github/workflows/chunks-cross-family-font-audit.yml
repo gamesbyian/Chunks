@@ -8,6 +8,9 @@ on:
       - 'tools/audit_font_families.py'
       - '.github/workflows/chunks-cross-family-font-audit.yml'
   push:
+    # Run once for merged changes, not again for each PR branch push.
+    # Pull requests remain protected by their existing font-specific path filters.
+    branches: [main]
     paths:
       - 'assets/fonts/**'
       - 'app/src/main/res/font/**'
