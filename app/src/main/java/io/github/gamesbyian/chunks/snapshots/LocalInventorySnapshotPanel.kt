@@ -16,6 +16,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -28,6 +29,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.engine.LocalTransferStatus
 import java.time.Instant
+import java.io.File
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.CancellationException
@@ -54,6 +56,23 @@ internal fun LocalInventorySnapshotPanel(
     var result by remember { mutableStateOf<String?>(null) }
     var resultVerified by remember { mutableStateOf(false) }
     var pending by remember { mutableStateOf<ByteArray?>(null) }
+    var pendingVerifiedDefinitions by remember { mutableStateOf(0) }
+    var includeDefinitions by remember { mutableStateOf(false) }
+    var inspectingResumes by remember { mutableStateOf(false) }
+    var verifiedResumes by remember {
+        mutableStateOf<LocalResumeMetainfoSourceV1.Recovery?>(null)
+    }
+    var resumeProblem by remember { mutableStateOf<String?>(null) }
+    // A successful live transfer frame may change counters each second.
+    // Only original source identities/names and optionally historical Places
+    // change what a reviewed snapshot means.
+    val reviewIdentity = transfers.map {
+        Triple(it.infoHash, it.name, if (historicalPaths) it.savePath else "")
+    }
+    LaunchedEffect(reviewIdentity, historicalPaths, stale, busyEngine) {
+        verifiedResumes = null
+        resumeProblem = null
+    }
     val captureResult = remember(transfers, historicalPaths) {
         runCatching {
             SnapshotInventoryCaptureV1.local(transfers, Instant.now(),
@@ -65,7 +84,9 @@ internal fun LocalInventorySnapshotPanel(
         ActivityResultContracts.CreateDocument("application/octet-stream")
     ) { uri ->
         val bytes = pending
+        val definitions = pendingVerifiedDefinitions
         pending = null
+        pendingVerifiedDefinitions = 0
         if (uri == null || bytes == null) {
             saving = false
             if (uri != null) result = "No validated local snapshot was available for saving."
@@ -76,8 +97,14 @@ internal fun LocalInventorySnapshotPanel(
                     withContext(Dispatchers.IO) {
                         SnapshotDocumentWriterV1.writeAndVerify(context.contentResolver, uri, bytes)
                     }
-                    result = "Saved and SHA-256 readback verified. Inventory only: " +
-                        "no .torrent definitions, magnets, file payloads or resume data backed up."
+                    result = if (definitions > 0) {
+                        "Saved and SHA-256 verified $definitions real v1 torrent definitions. " +
+                            "This file may contain private-tracker passkeys; keep it secret. " +
+                            "No downloaded payload bytes or engine resume state are included."
+                    } else {
+                        "Saved and SHA-256 readback verified. Inventory only: " +
+                            "no .torrent definitions, magnets, file payloads or resume data backed up."
+                    }
                     resultVerified = true
                 } catch (cancel: CancellationException) {
                     result = "Save interrupted: the document may be incomplete. Verify or discard it."
@@ -129,6 +156,110 @@ internal fun LocalInventorySnapshotPanel(
                     Text("Saved path hints are historical only. They are not portable " +
                         "destinations and never become automatic restore targets.",
                         style = MaterialTheme.typography.bodySmall)
+                    Row(
+                        Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(
+                            value = includeDefinitions, enabled = !saving && !inspectingResumes,
+                            role = Role.Checkbox,
+                            onValueChange = { includeDefinitions = it; verifiedResumes = null }),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(checked = includeDefinitions, onCheckedChange = null)
+                        Text("Recover verified .torrent definitions (sensitive)")
+                    }
+                    if (includeDefinitions) {
+                        Text("Private tracker credentials, announce addresses or passkeys " +
+                            "may be present in recovered torrent metadata. This is optional " +
+                            "and OFF by default. Keep any exported file private. " +
+                            "Still no downloaded content or seeding-state migration.",
+                            color = MaterialTheme.colorScheme.error)
+                        OutlinedButton(
+                            onClick = {
+                                inspectingResumes = true
+                                verifiedResumes = null
+                                resumeProblem = null
+                                val frozen = transfers.toList()
+                                val usePaths = historicalPaths
+                                scope.launch {
+                                    try {
+                                        val candidate = withContext(Dispatchers.IO) {
+                                            LocalResumeMetainfoSourceV1.capture(
+                                                File(context.filesDir, "local-engine"),
+                                                frozen, Instant.now(), usePaths)
+                                        }
+                                        // Never advertise a preview from a now-stale source.
+                                        if (!stale && !busyEngine && includeDefinitions &&
+                                            reviewIdentity == frozen.map {
+                                                Triple(it.infoHash, it.name,
+                                                    if (usePaths) it.savePath else "")
+                                            }) {
+                                            verifiedResumes = candidate
+                                        } else {
+                                            resumeProblem = "Transfer inventory changed. " +
+                                                "Refresh and inspect again."
+                                        }
+                                    } catch (cancel: CancellationException) {
+                                        throw cancel
+                                    } catch (failure: Exception) {
+                                        resumeProblem = "No verified torrent definitions available: " +
+                                            (failure.message ?: "Unsafe or unsupported resume data")
+                                    } finally {
+                                        inspectingResumes = false
+                                    }
+                                }
+                            },
+                            enabled = !saving && !stale && !busyEngine &&
+                                !inspectingResumes && capture.inventoriedCount > 0,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                        ) { Text(if (inspectingResumes) "Inspecting saved native records…" else
+                            "Preview verified torrent definitions") }
+                        verifiedResumes?.let { recovery ->
+                            Text("Verified real v1 definitions: " +
+                                recovery.verifiedRestorableCount + "; remaining inventory-only: " +
+                                recovery.inventoryOnlyCount + "; unsupported/omitted: " +
+                                recovery.omittedCount + ".")
+                            Text("Only source-verified original torrent names and hashes " +
+                                "are accepted. This file is NOT a copy of its payload.",
+                                style = MaterialTheme.typography.bodySmall)
+                            Button(
+                                onClick = {
+                                    saving = true
+                                    result = null
+                                    resultVerified = false
+                                    val selected = recovery
+                                    scope.launch {
+                                        try {
+                                            val encoded = withContext(Dispatchers.IO) {
+                                                selected.toArchive()
+                                            }
+                                            if (stale || busyEngine || !includeDefinitions) {
+                                                result = "Source became stale. Preview again before saving."
+                                                saving = false
+                                            } else {
+                                                pending = encoded
+                                                pendingVerifiedDefinitions =
+                                                    selected.verifiedRestorableCount
+                                                val stamp = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")
+                                                    .withZone(ZoneOffset.UTC).format(Instant.now())
+                                                save.launch("chunks-phone-reviewed-$stamp.chunksnap")
+                                            }
+                                        } catch (cancel: CancellationException) {
+                                            throw cancel
+                                        } catch (failure: Exception) {
+                                            saving = false
+                                            result = "Cannot encode verified torrent metadata: " +
+                                                (failure.message ?: "Invalid snapshot")
+                                        }
+                                    }
+                                },
+                                enabled = !saving && !stale && !busyEngine &&
+                                    recovery.verifiedRestorableCount > 0,
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
+                            ) { Text("Save reviewed sensitive .chunksnap") }
+                        }
+                        resumeProblem?.let {
+                            Text(it, color = MaterialTheme.colorScheme.error)
+                        }
+                    }
                 } else Text("Cannot capture inventory: " +
                     (captureResult.exceptionOrNull()?.message ?: "Unknown problem"),
                     color = MaterialTheme.colorScheme.error)
@@ -144,6 +275,7 @@ internal fun LocalInventorySnapshotPanel(
                                 (encoded.exceptionOrNull()?.message ?: "Invalid capture")
                         } else {
                             pending = bytes
+                            pendingVerifiedDefinitions = 0
                             saving = true
                             result = null
                             resultVerified = false
