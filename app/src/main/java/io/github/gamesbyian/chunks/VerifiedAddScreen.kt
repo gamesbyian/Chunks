@@ -70,7 +70,7 @@ fun VerifiedAddScreen(
     recentPlaces: List<String> = emptyList(),
     /** Return whether the already-verified custom Place shortcut was persisted. */
     onCustomPlaceVerified: (String) -> Boolean = { true },
-    /** A phone transfer's exported .torrent to review; never submitted by itself. */
+    /** A phone-prepared .torrent draft (transfer export or Android file); never auto-submitted. */
     initialTorrent: ByteArray? = null,
     onInitialTorrentConsumed: () -> Unit = {}
 ) {
@@ -235,10 +235,10 @@ fun VerifiedAddScreen(
                         "\nInfohash: " + preview.infoHashV1,
                     style = MaterialTheme.typography.bodyMedium
                 )
-                if (fromPhone) Text("From a transfer on this phone. This definition includes its " +
-                    "tracker addresses, which may contain a private passkey, and is sent only " +
-                    "to this server when you confirm. The server downloads the files itself; " +
-                    "nothing is copied from the phone.",
+                if (fromPhone) Text("Original .torrent prepared on this phone. Its " +
+                    "tracker addresses may contain private passkeys, and the definition is " +
+                    "sent to this server only when you confirm. The server downloads " +
+                    "its own payload; no downloaded files are copied from the phone.",
                     style = MaterialTheme.typography.bodySmall)
             }
         }
