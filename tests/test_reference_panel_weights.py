@@ -96,10 +96,39 @@ class ReferencePanelWeightTests(unittest.TestCase):
             raw=Path(d)/'override.otf'
             result=make_weight(BASE/'Chunks-Regular.otf',GLYPHS,PROFILE,400,raw,folder.parent)
             self.assertEqual(result['A']['outline_source'],'weight-specific-svg-master')
+            self.assertEqual(result['A']['outline_encoding'],'native-bezier-curves')
+            self.assertEqual(result['B']['outline_encoding'],'sampled-offset-polygons')
+            a_font=TTFont(raw)
+            a_glyph=a_font.getBestCmap()[ord('A')]
+            b_glyph=a_font.getBestCmap()[ord('B')]
+            a_rec=RecordingPen()
+            b_rec=RecordingPen()
+            a_font.getGlyphSet()[a_glyph].draw(a_rec)
+            a_font.getGlyphSet()[b_glyph].draw(b_rec)
+            self.assertGreater(sum(op=='curveTo' for op,_ in a_rec.value),0,
+                               'Reviewed SVG master must retain native Bezier curves')
+            self.assertEqual(sum(op=='curveTo' for op,_ in b_rec.value),0,
+                             'Unreviewed derived shapes remain polygonal')
             self.assertIsNotNone(result['A']['override_svg_sha256'])
             self.assertEqual(result['B']['outline_source'],'contour-aware-derivation')
             self.assertEqual(len(result),62)
             self.assertEqual(TTFont(raw)['OS/2'].usWeightClass,400)
+
+    def test_cubic_svg_accepted_for_geometry_without_ignoring_transforms(self):
+        with tempfile.TemporaryDirectory() as d:
+            svg=Path(d)/'custom.svg'
+            svg.write_text('<svg xmlns="http://www.w3.org/2000/svg">'
+                           '<path d="M1 1 C2 0 5 0 6 1 L6 6 L1 6 Z"/>'
+                           '</svg>')
+            geom=source_polygons(svg,0.01)
+            self.assertEqual(topology(geom),(1,0))
+            self.assertGreater(geom.area,15)
+            svg.write_text('<svg xmlns="http://www.w3.org/2000/svg">'
+                           '<g transform="translate(40,0)">'
+                           '<path d="M1 1 C2 0 5 0 6 1 L6 6 L1 6 Z"/>'
+                           '</g></svg>')
+            with self.assertRaisesRegex(ValueError,'transforms'):
+                source_polygons(svg,0.01)
 
     def test_raw_build_is_deterministic_without_touching_accepted_masters(self):
         with tempfile.TemporaryDirectory() as d:
