@@ -1,0 +1,35 @@
+# Chunks Reference Panel: conservative stacked Latin accent study
+
+**Status: experimental and nonshipping.** This is a separate five-weight CFF family, not an Android font replacement or a modification of the earlier Consolidated family. Track source-accurate design work under [#347](https://github.com/gamesbyian/Chunks/issues/347).
+
+## Scope
+
+The [Latin source ledger](../../tools/audit_reference_latin_coverage.py) identifies **108** mapped Latin letters per weight with stacked canonical combining diacritics still inherited from the original licensed face. This experiment targets only the subset that can be built safely from original OFL font contours without pretending attached/integrated marks are separate.
+
+For each original character with an NFD decomposition of one ASCII base followed by at least two `Mn` combining marks:
+
+- Exclude lowercase `i` and `j` until the dot/dotless treatment for multiple marks can be individually designed.
+- Extract the corresponding original source CFF glyph, its original source base, and the new Chunks reference base.
+- Accept only **at least as many independently detached above-base source mark contours as Unicode marks**. A contour that overlaps or touches the original stem is not blindly removed from it.
+- Reuse the exact source mark paths without scaling; shift the group horizontally to the reference stem's centre and only raise it when needed to maintain **28 font units of base/mark clearance**. Preserve the source marks' relative placement.
+- Refuse any output outside **−480 to +1040 font units**, insufficient mark contours or ambiguous glyph separation. Refused characters retain their previous source CFF outlines.
+- Reconstruct the accepted compound from the actual custom reference base and original mark paths, assign the original reference base's advance, and recompute bounded contextual accent kerning against the **finished new charstrings**.
+
+A JSON report distinguishes eligible, accepted and skipped source characters with precise refusal reasons, all input/output SHA hashes and per-glyph placement. No Unicode map is extended, and the existing native Devanagari and Latin shaping features remain intact.
+
+## Commands and CI
+
+```sh
+python -m pip install -r tools/requirements-chunks-font.txt
+python tools/build_reference_stacked_accents.py
+python -m unittest discover -s tests -p test_reference_stacked_accents.py -v
+python tools/render_reference_stacked_accents.py
+```
+
+Output: five `assets/fonts/experimental/stacked-studies/ChunksReferencePanel-{Style}-Stacked.otf` files, `reference-stacked-accent-metrics.json`, and a real-OTF image specimen `reference-stacked-five-weights.png`. All are **independent, named, reversible experiments** that retain the original SIL OFL license and existing stable variants.
+
+CI in `.github/workflows/reference-panel-stacked-studies.yml` builds, tests, renders and publishes these outputs. The workflow commits reproducible generated artifacts only on a feature branch, never to `main` automatically.
+
+## Remaining acceptance
+
+Geometric detachment cannot establish optical style coherence, mark semantics, correct stacked accent ordering for every language, or Android accessibility. Any glyph skipped because of attached marks, too-tall composition or i/j ambiguity needs independent design work. Even accepted composites need visual checks at 14/24/48/82px and native Android normal/200% font scaling, wrapping, truncation and TalkBack. Do **not** install this font into the app or call issue #347 complete on the strength of a green source build alone.
