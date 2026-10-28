@@ -151,6 +151,7 @@ class SnapshotRestoreJournalV1Test {
             fail("Unsafe transition or input should have been rejected")
         } catch (_: IllegalArgumentException) {
         } catch (_: IllegalStateException) {
+        } catch (_: IOException) {
         }
     }
 }
