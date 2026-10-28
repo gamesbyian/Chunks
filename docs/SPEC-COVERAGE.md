@@ -5,13 +5,13 @@
 
 | Acceptance slice | Required behavior | Evidence status, 2026-10-28 |
 |---|---|---|
-| Plain hostname | Add HTTPS, plan bounded same-origin provider/generic endpoints, verify version plus complete main view | In open PR #463; earlier Android/JVM and visual CI passed, current merged-base head needs re-test |
-| Explicit ruTorrent instance URL | Respect account prefix and numbered /rutorrent2/ /rutorrent3/ tenant; map only that root's HTTP-RPC plugin | In PR #463; fixture-tested; secondary Seedhost instances have earlier independent read-only evidence |
-| Exact RPC URL | Preserve /RPC1, /RPC2, /xmlrpc, custom prefix/port without searching a different tenant | In PR #463; unverified direct HTTPS Transdrone-derived /ianseeds/RPC1 candidate |
-| Providers/custom setups | Major providers plus self-hosted, arbitrary TLS reverse proxy and advanced manual path | Limited SeedHost/Ultra/Whatbox/Appbox/Feral/RapidSeedbox patterns in PR #463; broader catalog #464 |
-| Credentials and HTTPS | Challenge-based Basic/Digest, scoped password, strict TLS, no redirect, no downgrade, auth-failure stop | Existing transport and Keystore foundation, initial discovery in PR #463; CA/SSO/VPN and granular diagnostics planned |
-| Capability selection | Successful version + valid main view, then safe method-level comparison; distinguish read-only/partial functionality | First version+main tier in PR #463; read-only method grading and endpoint choice pending #464 |
-| Onboarding and repair | Minimal form, saved independently verified profiles, cancel/progress, actionable errors, advanced repair, 48dp/200%/TalkBack | Minimal form + verified save in PR #463; cancellation/repair/accessibility acceptance pending #464 |
+| Plain hostname | Add HTTPS, plan bounded same-origin provider/generic endpoints, verify version plus complete main view | Merged #463; exact-head Android/JVM 40766948769 and native atlas 40766948771 passed (fixture/JVM tier, no live provider proof) |
+| Explicit ruTorrent instance URL | Respect account prefix and numbered /rutorrent2/ /rutorrent3/ tenant; map only that root's HTTP-RPC plugin | Merged #463; fixture-tested; secondary Seedhost instances have earlier independent read-only evidence |
+| Exact RPC URL | Preserve /RPC1, /RPC2, /xmlrpc, custom prefix/port without searching a different tenant | Merged #463; unverified direct HTTPS Transdrone-derived /ianseeds/RPC1 candidate |
+| Providers/custom setups | Major providers plus self-hosted, arbitrary TLS reverse proxy and advanced manual path | Limited SeedHost/Ultra/Whatbox/Appbox/Feral/RapidSeedbox patterns in merged #463; broader catalog #464 |
+| Credentials and HTTPS | Challenge-based Basic/Digest, scoped password, strict TLS, no redirect, no downgrade, auth-failure stop | Existing transport and Keystore foundation, initial discovery in merged #463; CA/SSO/VPN and granular diagnostics planned |
+| Capability selection | Successful version + valid main view, then safe method-level comparison; distinguish read-only/partial functionality | First version+main tier in merged #463; read-only method grading and endpoint choice pending #464 |
+| Onboarding and repair | Minimal form, saved independently verified profiles, cancel/progress, actionable errors, advanced repair, 48dp/200%/TalkBack | Minimal form + verified save in merged #463; cancellation/repair/accessibility acceptance pending #464 |
 | Live acceptance | Credential-protected, manual, instance-scoped tests and Android handset validation | Existing Seedhost HTTP-RPC evidence; Smart Connect end-to-end and other providers not yet proven |
 
 Authority: [SMART-REMOTE-CONNECTION](SMART-REMOTE-CONNECTION.md), [SECURITY](SECURITY.md), [DECISIONS](DECISIONS.md), [WORK-QUEUE](WORK-QUEUE.md) and [issue #464](https://github.com/gamesbyian/Chunks/issues/464). Neither a candidate URL nor a mock success proves real-host permission, peer port reachability or physical-phone operation.
@@ -28,6 +28,13 @@ Authority: [SMART-REMOTE-CONNECTION](SMART-REMOTE-CONNECTION.md), [SECURITY](SEC
 
 Owner request #415 is fully specified in PRODUCT, UX, ARCHITECTURE, WORK-QUEUE and DECISIONS. #423's one-time episode focus is groundwork only and is hidden while a rolling policy is active.
 
+**Manual customization coverage (unimplemented):** Multi-provider choice grid, individual square/poster/banner roles, local upload and image-URL ingestion, per-role crop/fit, manual override precedence, context-sensitive show/season/artist/album/author/series/issue rules with affected-count confirmation, future inheritance, undo, cache ownership and remote isolation. Tests specified in [TRANSFER-ARTWORK.md](TRANSFER-ARTWORK.md), #403.
+
+**Expanded coverage (unimplemented):** Cross-media taxonomy and provider registry (including adult metadata opt-in), independent metadata+image fallback across provider misses, bounded rate limits/cooldowns, GIS search-term inference and license/safety validation, guaranteed generic vector art, user correction and offline graceful degradation. Fixture coverage and UI/physical evidence in [TRANSFER-ARTWORK](TRANSFER-ARTWORK.md), tracked #403.
+
+## Owner visual requirement: square artwork on local and remote transfers (#403)
+
+**Status: specified, not implemented or accepted.** Both transfer lists/details need recognizable square movie/TV art, generic icons for unidentified files, provider-independent native-square lookup priority, opt-in external requests, offline parser and confidence rejection, manual override, cache, privacy safeguards, accessible resilient cards and physical-device review. Detailed requirements/acceptance matrix: [TRANSFER-ARTWORK.md](TRANSFER-ARTWORK.md). Evidence gates: provider terms/auth verified; parser/mock-provider/consent/privacy tests; local+remote Compose visual 320px/200% and TalkBack; large-list performance; physically observed device behavior. Do not treat issue creation or screenshots as functional implementation.
 
 **2026-10-27 additional verified source/emulator coverage:** #356 **MERGED** crash-safe snapshot mutation-journal library (exact head `90e6c57b20058cf464f7847e63b248659f21a463`, JVM 40621529085, API35 40621528947), preserving uncertainty and requiring independent complete-inventory/exact-hash reconciliation before any future restored Add. It is not wired to either engine, so no automatic restore is claimed. #361 **MERGED** reviewed 40-file local Select/Skip with stale-priority preflight, verified native readback and partial-write uncertainty (JVM 40621178965, API35 40621179034). #375 **MERGED** read-only full local restore comparison search, filter and pagination up to 512 entries (JVM 40621808509). Current-main local biometric integration #378 and stacked remote per-account gate #369 remain unaccepted pending exact-head CI and physical Android auth evidence. Human handset/real BitTorrent peer-byte gates still open.
 

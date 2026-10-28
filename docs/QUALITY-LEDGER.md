@@ -4,6 +4,12 @@
 
 - Local run in the agent container (JDK 21, Gradle 9.3.1, Android SDK platform 37.0): `gradle :app:testDebugUnitTest --tests '*FinishInOrder*'` **15/15 passed** (planner/record 9, runner 6 including a real libtorrent4j 2.1.0-39 Linux session that hash-checks piece-aligned episodes, advances past verified files and refuses a stale replay with `STALE_REVIEW`); the full JVM suite earlier compiled the same sources with all pre-existing tests passing. `:app:compileDebugAndroidTestKotlin` and `:app:assembleDebug` succeeded. Exact PR-head GitHub Android/JVM and API35 runs are the merge gate and are recorded on the PR.
 - **Not established:** emulator process-death recovery, physical handset, Doze/background, controlled multi-peer swarm time-to-first-file comparison, remote rTorrent, 200%/TalkBack on device.
+## 2026-10-28 evening PR reconciliation (app lane)
+
+- **#463 MERGED** `ea5833e` (Smart Connect discovery) — see entry below; merge conflicts were documentation-only (both sides' ledger/queue paragraphs kept).
+- **#468 MERGED** `992d506` (docs-only): job-only Copy/Move Transfer contract, with an added explicit carve-out that the shipped, real-host-verified **Copy files to this phone** payload action (run [40756284173](https://github.com/gamesbyian/Chunks/actions/runs/40756284173)) is a distinct capability.
+- **#406 MERGED** `8f7a034` (docs-only, planned artwork contract). Its branch carried ~55 pre-squash duplicates of already-merged PRs; only its 24 artwork commits were re-applied onto main (old head `cf636e0` stays reachable) and a resurrected stale queue paragraph was dropped.
+- **#472 MERGED** `bf5df95`: API35 instrumentation had been red on main since #460 because `ServerToPhoneCopyControlInstrumentedTest`'s fake rejected the new read-only `network.bind_address`; first seen on #423's reconciled head (run [40766874515](https://github.com/gamesbyian/Chunks/actions/runs/40766874515)). Fix head `dc4c76e` passed API35 [40769122471](https://github.com/gamesbyian/Chunks/actions/runs/40769122471) and Android/JVM [40769122600](https://github.com/gamesbyian/Chunks/actions/runs/40769122600). Any PR whose API35 run failed on that test (including the font lane's #445) should be re-run after merging main.
 
 ## 2026-10-28 Smart Connect specification/implementation and connection evidence
 
@@ -20,7 +26,7 @@
   endpoint test. The owner's successful Transdrone
   `wood.seedhost.eu/ianseeds/RPC1` configuration has SSL unchecked, so
   the equivalent HTTPS direct-SCGI path is **unverified**.
-- **PR #463 OPEN at documentation checkpoint:** source-based
+- **PR #463 MERGED 2026-10-28** as `ea5833e` after reconciliation with main (exact head `8a31823b`; Android/JVM [40766948769](https://github.com/gamesbyian/Chunks/actions/runs/40766948769), native atlas [40766948771](https://github.com/gamesbyian/Chunks/actions/runs/40766948771) successful). Original description: source-based
   `RemoteSmartConnect` candidate planning and actual Android Connect
   integration, bounded to HTTPS and the same supplied origin; explicit
   numbered ruTorrent URLs do not fall back to another tenant. Its
