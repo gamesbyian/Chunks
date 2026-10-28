@@ -1,0 +1,63 @@
+name: Build and validate Chunks OpenType family
+on:
+  push:
+    paths:
+      - 'tools/build_chunks_fonts.py'
+      - 'tools/requirements-chunks-font.txt'
+      - 'assets/fonts/source/**'
+      - '.github/workflows/chunks-font-family.yml'
+  pull_request:
+    paths:
+      - 'tools/build_chunks_fonts.py'
+      - 'tools/requirements-chunks-font.txt'
+      - 'assets/fonts/**'
+      - '.github/workflows/chunks-font-family.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build-fonts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -r tools/requirements-chunks-font.txt
+      - name: Build true CFF OTF font family and optical kerning
+        run: python tools/build_chunks_fonts.py --source 'assets/fonts/source/Baloo2[wght].ttf' --out assets/fonts/chunks
+      - name: Validate glyph coverage, weights and OpenType formatting
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from fontTools.ttLib import TTFont
+          names={400:'Regular',500:'Medium',600:'Semibold',700:'Bold',800:'ExtraBold'}
+          for w,s in names.items():
+            p=Path('assets/fonts/chunks')/f'Chunks-{s}.otf'
+            assert p.exists(),p
+            f=TTFont(p)
+            assert f.sfntVersion=='OTTO' and 'CFF ' in f and 'glyf' not in f
+            assert f['OS/2'].usWeightClass==w
+            assert len(f.getBestCmap()) >= 350
+            assert all(ord(c) in f.getBestCmap() for c in 'Chunks ÁÉÜäñ1234$€£¥')
+            assert 'GPOS' in f and 'GSUB' in f and 'GDEF' in f
+            print(p, p.stat().st_size, 'bytes;',len(f.getBestCmap()), 'characters')
+          PY
+      - name: Upload complete family and metrics
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-otf-family
+          path: assets/fonts/chunks/*
+      - name: Commit deterministic builds on source branch
+        if: github.event_name == 'push' && github.ref != 'refs/heads/main'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add assets/fonts/chunks
+          if ! git diff --cached --quiet; then
+            git commit -m 'build(fonts): check in optimized five-weight Chunks OTFs'
+            git push
+          fi

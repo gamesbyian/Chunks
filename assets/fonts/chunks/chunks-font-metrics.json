@@ -1,0 +1,157 @@
+{
+  "source": "Baloo2[wght].ttf",
+  "version": "0.1.0",
+  "purpose": "draft reference-based family; not exact original vector data",
+  "weights": {
+    "Regular": {
+      "file": "Chunks-Regular.otf",
+      "bytes": 590084,
+      "glyphs": 1601,
+      "mapped_codepoints": 856,
+      "vertical_metrics": {
+        "ascender": 1078,
+        "descender": -524,
+        "lineGap": 0,
+        "em": 1000
+      },
+      "optical_kerning": {
+        "measured_glyphs": 151,
+        "examined_pairs": 22801,
+        "adjusted_pairs": 18951,
+        "median_absolute_adjustment": 41.0,
+        "residual_90pct": 37.4
+      },
+      "tracking_em": {
+        "display": -0.008,
+        "heading": -0.002,
+        "body": 0.0057
+      },
+      "line_height_em": {
+        "display": 1.14,
+        "heading": 1.22,
+        "body": 1.36,
+        "small_labels": 1.42
+      }
+    },
+    "Medium": {
+      "file": "Chunks-Medium.otf",
+      "bytes": 592344,
+      "glyphs": 1601,
+      "mapped_codepoints": 856,
+      "vertical_metrics": {
+        "ascender": 1078,
+        "descender": -524,
+        "lineGap": 0,
+        "em": 1000
+      },
+      "optical_kerning": {
+        "measured_glyphs": 151,
+        "examined_pairs": 22801,
+        "adjusted_pairs": 18176,
+        "median_absolute_adjustment": 35.0,
+        "residual_90pct": 17.67
+      },
+      "tracking_em": {
+        "display": -0.01,
+        "heading": -0.0035,
+        "body": 0.005
+      },
+      "line_height_em": {
+        "display": 1.14,
+        "heading": 1.22,
+        "body": 1.36,
+        "small_labels": 1.42
+      }
+    },
+    "Semibold": {
+      "file": "Chunks-Semibold.otf",
+      "bytes": 589172,
+      "glyphs": 1601,
+      "mapped_codepoints": 856,
+      "vertical_metrics": {
+        "ascender": 1078,
+        "descender": -524,
+        "lineGap": 0,
+        "em": 1000
+      },
+      "optical_kerning": {
+        "measured_glyphs": 151,
+        "examined_pairs": 22801,
+        "adjusted_pairs": 17398,
+        "median_absolute_adjustment": 32.0,
+        "residual_90pct": 4.96
+      },
+      "tracking_em": {
+        "display": -0.012,
+        "heading": -0.005,
+        "body": 0.0043
+      },
+      "line_height_em": {
+        "display": 1.14,
+        "heading": 1.22,
+        "body": 1.36,
+        "small_labels": 1.42
+      }
+    },
+    "Bold": {
+      "file": "Chunks-Bold.otf",
+      "bytes": 583812,
+      "glyphs": 1601,
+      "mapped_codepoints": 856,
+      "vertical_metrics": {
+        "ascender": 1078,
+        "descender": -524,
+        "lineGap": 0,
+        "em": 1000
+      },
+      "optical_kerning": {
+        "measured_glyphs": 151,
+        "examined_pairs": 22801,
+        "adjusted_pairs": 15751,
+        "median_absolute_adjustment": 27.0,
+        "residual_90pct": 0.47
+      },
+      "tracking_em": {
+        "display": -0.014,
+        "heading": -0.0065,
+        "body": 0.0035
+      },
+      "line_height_em": {
+        "display": 1.14,
+        "heading": 1.22,
+        "body": 1.36,
+        "small_labels": 1.42
+      }
+    },
+    "ExtraBold": {
+      "file": "Chunks-ExtraBold.otf",
+      "bytes": 577956,
+      "glyphs": 1601,
+      "mapped_codepoints": 856,
+      "vertical_metrics": {
+        "ascender": 1078,
+        "descender": -524,
+        "lineGap": 0,
+        "em": 1000
+      },
+      "optical_kerning": {
+        "measured_glyphs": 151,
+        "examined_pairs": 22801,
+        "adjusted_pairs": 13944,
+        "median_absolute_adjustment": 24.0,
+        "residual_90pct": 0.48
+      },
+      "tracking_em": {
+        "display": -0.016,
+        "heading": -0.008,
+        "body": 0.0027
+      },
+      "line_height_em": {
+        "display": 1.14,
+        "heading": 1.22,
+        "body": 1.36,
+        "small_labels": 1.42
+      }
+    }
+  }
+}

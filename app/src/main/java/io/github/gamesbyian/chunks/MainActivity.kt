@@ -58,6 +58,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.model.TransferCatalog
+import io.github.gamesbyian.chunks.model.TorrentIdentityHandoff
 import io.github.gamesbyian.chunks.model.CollectionMembershipFilter
 import io.github.gamesbyian.chunks.model.CollectionNameRegistryRules
 import io.github.gamesbyian.chunks.model.CollectionMembershipRules
@@ -72,6 +73,7 @@ import io.github.gamesbyian.chunks.rpc.RemoteFile
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
 import io.github.gamesbyian.chunks.rpc.RemoteQueueActivityContext
 import io.github.gamesbyian.chunks.snapshots.SnapshotInventoryExportScreen
+import io.github.gamesbyian.chunks.snapshots.SnapshotDocumentInspectScreen
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -119,7 +121,7 @@ class MainActivity : ComponentActivity() {
 }
 
 private enum class Section(val label: String) {
-    TRANSFERS("Transfers"), PLACES("Places"), ORGANIZE("Organize"), SERVER("Server"), ARCHIVES("ZIP review"), LOCAL("On this phone"), ADD("Add"), NAMES("Names"), SNAPSHOT("Inventory backup")
+    TRANSFERS("Transfers"), PLACES("Places"), ORGANIZE("Organize"), SERVER("Server"), ARCHIVES("ZIP review"), LOCAL("On this phone"), ADD("Add"), NAMES("Names"), SNAPSHOT("Inventory backup"), SNAPSHOT_INSPECT("Inspect backup")
 }
 
 @Composable
@@ -154,6 +156,7 @@ private fun ChunksApp(sharedMagnet: String?) {
     var filesError by remember { mutableStateOf<String?>(null) }
     var filesLoading by remember { mutableStateOf(false) }
     var magnet by remember { mutableStateOf("") }
+    var phoneHandoffMagnet by remember { mutableStateOf<String?>(null) }
     var draftPath by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     val aliasStore = remember(context) { TransferAliasStore(context) }
@@ -235,8 +238,18 @@ private fun ChunksApp(sharedMagnet: String?) {
 
         if (section == Section.ARCHIVES) {
             LocalZipReviewScreen(onBack = { section = Section.TRANSFERS })
+        } else if (section == Section.SNAPSHOT_INSPECT) {
+            SnapshotDocumentInspectScreen(onBack = { section = Section.TRANSFERS })
         } else if (section == Section.LOCAL && server == null) {
-            LocalEngineScreen(onBack = { section = Section.TRANSFERS })
+            LocalEngineScreen(
+                onBack = { section = Section.TRANSFERS },
+                initialMagnet = phoneHandoffMagnet,
+                onPrefillConsumed = { phoneHandoffMagnet = null },
+                onPrepareRemote = { draft ->
+                    magnet = draft
+                    section = Section.TRANSFERS
+                }
+            )
         } else if (server == null) {
             ConnectionScreen(
                 endpoint = endpoint, username = username, password = password,
@@ -273,6 +286,7 @@ private fun ChunksApp(sharedMagnet: String?) {
                     }
                 },
                 onLocalZipReview = { section = Section.ARCHIVES },
+                onInspectSnapshot = { section = Section.SNAPSHOT_INSPECT },
                 onLocalEngine = { section = Section.LOCAL },
                 onEndpoint = { endpoint = it }, onUsername = { username = it },
                 onPassword = { password = it },
@@ -357,7 +371,8 @@ private fun ChunksApp(sharedMagnet: String?) {
                 modifier = Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                for (tab in Section.entries.filter { it != Section.ADD && it != Section.NAMES && it != Section.SNAPSHOT }) {
+                for (tab in Section.entries.filter { it != Section.ADD && it != Section.NAMES && it != Section.SNAPSHOT &&
+                    it != Section.SNAPSHOT_INSPECT }) {
                     FilterChip(
                         selected = section == tab,
                         onClick = { section = tab },
@@ -384,6 +399,14 @@ private fun ChunksApp(sharedMagnet: String?) {
                     onRefresh = refresh, onAdd = { section = Section.ADD },
                     onReviewNames = { section = Section.NAMES },
                     onExportSnapshot = { section = Section.SNAPSHOT },
+                    onInspectSnapshot = { section = Section.SNAPSHOT_INSPECT },
+                    onPreparePhone = { source ->
+                        val prepared = TorrentIdentityHandoff.prepare(source.hash, source.name)
+                        if (prepared != null) {
+                            phoneHandoffMagnet = prepared
+                            section = Section.LOCAL
+                        }
+                    },
                     selectedHash = expandedHash, files = files, filesError = filesError,
                     filesLoading = filesLoading,
                     onInspect = { transfer ->
@@ -430,8 +453,18 @@ private fun ChunksApp(sharedMagnet: String?) {
                     stale = stale, loading = loading,
                     onBack = { section = Section.TRANSFERS }
                 )
+                Section.SNAPSHOT_INSPECT -> SnapshotDocumentInspectScreen(
+                    onBack = { section = Section.TRANSFERS })
                 Section.ARCHIVES -> LocalZipReviewScreen(onBack = { section = Section.TRANSFERS })
-                Section.LOCAL -> LocalEngineScreen(onBack = { section = Section.TRANSFERS })
+                Section.LOCAL -> LocalEngineScreen(
+                    onBack = { section = Section.TRANSFERS },
+                    initialMagnet = phoneHandoffMagnet,
+                    onPrefillConsumed = { phoneHandoffMagnet = null },
+                    onPrepareRemote = { draft ->
+                        magnet = draft
+                        section = Section.ADD
+                    }
+                )
                 Section.PLACES -> PlacesScreen(transfers) { path ->
                     draftPath = path
                     section = Section.ADD
@@ -536,6 +569,7 @@ private fun ConnectionScreen(
     rememberLogin: Boolean, savedLoginPresent: Boolean, credentialNotice: String?,
     onRememberLogin: (Boolean) -> Unit, onForgetLogin: () -> Unit,
     onLocalZipReview: () -> Unit,
+    onInspectSnapshot: () -> Unit,
     onLocalEngine: () -> Unit,
     onEndpoint: (String) -> Unit, onUsername: (String) -> Unit,
     onPassword: (String) -> Unit, onConnect: () -> Unit
@@ -611,6 +645,12 @@ private fun ConnectionScreen(
             }
         }
         item {
+            OutlinedButton(onClick = onInspectSnapshot,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+                Text("Inspect .chunksnap backup (offline)")
+            }
+        }
+        item {
             OutlinedButton(onClick = onLocalEngine,
                 modifier = Modifier.fillMaxWidth().height(52.dp)) {
                 Text("Download on this phone (experimental)")
@@ -636,6 +676,8 @@ private fun TransfersScreen(
     onFilter: (TransferFilter) -> Unit, order: TransferOrder,
     onOrder: (TransferOrder) -> Unit, onRefresh: () -> Unit, onAdd: () -> Unit,
     onReviewNames: () -> Unit, onExportSnapshot: () -> Unit,
+    onInspectSnapshot: () -> Unit,
+    onPreparePhone: (RemoteTransfer) -> Unit,
     selectedHash: String?, files: List<RemoteFile>?, filesError: String?,
     filesLoading: Boolean, onInspect: (RemoteTransfer) -> Unit
 ) {
@@ -709,6 +751,10 @@ private fun TransfersScreen(
                     modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
                     Text("Save inventory-only snapshot")
                 }
+                OutlinedButton(onClick = onInspectSnapshot,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+                    Text("Inspect saved .chunksnap file")
+                }
                 OutlinedButton(
                     onClick = {
                         selecting = !selecting
@@ -729,8 +775,29 @@ private fun TransfersScreen(
                     Modifier.weight(1f))
                 StatTile("Up", Units.bytes(list.sumOf { it.upBytesPerSecond ?: 0 }) + "/s", Coral,
                     Modifier.weight(1f))
-                StatTile("Active", list.count { it.started }.toString(), Lime, Modifier.weight(1f))
+                StatTile("Start set", list.count { it.started }.toString(),
+                    Lime, Modifier.weight(1f))
             }
+        }
+        item {
+            val transferring = list.count {
+                (it.downBytesPerSecond ?: 0L) > 0L ||
+                    (it.upBytesPerSecond ?: 0L) > 0L
+            }
+            val zeroDownloading = list.count {
+                it.started && it.sizeBytes > it.completedBytes &&
+                    it.downBytesPerSecond == 0L
+            }
+            val unknown = list.count {
+                it.started && it.sizeBytes > it.completedBytes &&
+                    it.downBytesPerSecond == null
+            }
+            Text("$transferring reporting traffic · $zeroDownloading started but 0 B/s down" +
+                (if (unknown > 0) " · $unknown without a reported download rate" else ""),
+                style = MaterialTheme.typography.bodySmall)
+            Text("Start set is a server flag, not proof the engine is active or peers are " +
+                "delivering data. Rates are a single loaded-view observation.",
+                style = MaterialTheme.typography.bodySmall)
         }
         item {
             OutlinedTextField(
@@ -905,7 +972,8 @@ private fun TransfersScreen(
                     transfer, knownDownloadingHashes, !stale && !loading
                 ),
                 files = files, filesLoading = filesLoading, filesError = filesError,
-                onInspect = { onInspect(transfer) }
+                onInspect = { onInspect(transfer) },
+                onPreparePhone = { onPreparePhone(transfer) }
             )
             }
         }
@@ -938,8 +1006,10 @@ private fun TransferCard(
     snapshotRevision: Long,
     otherTransferDownloading: Boolean,
     files: List<RemoteFile>?, filesLoading: Boolean, filesError: String?,
-    onInspect: () -> Unit
+    onInspect: () -> Unit,
+    onPreparePhone: () -> Unit
 ) {
+    var confirmPhoneHandoff by remember(transfer.hash) { mutableStateOf(false) }
     Card(
         colors = CardDefaults.cardColors(containerColor = Color.White),
         shape = RoundedCornerShape(24.dp),
@@ -1001,6 +1071,30 @@ private fun TransferCard(
             }
             OutlinedButton(onClick = onInspect, modifier = Modifier.height(48.dp)) {
                 Text(if (expanded) "Hide files" else "Inspect files")
+            }
+            if (TorrentIdentityHandoff.prepare(transfer.hash, transfer.name) != null) {
+                OutlinedButton(onClick = { confirmPhoneHandoff = true },
+                    enabled = !stale, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                    Text("Prepare torrent on phone (identity only)")
+                }
+                if (confirmPhoneHandoff) {
+                    Text("Only this torrent's v1 hash/name becomes a magnet Add draft " +
+                        "on your phone. No downloaded bytes move, and the phone may " +
+                        "need to download everything again. Private/tracker-only " +
+                        "torrents may not find peers. The server transfer stays intact.",
+                        style = MaterialTheme.typography.bodySmall)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = {
+                            confirmPhoneHandoff = false
+                            onPreparePhone()
+                        }, enabled = !stale, modifier = Modifier.weight(1f)
+                            .heightIn(min = 48.dp)) { Text("Review phone Add") }
+                        OutlinedButton(onClick = { confirmPhoneHandoff = false },
+                            modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                            Text("Cancel")
+                        }
+                    }
+                }
             }
             TransferLifecycleControl(
                 remote = remote, transfer = transfer, snapshotStale = stale,

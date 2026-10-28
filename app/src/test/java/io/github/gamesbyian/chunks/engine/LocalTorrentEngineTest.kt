@@ -50,6 +50,22 @@ class LocalTorrentEngineTest {
         }
     }
 
+    /**
+     * libtorrent's verified-piece progress is not proof that its asynchronous
+     * disk cache is already readable by an independent filesystem consumer.
+     * Every post-download byte-array assertion must follow the same exact-hash
+     * CACHE_FLUSHED gate used by Android's SAF library-copy path.
+     */
+    private fun requireFlushed(engine: LocalTorrentEngine, infoHash: String) {
+        waitFor {
+            val state = engine.status(infoHash)
+            state?.progressPpm == 1_000_000 &&
+                state.state in setOf(LocalTransferState.FINISHED, LocalTransferState.SEEDING)
+        }
+        assertTrue("Native cache flush must finish before disk byte readback",
+            engine.flushCompletedForLibraryRead(infoHash, timeoutMs = 30_000L))
+    }
+
     private fun added(result: LocalAddResult): LocalTransferStatus {
         assertTrue(result.toString(), result is LocalAddResult.AddedStopped)
         return (result as LocalAddResult.AddedStopped).status
@@ -77,6 +93,7 @@ class LocalTorrentEngineTest {
             state == LocalTransferState.SEEDING || state == LocalTransferState.FINISHED
         }
 
+        requireFlushed(leecher, leeching.infoHash)
         for ((name, bytes) in fixture.files)
             assertArrayEquals(name, bytes, File(destination, "Chunks public fixture/$name").readBytes())
         val done = requireNotNull(leecher.status(leeching.infoHash))
@@ -159,6 +176,7 @@ class LocalTorrentEngineTest {
         assertTrue(File(state, leech.infoHash + ".resume").isFile)
         first.resume(leech.infoHash)
         waitFor { first.status(leech.infoHash)?.progressPpm == 1_000_000 }
+        requireFlushed(first, leech.infoHash)
         assertEquals(1, first.saveResumeData())
         first.close()
 
@@ -220,6 +238,7 @@ class LocalTorrentEngineTest {
 
         assertEquals(LocalCommandOutcome.VERIFIED, leecher.resume(seed.infoHash).outcome)
         waitFor { leecher.status(seed.infoHash)?.progressPpm == 1_000_000 }
+        requireFlushed(leecher, seed.infoHash)
         assertArrayEquals(fixture.files.getValue("episode.bin"),
             File(destination, "Chunks public fixture/episode.bin").readBytes())
     }
@@ -250,6 +269,7 @@ class LocalTorrentEngineTest {
             state != null && state.metadataKnown && !state.stopped && !state.uploadOnly
         }
         waitFor { leecher.status(seed.infoHash)?.progressPpm == 1_000_000 }
+        requireFlushed(leecher, seed.infoHash)
         for ((name, bytes) in fixture.files) {
             assertArrayEquals(name, bytes, File(destination, "Chunks public fixture/$name").readBytes())
         }
@@ -274,6 +294,7 @@ class LocalTorrentEngineTest {
             state != null && state.metadataKnown && !state.stopped
         }
         waitFor { leecher.status(seeded.infoHash)?.progressPpm == 1_000_000 }
+        requireFlushed(leecher, seeded.infoHash)
         assertArrayEquals(fixture.files.getValue("episode.bin"),
             File(destination, "Chunks public fixture/episode.bin").readBytes())
     }
@@ -322,6 +343,7 @@ class LocalTorrentEngineTest {
         val total = fixture.files.values.sumOf { it.size.toLong() }
         // ~1.3 MB at 128 KiB/s is about 10 s; unthrottled loopback takes well under 2 s.
         assertTrue("finished in $seconds s", seconds > total / limit.toDouble() * 0.6)
+        requireFlushed(leecher, leech.infoHash)
         assertArrayEquals(fixture.files.getValue("episode.bin"),
             File(destination, "Chunks public fixture/episode.bin").readBytes())
     }
@@ -360,7 +382,8 @@ class LocalTorrentEngineTest {
             leecher.files(leech.infoHash)?.single { it.path.endsWith("notes.txt") }?.let { it.doneBytes == it.sizeBytes } == true &&
                 leecher.status(leech.infoHash)?.state == LocalTransferState.FINISHED
         }
-        // Progress counts verified pieces; the disk thread may still be flushing them.
+        // Progress counts verified pieces; explicitly wait for stable disk readback.
+        requireFlushed(leecher, leech.infoHash)
         val notes = File(destination, "Chunks public fixture/extras/notes.txt")
         waitFor { notes.isFile && notes.readBytes().contentEquals(fixture.files.getValue("extras/notes.txt")) }
         val skipped = requireNotNull(leecher.files(leech.infoHash)).single { it.index == big.index }
@@ -376,6 +399,7 @@ class LocalTorrentEngineTest {
         added(resumed.addStopped(fixture.torrent, destination, listOf(InetSocketAddress("127.0.0.1", seeder.listenPort()))))
         resumed.resume(leech.infoHash)
         waitFor { resumed.status(leech.infoHash)?.progressPpm == 1_000_000 }
+        requireFlushed(resumed, leech.infoHash)
         assertArrayEquals(fixture.files.getValue("episode.bin"),
             File(destination, "Chunks public fixture/episode.bin").readBytes())
         assertEquals(LocalCommandOutcome.NOT_FOUND, leecher.setFileWanted("c".repeat(40), 0, true))
