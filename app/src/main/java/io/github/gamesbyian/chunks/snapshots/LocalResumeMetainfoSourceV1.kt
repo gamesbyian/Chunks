@@ -3,6 +3,7 @@ package io.github.gamesbyian.chunks.snapshots
 import io.github.gamesbyian.chunks.engine.LocalTransferStatus
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader
 import java.io.File
+import java.io.ByteArrayOutputStream
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.time.Instant
@@ -26,6 +27,31 @@ internal object LocalResumeMetainfoSourceV1 {
     private const val MAX_RESUME = 4L * 1024 * 1024
     private const val MAX_META = 2 * 1024 * 1024
     private val identity = Regex("[a-f0-9]{40}")
+
+    /**
+     * Descriptor-level no-follow open avoids replacing a previously lstat'd
+     * filename with a symlink. Streaming with an explicit upper bound refuses
+     * growth while reading, before any unbounded heap allocation.
+     */
+    private fun readBoundedResume(file: File): ByteArray? = try {
+        Files.newInputStream(file.toPath(), LinkOption.NOFOLLOW_LINKS).use { input ->
+            val buffer = ByteArray(16_384)
+            val bytes = ByteArrayOutputStream()
+            var emptyReads = 0
+            while (true) {
+                val count = input.read(buffer)
+                if (count < 0) break
+                if (count == 0) {
+                    if (++emptyReads > 16) return null
+                    continue
+                }
+                emptyReads = 0
+                if (bytes.size().toLong() + count > MAX_RESUME) return null
+                bytes.write(buffer, 0, count)
+            }
+            bytes.toByteArray().takeIf { it.isNotEmpty() }
+        }
+    } catch (_: Exception) { null }
 
     enum class Unavailable {
         MISSING_OR_UNSAFE_RECORD, INVALID_RESUME, MISSING_NATIVE_INFO,
@@ -77,7 +103,7 @@ internal object LocalResumeMetainfoSourceV1 {
                 } else try {
                     // A source file could change during our bounded read.
                     // Any malformed/truncated JNI decode fails this row closed.
-                    val packed = file.readBytes().takeIf { it.size in 1..MAX_RESUME.toInt() }
+                    val packed = readBoundedResume(file)
                     if (packed == null) {
                         failures[hash] = Unavailable.MISSING_OR_UNSAFE_RECORD
                         null
