@@ -181,7 +181,7 @@ incoming peer port `53281` with the HTTPS management port `443`.
 
 [SMART-REMOTE-CONNECTION](SMART-REMOTE-CONNECTION.md) now defines the general
 user-facing provider discovery process. The first Android implementation
-is [open PR #463](https://github.com/gamesbyian/Chunks/pull/463):
+is [merged #463](https://github.com/gamesbyian/Chunks/pull/463):
 hostname-only inputs plan bounded, same-origin HTTPS RPC candidates;
 complete `/rutorrent/`, `/rutorrent2/` and `/rutorrent3/` input must
 stay on the exact selected instance. The connection is accepted only
