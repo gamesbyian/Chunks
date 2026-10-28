@@ -1,6 +1,9 @@
 name: Build and validate Chunks OpenType family
 on:
   push:
+    # Run once for merged changes, not again for each PR branch push.
+    # Pull requests remain protected by their existing font-specific path filters.
+    branches: [main]
     paths:
       - 'tools/build_chunks_fonts.py'
       - 'tools/brand_glyphs.py'
