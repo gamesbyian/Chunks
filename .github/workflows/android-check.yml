@@ -66,6 +66,18 @@ jobs:
               app/build/test-results/testDebugUnitTest/*.xml 2>/dev/null | sort | tail -60 || true
             exit 1
           fi
+      # A chained native handler that re-raises shows only "SIGSEGV (sent by
+      # kill)"; the full report's thread list is needed to find the real fault.
+      # This workflow holds no secrets, so the report's environment is safe.
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: jvm-fatal-error-reports
+          path: |
+            app/hs_err_pid*.log
+            app/build/test-results/testDebugUnitTest/*.xml
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Verify embedded revision and save APK checksum
         run: |
           apk="app/build/outputs/apk/debug/chunks-debug.apk"

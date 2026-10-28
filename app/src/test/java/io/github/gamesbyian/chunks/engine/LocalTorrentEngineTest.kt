@@ -194,6 +194,71 @@ class LocalTorrentEngineTest {
         assertTrue(File(destination, "Chunks public fixture/episode.bin").isFile)
     }
 
+    /**
+     * A tracker-backed download stopped part-way keeps its verified pieces
+     * across an engine restart, comes back stopped and silent, and after an
+     * explicit Start finishes from where it was rather than starting over.
+     * The leecher only learns the (throttled) seeder from the tracker.
+     */
+    @Test fun interruptedTrackerDownloadKeepsPiecesAcrossRestartAndFinishesAfterStart() {
+        LoopbackTracker().use { tracker ->
+            val parent = temp.newFolder("interrupted-seed")
+            val root = File(parent, "Interrupted fixture").apply { mkdirs() }
+            val payload = ByteArray(1_600_000).also { Random(11).nextBytes(it) }
+            File(root, "payload.bin").writeBytes(payload)
+            val pieceSize = 32 * 1024
+            val torrent = TorrentBuilder().path(root).pieceSize(pieceSize)
+                .addTracker(tracker.announceUrl).generate().entry().bencode()
+
+            val seeder = LocalTorrentEngine(LocalEngineConfig(listenInterfaces = "127.0.0.1:0",
+                allowMultipleConnectionsPerIp = true, rateLimitLocalPeers = true)).also { it.start(); engines += it }
+            seeder.setRateLimits(LocalRateLimits(uploadBytesPerSecond = 128 * 1024))
+            val seed = added(seeder.addStopped(torrent, parent))
+            assertEquals(LocalCommandOutcome.VERIFIED, seeder.resume(seed.infoHash).outcome)
+            waitFor { seeder.status(seed.infoHash)?.state == LocalTransferState.SEEDING }
+            waitFor(20_000) { tracker.announces.get() >= 1 }
+
+            val state = temp.newFolder("interrupted-state")
+            val destination = temp.newFolder("interrupted-destination")
+            val first = persistentEngine(state)
+            val hash = added(first.addStopped(torrent, destination)).infoHash
+            assertEquals(LocalCommandOutcome.VERIFIED, first.resume(hash).outcome)
+            waitFor(60_000) { (first.status(hash)?.doneBytes ?: 0) >= 640_000 }
+            val stop = first.pause(hash)
+            assertEquals(LocalCommandOutcome.VERIFIED, stop.outcome)
+            val interruptedAt = stop.status!!.doneBytes
+            assertTrue("interrupted at $interruptedAt", interruptedAt < payload.size)
+            assertTrue(first.saveResumeData() >= 1)
+            first.close()
+
+            val second = persistentEngine(state)
+            assertTrue(second.restoreProblems.isEmpty())
+            waitFor { second.status(hash)?.state !in setOf(LocalTransferState.CHECKING, null) }
+            val restored = requireNotNull(second.status(hash))
+            assertTrue("Restored transfers must not start on their own", restored.stopped)
+            assertTrue("restored ${restored.doneBytes} < interrupted $interruptedAt",
+                restored.doneBytes >= interruptedAt)
+            // The byte counters are all-time totals carried in the resume file.
+            Thread.sleep(1_500)
+            val idle = requireNotNull(second.status(hash))
+            assertTrue(idle.stopped)
+            assertEquals("A stopped restored transfer downloads nothing",
+                restored.payloadDownloadedBytes, idle.payloadDownloadedBytes)
+            assertEquals(restored.doneBytes, idle.doneBytes)
+
+            seeder.setRateLimits(LocalRateLimits())
+            assertEquals(LocalCommandOutcome.VERIFIED, second.resume(hash).outcome)
+            requireFlushed(second, hash)
+            assertArrayEquals(payload, File(destination, "Interrupted fixture/payload.bin").readBytes())
+            // Only the missing remainder (plus a few in-flight pieces) crosses the wire again.
+            // All-time counters lag the stats tick; a later sample can only grow.
+            Thread.sleep(3_000)
+            val fetchedAgain = requireNotNull(second.status(hash)).payloadDownloadedBytes - idle.payloadDownloadedBytes
+            assertTrue("re-downloaded $fetchedAgain after interruption at $interruptedAt",
+                fetchedAgain <= payload.size - interruptedAt + 8L * pieceSize)
+        }
+    }
+
     @Test fun unusableResumeFilesAreReportedAndLeftUntouched() {
         val fixture = fixture()
         val state = temp.newFolder("engine-state")
