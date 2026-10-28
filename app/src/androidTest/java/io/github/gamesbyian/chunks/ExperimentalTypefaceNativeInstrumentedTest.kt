@@ -42,8 +42,17 @@ class ExperimentalTypefaceNativeInstrumentedTest {
         // Other Android workflows deliberately do not stage the experimental
         // faces. They may compile this test but must skip its data-dependent
         // fixture, rather than fail unrelated Add/download UI test suites.
-        assumeTrue("Experimental debug font fixtures not staged",
-            assets.list("referenceFonts")?.count { it.endsWith("-Stacked.otf") } == 5)
+        val staged = assets.list("referenceFonts")?.filter {
+            it.endsWith("-Stacked.otf")
+        }.orEmpty()
+        // A dedicated font CI run sets this argument to make absent fixtures
+        // a hard error, not an ignored assumption or a false green test.
+        if (inst.arguments.getString("chunks_font_fixture") == "required") {
+            assertEquals("Experimental CFFs absent in native debug app assets: $staged",
+                5, staged.size)
+        } else {
+            assumeTrue("Experimental debug font fixtures not staged", staged.size == 5)
+        }
         val dir = File(context.filesDir, "font-acceptance")
         assertTrue("Native font review output directory", dir.isDirectory || dir.mkdirs())
         val density = context.resources.displayMetrics.density
