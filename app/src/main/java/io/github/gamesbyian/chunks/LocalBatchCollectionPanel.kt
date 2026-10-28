@@ -45,7 +45,9 @@ internal fun LocalBatchCollectionPanel(
     shown: List<LocalTransferStatus>,
     inventoryStale: Boolean,
     store: TransferCollectionStore,
-    onMembershipChanged: () -> Unit
+    onMembershipChanged: () -> Unit,
+    /** Reviewed Start (true) / Stop (false) of exactly the selected identities. */
+    onBatchLifecycle: ((List<String>, Boolean) -> Unit)? = null
 ) {
     val scope = rememberCoroutineScope()
     var expanded by remember { mutableStateOf(false) }
@@ -54,12 +56,14 @@ internal fun LocalBatchCollectionPanel(
     var confirming by remember { mutableStateOf(false) }
     var saving by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
+    var lifecycleConfirm by remember { mutableStateOf<Boolean?>(null) }
     // A fresh list can reorder or remove items behind a card. Reset every
     // outstanding batch when the exact observed identities or stale gate change.
     val keys = remember(transfers) { transfers.map { it.infoHash }.sorted() }
     LaunchedEffect(keys, inventoryStale) {
         selected = emptySet()
         confirming = false
+        lifecycleConfirm = null
         if (inventoryStale) expanded = false
     }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -176,6 +180,35 @@ internal fun LocalBatchCollectionPanel(
                         "Review local Collection assignment")
                 }
                 message?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+                if (onBatchLifecycle != null) {
+                    val chosen = transfers.filter { it.infoHash in selected }
+                    val toStart = chosen.count { it.stopped }
+                    val toStop = chosen.size - toStart
+                    Text("Start or stop selected", style = MaterialTheme.typography.titleMedium)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(onClick = { lifecycleConfirm = true },
+                            enabled = !saving && !inventoryStale && toStart > 0,
+                            modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Start $toStart") }
+                        OutlinedButton(onClick = { lifecycleConfirm = false },
+                            enabled = !saving && !inventoryStale && toStop > 0,
+                            modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Stop $toStop") }
+                    }
+                    lifecycleConfirm?.let { start ->
+                        Text("${if (start) "Start" else "Stop"} ${if (start) toStart else toStop} selected " +
+                            "phone transfers one at a time. If any state cannot be confirmed, Chunks " +
+                            "stops there without retrying. Files stay where they are.",
+                            style = MaterialTheme.typography.bodySmall)
+                        Button(onClick = {
+                            lifecycleConfirm = null
+                            val ids = chosen.map { it.infoHash }
+                            selected = emptySet()
+                            onBatchLifecycle(ids, start)
+                        }, enabled = !saving && !inventoryStale,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                            Text(if (start) "Confirm Start" else "Confirm Stop")
+                        }
+                    }
+                }
             }
         }
     }
