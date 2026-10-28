@@ -29,3 +29,13 @@ The licensed source and SIL OFL text must accompany redistributed derivatives.
 - The generated OTFs each retain **1,601 glyphs / 856 Unicode codepoints**. Their 151-character Latin optical probe examines **22,801 possible pairs per weight**, with weight-specific corrections from **18,826 (Regular)** to **14,017 (ExtraBold)**; these are counts, not subjective quality scores.
 - Measured tracking presets are preserved in per-weight JSON. Full-script-safe multiline leading spans approximately **1.60–1.67 em** by weight, while Latin-only display/body recommendations remain shorter. No Android renderer or human font inspection proof is implied by CI.
 - The rendered specimen was inspected: bold filled silhouettes now reflect the original six reference-traced letters much more closely than the source-foundation face; still open are matching the rest of the alphabet, checking outline fidelity at small sizes and intentional spacing around heavy counters.
+
+## Narrow Android typography integration (PR after #326)
+
+The Compose **Chunks** brand header now consumes the actual generated **ExtraBold 800** CFF OTF via Android `R.font.chunks_extrabold`. The instrumented heading still owns one accessible TalkBack node, and the dense torrent rows, dialogs and filenames intentionally retain their previous system font pending actual device truncation/contrast review. The displayed wordmark now starts with the reconstructed uppercase **C**; measured display tracking is **−0.0067 em**. The logo artwork SVG remains independently editable and authoritative for marketing usage.
+
+Android resources include exactly the ExtraBold OTF and an unchanged source-matched SIL OFL license text. A new `verifyChunksWordmarkFont` Gradle preBuild gate rejects any stale or mismatched copy. Font CI regenerates the OTF and stages the Android resource together on its source branches. This is a compiled asset and a heading-level implementation; device screenshots and owner visual acceptance remain separate gates.
+
+## Regression extension: small-size ink clearance and complete character atlas
+
+The build audit now measures positive shaped silhouette separation for realistic transfer/UI text at **14px, 24px and 48px** per weight. Sample-pair minima below 0.3px fail CI. These are software-rendered smoke tests, not guarantees for every possible Unicode pair or mobile rasterizer. CI additionally publishes `chunks-characters-grid.png`: actual generated uppercase, lowercase, digits, punctuation and extended Latin samples for all five weights, making design inconsistencies observable without relying on an illustrative character sheet.

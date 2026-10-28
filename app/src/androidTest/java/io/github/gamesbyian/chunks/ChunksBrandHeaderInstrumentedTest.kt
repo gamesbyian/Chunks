@@ -37,7 +37,7 @@ class ChunksBrandHeaderInstrumentedTest {
             .assertExists()
             .assertIsDisplayed()
         // The visual pieces still render as actual scalable native text.
-        rule.onNodeWithText("chunks", useUnmergedTree = true).assertExists()
+        rule.onNodeWithText("Chunks", useUnmergedTree = true).assertExists()
         rule.onNodeWithText("Your downloads have places to be.", useUnmergedTree = true)
             .assertExists()
     }

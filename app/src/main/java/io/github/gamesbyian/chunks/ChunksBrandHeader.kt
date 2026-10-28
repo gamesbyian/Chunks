@@ -20,9 +20,14 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+
+private val ChunksDisplayTypeface = FontFamily(Font(R.font.chunks_extrabold, weight = FontWeight.ExtraBold))
 
 /**
  * Native, scalable brand header inspired by the six owner-selected references.
@@ -56,16 +61,19 @@ internal fun ChunksBrandHeader(modifier: Modifier = Modifier) {
         Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(
-                    "chunks",
-                    fontWeight = FontWeight.Black,
+                    "Chunks",
+                    fontFamily = ChunksDisplayTypeface,
+                    fontWeight = FontWeight.ExtraBold,
                     fontSize = 35.sp,
-                    letterSpacing = (-2).sp,
+                    // Measured optical preset in chunks-font-metrics.json (800/display).
+                    letterSpacing = (-0.0067).em,
                     lineHeight = 40.sp,
                     color = paper
                 )
                 Text(
                     ".",
-                    fontWeight = FontWeight.Black,
+                    fontFamily = ChunksDisplayTypeface,
+                    fontWeight = FontWeight.ExtraBold,
                     fontSize = 35.sp,
                     lineHeight = 40.sp,
                     color = coral
