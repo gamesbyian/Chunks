@@ -15,9 +15,9 @@ internal object LocalEpisodeFocusPlanner {
         val changes: List<Change>
     )
 
-    private val seasonEpisode = Regex("""(?i)(?:^|[^a-z0-9])s(\d{1,2})[ ._-]*e(\d{1,3})(?:[^0-9]|$)""")
-    private val xEpisode = Regex("""(?i)(?:^|[^a-z0-9])(\d{1,2})x(\d{1,3})(?:[^0-9]|$)""")
-    private val episode = Regex("""(?i)(?:^|[^a-z0-9])(?:episode|ep)[ ._-]*(\d{1,3})(?:[^0-9]|$)""")
+    private val seasonEpisode = Regex("""(?i)(?:^|[^a-z0-9])s(\d{1,2})[ ._-]*e(\d{1,3})(?=[^0-9]|$)""")
+    private val xEpisode = Regex("""(?i)(?:^|[^a-z0-9])(\d{1,2})x(\d{1,3})(?=[^0-9]|$)""")
+    private val episode = Regex("""(?i)(?:^|[^a-z0-9])(?:episode|ep)[ ._-]*(\d{1,3})(?=[^0-9]|$)""")
     private val extras = Regex("""(?i)(?:^|[/ ._-])(sample|trailer|featurette|extras?|behind.the.scenes)(?:[/ ._-]|$)""")
 
     data class EpisodeKey(val season: Int, val episode: Int)
