@@ -47,13 +47,18 @@ class LocalEngineService : Service() {
                 Intent(context, MainActivity::class.java)
                     .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-            manager.notify(NOTIFICATION_ID, Notification.Builder(context, CHANNEL_ID)
-                .setSmallIcon(android.R.drawable.stat_sys_download)
-                .setContentTitle("Chunks on this phone")
-                .setContentText("Transfer activity hidden by Chunks privacy lock.")
-                .setVisibility(Notification.VISIBILITY_SECRET)
-                .setOngoing(true).setOnlyAlertOnce(true).setContentIntent(open)
-                .build())
+            try {
+                manager.notify(NOTIFICATION_ID, Notification.Builder(context, CHANNEL_ID)
+                    .setSmallIcon(android.R.drawable.stat_sys_download)
+                    .setContentTitle("Chunks on this phone")
+                    .setContentText("Transfer activity hidden by Chunks privacy lock.")
+                    .setVisibility(Notification.VISIBILITY_SECRET)
+                    .setOngoing(true).setOnlyAlertOnce(true).setContentIntent(open)
+                    .build())
+            } catch (_: RuntimeException) {
+                // The policy remains enabled; future service ticks also redact.
+                // Never let an OEM notification failure reopen transfer content.
+            }
         }
 
         /** Pause every running transfer and persist state. Safe to call without the service. */
