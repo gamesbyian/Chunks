@@ -47,6 +47,7 @@ private fun Context.activityOrNull(): Activity? {
 @Composable
 internal fun LocalTransferPrivacyGate(
     scope: String,
+    onBack: () -> Unit = {},
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
@@ -181,6 +182,10 @@ internal fun LocalTransferPrivacyGate(
             modifier = Modifier.fillMaxSize().padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            OutlinedButton(onClick = onBack,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                Text("Back to Chunks")
+            }
             Text("Phone transfers locked", style = MaterialTheme.typography.headlineMedium)
             Text("Your torrent names, files, folders, Collections and transfer controls " +
                 "are hidden until Android verifies your fingerprint, face or device screen lock.")
