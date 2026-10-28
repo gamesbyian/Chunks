@@ -104,7 +104,14 @@ class MainActivity : ComponentActivity() {
                 primary = Blue, onPrimary = Color.White, surface = Cream,
                 onSurface = Ink, background = Cream, secondary = Ink
             )) {
-                Surface(modifier = Modifier.fillMaxSize()) { ChunksApp(incomingMagnet, incomingTorrent) { incomingTorrent = null } }
+                Surface(modifier = Modifier.fillMaxSize()) {
+                    ChunksApp(
+                        sharedMagnet = incomingMagnet,
+                        incomingTorrent = incomingTorrent,
+                        onIncomingMagnetConsumed = { incomingMagnet = null },
+                        onIncomingTorrentConsumed = { incomingTorrent = null }
+                    )
+                }
             }
         }
     }
@@ -144,6 +151,7 @@ private enum class Section(val label: String) {
 private fun ChunksApp(
     sharedMagnet: String?,
     incomingTorrent: Uri?,
+    onIncomingMagnetConsumed: () -> Unit,
     onIncomingTorrentConsumed: () -> Unit
 ) {
     val context = LocalContext.current
@@ -206,11 +214,21 @@ private fun ChunksApp(
         if (incomingTorrent != null) section = Section.LOCAL
     }
 
-    // Incoming Android Sharesheet/VIEW links prefill a local draft. Never auto-submit.
+    // Every incoming magnet becomes an explicit Add draft, never an Add call.
+    // When no rTorrent connection exists, the phone engine must be reachable
+    // without requiring remote login. A connected remote retains its Add review.
+    // Consume the Activity intent once accepted so repeating the *same* magnet
+    // from Android launches a fresh, deliberate review.
     LaunchedEffect(sharedMagnet) {
         if (sharedMagnet != null) {
-            magnet = sharedMagnet
-            if (server != null) section = Section.ADD
+            if (server == null) {
+                phoneHandoffMagnet = sharedMagnet
+                section = Section.LOCAL
+            } else {
+                magnet = sharedMagnet
+                section = Section.ADD
+            }
+            onIncomingMagnetConsumed()
         }
     }
 

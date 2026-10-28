@@ -1,0 +1,26 @@
+name: Check Chunks SVG quality dossier
+
+on:
+  pull_request:
+    paths:
+      - 'docs/design/svg/**'
+      - 'docs/design/approved/chunks-app-icon-master.svg'
+      - 'tools/audit_svg_inventory.py'
+      - '.github/workflows/svg-inventory-quality.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inventory-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify every SVG, alias and canonical icon extraction
+        run: |
+          python3 tools/validate_svg_library.py
+          python3 tools/check_svg_approved_derivatives.py
+      - name: Require current full-inventory QA and provenance report
+        run: python3 tools/audit_svg_inventory.py
