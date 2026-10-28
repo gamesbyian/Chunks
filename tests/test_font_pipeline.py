@@ -7,6 +7,8 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'tools'))
 from brand_glyphs import STROKE,REFERENCE_INSET,filled_reference_outline,apply_brand_glyphs,source_paths,stroke_skeleton
+from latin_class_kerning import extend_latin_kerning
+from build_chunks_fonts import CANDIDATE_ALPHABET
 from audit_chunks_fonts import analyze
 from fontTools.ttLib import TTFont
 
@@ -52,6 +54,28 @@ class BrandMastersTest(unittest.TestCase):
             cs2=g['CFF '].cff.topDictIndex[0].CharStrings[name]
             cs1.compile();cs2.compile()
             self.assertEqual(cs1.bytecode,cs2.bytecode)
+
+class AccentKerningClassTest(unittest.TestCase):
+    def test_unseen_accent_inherits_without_changing_measured_pair(self):
+        from tempfile import TemporaryDirectory
+        from PIL import ImageFont
+        base=ROOT/'assets/fonts/chunks/Chunks-Bold.otf'
+        f=TTFont(base); cmap=f.getBestCmap()
+        # Direct pairs are already in the existing OTF. An additional -40-unit
+        # representative correction only changes a new accented-class pair.
+        x=extend_latin_kerning(f,[(cmap[ord('A')],cmap[ord('V')],-40)],CANDIDATE_ALPHABET)
+        self.assertGreaterEqual(x['eligible_accent_variants'],300)
+        self.assertEqual(x['class_lookups'],2)
+        with TemporaryDirectory() as td:
+            path=Path(td)/'accent.otf';f.save(path)
+            original=ImageFont.truetype(str(base),100)
+            derived=ImageFont.truetype(str(path),100)
+            self.assertAlmostEqual(original.getlength('AV'),derived.getlength('AV'),delta=.2)
+            # Different scripts and non-canonically decomposed Latin letters
+            # retain identical native shaping/positioning.
+            self.assertAlmostEqual(original.getlength('हिन्दी'),derived.getlength('हिन्दी'),delta=.2)
+            self.assertAlmostEqual(original.getlength('ĐV'),derived.getlength('ĐV'),delta=.2)
+            self.assertAlmostEqual(original.getlength('ĀV')-derived.getlength('ĀV'),2.0,delta=.25)
 
 class OutputTest(unittest.TestCase):
     def test_all_five_otfs_pass_audit(self):

@@ -25,6 +25,7 @@ from fontTools.ttLib.tables import otTables
 from fontTools.ttLib.tables.otBase import ValueRecord
 from brand_glyphs import apply_brand_glyphs
 from spacing_optimizer import measured_presets
+from latin_class_kerning import extend_latin_kerning
 
 WEIGHTS = {400:'Regular',500:'Medium',600:'Semibold',700:'Bold',800:'ExtraBold'}
 # Sample identical across weights for a fair trend comparison.
@@ -260,6 +261,7 @@ def build(source, outdir, only=None, brand_svg=None):
             interim=Path(scratch)/'spacing.otf';cff.save(interim)
             records, optical=optical_kerning(interim,cff,weight)
             add_gpos_pairs(cff,records)
+            accent_inheritance=extend_latin_kerning(cff,records,CANDIDATE_ALPHABET)
         path=outdir/f'Chunks-{style}.otf'
         cff.save(path,reorderTables=True)
         # Reopening is an important acceptance check. No TTF masquerading as .otf.
@@ -270,7 +272,7 @@ def build(source, outdir, only=None, brand_svg=None):
         track,lines,tracking_audit=measured_presets(path,check,weight)
         stats={'file':path.name,'bytes':path.stat().st_size,'glyphs':len(check.getGlyphOrder()),
                'mapped_codepoints':len(check.getBestCmap()),'vertical_metrics':metrics,
-               'optical_kerning':optical,'wordmark_glyphs':glyphs,'tracking_em':track,
+               'optical_kerning':optical,'latin_accent_inheritance':accent_inheritance,'wordmark_glyphs':glyphs,'tracking_em':track,
                'line_height_em':lines,'spacing_audit':tracking_audit}
         result['weights'][style]=stats
         print(f"{style}: {stats['mapped_codepoints']} chars, {stats['optical_kerning']['adjusted_pairs']} adjusted kern pairs, {stats['bytes']/1024:.0f} KiB")
