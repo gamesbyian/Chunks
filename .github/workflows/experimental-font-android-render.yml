@@ -6,6 +6,7 @@ on:
       - 'assets/fonts/experimental/stacked-studies/**'
       - 'tools/export_native_font_screenshots.sh'
       - 'tools/assert_debug_stacked_font_assets.sh'
+      - 'tools/run_native_font_acceptance.sh'
       - '.github/workflows/experimental-font-android-render.yml'
   workflow_dispatch:
 permissions:
@@ -57,11 +58,7 @@ jobs:
           profile: pixel_6
           emulator-boot-timeout: 600
           disable-animations: true
-          script: |
-            gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
-            bash tools/assert_debug_stacked_font_assets.sh
-            gradle --no-daemon :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=io.github.gamesbyian.chunks.ExperimentalTypefaceNativeInstrumentedTest
-            bash tools/export_native_font_screenshots.sh
+          script: bash tools/run_native_font_acceptance.sh
       - name: Retain exact Android raster evidence
         if: always()
         uses: actions/upload-artifact@v4
