@@ -10,7 +10,20 @@ Eight SVGs in `assets/fonts/source/reference-alphabet/weight-overrides/{400,500,
 
 The existing experimental CFF weight study builder imports **those exact curved SVG outlines** directly, rather than converting the masters into polygon samples. Its safety checks reject topology changes, bounds outside a 3px source envelope, excessive silhouette area and incorrect optical ink gaps. The expanded native-weight unit tests assert one connected contour, source-to-CFF hashes, no counters, at least eight native curve segments, and strictly progressive ink mass across all weights. The experiment retains all 856 mapped Unicode codepoints and unrelated-script shaping. Current tests also render 14/24/48/82px editorial comparisons and remeasure optical kerning.
 
-These eight outlines bring the independently specified basic-alphabet design set to **6 of 62 glyphs per lighter weight**, subject to CI and visual acceptance. The other **56 of 62** remain outline derivations, not independently authored weight masters. No automatic rebuild of later Consolidated/Stacked/Mixed experiments is assumed; their source manifests remain separate provenance.
+These eight outlines bring the independently specified basic-alphabet design set to **6 of 62 glyphs per lighter weight**, with the experimental CFF build and local font-geometry tests passing. They are still subject to original art/editorial acceptance. The other **56 of 62** remain outline derivations, not independently authored weight masters. No automatic rebuild of later Consolidated/Stacked/Mixed experiments is assumed; their source manifests remain separate provenance.
+
+## Verified first-build geometry and font receipts
+
+The independently constructed source SVGs compiled into four CFF fonts with 856 mapped Unicode codepoints, source SHA-256 in the weight-study ledger and actual rendered 14/24/48/82px review matrices.
+
+| Candidate weight | Native T ink vs reference | Native L ink vs reference | Measured minimum sample ink gap at 14px |
+|---|---:|---:|---:|
+| Regular | 73.22% | 71.93% | 0.828px |
+| Medium | 80.24% | 79.75% | 0.594px |
+| Semibold | 87.61% | 87.70% | 0.609px |
+| Bold | 94.49% | 95.09% | 0.705px |
+
+These are **shape measurements**, not perceptual stroke-weight or optical kerning approval. First-build tests verified 14,048 / 14,170 / 13,839 / 13,869 direct optical pair records across Regular through Bold. The complete source and binary hashes are in `assets/fonts/experimental/weight-studies/reference-panel-weight-study-metrics.json`. The source-branch CI run must be complemented by exact final PR-head checks before merge.
 
 ## Next acceptance gates
 
