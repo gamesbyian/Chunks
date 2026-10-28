@@ -2,6 +2,7 @@ package io.github.gamesbyian.chunks
 
 import android.Manifest
 import android.content.Context
+import android.net.Uri
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.SystemClock
@@ -197,6 +198,8 @@ private class PendingLocalAdd(val preview: TorrentMetainfoPreview, val bytes: By
 internal fun LocalEngineScreen(
     onBack: (() -> Unit)? = null,
     initialMagnet: String? = null,
+    initialTorrentUri: Uri? = null,
+    onTorrentConsumed: () -> Unit = {},
     onPrefillConsumed: () -> Unit = {},
     onPrepareRemote: ((String) -> Unit)? = null
 ) {
@@ -390,22 +393,35 @@ internal fun LocalEngineScreen(
         scope.launch {
             pending = withContext(Dispatchers.IO) {
                 try {
-                    val input = context.contentResolver.openInputStream(uri) ?: return@withContext null
-                    val bytes = input.use {
-                        val out = ByteArrayOutputStream()
-                        val buffer = ByteArray(16_384)
-                        while (true) {
-                            val count = it.read(buffer)
-                            if (count < 0) break
-                            require(out.size() + count <= TorrentMetainfoReader.MAX_BYTES)
-                            out.write(buffer, 0, count)
-                        }
-                        out.toByteArray()
-                    }
-                    PendingLocalAdd(TorrentMetainfoReader.preview(bytes), bytes)
+                    val reviewed = SharedTorrentDocument.read(context.contentResolver, uri)
+                    PendingLocalAdd(reviewed.preview, reviewed.bytes)
+                } catch (cancel: kotlinx.coroutines.CancellationException) {
+                    throw cancel
                 } catch (_: Exception) { null }
             }
-            if (pending == null) message = "This document is not a supported v1 .torrent file or exceeds 2 MiB."
+            if (pending == null) message =
+                "This document is not a supported v1 .torrent file, was inaccessible or exceeds 2 MiB."
+        }
+    }
+
+    LaunchedEffect(initialTorrentUri) {
+        val externalUri = initialTorrentUri ?: return@LaunchedEffect
+        // Never start the torrent from an external VIEW/SEND Intent. Only
+        // prepare the same explicit Add review reached through the picker.
+        pending = null
+        message = "Opening shared .torrent for review. No download has started."
+        try {
+            val reviewed = withContext(Dispatchers.IO) {
+                SharedTorrentDocument.read(context.contentResolver, externalUri)
+            }
+            pending = PendingLocalAdd(reviewed.preview, reviewed.bytes)
+            message = "Shared torrent reviewed locally. Confirm its destination and Add below."
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            message = "The shared file was unavailable, invalid or not supported v1 .torrent metadata. No torrent was added."
+        } finally {
+            onTorrentConsumed()
         }
     }
 
