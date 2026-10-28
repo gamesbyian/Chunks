@@ -91,3 +91,15 @@ The six owner-uploaded repository-root `[IPT].torrent` inputs and two additional
 - **How it cleans up:** one exact Stop and one session-only erase of that identity only, then a check that main-view identities equal the preflight set. No step is retried after an uncertain reply.
 - **What it publishes:** only fixed stage labels, an allow-listed exception class name, and post-login screenshots (never the login screen).
 - **Status:** first accepted in run [40652034320](https://github.com/gamesbyian/Chunks/actions/runs/40652034320). Emulator, not a physical handset.
+
+## Owner step: one completed public torrent for the copy probe (2026-10-28)
+
+The read-only copy probe ([`seedhost-copy-to-phone-readonly.yml`](../.github/workflows/seedhost-copy-to-phone-readonly.yml)) needs a **complete, started, non-private** transfer on the primary instance. Every small completed transfer there today is private, so Seedhost inbound peer reachability is untested. The owner agreed on 2026-10-28 to add one public torrent. Use the official Debian netinst, which has ordinary seeders, so the server can complete it:
+
+1. Open the primary ruTorrent at https://ianseeds.wood.seedhost.eu/rutorrent/ (not `/rutorrent2/` or `/rutorrent3/`).
+2. Open **Add Torrent**. In **Torrent URL**, paste the current official file, today `https://cdimage.debian.org/debian-cd/current/amd64/bt-cd/debian-13.7.0-amd64-netinst.iso.torrent`. If that 404s, Debian has released a newer point version: copy the `debian-…-amd64-netinst.iso.torrent` link from https://cdimage.debian.org/debian-cd/current/amd64/bt-cd/ instead.
+3. Leave **Don't start torrent** unchecked and the default directory unchanged, then click **Add**.
+4. Wait until it shows 100% and is **seeding** (about 756 MiB; usually a few minutes). Leave it started. Don't add a label, private tracker or ratio rule that would stop it.
+5. Tell the agent. It dispatches the probe on `main` with `max_mib` `800` and `seconds` `900`. The probe sends no mutation: the runner's phone engine downloads the payload with the server as its only peer and discards it.
+
+The owner may stop or remove the transfer at any time afterwards. Removing its data is the owner's own ruTorrent action; Chunks automation never deletes it. An INCONCLUSIVE result with `maxPeers=0` means the runner could not reach the server's peer port (hosting firewall or NAT), not a Chunks Copy defect.

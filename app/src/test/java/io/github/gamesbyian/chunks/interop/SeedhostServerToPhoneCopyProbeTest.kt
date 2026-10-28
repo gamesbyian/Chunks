@@ -50,13 +50,14 @@ class SeedhostServerToPhoneCopyProbeTest {
         require(user.isNotBlank() && password.isNotEmpty())
         val maxBytes = System.getenv("CHUNKS_COPY_PROBE_MAX_BYTES")?.toLongOrNull() ?: (64L shl 20)
         val seconds = System.getenv("CHUNKS_COPY_PROBE_SECONDS")?.toLongOrNull() ?: 300L
-        require(maxBytes in 1L..(512L shl 20) && seconds in 30L..1800L)
+        require(maxBytes in 1L..(1024L shl 20) && seconds in 30L..1800L)
 
         val remote = RTorrentRemote(RemoteCredentials(rawUrl, user, password))
         val candidates = remote.listTransfers("main")
             .filter { it.started && it.sizeBytes in 1..maxBytes && it.completedBytes == it.sizeBytes &&
                 Regex("[0-9a-fA-F]{40}").matches(it.hash) }
-            .sortedBy { it.sizeBytes }.take(12)
+            // Private transfers are common on this host; look past them.
+            .sortedBy { it.sizeBytes }.take(40)
         var chosen: ServerToPhoneCopy.Ready? = null
         var chosenName = ""
         var privateCount = 0

@@ -1,13 +1,19 @@
 name: Local engine public peer swarm
 
 # Real Internet peer evidence for the on-phone engine core: collect a licensed
-# Internet Archive torrent (web seeds stripped, only the official Archive
-# tracker kept), then download a bounded byte budget from ordinary BitTorrent
-# peers with libtorrent. No secrets, no rTorrent. A swarm with no reachable
+# Internet Archive torrent or the official Debian amd64 netinst torrent (web
+# seeds stripped, only the source's official tracker kept), then download a
+# bounded byte budget from ordinary BitTorrent peers with libtorrent. No secrets, no rTorrent. A swarm with no reachable
 # peer ends INCONCLUSIVE, never as engine acceptance.
 on:
   workflow_dispatch:
     inputs:
+      source:
+        description: "archive (archive_id below) or debian (current official amd64 netinst)"
+        type: choice
+        options: [archive, debian]
+        default: archive
+        required: true
       archive_id:
         description: "Licensed Internet Archive identifier"
         type: string
@@ -26,6 +32,7 @@ on:
   pull_request:
     paths:
       - ".github/workflows/local-engine-public-swarm.yml"
+      - "tools/public_fixture_collector.py"
       - "app/src/test/java/io/github/gamesbyian/chunks/engine/LocalEnginePublicSwarmTest.kt"
 
 permissions:
@@ -41,15 +48,21 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
-      - name: Collect the licensed Archive torrent (no web seeds, Archive tracker only)
+      - name: Collect the public torrent (no web seeds, official source tracker only)
         if: github.event_name == 'workflow_dispatch'
         env:
+          SOURCE: ${{ inputs.source }}
           ARCHIVE_ID: ${{ inputs.archive_id }}
           BUDGET_MIB: ${{ inputs.budget_mib }}
           SECONDS_LIMIT: ${{ inputs.seconds }}
         run: |
           set -euo pipefail
-          python3 -I tools/public_fixture_collector.py --archive-id "$ARCHIVE_ID" \
+          case "$SOURCE" in
+            archive) selector=(--archive-id "$ARCHIVE_ID") ;;
+            debian) selector=(--debian-netinst) ;;
+            *) echo "::error::Unknown source"; exit 1 ;;
+          esac
+          python3 -I tools/public_fixture_collector.py "${selector[@]}" \
             --max-total-mib 4096 --output-dir "$RUNNER_TEMP/public"
           python3 -I - <<'PY'
           import json, os, pathlib

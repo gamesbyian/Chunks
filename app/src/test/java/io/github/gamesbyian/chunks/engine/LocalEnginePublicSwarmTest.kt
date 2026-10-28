@@ -11,10 +11,10 @@ import org.junit.rules.TemporaryFolder
 
 /**
  * Opt-in real Internet evidence for the phone engine core: download a bounded
- * byte budget of a licensed Internet Archive torrent from ordinary BitTorrent
- * peers. tools/public_fixture_collector.py strips every web seed and keeps only
- * the official Archive tracker, so any hash-verified byte here came from a
- * peer, never HTTP. No peer delivering within the time limit is reported as
+ * byte budget of a licensed Internet Archive or official Debian netinst
+ * torrent from ordinary BitTorrent peers. tools/public_fixture_collector.py
+ * strips every web seed and keeps only the source's official tracker, so any
+ * hash-verified byte here came from a peer, never HTTP. No peer delivering within the time limit is reported as
  * inconclusive peer availability, not as an engine defect.
  */
 class LocalEnginePublicSwarmTest {

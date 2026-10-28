@@ -2,7 +2,9 @@
 """Publicly licensed BitTorrent metadata fixtures. No payload downloads or RPC writes.
 
 Archive: obtain genuine .torrent via Archive item metadata and derive a magnet from
-the raw bencoded info dictionary. Wikimedia Commons: catalogue official source
+the raw bencoded info dictionary. Debian: the official current amd64 netinst
+.torrent from cdimage.debian.org, checked against the published SHA256SUMS, for
+a swarm with ordinary seeders (owner-approved 2026-10-28). Wikimedia Commons: catalogue official source
 media as content-test references, NOT imaginary torrents. Standard library only.
 """
 import argparse
@@ -21,6 +23,10 @@ MAX_TORRENT = 2 * 1024 * 1024
 USER_AGENT = "Chunks-fixture-collector/1.0 (public metadata only)"
 ARCHIVE_ID = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_.-]{0,100}$")
 COMMONS_NAME = re.compile(r"^[^\x00-\x1f/\\]{1,180}$")
+ARCHIVE_TRACKERS = ("bt1.archive.org", "bt2.archive.org")
+DEBIAN_TRACKERS = ("bttracker.debian.org",)
+DEBIAN_BT_CD = "https://cdimage.debian.org/debian-cd/current/amd64/bt-cd/"
+DEBIAN_NETINST = re.compile(r"debian-([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})-amd64-netinst\.iso\.torrent")
 
 def approved_url(value):
     p = urllib.parse.urlsplit(value)
@@ -29,7 +35,7 @@ def approved_url(value):
         raise ValueError("Disallowed URL")
     if host == "archive.org" or host.endswith(".archive.org"):
         return value
-    if host in ("commons.wikimedia.org", "upload.wikimedia.org"):
+    if host in ("commons.wikimedia.org", "upload.wikimedia.org", "cdimage.debian.org"):
         return value
     raise ValueError("Disallowed source host")
 
@@ -133,7 +139,7 @@ def clean_name(name):
         raise ValueError("Unsafe torrent name/path")
     return text
 
-def torrent_summary(data, max_total_bytes):
+def torrent_summary(data, max_total_bytes, tracker_hosts=ARCHIVE_TRACKERS):
     root, raw_info = parse_bencode(data)
     info = root[b"info"]
     name = clean_name(info.get(b"name.utf-8", info.get(b"name")))
@@ -164,12 +170,12 @@ def torrent_summary(data, max_total_bytes):
         fields.append(("xt", "urn:btmh:1220" + hashlib.sha256(raw_info).hexdigest()))
     fields.append(("dn", name))
     magnet = "magnet:?" + urllib.parse.urlencode(fields)
-    # The only retained tracker is an official public Archive tracker.
+    # The only retained tracker is the source's own official public tracker.
     tracker = root.get(b"announce")
     if isinstance(tracker, bytes):
         candidate = tracker.decode("utf-8", errors="strict")
         p = urllib.parse.urlsplit(candidate)
-        if p.hostname not in ("bt1.archive.org", "bt2.archive.org") or p.username or p.password or p.query or p.fragment or p.scheme not in ("http", "https", "udp"):
+        if p.hostname not in tracker_hosts or p.username or p.password or p.query or p.fragment or p.scheme not in ("http", "https", "udp"):
             tracker = None
     else:
         tracker = None
@@ -211,6 +217,33 @@ def archive_fixture(identifier, max_total_bytes):
     out = {"schema": "chunks.public-fixture.v1", "source": "internet-archive",
            "source_url": "https://archive.org/details/" + identifier, "torrent_url": url,
            "license": license_name, "creator": attribution_text(metadata.get("creator")), "torrent": details,
+           "safe_torrent_sha256": hashlib.sha256(safe).hexdigest(),
+           "nonsecret_fixture": True, "download_payload": False}
+    return out, safe
+
+def debian_fixture(max_total_bytes):
+    """The one current official amd64 netinst torrent, verified by SHA256SUMS."""
+    index = fetch(DEBIAN_BT_CD, MAX_META).decode("utf-8", errors="replace")
+    names = sorted(set(m.group(0) for m in DEBIAN_NETINST.finditer(index)))
+    if len(names) != 1:
+        raise ValueError("Expected exactly one current Debian amd64 netinst torrent")
+    name = names[0]
+    sums = fetch(DEBIAN_BT_CD + "SHA256SUMS", MAX_META).decode("ascii", errors="strict")
+    published = dict((line.split()[1], line.split()[0]) for line in sums.splitlines()
+                     if len(line.split()) == 2 and re.fullmatch(r"[0-9a-f]{64}", line.split()[0]))
+    url = DEBIAN_BT_CD + name
+    raw = fetch(url, MAX_TORRENT)
+    if published.get(name) != hashlib.sha256(raw).hexdigest():
+        raise ValueError("Debian torrent does not match the published SHA256SUMS")
+    safe, details = torrent_summary(raw, max_total_bytes, DEBIAN_TRACKERS)
+    iso = name[:-len(".torrent")]
+    if details["file_count"] != 1 or details["name"] != iso or not details["tracker_retained"]:
+        raise ValueError("Unexpected Debian torrent layout or tracker")
+    out = {"schema": "chunks.public-fixture.v1", "source": "debian-cdimage",
+           "source_url": DEBIAN_BT_CD, "torrent_url": url,
+           "license": "Debian, DFSG-free and redistributable (https://www.debian.org/social_contract)",
+           "creator": "Debian Project", "torrent": details,
+           "published_sha256": {"torrent": published[name], "iso": published.get(iso)},
            "safe_torrent_sha256": hashlib.sha256(safe).hexdigest(),
            "nonsecret_fixture": True, "download_payload": False}
     return out, safe
@@ -302,6 +335,8 @@ def main():
     group = p.add_mutually_exclusive_group(required=True)
     group.add_argument("--archive-id", help="Internet Archive item with a published .torrent")
     group.add_argument("--commons-file", help="Wikimedia Commons File: title")
+    group.add_argument("--debian-netinst", action="store_true",
+                       help="Official current Debian amd64 netinst torrent (ordinary seeders)")
     p.add_argument("--output-dir", default="public-fixture-output")
     p.add_argument("--max-total-mib", type=int, default=512)
     p.add_argument("--download-commons", action="store_true",
@@ -321,6 +356,8 @@ def main():
     saved_name = None
     if args.archive_id:
         manifest, torrent = archive_fixture(args.archive_id, args.max_total_mib * 1048576)
+    elif args.debian_netinst:
+        manifest, torrent = debian_fixture(args.max_total_mib * 1048576)
     else:
         manifest = commons_fixture(args.commons_file)
         torrent = None

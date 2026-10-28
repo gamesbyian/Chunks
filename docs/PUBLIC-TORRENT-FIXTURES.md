@@ -6,6 +6,10 @@ Use approved, license-reviewed fixtures before any test Add, Start, Stop, Remove
 
 Wikimedia Commons provides individually licensed media files through its MediaWiki API. Official Wikimedia data dumps distribute XML, compressed .bz2/.7z, JSON and checksums; they do not promise a universal torrent/magnet feed. Modern MediaWiki Content File Exports supersede several legacy dumps and replace them by January 2027 (https://wikitech.wikimedia.org/wiki/MediaWiki_Content_File_Exports). Wikipedia articles about torrents are documentation, not test torrents. Do not invent a torrent or magnet for a Wikimedia file that has not been hashed and made available to peers.
 
+## Ordinary-seeder fixture: official Debian netinst (owner-approved 2026-10-28)
+
+Archive swarms can have no conventional seeders (run 40650971842 saw 0 peers), so the owner approved a fixture with ordinary seeders. `--debian-netinst` fetches only from `https://cdimage.debian.org/debian-cd/current/amd64/bt-cd/`. It requires exactly one `debian-X.Y.Z-amd64-netinst.iso.torrent` in the listing and requires the torrent's SHA-256 to equal the published `SHA256SUMS` entry. The check uses HTTPS only; the GPG signature on `SHA256SUMS.sign` is not verified. The collector keeps the exact info dictionary, strips the `url-list` web seeds and keeps only `bttracker.debian.org`. The manifest records the published ISO SHA-256. Debian is DFSG-free and redistributable. Use a bounded byte budget (the ISO is about 756 MiB) and do not keep the payload. Debian point releases replace `current`, so the infohash changes over time; record it from each run's manifest, never hardcode it.
+
 ## Commands
 
 Python standard library only. Offline tests:
