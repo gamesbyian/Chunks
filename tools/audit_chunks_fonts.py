@@ -11,6 +11,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont, features
 from fontTools.ttLib import TTFont
+from spacing_optimizer import ink_gaps_at_size
 
 WEIGHTS = {400:'Regular',500:'Medium',600:'Semibold',700:'Bold',800:'ExtraBold'}
 PROBES = [
@@ -21,7 +22,7 @@ PROBES = [
  'Local ↔ Remote    £ € ¥ $ 1234567890',
 ]
 
-def analyze(font_dir: Path, reference_dir:Path|None=None, preview: Path|None=None):
+def analyze(font_dir: Path, reference_dir:Path|None=None, preview: Path|None=None, atlas: Path|None=None):
     if not features.check_feature('raqm'):
         raise RuntimeError('HarfBuzz/libraqm is mandatory for audit; do not silently approximate shaping')
     results={}
@@ -70,7 +71,13 @@ def analyze(font_dir: Path, reference_dir:Path|None=None, preview: Path|None=Non
         widths={sample:round(float(pil.getlength(sample)),2) for sample in PROBES}
         if any(width<=0 for width in widths.values()):
             raise AssertionError(f'{style}: non-positive measured string width')
-        results[style]={'weight':weight,'glyph_count':len(f.getGlyphOrder()),'unicode_codepoints':len(chars),
+        gaps_by_size={}
+        for px in (14,24,48):
+            gaps=ink_gaps_at_size(path,PROBES[:5],px=px)
+            if not gaps or min(gaps)<0.3:
+                raise AssertionError(f'{style}: visible sampled glyph collision/clearance failure at {px}px: {min(gaps) if gaps else None}')
+            gaps_by_size[str(px)]={'sample_pairs':len(gaps),'minimum_ink_gap_px':round(min(gaps),3)}
+        results[style]={'sampled_spacing_clearance':gaps_by_size, 'weight':weight,'glyph_count':len(f.getGlyphOrder()),'unicode_codepoints':len(chars),
                         'bytes':path.stat().st_size,'sha256':hashlib.sha256(path.read_bytes()).hexdigest(),
                         'metrics':{'ascent':v[0],'descent':v[1],'lineGap':v[2]},'sample_width_px_at_42':widths}
         fonts[style]=path
@@ -89,6 +96,27 @@ def analyze(font_dir: Path, reference_dir:Path|None=None, preview: Path|None=Non
             draw.text((510,y+64),'Torrent Details   68%   36.4 MB/s',font=small,fill='#0B0F17')
             draw.text((33,y+132),'ÁÉÖÜ äçñ   0123456789  $€£¥',font=small,fill='#0B0F17')
         canvas.save(preview)
+    if atlas:
+        atlas.parent.mkdir(parents=True,exist_ok=True)
+        canvas=Image.new('RGB',(1460,1490),'#FFFFFF')
+        draw=ImageDraw.Draw(canvas)
+        small=ImageFont.load_default(size=19)
+        rows=[
+          'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+          'abcdefghijklmnopqrstuvwxyz',
+          '0123456789  ! ? : ; ( ) [ ] { } @ # & *',
+          'ÀÁÂÃÄÅ Æ Ç ÈÉÊË ÌÍÎÏ Ñ ÒÓÔÕÖØ ÙÚÛÜ ÝŸ',
+          'àáâãäå æ ç èéêë ìíîï ñ òóôõöø ùúûü ýÿ',
+        ]
+        for idx,(weight,style) in enumerate(WEIGHTS.items()):
+            y=12+idx*294
+            draw.rounded_rectangle((12,y,1448,y+284),radius=15,
+                fill=['#FFF2F8','#F2E9FF','#E8F7FF','#FFF6D8','#EAFDF2'][idx])
+            draw.text((26,y+10),f'CHUNKS {style.upper()} ({weight})  |  SCALABLE CFF OTF',font=small,fill='#404040')
+            font=ImageFont.truetype(str(fonts[style]),40,layout_engine=ImageFont.Layout.RAQM)
+            for i,row in enumerate(rows):
+                draw.text((26,y+43+i*42),row,font=font,fill='#0B0F17')
+        canvas.save(atlas)
     return results
 
 if __name__=='__main__':
@@ -96,9 +124,10 @@ if __name__=='__main__':
     p.add_argument('--fonts',type=Path,default=Path('assets/fonts/chunks'))
     p.add_argument('--reference',type=Path)
     p.add_argument('--preview',type=Path)
+    p.add_argument('--atlas',type=Path,help='Render exact ASCII and accented Latin grid for all weights')
     p.add_argument('--report',type=Path)
     args=p.parse_args()
-    out=analyze(args.fonts,args.reference,args.preview)
+    out=analyze(args.fonts,args.reference,args.preview,args.atlas)
     if args.report:
         args.report.parent.mkdir(parents=True,exist_ok=True)
         args.report.write_text(json.dumps(out,indent=2,ensure_ascii=False)+'\n')
