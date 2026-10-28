@@ -289,10 +289,17 @@ class ChunksMainActivityAtlasTest {
         // occasionally raced focus here and left the queue unfiltered.
         rule.onNodeWithText("Search names or Places").performTextReplacement("Public.Example")
         dismissSearchKeyboard()
-        rule.waitUntil(15_000) {
-            rule.onAllNodes(hasSetTextAction() and hasText("Public.Example"))
-                .fetchSemanticsNodes().isNotEmpty() &&
+        try {
+            rule.waitUntil(15_000) {
+                // The user-visible invariant is one filtered transfer, rather
+                // than a combined editable-TextField semantics predicate that
+                // differs after the Android IME loses focus on API 35.
                 rule.onAllNodesWithText("1 shown").fetchSemanticsNodes().isNotEmpty()
+            }
+        } catch (failure: androidx.compose.ui.test.ComposeTimeoutException) {
+            save("app-search-filter-timeout-diagnostic-real-compose")
+            val ui = rule.onRoot(useUnmergedTree = true).printToString().take(2100)
+            throw AssertionError("Search never showed one matching torrent: " + ui, failure)
         }
         // An actual installed-app queue action, not only an isolated editor
         // component. Wait for the filtered count, not just the IME's text;
