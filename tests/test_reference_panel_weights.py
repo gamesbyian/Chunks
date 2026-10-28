@@ -295,7 +295,8 @@ class ReferencePanelWeightTests(unittest.TestCase):
                     commands=RecordingPen()
                     parse_path(element.attrib['d'],commands)
                     self.assertEqual(sum(op=='moveTo' for op,_ in commands.value),1)
-                    self.assertGreaterEqual(sum(op=='qCurveTo' for op,_ in commands.value),\n                                            8 if letter == 'T' else 6)
+                    self.assertGreaterEqual(sum(op=='qCurveTo' for op,_ in commands.value),
+                                            8 if letter == 'T' else 6)
                     info=ledger['weights'][style]['glyph_geometry'][letter]
                     self.assertEqual(info['outline_source'],'weight-specific-svg-master')
                     self.assertEqual(info['outline_encoding'],'native-bezier-curves')
@@ -308,7 +309,8 @@ class ReferencePanelWeightTests(unittest.TestCase):
                     compiled=RecordingPen()
                     face.getGlyphSet()[glyph].draw(compiled)
                     self.assertEqual(sum(op=='moveTo' for op,_ in compiled.value),1)
-                    self.assertGreaterEqual(sum(op=='curveTo' for op,_ in compiled.value),\n                                            8 if letter == 'T' else 6)
+                    self.assertGreaterEqual(sum(op=='curveTo' for op,_ in compiled.value),
+                                            8 if letter == 'T' else 6)
             self.assertEqual(areas,sorted(areas),
                              f'{letter}: independent designs must gain ink from 400 to 700')
             self.assertLess(areas[-1],reference.area,
