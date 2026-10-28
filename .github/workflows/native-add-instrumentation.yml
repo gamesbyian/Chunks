@@ -9,6 +9,8 @@ on:
       - "app/src/main/**"
       - "app/src/androidTest/**"
       - "app/build.gradle.kts"
+      # Changes to the test command must re-run this suite.
+      - "tools/native_add_review.sh"
       - ".github/workflows/native-add-instrumentation.yml"
   workflow_dispatch:
 
