@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.SystemClock
 import android.os.StatFs
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -67,6 +68,7 @@ import io.github.gamesbyian.chunks.model.LocalAddStoragePreflight
 import io.github.gamesbyian.chunks.model.LocalAddStoragePlanner
 import io.github.gamesbyian.chunks.model.LocalFolderInventoryProbe
 import io.github.gamesbyian.chunks.model.LocalInventoryFreshness
+import io.github.gamesbyian.chunks.model.LocalProgressHistory
 import io.github.gamesbyian.chunks.model.CollectionNameRegistryRules
 import io.github.gamesbyian.chunks.model.ManualCollectionPager
 import io.github.gamesbyian.chunks.model.LocalQueueCatalog
@@ -249,6 +251,10 @@ internal fun LocalEngineScreen(
     }
     var message by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
+    val progressHistory = remember { LocalProgressHistory() }
+    var observedDeltas by remember {
+        mutableStateOf<Map<String, LocalProgressHistory.ObservedDelta>>(emptyMap())
+    }
 
     // The admission/observation gate is process-wide: navigating away and back
     // must not revive controls before a post-command native read succeeds.
@@ -257,6 +263,9 @@ internal fun LocalEngineScreen(
             message = "A prior native action needs a fresh confirmed transfer list before another change."
             return
         }
+        // A new native mutation invalidates cross-command growth attribution.
+        progressHistory.clear()
+        observedDeltas = emptyMap()
         inventoryFrame = inventoryFrame.copy(stale = true)
         busy = true
         scope.launch {
@@ -322,20 +331,32 @@ internal fun LocalEngineScreen(
                     // clear its safety latch, even if it finishes afterward.
                     if (LocalScreenReader.revision.acceptObservation(frame.revision, frame.transfers)) {
                         inventoryFrame = LocalInventoryFreshness.advance(inventoryFrame, frame.transfers)
+                        observedDeltas = if (frame.transfers != null) {
+                            progressHistory.observe(frame.transfers, SystemClock.elapsedRealtime())
+                        } else {
+                            progressHistory.clear()
+                            emptyMap()
+                        }
                         restoreNotice = frame.restoreNotice
                         if (frame.transfers != null && frame.filesHash != null &&
                             frame.filesHash == filesFor) files = frame.files
                     }
                 }
-                LocalScreenPollOutcome.Unavailable ->
+                LocalScreenPollOutcome.Unavailable -> {
+                    progressHistory.clear()
+                    observedDeltas = emptyMap()
                     inventoryFrame = LocalInventoryFreshness.advance(inventoryFrame, null)
+                }
                 null -> Unit
             }
             // A hung native read cannot produce an exception or be cancelled.
             // Retain the last known queue but withhold mutations until a new,
             // genuinely successful observation eventually arrives.
-            if ((LocalScreenReader.pump.inFlightMillis() ?: 0L) >= 15_000L)
+            if ((LocalScreenReader.pump.inFlightMillis() ?: 0L) >= 15_000L) {
+                progressHistory.clear()
+                observedDeltas = emptyMap()
                 inventoryFrame = LocalInventoryFreshness.advance(inventoryFrame, null)
+            }
 
             val chosenFilesHash = filesFor
             val sampleRevision = LocalScreenReader.revision.snapshot()
@@ -675,6 +696,9 @@ internal fun LocalEngineScreen(
                 aliasStore.get(TransferCollectionStore.LOCAL_ENGINE_SCOPE, transfer.infoHash)
             }
             LocalTransferCard(transfer, busy || inventoryStale,
+                observedGrowth = observedDeltas[transfer.infoHash].takeIf {
+                    !inventoryStale && !busy
+                },
                 alias = displayedAlias,
                 onSaveAlias = { proposed ->
                     val saved = try {
@@ -902,7 +926,8 @@ internal fun LocalTransferCard(
     onFileWanted: (Int, Boolean) -> Unit = { _, _ -> },
     alias: String? = null,
     onSaveAlias: ((String?) -> Boolean)? = null,
-    onPrepareRemote: (() -> Unit)? = null
+    onPrepareRemote: (() -> Unit)? = null,
+    observedGrowth: LocalProgressHistory.ObservedDelta? = null
 ) {
     var confirmRemove by remember(transfer.infoHash) { mutableStateOf(false) }
     var confirmHandoff by remember(transfer.infoHash) { mutableStateOf(false) }
@@ -932,6 +957,23 @@ internal fun LocalTransferCard(
             if (transfer.payloadDownloadedBytes > 0L) {
                 Text("Network payload counter " + Units.bytes(transfer.payloadDownloadedBytes),
                     style = MaterialTheme.typography.bodySmall)
+            }
+            // Derived only from two or more successful native status reads,
+            // never from the Started flag, an RPC acknowledgement or a stale UI.
+            observedGrowth?.let { sample ->
+                Text("Observed over ${sample.seconds}s: +" +
+                    Units.bytes(sample.verifiedBytes) + " hash-verified on disk · +" +
+                    Units.bytes(sample.peerPayloadBytes) + " peer-network payload · +" +
+                    Units.bytes(sample.uploadedBytes) + " uploaded",
+                    style = MaterialTheme.typography.bodySmall)
+                if (!transfer.stopped && sample.verifiedBytes == 0L &&
+                    sample.peerPayloadBytes == 0L && transfer.progressPpm < 1_000_000) {
+                    Text("No verified or peer-network byte growth during this sample. " +
+                        "That is not proof of a permanent stall; check live peers, tracker " +
+                        "availability, DHT and storage. Webseed data may be absent from " +
+                        "the peer-network counter.",
+                        style = MaterialTheme.typography.bodySmall)
+                }
             }
             if (!transfer.stopped && transfer.uploadOnly && transfer.metadataKnown) {
                 Text("Running in upload-only mode: libtorrent is not requesting file pieces. " +
