@@ -2,6 +2,7 @@ package io.github.gamesbyian.chunks.privacy
 
 import android.app.Activity
 import android.app.KeyguardManager
+import android.content.Intent
 import android.hardware.biometrics.BiometricManager
 import android.hardware.biometrics.BiometricPrompt
 import android.os.Build
@@ -45,6 +46,23 @@ internal object TransferDeviceAuthenticator {
         } catch (_: RuntimeException) { false }
 
     /**
+     * Android 10 (API 29) refuses the credential-enabled platform biometric
+     * authenticate(CancellationSignal, ...) overload. The native Keyguard
+     * confirmation activity is the supported PIN/pattern/password fallback.
+     * Its ActivityResult is re-bound to a fresh scoped session ticket AFTER
+     * returning; the old pending challenge is never trusted after onStop.
+     */
+    @Suppress("DEPRECATION")
+    fun android10CredentialIntent(activity: Activity, title: String): Intent? =
+        if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q && hasSecureLock(activity)) {
+            try {
+                activity.getSystemService(KeyguardManager::class.java)
+                    ?.createConfirmDeviceCredentialIntent(title,
+                        "Confirm your Android screen lock for Chunks.")
+            } catch (_: Exception) { null }
+        } else null
+
+    /**
      * Caller owns returned CancellationSignal and MUST revoke its independent
      * generation-bound ticket when the screen is left or Android backgrounds.
      * A biometric mismatch is nonterminal; only success or final error replies.
@@ -54,7 +72,10 @@ internal object TransferDeviceAuthenticator {
         title: String,
         finished: (Boolean) -> Unit
     ): CancellationSignal? {
-        if (!hasSecureLock(activity)) {
+        if (!hasSecureLock(activity) ||
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            // API 29 must use android10CredentialIntent with an ActivityResult
+            // launcher; this method never pretends unsupported prompt success.
             finished(false)
             return null
         }
@@ -66,15 +87,10 @@ internal object TransferDeviceAuthenticator {
             val builder = BiometricPrompt.Builder(activity)
                 .setTitle(title)
                 .setSubtitle("Use your device fingerprint, face or screen lock.")
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                builder.setAllowedAuthenticators(
-                    BiometricManager.Authenticators.BIOMETRIC_STRONG or
-                        BiometricManager.Authenticators.DEVICE_CREDENTIAL
-                )
-            } else {
-                @Suppress("DEPRECATION")
-                val configured = builder.setDeviceCredentialAllowed(true)
-            }
+            builder.setAllowedAuthenticators(
+                BiometricManager.Authenticators.BIOMETRIC_STRONG or
+                    BiometricManager.Authenticators.DEVICE_CREDENTIAL
+            )
             val signal = CancellationSignal()
             builder.build().authenticate(
                 signal, activity.mainExecutor,
