@@ -1,0 +1,67 @@
+name: Build nonshipping mixed above/below Latin CFF experiments
+on:
+  push:
+    paths:
+      - 'tools/build_reference_mixed_marks.py'
+      - 'tools/render_reference_mixed_marks.py'
+      - 'tests/test_reference_mixed_marks.py'
+      - 'assets/fonts/experimental/mixed-mark-studies/**'
+      - '.github/workflows/reference-mixed-mark-studies.yml'
+      - 'docs/design/CHUNKS-REFERENCE-MIXED-MARKS.md'
+  pull_request:
+    paths:
+      - 'tools/build_reference_mixed_marks.py'
+      - 'tools/render_reference_mixed_marks.py'
+      - 'tests/test_reference_mixed_marks.py'
+      - 'assets/fonts/experimental/mixed-mark-studies/**'
+      - '.github/workflows/reference-mixed-mark-studies.yml'
+      - 'docs/design/CHUNKS-REFERENCE-MIXED-MARKS.md'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: chunks-font-mixed-${{ github.event_name }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+jobs:
+  five-native-mixed-mark-faces:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install pinned fonts, geometry and HarfBuzz
+        run: python -m pip install -r tools/requirements-chunks-font.txt
+      - name: Construct only explicitly detached canonical above and below marks
+        run: python tools/build_reference_mixed_marks.py
+      - name: Protect 856 Unicode glyphs, unchanged CFF geometry and Hindi shaping
+        run: python -m unittest discover -s tests -p test_reference_mixed_marks.py -v
+      - name: Render genuine nonshipping native-font editorial matrices
+        run: python tools/render_reference_mixed_marks.py
+      - name: Save all optional mixed-mark source and font evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-experimental-mixed-direction-cff-otfs
+          path: |
+            assets/fonts/experimental/mixed-mark-studies/*
+            reference-mixed-marks-*.png
+            assets/fonts/source/OFL.txt
+          retention-days: 30
+      - name: Commit reproducible prototype files on source branch only
+        if: github.event_name == 'push' && github.ref != 'refs/heads/main'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add assets/fonts/experimental/mixed-mark-studies
+          if ! git diff --cached --quiet; then
+            git commit -m 'build(font): retain reversible mixed above/below CFF artifacts'
+            branch="${GITHUB_REF#refs/heads/}"
+            for attempt in 1 2 3; do
+              git fetch origin "$branch"
+              git rebase "origin/$branch"
+              if git push origin "HEAD:$branch"; then exit 0; fi
+            done
+            echo 'Failed to preserve mixed mark study source branch artifacts' >&2
+            exit 1
+          fi
