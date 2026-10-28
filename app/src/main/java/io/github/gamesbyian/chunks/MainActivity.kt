@@ -181,6 +181,9 @@ private fun ChunksApp(
     var filesLoading by remember { mutableStateOf(false) }
     var magnet by remember { mutableStateOf("") }
     var phoneHandoffMagnet by remember { mutableStateOf<String?>(null) }
+    // A phone transfer's exported .torrent waiting for the server Add review.
+    // Process memory only; consumed by that review, never auto-submitted.
+    var serverHandoffTorrent by remember { mutableStateOf<ByteArray?>(null) }
     var draftPath by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     val aliasStore = remember(context) { TransferAliasStore(context) }
@@ -289,6 +292,10 @@ private fun ChunksApp(
                 onPrefillConsumed = { phoneHandoffMagnet = null },
                 onPrepareRemote = { draft ->
                     magnet = draft
+                    section = Section.TRANSFERS
+                },
+                onPrepareRemoteTorrent = { document ->
+                    serverHandoffTorrent = document
                     section = Section.TRANSFERS
                 }
             )
@@ -560,6 +567,10 @@ private fun ChunksApp(
                     onPrepareRemote = { draft ->
                         magnet = draft
                         section = Section.ADD
+                    },
+                    onPrepareRemoteTorrent = { document ->
+                        serverHandoffTorrent = document
+                        section = Section.ADD
                     }
                 )
                 Section.PLACES -> PlacesScreen(transfers) { path ->
@@ -637,6 +648,8 @@ private fun ChunksApp(
                     }
                     VerifiedAddScreen(
                         remote = connectedRemote, magnet = magnet, destination = draftPath,
+                        initialTorrent = serverHandoffTorrent,
+                        onInitialTorrentConsumed = { serverHandoffTorrent = null },
                         onMagnet = { magnet = it }, onDestination = { draftPath = it },
                         onBack = { draftPath = ""; section = Section.TRANSFERS },
                         onComplete = refresh,

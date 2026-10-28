@@ -70,7 +70,10 @@ fun VerifiedAddScreen(
     onMutationSettled: () -> Unit,
     recentPlaces: List<String> = emptyList(),
     /** Return whether the already-verified custom Place shortcut was persisted. */
-    onCustomPlaceVerified: (String) -> Boolean = { true }
+    onCustomPlaceVerified: (String) -> Boolean = { true },
+    /** A phone transfer's exported .torrent to review; never submitted by itself. */
+    initialTorrent: ByteArray? = null,
+    onInitialTorrentConsumed: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -98,9 +101,28 @@ fun VerifiedAddScreen(
         defaultReadComplete = true
     }
 
+    var fromPhone by remember { mutableStateOf(false) }
+    LaunchedEffect(initialTorrent) {
+        val document = initialTorrent ?: return@LaunchedEffect
+        onInitialTorrentConsumed()
+        if (submitting || alreadyAttempted) return@LaunchedEffect
+        try {
+            val bytes = document.copyOf()
+            selectedTorrent = TorrentMetainfoReader.preview(bytes)
+            selectedBytes = bytes
+            useFile = true
+            fromPhone = true
+            fileError = null
+            awaitingConfirmation = false
+        } catch (_: Exception) {
+            fileError = "The phone transfer's torrent definition is not supported v1 metainfo."
+        }
+    }
+
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null && !choosing && !submitting && !alreadyAttempted) {
             choosing = true
+            fromPhone = false
             selectedTorrent = null
             selectedBytes = null
             fileError = null
@@ -224,6 +246,11 @@ fun VerifiedAddScreen(
                         "\nInfohash: " + preview.infoHashV1,
                     style = MaterialTheme.typography.bodyMedium
                 )
+                if (fromPhone) Text("From a transfer on this phone. This definition includes its " +
+                    "tracker addresses, which may contain a private passkey, and is sent only " +
+                    "to this server when you confirm. The server downloads the files itself; " +
+                    "nothing is copied from the phone.",
+                    style = MaterialTheme.typography.bodySmall)
             }
         }
         if (fileError != null) {
