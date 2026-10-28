@@ -778,6 +778,25 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         synchronized(handles) { handles.toList() }.mapNotNull { (hash, handle) -> snapshot(hash, handle) }
 
     /**
+     * Snapshot-restore *absence* gate. Unlike list(), a failed or unobservable
+     * native handle cannot be silently dropped and mistaken for a missing
+     * torrent. Null means this is NOT a complete proof of the phone inventory.
+     */
+    @Synchronized
+    fun completeIdentityInventory(): List<String>? {
+        if (!started) return null
+        val current = synchronized(handles) { handles.toList() }
+        val observed = ArrayList<String>(current.size)
+        for ((key, handle) in current) {
+            val status = try { snapshot(key, handle) } catch (_: Exception) { null }
+                ?: return null
+            if (status.infoHash != key) return null
+            observed += key
+        }
+        return observed.takeIf { it.toSet().size == it.size }
+    }
+
+    /**
      * Completion status alone does not mean libtorrent's asynchronous disk
      * cache has been flushed. Before an independent SAF library publication,
      * wait for the native cache_flushed_alert for THIS exact infohash.

@@ -579,6 +579,10 @@ private fun ChunksApp(
                             section = Section.LOCAL
                         }
                     },
+                    onCopyToPhone = { magnet ->
+                        phoneHandoffMagnet = magnet
+                        section = Section.LOCAL
+                    },
                     selectedHash = expandedHash, files = files, filesError = filesError,
                     filesLoading = filesLoading,
                     onInspect = { transfer ->
@@ -923,6 +927,7 @@ private fun TransfersScreen(
     onReviewNames: () -> Unit, onExportSnapshot: () -> Unit,
     onInspectSnapshot: () -> Unit,
     onPreparePhone: (RemoteTransfer) -> Unit,
+    onCopyToPhone: (String) -> Unit,
     selectedHash: String?, files: List<RemoteFile>?, filesError: String?,
     filesLoading: Boolean, onInspect: (RemoteTransfer) -> Unit
 ) {
@@ -1234,7 +1239,8 @@ private fun TransfersScreen(
                 ),
                 files = files, filesLoading = filesLoading, filesError = filesError,
                 onInspect = { onInspect(transfer) },
-                onPreparePhone = { onPreparePhone(transfer) }
+                onPreparePhone = { onPreparePhone(transfer) },
+                onCopyToPhone = onCopyToPhone
             )
             }
         }
@@ -1268,7 +1274,8 @@ private fun TransferCard(
     otherTransferDownloading: Boolean,
     files: List<RemoteFile>?, filesLoading: Boolean, filesError: String?,
     onInspect: () -> Unit,
-    onPreparePhone: () -> Unit
+    onPreparePhone: () -> Unit,
+    onCopyToPhone: (String) -> Unit
 ) {
     var confirmPhoneHandoff by remember(transfer.hash) { mutableStateOf(false) }
     Card(
@@ -1357,6 +1364,8 @@ private fun TransferCard(
                     }
                 }
             }
+            ServerToPhoneCopyControl(remote = remote, transfer = transfer, stale = stale,
+                onReviewPhoneAdd = onCopyToPhone)
             TransferLifecycleControl(
                 remote = remote, transfer = transfer, snapshotStale = stale,
                 snapshotRevision = snapshotRevision,

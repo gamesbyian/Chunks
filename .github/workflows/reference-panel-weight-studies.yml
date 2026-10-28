@@ -5,6 +5,8 @@ on:
       - 'tools/build_reference_panel_weight_studies.py'
       - 'tools/reference_weight_profiles.json'
       - 'tools/render_reference_panel_weights.py'
+      - 'tools/render_reference_glyph_grid.py'
+      - 'tests/test_reference_glyph_grid.py'
       - 'tools/requirements-reference-panel-weights.txt'
       - 'tests/test_reference_panel_weights.py'
       - 'assets/fonts/source/reference-alphabet/**'
@@ -17,6 +19,8 @@ on:
       - 'tools/build_reference_panel_weight_studies.py'
       - 'tools/reference_weight_profiles.json'
       - 'tools/render_reference_panel_weights.py'
+      - 'tools/render_reference_glyph_grid.py'
+      - 'tests/test_reference_glyph_grid.py'
       - 'tools/requirements-reference-panel-weights.txt'
       - 'tests/test_reference_panel_weights.py'
       - 'assets/fonts/source/reference-alphabet/**'
@@ -47,6 +51,10 @@ jobs:
         run: python -m unittest discover -s tests -p test_reference_panel_weights.py -v
       - name: Render five-weight actual-OTF comparison atlas
         run: python tools/render_reference_panel_weights.py
+      - name: Generate 62-glyph by five-weight grids at 14, 24, 48 and 82px
+        run: |
+          python tools/render_reference_glyph_grid.py
+          python -m unittest discover -s tests -p test_reference_glyph_grid.py -v
       - name: Publish only nonshipping study assets
         uses: actions/upload-artifact@v4
         with:
@@ -55,6 +63,8 @@ jobs:
             assets/fonts/experimental/weight-studies/*
             assets/fonts/experimental/ChunksReferencePanel-ExtraBold-Optical.otf
             reference-panel-five-weights.png
+            reference-panel-glyph-grid-*.png
+            reference-panel-glyph-grid-metrics.json
             assets/fonts/source/OFL.txt
           retention-days: 30
       - name: Commit reproducible studies from source branch, never main

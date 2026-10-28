@@ -48,3 +48,25 @@ For a focused local build add `--weights 700` or another subset. The generated J
 ## Remaining substantive art work
 
 Redraw four weight masters manually or with human-checked supervised contour fitting, preserving proper stroke design rather than relying on uniform thinning. Use the profiles and render atlas as an objective starting point. Accent composites currently retain licensed Baloo 2 shapes when no matching independent SVG has been developed. Only after contour review, optical QA, and actual app rendering should any experimental weight graduate to production. See [issue #347](https://github.com/gamesbyian/Chunks/issues/347).
+## Native-curve import for genuine edited weight masters
+
+The default Regular–Bold offset studies still use contour-derived polygon geometry. A designer-provided weight-specific SVG override now takes a distinct route: the builder validates topology, ink-area ratio, source-coordinate bounds and absence of unprocessed SVG transforms using sampled geometry, then **passes the original SVG path's quadratic/cubic Bézier instructions directly to the CFF compilation pen**. No Shapely sampled line segments replace the editor's curve handles. Exact curve-based left side bearings are measured from the path bounds, and provenance explicitly distinguishes `native-bezier-curves` from `sampled-offset-polygons` in the per-glyph JSON. If an SVG contains nested transforms, it must be flattened intentionally by its author, rather than being silently ignored.
+
+The source parser now also accepts cubic SVG path commands for geometric safety checks, so native editors do not have to convert their curves to quadratics or polygon outlines before submitting a draft. Regression tests prove that an overridden capital A compiles to `curveTo` operations while its non-overridden B neighbor stays a provisional offset study, and reject unflattened transforms. **This is an acceptance path for future separately drawn Regular/Medium/Semibold/Bold source art, not evidence that such art has already been completed or visually approved.**
+
+### Verified native-curve acceptance-path evidence
+
+[#431](https://github.com/gamesbyian/Chunks/pull/431) squash-merged at `1fb0aa02f93d844022bd8750f13829354d0bd384`; exact source head `eef7a1b0e44ba3ca8277bb946a6579481e1a7f5c` passed **eight** checks, including [weight-study source compilation and tests](https://github.com/gamesbyian/Chunks/actions/runs/40644103799) and the other cross-family audits. The test converts the reference A curve geometry to cubic SVG commands through a standard fontTools editor pen, imports it as a **400-only manual master**, and asserts native CFF `curveTo` rather than polygonal `lineTo`, while a neighboring unedited B remains a provisional polygon derivation. The checked-in four-weight metrics now record `sampled-offset-polygons` for default automatic glyphs. This verifies the **pipeline**, not the existence or approval of newly designed 62-glyph lighter source sets.
+
+## Full compiled-font glyph-by-glyph editorial grids
+
+The existing multiweight phrase specimens can hide single-letter defects. `tools/render_reference_glyph_grid.py` now produces **four real OpenType/CFF image matrices** at the accepted **14, 24, 48 and 82 pixel** review sizes. Each page shows **all 62 source characters** (A–Z, a–z, 0–9) across **all five fonts**: the four Regular/Medium/Semibold/Bold study weights and preserved ExtraBold optical comparator. Glyphs share drawn horizontal baselines; rows carry Unicode codepoints, and columns are explicitly labelled by weight. This makes counters, joins, tapers, terminals, italic-like overhangs and apparent weight jumps inspectable at character granularity instead of relying on only a few whole words.
+
+Rebuild after the four study weights exist:
+
+```sh
+python tools/render_reference_glyph_grid.py
+python -m unittest discover -s tests -p test_reference_glyph_grid.py -v
+```
+
+Outputs are `reference-panel-glyph-grid-{14,24,48,82}px.png` plus `reference-panel-glyph-grid-metrics.json` with exact input font SHA-256, true CFF/856-cmap assertions, all glyph row IDs, page dimensions and output SHA-256. CI uploads each page; it does not copy any image or experimental font into Android. Rendering native compiled fonts is necessary inspection evidence, not independent proof of artistic quality, font legibility, contrast or TalkBack behavior. Disposition and per-glyph design approval remain on [#347](https://github.com/gamesbyian/Chunks/issues/347).

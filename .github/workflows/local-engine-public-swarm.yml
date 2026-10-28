@@ -1,0 +1,108 @@
+name: Local engine public peer swarm
+
+# Real Internet peer evidence for the on-phone engine core: collect a licensed
+# Internet Archive torrent or the official Debian amd64 netinst torrent (web
+# seeds stripped, only the source's official tracker kept), then download a
+# bounded byte budget from ordinary BitTorrent peers with libtorrent. No secrets, no rTorrent. A swarm with no reachable
+# peer ends INCONCLUSIVE, never as engine acceptance.
+on:
+  workflow_dispatch:
+    inputs:
+      source:
+        description: "archive (archive_id below) or debian (current official amd64 netinst)"
+        type: choice
+        options: [archive, debian]
+        default: archive
+        required: true
+      archive_id:
+        description: "Licensed Internet Archive identifier"
+        type: string
+        default: "BigBuckBunny_124"
+        required: true
+      budget_mib:
+        description: "Hash-verified MiB to download before stopping (1-256)"
+        type: number
+        default: 16
+        required: true
+      seconds:
+        description: "Time limit for peers to deliver the budget (30-1800)"
+        type: number
+        default: 600
+        required: true
+  pull_request:
+    paths:
+      - ".github/workflows/local-engine-public-swarm.yml"
+      - "tools/public_fixture_collector.py"
+      - "app/src/test/java/io/github/gamesbyian/chunks/engine/LocalEnginePublicSwarmTest.kt"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chunks-engine-swarm-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  public-swarm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Collect the public torrent (no web seeds, official source tracker only)
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          SOURCE: ${{ inputs.source }}
+          ARCHIVE_ID: ${{ inputs.archive_id }}
+          BUDGET_MIB: ${{ inputs.budget_mib }}
+          SECONDS_LIMIT: ${{ inputs.seconds }}
+        run: |
+          set -euo pipefail
+          case "$SOURCE" in
+            archive) selector=(--archive-id "$ARCHIVE_ID") ;;
+            debian) selector=(--debian-netinst) ;;
+            *) echo "::error::Unknown source"; exit 1 ;;
+          esac
+          python3 -I tools/public_fixture_collector.py "${selector[@]}" \
+            --max-total-mib 4096 --output-dir "$RUNNER_TEMP/public"
+          python3 -I - <<'PY'
+          import json, os, pathlib
+          root = pathlib.Path(os.environ["RUNNER_TEMP"]) / "public"
+          m = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
+          t = m["torrent"]
+          assert t["infohash_v1"], "Chunks' phone engine Add needs a v1 torrent"
+          print("CHUNKS_PUBLIC_SWARM_SOURCE:", m["source_url"], "license:", m["license"],
+                "v1:", t["infohash_v1"], "bytes:", t["total_bytes"], "tracker:", t["tracker_retained"])
+          PY
+          echo "CHUNKS_PUBLIC_SWARM_TORRENT=$RUNNER_TEMP/public/source-sanitized.torrent" >> "$GITHUB_ENV"
+          [[ "$BUDGET_MIB" =~ ^[0-9]{1,3}$ && "$SECONDS_LIMIT" =~ ^[0-9]{2,4}$ ]] || { echo "::error::Invalid budget or time limit"; exit 1; }
+          echo "CHUNKS_PUBLIC_SWARM_BUDGET_BYTES=$(( BUDGET_MIB * 1048576 ))" >> "$GITHUB_ENV"
+          echo "CHUNKS_PUBLIC_SWARM_SECONDS=$SECONDS_LIMIT" >> "$GITHUB_ENV"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+      - name: Install Android API 37 SDK
+        run: |
+          printf "y\n" | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
+          if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          fi
+      - name: Download a verified budget from ordinary peers with the local engine
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set +e
+          gradle --no-daemon --console=plain :app:testDebugUnitTest \
+            --tests io.github.gamesbyian.chunks.engine.LocalEnginePublicSwarmTest
+          status=$?
+          set -e
+          report=app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.engine.LocalEnginePublicSwarmTest.xml
+          grep -o 'CHUNKS_PUBLIC_SWARM: [^<]*' "$report" | tee -a "$GITHUB_STEP_SUMMARY" || true
+          if [ "$EVENT_NAME" = workflow_dispatch ]; then
+            grep -q 'CHUNKS_PUBLIC_SWARM: VERIFIED' "$report" || {
+              echo "::error::No verified peer budget (see INCONCLUSIVE line: peer availability, not engine acceptance)"; exit 1; }
+          fi
+          exit $status

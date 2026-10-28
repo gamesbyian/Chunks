@@ -52,7 +52,10 @@ internal fun LocalSnapshotRestorePreviewPanel(
     busyEngine: Boolean,
     mutationGeneration: Long,
     /** Only primes the existing Add review. Never adds a torrent. */
-    onPrepareAdd: ((ByteArray) -> Unit)? = null
+    onPrepareAdd: ((ByteArray) -> Unit)? = null,
+    /** Queues a separate explicit Place + stopped-restore confirmation. */
+    onReviewOneRestore: ((SnapshotManifestV1.Verified, SnapshotRestorePreviewV1.Entry,
+        List<String>, Long) -> Unit)? = null
 ) = SnapshotRestorePreviewPanel(
     targetHashes = transfers.map { it.infoHash },
     target = SnapshotRestoreTarget.PHONE,
@@ -60,7 +63,8 @@ internal fun LocalSnapshotRestorePreviewPanel(
     inventoryStale = inventoryStale,
     busyEngine = busyEngine,
     mutationGeneration = mutationGeneration,
-    onPrepareAdd = onPrepareAdd
+    onPrepareAdd = onPrepareAdd,
+    onReviewOneRestore = onReviewOneRestore
 )
 
 /** Wording for the engine a snapshot is compared against. */
@@ -97,7 +101,9 @@ internal fun SnapshotRestorePreviewPanel(
     /** Only primes the existing Add review. Never adds a torrent. */
     onPrepareAdd: ((ByteArray) -> Unit)? = null,
     /** Only primes an Add review with a magnet-only record. Never adds. */
-    onPrepareMagnet: ((String) -> Unit)? = null
+    onPrepareMagnet: ((String) -> Unit)? = null,
+    onReviewOneRestore: ((SnapshotManifestV1.Verified, SnapshotRestorePreviewV1.Entry,
+        List<String>, Long) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -209,11 +215,15 @@ internal fun SnapshotRestorePreviewPanel(
                     else "Compare saved snapshot with ${target.noun}")
             }
             if (expanded) {
-                Text("Snapshot restore comparison (read-only)",
+                Text(if (onReviewOneRestore != null)
+                    "Compare snapshot and review stopped restore"
+                    else "Snapshot restore comparison (read-only)",
                     style = MaterialTheme.typography.titleMedium)
                 Text("Compares a verified .chunksnap against every torrent in a " +
-                    "fresh, complete ${target.observation} observation. It can identify missing " +
-                    "torrent definitions, but cannot restore data or move downloaded files.")
+                    "fresh, complete ${target.observation} observation. It can identify " +
+                    "missing definitions. An explicitly confirmed phone restore adds " +
+                    "only a stopped transfer definition: no downloaded payload " +
+                    "files are migrated.")
                 Text("The existing ${target.noun} transfers stay untouched. A match means " +
                     "the exact torrent identity already exists here; it does not " +
                     "prove its payload is complete or correctly seeded.",
@@ -333,6 +343,37 @@ internal fun SnapshotRestorePreviewPanel(
                                 enabled = targetReady && !reading,
                                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                             ) { Text(target.addLabel) }
+                        }
+                        if (entry.decision ==
+                            SnapshotRestorePreviewV1.Decision.METADATA_NEEDS_REVIEW &&
+                            onReviewOneRestore != null) {
+                            OutlinedButton(
+                                onClick = {
+                                    try {
+                                        val source = requireNotNull(verifiedSource)
+                                        SnapshotManualAddReviewV1.prepare(
+                                            verified = source, reviewedEntry = entry,
+                                            frozenTargetHashes = requireNotNull(comparedHashes),
+                                            currentTargetHashes = latestHashes,
+                                            frozenGeneration = comparedGeneration,
+                                            currentGeneration = latestGeneration,
+                                            completeFreshTarget = latestReady
+                                        )
+                                        onReviewOneRestore(source, entry,
+                                            requireNotNull(comparedHashes).toList(),
+                                            comparedGeneration)
+                                        manualNotice = "Stopped restore is awaiting a separate " +
+                                            "destination and action review. Nothing was added."
+                                        error = null
+                                    } catch (_: Exception) {
+                                        manualNotice = null
+                                        error = "Restore preparation failed: reopen this snapshot " +
+                                            "after refreshing the complete target inventory."
+                                    }
+                                },
+                                enabled = targetReady && !reading,
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                            ) { Text("Review journalled stopped restore") }
                         }
                         if (entry.decision == SnapshotRestorePreviewV1.Decision.MAGNET_NEEDS_REVIEW &&
                             onPrepareMagnet != null) {

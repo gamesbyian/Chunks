@@ -102,6 +102,32 @@ class SnapshotArchiveV1Test {
             mapOf(hash to ByteArray(2 * 1024 * 1024 + 1))) }
     }
 
+    @Test fun boundedArchiveMemberReaderNeverSpinsOnZeroProgress() {
+        val stuck = object : java.io.InputStream() {
+            var attempts = 0
+            override fun read(): Int = -1
+            override fun read(bytes: ByteArray, offset: Int, len: Int): Int {
+                attempts++
+                return 0
+            }
+        }
+        expectRejected {
+            SnapshotArchiveV1.readBoundedMember(stuck, 1024, 1024L)
+        }
+        assertEquals("16 tolerated empty polls then fail closed", 17, stuck.attempts)
+        val original = "a verified snapshot ZIP member".toByteArray()
+        assertArrayEquals(original, SnapshotArchiveV1.readBoundedMember(
+            ByteArrayInputStream(original), original.size, original.size.toLong()))
+        expectRejected {
+            SnapshotArchiveV1.readBoundedMember(
+                ByteArrayInputStream(original), 10, original.size.toLong())
+        }
+        expectRejected {
+            SnapshotArchiveV1.readBoundedMember(
+                ByteArrayInputStream(original), original.size, 5L)
+        }
+    }
+
     @Test fun rejectNoncanonicalHashesAndMalformedUtf8() {
         expectRejected { SnapshotArchiveV1.encode(manifest, mapOf(hash.uppercase() to byteArrayOf(1))) }
         expectRejected { SnapshotArchiveV1.encode(byteArrayOf(0xc3.toByte(), 0x28), emptyMap()) }

@@ -1,0 +1,2799 @@
+{
+  "status": "NONSHIPPING conservative mixed above/below accent CFF study",
+  "stacked_source_metrics_sha256": "b8b56655e845648ae82cdadd5588581f0f7e38df124a06b76dbffc4f133bb58c",
+  "policy": "NFD class 230 above, 202/220 below, source-only detached contours, ±font bbox",
+  "weights": {
+    "Regular": {
+      "previously_skipped": 38,
+      "rebuilt_count": 14,
+      "rebuilt": [
+        {
+          "glyph": "Ḹ",
+          "base": "L",
+          "unicode": "U+1E38",
+          "nfd_marks": [
+            "U+0323",
+            "U+0304"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 50,
+          "above_y_shift": 18,
+          "below_y_shift": 0,
+          "bbox": [
+            54,
+            -179,
+            554,
+            773
+          ]
+        },
+        {
+          "glyph": "ḹ",
+          "base": "l",
+          "unicode": "U+1E39",
+          "nfd_marks": [
+            "U+0323",
+            "U+0304"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 80,
+          "above_y_shift": 103,
+          "below_y_shift": 0,
+          "bbox": [
+            60,
+            -179,
+            330,
+            878
+          ]
+        },
+        {
+          "glyph": "Ṝ",
+          "base": "R",
+          "unicode": "U+1E5C",
+          "nfd_marks": [
+            "U+0323",
+            "U+0304"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 49,
+          "above_y_shift": 0,
+          "below_y_shift": 0,
+          "bbox": [
+            103,
+            -179,
+            631,
+            755
+          ]
+        },
+        {
+          "glyph": "ṝ",
+          "base": "r",
+          "unicode": "U+1E5D",
+          "nfd_marks": [
+            "U+0323",
+            "U+0304"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 61,
+          "above_y_shift": 10,
+          "below_y_shift": 0,
+          "bbox": [
+            94,
+            -179,
+            466,
+            645
+          ]
+        },
+        {
+          "glyph": "Ṩ",
+          "base": "S",
+          "unicode": "U+1E68",
+          "nfd_marks": [
+            "U+0323",
+            "U+0307"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 102,
+          "above_y_shift": 7,
+          "below_y_shift": 0,
+          "bbox": [
+            103,
+            -179,
+            631,
+            787
+          ]
+        },
+        {
+          "glyph": "ṩ",
+          "base": "s",
+          "unicode": "U+1E69",
+          "nfd_marks": [
+            "U+0323",
+            "U+0307"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 86,
+          "above_y_shift": 34,
+          "below_y_shift": 0,
+          "bbox": [
+            103,
+            -179,
+            516,
+            691
+          ]
+        },
+        {
+          "glyph": "Ậ",
+          "base": "A",
+          "unicode": "U+1EAC",
+          "nfd_marks": [
+            "U+0323",
+            "U+0302"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 99,
+          "above_y_shift": 10,
+          "below_y_shift": 0,
+          "bbox": [
+            103,
+            -179,
+            688,
+            824
+          ]
+        },
+        {
+          "glyph": "ậ",
+          "base": "a",
+          "unicode": "U+1EAD",
+          "nfd_marks": [
+            "U+0323",
+            "U+0302"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 121,
+          "above_y_shift": 53,
+          "below_y_shift": 0,
+          "bbox": [
+            102,
+            -179,
+            611,
+            733
+          ]
+        },
+        {
+          "glyph": "Ặ",
+          "base": "A",
+          "unicode": "U+1EB6",
+          "nfd_marks": [
+            "U+0323",
+            "U+0306"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 99,
+          "above_y_shift": 2,
+          "below_y_shift": 0,
+          "bbox": [
+            103,
+            -179,
+            688,
+            795
+          ]
+        },
+        {
+          "glyph": "ặ",
+          "base": "a",
+          "unicode": "U+1EB7",
+          "nfd_marks": [
+            "U+0323",
+            "U+0306"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 121,
+          "above_y_shift": 32,
+          "below_y_shift": 0,
+          "bbox": [
+            102,
+            -179,
+            611,
+            699
+          ]
+        },
+        {
+          "glyph": "Ệ",
+          "base": "E",
+          "unicode": "U+1EC6",
+          "nfd_marks": [
+            "U+0323",
+            "U+0302"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 64,
+          "above_y_shift": 29,
+          "below_y_shift": 0,
+          "bbox": [
+            103,
+            -179,
+            592,
+            843
+          ]
+        },
+        {
+          "glyph": "ệ",
+          "base": "e",
+          "unicode": "U+1EC7",
+          "nfd_marks": [
+            "U+0323",
+            "U+0302"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 92,
+          "above_y_shift": 79,
+          "below_y_shift": 0,
+          "bbox": [
+            95,
+            -179,
+            617,
+            759
+          ]
+        },
+        {
+          "glyph": "Ộ",
+          "base": "O",
+          "unicode": "U+1ED8",
+          "nfd_marks": [
+            "U+0323",
+            "U+0302"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 71,
+          "above_y_shift": 0,
+          "below_y_shift": 0,
+          "bbox": [
+            103,
+            -179,
+            727,
+            814
+          ]
+        },
+        {
+          "glyph": "ộ",
+          "base": "o",
+          "unicode": "U+1ED9",
+          "nfd_marks": [
+            "U+0323",
+            "U+0302"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 89,
+          "above_y_shift": 53,
+          "below_y_shift": 0,
+          "bbox": [
+            102,
+            -179,
+            629,
+            733
+          ]
+        }
+      ],
+      "skipped_count": 24,
+      "skipped": [
+        {
+          "glyph": "Ḉ",
+          "reason": "unseparated_directional_marks",
+          "detached_above": 1,
+          "detached_below": 0
+        },
+        {
+          "glyph": "ḉ",
+          "reason": "unseparated_directional_marks",
+          "detached_above": 1,
+          "detached_below": 0
+        },
+        {
+          "glyph": "Ḝ",
+          "reason": "unseparated_directional_marks",
+          "detached_above": 1,
+          "detached_below": 0
+        },
+        {
+          "glyph": "ḝ",
+          "reason": "unseparated_directional_marks",
+          "detached_above": 1,
+          "detached_below": 0
+        },
+        {
+          "glyph": "Ớ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ớ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ờ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ờ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ở",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ở",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ỡ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ỡ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ợ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ợ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ứ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ứ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ừ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ừ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ử",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ử",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ữ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ữ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ự",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ự",
+          "reason": "mixed_direction_not_supported"
+        }
+      ],
+      "skip_reasons": {
+        "unseparated_directional_marks": 4,
+        "mixed_direction_not_supported": 20
+      },
+      "weight": 400,
+      "input_original_sha256": "a31b5c8726a640beada2113e11002eaac75a79b575f6855fdd60e9dc5ecbf63e",
+      "input_stacked_sha256": "98221cc234ac8026cb2e46dc3ef6346e341f3e9f669a80d811dc4f8bc14c31b2",
+      "output_sha256": "e2fdedda31ef115ebac977c1f8f5e17fc40da836e43c8aa5c0b974d102cd3cff",
+      "file": "ChunksReferenceMixedMarks-Regular.otf",
+      "kerning": {
+        "input_sha256": "0eb5a78dc299443ad5c3caacbc07b26ad5f64cde8fd98ccb9257c4a182be1ddf",
+        "file": "ChunksReferenceMixedMarks-Regular.otf",
+        "reference_accent_glyphs": 14,
+        "candidate_pairs": 1932,
+        "adjusted_pairs": 1932,
+        "bounded_subtables": 7,
+        "max_correction_units": 120,
+        "clipped_pair_count": 146,
+        "clipped_pair_examples": [
+          {
+            "first": "E",
+            "second": "Ậ",
+            "desired_units": -121,
+            "applied_units": -120
+          },
+          {
+            "first": "E",
+            "second": "ậ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "E",
+            "second": "Ặ",
+            "desired_units": -121,
+            "applied_units": -120
+          },
+          {
+            "first": "E",
+            "second": "ặ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "E",
+            "second": "Ộ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "ṝ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "Ṩ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "ṩ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "Ậ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "ậ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "Ặ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "ặ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "ệ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "Ộ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "ộ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "L",
+            "second": "Ṩ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "L",
+            "second": "Ậ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "L",
+            "second": "Ặ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "T",
+            "second": "Ậ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "T",
+            "second": "ậ",
+            "desired_units": -124,
+            "applied_units": -120
+          }
+        ],
+        "mean_abs_correction_units": 87.83,
+        "source_scripts_unchanged": true,
+        "pre_family_name_sha256": "cd6820364c437343d164eeecffe4a699b80852b26506bba667f5b6d4756ecaf7",
+        "output_sha256": "e2fdedda31ef115ebac977c1f8f5e17fc40da836e43c8aa5c0b974d102cd3cff"
+      }
+    },
+    "Medium": {
+      "previously_skipped": 39,
+      "rebuilt_count": 14,
+      "rebuilt": [
+        {
+          "glyph": "Ḹ",
+          "base": "L",
+          "unicode": "U+1E38",
+          "nfd_marks": [
+            "U+0323",
+            "U+0304"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 49,
+          "above_y_shift": 23,
+          "below_y_shift": 0,
+          "bbox": [
+            52,
+            -191,
+            559,
+            795
+          ]
+        },
+        {
+          "glyph": "ḹ",
+          "base": "l",
+          "unicode": "U+1E39",
+          "nfd_marks": [
+            "U+0323",
+            "U+0304"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 75,
+          "above_y_shift": 106,
+          "below_y_shift": 0,
+          "bbox": [
+            52,
+            -191,
+            338,
+            898
+          ]
+        },
+        {
+          "glyph": "Ṝ",
+          "base": "R",
+          "unicode": "U+1E5C",
+          "nfd_marks": [
+            "U+0323",
+            "U+0304"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 46,
+          "above_y_shift": 0,
+          "below_y_shift": 0,
+          "bbox": [
+            96,
+            -191,
+            636,
+            772
+          ]
+        },
+        {
+          "glyph": "ṝ",
+          "base": "r",
+          "unicode": "U+1E5D",
+          "nfd_marks": [
+            "U+0323",
+            "U+0304"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 60,
+          "above_y_shift": 16,
+          "below_y_shift": 0,
+          "bbox": [
+            89,
+            -191,
+            471,
+            665
+          ]
+        },
+        {
+          "glyph": "Ṩ",
+          "base": "S",
+          "unicode": "U+1E68",
+          "nfd_marks": [
+            "U+0323",
+            "U+0307"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 98,
+          "above_y_shift": 16,
+          "below_y_shift": 0,
+          "bbox": [
+            98,
+            -191,
+            635,
+            813
+          ]
+        },
+        {
+          "glyph": "ṩ",
+          "base": "s",
+          "unicode": "U+1E69",
+          "nfd_marks": [
+            "U+0323",
+            "U+0307"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 78,
+          "above_y_shift": 46,
+          "below_y_shift": 0,
+          "bbox": [
+            96,
+            -194,
+            522,
+            717
+          ]
+        },
+        {
+          "glyph": "Ậ",
+          "base": "A",
+          "unicode": "U+1EAC",
+          "nfd_marks": [
+            "U+0323",
+            "U+0302"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 93,
+          "above_y_shift": 19,
+          "below_y_shift": 0,
+          "bbox": [
+            95,
+            -191,
+            694,
+            841
+          ]
+        },
+        {
+          "glyph": "ậ",
+          "base": "a",
+          "unicode": "U+1EAD",
+          "nfd_marks": [
+            "U+0323",
+            "U+0302"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 115,
+          "above_y_shift": 56,
+          "below_y_shift": 0,
+          "bbox": [
+            95,
+            -191,
+            618,
+            752
+          ]
+        },
+        {
+          "glyph": "Ặ",
+          "base": "A",
+          "unicode": "U+1EB6",
+          "nfd_marks": [
+            "U+0323",
+            "U+0306"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 93,
+          "above_y_shift": 10,
+          "below_y_shift": 0,
+          "bbox": [
+            95,
+            -191,
+            694,
+            815
+          ]
+        },
+        {
+          "glyph": "ặ",
+          "base": "a",
+          "unicode": "U+1EB7",
+          "nfd_marks": [
+            "U+0323",
+            "U+0306"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 115,
+          "above_y_shift": 36,
+          "below_y_shift": 0,
+          "bbox": [
+            95,
+            -191,
+            618,
+            719
+          ]
+        },
+        {
+          "glyph": "Ệ",
+          "base": "E",
+          "unicode": "U+1EC6",
+          "nfd_marks": [
+            "U+0323",
+            "U+0302"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 62,
+          "above_y_shift": 38,
+          "below_y_shift": 0,
+          "bbox": [
+            95,
+            -193,
+            598,
+            860
+          ]
+        },
+        {
+          "glyph": "ệ",
+          "base": "e",
+          "unicode": "U+1EC7",
+          "nfd_marks": [
+            "U+0323",
+            "U+0302"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 90,
+          "above_y_shift": 80,
+          "below_y_shift": 0,
+          "bbox": [
+            91,
+            -191,
+            623,
+            776
+          ]
+        },
+        {
+          "glyph": "Ộ",
+          "base": "O",
+          "unicode": "U+1ED8",
+          "nfd_marks": [
+            "U+0323",
+            "U+0302"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 68,
+          "above_y_shift": 0,
+          "below_y_shift": 0,
+          "bbox": [
+            95,
+            -191,
+            733,
+            822
+          ]
+        },
+        {
+          "glyph": "ộ",
+          "base": "o",
+          "unicode": "U+1ED9",
+          "nfd_marks": [
+            "U+0323",
+            "U+0302"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 85,
+          "above_y_shift": 56,
+          "below_y_shift": 0,
+          "bbox": [
+            96,
+            -191,
+            636,
+            752
+          ]
+        }
+      ],
+      "skipped_count": 25,
+      "skipped": [
+        {
+          "glyph": "Ǻ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ḉ",
+          "reason": "unseparated_directional_marks",
+          "detached_above": 1,
+          "detached_below": 0
+        },
+        {
+          "glyph": "ḉ",
+          "reason": "unseparated_directional_marks",
+          "detached_above": 1,
+          "detached_below": 0
+        },
+        {
+          "glyph": "Ḝ",
+          "reason": "unseparated_directional_marks",
+          "detached_above": 1,
+          "detached_below": 0
+        },
+        {
+          "glyph": "ḝ",
+          "reason": "unseparated_directional_marks",
+          "detached_above": 1,
+          "detached_below": 0
+        },
+        {
+          "glyph": "Ớ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ớ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ờ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ờ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ở",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ở",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ỡ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ỡ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ợ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ợ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ứ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ứ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ừ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ừ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ử",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ử",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ữ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ữ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ự",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ự",
+          "reason": "mixed_direction_not_supported"
+        }
+      ],
+      "skip_reasons": {
+        "mixed_direction_not_supported": 21,
+        "unseparated_directional_marks": 4
+      },
+      "weight": 500,
+      "input_original_sha256": "50b68167346fa4dc5f8c6c8326c0668cfaa0e0c1dacb927b04acd2b31834d529",
+      "input_stacked_sha256": "0bece5f230c1c80b55ff8e58952ca7a53f2d04179d66cb880b1b23f4bc308977",
+      "output_sha256": "ead826beaf7547a0b11fd0606060b456b06efe0410662ce4d613033fba6d8e1e",
+      "file": "ChunksReferenceMixedMarks-Medium.otf",
+      "kerning": {
+        "input_sha256": "f83f03e49bc2f4a4e24320304b476619635e8d44718c6b5dcfae9bce1fc6656c",
+        "file": "ChunksReferenceMixedMarks-Medium.otf",
+        "reference_accent_glyphs": 14,
+        "candidate_pairs": 1932,
+        "adjusted_pairs": 1932,
+        "bounded_subtables": 7,
+        "max_correction_units": 120,
+        "clipped_pair_count": 96,
+        "clipped_pair_examples": [
+          {
+            "first": "E",
+            "second": "ậ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "E",
+            "second": "ặ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "E",
+            "second": "Ộ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "Ṩ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "Ậ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "ậ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "Ặ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "ặ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "L",
+            "second": "Ṩ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "L",
+            "second": "Ậ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "L",
+            "second": "Ặ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "T",
+            "second": "Ậ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "T",
+            "second": "ậ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "T",
+            "second": "Ặ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "T",
+            "second": "ặ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "T",
+            "second": "Ộ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "V",
+            "second": "Ậ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "V",
+            "second": "Ặ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "X",
+            "second": "Ộ",
+            "desired_units": -121,
+            "applied_units": -120
+          },
+          {
+            "first": "Y",
+            "second": "Ậ",
+            "desired_units": -124,
+            "applied_units": -120
+          }
+        ],
+        "mean_abs_correction_units": 84.86,
+        "source_scripts_unchanged": true,
+        "pre_family_name_sha256": "8d88498eccb1f2323e08ca4244fc38c5d60186a2e9bd3b0aca8035851114a951",
+        "output_sha256": "ead826beaf7547a0b11fd0606060b456b06efe0410662ce4d613033fba6d8e1e"
+      }
+    },
+    "Semibold": {
+      "previously_skipped": 40,
+      "rebuilt_count": 14,
+      "rebuilt": [
+        {
+          "glyph": "Ḹ",
+          "base": "L",
+          "unicode": "U+1E38",
+          "nfd_marks": [
+            "U+0323",
+            "U+0304"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 50,
+          "above_y_shift": 31,
+          "below_y_shift": 0,
+          "bbox": [
+            51,
+            -203,
+            568,
+            818
+          ]
+        },
+        {
+          "glyph": "ḹ",
+          "base": "l",
+          "unicode": "U+1E39",
+          "nfd_marks": [
+            "U+0323",
+            "U+0304"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 70,
+          "above_y_shift": 111,
+          "below_y_shift": 0,
+          "bbox": [
+            43,
+            -203,
+            345,
+            918
+          ]
+        },
+        {
+          "glyph": "Ṝ",
+          "base": "R",
+          "unicode": "U+1E5C",
+          "nfd_marks": [
+            "U+0323",
+            "U+0304"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 46,
+          "above_y_shift": 0,
+          "below_y_shift": 0,
+          "bbox": [
+            88,
+            -203,
+            644,
+            787
+          ]
+        },
+        {
+          "glyph": "ṝ",
+          "base": "r",
+          "unicode": "U+1E5D",
+          "nfd_marks": [
+            "U+0323",
+            "U+0304"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 58,
+          "above_y_shift": 24,
+          "below_y_shift": 0,
+          "bbox": [
+            83,
+            -203,
+            476,
+            686
+          ]
+        },
+        {
+          "glyph": "Ṩ",
+          "base": "S",
+          "unicode": "U+1E68",
+          "nfd_marks": [
+            "U+0323",
+            "U+0307"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 94,
+          "above_y_shift": 26,
+          "below_y_shift": 0,
+          "bbox": [
+            89,
+            -203,
+            645,
+            838
+          ]
+        },
+        {
+          "glyph": "ṩ",
+          "base": "s",
+          "unicode": "U+1E69",
+          "nfd_marks": [
+            "U+0323",
+            "U+0307"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 72,
+          "above_y_shift": 58,
+          "below_y_shift": 0,
+          "bbox": [
+            88,
+            -208,
+            530,
+            741
+          ]
+        },
+        {
+          "glyph": "Ậ",
+          "base": "A",
+          "unicode": "U+1EAC",
+          "nfd_marks": [
+            "U+0323",
+            "U+0302"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 88,
+          "above_y_shift": 29,
+          "below_y_shift": 0,
+          "bbox": [
+            88,
+            -203,
+            702,
+            859
+          ]
+        },
+        {
+          "glyph": "ậ",
+          "base": "a",
+          "unicode": "U+1EAD",
+          "nfd_marks": [
+            "U+0323",
+            "U+0302"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 109,
+          "above_y_shift": 60,
+          "below_y_shift": 0,
+          "bbox": [
+            88,
+            -203,
+            625,
+            771
+          ]
+        },
+        {
+          "glyph": "Ặ",
+          "base": "A",
+          "unicode": "U+1EB6",
+          "nfd_marks": [
+            "U+0323",
+            "U+0306"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 88,
+          "above_y_shift": 19,
+          "below_y_shift": 0,
+          "bbox": [
+            88,
+            -203,
+            702,
+            834
+          ]
+        },
+        {
+          "glyph": "ặ",
+          "base": "a",
+          "unicode": "U+1EB7",
+          "nfd_marks": [
+            "U+0323",
+            "U+0306"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 109,
+          "above_y_shift": 40,
+          "below_y_shift": 0,
+          "bbox": [
+            88,
+            -203,
+            625,
+            738
+          ]
+        },
+        {
+          "glyph": "Ệ",
+          "base": "E",
+          "unicode": "U+1EC6",
+          "nfd_marks": [
+            "U+0323",
+            "U+0302"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 62,
+          "above_y_shift": 48,
+          "below_y_shift": 0,
+          "bbox": [
+            88,
+            -205,
+            607,
+            878
+          ]
+        },
+        {
+          "glyph": "ệ",
+          "base": "e",
+          "unicode": "U+1EC7",
+          "nfd_marks": [
+            "U+0323",
+            "U+0302"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 88,
+          "above_y_shift": 83,
+          "below_y_shift": 0,
+          "bbox": [
+            84,
+            -203,
+            629,
+            794
+          ]
+        },
+        {
+          "glyph": "Ộ",
+          "base": "O",
+          "unicode": "U+1ED8",
+          "nfd_marks": [
+            "U+0323",
+            "U+0302"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 67,
+          "above_y_shift": 10,
+          "below_y_shift": 0,
+          "bbox": [
+            88,
+            -203,
+            741,
+            840
+          ]
+        },
+        {
+          "glyph": "ộ",
+          "base": "o",
+          "unicode": "U+1ED9",
+          "nfd_marks": [
+            "U+0323",
+            "U+0302"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 82,
+          "above_y_shift": 61,
+          "below_y_shift": 0,
+          "bbox": [
+            88,
+            -203,
+            645,
+            772
+          ]
+        }
+      ],
+      "skipped_count": 26,
+      "skipped": [
+        {
+          "glyph": "Ǻ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ḉ",
+          "reason": "unseparated_directional_marks",
+          "detached_above": 1,
+          "detached_below": 0
+        },
+        {
+          "glyph": "ḉ",
+          "reason": "unseparated_directional_marks",
+          "detached_above": 1,
+          "detached_below": 0
+        },
+        {
+          "glyph": "Ḝ",
+          "reason": "unseparated_directional_marks",
+          "detached_above": 1,
+          "detached_below": 0
+        },
+        {
+          "glyph": "ḝ",
+          "reason": "unseparated_directional_marks",
+          "detached_above": 1,
+          "detached_below": 0
+        },
+        {
+          "glyph": "Ḯ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ớ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ớ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ờ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ờ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ở",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ở",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ỡ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ỡ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ợ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ợ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ứ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ứ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ừ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ừ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ử",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ử",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ữ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ữ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ự",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ự",
+          "reason": "mixed_direction_not_supported"
+        }
+      ],
+      "skip_reasons": {
+        "mixed_direction_not_supported": 22,
+        "unseparated_directional_marks": 4
+      },
+      "weight": 600,
+      "input_original_sha256": "8261803c2870f91db32f3c0506475a31189c5f16a2dfba35a5c0371faee890ef",
+      "input_stacked_sha256": "cb0f3d13e8c106501a6ebdab958c31d866c602b543fd00c7a0f8d751d0d057ab",
+      "output_sha256": "d2c2a4466a8c8316b950fa84810cabb33f10e35778da7aa0c87c9def6989b1cb",
+      "file": "ChunksReferenceMixedMarks-Semibold.otf",
+      "kerning": {
+        "input_sha256": "b47d3103f1053434ec0539e809a861e9eb4da75bcd88fb30d2638beef3f1fe0b",
+        "file": "ChunksReferenceMixedMarks-Semibold.otf",
+        "reference_accent_glyphs": 14,
+        "candidate_pairs": 1932,
+        "adjusted_pairs": 1932,
+        "bounded_subtables": 7,
+        "max_correction_units": 120,
+        "clipped_pair_count": 51,
+        "clipped_pair_examples": [
+          {
+            "first": "F",
+            "second": "Ṩ",
+            "desired_units": -123,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "Ậ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "ậ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "Ặ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "ặ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "L",
+            "second": "Ṩ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "T",
+            "second": "Ậ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "T",
+            "second": "ậ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "T",
+            "second": "Ặ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "T",
+            "second": "ặ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "T",
+            "second": "Ộ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "V",
+            "second": "Ậ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "V",
+            "second": "Ặ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "Y",
+            "second": "Ậ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "Y",
+            "second": "Ặ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "f",
+            "second": "Ậ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "f",
+            "second": "Ặ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "4",
+            "second": "Ṩ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "7",
+            "second": "Ậ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "7",
+            "second": "Ặ",
+            "desired_units": -124,
+            "applied_units": -120
+          }
+        ],
+        "mean_abs_correction_units": 81.26,
+        "source_scripts_unchanged": true,
+        "pre_family_name_sha256": "3ddb714ab0b5e50dad7a19eb4a8471130a2f6de0544a9bf1494c3252f1c244c8",
+        "output_sha256": "d2c2a4466a8c8316b950fa84810cabb33f10e35778da7aa0c87c9def6989b1cb"
+      }
+    },
+    "Bold": {
+      "previously_skipped": 51,
+      "rebuilt_count": 14,
+      "rebuilt": [
+        {
+          "glyph": "Ḹ",
+          "base": "L",
+          "unicode": "U+1E38",
+          "nfd_marks": [
+            "U+0323",
+            "U+0304"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 51,
+          "above_y_shift": 38,
+          "below_y_shift": 0,
+          "bbox": [
+            50,
+            -217,
+            576,
+            843
+          ]
+        },
+        {
+          "glyph": "ḹ",
+          "base": "l",
+          "unicode": "U+1E39",
+          "nfd_marks": [
+            "U+0323",
+            "U+0304"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 66,
+          "above_y_shift": 116,
+          "below_y_shift": 0,
+          "bbox": [
+            35,
+            -217,
+            356,
+            942
+          ]
+        },
+        {
+          "glyph": "Ṝ",
+          "base": "R",
+          "unicode": "U+1E5C",
+          "nfd_marks": [
+            "U+0323",
+            "U+0304"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 44,
+          "above_y_shift": 0,
+          "below_y_shift": 0,
+          "bbox": [
+            79,
+            -217,
+            653,
+            805
+          ]
+        },
+        {
+          "glyph": "ṝ",
+          "base": "r",
+          "unicode": "U+1E5D",
+          "nfd_marks": [
+            "U+0323",
+            "U+0304"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 58,
+          "above_y_shift": 33,
+          "below_y_shift": 0,
+          "bbox": [
+            78,
+            -217,
+            483,
+            711
+          ]
+        },
+        {
+          "glyph": "Ṩ",
+          "base": "S",
+          "unicode": "U+1E68",
+          "nfd_marks": [
+            "U+0323",
+            "U+0307"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 90,
+          "above_y_shift": 36,
+          "below_y_shift": 0,
+          "bbox": [
+            80,
+            -217,
+            653,
+            867
+          ]
+        },
+        {
+          "glyph": "ṩ",
+          "base": "s",
+          "unicode": "U+1E69",
+          "nfd_marks": [
+            "U+0323",
+            "U+0307"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 64,
+          "above_y_shift": 72,
+          "below_y_shift": 0,
+          "bbox": [
+            79,
+            -225,
+            538,
+            770
+          ]
+        },
+        {
+          "glyph": "Ậ",
+          "base": "A",
+          "unicode": "U+1EAC",
+          "nfd_marks": [
+            "U+0323",
+            "U+0302"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 84,
+          "above_y_shift": 41,
+          "below_y_shift": 0,
+          "bbox": [
+            80,
+            -217,
+            711,
+            880
+          ]
+        },
+        {
+          "glyph": "ậ",
+          "base": "a",
+          "unicode": "U+1EAD",
+          "nfd_marks": [
+            "U+0323",
+            "U+0302"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 102,
+          "above_y_shift": 65,
+          "below_y_shift": 0,
+          "bbox": [
+            80,
+            -217,
+            633,
+            794
+          ]
+        },
+        {
+          "glyph": "Ặ",
+          "base": "A",
+          "unicode": "U+1EB6",
+          "nfd_marks": [
+            "U+0323",
+            "U+0306"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 84,
+          "above_y_shift": 30,
+          "below_y_shift": 0,
+          "bbox": [
+            80,
+            -217,
+            711,
+            858
+          ]
+        },
+        {
+          "glyph": "ặ",
+          "base": "a",
+          "unicode": "U+1EB7",
+          "nfd_marks": [
+            "U+0323",
+            "U+0306"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 102,
+          "above_y_shift": 46,
+          "below_y_shift": 0,
+          "bbox": [
+            80,
+            -217,
+            633,
+            762
+          ]
+        },
+        {
+          "glyph": "Ệ",
+          "base": "E",
+          "unicode": "U+1EC6",
+          "nfd_marks": [
+            "U+0323",
+            "U+0302"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 60,
+          "above_y_shift": 60,
+          "below_y_shift": 0,
+          "bbox": [
+            80,
+            -221,
+            615,
+            899
+          ]
+        },
+        {
+          "glyph": "ệ",
+          "base": "e",
+          "unicode": "U+1EC7",
+          "nfd_marks": [
+            "U+0323",
+            "U+0302"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 84,
+          "above_y_shift": 86,
+          "below_y_shift": 0,
+          "bbox": [
+            78,
+            -217,
+            635,
+            815
+          ]
+        },
+        {
+          "glyph": "Ộ",
+          "base": "O",
+          "unicode": "U+1ED8",
+          "nfd_marks": [
+            "U+0323",
+            "U+0302"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 64,
+          "above_y_shift": 21,
+          "below_y_shift": 0,
+          "bbox": [
+            79,
+            -217,
+            749,
+            860
+          ]
+        },
+        {
+          "glyph": "ộ",
+          "base": "o",
+          "unicode": "U+1ED9",
+          "nfd_marks": [
+            "U+0323",
+            "U+0302"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 78,
+          "above_y_shift": 65,
+          "below_y_shift": 0,
+          "bbox": [
+            81,
+            -217,
+            653,
+            794
+          ]
+        }
+      ],
+      "skipped_count": 37,
+      "skipped": [
+        {
+          "glyph": "Ǘ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ǚ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ǜ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ǻ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ḉ",
+          "reason": "unseparated_directional_marks",
+          "detached_above": 1,
+          "detached_below": 0
+        },
+        {
+          "glyph": "ḉ",
+          "reason": "unseparated_directional_marks",
+          "detached_above": 1,
+          "detached_below": 0
+        },
+        {
+          "glyph": "Ḕ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ḗ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ḝ",
+          "reason": "unseparated_directional_marks",
+          "detached_above": 1,
+          "detached_below": 0
+        },
+        {
+          "glyph": "ḝ",
+          "reason": "unseparated_directional_marks",
+          "detached_above": 1,
+          "detached_below": 0
+        },
+        {
+          "glyph": "Ḯ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ṧ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ṹ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ẫ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ẳ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ể",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ễ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ớ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ớ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ờ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ờ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ở",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ở",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ỡ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ỡ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ợ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ợ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ứ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ứ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ừ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ừ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ử",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ử",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ữ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ữ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ự",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ự",
+          "reason": "mixed_direction_not_supported"
+        }
+      ],
+      "skip_reasons": {
+        "mixed_direction_not_supported": 33,
+        "unseparated_directional_marks": 4
+      },
+      "weight": 700,
+      "input_original_sha256": "4c4d514999eae9192313499e31b5e69b84a348e7fac2b1554a7728c6a14aa5ae",
+      "input_stacked_sha256": "4eb71b1238929a101e8a58f01fb15b6cdb30c1a0fd5c5d891b40916479c01f06",
+      "output_sha256": "1984a9bda7d3a1d6391cfb96a25c75ce2b9cfa82f0dbbe9bfcb50c70f524be3e",
+      "file": "ChunksReferenceMixedMarks-Bold.otf",
+      "kerning": {
+        "input_sha256": "953cc749f74453e84a0e3111450034316ff6e6ce23fe171eaa201217f725a1f8",
+        "file": "ChunksReferenceMixedMarks-Bold.otf",
+        "reference_accent_glyphs": 14,
+        "candidate_pairs": 1932,
+        "adjusted_pairs": 1932,
+        "bounded_subtables": 7,
+        "max_correction_units": 120,
+        "clipped_pair_count": 27,
+        "clipped_pair_examples": [
+          {
+            "first": "F",
+            "second": "ậ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "ặ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "T",
+            "second": "Ậ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "T",
+            "second": "Ặ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "V",
+            "second": "Ậ",
+            "desired_units": -122,
+            "applied_units": -120
+          },
+          {
+            "first": "V",
+            "second": "Ặ",
+            "desired_units": -122,
+            "applied_units": -120
+          },
+          {
+            "first": "Y",
+            "second": "Ậ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "Y",
+            "second": "Ặ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "Ḹ",
+            "second": "T",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "Ḹ",
+            "second": "V",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "Ḹ",
+            "second": "Y",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "Ḹ",
+            "second": "t",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "Ḹ",
+            "second": "1",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "ṝ",
+            "second": "Z",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "ṝ",
+            "second": "4",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "Ṩ",
+            "second": "1",
+            "desired_units": -123,
+            "applied_units": -120
+          },
+          {
+            "first": "Ậ",
+            "second": "T",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "Ậ",
+            "second": "V",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "Ậ",
+            "second": "Y",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "Ặ",
+            "second": "T",
+            "desired_units": -124,
+            "applied_units": -120
+          }
+        ],
+        "mean_abs_correction_units": 77.19,
+        "source_scripts_unchanged": true,
+        "pre_family_name_sha256": "634aec9e7a935f950d436fef4cb3c65dc7e67c525b62f9dbdb4279125fd3c15f",
+        "output_sha256": "1984a9bda7d3a1d6391cfb96a25c75ce2b9cfa82f0dbbe9bfcb50c70f524be3e"
+      }
+    },
+    "ExtraBold": {
+      "previously_skipped": 61,
+      "rebuilt_count": 14,
+      "rebuilt": [
+        {
+          "glyph": "Ḹ",
+          "base": "L",
+          "unicode": "U+1E38",
+          "nfd_marks": [
+            "U+0323",
+            "U+0304"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 52,
+          "above_y_shift": 45,
+          "below_y_shift": 0,
+          "bbox": [
+            50,
+            -229,
+            585,
+            866
+          ]
+        },
+        {
+          "glyph": "ḹ",
+          "base": "l",
+          "unicode": "U+1E39",
+          "nfd_marks": [
+            "U+0323",
+            "U+0304"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 61,
+          "above_y_shift": 120,
+          "below_y_shift": 0,
+          "bbox": [
+            27,
+            -229,
+            363,
+            962
+          ]
+        },
+        {
+          "glyph": "Ṝ",
+          "base": "R",
+          "unicode": "U+1E5C",
+          "nfd_marks": [
+            "U+0323",
+            "U+0304"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 44,
+          "above_y_shift": 7,
+          "below_y_shift": 0,
+          "bbox": [
+            71,
+            -229,
+            662,
+            828
+          ]
+        },
+        {
+          "glyph": "ṝ",
+          "base": "r",
+          "unicode": "U+1E5D",
+          "nfd_marks": [
+            "U+0323",
+            "U+0304"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 56,
+          "above_y_shift": 40,
+          "below_y_shift": 0,
+          "bbox": [
+            71,
+            -229,
+            489,
+            732
+          ]
+        },
+        {
+          "glyph": "Ṩ",
+          "base": "S",
+          "unicode": "U+1E68",
+          "nfd_marks": [
+            "U+0323",
+            "U+0307"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 86,
+          "above_y_shift": 46,
+          "below_y_shift": 0,
+          "bbox": [
+            71,
+            -229,
+            662,
+            893
+          ]
+        },
+        {
+          "glyph": "ṩ",
+          "base": "s",
+          "unicode": "U+1E69",
+          "nfd_marks": [
+            "U+0323",
+            "U+0307"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 58,
+          "above_y_shift": 86,
+          "below_y_shift": 0,
+          "bbox": [
+            71,
+            -239,
+            546,
+            797
+          ]
+        },
+        {
+          "glyph": "Ậ",
+          "base": "A",
+          "unicode": "U+1EAC",
+          "nfd_marks": [
+            "U+0323",
+            "U+0302"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 78,
+          "above_y_shift": 51,
+          "below_y_shift": 0,
+          "bbox": [
+            71,
+            -229,
+            719,
+            898
+          ]
+        },
+        {
+          "glyph": "ậ",
+          "base": "a",
+          "unicode": "U+1EAD",
+          "nfd_marks": [
+            "U+0323",
+            "U+0302"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 96,
+          "above_y_shift": 70,
+          "below_y_shift": 0,
+          "bbox": [
+            71,
+            -229,
+            642,
+            815
+          ]
+        },
+        {
+          "glyph": "Ặ",
+          "base": "A",
+          "unicode": "U+1EB6",
+          "nfd_marks": [
+            "U+0323",
+            "U+0306"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 78,
+          "above_y_shift": 39,
+          "below_y_shift": 0,
+          "bbox": [
+            71,
+            -229,
+            719,
+            878
+          ]
+        },
+        {
+          "glyph": "ặ",
+          "base": "a",
+          "unicode": "U+1EB7",
+          "nfd_marks": [
+            "U+0323",
+            "U+0306"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 96,
+          "above_y_shift": 51,
+          "below_y_shift": 0,
+          "bbox": [
+            71,
+            -229,
+            642,
+            782
+          ]
+        },
+        {
+          "glyph": "Ệ",
+          "base": "E",
+          "unicode": "U+1EC6",
+          "nfd_marks": [
+            "U+0323",
+            "U+0302"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 60,
+          "above_y_shift": 70,
+          "below_y_shift": 0,
+          "bbox": [
+            71,
+            -234,
+            623,
+            917
+          ]
+        },
+        {
+          "glyph": "ệ",
+          "base": "e",
+          "unicode": "U+1EC7",
+          "nfd_marks": [
+            "U+0323",
+            "U+0302"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 82,
+          "above_y_shift": 89,
+          "below_y_shift": 0,
+          "bbox": [
+            71,
+            -229,
+            642,
+            834
+          ]
+        },
+        {
+          "glyph": "Ộ",
+          "base": "O",
+          "unicode": "U+1ED8",
+          "nfd_marks": [
+            "U+0323",
+            "U+0302"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 63,
+          "above_y_shift": 32,
+          "below_y_shift": 0,
+          "bbox": [
+            71,
+            -229,
+            758,
+            879
+          ]
+        },
+        {
+          "glyph": "ộ",
+          "base": "o",
+          "unicode": "U+1ED9",
+          "nfd_marks": [
+            "U+0323",
+            "U+0302"
+          ],
+          "separated_above": 1,
+          "separated_below": 1,
+          "x_shift": 74,
+          "above_y_shift": 70,
+          "below_y_shift": 0,
+          "bbox": [
+            71,
+            -229,
+            662,
+            815
+          ]
+        }
+      ],
+      "skipped_count": 47,
+      "skipped": [
+        {
+          "glyph": "Ǖ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ǘ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ǚ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ǜ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ǻ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ḉ",
+          "reason": "unseparated_directional_marks",
+          "detached_above": 1,
+          "detached_below": 0
+        },
+        {
+          "glyph": "ḉ",
+          "reason": "unseparated_directional_marks",
+          "detached_above": 1,
+          "detached_below": 0
+        },
+        {
+          "glyph": "Ḕ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ḗ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ḝ",
+          "reason": "unseparated_directional_marks",
+          "detached_above": 1,
+          "detached_below": 0
+        },
+        {
+          "glyph": "ḝ",
+          "reason": "unseparated_directional_marks",
+          "detached_above": 1,
+          "detached_below": 0
+        },
+        {
+          "glyph": "Ḯ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ṍ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ṑ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ṓ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ṧ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ṹ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ẩ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ẫ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ắ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ằ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ẳ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ẵ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ể",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ễ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ổ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ỗ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ớ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ớ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ờ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ờ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ở",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ở",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ỡ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ỡ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ợ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ợ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ứ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ứ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ừ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ừ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ử",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ử",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ữ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ữ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ự",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "ự",
+          "reason": "mixed_direction_not_supported"
+        }
+      ],
+      "skip_reasons": {
+        "mixed_direction_not_supported": 43,
+        "unseparated_directional_marks": 4
+      },
+      "weight": 800,
+      "input_original_sha256": "0f7c0ab9e30801a676932e28b0f38c88d0dbc8101b5349e561521de45a1017fe",
+      "input_stacked_sha256": "065725ff0c6665e00a8fd210f0f624e61eb4120a9bf5fdb49b59a77149d4a2cb",
+      "output_sha256": "a324980e5987d1ddddadfbc946156f4c1ca650c5d355e954752d7abe63c4ef69",
+      "file": "ChunksReferenceMixedMarks-ExtraBold.otf",
+      "kerning": {
+        "input_sha256": "66ed53996a0a5d180a5311476794d818246a62b837913e549ccbc53e923de0d6",
+        "file": "ChunksReferenceMixedMarks-ExtraBold.otf",
+        "reference_accent_glyphs": 14,
+        "candidate_pairs": 1932,
+        "adjusted_pairs": 1932,
+        "bounded_subtables": 7,
+        "max_correction_units": 120,
+        "clipped_pair_count": 11,
+        "clipped_pair_examples": [
+          {
+            "first": "T",
+            "second": "Ậ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "T",
+            "second": "Ặ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "Y",
+            "second": "Ậ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "Y",
+            "second": "Ặ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "Ḹ",
+            "second": "T",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "Ḹ",
+            "second": "Y",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "Ḹ",
+            "second": "1",
+            "desired_units": -121,
+            "applied_units": -120
+          },
+          {
+            "first": "ṝ",
+            "second": "4",
+            "desired_units": -122,
+            "applied_units": -120
+          },
+          {
+            "first": "Ậ",
+            "second": "T",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "Ặ",
+            "second": "T",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "ộ",
+            "second": "7",
+            "desired_units": -124,
+            "applied_units": -120
+          }
+        ],
+        "mean_abs_correction_units": 73.85,
+        "source_scripts_unchanged": true,
+        "pre_family_name_sha256": "371bc4c60ba7aa5e08c788cc9896bc0a900ca025c956bd6ab4e636852792bd68",
+        "output_sha256": "a324980e5987d1ddddadfbc946156f4c1ca650c5d355e954752d7abe63c4ef69"
+      }
+    }
+  }
+}

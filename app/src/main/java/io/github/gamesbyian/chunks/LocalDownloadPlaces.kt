@@ -1,6 +1,8 @@
 package io.github.gamesbyian.chunks
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Environment
 import java.io.File
@@ -8,9 +10,10 @@ import java.io.File
 /**
  * Real POSIX folders the phone engine can save torrents into, with the
  * standard shared Downloads/Chunks Downloads preferred where Android lets an
- * app write there without broad storage permission (Android 11+). Chunks
- * never reads another app's preferences (such as a browser's download
- * folder) and never asks for all-files access.
+ * app write there: Android 11+ always, Android 10 only after the user grants
+ * its storage permission (requested from an explicit button, never on its
+ * own). Chunks never reads another app's preferences (such as a browser's
+ * download folder) and never asks for all-files access.
  *
  * Every candidate is write-probed on the IO lane before it may become the
  * default. The public folder is created lazily, only when an Add is
@@ -18,6 +21,9 @@ import java.io.File
  */
 internal object LocalDownloadPlaces {
     const val PUBLIC_FOLDER_NAME = "Chunks Downloads"
+    /** Read to seed, write to download; both are declared for Android 10 only. */
+    val ANDROID_10_STORAGE_PERMISSIONS = arrayOf(
+        Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE)
     private const val PREFS = "local-download-place"
     private const val KEY_DEFAULT = "default-kind"
     private const val KEY_RESOLVED_ROOT = "resolved-root"
@@ -29,6 +35,11 @@ internal object LocalDownloadPlaces {
         @Suppress("DEPRECATION")
         Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
     } catch (_: Exception) { null }
+
+    private fun legacyStorage(): Boolean = try {
+        @Suppress("DEPRECATION")
+        Environment.isExternalStorageLegacy()
+    } catch (_: Exception) { false }
 
     private fun publicPlace(parent: File) = LocalDownloadPlace(
         LocalPlaceKind.PUBLIC_DOWNLOADS, File(parent, PUBLIC_FOLDER_NAME),
@@ -43,9 +54,14 @@ internal object LocalDownloadPlaces {
         val parent = publicParent()
         if (parent != null) {
             val place = publicPlace(parent)
+            val access = LocalPublicDownloadsAccess.refusal(Build.VERSION.SDK_INT,
+                legacyStorage = Build.VERSION.SDK_INT > Build.VERSION_CODES.Q || legacyStorage(),
+                storagePermissionGranted = Build.VERSION.SDK_INT > Build.VERSION_CODES.Q ||
+                    ANDROID_10_STORAGE_PERMISSIONS.all {
+                        context.checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED
+                    })
             val failure = when {
-                Build.VERSION.SDK_INT < Build.VERSION_CODES.R ->
-                    "Android 10 only allows this with broad storage permission, which Chunks does not request"
+                access != null -> access
                 Environment.getExternalStorageState() != Environment.MEDIA_MOUNTED ->
                     "Shared storage is not mounted"
                 // Lazy creation: probe the existing folder, else its parent,
@@ -53,7 +69,8 @@ internal object LocalDownloadPlaces {
                 place.root.exists() -> LocalPlaceWriteProbe.verify(place.root)
                 else -> LocalPlaceWriteProbe.verify(parent)
             }
-            result += LocalPlaceChoice(place, failure)
+            result += LocalPlaceChoice(place, failure,
+                needsStoragePermission = failure == LocalPublicDownloadsAccess.NEEDS_PERMISSION)
         }
         LocalEngineHolder.appDownloads(context)?.let { root ->
             result += LocalPlaceChoice(LocalDownloadPlace(LocalPlaceKind.APP_STORAGE, root,

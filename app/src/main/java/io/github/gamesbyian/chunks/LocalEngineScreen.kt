@@ -37,6 +37,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -79,6 +80,14 @@ import io.github.gamesbyian.chunks.model.LocalQueueCatalog
 import io.github.gamesbyian.chunks.model.LocalQueueFilter
 import io.github.gamesbyian.chunks.model.LocalQueueOrder
 import io.github.gamesbyian.chunks.snapshots.LocalSnapshotRestorePreviewPanel
+import io.github.gamesbyian.chunks.snapshots.LocalSnapshotStoppedRestoreDraft
+import io.github.gamesbyian.chunks.snapshots.LocalSnapshotStoppedRestoreReview
+import io.github.gamesbyian.chunks.snapshots.LocalSnapshotRestoreFingerprint
+import io.github.gamesbyian.chunks.snapshots.SnapshotManifestV1
+import io.github.gamesbyian.chunks.snapshots.SnapshotVerifiedTorrentDocumentV1
+import io.github.gamesbyian.chunks.snapshots.SnapshotRestoreJournalV1
+import io.github.gamesbyian.chunks.snapshots.AndroidSnapshotRestoreJournalStore
+import io.github.gamesbyian.chunks.snapshots.SnapshotRestoreOnceV1
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoPreview
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader
 import io.github.gamesbyian.chunks.model.LocalBatchLifecycle
@@ -261,6 +270,8 @@ internal fun LocalEngineScreen(
     var filesFor by remember { mutableStateOf<String?>(null) }
     var files by remember { mutableStateOf<List<LocalTransferFile>?>(null) }
     var pending by remember { mutableStateOf<PendingLocalAdd?>(null) }
+    var snapshotRestoreDraft by remember { mutableStateOf<LocalSnapshotStoppedRestoreDraft?>(null) }
+    var snapshotPreparationRevision by remember { mutableIntStateOf(0) }
     var repairSelectionHash by remember { mutableStateOf<String?>(null) }
     var repairSelectionBusy by remember { mutableStateOf(false) }
     var repairReview by remember {
@@ -329,7 +340,12 @@ internal fun LocalEngineScreen(
     // The resolved default Place for new Adds, write-probed on the IO lane.
     // Choosing another Place is optional and only offered once verified.
     var placeResolution by remember { mutableStateOf<LocalPlaceResolution?>(null) }
-    LaunchedEffect(Unit) {
+    var placeCheck by remember { mutableIntStateOf(0) }
+    // Android 10: after the user answers, re-probe; a grant alone never selects
+    // Downloads, the write probe and the remembered choice still decide.
+    val storagePermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()) { placeCheck++ }
+    LaunchedEffect(placeCheck) {
         placeResolution = withContext(Dispatchers.IO) {
             try { LocalDownloadPlaces.resolve(context) } catch (_: Exception) {
                 LocalPlaceResolution(null, emptyList(),
@@ -548,6 +564,9 @@ internal fun LocalEngineScreen(
                     if (saved) placeResolution = placeResolution?.copy(selected = choice.place, notice = null)
                     else message = "That download location could not be saved. The previous default is unchanged."
                 }
+            },
+            onRequestStoragePermission = {
+                storagePermission.launch(LocalDownloadPlaces.ANDROID_10_STORAGE_PERMISSIONS)
             }
         )
         OutlinedTextField(
@@ -813,6 +832,76 @@ internal fun LocalEngineScreen(
             },
             onCancel = { pending = null })
 
+        snapshotRestoreDraft?.let { draft ->
+            val eligible = hasConfirmedLocalInventory && !inventoryStale && !busy &&
+                pending == null && place != null &&
+                draft.frozenHashes == transfers.map { it.infoHash } &&
+                LocalScreenReader.revision.snapshot() == draft.frozenGeneration
+            LocalSnapshotStoppedRestoreReview(
+                draft = draft,
+                selectedPlace = place?.title ?: "No verified phone download location",
+                eligible = eligible,
+                onCancel = { snapshotRestoreDraft = null },
+                onConfirm = {
+                    val selected = place
+                    if (selected == null || !eligible) {
+                        message = "The destination or transfer list changed. Reopen the snapshot."
+                    } else {
+                        snapshotRestoreDraft = null
+                        performLocalMutation {
+                            val result = withContext(Dispatchers.IO) {
+                                try {
+                                    val folder = LocalDownloadPlaces.materialize(selected)
+                                        ?: return@withContext SnapshotRestoreOnceV1.Outcome.REFUSED
+                                    val targetIdentity = LocalSnapshotRestoreFingerprint.of(
+                                        "chunks-local-v1:" + context.filesDir.canonicalPath)
+                                    val placeIdentity = LocalSnapshotRestoreFingerprint.of(
+                                        "chunks-place-v1:" + folder.canonicalPath)
+                                    val journal = SnapshotRestoreJournalV1.open(
+                                        AndroidSnapshotRestoreJournalStore(context),
+                                        SnapshotRestoreOnceV1.itemArchiveFingerprint(
+                                            draft.archiveFingerprint, draft.original.infoHashV1),
+                                        targetIdentity, listOf(draft.original.infoHashV1))
+                                    SnapshotRestoreOnceV1.execute(
+                                        journal = journal,
+                                        reviewed = draft.original,
+                                        chosenPlace = folder,
+                                        verifiedPlaceFingerprint = placeIdentity,
+                                        frozenHashes = draft.frozenHashes,
+                                        userApproved = true,
+                                        target = SnapshotRestoreOnceV1.localEngine(
+                                            LocalEngineHolder.get(context))
+                                    )
+                                } catch (cancel: kotlinx.coroutines.CancellationException) {
+                                    throw cancel
+                                } catch (_: Exception) {
+                                    SnapshotRestoreOnceV1.Outcome.JOURNAL_BLOCKED
+                                }
+                            }
+                            message = when (result) {
+                                SnapshotRestoreOnceV1.Outcome.VERIFIED_PRESENT_STOPPED ->
+                                    "Snapshot definition restored on this phone, confirmed stopped. " +
+                                    "No downloaded data was moved. Press Start separately."
+                                SnapshotRestoreOnceV1.Outcome.REFUSED ->
+                                    "Restore refused: verify the current phone download Place and " +
+                                    "original torrent before another review."
+                                SnapshotRestoreOnceV1.Outcome.STALE_TARGET ->
+                                    "Phone inventory changed. Nothing was submitted; compare again."
+                                SnapshotRestoreOnceV1.Outcome.JOURNAL_BLOCKED ->
+                                    "Restore journal is already pending, invalid, or could not be " +
+                                    "durably committed. No new Add was authorized. Review the " +
+                                    "existing transfer list; never blindly repeat an uncertain Add."
+                                SnapshotRestoreOnceV1.Outcome.UNCERTAIN ->
+                                    "Restore Add may have reached the phone engine, but independent " +
+                                    "stopped-state confirmation failed. Check a fresh transfer list " +
+                                    "and journal status before any explicit recovery action."
+                            }
+                        }
+                    }
+                }
+            )
+        }
+
         LocalSnapshotRestorePreviewPanel(
             transfers = transfers,
             inventoryConfirmed = hasConfirmedLocalInventory,
@@ -833,6 +922,40 @@ internal fun LocalEngineScreen(
                     pending = null
                     message = "Snapshot definition could not populate Add review: " +
                         (failure.message ?: "Unsupported original torrent")
+                }
+            },
+            onReviewOneRestore = { verified, entry, frozen, generation ->
+                // Assemble a canonical source fingerprint off the Compose lane.
+                // No journal mutation or engine Add happens at this stage.
+                val request = ++snapshotPreparationRevision
+                scope.launch {
+                    try {
+                        val draft = withContext(Dispatchers.IO) {
+                            val original = SnapshotVerifiedTorrentDocumentV1.prepare(
+                                verified, entry.infoHashV1)
+                            val exactArchive = SnapshotManifestV1.encode(
+                                verified.manifest, verified.metainfoByHash)
+                            LocalSnapshotStoppedRestoreDraft(
+                                original,
+                                LocalSnapshotRestoreFingerprint.of(exactArchive),
+                                frozen.toList(), generation)
+                        }
+                        if (request == snapshotPreparationRevision &&
+                            LocalScreenReader.revision.snapshot() == generation &&
+                            !LocalScreenReader.revision.blocksMutations()) {
+                            snapshotRestoreDraft = draft
+                            pending = null
+                            message = "Review the new phone destination and explicitly confirm " +
+                                "the stopped restore. No torrent has been added."
+                            scrollState.animateScrollTo(0)
+                        } else {
+                            message = "The comparison changed before restore review. Reopen the snapshot."
+                        }
+                    } catch (cancel: kotlinx.coroutines.CancellationException) {
+                        throw cancel
+                    } catch (_: Exception) {
+                        message = "The verified original snapshot definition could not be prepared."
+                    }
                 }
             }
         )

@@ -22,6 +22,13 @@ internal fun LocalMagnetDiscoveryPrompt(
     blocked: Boolean,
     onEnable: () -> Unit
 ) {
+    val peers = LocalMagnetDiscoveryAdvice.directPeers(magnet)
+    if (peers.isNotEmpty()) {
+        Text("This magnet names a direct peer: " + peers.joinToString(", ") + ". Chunks " +
+            "connects to it to fetch the metadata and pieces, and verifies every piece " +
+            "against the torrent's own hashes. It may also find other peers.",
+            style = MaterialTheme.typography.bodySmall)
+    }
     if (!LocalMagnetDiscoveryAdvice.warn(magnet, dhtEnabled)) return
     Text("This magnet has no usable tracker address and DHT is off. " +
         "Chunks may be unable to find peers and fetch its metadata. " +

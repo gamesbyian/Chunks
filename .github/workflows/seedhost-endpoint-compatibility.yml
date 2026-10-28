@@ -1,0 +1,71 @@
+name: Seedhost endpoint compatibility (manual read-only)
+
+# Test one selected, independently credentialed instance using the actual
+# Android app's Kotlin RPC adapter. Never dispatched by PRs or push.
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: 'Exact Seedhost endpoint profile (SCGI HTTPS is an UNVERIFIED candidate)'
+        required: true
+        type: choice
+        default: primary-rutorrent-https
+        options:
+          - primary-rutorrent-https
+          - second-rutorrent-https
+          - third-rutorrent-https
+          - primary-scgi-https-candidate
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chunks-seedhost-endpoint-compatibility
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+      - name: Install Android API 37 SDK
+        run: |
+          printf "y\n" | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
+          if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          fi
+      - name: Run one non-mutating authenticated version and main-view probe
+        env:
+          # Every option is a fixed, credential-free HTTPS endpoint. Do not
+          # synthesize guessed RPC2/RPC3 mounts from the Transdrone screenshot.
+          CHUNKS_LIVE_RUTORRENT_URL: ${{ inputs.profile == 'second-rutorrent-https' && 'https://ianseeds.wood.seedhost.eu/rutorrent2/' || inputs.profile == 'third-rutorrent-https' && 'https://ianseeds.wood.seedhost.eu/rutorrent3/' || inputs.profile == 'primary-scgi-https-candidate' && 'https://wood.seedhost.eu/ianseeds/RPC1' || 'https://ianseeds.wood.seedhost.eu/rutorrent/' }}
+          CHUNKS_LIVE_RTORRENT_USER: ${{ (inputs.profile == 'second-rutorrent-https' || inputs.profile == 'third-rutorrent-https') && 'ianseeds' || secrets.rtorrent_user }}
+          # Select the secret NAME before resolving it. A missing secondary
+          # password must never fall back to the primary password.
+          CHUNKS_LIVE_RTORRENT_PASS: ${{ secrets[inputs.profile == 'second-rutorrent-https' && 'rTorrent_pass2' || inputs.profile == 'third-rutorrent-https' && 'rtorrent_pass3' || 'rtorrent_pass'] }}
+        run: |
+          test -n "$CHUNKS_LIVE_RUTORRENT_URL"
+          test -n "$CHUNKS_LIVE_RTORRENT_USER"
+          test -n "$CHUNKS_LIVE_RTORRENT_PASS" || { echo '::error::Selected profile password secret is absent'; exit 1; }
+          gradle --no-daemon --console=plain :app:testDebugUnitTest \
+            --tests io.github.gamesbyian.chunks.rpc.SeedhostAdapterSmokeTest
+          python3 - <<'PY'
+          import pathlib, xml.etree.ElementTree as ET
+          report = pathlib.Path('app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.SeedhostAdapterSmokeTest.xml')
+          root = ET.parse(report).getroot()
+          output = root.findtext('system-out') or ''
+          success = ('CHUNKS_KOTLIN_SEEDHOST_READONLY: authenticated version and main-view list passed;' in output
+                     and all(int(root.get(name, '0')) == 0 for name in ('failures', 'errors', 'skipped')))
+          if not success:
+              raise SystemExit('Read-only adapter proof was absent; no success claim')
+          print('CHUNKS_SEEDHOST_ENDPOINT: selected profile verified by Kotlin version and main-view reads')
+          PY

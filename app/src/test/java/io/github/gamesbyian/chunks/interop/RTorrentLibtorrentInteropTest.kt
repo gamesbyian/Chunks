@@ -210,5 +210,64 @@ class RTorrentLibtorrentInteropTest {
             seedParent.deleteRecursively()
         }
     }
-}
 
+    /**
+     * "Copy files to this phone": the phone gets ONLY an exact-hash magnet
+     * naming the server as a direct peer (no .torrent, no tracker, no DHT).
+     * rTorrent must serve the metadata and every piece; the phone verifies
+     * each piece and the bytes are compared independently. The server
+     * transfer is left as it was.
+     */
+    @Test fun phoneCopiesACompletedServerTransferWithTheServerAsItsOnlyPeer() = runBlocking {
+        val rig = rig()
+        val seedParent = File(rig.dataRoot, "interop-copy-" + System.nanoTime()).apply { mkdirs() }
+        val (root, files) = fixture(seedParent, "Copy to phone", System.nanoTime())
+        val hash = addAndStart(rig.remote, torrentFor(root), seedParent)
+        waitFor("rTorrent to verify and complete its seed data") {
+            runBlocking { remoteRow(rig.remote, hash) }?.let { it.completedBytes == it.sizeBytes } == true
+        }
+        val row = requireNotNull(remoteRow(rig.remote, hash))
+        waitFor("rTorrent to report the torrent active", 30) {
+            runBlocking { rig.remote.peerSource(hash) }.isActive
+        }
+        val source = rig.remote.peerSource(hash)
+        assertEquals(rig.peer.port.toLong(), source.listenPort)
+        val plan = io.github.gamesbyian.chunks.model.ServerToPhoneCopy.plan(row, source) {
+            java.net.InetAddress.getAllByName(it).toList()
+        }
+        plan as io.github.gamesbyian.chunks.model.ServerToPhoneCopy.Ready
+        assertTrue("No tracker may reach the phone", !plan.magnet.contains("tr="))
+
+        val leechRoot = kotlin.io.path.createTempDirectory("chunks-interop-copy").toFile()
+        try {
+            val phone = engine()
+            val added = phone.addMagnet(plan.magnet, leechRoot, autoStartAfterMetadata = true)
+            val infoHash = (added as LocalAddResult.FetchingMetadata).status.infoHash
+            assertEquals(hash.lowercase(), infoHash)
+            waitFor("phone engine to fetch metadata and copy every piece from rTorrent") {
+                val s = phone.status(infoHash)
+                s?.error?.let { fail("Phone engine error: $it") }
+                s?.metadataKnown == true &&
+                    (s.state == LocalTransferState.SEEDING || s.state == LocalTransferState.FINISHED)
+            }
+            assertTrue(phone.flushCompletedForLibraryRead(infoHash, 20_000))
+            files.forEach { (path, bytes) ->
+                assertArrayEquals("Exact copied bytes for $path",
+                    bytes, File(leechRoot, "Copy to phone/$path").readBytes())
+            }
+            val total = files.values.sumOf { it.size.toLong() }
+            waitFor("rTorrent to report uploading the copy", 30) {
+                runBlocking { counter(rig.remote, "d.up.total", hash) } >= total
+            }
+            // Copy, not Move: the server still holds and runs the exact transfer.
+            val after = requireNotNull(remoteRow(rig.remote, hash))
+            assertEquals(row.sizeBytes, after.completedBytes)
+            assertTrue(after.started)
+            files.forEach { (path, bytes) ->
+                assertArrayEquals("Server source unchanged for $path", bytes, File(root, path).readBytes())
+            }
+        } finally {
+            leechRoot.deleteRecursively()
+        }
+    }
+}

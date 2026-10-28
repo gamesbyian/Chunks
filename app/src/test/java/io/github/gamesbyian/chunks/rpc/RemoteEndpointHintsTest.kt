@@ -40,6 +40,27 @@ class RemoteEndpointHintsTest {
             RemoteEndpointHints.rpcAddress("http://[::1]:8080/RPC2"))
     }
 
+    @Test fun preservesDirectScgiMountForSeedhostStyleProfiles() {
+        // The owner's working Transdrone uses wood.seedhost.eu and
+        // /ianseeds/RPC1. HTTPS on this endpoint is a *candidate*, not
+        // proof that the provider serves this route over TLS.
+        assertEquals("https://wood.seedhost.eu/ianseeds/RPC1",
+            RemoteEndpointHints.rpcAddress("https://wood.seedhost.eu/ianseeds/RPC1"))
+        assertEquals("https://ianseeds.wood.seedhost.eu/rutorrent2/plugins/httprpc/action.php",
+            RemoteEndpointHints.rpcAddress("https://ianseeds.wood.seedhost.eu/rutorrent2/"))
+        assertEquals("https://ianseeds.wood.seedhost.eu/rutorrent3/plugins/httprpc/action.php",
+            RemoteEndpointHints.rpcAddress("https://ianseeds.wood.seedhost.eu/rutorrent3/"))
+    }
+
+    @Test fun refusesHttpForObservedWorkingTransdroneHost() {
+        // Do not lower the app's security standard to match Transdrone's
+        // SSL-off profile. Real-remote HTTP could disclose credentials.
+        try {
+            RemoteEndpointHints.rpcAddress("http://wood.seedhost.eu/ianseeds/RPC1")
+            fail("Remote HTTP must be rejected")
+        } catch (_: IllegalArgumentException) { }
+    }
+
     @Test fun rejectsUnencryptedRemoteAndCredentialsInUrl() {
         for (candidate in listOf("http://box.test/rutorrent",
             "https://user:pass@box.test/rutorrent",

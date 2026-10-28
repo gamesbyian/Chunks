@@ -54,4 +54,35 @@ class LocalDownloadPlacePickerInstrumentedTest {
         rule.onNodeWithText("not mounted", substring = true).assertExists()
         rule.onNodeWithText("Change download location").assertIsNotEnabled()
     }
+
+    @Test fun android10PermissionIsOnlyRequestedFromAnExplicitButton() {
+        var requests = 0
+        val waiting = LocalPlaceChoice(LocalDownloadPlace(LocalPlaceKind.PUBLIC_DOWNLOADS,
+            File("/storage/x/public"), "Downloads/Chunks Downloads", "detail"),
+            LocalPublicDownloadsAccess.NEEDS_PERMISSION, needsStoragePermission = true)
+        rule.setContent {
+            MaterialTheme {
+                LocalDownloadPlacePicker(LocalDownloadPlacePolicy.resolve(null, listOf(
+                    waiting, choice(LocalPlaceKind.APP_STORAGE, "Chunks app folder"))),
+                    enabled = true, onChoose = {}, onRequestStoragePermission = { requests++ })
+            }
+        }
+        rule.onNodeWithText("Saves to: Chunks app folder").assertExists()
+        rule.onNodeWithText(LocalPublicDownloadsAccess.NEEDS_PERMISSION, substring = true).assertExists()
+        assertEquals("Never requested on its own", 0, requests)
+        rule.onNodeWithText("Allow storage access for Downloads/Chunks Downloads").performClick()
+        assertEquals(1, requests)
+    }
+
+    @Test fun noPermissionButtonWhenNothingNeedsIt() {
+        rule.setContent {
+            MaterialTheme {
+                LocalDownloadPlacePicker(LocalDownloadPlacePolicy.resolve(null, listOf(
+                    choice(LocalPlaceKind.PUBLIC_DOWNLOADS, "Downloads/Chunks Downloads"),
+                    choice(LocalPlaceKind.APP_STORAGE, "Chunks app folder"))),
+                    enabled = true, onChoose = {})
+            }
+        }
+        rule.onNodeWithText("Allow storage access", substring = true).assertDoesNotExist()
+    }
 }

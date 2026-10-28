@@ -1,0 +1,6856 @@
+{
+  "status": "NONSHIPPING safe stacked-above Latin accent reconstruction study",
+  "policy": "Only distinct detached ABOVE mark contours, non-i/j ASCII base, no overflow",
+  "weights": {
+    "Regular": {
+      "eligible_stacked_non_ij": 107,
+      "built": [
+        {
+          "glyph": "Ǖ",
+          "base": "U",
+          "marks_nfd": [
+            "U+0308",
+            "U+0304"
+          ],
+          "mark_contours": 3,
+          "x_shift": 80,
+          "y_shift": 0,
+          "bbox": [
+            102,
+            55,
+            708,
+            919
+          ]
+        },
+        {
+          "glyph": "ǖ",
+          "base": "u",
+          "marks_nfd": [
+            "U+0308",
+            "U+0304"
+          ],
+          "mark_contours": 3,
+          "x_shift": 72,
+          "y_shift": 20,
+          "bbox": [
+            102,
+            126,
+            592,
+            821
+          ]
+        },
+        {
+          "glyph": "Ǘ",
+          "base": "U",
+          "marks_nfd": [
+            "U+0308",
+            "U+0301"
+          ],
+          "mark_contours": 3,
+          "x_shift": 80,
+          "y_shift": 0,
+          "bbox": [
+            102,
+            55,
+            708,
+            967
+          ]
+        },
+        {
+          "glyph": "ǘ",
+          "base": "u",
+          "marks_nfd": [
+            "U+0308",
+            "U+0301"
+          ],
+          "mark_contours": 3,
+          "x_shift": 72,
+          "y_shift": 20,
+          "bbox": [
+            102,
+            126,
+            592,
+            859
+          ]
+        },
+        {
+          "glyph": "Ǚ",
+          "base": "U",
+          "marks_nfd": [
+            "U+0308",
+            "U+030C"
+          ],
+          "mark_contours": 3,
+          "x_shift": 80,
+          "y_shift": 0,
+          "bbox": [
+            102,
+            55,
+            708,
+            961
+          ]
+        },
+        {
+          "glyph": "ǚ",
+          "base": "u",
+          "marks_nfd": [
+            "U+0308",
+            "U+030C"
+          ],
+          "mark_contours": 3,
+          "x_shift": 72,
+          "y_shift": 20,
+          "bbox": [
+            102,
+            126,
+            592,
+            855
+          ]
+        },
+        {
+          "glyph": "Ǜ",
+          "base": "U",
+          "marks_nfd": [
+            "U+0308",
+            "U+0300"
+          ],
+          "mark_contours": 3,
+          "x_shift": 80,
+          "y_shift": 0,
+          "bbox": [
+            102,
+            55,
+            708,
+            967
+          ]
+        },
+        {
+          "glyph": "ǜ",
+          "base": "u",
+          "marks_nfd": [
+            "U+0308",
+            "U+0300"
+          ],
+          "mark_contours": 3,
+          "x_shift": 72,
+          "y_shift": 20,
+          "bbox": [
+            102,
+            126,
+            592,
+            859
+          ]
+        },
+        {
+          "glyph": "Ǻ",
+          "base": "A",
+          "marks_nfd": [
+            "U+030A",
+            "U+0301"
+          ],
+          "mark_contours": 3,
+          "x_shift": 99,
+          "y_shift": 15,
+          "bbox": [
+            103,
+            36,
+            688,
+            1033
+          ]
+        },
+        {
+          "glyph": "ǻ",
+          "base": "a",
+          "marks_nfd": [
+            "U+030A",
+            "U+0301"
+          ],
+          "mark_contours": 3,
+          "x_shift": 121,
+          "y_shift": 54,
+          "bbox": [
+            102,
+            112,
+            611,
+            946
+          ]
+        },
+        {
+          "glyph": "Ȫ",
+          "base": "O",
+          "marks_nfd": [
+            "U+0308",
+            "U+0304"
+          ],
+          "mark_contours": 3,
+          "x_shift": 71,
+          "y_shift": 0,
+          "bbox": [
+            103,
+            16,
+            727,
+            919
+          ]
+        },
+        {
+          "glyph": "ȫ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0308",
+            "U+0304"
+          ],
+          "mark_contours": 3,
+          "x_shift": 89,
+          "y_shift": 20,
+          "bbox": [
+            102,
+            93,
+            629,
+            821
+          ]
+        },
+        {
+          "glyph": "Ȭ",
+          "base": "O",
+          "marks_nfd": [
+            "U+0303",
+            "U+0304"
+          ],
+          "mark_contours": 2,
+          "x_shift": 71,
+          "y_shift": 0,
+          "bbox": [
+            103,
+            16,
+            727,
+            919
+          ]
+        },
+        {
+          "glyph": "ȭ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0303",
+            "U+0304"
+          ],
+          "mark_contours": 2,
+          "x_shift": 89,
+          "y_shift": 22,
+          "bbox": [
+            102,
+            93,
+            629,
+            823
+          ]
+        },
+        {
+          "glyph": "Ȱ",
+          "base": "O",
+          "marks_nfd": [
+            "U+0307",
+            "U+0304"
+          ],
+          "mark_contours": 2,
+          "x_shift": 71,
+          "y_shift": 0,
+          "bbox": [
+            103,
+            16,
+            727,
+            919
+          ]
+        },
+        {
+          "glyph": "ȱ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0307",
+            "U+0304"
+          ],
+          "mark_contours": 2,
+          "x_shift": 89,
+          "y_shift": 15,
+          "bbox": [
+            102,
+            93,
+            629,
+            816
+          ]
+        },
+        {
+          "glyph": "Ḕ",
+          "base": "E",
+          "marks_nfd": [
+            "U+0304",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 64,
+          "y_shift": 0,
+          "bbox": [
+            103,
+            55,
+            592,
+            967
+          ]
+        },
+        {
+          "glyph": "ḕ",
+          "base": "e",
+          "marks_nfd": [
+            "U+0304",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 92,
+          "y_shift": 29,
+          "bbox": [
+            95,
+            106,
+            617,
+            864
+          ]
+        },
+        {
+          "glyph": "Ḗ",
+          "base": "E",
+          "marks_nfd": [
+            "U+0304",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 64,
+          "y_shift": 0,
+          "bbox": [
+            103,
+            55,
+            592,
+            967
+          ]
+        },
+        {
+          "glyph": "ḗ",
+          "base": "e",
+          "marks_nfd": [
+            "U+0304",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 92,
+          "y_shift": 29,
+          "bbox": [
+            95,
+            106,
+            617,
+            864
+          ]
+        },
+        {
+          "glyph": "Ḯ",
+          "base": "I",
+          "marks_nfd": [
+            "U+0308",
+            "U+0301"
+          ],
+          "mark_contours": 3,
+          "x_shift": 92,
+          "y_shift": 18,
+          "bbox": [
+            88,
+            95,
+            359,
+            985
+          ]
+        },
+        {
+          "glyph": "Ṍ",
+          "base": "O",
+          "marks_nfd": [
+            "U+0303",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 71,
+          "y_shift": 0,
+          "bbox": [
+            103,
+            16,
+            727,
+            967
+          ]
+        },
+        {
+          "glyph": "ṍ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0303",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 89,
+          "y_shift": 22,
+          "bbox": [
+            102,
+            93,
+            629,
+            857
+          ]
+        },
+        {
+          "glyph": "Ṏ",
+          "base": "O",
+          "marks_nfd": [
+            "U+0303",
+            "U+0308"
+          ],
+          "mark_contours": 3,
+          "x_shift": 71,
+          "y_shift": 0,
+          "bbox": [
+            103,
+            16,
+            727,
+            936
+          ]
+        },
+        {
+          "glyph": "ṏ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0303",
+            "U+0308"
+          ],
+          "mark_contours": 3,
+          "x_shift": 89,
+          "y_shift": 22,
+          "bbox": [
+            102,
+            93,
+            629,
+            843
+          ]
+        },
+        {
+          "glyph": "Ṑ",
+          "base": "O",
+          "marks_nfd": [
+            "U+0304",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 71,
+          "y_shift": 0,
+          "bbox": [
+            103,
+            16,
+            727,
+            967
+          ]
+        },
+        {
+          "glyph": "ṑ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0304",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 89,
+          "y_shift": 3,
+          "bbox": [
+            102,
+            93,
+            629,
+            838
+          ]
+        },
+        {
+          "glyph": "Ṓ",
+          "base": "O",
+          "marks_nfd": [
+            "U+0304",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 71,
+          "y_shift": 0,
+          "bbox": [
+            103,
+            16,
+            727,
+            967
+          ]
+        },
+        {
+          "glyph": "ṓ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0304",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 89,
+          "y_shift": 3,
+          "bbox": [
+            102,
+            93,
+            629,
+            838
+          ]
+        },
+        {
+          "glyph": "Ṥ",
+          "base": "S",
+          "marks_nfd": [
+            "U+0301",
+            "U+0307"
+          ],
+          "mark_contours": 2,
+          "x_shift": 102,
+          "y_shift": 24,
+          "bbox": [
+            103,
+            36,
+            631,
+            844
+          ]
+        },
+        {
+          "glyph": "ṥ",
+          "base": "s",
+          "marks_nfd": [
+            "U+0301",
+            "U+0307"
+          ],
+          "mark_contours": 2,
+          "x_shift": 86,
+          "y_shift": 76,
+          "bbox": [
+            103,
+            115,
+            516,
+            763
+          ]
+        },
+        {
+          "glyph": "Ṧ",
+          "base": "S",
+          "marks_nfd": [
+            "U+030C",
+            "U+0307"
+          ],
+          "mark_contours": 2,
+          "x_shift": 102,
+          "y_shift": 28,
+          "bbox": [
+            103,
+            36,
+            631,
+            967
+          ]
+        },
+        {
+          "glyph": "ṧ",
+          "base": "s",
+          "marks_nfd": [
+            "U+030C",
+            "U+0307"
+          ],
+          "mark_contours": 2,
+          "x_shift": 86,
+          "y_shift": 70,
+          "bbox": [
+            103,
+            115,
+            516,
+            888
+          ]
+        },
+        {
+          "glyph": "Ṹ",
+          "base": "U",
+          "marks_nfd": [
+            "U+0303",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 80,
+          "y_shift": 0,
+          "bbox": [
+            102,
+            55,
+            708,
+            967
+          ]
+        },
+        {
+          "glyph": "ṹ",
+          "base": "u",
+          "marks_nfd": [
+            "U+0303",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 72,
+          "y_shift": 22,
+          "bbox": [
+            102,
+            126,
+            592,
+            857
+          ]
+        },
+        {
+          "glyph": "Ṻ",
+          "base": "U",
+          "marks_nfd": [
+            "U+0304",
+            "U+0308"
+          ],
+          "mark_contours": 3,
+          "x_shift": 80,
+          "y_shift": 0,
+          "bbox": [
+            102,
+            55,
+            708,
+            936
+          ]
+        },
+        {
+          "glyph": "ṻ",
+          "base": "u",
+          "marks_nfd": [
+            "U+0304",
+            "U+0308"
+          ],
+          "mark_contours": 3,
+          "x_shift": 72,
+          "y_shift": 3,
+          "bbox": [
+            102,
+            126,
+            592,
+            793
+          ]
+        },
+        {
+          "glyph": "Ấ",
+          "base": "A",
+          "marks_nfd": [
+            "U+0302",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 99,
+          "y_shift": 20,
+          "bbox": [
+            103,
+            36,
+            688,
+            935
+          ]
+        },
+        {
+          "glyph": "ấ",
+          "base": "a",
+          "marks_nfd": [
+            "U+0302",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 121,
+          "y_shift": 53,
+          "bbox": [
+            102,
+            112,
+            611,
+            844
+          ]
+        },
+        {
+          "glyph": "Ầ",
+          "base": "A",
+          "marks_nfd": [
+            "U+0302",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 99,
+          "y_shift": 20,
+          "bbox": [
+            103,
+            36,
+            688,
+            935
+          ]
+        },
+        {
+          "glyph": "ầ",
+          "base": "a",
+          "marks_nfd": [
+            "U+0302",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 121,
+          "y_shift": 53,
+          "bbox": [
+            102,
+            112,
+            611,
+            844
+          ]
+        },
+        {
+          "glyph": "Ẩ",
+          "base": "A",
+          "marks_nfd": [
+            "U+0302",
+            "U+0309"
+          ],
+          "mark_contours": 2,
+          "x_shift": 99,
+          "y_shift": 20,
+          "bbox": [
+            103,
+            36,
+            688,
+            938
+          ]
+        },
+        {
+          "glyph": "ẩ",
+          "base": "a",
+          "marks_nfd": [
+            "U+0302",
+            "U+0309"
+          ],
+          "mark_contours": 2,
+          "x_shift": 121,
+          "y_shift": 53,
+          "bbox": [
+            102,
+            112,
+            611,
+            847
+          ]
+        },
+        {
+          "glyph": "Ẫ",
+          "base": "A",
+          "marks_nfd": [
+            "U+0302",
+            "U+0303"
+          ],
+          "mark_contours": 2,
+          "x_shift": 99,
+          "y_shift": 20,
+          "bbox": [
+            103,
+            36,
+            688,
+            956
+          ]
+        },
+        {
+          "glyph": "ẫ",
+          "base": "a",
+          "marks_nfd": [
+            "U+0302",
+            "U+0303"
+          ],
+          "mark_contours": 2,
+          "x_shift": 121,
+          "y_shift": 57,
+          "bbox": [
+            102,
+            112,
+            611,
+            865
+          ]
+        },
+        {
+          "glyph": "Ắ",
+          "base": "A",
+          "marks_nfd": [
+            "U+0306",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 99,
+          "y_shift": 6,
+          "bbox": [
+            103,
+            36,
+            688,
+            942
+          ]
+        },
+        {
+          "glyph": "ắ",
+          "base": "a",
+          "marks_nfd": [
+            "U+0306",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 121,
+          "y_shift": 36,
+          "bbox": [
+            102,
+            112,
+            611,
+            851
+          ]
+        },
+        {
+          "glyph": "Ằ",
+          "base": "A",
+          "marks_nfd": [
+            "U+0306",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 99,
+          "y_shift": 6,
+          "bbox": [
+            103,
+            36,
+            688,
+            942
+          ]
+        },
+        {
+          "glyph": "ằ",
+          "base": "a",
+          "marks_nfd": [
+            "U+0306",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 121,
+          "y_shift": 36,
+          "bbox": [
+            102,
+            112,
+            611,
+            851
+          ]
+        },
+        {
+          "glyph": "Ẳ",
+          "base": "A",
+          "marks_nfd": [
+            "U+0306",
+            "U+0309"
+          ],
+          "mark_contours": 2,
+          "x_shift": 99,
+          "y_shift": 7,
+          "bbox": [
+            103,
+            36,
+            688,
+            956
+          ]
+        },
+        {
+          "glyph": "ẳ",
+          "base": "a",
+          "marks_nfd": [
+            "U+0306",
+            "U+0309"
+          ],
+          "mark_contours": 2,
+          "x_shift": 121,
+          "y_shift": 36,
+          "bbox": [
+            102,
+            112,
+            611,
+            859
+          ]
+        },
+        {
+          "glyph": "Ẵ",
+          "base": "A",
+          "marks_nfd": [
+            "U+0306",
+            "U+0303"
+          ],
+          "mark_contours": 2,
+          "x_shift": 99,
+          "y_shift": 7,
+          "bbox": [
+            103,
+            36,
+            688,
+            943
+          ]
+        },
+        {
+          "glyph": "ẵ",
+          "base": "a",
+          "marks_nfd": [
+            "U+0306",
+            "U+0303"
+          ],
+          "mark_contours": 2,
+          "x_shift": 121,
+          "y_shift": 32,
+          "bbox": [
+            102,
+            112,
+            611,
+            847
+          ]
+        },
+        {
+          "glyph": "Ế",
+          "base": "E",
+          "marks_nfd": [
+            "U+0302",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 64,
+          "y_shift": 39,
+          "bbox": [
+            103,
+            55,
+            594,
+            954
+          ]
+        },
+        {
+          "glyph": "ế",
+          "base": "e",
+          "marks_nfd": [
+            "U+0302",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 92,
+          "y_shift": 79,
+          "bbox": [
+            95,
+            106,
+            617,
+            870
+          ]
+        },
+        {
+          "glyph": "Ề",
+          "base": "E",
+          "marks_nfd": [
+            "U+0302",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 64,
+          "y_shift": 39,
+          "bbox": [
+            103,
+            55,
+            592,
+            954
+          ]
+        },
+        {
+          "glyph": "ề",
+          "base": "e",
+          "marks_nfd": [
+            "U+0302",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 92,
+          "y_shift": 79,
+          "bbox": [
+            95,
+            106,
+            617,
+            870
+          ]
+        },
+        {
+          "glyph": "Ể",
+          "base": "E",
+          "marks_nfd": [
+            "U+0302",
+            "U+0309"
+          ],
+          "mark_contours": 2,
+          "x_shift": 64,
+          "y_shift": 39,
+          "bbox": [
+            103,
+            55,
+            592,
+            957
+          ]
+        },
+        {
+          "glyph": "ể",
+          "base": "e",
+          "marks_nfd": [
+            "U+0302",
+            "U+0309"
+          ],
+          "mark_contours": 2,
+          "x_shift": 92,
+          "y_shift": 79,
+          "bbox": [
+            95,
+            106,
+            617,
+            873
+          ]
+        },
+        {
+          "glyph": "Ễ",
+          "base": "E",
+          "marks_nfd": [
+            "U+0302",
+            "U+0303"
+          ],
+          "mark_contours": 2,
+          "x_shift": 64,
+          "y_shift": 39,
+          "bbox": [
+            103,
+            55,
+            592,
+            975
+          ]
+        },
+        {
+          "glyph": "ễ",
+          "base": "e",
+          "marks_nfd": [
+            "U+0302",
+            "U+0303"
+          ],
+          "mark_contours": 2,
+          "x_shift": 92,
+          "y_shift": 79,
+          "bbox": [
+            95,
+            106,
+            617,
+            891
+          ]
+        },
+        {
+          "glyph": "Ố",
+          "base": "O",
+          "marks_nfd": [
+            "U+0302",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 71,
+          "y_shift": 1,
+          "bbox": [
+            103,
+            16,
+            727,
+            916
+          ]
+        },
+        {
+          "glyph": "ố",
+          "base": "o",
+          "marks_nfd": [
+            "U+0302",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 89,
+          "y_shift": 53,
+          "bbox": [
+            102,
+            93,
+            629,
+            844
+          ]
+        },
+        {
+          "glyph": "Ồ",
+          "base": "O",
+          "marks_nfd": [
+            "U+0302",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 71,
+          "y_shift": 1,
+          "bbox": [
+            103,
+            16,
+            727,
+            916
+          ]
+        },
+        {
+          "glyph": "ồ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0302",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 89,
+          "y_shift": 53,
+          "bbox": [
+            102,
+            93,
+            629,
+            844
+          ]
+        },
+        {
+          "glyph": "Ổ",
+          "base": "O",
+          "marks_nfd": [
+            "U+0302",
+            "U+0309"
+          ],
+          "mark_contours": 2,
+          "x_shift": 71,
+          "y_shift": 1,
+          "bbox": [
+            103,
+            16,
+            727,
+            919
+          ]
+        },
+        {
+          "glyph": "ổ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0302",
+            "U+0309"
+          ],
+          "mark_contours": 2,
+          "x_shift": 89,
+          "y_shift": 53,
+          "bbox": [
+            102,
+            93,
+            629,
+            847
+          ]
+        },
+        {
+          "glyph": "Ỗ",
+          "base": "O",
+          "marks_nfd": [
+            "U+0302",
+            "U+0303"
+          ],
+          "mark_contours": 2,
+          "x_shift": 71,
+          "y_shift": 1,
+          "bbox": [
+            103,
+            16,
+            727,
+            937
+          ]
+        },
+        {
+          "glyph": "ỗ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0302",
+            "U+0303"
+          ],
+          "mark_contours": 2,
+          "x_shift": 89,
+          "y_shift": 57,
+          "bbox": [
+            102,
+            93,
+            629,
+            869
+          ]
+        }
+      ],
+      "skipped": [
+        {
+          "glyph": "Ḉ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ḉ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ḝ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ḝ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ḹ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ḹ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ṝ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ṝ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ṩ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ṩ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ậ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ậ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ặ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ặ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ệ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ệ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ộ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ộ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ớ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ớ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ờ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ờ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ở",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ở",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ỡ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ỡ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ợ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ợ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ứ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ứ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ừ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ừ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ử",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ử",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ữ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ữ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ự",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ự",
+          "reason": "unseparated_marks"
+        }
+      ],
+      "built_count": 69,
+      "skipped_count": 38,
+      "weight": 400,
+      "file": "ChunksReferencePanel-Regular-Stacked.otf",
+      "source_sha256": "a31b5c8726a640beada2113e11002eaac75a79b575f6855fdd60e9dc5ecbf63e",
+      "input_consolidated_sha256": "f92e3ca7caef4eec208a16276150ff571c4e0b96e39df8c58925bf321d8d015a",
+      "output_sha256": "98221cc234ac8026cb2e46dc3ef6346e341f3e9f669a80d811dc4f8bc14c31b2",
+      "kerning": {
+        "input_sha256": "736d75903d3159f6ee3bb7c4ba3d3798ec39d9ef8aed37de940fd1807aab94a0",
+        "file": "ChunksReferencePanel-Regular-Stacked.otf",
+        "reference_accent_glyphs": 69,
+        "candidate_pairs": 13317,
+        "adjusted_pairs": 13317,
+        "bounded_subtables": 11,
+        "max_correction_units": 120,
+        "clipped_pair_count": 796,
+        "clipped_pair_examples": [
+          {
+            "first": "E",
+            "second": "Ǻ",
+            "desired_units": -121,
+            "applied_units": -120
+          },
+          {
+            "first": "E",
+            "second": "ǻ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "E",
+            "second": "Ȫ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "E",
+            "second": "Ȭ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "E",
+            "second": "Ȱ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "E",
+            "second": "Ṍ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "E",
+            "second": "Ṏ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "E",
+            "second": "Ṑ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "E",
+            "second": "Ṓ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "E",
+            "second": "Ấ",
+            "desired_units": -121,
+            "applied_units": -120
+          },
+          {
+            "first": "E",
+            "second": "ấ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "E",
+            "second": "Ầ",
+            "desired_units": -121,
+            "applied_units": -120
+          },
+          {
+            "first": "E",
+            "second": "ầ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "E",
+            "second": "Ẩ",
+            "desired_units": -121,
+            "applied_units": -120
+          },
+          {
+            "first": "E",
+            "second": "ẩ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "E",
+            "second": "Ẫ",
+            "desired_units": -121,
+            "applied_units": -120
+          },
+          {
+            "first": "E",
+            "second": "ẫ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "E",
+            "second": "Ắ",
+            "desired_units": -121,
+            "applied_units": -120
+          },
+          {
+            "first": "E",
+            "second": "ắ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "E",
+            "second": "Ằ",
+            "desired_units": -121,
+            "applied_units": -120
+          }
+        ],
+        "mean_abs_correction_units": 86.26,
+        "source_scripts_unchanged": true,
+        "pre_final_name_sha256": "405a4eac3421542e47a37f197ab9265d3a38097a8d15ab8d54245689c55b34c0",
+        "output_sha256": "98221cc234ac8026cb2e46dc3ef6346e341f3e9f669a80d811dc4f8bc14c31b2"
+      }
+    },
+    "Medium": {
+      "eligible_stacked_non_ij": 107,
+      "built": [
+        {
+          "glyph": "Ǖ",
+          "base": "U",
+          "marks_nfd": [
+            "U+0308",
+            "U+0304"
+          ],
+          "mark_contours": 3,
+          "x_shift": 78,
+          "y_shift": 0,
+          "bbox": [
+            96,
+            49,
+            714,
+            941
+          ]
+        },
+        {
+          "glyph": "ǖ",
+          "base": "u",
+          "marks_nfd": [
+            "U+0308",
+            "U+0304"
+          ],
+          "mark_contours": 3,
+          "x_shift": 68,
+          "y_shift": 28,
+          "bbox": [
+            96,
+            118,
+            599,
+            851
+          ]
+        },
+        {
+          "glyph": "Ǘ",
+          "base": "U",
+          "marks_nfd": [
+            "U+0308",
+            "U+0301"
+          ],
+          "mark_contours": 3,
+          "x_shift": 78,
+          "y_shift": 0,
+          "bbox": [
+            96,
+            49,
+            714,
+            988
+          ]
+        },
+        {
+          "glyph": "ǘ",
+          "base": "u",
+          "marks_nfd": [
+            "U+0308",
+            "U+0301"
+          ],
+          "mark_contours": 3,
+          "x_shift": 68,
+          "y_shift": 28,
+          "bbox": [
+            96,
+            118,
+            599,
+            892
+          ]
+        },
+        {
+          "glyph": "Ǚ",
+          "base": "U",
+          "marks_nfd": [
+            "U+0308",
+            "U+030C"
+          ],
+          "mark_contours": 3,
+          "x_shift": 78,
+          "y_shift": 0,
+          "bbox": [
+            96,
+            49,
+            714,
+            984
+          ]
+        },
+        {
+          "glyph": "ǚ",
+          "base": "u",
+          "marks_nfd": [
+            "U+0308",
+            "U+030C"
+          ],
+          "mark_contours": 3,
+          "x_shift": 68,
+          "y_shift": 28,
+          "bbox": [
+            96,
+            118,
+            599,
+            885
+          ]
+        },
+        {
+          "glyph": "Ǜ",
+          "base": "U",
+          "marks_nfd": [
+            "U+0308",
+            "U+0300"
+          ],
+          "mark_contours": 3,
+          "x_shift": 78,
+          "y_shift": 0,
+          "bbox": [
+            96,
+            49,
+            714,
+            988
+          ]
+        },
+        {
+          "glyph": "ǜ",
+          "base": "u",
+          "marks_nfd": [
+            "U+0308",
+            "U+0300"
+          ],
+          "mark_contours": 3,
+          "x_shift": 68,
+          "y_shift": 28,
+          "bbox": [
+            96,
+            118,
+            599,
+            892
+          ]
+        },
+        {
+          "glyph": "ǻ",
+          "base": "a",
+          "marks_nfd": [
+            "U+030A",
+            "U+0301"
+          ],
+          "mark_contours": 3,
+          "x_shift": 115,
+          "y_shift": 58,
+          "bbox": [
+            95,
+            106,
+            618,
+            968
+          ]
+        },
+        {
+          "glyph": "Ȫ",
+          "base": "O",
+          "marks_nfd": [
+            "U+0308",
+            "U+0304"
+          ],
+          "mark_contours": 3,
+          "x_shift": 68,
+          "y_shift": 0,
+          "bbox": [
+            95,
+            10,
+            733,
+            944
+          ]
+        },
+        {
+          "glyph": "ȫ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0308",
+            "U+0304"
+          ],
+          "mark_contours": 3,
+          "x_shift": 85,
+          "y_shift": 28,
+          "bbox": [
+            96,
+            86,
+            636,
+            851
+          ]
+        },
+        {
+          "glyph": "Ȭ",
+          "base": "O",
+          "marks_nfd": [
+            "U+0303",
+            "U+0304"
+          ],
+          "mark_contours": 2,
+          "x_shift": 68,
+          "y_shift": 0,
+          "bbox": [
+            95,
+            10,
+            733,
+            944
+          ]
+        },
+        {
+          "glyph": "ȭ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0303",
+            "U+0304"
+          ],
+          "mark_contours": 2,
+          "x_shift": 85,
+          "y_shift": 30,
+          "bbox": [
+            96,
+            86,
+            636,
+            853
+          ]
+        },
+        {
+          "glyph": "Ȱ",
+          "base": "O",
+          "marks_nfd": [
+            "U+0307",
+            "U+0304"
+          ],
+          "mark_contours": 2,
+          "x_shift": 68,
+          "y_shift": 0,
+          "bbox": [
+            95,
+            10,
+            733,
+            944
+          ]
+        },
+        {
+          "glyph": "ȱ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0307",
+            "U+0304"
+          ],
+          "mark_contours": 2,
+          "x_shift": 85,
+          "y_shift": 25,
+          "bbox": [
+            96,
+            86,
+            636,
+            848
+          ]
+        },
+        {
+          "glyph": "Ḕ",
+          "base": "E",
+          "marks_nfd": [
+            "U+0304",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 62,
+          "y_shift": 4,
+          "bbox": [
+            95,
+            48,
+            598,
+            992
+          ]
+        },
+        {
+          "glyph": "ḕ",
+          "base": "e",
+          "marks_nfd": [
+            "U+0304",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 90,
+          "y_shift": 35,
+          "bbox": [
+            91,
+            101,
+            623,
+            892
+          ]
+        },
+        {
+          "glyph": "Ḗ",
+          "base": "E",
+          "marks_nfd": [
+            "U+0304",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 62,
+          "y_shift": 4,
+          "bbox": [
+            95,
+            48,
+            598,
+            992
+          ]
+        },
+        {
+          "glyph": "ḗ",
+          "base": "e",
+          "marks_nfd": [
+            "U+0304",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 90,
+          "y_shift": 35,
+          "bbox": [
+            91,
+            101,
+            623,
+            892
+          ]
+        },
+        {
+          "glyph": "Ḯ",
+          "base": "I",
+          "marks_nfd": [
+            "U+0308",
+            "U+0301"
+          ],
+          "mark_contours": 3,
+          "x_shift": 86,
+          "y_shift": 28,
+          "bbox": [
+            72,
+            87,
+            371,
+            1016
+          ]
+        },
+        {
+          "glyph": "Ṍ",
+          "base": "O",
+          "marks_nfd": [
+            "U+0303",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 68,
+          "y_shift": 0,
+          "bbox": [
+            95,
+            10,
+            733,
+            988
+          ]
+        },
+        {
+          "glyph": "ṍ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0303",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 85,
+          "y_shift": 30,
+          "bbox": [
+            96,
+            86,
+            636,
+            887
+          ]
+        },
+        {
+          "glyph": "Ṏ",
+          "base": "O",
+          "marks_nfd": [
+            "U+0303",
+            "U+0308"
+          ],
+          "mark_contours": 3,
+          "x_shift": 68,
+          "y_shift": 0,
+          "bbox": [
+            95,
+            10,
+            733,
+            951
+          ]
+        },
+        {
+          "glyph": "ṏ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0303",
+            "U+0308"
+          ],
+          "mark_contours": 3,
+          "x_shift": 85,
+          "y_shift": 30,
+          "bbox": [
+            96,
+            86,
+            636,
+            866
+          ]
+        },
+        {
+          "glyph": "Ṑ",
+          "base": "O",
+          "marks_nfd": [
+            "U+0304",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 68,
+          "y_shift": 0,
+          "bbox": [
+            95,
+            10,
+            733,
+            988
+          ]
+        },
+        {
+          "glyph": "ṑ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0304",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 85,
+          "y_shift": 11,
+          "bbox": [
+            96,
+            86,
+            636,
+            868
+          ]
+        },
+        {
+          "glyph": "Ṓ",
+          "base": "O",
+          "marks_nfd": [
+            "U+0304",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 68,
+          "y_shift": 0,
+          "bbox": [
+            95,
+            10,
+            733,
+            988
+          ]
+        },
+        {
+          "glyph": "ṓ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0304",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 85,
+          "y_shift": 11,
+          "bbox": [
+            96,
+            86,
+            636,
+            868
+          ]
+        },
+        {
+          "glyph": "Ṥ",
+          "base": "S",
+          "marks_nfd": [
+            "U+0301",
+            "U+0307"
+          ],
+          "mark_contours": 2,
+          "x_shift": 98,
+          "y_shift": 35,
+          "bbox": [
+            98,
+            30,
+            635,
+            862
+          ]
+        },
+        {
+          "glyph": "ṥ",
+          "base": "s",
+          "marks_nfd": [
+            "U+0301",
+            "U+0307"
+          ],
+          "mark_contours": 2,
+          "x_shift": 78,
+          "y_shift": 80,
+          "bbox": [
+            96,
+            107,
+            522,
+            783
+          ]
+        },
+        {
+          "glyph": "Ṧ",
+          "base": "S",
+          "marks_nfd": [
+            "U+030C",
+            "U+0307"
+          ],
+          "mark_contours": 2,
+          "x_shift": 98,
+          "y_shift": 37,
+          "bbox": [
+            98,
+            30,
+            635,
+            992
+          ]
+        },
+        {
+          "glyph": "ṧ",
+          "base": "s",
+          "marks_nfd": [
+            "U+030C",
+            "U+0307"
+          ],
+          "mark_contours": 2,
+          "x_shift": 78,
+          "y_shift": 79,
+          "bbox": [
+            96,
+            107,
+            522,
+            913
+          ]
+        },
+        {
+          "glyph": "Ṹ",
+          "base": "U",
+          "marks_nfd": [
+            "U+0303",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 78,
+          "y_shift": 0,
+          "bbox": [
+            96,
+            49,
+            714,
+            988
+          ]
+        },
+        {
+          "glyph": "ṹ",
+          "base": "u",
+          "marks_nfd": [
+            "U+0303",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 68,
+          "y_shift": 30,
+          "bbox": [
+            96,
+            118,
+            599,
+            887
+          ]
+        },
+        {
+          "glyph": "Ṻ",
+          "base": "U",
+          "marks_nfd": [
+            "U+0304",
+            "U+0308"
+          ],
+          "mark_contours": 3,
+          "x_shift": 78,
+          "y_shift": 0,
+          "bbox": [
+            96,
+            49,
+            714,
+            951
+          ]
+        },
+        {
+          "glyph": "ṻ",
+          "base": "u",
+          "marks_nfd": [
+            "U+0304",
+            "U+0308"
+          ],
+          "mark_contours": 3,
+          "x_shift": 68,
+          "y_shift": 11,
+          "bbox": [
+            96,
+            118,
+            599,
+            816
+          ]
+        },
+        {
+          "glyph": "Ấ",
+          "base": "A",
+          "marks_nfd": [
+            "U+0302",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 93,
+          "y_shift": 28,
+          "bbox": [
+            95,
+            29,
+            694,
+            954
+          ]
+        },
+        {
+          "glyph": "ấ",
+          "base": "a",
+          "marks_nfd": [
+            "U+0302",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 115,
+          "y_shift": 56,
+          "bbox": [
+            95,
+            106,
+            624,
+            864
+          ]
+        },
+        {
+          "glyph": "Ầ",
+          "base": "A",
+          "marks_nfd": [
+            "U+0302",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 93,
+          "y_shift": 28,
+          "bbox": [
+            95,
+            29,
+            694,
+            954
+          ]
+        },
+        {
+          "glyph": "ầ",
+          "base": "a",
+          "marks_nfd": [
+            "U+0302",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 115,
+          "y_shift": 56,
+          "bbox": [
+            95,
+            106,
+            618,
+            864
+          ]
+        },
+        {
+          "glyph": "Ẩ",
+          "base": "A",
+          "marks_nfd": [
+            "U+0302",
+            "U+0309"
+          ],
+          "mark_contours": 2,
+          "x_shift": 93,
+          "y_shift": 28,
+          "bbox": [
+            95,
+            29,
+            694,
+            969
+          ]
+        },
+        {
+          "glyph": "ẩ",
+          "base": "a",
+          "marks_nfd": [
+            "U+0302",
+            "U+0309"
+          ],
+          "mark_contours": 2,
+          "x_shift": 115,
+          "y_shift": 56,
+          "bbox": [
+            95,
+            106,
+            622,
+            879
+          ]
+        },
+        {
+          "glyph": "Ẫ",
+          "base": "A",
+          "marks_nfd": [
+            "U+0302",
+            "U+0303"
+          ],
+          "mark_contours": 2,
+          "x_shift": 93,
+          "y_shift": 28,
+          "bbox": [
+            95,
+            29,
+            694,
+            986
+          ]
+        },
+        {
+          "glyph": "ẫ",
+          "base": "a",
+          "marks_nfd": [
+            "U+0302",
+            "U+0303"
+          ],
+          "mark_contours": 2,
+          "x_shift": 115,
+          "y_shift": 59,
+          "bbox": [
+            95,
+            106,
+            618,
+            897
+          ]
+        },
+        {
+          "glyph": "Ắ",
+          "base": "A",
+          "marks_nfd": [
+            "U+0306",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 93,
+          "y_shift": 13,
+          "bbox": [
+            95,
+            29,
+            694,
+            973
+          ]
+        },
+        {
+          "glyph": "ắ",
+          "base": "a",
+          "marks_nfd": [
+            "U+0306",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 115,
+          "y_shift": 39,
+          "bbox": [
+            95,
+            106,
+            618,
+            881
+          ]
+        },
+        {
+          "glyph": "Ằ",
+          "base": "A",
+          "marks_nfd": [
+            "U+0306",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 93,
+          "y_shift": 13,
+          "bbox": [
+            95,
+            29,
+            694,
+            973
+          ]
+        },
+        {
+          "glyph": "ằ",
+          "base": "a",
+          "marks_nfd": [
+            "U+0306",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 115,
+          "y_shift": 39,
+          "bbox": [
+            95,
+            106,
+            618,
+            881
+          ]
+        },
+        {
+          "glyph": "Ẳ",
+          "base": "A",
+          "marks_nfd": [
+            "U+0306",
+            "U+0309"
+          ],
+          "mark_contours": 2,
+          "x_shift": 93,
+          "y_shift": 15,
+          "bbox": [
+            95,
+            29,
+            694,
+            991
+          ]
+        },
+        {
+          "glyph": "ẳ",
+          "base": "a",
+          "marks_nfd": [
+            "U+0306",
+            "U+0309"
+          ],
+          "mark_contours": 2,
+          "x_shift": 115,
+          "y_shift": 39,
+          "bbox": [
+            95,
+            106,
+            618,
+            894
+          ]
+        },
+        {
+          "glyph": "Ẵ",
+          "base": "A",
+          "marks_nfd": [
+            "U+0306",
+            "U+0303"
+          ],
+          "mark_contours": 2,
+          "x_shift": 93,
+          "y_shift": 15,
+          "bbox": [
+            95,
+            29,
+            694,
+            973
+          ]
+        },
+        {
+          "glyph": "ẵ",
+          "base": "a",
+          "marks_nfd": [
+            "U+0306",
+            "U+0303"
+          ],
+          "mark_contours": 2,
+          "x_shift": 115,
+          "y_shift": 36,
+          "bbox": [
+            95,
+            106,
+            618,
+            878
+          ]
+        },
+        {
+          "glyph": "Ế",
+          "base": "E",
+          "marks_nfd": [
+            "U+0302",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 62,
+          "y_shift": 47,
+          "bbox": [
+            95,
+            48,
+            607,
+            973
+          ]
+        },
+        {
+          "glyph": "ế",
+          "base": "e",
+          "marks_nfd": [
+            "U+0302",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 90,
+          "y_shift": 80,
+          "bbox": [
+            91,
+            101,
+            623,
+            888
+          ]
+        },
+        {
+          "glyph": "Ề",
+          "base": "E",
+          "marks_nfd": [
+            "U+0302",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 62,
+          "y_shift": 47,
+          "bbox": [
+            95,
+            48,
+            598,
+            973
+          ]
+        },
+        {
+          "glyph": "ề",
+          "base": "e",
+          "marks_nfd": [
+            "U+0302",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 90,
+          "y_shift": 80,
+          "bbox": [
+            91,
+            101,
+            623,
+            888
+          ]
+        },
+        {
+          "glyph": "Ể",
+          "base": "E",
+          "marks_nfd": [
+            "U+0302",
+            "U+0309"
+          ],
+          "mark_contours": 2,
+          "x_shift": 62,
+          "y_shift": 47,
+          "bbox": [
+            95,
+            48,
+            605,
+            988
+          ]
+        },
+        {
+          "glyph": "ể",
+          "base": "e",
+          "marks_nfd": [
+            "U+0302",
+            "U+0309"
+          ],
+          "mark_contours": 2,
+          "x_shift": 90,
+          "y_shift": 80,
+          "bbox": [
+            91,
+            101,
+            623,
+            903
+          ]
+        },
+        {
+          "glyph": "Ễ",
+          "base": "E",
+          "marks_nfd": [
+            "U+0302",
+            "U+0303"
+          ],
+          "mark_contours": 2,
+          "x_shift": 62,
+          "y_shift": 47,
+          "bbox": [
+            95,
+            48,
+            598,
+            1005
+          ]
+        },
+        {
+          "glyph": "ễ",
+          "base": "e",
+          "marks_nfd": [
+            "U+0302",
+            "U+0303"
+          ],
+          "mark_contours": 2,
+          "x_shift": 90,
+          "y_shift": 80,
+          "bbox": [
+            91,
+            101,
+            623,
+            921
+          ]
+        },
+        {
+          "glyph": "Ố",
+          "base": "O",
+          "marks_nfd": [
+            "U+0302",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 68,
+          "y_shift": 9,
+          "bbox": [
+            95,
+            10,
+            733,
+            935
+          ]
+        },
+        {
+          "glyph": "ố",
+          "base": "o",
+          "marks_nfd": [
+            "U+0302",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 85,
+          "y_shift": 56,
+          "bbox": [
+            96,
+            86,
+            636,
+            864
+          ]
+        },
+        {
+          "glyph": "Ồ",
+          "base": "O",
+          "marks_nfd": [
+            "U+0302",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 68,
+          "y_shift": 9,
+          "bbox": [
+            95,
+            10,
+            733,
+            935
+          ]
+        },
+        {
+          "glyph": "ồ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0302",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 85,
+          "y_shift": 56,
+          "bbox": [
+            96,
+            86,
+            636,
+            864
+          ]
+        },
+        {
+          "glyph": "Ổ",
+          "base": "O",
+          "marks_nfd": [
+            "U+0302",
+            "U+0309"
+          ],
+          "mark_contours": 2,
+          "x_shift": 68,
+          "y_shift": 9,
+          "bbox": [
+            95,
+            10,
+            733,
+            950
+          ]
+        },
+        {
+          "glyph": "ổ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0302",
+            "U+0309"
+          ],
+          "mark_contours": 2,
+          "x_shift": 85,
+          "y_shift": 56,
+          "bbox": [
+            96,
+            86,
+            636,
+            879
+          ]
+        },
+        {
+          "glyph": "Ỗ",
+          "base": "O",
+          "marks_nfd": [
+            "U+0302",
+            "U+0303"
+          ],
+          "mark_contours": 2,
+          "x_shift": 68,
+          "y_shift": 9,
+          "bbox": [
+            95,
+            10,
+            733,
+            967
+          ]
+        },
+        {
+          "glyph": "ỗ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0302",
+            "U+0303"
+          ],
+          "mark_contours": 2,
+          "x_shift": 85,
+          "y_shift": 59,
+          "bbox": [
+            96,
+            86,
+            636,
+            900
+          ]
+        }
+      ],
+      "skipped": [
+        {
+          "glyph": "Ǻ",
+          "reason": "vertical_limit"
+        },
+        {
+          "glyph": "Ḉ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ḉ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ḝ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ḝ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ḹ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ḹ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ṝ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ṝ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ṩ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ṩ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ậ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ậ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ặ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ặ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ệ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ệ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ộ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ộ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ớ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ớ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ờ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ờ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ở",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ở",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ỡ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ỡ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ợ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ợ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ứ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ứ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ừ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ừ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ử",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ử",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ữ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ữ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ự",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ự",
+          "reason": "unseparated_marks"
+        }
+      ],
+      "built_count": 68,
+      "skipped_count": 39,
+      "weight": 500,
+      "file": "ChunksReferencePanel-Medium-Stacked.otf",
+      "source_sha256": "50b68167346fa4dc5f8c6c8326c0668cfaa0e0c1dacb927b04acd2b31834d529",
+      "input_consolidated_sha256": "06805b8e2f4e0f8d3c333bb4c00c15d8f607846094d15adf1961b4c56547a9bc",
+      "output_sha256": "0bece5f230c1c80b55ff8e58952ca7a53f2d04179d66cb880b1b23f4bc308977",
+      "kerning": {
+        "input_sha256": "13f320b4c5136fe7960fa9f8d0080195e73bff5ee1d1c1288a08f657df8c4085",
+        "file": "ChunksReferencePanel-Medium-Stacked.otf",
+        "reference_accent_glyphs": 68,
+        "candidate_pairs": 13056,
+        "adjusted_pairs": 13056,
+        "bounded_subtables": 11,
+        "max_correction_units": 120,
+        "clipped_pair_count": 461,
+        "clipped_pair_examples": [
+          {
+            "first": "E",
+            "second": "ǻ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "E",
+            "second": "Ȫ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "E",
+            "second": "Ȭ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "E",
+            "second": "Ȱ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "E",
+            "second": "Ṍ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "E",
+            "second": "Ṏ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "E",
+            "second": "Ṑ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "E",
+            "second": "Ṓ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "E",
+            "second": "ấ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "E",
+            "second": "ầ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "E",
+            "second": "ẩ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "E",
+            "second": "ẫ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "E",
+            "second": "ắ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "E",
+            "second": "ằ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "E",
+            "second": "ẳ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "E",
+            "second": "ẵ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "E",
+            "second": "Ố",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "E",
+            "second": "Ồ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "E",
+            "second": "Ổ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "E",
+            "second": "Ỗ",
+            "desired_units": -124,
+            "applied_units": -120
+          }
+        ],
+        "mean_abs_correction_units": 83.6,
+        "source_scripts_unchanged": true,
+        "pre_final_name_sha256": "415aec2b8ad9a6b02d998c25fe4831d796eb0f914397a13aa43c5e62381582e1",
+        "output_sha256": "0bece5f230c1c80b55ff8e58952ca7a53f2d04179d66cb880b1b23f4bc308977"
+      }
+    },
+    "Semibold": {
+      "eligible_stacked_non_ij": 107,
+      "built": [
+        {
+          "glyph": "Ǖ",
+          "base": "U",
+          "marks_nfd": [
+            "U+0308",
+            "U+0304"
+          ],
+          "mark_contours": 3,
+          "x_shift": 76,
+          "y_shift": 6,
+          "bbox": [
+            88,
+            41,
+            722,
+            968
+          ]
+        },
+        {
+          "glyph": "ǖ",
+          "base": "u",
+          "marks_nfd": [
+            "U+0308",
+            "U+0304"
+          ],
+          "mark_contours": 3,
+          "x_shift": 66,
+          "y_shift": 36,
+          "bbox": [
+            89,
+            108,
+            607,
+            879
+          ]
+        },
+        {
+          "glyph": "Ǘ",
+          "base": "U",
+          "marks_nfd": [
+            "U+0308",
+            "U+0301"
+          ],
+          "mark_contours": 3,
+          "x_shift": 76,
+          "y_shift": 6,
+          "bbox": [
+            88,
+            41,
+            722,
+            1013
+          ]
+        },
+        {
+          "glyph": "ǘ",
+          "base": "u",
+          "marks_nfd": [
+            "U+0308",
+            "U+0301"
+          ],
+          "mark_contours": 3,
+          "x_shift": 66,
+          "y_shift": 36,
+          "bbox": [
+            89,
+            108,
+            607,
+            923
+          ]
+        },
+        {
+          "glyph": "Ǚ",
+          "base": "U",
+          "marks_nfd": [
+            "U+0308",
+            "U+030C"
+          ],
+          "mark_contours": 3,
+          "x_shift": 76,
+          "y_shift": 6,
+          "bbox": [
+            88,
+            41,
+            722,
+            1010
+          ]
+        },
+        {
+          "glyph": "ǚ",
+          "base": "u",
+          "marks_nfd": [
+            "U+0308",
+            "U+030C"
+          ],
+          "mark_contours": 3,
+          "x_shift": 66,
+          "y_shift": 36,
+          "bbox": [
+            89,
+            108,
+            607,
+            912
+          ]
+        },
+        {
+          "glyph": "Ǜ",
+          "base": "U",
+          "marks_nfd": [
+            "U+0308",
+            "U+0300"
+          ],
+          "mark_contours": 3,
+          "x_shift": 76,
+          "y_shift": 6,
+          "bbox": [
+            88,
+            41,
+            722,
+            1013
+          ]
+        },
+        {
+          "glyph": "ǜ",
+          "base": "u",
+          "marks_nfd": [
+            "U+0308",
+            "U+0300"
+          ],
+          "mark_contours": 3,
+          "x_shift": 66,
+          "y_shift": 36,
+          "bbox": [
+            89,
+            108,
+            607,
+            923
+          ]
+        },
+        {
+          "glyph": "ǻ",
+          "base": "a",
+          "marks_nfd": [
+            "U+030A",
+            "U+0301"
+          ],
+          "mark_contours": 3,
+          "x_shift": 109,
+          "y_shift": 63,
+          "bbox": [
+            88,
+            99,
+            625,
+            989
+          ]
+        },
+        {
+          "glyph": "Ȫ",
+          "base": "O",
+          "marks_nfd": [
+            "U+0308",
+            "U+0304"
+          ],
+          "mark_contours": 3,
+          "x_shift": 67,
+          "y_shift": 0,
+          "bbox": [
+            88,
+            3,
+            741,
+            967
+          ]
+        },
+        {
+          "glyph": "ȫ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0308",
+            "U+0304"
+          ],
+          "mark_contours": 3,
+          "x_shift": 82,
+          "y_shift": 37,
+          "bbox": [
+            88,
+            79,
+            645,
+            880
+          ]
+        },
+        {
+          "glyph": "Ȭ",
+          "base": "O",
+          "marks_nfd": [
+            "U+0303",
+            "U+0304"
+          ],
+          "mark_contours": 2,
+          "x_shift": 67,
+          "y_shift": 0,
+          "bbox": [
+            88,
+            3,
+            741,
+            967
+          ]
+        },
+        {
+          "glyph": "ȭ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0303",
+            "U+0304"
+          ],
+          "mark_contours": 2,
+          "x_shift": 82,
+          "y_shift": 38,
+          "bbox": [
+            88,
+            79,
+            645,
+            881
+          ]
+        },
+        {
+          "glyph": "Ȱ",
+          "base": "O",
+          "marks_nfd": [
+            "U+0307",
+            "U+0304"
+          ],
+          "mark_contours": 2,
+          "x_shift": 67,
+          "y_shift": 0,
+          "bbox": [
+            88,
+            3,
+            741,
+            967
+          ]
+        },
+        {
+          "glyph": "ȱ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0307",
+            "U+0304"
+          ],
+          "mark_contours": 2,
+          "x_shift": 82,
+          "y_shift": 36,
+          "bbox": [
+            88,
+            79,
+            645,
+            879
+          ]
+        },
+        {
+          "glyph": "Ḕ",
+          "base": "E",
+          "marks_nfd": [
+            "U+0304",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 62,
+          "y_shift": 11,
+          "bbox": [
+            88,
+            40,
+            607,
+            1018
+          ]
+        },
+        {
+          "glyph": "ḕ",
+          "base": "e",
+          "marks_nfd": [
+            "U+0304",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 88,
+          "y_shift": 43,
+          "bbox": [
+            84,
+            96,
+            629,
+            920
+          ]
+        },
+        {
+          "glyph": "Ḗ",
+          "base": "E",
+          "marks_nfd": [
+            "U+0304",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 62,
+          "y_shift": 11,
+          "bbox": [
+            88,
+            40,
+            607,
+            1018
+          ]
+        },
+        {
+          "glyph": "ḗ",
+          "base": "e",
+          "marks_nfd": [
+            "U+0304",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 88,
+          "y_shift": 43,
+          "bbox": [
+            84,
+            96,
+            629,
+            919
+          ]
+        },
+        {
+          "glyph": "Ṍ",
+          "base": "O",
+          "marks_nfd": [
+            "U+0303",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 67,
+          "y_shift": 0,
+          "bbox": [
+            88,
+            3,
+            741,
+            1007
+          ]
+        },
+        {
+          "glyph": "ṍ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0303",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 82,
+          "y_shift": 38,
+          "bbox": [
+            88,
+            79,
+            645,
+            914
+          ]
+        },
+        {
+          "glyph": "Ṏ",
+          "base": "O",
+          "marks_nfd": [
+            "U+0303",
+            "U+0308"
+          ],
+          "mark_contours": 3,
+          "x_shift": 67,
+          "y_shift": 0,
+          "bbox": [
+            88,
+            3,
+            741,
+            964
+          ]
+        },
+        {
+          "glyph": "ṏ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0303",
+            "U+0308"
+          ],
+          "mark_contours": 3,
+          "x_shift": 82,
+          "y_shift": 38,
+          "bbox": [
+            88,
+            79,
+            645,
+            887
+          ]
+        },
+        {
+          "glyph": "Ṑ",
+          "base": "O",
+          "marks_nfd": [
+            "U+0304",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 67,
+          "y_shift": 0,
+          "bbox": [
+            88,
+            3,
+            741,
+            1007
+          ]
+        },
+        {
+          "glyph": "ṑ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0304",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 82,
+          "y_shift": 21,
+          "bbox": [
+            88,
+            79,
+            645,
+            898
+          ]
+        },
+        {
+          "glyph": "Ṓ",
+          "base": "O",
+          "marks_nfd": [
+            "U+0304",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 67,
+          "y_shift": 0,
+          "bbox": [
+            88,
+            3,
+            741,
+            1007
+          ]
+        },
+        {
+          "glyph": "ṓ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0304",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 82,
+          "y_shift": 21,
+          "bbox": [
+            88,
+            79,
+            645,
+            897
+          ]
+        },
+        {
+          "glyph": "Ṥ",
+          "base": "S",
+          "marks_nfd": [
+            "U+0301",
+            "U+0307"
+          ],
+          "mark_contours": 2,
+          "x_shift": 94,
+          "y_shift": 47,
+          "bbox": [
+            89,
+            23,
+            645,
+            879
+          ]
+        },
+        {
+          "glyph": "ṥ",
+          "base": "s",
+          "marks_nfd": [
+            "U+0301",
+            "U+0307"
+          ],
+          "mark_contours": 2,
+          "x_shift": 72,
+          "y_shift": 84,
+          "bbox": [
+            88,
+            98,
+            530,
+            802
+          ]
+        },
+        {
+          "glyph": "Ṧ",
+          "base": "S",
+          "marks_nfd": [
+            "U+030C",
+            "U+0307"
+          ],
+          "mark_contours": 2,
+          "x_shift": 94,
+          "y_shift": 48,
+          "bbox": [
+            89,
+            23,
+            645,
+            1017
+          ]
+        },
+        {
+          "glyph": "ṧ",
+          "base": "s",
+          "marks_nfd": [
+            "U+030C",
+            "U+0307"
+          ],
+          "mark_contours": 2,
+          "x_shift": 72,
+          "y_shift": 89,
+          "bbox": [
+            88,
+            98,
+            530,
+            937
+          ]
+        },
+        {
+          "glyph": "Ṹ",
+          "base": "U",
+          "marks_nfd": [
+            "U+0303",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 76,
+          "y_shift": 3,
+          "bbox": [
+            88,
+            41,
+            722,
+            1010
+          ]
+        },
+        {
+          "glyph": "ṹ",
+          "base": "u",
+          "marks_nfd": [
+            "U+0303",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 66,
+          "y_shift": 37,
+          "bbox": [
+            89,
+            108,
+            607,
+            914
+          ]
+        },
+        {
+          "glyph": "Ṻ",
+          "base": "U",
+          "marks_nfd": [
+            "U+0304",
+            "U+0308"
+          ],
+          "mark_contours": 3,
+          "x_shift": 76,
+          "y_shift": 0,
+          "bbox": [
+            88,
+            41,
+            722,
+            964
+          ]
+        },
+        {
+          "glyph": "ṻ",
+          "base": "u",
+          "marks_nfd": [
+            "U+0304",
+            "U+0308"
+          ],
+          "mark_contours": 3,
+          "x_shift": 66,
+          "y_shift": 20,
+          "bbox": [
+            89,
+            108,
+            607,
+            838
+          ]
+        },
+        {
+          "glyph": "Ấ",
+          "base": "A",
+          "marks_nfd": [
+            "U+0302",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 88,
+          "y_shift": 36,
+          "bbox": [
+            88,
+            21,
+            702,
+            971
+          ]
+        },
+        {
+          "glyph": "ấ",
+          "base": "a",
+          "marks_nfd": [
+            "U+0302",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 109,
+          "y_shift": 60,
+          "bbox": [
+            88,
+            99,
+            635,
+            884
+          ]
+        },
+        {
+          "glyph": "Ầ",
+          "base": "A",
+          "marks_nfd": [
+            "U+0302",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 88,
+          "y_shift": 36,
+          "bbox": [
+            88,
+            21,
+            702,
+            971
+          ]
+        },
+        {
+          "glyph": "ầ",
+          "base": "a",
+          "marks_nfd": [
+            "U+0302",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 109,
+          "y_shift": 60,
+          "bbox": [
+            88,
+            99,
+            625,
+            884
+          ]
+        },
+        {
+          "glyph": "Ẩ",
+          "base": "A",
+          "marks_nfd": [
+            "U+0302",
+            "U+0309"
+          ],
+          "mark_contours": 2,
+          "x_shift": 88,
+          "y_shift": 36,
+          "bbox": [
+            88,
+            21,
+            702,
+            997
+          ]
+        },
+        {
+          "glyph": "ẩ",
+          "base": "a",
+          "marks_nfd": [
+            "U+0302",
+            "U+0309"
+          ],
+          "mark_contours": 2,
+          "x_shift": 109,
+          "y_shift": 60,
+          "bbox": [
+            88,
+            99,
+            635,
+            910
+          ]
+        },
+        {
+          "glyph": "Ẫ",
+          "base": "A",
+          "marks_nfd": [
+            "U+0302",
+            "U+0303"
+          ],
+          "mark_contours": 2,
+          "x_shift": 88,
+          "y_shift": 36,
+          "bbox": [
+            88,
+            21,
+            702,
+            1015
+          ]
+        },
+        {
+          "glyph": "ẫ",
+          "base": "a",
+          "marks_nfd": [
+            "U+0302",
+            "U+0303"
+          ],
+          "mark_contours": 2,
+          "x_shift": 109,
+          "y_shift": 62,
+          "bbox": [
+            88,
+            99,
+            625,
+            928
+          ]
+        },
+        {
+          "glyph": "Ắ",
+          "base": "A",
+          "marks_nfd": [
+            "U+0306",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 88,
+          "y_shift": 21,
+          "bbox": [
+            88,
+            21,
+            702,
+            1002
+          ]
+        },
+        {
+          "glyph": "ắ",
+          "base": "a",
+          "marks_nfd": [
+            "U+0306",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 109,
+          "y_shift": 42,
+          "bbox": [
+            88,
+            99,
+            625,
+            908
+          ]
+        },
+        {
+          "glyph": "Ằ",
+          "base": "A",
+          "marks_nfd": [
+            "U+0306",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 88,
+          "y_shift": 21,
+          "bbox": [
+            88,
+            21,
+            702,
+            1003
+          ]
+        },
+        {
+          "glyph": "ằ",
+          "base": "a",
+          "marks_nfd": [
+            "U+0306",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 109,
+          "y_shift": 42,
+          "bbox": [
+            88,
+            99,
+            625,
+            909
+          ]
+        },
+        {
+          "glyph": "Ẳ",
+          "base": "A",
+          "marks_nfd": [
+            "U+0306",
+            "U+0309"
+          ],
+          "mark_contours": 2,
+          "x_shift": 88,
+          "y_shift": 24,
+          "bbox": [
+            88,
+            21,
+            702,
+            1024
+          ]
+        },
+        {
+          "glyph": "ẳ",
+          "base": "a",
+          "marks_nfd": [
+            "U+0306",
+            "U+0309"
+          ],
+          "mark_contours": 2,
+          "x_shift": 109,
+          "y_shift": 42,
+          "bbox": [
+            88,
+            99,
+            625,
+            927
+          ]
+        },
+        {
+          "glyph": "Ẵ",
+          "base": "A",
+          "marks_nfd": [
+            "U+0306",
+            "U+0303"
+          ],
+          "mark_contours": 2,
+          "x_shift": 88,
+          "y_shift": 24,
+          "bbox": [
+            88,
+            21,
+            702,
+            1003
+          ]
+        },
+        {
+          "glyph": "ẵ",
+          "base": "a",
+          "marks_nfd": [
+            "U+0306",
+            "U+0303"
+          ],
+          "mark_contours": 2,
+          "x_shift": 109,
+          "y_shift": 40,
+          "bbox": [
+            88,
+            99,
+            625,
+            906
+          ]
+        },
+        {
+          "glyph": "Ế",
+          "base": "E",
+          "marks_nfd": [
+            "U+0302",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 62,
+          "y_shift": 55,
+          "bbox": [
+            88,
+            40,
+            620,
+            990
+          ]
+        },
+        {
+          "glyph": "ế",
+          "base": "e",
+          "marks_nfd": [
+            "U+0302",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 88,
+          "y_shift": 83,
+          "bbox": [
+            84,
+            96,
+            629,
+            907
+          ]
+        },
+        {
+          "glyph": "Ề",
+          "base": "E",
+          "marks_nfd": [
+            "U+0302",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 62,
+          "y_shift": 55,
+          "bbox": [
+            88,
+            40,
+            607,
+            990
+          ]
+        },
+        {
+          "glyph": "ề",
+          "base": "e",
+          "marks_nfd": [
+            "U+0302",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 88,
+          "y_shift": 83,
+          "bbox": [
+            84,
+            96,
+            629,
+            907
+          ]
+        },
+        {
+          "glyph": "Ể",
+          "base": "E",
+          "marks_nfd": [
+            "U+0302",
+            "U+0309"
+          ],
+          "mark_contours": 2,
+          "x_shift": 62,
+          "y_shift": 55,
+          "bbox": [
+            88,
+            40,
+            620,
+            1016
+          ]
+        },
+        {
+          "glyph": "ể",
+          "base": "e",
+          "marks_nfd": [
+            "U+0302",
+            "U+0309"
+          ],
+          "mark_contours": 2,
+          "x_shift": 88,
+          "y_shift": 83,
+          "bbox": [
+            84,
+            96,
+            629,
+            933
+          ]
+        },
+        {
+          "glyph": "Ễ",
+          "base": "E",
+          "marks_nfd": [
+            "U+0302",
+            "U+0303"
+          ],
+          "mark_contours": 2,
+          "x_shift": 62,
+          "y_shift": 55,
+          "bbox": [
+            88,
+            40,
+            607,
+            1034
+          ]
+        },
+        {
+          "glyph": "ễ",
+          "base": "e",
+          "marks_nfd": [
+            "U+0302",
+            "U+0303"
+          ],
+          "mark_contours": 2,
+          "x_shift": 88,
+          "y_shift": 83,
+          "bbox": [
+            84,
+            96,
+            629,
+            951
+          ]
+        },
+        {
+          "glyph": "Ố",
+          "base": "O",
+          "marks_nfd": [
+            "U+0302",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 67,
+          "y_shift": 17,
+          "bbox": [
+            88,
+            3,
+            741,
+            952
+          ]
+        },
+        {
+          "glyph": "ố",
+          "base": "o",
+          "marks_nfd": [
+            "U+0302",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 82,
+          "y_shift": 61,
+          "bbox": [
+            88,
+            79,
+            645,
+            885
+          ]
+        },
+        {
+          "glyph": "Ồ",
+          "base": "O",
+          "marks_nfd": [
+            "U+0302",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 67,
+          "y_shift": 17,
+          "bbox": [
+            88,
+            3,
+            741,
+            952
+          ]
+        },
+        {
+          "glyph": "ồ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0302",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 82,
+          "y_shift": 61,
+          "bbox": [
+            88,
+            79,
+            645,
+            885
+          ]
+        },
+        {
+          "glyph": "Ổ",
+          "base": "O",
+          "marks_nfd": [
+            "U+0302",
+            "U+0309"
+          ],
+          "mark_contours": 2,
+          "x_shift": 67,
+          "y_shift": 17,
+          "bbox": [
+            88,
+            3,
+            741,
+            978
+          ]
+        },
+        {
+          "glyph": "ổ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0302",
+            "U+0309"
+          ],
+          "mark_contours": 2,
+          "x_shift": 82,
+          "y_shift": 61,
+          "bbox": [
+            88,
+            79,
+            645,
+            911
+          ]
+        },
+        {
+          "glyph": "Ỗ",
+          "base": "O",
+          "marks_nfd": [
+            "U+0302",
+            "U+0303"
+          ],
+          "mark_contours": 2,
+          "x_shift": 67,
+          "y_shift": 17,
+          "bbox": [
+            88,
+            3,
+            741,
+            996
+          ]
+        },
+        {
+          "glyph": "ỗ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0302",
+            "U+0303"
+          ],
+          "mark_contours": 2,
+          "x_shift": 82,
+          "y_shift": 63,
+          "bbox": [
+            88,
+            79,
+            645,
+            931
+          ]
+        }
+      ],
+      "skipped": [
+        {
+          "glyph": "Ǻ",
+          "reason": "vertical_limit"
+        },
+        {
+          "glyph": "Ḉ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ḉ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ḝ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ḝ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ḯ",
+          "reason": "vertical_limit"
+        },
+        {
+          "glyph": "Ḹ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ḹ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ṝ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ṝ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ṩ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ṩ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ậ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ậ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ặ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ặ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ệ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ệ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ộ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ộ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ớ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ớ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ờ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ờ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ở",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ở",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ỡ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ỡ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ợ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ợ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ứ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ứ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ừ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ừ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ử",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ử",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ữ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ữ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ự",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ự",
+          "reason": "unseparated_marks"
+        }
+      ],
+      "built_count": 67,
+      "skipped_count": 40,
+      "weight": 600,
+      "file": "ChunksReferencePanel-Semibold-Stacked.otf",
+      "source_sha256": "8261803c2870f91db32f3c0506475a31189c5f16a2dfba35a5c0371faee890ef",
+      "input_consolidated_sha256": "5dd044fe0908c6285e4570a12a934be8df014d35b9a963253ec91be18eb29257",
+      "output_sha256": "cb0f3d13e8c106501a6ebdab958c31d866c602b543fd00c7a0f8d751d0d057ab",
+      "kerning": {
+        "input_sha256": "f952d5fc5ea55cc736415ab9508ebfd053c982ea278eb6b5f147864fec9223b5",
+        "file": "ChunksReferencePanel-Semibold-Stacked.otf",
+        "reference_accent_glyphs": 67,
+        "candidate_pairs": 12797,
+        "adjusted_pairs": 12797,
+        "bounded_subtables": 11,
+        "max_correction_units": 120,
+        "clipped_pair_count": 176,
+        "clipped_pair_examples": [
+          {
+            "first": "F",
+            "second": "ǻ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "Ṥ",
+            "desired_units": -123,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "Ṧ",
+            "desired_units": -123,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "Ấ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "ấ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "Ầ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "ầ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "Ẩ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "ẩ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "Ẫ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "ẫ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "Ắ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "ắ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "Ằ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "ằ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "Ẳ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "ẳ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "Ẵ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "ẵ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "L",
+            "second": "Ṥ",
+            "desired_units": -124,
+            "applied_units": -120
+          }
+        ],
+        "mean_abs_correction_units": 80.9,
+        "source_scripts_unchanged": true,
+        "pre_final_name_sha256": "c009a627a1a0656bc2cd37adff8da7dbc05af2c6b53bde935aee27cad95703da",
+        "output_sha256": "cb0f3d13e8c106501a6ebdab958c31d866c602b543fd00c7a0f8d751d0d057ab"
+      }
+    },
+    "Bold": {
+      "eligible_stacked_non_ij": 107,
+      "built": [
+        {
+          "glyph": "Ǖ",
+          "base": "U",
+          "marks_nfd": [
+            "U+0308",
+            "U+0304"
+          ],
+          "mark_contours": 3,
+          "x_shift": 75,
+          "y_shift": 20,
+          "bbox": [
+            80,
+            32,
+            730,
+            1007
+          ]
+        },
+        {
+          "glyph": "ǖ",
+          "base": "u",
+          "marks_nfd": [
+            "U+0308",
+            "U+0304"
+          ],
+          "mark_contours": 3,
+          "x_shift": 60,
+          "y_shift": 47,
+          "bbox": [
+            80,
+            100,
+            615,
+            915
+          ]
+        },
+        {
+          "glyph": "ǘ",
+          "base": "u",
+          "marks_nfd": [
+            "U+0308",
+            "U+0301"
+          ],
+          "mark_contours": 3,
+          "x_shift": 60,
+          "y_shift": 47,
+          "bbox": [
+            80,
+            100,
+            615,
+            962
+          ]
+        },
+        {
+          "glyph": "ǚ",
+          "base": "u",
+          "marks_nfd": [
+            "U+0308",
+            "U+030C"
+          ],
+          "mark_contours": 3,
+          "x_shift": 60,
+          "y_shift": 47,
+          "bbox": [
+            80,
+            100,
+            615,
+            947
+          ]
+        },
+        {
+          "glyph": "ǜ",
+          "base": "u",
+          "marks_nfd": [
+            "U+0308",
+            "U+0300"
+          ],
+          "mark_contours": 3,
+          "x_shift": 60,
+          "y_shift": 47,
+          "bbox": [
+            80,
+            100,
+            615,
+            961
+          ]
+        },
+        {
+          "glyph": "ǻ",
+          "base": "a",
+          "marks_nfd": [
+            "U+030A",
+            "U+0301"
+          ],
+          "mark_contours": 3,
+          "x_shift": 102,
+          "y_shift": 69,
+          "bbox": [
+            80,
+            90,
+            633,
+            1015
+          ]
+        },
+        {
+          "glyph": "Ȫ",
+          "base": "O",
+          "marks_nfd": [
+            "U+0308",
+            "U+0304"
+          ],
+          "mark_contours": 3,
+          "x_shift": 64,
+          "y_shift": 0,
+          "bbox": [
+            79,
+            -6,
+            749,
+            994
+          ]
+        },
+        {
+          "glyph": "ȫ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0308",
+            "U+0304"
+          ],
+          "mark_contours": 3,
+          "x_shift": 78,
+          "y_shift": 47,
+          "bbox": [
+            81,
+            71,
+            653,
+            915
+          ]
+        },
+        {
+          "glyph": "Ȭ",
+          "base": "O",
+          "marks_nfd": [
+            "U+0303",
+            "U+0304"
+          ],
+          "mark_contours": 2,
+          "x_shift": 64,
+          "y_shift": 0,
+          "bbox": [
+            79,
+            -6,
+            749,
+            994
+          ]
+        },
+        {
+          "glyph": "ȭ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0303",
+            "U+0304"
+          ],
+          "mark_contours": 2,
+          "x_shift": 78,
+          "y_shift": 47,
+          "bbox": [
+            81,
+            71,
+            653,
+            915
+          ]
+        },
+        {
+          "glyph": "Ȱ",
+          "base": "O",
+          "marks_nfd": [
+            "U+0307",
+            "U+0304"
+          ],
+          "mark_contours": 2,
+          "x_shift": 64,
+          "y_shift": 0,
+          "bbox": [
+            79,
+            -6,
+            749,
+            994
+          ]
+        },
+        {
+          "glyph": "ȱ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0307",
+            "U+0304"
+          ],
+          "mark_contours": 2,
+          "x_shift": 78,
+          "y_shift": 47,
+          "bbox": [
+            81,
+            71,
+            653,
+            915
+          ]
+        },
+        {
+          "glyph": "ḕ",
+          "base": "e",
+          "marks_nfd": [
+            "U+0304",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 84,
+          "y_shift": 52,
+          "bbox": [
+            78,
+            88,
+            635,
+            954
+          ]
+        },
+        {
+          "glyph": "ḗ",
+          "base": "e",
+          "marks_nfd": [
+            "U+0304",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 84,
+          "y_shift": 52,
+          "bbox": [
+            78,
+            88,
+            635,
+            952
+          ]
+        },
+        {
+          "glyph": "Ṍ",
+          "base": "O",
+          "marks_nfd": [
+            "U+0303",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 64,
+          "y_shift": 0,
+          "bbox": [
+            79,
+            -6,
+            749,
+            1030
+          ]
+        },
+        {
+          "glyph": "ṍ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0303",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 78,
+          "y_shift": 47,
+          "bbox": [
+            81,
+            71,
+            653,
+            947
+          ]
+        },
+        {
+          "glyph": "Ṏ",
+          "base": "O",
+          "marks_nfd": [
+            "U+0303",
+            "U+0308"
+          ],
+          "mark_contours": 3,
+          "x_shift": 64,
+          "y_shift": 0,
+          "bbox": [
+            79,
+            -6,
+            749,
+            981
+          ]
+        },
+        {
+          "glyph": "ṏ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0303",
+            "U+0308"
+          ],
+          "mark_contours": 3,
+          "x_shift": 78,
+          "y_shift": 47,
+          "bbox": [
+            81,
+            71,
+            653,
+            913
+          ]
+        },
+        {
+          "glyph": "Ṑ",
+          "base": "O",
+          "marks_nfd": [
+            "U+0304",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 64,
+          "y_shift": 0,
+          "bbox": [
+            79,
+            -6,
+            749,
+            1031
+          ]
+        },
+        {
+          "glyph": "ṑ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0304",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 78,
+          "y_shift": 31,
+          "bbox": [
+            81,
+            71,
+            653,
+            933
+          ]
+        },
+        {
+          "glyph": "Ṓ",
+          "base": "O",
+          "marks_nfd": [
+            "U+0304",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 64,
+          "y_shift": 0,
+          "bbox": [
+            79,
+            -6,
+            749,
+            1030
+          ]
+        },
+        {
+          "glyph": "ṓ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0304",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 78,
+          "y_shift": 31,
+          "bbox": [
+            81,
+            71,
+            653,
+            931
+          ]
+        },
+        {
+          "glyph": "Ṥ",
+          "base": "S",
+          "marks_nfd": [
+            "U+0301",
+            "U+0307"
+          ],
+          "mark_contours": 2,
+          "x_shift": 90,
+          "y_shift": 59,
+          "bbox": [
+            80,
+            13,
+            653,
+            899
+          ]
+        },
+        {
+          "glyph": "ṥ",
+          "base": "s",
+          "marks_nfd": [
+            "U+0301",
+            "U+0307"
+          ],
+          "mark_contours": 2,
+          "x_shift": 64,
+          "y_shift": 89,
+          "bbox": [
+            79,
+            90,
+            538,
+            825
+          ]
+        },
+        {
+          "glyph": "ṧ",
+          "base": "s",
+          "marks_nfd": [
+            "U+030C",
+            "U+0307"
+          ],
+          "mark_contours": 2,
+          "x_shift": 64,
+          "y_shift": 100,
+          "bbox": [
+            79,
+            90,
+            538,
+            965
+          ]
+        },
+        {
+          "glyph": "ṹ",
+          "base": "u",
+          "marks_nfd": [
+            "U+0303",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 60,
+          "y_shift": 47,
+          "bbox": [
+            80,
+            100,
+            615,
+            948
+          ]
+        },
+        {
+          "glyph": "Ṻ",
+          "base": "U",
+          "marks_nfd": [
+            "U+0304",
+            "U+0308"
+          ],
+          "mark_contours": 3,
+          "x_shift": 75,
+          "y_shift": 7,
+          "bbox": [
+            80,
+            32,
+            730,
+            988
+          ]
+        },
+        {
+          "glyph": "ṻ",
+          "base": "u",
+          "marks_nfd": [
+            "U+0304",
+            "U+0308"
+          ],
+          "mark_contours": 3,
+          "x_shift": 60,
+          "y_shift": 31,
+          "bbox": [
+            80,
+            100,
+            615,
+            866
+          ]
+        },
+        {
+          "glyph": "Ấ",
+          "base": "A",
+          "marks_nfd": [
+            "U+0302",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 84,
+          "y_shift": 47,
+          "bbox": [
+            80,
+            13,
+            711,
+            994
+          ]
+        },
+        {
+          "glyph": "ấ",
+          "base": "a",
+          "marks_nfd": [
+            "U+0302",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 102,
+          "y_shift": 65,
+          "bbox": [
+            80,
+            90,
+            648,
+            908
+          ]
+        },
+        {
+          "glyph": "Ầ",
+          "base": "A",
+          "marks_nfd": [
+            "U+0302",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 84,
+          "y_shift": 47,
+          "bbox": [
+            80,
+            13,
+            711,
+            994
+          ]
+        },
+        {
+          "glyph": "ầ",
+          "base": "a",
+          "marks_nfd": [
+            "U+0302",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 102,
+          "y_shift": 65,
+          "bbox": [
+            80,
+            90,
+            633,
+            908
+          ]
+        },
+        {
+          "glyph": "Ẩ",
+          "base": "A",
+          "marks_nfd": [
+            "U+0302",
+            "U+0309"
+          ],
+          "mark_contours": 2,
+          "x_shift": 84,
+          "y_shift": 47,
+          "bbox": [
+            80,
+            13,
+            711,
+            1033
+          ]
+        },
+        {
+          "glyph": "ẩ",
+          "base": "a",
+          "marks_nfd": [
+            "U+0302",
+            "U+0309"
+          ],
+          "mark_contours": 2,
+          "x_shift": 102,
+          "y_shift": 65,
+          "bbox": [
+            80,
+            90,
+            651,
+            947
+          ]
+        },
+        {
+          "glyph": "ẫ",
+          "base": "a",
+          "marks_nfd": [
+            "U+0302",
+            "U+0303"
+          ],
+          "mark_contours": 2,
+          "x_shift": 102,
+          "y_shift": 66,
+          "bbox": [
+            80,
+            90,
+            633,
+            965
+          ]
+        },
+        {
+          "glyph": "Ắ",
+          "base": "A",
+          "marks_nfd": [
+            "U+0306",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 84,
+          "y_shift": 31,
+          "bbox": [
+            80,
+            13,
+            711,
+            1038
+          ]
+        },
+        {
+          "glyph": "ắ",
+          "base": "a",
+          "marks_nfd": [
+            "U+0306",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 102,
+          "y_shift": 47,
+          "bbox": [
+            80,
+            90,
+            633,
+            943
+          ]
+        },
+        {
+          "glyph": "Ằ",
+          "base": "A",
+          "marks_nfd": [
+            "U+0306",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 84,
+          "y_shift": 31,
+          "bbox": [
+            80,
+            13,
+            711,
+            1039
+          ]
+        },
+        {
+          "glyph": "ằ",
+          "base": "a",
+          "marks_nfd": [
+            "U+0306",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 102,
+          "y_shift": 47,
+          "bbox": [
+            80,
+            90,
+            633,
+            944
+          ]
+        },
+        {
+          "glyph": "ẳ",
+          "base": "a",
+          "marks_nfd": [
+            "U+0306",
+            "U+0309"
+          ],
+          "mark_contours": 2,
+          "x_shift": 102,
+          "y_shift": 47,
+          "bbox": [
+            80,
+            90,
+            633,
+            968
+          ]
+        },
+        {
+          "glyph": "Ẵ",
+          "base": "A",
+          "marks_nfd": [
+            "U+0306",
+            "U+0303"
+          ],
+          "mark_contours": 2,
+          "x_shift": 84,
+          "y_shift": 35,
+          "bbox": [
+            80,
+            13,
+            711,
+            1039
+          ]
+        },
+        {
+          "glyph": "ẵ",
+          "base": "a",
+          "marks_nfd": [
+            "U+0306",
+            "U+0303"
+          ],
+          "mark_contours": 2,
+          "x_shift": 102,
+          "y_shift": 46,
+          "bbox": [
+            80,
+            90,
+            633,
+            942
+          ]
+        },
+        {
+          "glyph": "Ế",
+          "base": "E",
+          "marks_nfd": [
+            "U+0302",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 60,
+          "y_shift": 66,
+          "bbox": [
+            80,
+            32,
+            634,
+            1013
+          ]
+        },
+        {
+          "glyph": "ế",
+          "base": "e",
+          "marks_nfd": [
+            "U+0302",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 84,
+          "y_shift": 86,
+          "bbox": [
+            78,
+            88,
+            644,
+            929
+          ]
+        },
+        {
+          "glyph": "Ề",
+          "base": "E",
+          "marks_nfd": [
+            "U+0302",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 60,
+          "y_shift": 66,
+          "bbox": [
+            80,
+            32,
+            615,
+            1013
+          ]
+        },
+        {
+          "glyph": "ề",
+          "base": "e",
+          "marks_nfd": [
+            "U+0302",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 84,
+          "y_shift": 86,
+          "bbox": [
+            78,
+            88,
+            635,
+            929
+          ]
+        },
+        {
+          "glyph": "ể",
+          "base": "e",
+          "marks_nfd": [
+            "U+0302",
+            "U+0309"
+          ],
+          "mark_contours": 2,
+          "x_shift": 84,
+          "y_shift": 86,
+          "bbox": [
+            78,
+            88,
+            647,
+            968
+          ]
+        },
+        {
+          "glyph": "ễ",
+          "base": "e",
+          "marks_nfd": [
+            "U+0302",
+            "U+0303"
+          ],
+          "mark_contours": 2,
+          "x_shift": 84,
+          "y_shift": 86,
+          "bbox": [
+            78,
+            88,
+            635,
+            986
+          ]
+        },
+        {
+          "glyph": "Ố",
+          "base": "O",
+          "marks_nfd": [
+            "U+0302",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 64,
+          "y_shift": 27,
+          "bbox": [
+            79,
+            -6,
+            749,
+            974
+          ]
+        },
+        {
+          "glyph": "ố",
+          "base": "o",
+          "marks_nfd": [
+            "U+0302",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 78,
+          "y_shift": 65,
+          "bbox": [
+            81,
+            71,
+            653,
+            908
+          ]
+        },
+        {
+          "glyph": "Ồ",
+          "base": "O",
+          "marks_nfd": [
+            "U+0302",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 64,
+          "y_shift": 27,
+          "bbox": [
+            79,
+            -6,
+            749,
+            974
+          ]
+        },
+        {
+          "glyph": "ồ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0302",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 78,
+          "y_shift": 65,
+          "bbox": [
+            81,
+            71,
+            653,
+            908
+          ]
+        },
+        {
+          "glyph": "Ổ",
+          "base": "O",
+          "marks_nfd": [
+            "U+0302",
+            "U+0309"
+          ],
+          "mark_contours": 2,
+          "x_shift": 64,
+          "y_shift": 27,
+          "bbox": [
+            79,
+            -6,
+            749,
+            1013
+          ]
+        },
+        {
+          "glyph": "ổ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0302",
+            "U+0309"
+          ],
+          "mark_contours": 2,
+          "x_shift": 78,
+          "y_shift": 65,
+          "bbox": [
+            81,
+            71,
+            653,
+            947
+          ]
+        },
+        {
+          "glyph": "Ỗ",
+          "base": "O",
+          "marks_nfd": [
+            "U+0302",
+            "U+0303"
+          ],
+          "mark_contours": 2,
+          "x_shift": 64,
+          "y_shift": 27,
+          "bbox": [
+            79,
+            -6,
+            749,
+            1031
+          ]
+        },
+        {
+          "glyph": "ỗ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0302",
+            "U+0303"
+          ],
+          "mark_contours": 2,
+          "x_shift": 78,
+          "y_shift": 66,
+          "bbox": [
+            81,
+            71,
+            653,
+            966
+          ]
+        }
+      ],
+      "skipped": [
+        {
+          "glyph": "Ǘ",
+          "reason": "vertical_limit"
+        },
+        {
+          "glyph": "Ǚ",
+          "reason": "vertical_limit"
+        },
+        {
+          "glyph": "Ǜ",
+          "reason": "vertical_limit"
+        },
+        {
+          "glyph": "Ǻ",
+          "reason": "vertical_limit"
+        },
+        {
+          "glyph": "Ḉ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ḉ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ḕ",
+          "reason": "vertical_limit"
+        },
+        {
+          "glyph": "Ḗ",
+          "reason": "vertical_limit"
+        },
+        {
+          "glyph": "Ḝ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ḝ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ḯ",
+          "reason": "vertical_limit"
+        },
+        {
+          "glyph": "Ḹ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ḹ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ṝ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ṝ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ṧ",
+          "reason": "vertical_limit"
+        },
+        {
+          "glyph": "Ṩ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ṩ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ṹ",
+          "reason": "vertical_limit"
+        },
+        {
+          "glyph": "Ẫ",
+          "reason": "vertical_limit"
+        },
+        {
+          "glyph": "Ậ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ậ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ẳ",
+          "reason": "vertical_limit"
+        },
+        {
+          "glyph": "Ặ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ặ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ể",
+          "reason": "vertical_limit"
+        },
+        {
+          "glyph": "Ễ",
+          "reason": "vertical_limit"
+        },
+        {
+          "glyph": "Ệ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ệ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ộ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ộ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ớ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ớ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ờ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ờ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ở",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ở",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ỡ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ỡ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ợ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ợ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ứ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ứ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ừ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ừ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ử",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ử",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ữ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ữ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ự",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ự",
+          "reason": "unseparated_marks"
+        }
+      ],
+      "built_count": 56,
+      "skipped_count": 51,
+      "weight": 700,
+      "file": "ChunksReferencePanel-Bold-Stacked.otf",
+      "source_sha256": "4c4d514999eae9192313499e31b5e69b84a348e7fac2b1554a7728c6a14aa5ae",
+      "input_consolidated_sha256": "c75eff65b923cb5d281b4b8913f9cea17ba4a9679d18476d382d5eebc6d42c3e",
+      "output_sha256": "4eb71b1238929a101e8a58f01fb15b6cdb30c1a0fd5c5d891b40916479c01f06",
+      "kerning": {
+        "input_sha256": "338375229d7c913ad81a5514ce987caee0f8cee8b2228ec89560a18f05c5b81f",
+        "file": "ChunksReferencePanel-Bold-Stacked.otf",
+        "reference_accent_glyphs": 56,
+        "candidate_pairs": 10080,
+        "adjusted_pairs": 10080,
+        "bounded_subtables": 10,
+        "max_correction_units": 120,
+        "clipped_pair_count": 78,
+        "clipped_pair_examples": [
+          {
+            "first": "F",
+            "second": "ǻ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "ấ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "ầ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "ẩ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "ẫ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "ắ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "ằ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "ẳ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "ẵ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "T",
+            "second": "Ấ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "T",
+            "second": "Ầ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "T",
+            "second": "Ẩ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "T",
+            "second": "Ắ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "T",
+            "second": "Ằ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "T",
+            "second": "Ẵ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "V",
+            "second": "Ấ",
+            "desired_units": -122,
+            "applied_units": -120
+          },
+          {
+            "first": "V",
+            "second": "Ầ",
+            "desired_units": -122,
+            "applied_units": -120
+          },
+          {
+            "first": "V",
+            "second": "Ẩ",
+            "desired_units": -122,
+            "applied_units": -120
+          },
+          {
+            "first": "V",
+            "second": "Ắ",
+            "desired_units": -122,
+            "applied_units": -120
+          },
+          {
+            "first": "V",
+            "second": "Ằ",
+            "desired_units": -122,
+            "applied_units": -120
+          }
+        ],
+        "mean_abs_correction_units": 76.08,
+        "source_scripts_unchanged": true,
+        "pre_final_name_sha256": "30d8a516a9a021a30ba6aab43521a9c34d954dc233766aba786cf7f61f29dafb",
+        "output_sha256": "4eb71b1238929a101e8a58f01fb15b6cdb30c1a0fd5c5d891b40916479c01f06"
+      }
+    },
+    "ExtraBold": {
+      "eligible_stacked_non_ij": 107,
+      "built": [
+        {
+          "glyph": "ǖ",
+          "base": "u",
+          "marks_nfd": [
+            "U+0308",
+            "U+0304"
+          ],
+          "mark_contours": 3,
+          "x_shift": 56,
+          "y_shift": 56,
+          "bbox": [
+            71,
+            91.5,
+            623,
+            945
+          ]
+        },
+        {
+          "glyph": "ǘ",
+          "base": "u",
+          "marks_nfd": [
+            "U+0308",
+            "U+0301"
+          ],
+          "mark_contours": 3,
+          "x_shift": 56,
+          "y_shift": 56,
+          "bbox": [
+            71,
+            91.5,
+            623,
+            995
+          ]
+        },
+        {
+          "glyph": "ǚ",
+          "base": "u",
+          "marks_nfd": [
+            "U+0308",
+            "U+030C"
+          ],
+          "mark_contours": 3,
+          "x_shift": 56,
+          "y_shift": 56,
+          "bbox": [
+            71,
+            91.5,
+            623,
+            977
+          ]
+        },
+        {
+          "glyph": "ǜ",
+          "base": "u",
+          "marks_nfd": [
+            "U+0308",
+            "U+0300"
+          ],
+          "mark_contours": 3,
+          "x_shift": 56,
+          "y_shift": 56,
+          "bbox": [
+            71,
+            91.5,
+            623,
+            994
+          ]
+        },
+        {
+          "glyph": "ǻ",
+          "base": "a",
+          "marks_nfd": [
+            "U+030A",
+            "U+0301"
+          ],
+          "mark_contours": 3,
+          "x_shift": 96,
+          "y_shift": 74,
+          "bbox": [
+            71,
+            82,
+            642,
+            1037
+          ]
+        },
+        {
+          "glyph": "Ȫ",
+          "base": "O",
+          "marks_nfd": [
+            "U+0308",
+            "U+0304"
+          ],
+          "mark_contours": 3,
+          "x_shift": 63,
+          "y_shift": 15,
+          "bbox": [
+            71,
+            -14,
+            758,
+            1033
+          ]
+        },
+        {
+          "glyph": "ȫ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0308",
+            "U+0304"
+          ],
+          "mark_contours": 3,
+          "x_shift": 74,
+          "y_shift": 56,
+          "bbox": [
+            71,
+            62,
+            662,
+            945
+          ]
+        },
+        {
+          "glyph": "Ȭ",
+          "base": "O",
+          "marks_nfd": [
+            "U+0303",
+            "U+0304"
+          ],
+          "mark_contours": 2,
+          "x_shift": 63,
+          "y_shift": 5,
+          "bbox": [
+            71,
+            -14,
+            758,
+            1023
+          ]
+        },
+        {
+          "glyph": "ȭ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0303",
+            "U+0304"
+          ],
+          "mark_contours": 2,
+          "x_shift": 74,
+          "y_shift": 56,
+          "bbox": [
+            71,
+            62,
+            662,
+            945
+          ]
+        },
+        {
+          "glyph": "Ȱ",
+          "base": "O",
+          "marks_nfd": [
+            "U+0307",
+            "U+0304"
+          ],
+          "mark_contours": 2,
+          "x_shift": 63,
+          "y_shift": 8,
+          "bbox": [
+            71,
+            -14,
+            758,
+            1026
+          ]
+        },
+        {
+          "glyph": "ȱ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0307",
+            "U+0304"
+          ],
+          "mark_contours": 2,
+          "x_shift": 74,
+          "y_shift": 58,
+          "bbox": [
+            71,
+            62,
+            662,
+            947
+          ]
+        },
+        {
+          "glyph": "ḕ",
+          "base": "e",
+          "marks_nfd": [
+            "U+0304",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 82,
+          "y_shift": 59,
+          "bbox": [
+            71,
+            82,
+            642,
+            982
+          ]
+        },
+        {
+          "glyph": "ḗ",
+          "base": "e",
+          "marks_nfd": [
+            "U+0304",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 82,
+          "y_shift": 59,
+          "bbox": [
+            71,
+            82,
+            642,
+            980
+          ]
+        },
+        {
+          "glyph": "ṍ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0303",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 74,
+          "y_shift": 56,
+          "bbox": [
+            71,
+            62,
+            662,
+            977
+          ]
+        },
+        {
+          "glyph": "Ṏ",
+          "base": "O",
+          "marks_nfd": [
+            "U+0303",
+            "U+0308"
+          ],
+          "mark_contours": 3,
+          "x_shift": 63,
+          "y_shift": 0,
+          "bbox": [
+            71,
+            -14,
+            758,
+            995
+          ]
+        },
+        {
+          "glyph": "ṏ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0303",
+            "U+0308"
+          ],
+          "mark_contours": 3,
+          "x_shift": 74,
+          "y_shift": 56,
+          "bbox": [
+            71,
+            62,
+            662,
+            936
+          ]
+        },
+        {
+          "glyph": "ṑ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0304",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 74,
+          "y_shift": 40,
+          "bbox": [
+            71,
+            62,
+            662,
+            963
+          ]
+        },
+        {
+          "glyph": "ṓ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0304",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 74,
+          "y_shift": 40,
+          "bbox": [
+            71,
+            62,
+            662,
+            961
+          ]
+        },
+        {
+          "glyph": "Ṥ",
+          "base": "S",
+          "marks_nfd": [
+            "U+0301",
+            "U+0307"
+          ],
+          "mark_contours": 2,
+          "x_shift": 86,
+          "y_shift": 71,
+          "bbox": [
+            71,
+            5,
+            662,
+            917
+          ]
+        },
+        {
+          "glyph": "ṥ",
+          "base": "s",
+          "marks_nfd": [
+            "U+0301",
+            "U+0307"
+          ],
+          "mark_contours": 2,
+          "x_shift": 58,
+          "y_shift": 95,
+          "bbox": [
+            71,
+            82,
+            546,
+            847
+          ]
+        },
+        {
+          "glyph": "ṧ",
+          "base": "s",
+          "marks_nfd": [
+            "U+030C",
+            "U+0307"
+          ],
+          "mark_contours": 2,
+          "x_shift": 58,
+          "y_shift": 111,
+          "bbox": [
+            71,
+            82,
+            546,
+            991
+          ]
+        },
+        {
+          "glyph": "ṹ",
+          "base": "u",
+          "marks_nfd": [
+            "U+0303",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 56,
+          "y_shift": 56,
+          "bbox": [
+            71,
+            91.5,
+            623,
+            978
+          ]
+        },
+        {
+          "glyph": "Ṻ",
+          "base": "U",
+          "marks_nfd": [
+            "U+0304",
+            "U+0308"
+          ],
+          "mark_contours": 3,
+          "x_shift": 72,
+          "y_shift": 16,
+          "bbox": [
+            71,
+            24,
+            738,
+            1011
+          ]
+        },
+        {
+          "glyph": "ṻ",
+          "base": "u",
+          "marks_nfd": [
+            "U+0304",
+            "U+0308"
+          ],
+          "mark_contours": 3,
+          "x_shift": 56,
+          "y_shift": 40,
+          "bbox": [
+            71,
+            91.5,
+            623,
+            889
+          ]
+        },
+        {
+          "glyph": "Ấ",
+          "base": "A",
+          "marks_nfd": [
+            "U+0302",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 78,
+          "y_shift": 56,
+          "bbox": [
+            71,
+            5,
+            719,
+            1013
+          ]
+        },
+        {
+          "glyph": "ấ",
+          "base": "a",
+          "marks_nfd": [
+            "U+0302",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 96,
+          "y_shift": 70,
+          "bbox": [
+            71,
+            82,
+            660,
+            930
+          ]
+        },
+        {
+          "glyph": "Ầ",
+          "base": "A",
+          "marks_nfd": [
+            "U+0302",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 78,
+          "y_shift": 56,
+          "bbox": [
+            71,
+            5,
+            719,
+            1013
+          ]
+        },
+        {
+          "glyph": "ầ",
+          "base": "a",
+          "marks_nfd": [
+            "U+0302",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 96,
+          "y_shift": 70,
+          "bbox": [
+            71,
+            82,
+            642,
+            930
+          ]
+        },
+        {
+          "glyph": "ẩ",
+          "base": "a",
+          "marks_nfd": [
+            "U+0302",
+            "U+0309"
+          ],
+          "mark_contours": 2,
+          "x_shift": 96,
+          "y_shift": 70,
+          "bbox": [
+            71,
+            82,
+            664,
+            980
+          ]
+        },
+        {
+          "glyph": "ẫ",
+          "base": "a",
+          "marks_nfd": [
+            "U+0302",
+            "U+0303"
+          ],
+          "mark_contours": 2,
+          "x_shift": 96,
+          "y_shift": 70,
+          "bbox": [
+            71,
+            82,
+            642,
+            998
+          ]
+        },
+        {
+          "glyph": "ắ",
+          "base": "a",
+          "marks_nfd": [
+            "U+0306",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 96,
+          "y_shift": 51,
+          "bbox": [
+            71,
+            82,
+            642,
+            973
+          ]
+        },
+        {
+          "glyph": "ằ",
+          "base": "a",
+          "marks_nfd": [
+            "U+0306",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 96,
+          "y_shift": 51,
+          "bbox": [
+            71,
+            82,
+            642,
+            974
+          ]
+        },
+        {
+          "glyph": "ẳ",
+          "base": "a",
+          "marks_nfd": [
+            "U+0306",
+            "U+0309"
+          ],
+          "mark_contours": 2,
+          "x_shift": 96,
+          "y_shift": 51,
+          "bbox": [
+            71,
+            82,
+            642,
+            1003
+          ]
+        },
+        {
+          "glyph": "ẵ",
+          "base": "a",
+          "marks_nfd": [
+            "U+0306",
+            "U+0303"
+          ],
+          "mark_contours": 2,
+          "x_shift": 96,
+          "y_shift": 51,
+          "bbox": [
+            71,
+            82,
+            642,
+            973
+          ]
+        },
+        {
+          "glyph": "Ế",
+          "base": "E",
+          "marks_nfd": [
+            "U+0302",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 60,
+          "y_shift": 75,
+          "bbox": [
+            71,
+            24,
+            648,
+            1032
+          ]
+        },
+        {
+          "glyph": "ế",
+          "base": "e",
+          "marks_nfd": [
+            "U+0302",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 82,
+          "y_shift": 89,
+          "bbox": [
+            71,
+            82,
+            659,
+            949
+          ]
+        },
+        {
+          "glyph": "Ề",
+          "base": "E",
+          "marks_nfd": [
+            "U+0302",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 60,
+          "y_shift": 75,
+          "bbox": [
+            71,
+            24,
+            628,
+            1032
+          ]
+        },
+        {
+          "glyph": "ề",
+          "base": "e",
+          "marks_nfd": [
+            "U+0302",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 82,
+          "y_shift": 89,
+          "bbox": [
+            71,
+            82,
+            642,
+            949
+          ]
+        },
+        {
+          "glyph": "ể",
+          "base": "e",
+          "marks_nfd": [
+            "U+0302",
+            "U+0309"
+          ],
+          "mark_contours": 2,
+          "x_shift": 82,
+          "y_shift": 89,
+          "bbox": [
+            71,
+            82,
+            663,
+            999
+          ]
+        },
+        {
+          "glyph": "ễ",
+          "base": "e",
+          "marks_nfd": [
+            "U+0302",
+            "U+0303"
+          ],
+          "mark_contours": 2,
+          "x_shift": 82,
+          "y_shift": 89,
+          "bbox": [
+            71,
+            82,
+            642,
+            1017
+          ]
+        },
+        {
+          "glyph": "Ố",
+          "base": "O",
+          "marks_nfd": [
+            "U+0302",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 63,
+          "y_shift": 37,
+          "bbox": [
+            71,
+            -14,
+            758,
+            994
+          ]
+        },
+        {
+          "glyph": "ố",
+          "base": "o",
+          "marks_nfd": [
+            "U+0302",
+            "U+0301"
+          ],
+          "mark_contours": 2,
+          "x_shift": 74,
+          "y_shift": 70,
+          "bbox": [
+            71,
+            62,
+            662,
+            930
+          ]
+        },
+        {
+          "glyph": "Ồ",
+          "base": "O",
+          "marks_nfd": [
+            "U+0302",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 63,
+          "y_shift": 37,
+          "bbox": [
+            71,
+            -14,
+            758,
+            994
+          ]
+        },
+        {
+          "glyph": "ồ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0302",
+            "U+0300"
+          ],
+          "mark_contours": 2,
+          "x_shift": 74,
+          "y_shift": 70,
+          "bbox": [
+            71,
+            62,
+            662,
+            930
+          ]
+        },
+        {
+          "glyph": "ổ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0302",
+            "U+0309"
+          ],
+          "mark_contours": 2,
+          "x_shift": 74,
+          "y_shift": 70,
+          "bbox": [
+            71,
+            62,
+            662,
+            980
+          ]
+        },
+        {
+          "glyph": "ỗ",
+          "base": "o",
+          "marks_nfd": [
+            "U+0302",
+            "U+0303"
+          ],
+          "mark_contours": 2,
+          "x_shift": 74,
+          "y_shift": 70,
+          "bbox": [
+            71,
+            62,
+            662,
+            998
+          ]
+        }
+      ],
+      "skipped": [
+        {
+          "glyph": "Ǖ",
+          "reason": "vertical_limit"
+        },
+        {
+          "glyph": "Ǘ",
+          "reason": "vertical_limit"
+        },
+        {
+          "glyph": "Ǚ",
+          "reason": "vertical_limit"
+        },
+        {
+          "glyph": "Ǜ",
+          "reason": "vertical_limit"
+        },
+        {
+          "glyph": "Ǻ",
+          "reason": "vertical_limit"
+        },
+        {
+          "glyph": "Ḉ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ḉ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ḕ",
+          "reason": "vertical_limit"
+        },
+        {
+          "glyph": "Ḗ",
+          "reason": "vertical_limit"
+        },
+        {
+          "glyph": "Ḝ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ḝ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ḯ",
+          "reason": "vertical_limit"
+        },
+        {
+          "glyph": "Ḹ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ḹ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ṍ",
+          "reason": "vertical_limit"
+        },
+        {
+          "glyph": "Ṑ",
+          "reason": "vertical_limit"
+        },
+        {
+          "glyph": "Ṓ",
+          "reason": "vertical_limit"
+        },
+        {
+          "glyph": "Ṝ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ṝ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ṧ",
+          "reason": "vertical_limit"
+        },
+        {
+          "glyph": "Ṩ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ṩ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ṹ",
+          "reason": "vertical_limit"
+        },
+        {
+          "glyph": "Ẩ",
+          "reason": "vertical_limit"
+        },
+        {
+          "glyph": "Ẫ",
+          "reason": "vertical_limit"
+        },
+        {
+          "glyph": "Ậ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ậ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ắ",
+          "reason": "vertical_limit"
+        },
+        {
+          "glyph": "Ằ",
+          "reason": "vertical_limit"
+        },
+        {
+          "glyph": "Ẳ",
+          "reason": "vertical_limit"
+        },
+        {
+          "glyph": "Ẵ",
+          "reason": "vertical_limit"
+        },
+        {
+          "glyph": "Ặ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ặ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ể",
+          "reason": "vertical_limit"
+        },
+        {
+          "glyph": "Ễ",
+          "reason": "vertical_limit"
+        },
+        {
+          "glyph": "Ệ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ệ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ổ",
+          "reason": "vertical_limit"
+        },
+        {
+          "glyph": "Ỗ",
+          "reason": "vertical_limit"
+        },
+        {
+          "glyph": "Ộ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ộ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ớ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ớ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ờ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ờ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ở",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ở",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ỡ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ỡ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ợ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ợ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ứ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ứ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ừ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ừ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ử",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ử",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ữ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ữ",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ự",
+          "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "ự",
+          "reason": "unseparated_marks"
+        }
+      ],
+      "built_count": 46,
+      "skipped_count": 61,
+      "weight": 800,
+      "file": "ChunksReferencePanel-ExtraBold-Stacked.otf",
+      "source_sha256": "0f7c0ab9e30801a676932e28b0f38c88d0dbc8101b5349e561521de45a1017fe",
+      "input_consolidated_sha256": "55ba6f8a114a0da6223023bde4e0b6ad12d469616b2743ac471d8415b1d8813c",
+      "output_sha256": "065725ff0c6665e00a8fd210f0f624e61eb4120a9bf5fdb49b59a77149d4a2cb",
+      "kerning": {
+        "input_sha256": "340393f41fa8a5129672c60fd0f998f1641231ac15152e9611aab0d5576f74b5",
+        "file": "ChunksReferencePanel-ExtraBold-Stacked.otf",
+        "reference_accent_glyphs": 46,
+        "candidate_pairs": 7820,
+        "adjusted_pairs": 7820,
+        "bounded_subtables": 9,
+        "max_correction_units": 120,
+        "clipped_pair_count": 17,
+        "clipped_pair_examples": [
+          {
+            "first": "T",
+            "second": "Ấ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "T",
+            "second": "Ầ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "Y",
+            "second": "Ấ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "Y",
+            "second": "Ầ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "ȫ",
+            "second": "7",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "ȭ",
+            "second": "7",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "ȱ",
+            "second": "7",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "ṍ",
+            "second": "7",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "ṏ",
+            "second": "7",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "ṑ",
+            "second": "7",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "ṓ",
+            "second": "7",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "Ấ",
+            "second": "T",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "Ầ",
+            "second": "T",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "ố",
+            "second": "7",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "ồ",
+            "second": "7",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "ổ",
+            "second": "7",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "ỗ",
+            "second": "7",
+            "desired_units": -124,
+            "applied_units": -120
+          }
+        ],
+        "mean_abs_correction_units": 72.32,
+        "source_scripts_unchanged": true,
+        "pre_final_name_sha256": "743a4a4a8b9ebde14002cb72ad84e6112a07761f3d6c01ae00919d1740ad0245",
+        "output_sha256": "065725ff0c6665e00a8fd210f0f624e61eb4120a9bf5fdb49b59a77149d4a2cb"
+      }
+    }
+  }
+}

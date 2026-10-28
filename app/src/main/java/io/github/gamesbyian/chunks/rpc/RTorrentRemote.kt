@@ -35,6 +35,21 @@ data class RemoteTransfer(
 data class RemoteFile(val path: String, val sizeBytes: Long, val priority: Int)
 
 /**
+ * Read-only facts for fetching one transfer's bytes from this server as a
+ * BitTorrent peer. [rpcHost] is the host Chunks reaches the RPC endpoint at;
+ * [announcedAddress] is rTorrent's own configured public address, if any.
+ */
+data class RemotePeerSource(
+    val rpcHost: String,
+    val announcedAddress: String?,
+    val listenPort: Long,
+    val isPrivate: Boolean,
+    val isActive: Boolean,
+    /** network.bind_address when it names one specific address, else null. */
+    val boundAddress: String? = null
+)
+
+/**
  * d.erase removes an rTorrent session item; ordinary payload bytes remain.
  * Custom server hooks can have different side effects, so this is NOT
  * a promise about filesystem state. It is not a delete-with-data API.
@@ -120,6 +135,31 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
     suspend fun lookupName(hash: String): String? {
         require(Regex("[0-9a-fA-F]{40}([0-9a-fA-F]{24})?").matches(hash)) { "Invalid torrent identity" }
         return try { (call("d.name", listOf(hash)) as? String)?.take(2048) } catch (_: RpcFault) { null }
+    }
+
+    /**
+     * Read-only: what the phone engine needs to download this exact transfer
+     * directly from this server's BitTorrent listener. Changes nothing.
+     */
+    suspend fun peerSource(hash: String): RemotePeerSource {
+        require(Regex("[0-9a-fA-F]{40}").matches(hash)) { "Invalid v1 torrent hash" }
+        val announced = try {
+            (call("network.local_address") as? String)?.trim()?.takeIf { it.isNotEmpty() && it.length <= 253 }
+        } catch (_: RpcFault) { null }
+        // Seedboxes often bind rTorrent to an address other than the web
+        // host's; a wildcard bind says nothing about which one.
+        val bound = try {
+            (call("network.bind_address") as? String)?.trim()
+                ?.takeIf { it.isNotEmpty() && it.length <= 253 && it !in setOf("0.0.0.0", "::", "[::]") }
+        } catch (_: RpcFault) { null }
+        return RemotePeerSource(
+            rpcHost = endpoint.host.removePrefix("[").removeSuffix("]"),
+            announcedAddress = announced,
+            boundAddress = bound,
+            listenPort = number(call("network.listen.port")),
+            isPrivate = number(call("d.is_private", listOf(hash))) != 0L,
+            isActive = number(call("d.is_active", listOf(hash))) != 0L
+        )
     }
 
     /** Only server-owned view names, never XML-RPC command fragments. */
