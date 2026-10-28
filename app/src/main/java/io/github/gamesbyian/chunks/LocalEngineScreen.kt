@@ -288,6 +288,24 @@ internal fun LocalEngineScreen(
     var dht by remember { mutableStateOf(LocalEngineHolder.dhtPreferred(context)) }
     var dhtSaving by remember { mutableStateOf(false) }
     var dhtError by remember { mutableStateOf<String?>(null) }
+    // Both the preferences switch and a trackerless-magnet shortcut use this
+    // same readback-gated transaction. Never flip the UI state optimistically.
+    fun requestDhtSetting(wanted: Boolean) {
+        if (dhtSaving) return
+        dhtSaving = true
+        dhtError = null
+        scope.launch {
+            val confirmed = withContext(Dispatchers.IO) {
+                try { LocalEngineHolder.setDhtPreferred(context, wanted) }
+                catch (_: Exception) { false }
+            }
+            dht = LocalEngineHolder.dhtPreferred(context)
+            dhtError = if (confirmed) null else
+                "DHT setting could not be confirmed. The live network state may be uncertain; " +
+                "do not assume discovery is enabled or disabled until you check again."
+            dhtSaving = false
+        }
+    }
     val destination = remember { LocalEngineHolder.appDownloads(context) }
     val proposedAddDestination = remember(destination, addFolderDraft) {
         LocalOwnedAddFolder.proposed(destination, addFolderDraft)
@@ -458,24 +476,8 @@ internal fun LocalEngineScreen(
         else Text("Planned local Place: " + proposedAddDestination.absolutePath,
             style = MaterialTheme.typography.bodySmall)
         Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
-            .toggleable(value = dht, enabled = !dhtSaving, role = Role.Switch, onValueChange = { wanted ->
-                if (!dhtSaving) {
-                    dhtSaving = true
-                    dhtError = null
-                    scope.launch {
-                        val confirmed = withContext(Dispatchers.IO) {
-                            try { LocalEngineHolder.setDhtPreferred(context, wanted) }
-                            catch (_: Exception) { false }
-                        }
-                        // Switch only after confirmed native readback + durable preference.
-                        dht = LocalEngineHolder.dhtPreferred(context)
-                        dhtError = if (confirmed) null else
-                            "DHT setting could not be confirmed. The live network state may be uncertain; " +
-                            "do not assume discovery is enabled or disabled until you check again."
-                        dhtSaving = false
-                    }
-                }
-            }), verticalAlignment = Alignment.CenterVertically) {
+            .toggleable(value = dht, enabled = !dhtSaving, role = Role.Switch,
+                onValueChange = ::requestDhtSetting), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text("Find peers without trackers (DHT)")
                 Text("Needed for most magnet links. Off by default: when on, this phone's IP address is shared with the public DHT network.",
@@ -506,6 +508,17 @@ internal fun LocalEngineScreen(
                     "Without metadata or peers, downloading cannot begin.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error)
+                OutlinedButton(
+                    onClick = { requestDhtSetting(true) },
+                    enabled = !dhtSaving && !busy && !inventoryStale,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
+                ) {
+                    Text(if (dhtSaving) "Enabling DHT…" else
+                        "Enable DHT to help this magnet find peers")
+                }
+                Text("Opt-in: DHT shares this phone's IP address with public DHT nodes. " +
+                    "This does not guarantee peers, metadata or download progress.",
+                    style = MaterialTheme.typography.bodySmall)
             }
             OutlinedButton(onClick = {
                 val selectedDraft = addFolderDraft
