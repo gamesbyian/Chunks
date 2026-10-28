@@ -128,13 +128,21 @@ private enum class Section(val label: String) {
 private fun ChunksApp(sharedMagnet: String?) {
     val context = LocalContext.current
     val vault = remember(context) { RememberedRemoteLogin(context) }
-    val remembered = remember(vault) { vault.load() }
+    val profileRoster = remember(context) { RememberedRemoteProfileRoster(context) }
+    val remembered = remember(vault, profileRoster) {
+        vault.load() ?: profileRoster.list().firstOrNull()?.credentials
+    }
+    var savedProfiles by remember(profileRoster) {
+        mutableStateOf(if (vault.rememberingEnabled()) profileRoster.list() else emptyList())
+    }
     var endpoint by remember { mutableStateOf(remembered?.endpoint.orEmpty()) }
     var username by remember { mutableStateOf(remembered?.username.orEmpty()) }
     var password by remember { mutableStateOf(remembered?.password.orEmpty()) }
     // Remembering is the default. Every user can opt out before Connect.
     var rememberLogin by remember { mutableStateOf(vault.rememberingEnabled()) }
-    var savedLoginPresent by remember { mutableStateOf(remembered != null) }
+    var savedLoginPresent by remember {
+        mutableStateOf(remembered != null || savedProfiles.isNotEmpty())
+    }
     var credentialNotice by remember { mutableStateOf<String?>(null) }
     var server by remember { mutableStateOf<RTorrentRemote?>(null) }
     var version by remember { mutableStateOf("") }
@@ -255,16 +263,57 @@ private fun ChunksApp(sharedMagnet: String?) {
                 endpoint = endpoint, username = username, password = password,
                 error = error, loading = loading,
                 rememberLogin = rememberLogin, savedLoginPresent = savedLoginPresent,
-                credentialNotice = credentialNotice,
+                savedProfiles = savedProfiles, credentialNotice = credentialNotice,
+                onSelectProfile = { profile ->
+                    endpoint = profile.credentials.endpoint
+                    username = profile.credentials.username
+                    password = profile.credentials.password
+                    error = null
+                    credentialNotice = "Selected saved profile. Connect to authenticate."
+                },
+                onForgetProfile = { profile ->
+                    if (!loading) {
+                        scope.launch {
+                            val removed = withContext(Dispatchers.IO) {
+                                try {
+                                    val old = vault.load()
+                                    val removedRoster = profileRoster.forget(profile.id)
+                                    val removedLegacy = if (old?.endpoint?.trim() ==
+                                            profile.credentials.endpoint.trim() &&
+                                        old.username.trim() == profile.credentials.username.trim())
+                                        vault.clear() else true
+                                    removedRoster && removedLegacy
+                                } catch (_: Exception) { false }
+                            }
+                            savedProfiles = withContext(Dispatchers.IO) { profileRoster.list() }
+                            savedLoginPresent = vault.hasSavedLogin() || savedProfiles.isNotEmpty()
+                            if (removed && endpoint == profile.credentials.endpoint &&
+                                username == profile.credentials.username) password = ""
+                            credentialNotice = if (removed) "Saved profile forgotten on this device."
+                                else "Could not confirm full credential removal. Review saved profiles."
+                        }
+                    }
+                },
                 onRememberLogin = { enabled ->
                     rememberLogin = enabled
                     scope.launch {
                         val persisted = withContext(Dispatchers.IO) {
-                            try { vault.setRememberingEnabled(enabled) }
-                            catch (_: Exception) { false }
+                            try {
+                                if (enabled) {
+                                    // Never re-expose ciphertext left after a failed opt-out.
+                                    val safelyCleared = if (!vault.rememberingEnabled())
+                                        profileRoster.clearAll() else true
+                                    safelyCleared && vault.setRememberingEnabled(true)
+                                } else {
+                                    val disabled = vault.setRememberingEnabled(false)
+                                    val cleared = profileRoster.clearAll()
+                                    disabled && cleared
+                                }
+                            } catch (_: Exception) { false }
                         }
-                        if (!persisted) rememberLogin = vault.rememberingEnabled()
-                        savedLoginPresent = vault.hasSavedLogin()
+                        rememberLogin = vault.rememberingEnabled()
+                        savedProfiles = withContext(Dispatchers.IO) { profileRoster.list() }
+                        savedLoginPresent = vault.hasSavedLogin() || savedProfiles.isNotEmpty()
                         credentialNotice = when {
                             !persisted -> "Could not save the credential remembering preference. Retry this change."
                             !enabled -> "Login remembering disabled across restarts; saved credentials erased."
@@ -276,9 +325,14 @@ private fun ChunksApp(sharedMagnet: String?) {
                     rememberLogin = false
                     scope.launch {
                         val cleared = withContext(Dispatchers.IO) {
-                            try { vault.setRememberingEnabled(false) } catch (_: Exception) { false }
+                            try {
+                                val disabled = vault.setRememberingEnabled(false)
+                                val rosterErased = profileRoster.clearAll()
+                                disabled && rosterErased
+                            } catch (_: Exception) { false }
                         }
-                        savedLoginPresent = if (cleared) false else vault.hasSavedLogin()
+                        savedProfiles = withContext(Dispatchers.IO) { profileRoster.list() }
+                        savedLoginPresent = vault.hasSavedLogin() || savedProfiles.isNotEmpty()
                         if (cleared) {
                             password = ""
                             credentialNotice = "Saved login erased. This session's password field was cleared."
@@ -324,12 +378,19 @@ private fun ChunksApp(sharedMagnet: String?) {
                                     // Failures never persist an unverified password.
                                     val retained = withContext(Dispatchers.IO) {
                                         try {
-                                            if (saveThisLogin) vault.save(settings)
-                                            else vault.setRememberingEnabled(false)
+                                            if (saveThisLogin) {
+                                                val singleSaved = vault.save(settings)
+                                                val rosterSaved = profileRoster.saveVerified(settings)
+                                                singleSaved && rosterSaved
+                                            } else {
+                                                val disabled = vault.setRememberingEnabled(false)
+                                                val rosterErased = profileRoster.clearAll()
+                                                disabled && rosterErased
+                                            }
                                         } catch (_: Exception) { false }
                                     }
-                                    savedLoginPresent = if (retained && saveThisLogin) true
-                                        else vault.hasSavedLogin()
+                                    savedProfiles = withContext(Dispatchers.IO) { profileRoster.list() }
+                                    savedLoginPresent = vault.hasSavedLogin() || savedProfiles.isNotEmpty()
                                     credentialNotice = when {
                                         !retained -> "Connected, but login remembering settings could not be saved. " +
                                             "Confirm the preference before restarting."
@@ -486,9 +547,14 @@ private fun ChunksApp(sharedMagnet: String?) {
                         rememberLogin = false
                         scope.launch {
                             val cleared = withContext(Dispatchers.IO) {
-                                try { vault.setRememberingEnabled(false) } catch (_: Exception) { false }
+                                try {
+                                    val disabled = vault.setRememberingEnabled(false)
+                                    val rosterErased = profileRoster.clearAll()
+                                    disabled && rosterErased
+                                } catch (_: Exception) { false }
                             }
-                            savedLoginPresent = if (cleared) false else vault.hasSavedLogin()
+                            savedProfiles = withContext(Dispatchers.IO) { profileRoster.list() }
+                            savedLoginPresent = vault.hasSavedLogin() || savedProfiles.isNotEmpty()
                             credentialNotice = if (cleared) "Saved login erased. Current connection remains active."
                                 else "Could not erase saved login."
                         }
@@ -566,14 +632,18 @@ private fun readableFailure(failure: Exception): String = when (failure) {
 @Composable
 private fun ConnectionScreen(
     endpoint: String, username: String, password: String, error: String?, loading: Boolean,
-    rememberLogin: Boolean, savedLoginPresent: Boolean, credentialNotice: String?,
+    rememberLogin: Boolean, savedLoginPresent: Boolean,
+    savedProfiles: List<RememberedRemoteProfileRoster.Profile>, credentialNotice: String?,
     onRememberLogin: (Boolean) -> Unit, onForgetLogin: () -> Unit,
+    onSelectProfile: (RememberedRemoteProfileRoster.Profile) -> Unit,
+    onForgetProfile: (RememberedRemoteProfileRoster.Profile) -> Unit,
     onLocalZipReview: () -> Unit,
     onInspectSnapshot: () -> Unit,
     onLocalEngine: () -> Unit,
     onEndpoint: (String) -> Unit, onUsername: (String) -> Unit,
     onPassword: (String) -> Unit, onConnect: () -> Unit
 ) {
+    var pendingForget by remember { mutableStateOf<String?>(null) }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
@@ -581,6 +651,62 @@ private fun ConnectionScreen(
     ) {
         item {
             ColoredPanel("Hello, server.", "Connect an existing rTorrent installation. Chunks connects over protected XML-RPC. Torrent changes require separate explicit confirmation.", Lilac)
+        }
+        item {
+            OutlinedButton(onClick = onLocalZipReview,
+                modifier = Modifier.fillMaxWidth().height(52.dp)) {
+                Text("Inspect a local ZIP without connecting")
+            }
+        }
+        item {
+            OutlinedButton(onClick = onInspectSnapshot,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+                Text("Inspect .chunksnap backup (offline)")
+            }
+        }
+        item {
+            OutlinedButton(onClick = onLocalEngine,
+                modifier = Modifier.fillMaxWidth().height(52.dp)) {
+                Text("Download on this phone (experimental)")
+            }
+        }
+        if (rememberLogin && savedProfiles.isNotEmpty()) {
+            item {
+                Text("Saved servers", style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold)
+                Text("Choose an account, then Connect. No server is contacted just by selecting it.",
+                    style = MaterialTheme.typography.bodySmall)
+            }
+            items(savedProfiles, key = { "saved-profile-" + it.id }) { profile ->
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    OutlinedButton(onClick = {
+                        pendingForget = null
+                        onSelectProfile(profile)
+                    }, enabled = !loading, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                        Text("Use " + profile.label)
+                    }
+                    if (pendingForget == profile.id) {
+                        Text("Forget saved credentials for this account? Torrents are unchanged.",
+                            style = MaterialTheme.typography.bodySmall)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(onClick = {
+                                pendingForget = null
+                                onForgetProfile(profile)
+                            }, enabled = !loading, modifier = Modifier.weight(1f)
+                                .heightIn(min = 48.dp)) { Text("Forget profile") }
+                            OutlinedButton(onClick = { pendingForget = null },
+                                modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                                Text("Cancel")
+                            }
+                        }
+                    } else {
+                        OutlinedButton(onClick = { pendingForget = profile.id },
+                            enabled = !loading, modifier = Modifier.heightIn(min = 48.dp)) {
+                            Text("Forget " + profile.label)
+                        }
+                    }
+                }
+            }
         }
         item {
             OutlinedTextField(
@@ -623,7 +749,7 @@ private fun ConnectionScreen(
         if (savedLoginPresent) item {
             OutlinedButton(onClick = onForgetLogin, enabled = !loading,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                Text("Forget saved login")
+                Text("Forget all saved logins")
             }
         }
         if (credentialNotice != null) item {
@@ -638,24 +764,6 @@ private fun ConnectionScreen(
             ) { Text(if (loading) "Connecting…" else "Connect to rTorrent") }
         }
         if (error != null) item { Notice("Connection unsuccessful", error, Coral) }
-        item {
-            OutlinedButton(onClick = onLocalZipReview,
-                modifier = Modifier.fillMaxWidth().height(52.dp)) {
-                Text("Inspect a local ZIP without connecting")
-            }
-        }
-        item {
-            OutlinedButton(onClick = onInspectSnapshot,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
-                Text("Inspect .chunksnap backup (offline)")
-            }
-        }
-        item {
-            OutlinedButton(onClick = onLocalEngine,
-                modifier = Modifier.fillMaxWidth().height(52.dp)) {
-                Text("Download on this phone (experimental)")
-            }
-        }
         item {
             Text("Protected HTTPS is required for remote servers. Login is encrypted and stored only on this device unless you opt out. No torrents or files are changed by connecting.",
                 style = MaterialTheme.typography.bodySmall, color = Color(0xFF595575))
