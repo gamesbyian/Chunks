@@ -155,6 +155,24 @@ class LocalEngineScreenInstrumentedTest {
         assertEquals(0, removals)
     }
 
+    @Test fun staleNativeInventoryCannotOpenLegacyTrackerRepairPicker() {
+        var repairs = 0
+        val saved = LocalTransferStatus("e".repeat(40), "Stale saved torrent",
+            LocalTransferState.DOWNLOADING, stopped = true, progressPpm = 0,
+            wantedBytes = 1_000, doneBytes = 0, payloadDownloadedBytes = 0,
+            payloadUploadedBytes = 0, peers = 0, savePath = "/x", error = null,
+            trackers = LocalTrackerSummary(total = 0, working = 0, updating = 0, failing = 0))
+        rule.setContent {
+            MaterialTheme {
+                LocalTransferCard(saved, busy = true, onToggle = {},
+                    onRemove = {}, onRepairTrackers = { repairs++ })
+            }
+        }
+        rule.onNodeWithText("Repair missing trackers from original .torrent…")
+            .assertIsNotEnabled()
+        assertEquals(0, repairs)
+    }
+
     @Test fun runningOrAlreadyTrackedTorrentNeverOffersLegacyRepair() {
         val tracked = LocalTransferStatus("e".repeat(40), "Already healthy",
             LocalTransferState.DOWNLOADING, stopped = true, progressPpm = 10_000,
