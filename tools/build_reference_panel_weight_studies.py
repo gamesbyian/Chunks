@@ -121,7 +121,7 @@ def draw_geometry(geom,pen):
             pen.closePath()
 
 
-def make_weight(base:Path, glyphs_dir:Path, profile:dict, weight:int, raw:Path):
+def make_weight(base:Path, glyphs_dir:Path, profile:dict, weight:int, raw:Path, overrides:Path|None=None):
     font=TTFont(base,recalcBBoxes=True,recalcTimestamp=False)
     cmap=font.getBestCmap()
     reference=json.loads((glyphs_dir/'manifest.json').read_text())
@@ -135,8 +135,19 @@ def make_weight(base:Path, glyphs_dir:Path, profile:dict, weight:int, raw:Path):
         v=reference['glyphs'][ch]
         geom=source_polygons(glyphs_dir/f'U+{ord(ch):04X}.svg', minimum)
         d=amount*profile['per_glyph_multiplier'].get(ch,1.0)
+        override_svg=(Path(overrides)/str(weight)/f'U+{ord(ch):04X}.svg') if overrides is not None else None
+        has_master=override_svg is not None and override_svg.is_file()
         tol=profile['min_simplify_tolerance_px'] if d<.5 else profile['max_simplify_tolerance_px']
-        reduced,clamps=subtract_stroke(geom,d,tol)
+        if has_master:
+            reduced=source_polygons(override_svg,minimum)
+            clamps=[]
+            if not .30<=reduced.area/geom.area<=1.20:
+                raise AssertionError(f'{ch}: source override area outside safe envelope')
+            old_bounds=geom.bounds;new_bounds=reduced.bounds
+            if any(abs(old_bounds[i]-new_bounds[i])>3.0 for i in range(4)):
+                raise AssertionError(f'{ch}: source override moves glyph outside reference envelope')
+        else:
+            reduced,clamps=subtract_stroke(geom,d,tol)
         if topology(reduced)!=topology(geom):
             raise AssertionError(f'{ch}: expected {topology(geom)} got {topology(reduced)}')
         if reduced.is_empty or reduced.area<=0:raise AssertionError(f'{ch}: erased')
@@ -154,7 +165,10 @@ def make_weight(base:Path, glyphs_dir:Path, profile:dict, weight:int, raw:Path):
         font['hmtx'][glyph]=(round((v['width']+6)*SCALE), round(52+reduced.bounds[0]*SCALE))
         report[ch]={'components':topology(reduced)[0],'counters':topology(reduced)[1],
                     'ink_area_ratio':round(reduced.area/geom.area,4),
-                    'stroke_offset_px':round(d,3),'topology_adjustments':clamps}
+                    'stroke_offset_px':(None if has_master else round(d,3)),
+                    'outline_source':('weight-specific-svg-master' if has_master else 'contour-aware-derivation'),
+                    'override_svg_sha256':(hashlib.sha256(override_svg.read_bytes()).hexdigest() if has_master else None),
+                    'topology_adjustments':clamps}
     style=WEIGHTS[weight]
     for nameid,text in ((1,'Chunks Reference Panel'),(16,'Chunks Reference Panel'),
                         (2,style),(17,style),(4,f'Chunks Reference Panel {style}'),
@@ -175,7 +189,7 @@ def make_weight(base:Path, glyphs_dir:Path, profile:dict, weight:int, raw:Path):
     return report
 
 
-def run(base_dir:Path, glyphs:Path, profile_path:Path, out:Path, weights=None):
+def run(base_dir:Path, glyphs:Path, profile_path:Path, out:Path, weights=None, overrides:Path|None=None):
     profile=json.loads(profile_path.read_text())
     chosen=weights or list(WEIGHTS)
     all_results={}
@@ -185,7 +199,7 @@ def run(base_dir:Path, glyphs:Path, profile_path:Path, out:Path, weights=None):
         style=WEIGHTS[weight]
         with tempfile.TemporaryDirectory() as t:
             raw=Path(t)/f'{style}-raw.otf'
-            changes=make_weight(base_dir/f'Chunks-{style}.otf',glyphs,profile,weight,raw)
+            changes=make_weight(base_dir/f'Chunks-{style}.otf',glyphs,profile,weight,raw,overrides)
             target=out/f'ChunksReferencePanel-{style}-Study.otf'
             font=TTFont(raw,recalcTimestamp=False)
             records,measures=optical_kerning(raw,font,weight)
@@ -210,14 +224,18 @@ def run(base_dir:Path, glyphs:Path, profile_path:Path, out:Path, weights=None):
             print(style,target.stat().st_size,len(selected),'optical pairs',gaps,flush=True)
     manifest_hash=hashlib.sha256((glyphs/'manifest.json').read_bytes()).hexdigest()
     profile_hash=hashlib.sha256(profile_path.read_bytes()).hexdigest()
-    metrics_path=out/'reference-panel-weight-study-metrics.json'
+    override_paths=sorted(p for p in Path(overrides).rglob('U+*.svg') if p.is_file()) if overrides is not None and Path(overrides).exists() else []
+    override_hash=hashlib.sha256(b''.join(p.relative_to(overrides).as_posix().encode()+b'\0'+p.read_bytes() for p in override_paths)).hexdigest()
+    metrics_path=out/'reference-panel-weight-study-metrics.json' 
     if set(chosen)!=set(WEIGHTS) and metrics_path.exists():
         old=json.loads(metrics_path.read_text())
-        if old.get('profile_sha256')==profile_hash and old.get('source_manifest_sha256')==manifest_hash:
+        if old.get('profile_sha256')==profile_hash and old.get('source_manifest_sha256')==manifest_hash and old.get('overrides_sha256')==override_hash:
             all_results={**old['weights'],**all_results}
     stats={'status':'NONSHIPPING interim weight study: automated offsets; manual masters still required',
            'source_manifest_sha256':manifest_hash,
            'profile_sha256':profile_hash,
+           'overrides_sha256':override_hash,
+           'overrides_used':len(override_paths),
            'source_svg_sha256':hashlib.sha256(b''.join((glyphs/f'U+{ord(ch):04X}.svg').read_bytes() for ch in EXPECTED)).hexdigest(),
            'accepted_extra_bold_remains_separate':'assets/fonts/experimental/ChunksReferencePanel-ExtraBold-Optical.otf',
            'weights':all_results}
@@ -230,6 +248,7 @@ if __name__=='__main__':
     cli.add_argument('--reference',type=Path,default=Path('assets/fonts/source/reference-alphabet'))
     cli.add_argument('--profile',type=Path,default=Path('tools/reference_weight_profiles.json'))
     cli.add_argument('--out',type=Path,default=Path('assets/fonts/experimental/weight-studies'))
+    cli.add_argument('--overrides',type=Path,default=Path('assets/fonts/source/reference-alphabet/weight-overrides'))
     cli.add_argument('--weights',type=int,nargs='*',default=None)
     a=cli.parse_args()
-    run(a.base_dir,a.reference,a.profile,a.out,a.weights)
+    run(a.base_dir,a.reference,a.profile,a.out,a.weights,a.overrides)

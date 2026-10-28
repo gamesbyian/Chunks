@@ -86,6 +86,21 @@ class ReferencePanelWeightTests(unittest.TestCase):
                 self.assertGreater(g['components'],0)
                 self.assertGreaterEqual(g['counters'],0)
 
+    def test_explicit_weight_master_can_override_one_glyph_safely(self):
+        with tempfile.TemporaryDirectory() as d:
+            folder=Path(d)/'masters'/'400'
+            folder.mkdir(parents=True)
+            # A placeholder 400 design uses the source heavy geometry. This tests
+            # precedence, provenance and safety, NOT aesthetic approval.
+            (folder/'U+0041.svg').write_bytes((GLYPHS/'U+0041.svg').read_bytes())
+            raw=Path(d)/'override.otf'
+            result=make_weight(BASE/'Chunks-Regular.otf',GLYPHS,PROFILE,400,raw,folder.parent)
+            self.assertEqual(result['A']['outline_source'],'weight-specific-svg-master')
+            self.assertIsNotNone(result['A']['override_svg_sha256'])
+            self.assertEqual(result['B']['outline_source'],'contour-aware-derivation')
+            self.assertEqual(len(result),62)
+            self.assertEqual(TTFont(raw)['OS/2'].usWeightClass,400)
+
     def test_raw_build_is_deterministic_without_touching_accepted_masters(self):
         with tempfile.TemporaryDirectory() as d:
             a=Path(d)/'a.otf';b=Path(d)/'b.otf'
