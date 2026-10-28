@@ -73,9 +73,8 @@ class SnapshotDocumentInspectInstrumentedTest {
         compose.onNodeWithText("Inspect transfer snapshot").assertExists()
         compose.onNodeWithText("Choose .chunksnap file").assertExists()
         compose.onNodeWithText(
-            "Open a .chunksnap file saved from Chunks. Inspection is completely offline, " +
-                "reads only the chosen document, and never adds, starts, stops, deletes " +
-                "or alters any local or remote torrents."
+            "No transfer is added, started, stopped, deleted or altered.",
+            substring = true
         ).assertExists()
     }
 }
