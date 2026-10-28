@@ -101,7 +101,7 @@ class MainActivity : ComponentActivity() {
         // The cream Compose surface extends behind the system status bar.
         // Use dark icons; white icons failed contrast review in actual API 35 captures.
         WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = true
-        incomingMagnet = magnetFromIntent(intent)
+        incomingMagnet = ExternalMagnetInput.fromIntent(intent)
         incomingTorrent = SharedTorrentDocument.fromIntent(intent)
         setContent {
             MaterialTheme(colorScheme = lightColorScheme(
@@ -133,18 +133,11 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        incomingMagnet = magnetFromIntent(intent)
+        incomingMagnet = ExternalMagnetInput.fromIntent(intent)
         incomingTorrent = SharedTorrentDocument.fromIntent(intent)
     }
 
-    private fun magnetFromIntent(intent: Intent?): String? {
-        val candidate = when (intent?.action) {
-            Intent.ACTION_VIEW -> intent.dataString
-            Intent.ACTION_SEND -> intent.getStringExtra(Intent.EXTRA_TEXT)
-            else -> null
-        }?.trim() ?: return null
-        return candidate.takeIf { it.length <= 8192 && it.startsWith("magnet:?", true) }
-    }
+
 }
 
 private enum class Section(val label: String) {
