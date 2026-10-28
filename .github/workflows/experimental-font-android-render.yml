@@ -58,7 +58,15 @@ jobs:
           script: |
             gradle --no-daemon :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=io.github.gamesbyian.chunks.ExperimentalTypefaceNativeInstrumentedTest
             mkdir -p "$RUNNER_TEMP/chunks-stacked-android-font"
-            adb pull /sdcard/Android/data/io.github.gamesbyian.chunks/files/font-acceptance "$RUNNER_TEMP/chunks-stacked-android-font/"
+            for style in Regular Medium Semibold Bold ExtraBold; do
+              for size in 100pct 200pct; do
+                for sample in long_filename stacked_marks transfer_stats; do
+                  name="chunks-stacked-${style}-${size}-${sample}.png"
+                  adb exec-out run-as io.github.gamesbyian.chunks cat "files/font-acceptance/$name" > "$RUNNER_TEMP/chunks-stacked-android-font/$name"
+                  test -s "$RUNNER_TEMP/chunks-stacked-android-font/$name"
+                done
+              done
+            done
             test "$(find "$RUNNER_TEMP/chunks-stacked-android-font" -name '*.png' | wc -l)" -eq 30
       - name: Retain exact Android raster evidence
         if: always()
