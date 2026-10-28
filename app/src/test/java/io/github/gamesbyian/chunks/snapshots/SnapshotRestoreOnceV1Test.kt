@@ -149,6 +149,38 @@ class SnapshotRestoreOnceV1Test {
         assertEquals(0, fake.writes)
     }
 
+    @Test fun twoMissingItemsFromSameArchiveDoNotCollideInDurableJournal() {
+        val original = original()
+        val secondHash = "d".repeat(40)
+        val firstScope = SnapshotRestoreOnceV1.itemArchiveFingerprint(
+            archive, original.infoHashV1)
+        val secondScope = SnapshotRestoreOnceV1.itemArchiveFingerprint(
+            archive, secondHash)
+        assertFalse(firstScope == secondScope)
+        assertEquals(firstScope, SnapshotRestoreOnceV1.itemArchiveFingerprint(
+            archive, original.infoHashV1))
+        val store = Store()
+        val first = SnapshotRestoreJournalV1.open(store, firstScope, targetId,
+            listOf(original.infoHashV1))
+        first.prepare(original.infoHashV1, place)
+        first.beforeAdd(original.infoHashV1, place)
+        val second = SnapshotRestoreJournalV1.open(store, secondScope, targetId,
+            listOf(secondHash))
+        assertEquals(SnapshotRestoreJournalV1.Phase.REVIEW,
+            second.entries().single().phase)
+        second.prepare(secondHash, place)
+        assertEquals(SnapshotRestoreJournalV1.Phase.IN_FLIGHT,
+            SnapshotRestoreJournalV1.open(store, firstScope, targetId,
+                listOf(original.infoHashV1)).entries().single().phase)
+        assertEquals(SnapshotRestoreJournalV1.Phase.READY,
+            SnapshotRestoreJournalV1.open(store, secondScope, targetId,
+                listOf(secondHash)).entries().single().phase)
+        try {
+            SnapshotRestoreOnceV1.itemArchiveFingerprint(archive, "bad")
+            fail("Invalid journal identity cannot be used")
+        } catch (_: IllegalArgumentException) { }
+    }
+
     @Test fun presenceWithoutStoppedReadbackNeverClaimsVerifiedRestore() {
         val source = original()
         val store = Store()
