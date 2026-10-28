@@ -1,35 +1,26 @@
-name: Chunks SVG inventory quality
+name: Check Chunks SVG quality dossier
+
 on:
-  push:
-    branches:
-      - feat/svg-inventory-qa-finalization-20261027
+  pull_request:
     paths:
-      - tools/audit_svg_inventory.py
-      - .github/workflows/svg-inventory-quality.yml
+      - 'docs/design/svg/**'
+      - 'docs/design/approved/chunks-app-icon-master.svg'
+      - 'tools/audit_svg_inventory.py'
+      - '.github/workflows/svg-inventory-quality.yml'
   workflow_dispatch:
+
 permissions:
-  contents: write
+  contents: read
+
 jobs:
-  generate-quality:
-    if: github.ref == 'refs/heads/feat/svg-inventory-qa-finalization-20261027'
+  inventory-quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 6
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: feat/svg-inventory-qa-finalization-20261027
-      - name: Generate and self-verify inventory
+      - name: Verify every SVG, alias and canonical icon extraction
         run: |
-          python3 tools/audit_svg_inventory.py --write
-          python3 tools/audit_svg_inventory.py
           python3 tools/validate_svg_library.py
           python3 tools/check_svg_approved_derivatives.py
-      - name: Commit generated QA dossier
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add docs/design/svg/quality-dossier.json docs/design/svg/QUALITY-REVIEW.md
-          if ! git diff --cached --quiet; then
-            git commit -m 'docs(brand): classify all 836 inventory assets without asserting optical approval'
-            git push origin HEAD:feat/svg-inventory-qa-finalization-20261027
-          fi
+      - name: Require current full-inventory QA and provenance report
+        run: python3 tools/audit_svg_inventory.py
