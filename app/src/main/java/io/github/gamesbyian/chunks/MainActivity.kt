@@ -66,6 +66,7 @@ import io.github.gamesbyian.chunks.model.CollectionMembershipRules
 import io.github.gamesbyian.chunks.model.ManualCollectionPager
 import io.github.gamesbyian.chunks.model.TransferFilter
 import io.github.gamesbyian.chunks.model.TransferOrder
+import io.github.gamesbyian.chunks.model.PublicTrackerHandoff
 import io.github.gamesbyian.chunks.model.Units
 import io.github.gamesbyian.chunks.organize.Classifier
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
@@ -589,9 +590,20 @@ private fun ChunksApp(
                     onInspectSnapshot = { section = Section.SNAPSHOT_INSPECT },
                     onPreparePhone = { source ->
                         val prepared = TorrentIdentityHandoff.prepare(source.hash, source.name)
-                        if (prepared != null) {
-                            phoneHandoffMagnet = prepared
-                            section = Section.LOCAL
+                        if (prepared != null) scope.launch {
+                            // Public trackers let the phone find peers even before the
+                            // server finishes. Private torrents: identity only, and their
+                            // passkey-bearing tracker URLs are never read.
+                            val trackers = try {
+                                (connectedRemote.readPublicTrackers(source.hash)
+                                    as? RTorrentRemote.PublicTrackers.Urls)?.urls.orEmpty()
+                            } catch (cancel: kotlinx.coroutines.CancellationException) {
+                                throw cancel
+                            } catch (_: Exception) { emptyList() }
+                            if (server === connectedRemote) {
+                                phoneHandoffMagnet = PublicTrackerHandoff.withTrackers(prepared, trackers)
+                                section = Section.LOCAL
+                            }
                         }
                     },
                     onCopyToPhone = { magnet ->
@@ -1359,13 +1371,15 @@ private fun TransferCard(
             if (TorrentIdentityHandoff.prepare(transfer.hash, transfer.name) != null) {
                 OutlinedButton(onClick = { confirmPhoneHandoff = true },
                     enabled = !stale, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                    Text("Prepare torrent on phone (identity only)")
+                    Text("Copy Transfer to phone…")
                 }
                 if (confirmPhoneHandoff) {
-                    Text("Only this torrent's v1 hash/name becomes a magnet Add draft " +
-                        "on your phone. No downloaded bytes move, and the phone may " +
-                        "need to download everything again. Private/tracker-only " +
-                        "torrents may not find peers. The server transfer stays intact.",
+                    Text("This torrent's v1 hash and name, plus its public tracker " +
+                        "addresses, become a magnet Add draft on your phone. Private " +
+                        "torrents get the hash and name only: their tracker passkeys are " +
+                        "never read, so they may not find peers. No downloaded bytes move, " +
+                        "and the phone may download everything again. The server transfer " +
+                        "stays intact.",
                         style = MaterialTheme.typography.bodySmall)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(onClick = {
