@@ -56,7 +56,7 @@ class SnapshotManualAddReviewV1Test {
         reject { prepare(reviewed = entry.copy(originalName = "wrong.txt")) }
         reject { prepare(reviewed = entry.copy(selectedForReview = false)) }
         reject { prepare(snapshot = original.copy(metainfoByHash =
-            mapOf(hash to "corrupted".toByteArray())) }
+            mapOf(hash to "corrupted".toByteArray()))) }
         reject { prepare(before = listOf(hash), after = listOf(hash)) }
     }
 
