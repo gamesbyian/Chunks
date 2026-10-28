@@ -58,6 +58,27 @@ class TorrentIntentResolutionInstrumentedTest {
             chunksCanHandle(view))
     }
 
+    @Test fun namedTorrentGenericBinaryIsHandledButUnrelatedBinaryIsNot() {
+        val named = Uri.parse("content://fixture.documents/download/sample.torrent")
+        assertTrue("Android should offer Chunks for a named torrent from a generic binary provider",
+            chunksCanHandle(Intent(Intent.ACTION_VIEW)
+                .setDataAndType(named, "application/octet-stream")))
+        val other = Uri.parse("content://fixture.documents/download/sample.zip")
+        assertFalse("Chunks must not claim all generic binary documents",
+            chunksCanHandle(Intent(Intent.ACTION_VIEW)
+                .setDataAndType(other, "application/octet-stream")))
+        assertFalse("Chunks must not claim generic-binary SEND from unrelated apps",
+            chunksCanHandle(Intent(Intent.ACTION_SEND)
+                .setType("application/octet-stream")))
+        // View URI admission and actual decoded bencode are separate gates.
+        assertTrue(SharedTorrentDocument.fromIntent(
+            Intent(Intent.ACTION_VIEW)
+                .setDataAndType(named, "application/octet-stream")) == named)
+        assertTrue(SharedTorrentDocument.fromIntent(
+            Intent(Intent.ACTION_VIEW)
+                .setDataAndType(other, "application/octet-stream")) == null)
+    }
+
     @Test fun unrelatedMimeAndOrdinaryHttpsUrlsAreNotClaimed() {
         val document = Uri.parse("content://fixture.documents/download/2")
         for (type in listOf("application/pdf", "image/png", "text/calendar")) {
