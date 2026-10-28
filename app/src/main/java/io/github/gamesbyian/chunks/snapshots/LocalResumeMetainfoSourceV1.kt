@@ -26,6 +26,8 @@ import org.libtorrent4j.swig.libtorrent
 internal object LocalResumeMetainfoSourceV1 {
     private const val MAX_RESUME = 4L * 1024 * 1024
     private const val MAX_META = 2 * 1024 * 1024
+    // Never accumulate 512 * 2 MiB native results before ZIP's global guard.
+    private const val MAX_TOTAL_META = 32 * 1024 * 1024
     private val identity = Regex("[a-f0-9]{40}")
 
     /**
@@ -84,6 +86,7 @@ internal object LocalResumeMetainfoSourceV1 {
                 Files.isDirectory(root.toPath(), LinkOption.NOFOLLOW_LINKS)
         } catch (_: Exception) { false }
         val metadata = LinkedHashMap<String, ByteArray>()
+        var metainfoBytes = 0L
         val failures = LinkedHashMap<String, Unavailable>()
         val upgraded = inventory.manifest.items.map { item ->
             val hash = item.infoHashV1
@@ -141,7 +144,12 @@ internal object LocalResumeMetainfoSourceV1 {
                     null
                 }
             }
-            if (bytes == null) item else {
+            if (bytes == null) item else if (bytes.size.toLong() >
+                MAX_TOTAL_META - metainfoBytes) {
+                failures[hash] = Unavailable.OVERSIZED_OR_MISMATCHED_TORRENT
+                item // Remains honest inventory-only; never exceeds the export budget.
+            } else {
+                metainfoBytes += bytes.size
                 metadata[hash] = bytes.copyOf()
                 item.copy(recovery = SnapshotManifestV1.Recovery.METAINFO)
             }
