@@ -17,7 +17,7 @@ internal object LocalFileNaturalOrder {
     private val tvX = Regex(
         "(?i)(?:^|[^a-z0-9])([0-9]{1,2})x([0-9]{1,3})(?=[^0-9]|$)")
     private val seasonFolder = Regex(
-        "(?i)(?:^|[/\\])season[ ._-]*([0-9]{1,2})(?:[/\\]|$)")
+        "(?i)(?:^|/)season[ ._-]*([0-9]{1,2})(?:/|$)")
     private val episodeName = Regex(
         "(?i)(?:^|[^a-z0-9])(?:episode|ep)[ ._-]*([0-9]{1,3})(?=[^0-9]|$)")
     private val numericStart = Regex("^([0-9]{1,3})(?:[ ._-]|$)")
@@ -34,7 +34,7 @@ internal object LocalFileNaturalOrder {
         } ?: tvX.find(base)?.let {
             it.groupValues[1].toInt() to it.groupValues[2].toInt()
         } ?: run {
-            val folder = seasonFolder.find(path)
+            val folder = seasonFolder.find(path.replace('\\', '/'))
             val season = folder?.groupValues?.get(1)?.toIntOrNull()
             val episode = episodeName.find(base)?.groupValues?.get(1)?.toIntOrNull()
                 ?: if (season != null) numericStart.find(base)?.groupValues?.get(1)?.toIntOrNull()
