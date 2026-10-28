@@ -76,6 +76,8 @@ import io.github.gamesbyian.chunks.rpc.RemoteQueueActivityContext
 import io.github.gamesbyian.chunks.snapshots.SnapshotInventoryExportScreen
 import io.github.gamesbyian.chunks.snapshots.SnapshotDocumentInspectScreen
 import io.github.gamesbyian.chunks.privacy.LocalTransferPrivacyGate
+import io.github.gamesbyian.chunks.privacy.RemoteTransferPrivacyGate
+import io.github.gamesbyian.chunks.privacy.RemoteTransferPrivacyScope
 import io.github.gamesbyian.chunks.privacy.TransferPrivacyRuntime
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
@@ -483,6 +485,47 @@ private fun ChunksApp(
             )
         } else {
             val connectedRemote = requireNotNull(server)
+            val remotePrivacyScope = remember(aliasScope) {
+                RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(aliasScope)
+            }
+            if (section == Section.LOCAL) {
+                // Phone and rTorrent privacy are independent. A locked remote
+                // profile can still navigate to the separately gated phone.
+                LocalTransferPrivacyGate(
+                    scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
+                    onBack = { section = Section.TRANSFERS }
+                ) {
+                    LocalEngineScreen(
+                        onBack = { section = Section.TRANSFERS },
+                        initialMagnet = phoneHandoffMagnet,
+                        initialTorrentUri = incomingTorrent,
+                        onTorrentConsumed = onIncomingTorrentConsumed,
+                        onPrefillConsumed = { phoneHandoffMagnet = null },
+                        onPrepareRemote = { draft ->
+                            magnet = draft
+                            section = Section.ADD
+                        },
+                        onPrepareRemoteTorrent = { document ->
+                            serverHandoffTorrent = document
+                            section = Section.ADD
+                        }
+                    )
+                }
+            } else if (remotePrivacyScope == null) {
+                // Never present a connected rTorrent queue with an ambiguous
+                // account identity; scope policies could otherwise be bypassed.
+                Text("Cannot verify which rTorrent profile owns these transfers. " +
+                    "Go to the phone client or reconnect securely.",
+                    color = MaterialTheme.colorScheme.error)
+                OutlinedButton(onClick = { section = Section.LOCAL },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                    Text("On this phone")
+                }
+            } else {
+                RemoteTransferPrivacyGate(
+                    scope = remotePrivacyScope,
+                    onBack = { section = Section.LOCAL }
+                ) {
             val beginRemoteMutation: () -> Boolean = {
                 if (server === connectedRemote && !loading && !stale && mutationGate.tryStart()) {
                     stale = true
@@ -595,26 +638,7 @@ private fun ChunksApp(
                 ) {
                     LocalZipReviewScreen(onBack = { section = Section.TRANSFERS })
                 }
-                Section.LOCAL -> LocalTransferPrivacyGate(
-                    scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
-                    onBack = { section = Section.TRANSFERS }
-                ) {
-                    LocalEngineScreen(
-                        onBack = { section = Section.TRANSFERS },
-                        initialMagnet = phoneHandoffMagnet,
-                        initialTorrentUri = incomingTorrent,
-                        onTorrentConsumed = onIncomingTorrentConsumed,
-                        onPrefillConsumed = { phoneHandoffMagnet = null },
-                        onPrepareRemote = { draft ->
-                            magnet = draft
-                            section = Section.ADD
-                        },
-                        onPrepareRemoteTorrent = { document ->
-                            serverHandoffTorrent = document
-                            section = Section.ADD
-                        }
-                    )
-                }
+                Section.LOCAL -> Unit // Composed by the independent local gate above.
                 Section.PLACES -> PlacesScreen(transfers) { path ->
                     draftPath = path
                     section = Section.ADD
@@ -708,6 +732,8 @@ private fun ChunksApp(
                     )
                 }
             }
+                } // RemoteTransferPrivacyGate: all remote tabs/actions protected.
+            } // Connected local/remote route split.
         }
     }
 }
