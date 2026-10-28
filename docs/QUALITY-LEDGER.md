@@ -1,5 +1,45 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-28 Smart Connect specification/implementation and connection evidence
+
+- **Owner direction:** a user should be able to connect rTorrent with a seedbox
+  hostname or ruTorrent URL and ordinary account credentials, without knowing
+  SCGI/HTTP-RPC mount points. The canonical specification is
+  [SMART-REMOTE-CONNECTION](SMART-REMOTE-CONNECTION.md), covered by PRODUCT,
+  UX, ARCHITECTURE, SECURITY, SPEC-COVERAGE, DECISIONS, CI-POLICY, WORK-QUEUE,
+  RESEARCH, README and issue [#464](https://github.com/gamesbyian/Chunks/issues/464).
+- **PR #461 MERGED:** exact prior head `49af3ad5ca897a40c7ab7643c07ea8002f1eb15b`,
+  Android foundation [40758152431](https://github.com/gamesbyian/Chunks/actions/runs/40758152431)
+  **successful**. Records three distinct SeedHost HTTPS profiles and
+  case-sensitive protected credential secrets; manual trusted-main-only
+  endpoint test. The owner's successful Transdrone
+  `wood.seedhost.eu/ianseeds/RPC1` configuration has SSL unchecked, so
+  the equivalent HTTPS direct-SCGI path is **unverified**.
+- **PR #463 OPEN at documentation checkpoint:** source-based
+  `RemoteSmartConnect` candidate planning and actual Android Connect
+  integration, bounded to HTTPS and the same supplied origin; explicit
+  numbered ruTorrent URLs do not fall back to another tenant. Its
+  prior exact head `8922760cf81a11fb299a96c0013ea833f2845896`
+  passed [Android/JVM 40760083435](https://github.com/gamesbyian/Chunks/actions/runs/40760083435)
+  and [native visual 40760083286](https://github.com/gamesbyian/Chunks/actions/runs/40760083286).
+  These are source/emulator-tier checks and **not** credentialed live
+  provider or physical Android acceptance. A subsequent documentation
+  reconciliation head requires a fresh exact-head gate before merge.
+- **Remaining:** four protected SeedHost endpoint-route probes (three
+  authenticated HTTP-RPC profiles plus separate HTTPS SCGI candidate)
+  with per-tenant read-only version/list, other-provider real integration,
+  read-only capability ranking, cancellation/repair UI, TLS CA/pin/SSO/VPN
+  support, 200%/TalkBack/physical Pixel acceptance and actual
+  multi-provider parity. No secure-connection downgrade or destructive
+  command is authorized during discovery.
+- **Distinct peer-wire evidence:** live SeedHost `network.bind_address`
+  `5.79.112.219` versus ruTorrent hostname `5.79.112.210` explained the
+  previous refused TCP probe. Merged #460 and
+  [real single-peer verified 792,723,456-byte Copy 40756284173](https://github.com/gamesbyian/Chunks/actions/runs/40756284173)
+  establish this host's accessible BitTorrent peer path, **not**
+  management RPC compatibility on another route or a global allowed
+  incoming-port range.
+
 **Font Stacked experiment, 2026-10-28 (nonshipping, verified):** [#443](https://github.com/gamesbyian/Chunks/pull/443) merged at `a4f24f4894d492ba07bfe744d314626f4eedb4cd`, exact PR head `53485cc3e684d5839c203fcc29ebc24e656a419d` with all six checks successful. Five native separately named CFF fonts recomposed 69/68/67/56/46 detached above-base stacked Latin characters per weight, with original 856 mappings and exhaustive other-glyph/advance preservation, Devanagari shaping and precise refused-glyph reasons. [#444](https://github.com/gamesbyian/Chunks/pull/444) merged at `b24cd72cc98f5dd83ddfb951a032417a2b985efa`, exact PR head `6c61359c2c4098e17a412f550841c809ac1a8e81`, both push/PR reviews green including [CI 40651516069](https://github.com/gamesbyian/Chunks/actions/runs/40651516069): eight actual CFF review atlases of all 107 candidate characters at 14/24/48/82px and the remaining per-face unresolved Latin counts 116/118/119/130/140, backed by glyph and PNG SHA receipts. [#445](https://github.com/gamesbyian/Chunks/pull/445) **pending** installed API35 native TextView instrumentation at simulated 100% and 200% with 30 expected PNGs; no device evidence claimed before exact CI success. Native Android TextView cannot certify app Compose typography, TalkBack, independent contour art approval or physical handset acceptance. Approved Android/base typography unchanged; #347 stays open.
 
 **Font continuation, 2026-10-28, verified engineering only:** [#427](https://github.com/gamesbyian/Chunks/pull/427) MERGED at `5bcb78b3d7c7673d93567579d450f67afe00e52e` with seven passing checks, four editable source-derived punctuation SVGs, 32 total reference/derivative glyphs per experimental font and 856 original Unicode mappings. [#429](https://github.com/gamesbyian/Chunks/pull/429) MERGED at `de5ffe408c23285b097613b6bad408084db6fe04`, exact head `7fc27bfbb470929d853579be84879e22975eaa87` with all checks successful; saves 5,399/5,306/5,382/5,243/5,088 clipped raw GPOS pair requests across Regular/Medium/Semibold/Bold/ExtraBold, deterministic JSON.gz SHA receipts and actual CFF review PNG. Bounds remain ±72 font units; outliers `Ç*`, `p…` request >300 units but no automatic cap relaxation. [#431](https://github.com/gamesbyian/Chunks/pull/431) MERGED at `1fb0aa02f93d844022bd8750f13829354d0bd384`, exact head `eef7a1b0e44ba3ca8277bb946a6579481e1a7f5c` all eight checks successful, proving native editor-authored cubic curves survive CFF compilation with source topological envelope, native advance metric, 856 Unicode mapping and Hindi shaping intact; unchanged default weight studies recompiled. **Not accepted:** original 400–700 contour drawings, expanded accent style, semantic optical correction, Android normal/200% text/filename/TalkBack, human-approved final family. No accepted base/Android font changed; #347 remains open.
