@@ -484,7 +484,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
      * must still match before ANY write. No file is implicitly unskipped.
      * Readback uncertainty is surfaced, never blindly retried or rolled back.
      */
-    fun setFilePriority(
+    internal fun setFilePriority(
         infoHash: String,
         reviewed: LocalTransferFile,
         requestedPriority: Int,
