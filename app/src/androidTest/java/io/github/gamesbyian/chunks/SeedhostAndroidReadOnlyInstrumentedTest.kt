@@ -91,7 +91,7 @@ class SeedhostAndroidReadOnlyInstrumentedTest {
                 target.userInfo == null && target.rawQuery == null && target.rawFragment == null)
 
         // All interaction uses the REAL installed application's Compose fields.
-        rule.onNodeWithText("ruTorrent web URL or RPC address").performTextReplacement(url)
+        rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").performTextReplacement(url)
         rule.onNodeWithText("Username, if required").performTextReplacement(user!!)
         rule.onNodeWithText("Password").performTextReplacement(password!!)
         checkpoint("form")
@@ -115,7 +115,7 @@ class SeedhostAndroidReadOnlyInstrumentedTest {
             val stage = when {
                 rule.onAllNodesWithText("Connection unsuccessful").fetchSemanticsNodes().isNotEmpty() ->
                     "connect-error"
-                rule.onAllNodesWithText("Connecting…").fetchSemanticsNodes().isNotEmpty() ->
+                rule.onAllNodesWithText("Finding secure rTorrent…").fetchSemanticsNodes().isNotEmpty() ->
                     "connect-busy"
                 rule.onAllNodesWithText("Connect to rTorrent").fetchSemanticsNodes().isNotEmpty() ->
                     "connect-login-form"
