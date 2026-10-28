@@ -16,17 +16,17 @@
 
 Authority: [SMART-REMOTE-CONNECTION](SMART-REMOTE-CONNECTION.md), [SECURITY](SECURITY.md), [DECISIONS](DECISIONS.md), [WORK-QUEUE](WORK-QUEUE.md) and [issue #464](https://github.com/gamesbyian/Chunks/issues/464). Neither a candidate URL nor a mock success proves real-host permission, peer port reachability or physical-phone operation.
 
-## Finish in Order: ordered completion scheduling (#415; planned, no acceptance)
+## Finish in Order: ordered completion scheduling (#415; local engine slice implemented, no device acceptance)
 
-| Area | Required coverage | Verified status |
+| Area | Required coverage | Verified status (2026-10-28) |
 |---|---|---|
-| Order recognition and editor | Episode/numbered natural sort; ambiguous abstention; grouped extras/subtitles; accessible reorder; user override and skip | SPECIFIED, NOT IMPLEMENTED |
-| Rolling scheduling | Balanced/Finish First and optional Sequential Playback; bounded lookahead and unavailable-first fallback; hash-verified advance; distinct priority semantics | SPECIFIED, NOT IMPLEMENTED |
-| Local native engine | Finite file/piece priority capability checks, restart persistence, rate limits, native readback, multi-file swarm metrics and device lifecycle | SPECIFIED, NOT VERIFIED |
-| Remote rTorrent | Version/capability RPC readback; uncertain mutation recovery; client-off limitations and truthful best-effort mode | SPECIFIED, NOT VERIFIED |
-| Safety/accessibility | No silent mutation of manual priority or backing files; 48dp-class and TalkBack controls; no fabricated ETAs; no real-device claims from fixtures | SPECIFIED, NOT VERIFIED |
+| Order recognition and editor | Episode/numbered natural sort; ambiguous abstention; grouped extras/subtitles; accessible reorder; user override and skip | **LOCAL IMPLEMENTED, JVM + API35 Compose source-tested:** episode order (via #423's conservative parser) else digit-aware filename order; sidecars/samples/extras excluded; Earlier/Later 48dp reorder with TalkBack labels; explicit Start. Grouping subtitles beside episodes and Add-review/global presets NOT IMPLEMENTED. |
+| Rolling scheduling | Balanced/Finish First and optional Sequential Playback; bounded lookahead and unavailable-first fallback; hash-verified advance; distinct priority semantics | **LOCAL IMPLEMENTED:** Balanced (next file Normal, rest Low) and Finish first (rest Low); advance only on piece-granularity (hash-verified) completion; a starved active file with peer-availability evidence shares High with the next available file. Sequential Playback / piece deadlines NOT IMPLEMENTED. Real-libtorrent JVM test proves advancement past verified episodes; **no controlled-swarm timing comparison yet**. |
+| Local native engine | Finite file/piece priority capability checks, restart persistence, rate limits, native readback, multi-file swarm metrics and device lifecycle | **SOURCE-TESTED:** fresh expected-priority preflight, readback, write-ahead journal reconciled from observation after process death, partial/uncertain suspends (never replays); service poll lane advances throttled per transfer. NOT VERIFIED on emulator lifecycle, physical handset, Doze or real swarm. |
+| Remote rTorrent | Version/capability RPC readback; uncertain mutation recovery; client-off limitations and truthful best-effort mode | SPECIFIED, NOT IMPLEMENTED |
+| Safety/accessibility | No silent mutation of manual priority or backing files; 48dp-class and TalkBack controls; no fabricated ETAs; no real-device claims from fixtures | Manual priority changes pin the file (never overwritten); skipped files never unskipped; Turn off leaves priorities unchanged; no ETA shown. 200%/TalkBack on device NOT VERIFIED. |
 
-Owner request #415 is fully specified in PRODUCT, UX, ARCHITECTURE, WORK-QUEUE and DECISIONS. Static per-file priorities (including open #412) do **not** satisfy this acceptance map.
+Owner request #415 is fully specified in PRODUCT, UX, ARCHITECTURE, WORK-QUEUE and DECISIONS. #423's one-time episode focus is groundwork only and is hidden while a rolling policy is active.
 
 
 **2026-10-27 additional verified source/emulator coverage:** #356 **MERGED** crash-safe snapshot mutation-journal library (exact head `90e6c57b20058cf464f7847e63b248659f21a463`, JVM 40621529085, API35 40621528947), preserving uncertainty and requiring independent complete-inventory/exact-hash reconciliation before any future restored Add. It is not wired to either engine, so no automatic restore is claimed. #361 **MERGED** reviewed 40-file local Select/Skip with stale-priority preflight, verified native readback and partial-write uncertainty (JVM 40621178965, API35 40621179034). #375 **MERGED** read-only full local restore comparison search, filter and pagination up to 512 entries (JVM 40621808509). Current-main local biometric integration #378 and stacked remote per-account gate #369 remain unaccepted pending exact-head CI and physical Android auth evidence. Human handset/real BitTorrent peer-byte gates still open.

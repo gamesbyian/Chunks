@@ -1,5 +1,10 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-28 Finish in Order local scheduler (source evidence only)
+
+- Local run in the agent container (JDK 21, Gradle 9.3.1, Android SDK platform 37.0): `gradle :app:testDebugUnitTest --tests '*FinishInOrder*'` **15/15 passed** (planner/record 9, runner 6 including a real libtorrent4j 2.1.0-39 Linux session that hash-checks piece-aligned episodes, advances past verified files and refuses a stale replay with `STALE_REVIEW`); the full JVM suite earlier compiled the same sources with all pre-existing tests passing. `:app:compileDebugAndroidTestKotlin` and `:app:assembleDebug` succeeded. Exact PR-head GitHub Android/JVM and API35 runs are the merge gate and are recorded on the PR.
+- **Not established:** emulator process-death recovery, physical handset, Doze/background, controlled multi-peer swarm time-to-first-file comparison, remote rTorrent, 200%/TalkBack on device.
+
 ## 2026-10-28 Smart Connect specification/implementation and connection evidence
 
 - **Owner direction:** a user should be able to connect rTorrent with a seedbox
