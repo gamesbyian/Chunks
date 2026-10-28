@@ -1,6 +1,7 @@
 package io.github.gamesbyian.chunks
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -87,6 +88,7 @@ private val Blue = Color(0xFF4662C6)
 
 class MainActivity : ComponentActivity() {
     private var incomingMagnet by mutableStateOf<String?>(null)
+    private var incomingTorrent by mutableStateOf<Uri?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -94,12 +96,13 @@ class MainActivity : ComponentActivity() {
         // Use dark icons; white icons failed contrast review in actual API 35 captures.
         WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = true
         incomingMagnet = magnetFromIntent(intent)
+        incomingTorrent = SharedTorrentDocument.fromIntent(intent)
         setContent {
             MaterialTheme(colorScheme = lightColorScheme(
                 primary = Blue, onPrimary = Color.White, surface = Cream,
                 onSurface = Ink, background = Cream, secondary = Ink
             )) {
-                Surface(modifier = Modifier.fillMaxSize()) { ChunksApp(incomingMagnet) }
+                Surface(modifier = Modifier.fillMaxSize()) { ChunksApp(incomingMagnet, incomingTorrent) { incomingTorrent = null } }
             }
         }
     }
@@ -108,6 +111,7 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         incomingMagnet = magnetFromIntent(intent)
+        incomingTorrent = SharedTorrentDocument.fromIntent(intent)
     }
 
     private fun magnetFromIntent(intent: Intent?): String? {
@@ -125,7 +129,11 @@ private enum class Section(val label: String) {
 }
 
 @Composable
-private fun ChunksApp(sharedMagnet: String?) {
+private fun ChunksApp(
+    sharedMagnet: String?,
+    incomingTorrent: Uri?,
+    onIncomingTorrentConsumed: () -> Unit
+) {
     val context = LocalContext.current
     val vault = remember(context) { RememberedRemoteLogin(context) }
     val profileRoster = remember(context) { RememberedRemoteProfileRoster(context) }
@@ -179,6 +187,12 @@ private fun ChunksApp(sharedMagnet: String?) {
     val remoteFence = remember { RemoteUiRequestFence() }
     val inspectionFence = remember { RemoteUiRequestFence() }
     val mutationGate = remember { RemoteMutationReadbackGate() }
+
+    // Content-only external .torrent links go to the phone's existing Add
+    // review without starting an engine, creating a file or contacting peers.
+    LaunchedEffect(incomingTorrent) {
+        if (incomingTorrent != null) section = Section.LOCAL
+    }
 
     // Incoming Android Sharesheet/VIEW links prefill a local draft. Never auto-submit.
     LaunchedEffect(sharedMagnet) {
@@ -252,6 +266,8 @@ private fun ChunksApp(sharedMagnet: String?) {
             LocalEngineScreen(
                 onBack = { section = Section.TRANSFERS },
                 initialMagnet = phoneHandoffMagnet,
+                initialTorrentUri = incomingTorrent,
+                onTorrentConsumed = onIncomingTorrentConsumed,
                 onPrefillConsumed = { phoneHandoffMagnet = null },
                 onPrepareRemote = { draft ->
                     magnet = draft
@@ -520,6 +536,8 @@ private fun ChunksApp(sharedMagnet: String?) {
                 Section.LOCAL -> LocalEngineScreen(
                     onBack = { section = Section.TRANSFERS },
                     initialMagnet = phoneHandoffMagnet,
+                    initialTorrentUri = incomingTorrent,
+                    onTorrentConsumed = onIncomingTorrentConsumed,
                     onPrefillConsumed = { phoneHandoffMagnet = null },
                     onPrepareRemote = { draft ->
                         magnet = draft
