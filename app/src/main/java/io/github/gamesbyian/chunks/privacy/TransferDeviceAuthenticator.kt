@@ -73,7 +73,7 @@ internal object TransferDeviceAuthenticator {
                 )
             } else {
                 @Suppress("DEPRECATION")
-                builder.setDeviceCredentialAllowed(true)
+                val configured = builder.setDeviceCredentialAllowed(true)
             }
             val signal = CancellationSignal()
             builder.build().authenticate(
