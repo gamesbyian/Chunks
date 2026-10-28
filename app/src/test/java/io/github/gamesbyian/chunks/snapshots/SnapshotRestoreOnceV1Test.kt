@@ -47,10 +47,13 @@ class SnapshotRestoreOnceV1Test {
         var throwOnWrite = false
         var ambiguousWrite = false
         var nowStopped: Boolean? = true
+        var observedPlace: File? = null
         override fun completeHashes(): List<String> = hashes.toList()
-        override fun stoppedAfterReadback(infoHashV1: String): Boolean? = nowStopped
+        override fun observedStoppedPlace(infoHashV1: String): File? =
+            if (nowStopped == true) observedPlace else null
         override fun submitStopped(originalTorrent: ByteArray, chosenPlace: File): Boolean {
             writes++
+            observedPlace = chosenPlace
             if (throwOnWrite) throw IllegalStateException("lost response after possible Add")
             if (ambiguousWrite) return false
             hashes = hashes + TorrentMetainfoReader.preview(originalTorrent).infoHashV1
@@ -147,6 +150,35 @@ class SnapshotRestoreOnceV1Test {
         assertEquals(SnapshotRestoreOnceV1.Outcome.REFUSED,
             SnapshotRestoreOnceV1.execute(journal, source, folder, place, emptyList(), false, fake))
         assertEquals(0, fake.writes)
+    }
+
+    @Test fun wrongObservedSavePathCannotMarkJournalVerified() {
+        val source = original()
+        val store = Store()
+        val journal = SnapshotRestoreJournalV1.open(store, archive,
+            targetId, listOf(source.infoHashV1))
+        val destination = temp.newFolder("chosen-path")
+        val other = temp.newFolder("wrong-path")
+        val fake = object : SnapshotRestoreOnceV1.LocalTarget {
+            var additions = 0
+            var hashes = emptyList<String>()
+            override fun completeHashes() = hashes
+            override fun observedStoppedPlace(infoHashV1: String) = other
+            override fun submitStopped(originalTorrent: ByteArray, chosenPlace: File): Boolean {
+                additions++
+                hashes = listOf(source.infoHashV1)
+                return true
+            }
+        }
+        assertEquals(SnapshotRestoreOnceV1.Outcome.UNCERTAIN,
+            SnapshotRestoreOnceV1.execute(journal, source, destination,
+                place, emptyList(), true, fake))
+        assertEquals(SnapshotRestoreJournalV1.Phase.ACK_UNVERIFIED,
+            journal.entries().single().phase)
+        assertEquals(SnapshotRestoreOnceV1.Outcome.STALE_TARGET,
+            SnapshotRestoreOnceV1.execute(journal, source, destination,
+                place, emptyList(), true, fake))
+        assertEquals(1, fake.additions)
     }
 
     @Test fun twoMissingItemsFromSameArchiveDoNotCollideInDurableJournal() {
