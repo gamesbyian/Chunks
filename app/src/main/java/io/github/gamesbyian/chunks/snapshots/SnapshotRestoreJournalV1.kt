@@ -24,8 +24,11 @@ internal class SnapshotRestoreJournalV1 private constructor(
 ) {
     interface Store {
         fun read(key: String): String?
-        /** Must durably and atomically replace a key before returning true. */
-        fun commit(key: String, value: String): Boolean
+        /**
+         * Atomically check the exact previous value and durably replace it.
+         * False means either stale state or failed persistence; no Add is safe.
+         */
+        fun compareAndCommit(key: String, expected: String?, value: String): Boolean
     }
 
     enum class Phase {
@@ -144,12 +147,9 @@ internal class SnapshotRestoreJournalV1 private constructor(
     }
 
     private fun save(next: State) {
-        // A second UI/session may have advanced this batch. Never overwrite its
-        // verified or in-flight state from an older in-memory snapshot.
-        check(store.read(key) == encode(state)) {
-            "Import journal changed; reopen and reconcile before any Add"
-        }
-        if (!store.commit(key, encode(next))) {
+        // A second screen/session may have advanced this batch. Compare-and-
+        // commit also closes the read-then-write race across concurrent callers.
+        if (!store.compareAndCommit(key, encode(state), encode(next))) {
             throw IOException("Import journal was not committed; no Add is authorized")
         }
         state = next
@@ -199,7 +199,7 @@ internal class SnapshotRestoreJournalV1 private constructor(
                     }
                 }
             }
-            if (previous == null && !store.commit(key, encode(state))) {
+            if (previous == null && !store.compareAndCommit(key, null, encode(state))) {
                 throw IOException("Could not durably initialize import journal")
             }
             return SnapshotRestoreJournalV1(store, key, state)
