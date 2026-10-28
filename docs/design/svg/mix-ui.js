@@ -1,0 +1,190 @@
+/* Non-shipping experimental variant workbench for the standalone gallery. */
+(function () {
+"use strict";
+const mixer=window.ChunksSvgMixer;
+if(!mixer)throw new Error("Chunks mix engine script must load before the workbench");
+const editById=Object.create(null);
+let active=null;
+let dragging=null;
+const workbench=document.createElement("section");
+workbench.className="mix-workbench";
+workbench.setAttribute("aria-label","Editable Chunks vector composition");
+workbench.innerHTML=
+ '<p class="note">Drag the selected layer in the preview, or use the accessible sliders. Export preserves independent SVG vectors and gradients. Four layers maximum.</p>'+
+ '<div class="mix-tools"><label for="mix-background">Composition background</label>'+
+ '<select id="mix-background"><option value="transparent">Transparent</option><option value="#F8FAFC">Light paper</option><option value="#0B0F17">Near-black</option><option value="#FFD93D">Yellow</option></select>'+
+ '<button id="mix-back" type="button">Move layer back</button><button id="mix-forward" type="button">Move layer forward</button>'+
+ '<button id="mix-reset" type="button">Reset active layer</button></div>'+
+ '<fieldset id="mix-editor"><legend id="mix-edit-label">Layer adjustments</legend><div class="mix-sliders">'+
+ ['x','y','scale','rotate','opacity'].map(function(key){
+   const label={x:"Horizontal",y:"Vertical",scale:"Scale",rotate:"Rotation",opacity:"Opacity"}[key];
+   const ranges={x:[-100,100,1,0],y:[-100,100,1,0],scale:[20,300,5,100],rotate:[-180,180,5,0],opacity:[0,100,5,100]}[key];
+   return '<label for="mix-'+key+'">'+label+' <output id="mix-'+key+'-output" for="mix-'+key+'"></output>'+
+    '<input type="range" id="mix-'+key+'" data-mix-key="'+key+'" min="'+ranges[0]+'" max="'+ranges[1]+
+    '" step="'+ranges[2]+'" value="'+ranges[3]+'"/></label>';
+ }).join('')+'</div></fieldset>'+
+ '<div class="mix-tools"><button type="button" id="mix-export">Export standalone SVG</button>'+
+ '<button type="button" id="mix-save">Save editable recipe</button>'+
+ '<button type="button" id="mix-load">Load recipe</button>'+
+ '<input id="mix-recipe-file" type="file" accept=".json,application/json" hidden/></div>'+
+ '<p id="mix-message" role="status" aria-live="polite" class="note"></p>';
+mix.insertAdjacentElement("afterend",workbench);
+document.querySelector('label[for="opacity"]').hidden=true;
+document.querySelector("#opacity").hidden=true;
+const style=document.createElement("style");
+style.textContent=
+ '.mix{touch-action:none;cursor:grab}.mix:active{cursor:grabbing}'+
+ '.mix .mix-layer{position:absolute;inset:0;transform-origin:center;pointer-events:none}'+
+ '.mix .mix-layer img{position:absolute;inset:7%;width:86%;height:86%;object-fit:contain}'+
+ '.mix-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:14px 0}'+
+ '.mix-tools button{min-height:48px}.mix-tools select{min-height:48px}'+
+ '.mix-sliders{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:12px}'+
+ '.mix-sliders label{display:grid;gap:4px;font-size:14px}'+
+ '.mix-sliders input{width:100%;min-height:44px}.mix-sliders output{color:#22d97a}'+
+ '#mix-editor{border:1px solid #6b7280;border-radius:12px;padding:12px;margin:8px 0}'+
+ '#mix-editor legend{font-weight:750}.tray article.mix-active{outline:3px solid #22d97a;outline-offset:2px}';
+document.head.append(style);
+const propKeys=["x","y","scale","rotate","opacity"];
+function sourceById(id){return assets.find(a=>a.id===id);}
+function current(){if(!active)return null;return editById[active];}
+function status(msg,error=false){
+ const p=document.querySelector("#mix-message");
+ p.textContent=msg;p.style.color=error?"#ffabab":"#bed5e4";
+}
+function sync(){
+ for(const id of Object.keys(editById))if(!chosen.includes(id))delete editById[id];
+ for(const id of chosen)if(!editById[id])editById[id]=mixer.edit({});
+ if(!chosen.includes(active))active=chosen.at(-1)||null;
+}
+function updateLayerVisuals(){
+ mix.replaceChildren();
+ for(const id of chosen){
+  const source=sourceById(id),e=editById[id];
+  const div=document.createElement("div");div.className="mix-layer";
+  div.style.transform="translate("+e.x+"%, "+e.y+"%) rotate("+e.rotate+"deg) scale("+(e.scale/100)+")";
+  div.style.opacity=String(e.opacity/100);
+  const image=createImage(source);image.loading="eager";
+  div.append(image);mix.append(div);
+ }
+ const bg=document.querySelector("#mix-background").value;
+ mix.style.background=bg==="transparent"?"":bg;
+}
+function updatePanel(){
+ const e=current();
+ document.querySelector("#mix-editor").hidden=!e;
+ document.querySelector("#mix-edit-label").textContent=e?"Editing: "+active:"Layer adjustments";
+ if(e){
+  for(const key of propKeys){
+   const input=document.querySelector("#mix-"+key);
+   const output=document.querySelector("#mix-"+key+"-output");
+   input.value=String(e[key]);
+   output.textContent=String(e[key])+(key==="rotate"?"°":"%");
+  }
+ }
+ for(const card of comp.querySelectorAll('article[data-chunks-asset-id]')){
+  const selected=card.dataset.chunksAssetId===active;
+  card.classList.toggle("mix-active",selected);
+  const button=card.querySelector("button");
+  if(button)button.setAttribute("aria-pressed",String(selected));
+ }
+}
+const oldRender=renderTray;
+renderTray=function(){
+ oldRender();sync();
+ comp.querySelectorAll("article").forEach((card,i)=>{
+  const id=chosen[i];card.dataset.chunksAssetId=id;
+  const button=document.createElement("button");
+  button.type="button";button.textContent="Edit layer";button.setAttribute("aria-pressed",String(id===active));
+  button.setAttribute("aria-label","Edit "+id);
+  button.addEventListener("click",()=>{active=id;updatePanel();});
+  card.append(button);
+ });
+ updateLayerVisuals();updatePanel();
+};
+function move(delta){
+ if(!active)return;
+ const index=chosen.indexOf(active),next=index+delta;
+ if(next<0||next>=chosen.length)return;
+ chosen.splice(index,1);chosen.splice(next,0,active);renderTray();
+}
+function download(filename,content,type){
+ const blob=new Blob([content],{type});
+ const href=URL.createObjectURL(blob);
+ const a=document.createElement("a");
+ a.href=href;a.download=filename;document.body.append(a);a.click();a.remove();
+ setTimeout(()=>URL.revokeObjectURL(href),1500);
+}
+function recipe(){
+ return mixer.recipe(chosen.map(id=>({id,...editById[id]})),document.querySelector("#mix-background").value);
+}
+for(const input of workbench.querySelectorAll("input[data-mix-key]")){
+ input.addEventListener("input",()=>{
+  const e=current();if(!e)return;
+  e[input.dataset.mixKey]=Number(input.value);
+  updateLayerVisuals();updatePanel();
+ });
+}
+document.querySelector("#mix-background").addEventListener("change",updateLayerVisuals);
+document.querySelector("#mix-back").addEventListener("click",()=>move(-1));
+document.querySelector("#mix-forward").addEventListener("click",()=>move(1));
+document.querySelector("#mix-reset").addEventListener("click",()=>{
+ if(!active)return;editById[active]=mixer.edit({});updateLayerVisuals();updatePanel();
+});
+mix.addEventListener("pointerdown",event=>{
+ if(!active)return;
+ const bounds=mix.getBoundingClientRect(),e=current();
+ dragging={id:active,pointer:event.pointerId,x:event.clientX,y:event.clientY,
+   initialX:e.x,initialY:e.y,w:bounds.width,h:bounds.height};
+ mix.setPointerCapture(event.pointerId);
+});
+mix.addEventListener("pointermove",event=>{
+ if(!dragging||dragging.pointer!==event.pointerId||!editById[dragging.id])return;
+ const e=editById[dragging.id];active=dragging.id;
+ e.x=Math.max(-100,Math.min(100,Math.round(dragging.initialX+100*(event.clientX-dragging.x)/dragging.w)));
+ e.y=Math.max(-100,Math.min(100,Math.round(dragging.initialY+100*(event.clientY-dragging.y)/dragging.h)));
+ updateLayerVisuals();updatePanel();
+});
+mix.addEventListener("pointerup",()=>dragging=null);
+mix.addEventListener("pointercancel",()=>dragging=null);
+document.querySelector("#mix-save").addEventListener("click",()=>{
+ if(!chosen.length)return;
+ download("chunks-svg-mix.recipe.json",JSON.stringify(recipe(),null,2)+"\n","application/json");
+ status("Editable mix recipe saved.");
+});
+document.querySelector("#mix-load").addEventListener("click",()=>document.querySelector("#mix-recipe-file").click());
+document.querySelector("#mix-recipe-file").addEventListener("change",async event=>{
+ const f=event.target.files?.[0];if(!f)return;
+ try{
+  if(f.size>32768)throw new Error("Recipe exceeds 32 KiB");
+  const data=mixer.normalizeRecipe(JSON.parse(await f.text()),assets.map(a=>a.id));
+  chosen.splice(0);for(const key of Object.keys(editById))delete editById[key];
+  for(const layer of data.layers){chosen.push(layer.id);editById[layer.id]=mixer.edit(layer);}
+  active=chosen.at(-1);document.querySelector("#mix-background").value=data.background;
+  refresh();renderTray();status("Editable recipe loaded.");
+ }catch(error){status("Recipe rejected: "+error.message,true);}
+ finally{event.target.value="";}
+});
+document.querySelector("#mix-export").addEventListener("click",async event=>{
+ if(!chosen.length)return;
+ event.currentTarget.disabled=true;status("Assembling source-vector layers…");
+ try{
+  const selection=recipe();
+  const contents=await Promise.all(selection.layers.map(async layer=>{
+   const source=sourceById(layer.id);
+   if(!source||source.src.startsWith("/")||source.src.includes("..")||!source.src.endsWith(".svg")){
+    throw new Error("Unrecognized SVG path");
+   }
+   const response=await fetch(source.src,{credentials:"same-origin"});
+   if(!response.ok)throw new Error("Failed to read "+source.src+": HTTP "+response.status);
+   const svg=await response.text();
+   return {...layer,svg};
+  }));
+  const xml=mixer.compose(contents,selection.background);
+  download("chunks-custom-composition.svg",xml,"image/svg+xml");
+  status("Standalone SVG exported. Original variants remain unchanged.");
+ }catch(error){
+  status("Export unavailable: "+error.message+". Serve the gallery through HTTP(S) with its SVG files.",true);
+ }finally{event.currentTarget.disabled=false;}
+});
+renderTray();
+})();
