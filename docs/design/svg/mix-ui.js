@@ -6,6 +6,7 @@ if(!mixer)throw new Error("Chunks mix engine script must load before the workben
 const editById=Object.create(null);
 let active=null;
 let dragging=null;
+let previousSelection=[];
 const workbench=document.createElement("section");
 workbench.className="mix-workbench";
 workbench.setAttribute("aria-label","Editable Chunks vector composition");
@@ -52,9 +53,14 @@ function status(msg,error=false){
  p.textContent=msg;p.style.color=error?"#ffabab":"#bed5e4";
 }
 function sync(){
+ const added=chosen.filter(id=>!previousSelection.includes(id));
  for(const id of Object.keys(editById))if(!chosen.includes(id))delete editById[id];
  for(const id of chosen)if(!editById[id])editById[id]=mixer.edit({});
- if(!chosen.includes(active))active=chosen.at(-1)||null;
+ // Newly selected assets become editable immediately, even if another layer
+ // was previously active. Reordering existing layers preserves active choice.
+ if(added.length)active=added.at(-1);
+ else if(!chosen.includes(active))active=chosen.at(-1)||null;
+ previousSelection=chosen.slice();
 }
 function updateLayerVisuals(){
  mix.replaceChildren();
