@@ -1,0 +1,757 @@
+{
+  "status": "reference-derived proposal; not shipping or approved contours",
+  "canonical_image": "docs/design/reference-images/03-typography-and-wordmark.png",
+  "source_sha256": "c8f1cff6afb51ac4380573d4b140ca5767bd2f981c4fe4b0be6c10e9c923f8b5",
+  "mapped_glyph_count": 62,
+  "threshold": 170,
+  "normalized_image_size": [
+    1536,
+    1152
+  ],
+  "glyphs": {
+    "A": {
+      "row": "uppercase-A-M",
+      "source_bbox": [
+        36,
+        300,
+        72,
+        337
+      ],
+      "height": 37,
+      "width": 36,
+      "contours": 2
+    },
+    "B": {
+      "row": "uppercase-A-M",
+      "source_bbox": [
+        76,
+        300,
+        110,
+        337
+      ],
+      "height": 37,
+      "width": 34,
+      "contours": 3
+    },
+    "C": {
+      "row": "uppercase-A-M",
+      "source_bbox": [
+        114,
+        299,
+        147,
+        336
+      ],
+      "height": 37,
+      "width": 33,
+      "contours": 1
+    },
+    "D": {
+      "row": "uppercase-A-M",
+      "source_bbox": [
+        152,
+        299,
+        187,
+        336
+      ],
+      "height": 37,
+      "width": 35,
+      "contours": 2
+    },
+    "E": {
+      "row": "uppercase-A-M",
+      "source_bbox": [
+        190,
+        299,
+        221,
+        336
+      ],
+      "height": 37,
+      "width": 31,
+      "contours": 1
+    },
+    "F": {
+      "row": "uppercase-A-M",
+      "source_bbox": [
+        225,
+        299,
+        257,
+        335
+      ],
+      "height": 36,
+      "width": 32,
+      "contours": 1
+    },
+    "G": {
+      "row": "uppercase-A-M",
+      "source_bbox": [
+        260,
+        298,
+        297,
+        335
+      ],
+      "height": 37,
+      "width": 37,
+      "contours": 1
+    },
+    "H": {
+      "row": "uppercase-A-M",
+      "source_bbox": [
+        302,
+        298,
+        339,
+        335
+      ],
+      "height": 37,
+      "width": 37,
+      "contours": 1
+    },
+    "I": {
+      "row": "uppercase-A-M",
+      "source_bbox": [
+        343,
+        298,
+        361,
+        334
+      ],
+      "height": 36,
+      "width": 18,
+      "contours": 1
+    },
+    "J": {
+      "row": "uppercase-A-M",
+      "source_bbox": [
+        366,
+        298,
+        395,
+        335
+      ],
+      "height": 37,
+      "width": 29,
+      "contours": 1
+    },
+    "K": {
+      "row": "uppercase-A-M",
+      "source_bbox": [
+        399,
+        298,
+        434,
+        334
+      ],
+      "height": 36,
+      "width": 35,
+      "contours": 1
+    },
+    "L": {
+      "row": "uppercase-A-M",
+      "source_bbox": [
+        438,
+        298,
+        467,
+        334
+      ],
+      "height": 36,
+      "width": 29,
+      "contours": 1
+    },
+    "M": {
+      "row": "uppercase-A-M",
+      "source_bbox": [
+        470,
+        298,
+        512,
+        334
+      ],
+      "height": 36,
+      "width": 42,
+      "contours": 1
+    },
+    "N": {
+      "row": "uppercase-N-Z",
+      "source_bbox": [
+        37,
+        346,
+        72,
+        382
+      ],
+      "height": 36,
+      "width": 35,
+      "contours": 1
+    },
+    "O": {
+      "row": "uppercase-N-Z",
+      "source_bbox": [
+        76,
+        345,
+        114,
+        382
+      ],
+      "height": 37,
+      "width": 38,
+      "contours": 2
+    },
+    "P": {
+      "row": "uppercase-N-Z",
+      "source_bbox": [
+        118,
+        345,
+        151,
+        382
+      ],
+      "height": 37,
+      "width": 33,
+      "contours": 2
+    },
+    "Q": {
+      "row": "uppercase-N-Z",
+      "source_bbox": [
+        155,
+        344,
+        195,
+        382
+      ],
+      "height": 38,
+      "width": 40,
+      "contours": 2
+    },
+    "R": {
+      "row": "uppercase-N-Z",
+      "source_bbox": [
+        200,
+        344,
+        233,
+        381
+      ],
+      "height": 37,
+      "width": 33,
+      "contours": 2
+    },
+    "S": {
+      "row": "uppercase-N-Z",
+      "source_bbox": [
+        237,
+        343,
+        270,
+        381
+      ],
+      "height": 38,
+      "width": 33,
+      "contours": 1
+    },
+    "T": {
+      "row": "uppercase-N-Z",
+      "source_bbox": [
+        273,
+        344,
+        306,
+        381
+      ],
+      "height": 37,
+      "width": 33,
+      "contours": 1
+    },
+    "U": {
+      "row": "uppercase-N-Z",
+      "source_bbox": [
+        309,
+        344,
+        346,
+        380
+      ],
+      "height": 36,
+      "width": 37,
+      "contours": 1
+    },
+    "V": {
+      "row": "uppercase-N-Z",
+      "source_bbox": [
+        349,
+        343,
+        389,
+        380
+      ],
+      "height": 37,
+      "width": 40,
+      "contours": 1
+    },
+    "W": {
+      "row": "uppercase-N-Z",
+      "source_bbox": [
+        393,
+        343,
+        439,
+        380
+      ],
+      "height": 37,
+      "width": 46,
+      "contours": 1
+    },
+    "X": {
+      "row": "uppercase-N-Z",
+      "source_bbox": [
+        443,
+        343,
+        481,
+        379
+      ],
+      "height": 36,
+      "width": 38,
+      "contours": 1
+    },
+    "Y": {
+      "row": "uppercase-N-Z",
+      "source_bbox": [
+        485,
+        343,
+        520,
+        379
+      ],
+      "height": 36,
+      "width": 35,
+      "contours": 1
+    },
+    "Z": {
+      "row": "uppercase-N-Z",
+      "source_bbox": [
+        524,
+        342,
+        555,
+        379
+      ],
+      "height": 37,
+      "width": 31,
+      "contours": 1
+    },
+    "a": {
+      "row": "lowercase-a-m",
+      "source_bbox": [
+        36,
+        400,
+        68,
+        428
+      ],
+      "height": 28,
+      "width": 32,
+      "contours": 2
+    },
+    "b": {
+      "row": "lowercase-a-m",
+      "source_bbox": [
+        72,
+        391,
+        103,
+        428
+      ],
+      "height": 37,
+      "width": 31,
+      "contours": 2
+    },
+    "c": {
+      "row": "lowercase-a-m",
+      "source_bbox": [
+        106,
+        400,
+        131,
+        428
+      ],
+      "height": 28,
+      "width": 25,
+      "contours": 1
+    },
+    "d": {
+      "row": "lowercase-a-m",
+      "source_bbox": [
+        135,
+        390,
+        170,
+        428
+      ],
+      "height": 38,
+      "width": 35,
+      "contours": 2
+    },
+    "e": {
+      "row": "lowercase-a-m",
+      "source_bbox": [
+        174,
+        399,
+        206,
+        428
+      ],
+      "height": 29,
+      "width": 32,
+      "contours": 2
+    },
+    "f": {
+      "row": "lowercase-a-m",
+      "source_bbox": [
+        210,
+        389,
+        240,
+        427
+      ],
+      "height": 38,
+      "width": 30,
+      "contours": 1
+    },
+    "g": {
+      "row": "lowercase-a-m",
+      "source_bbox": [
+        243,
+        400,
+        274,
+        437
+      ],
+      "height": 37,
+      "width": 31,
+      "contours": 3
+    },
+    "h": {
+      "row": "lowercase-a-m",
+      "source_bbox": [
+        279,
+        389,
+        309,
+        427
+      ],
+      "height": 38,
+      "width": 30,
+      "contours": 1
+    },
+    "i": {
+      "row": "lowercase-a-m",
+      "source_bbox": [
+        313,
+        389,
+        330,
+        427
+      ],
+      "height": 38,
+      "width": 17,
+      "contours": 2
+    },
+    "j": {
+      "row": "lowercase-a-m",
+      "source_bbox": [
+        332,
+        389,
+        354,
+        435
+      ],
+      "height": 46,
+      "width": 22,
+      "contours": 2
+    },
+    "k": {
+      "row": "lowercase-a-m",
+      "source_bbox": [
+        359,
+        388,
+        392,
+        426
+      ],
+      "height": 38,
+      "width": 33,
+      "contours": 1
+    },
+    "l": {
+      "row": "lowercase-a-m",
+      "source_bbox": [
+        397,
+        388,
+        413,
+        426
+      ],
+      "height": 38,
+      "width": 16,
+      "contours": 1
+    },
+    "m": {
+      "row": "lowercase-a-m",
+      "source_bbox": [
+        418,
+        398,
+        460,
+        426
+      ],
+      "height": 28,
+      "width": 42,
+      "contours": 1
+    },
+    "n": {
+      "row": "lowercase-n-z",
+      "source_bbox": [
+        37,
+        442,
+        71,
+        470
+      ],
+      "height": 28,
+      "width": 34,
+      "contours": 1
+    },
+    "o": {
+      "row": "lowercase-n-z",
+      "source_bbox": [
+        74,
+        442,
+        107,
+        471
+      ],
+      "height": 29,
+      "width": 33,
+      "contours": 2
+    },
+    "p": {
+      "row": "lowercase-n-z",
+      "source_bbox": [
+        111,
+        442,
+        145,
+        479
+      ],
+      "height": 37,
+      "width": 34,
+      "contours": 2
+    },
+    "q": {
+      "row": "lowercase-n-z",
+      "source_bbox": [
+        149,
+        442,
+        183,
+        479
+      ],
+      "height": 37,
+      "width": 34,
+      "contours": 2
+    },
+    "r": {
+      "row": "lowercase-n-z",
+      "source_bbox": [
+        187,
+        442,
+        211,
+        470
+      ],
+      "height": 28,
+      "width": 24,
+      "contours": 1
+    },
+    "s": {
+      "row": "lowercase-n-z",
+      "source_bbox": [
+        215,
+        441,
+        242,
+        470
+      ],
+      "height": 29,
+      "width": 27,
+      "contours": 1
+    },
+    "t": {
+      "row": "lowercase-n-z",
+      "source_bbox": [
+        245,
+        439,
+        270,
+        470
+      ],
+      "height": 31,
+      "width": 25,
+      "contours": 1
+    },
+    "u": {
+      "row": "lowercase-n-z",
+      "source_bbox": [
+        274,
+        442,
+        305,
+        470
+      ],
+      "height": 28,
+      "width": 31,
+      "contours": 1
+    },
+    "v": {
+      "row": "lowercase-n-z",
+      "source_bbox": [
+        308,
+        441,
+        338,
+        469
+      ],
+      "height": 28,
+      "width": 30,
+      "contours": 1
+    },
+    "w": {
+      "row": "lowercase-n-z",
+      "source_bbox": [
+        342,
+        441,
+        382,
+        469
+      ],
+      "height": 28,
+      "width": 40,
+      "contours": 1
+    },
+    "x": {
+      "row": "lowercase-n-z",
+      "source_bbox": [
+        385,
+        441,
+        417,
+        469
+      ],
+      "height": 28,
+      "width": 32,
+      "contours": 1
+    },
+    "y": {
+      "row": "lowercase-n-z",
+      "source_bbox": [
+        421,
+        441,
+        452,
+        477
+      ],
+      "height": 36,
+      "width": 31,
+      "contours": 1
+    },
+    "z": {
+      "row": "lowercase-n-z",
+      "source_bbox": [
+        456,
+        441,
+        482,
+        468
+      ],
+      "height": 27,
+      "width": 26,
+      "contours": 1
+    },
+    "0": {
+      "row": "digits",
+      "source_bbox": [
+        37,
+        488,
+        72,
+        524
+      ],
+      "height": 36,
+      "width": 35,
+      "contours": 2
+    },
+    "1": {
+      "row": "digits",
+      "source_bbox": [
+        76,
+        488,
+        101,
+        524
+      ],
+      "height": 36,
+      "width": 25,
+      "contours": 1
+    },
+    "2": {
+      "row": "digits",
+      "source_bbox": [
+        106,
+        488,
+        135,
+        524
+      ],
+      "height": 36,
+      "width": 29,
+      "contours": 1
+    },
+    "3": {
+      "row": "digits",
+      "source_bbox": [
+        140,
+        488,
+        170,
+        525
+      ],
+      "height": 37,
+      "width": 30,
+      "contours": 1
+    },
+    "4": {
+      "row": "digits",
+      "source_bbox": [
+        174,
+        489,
+        207,
+        524
+      ],
+      "height": 35,
+      "width": 33,
+      "contours": 2
+    },
+    "5": {
+      "row": "digits",
+      "source_bbox": [
+        211,
+        489,
+        239,
+        525
+      ],
+      "height": 36,
+      "width": 28,
+      "contours": 1
+    },
+    "6": {
+      "row": "digits",
+      "source_bbox": [
+        242,
+        489,
+        273,
+        525
+      ],
+      "height": 36,
+      "width": 31,
+      "contours": 2
+    },
+    "7": {
+      "row": "digits",
+      "source_bbox": [
+        277,
+        489,
+        305,
+        525
+      ],
+      "height": 36,
+      "width": 28,
+      "contours": 1
+    },
+    "8": {
+      "row": "digits",
+      "source_bbox": [
+        309,
+        489,
+        339,
+        525
+      ],
+      "height": 36,
+      "width": 30,
+      "contours": 3
+    },
+    "9": {
+      "row": "digits",
+      "source_bbox": [
+        343,
+        489,
+        372,
+        525
+      ],
+      "height": 36,
+      "width": 29,
+      "contours": 2
+    }
+  }
+}
