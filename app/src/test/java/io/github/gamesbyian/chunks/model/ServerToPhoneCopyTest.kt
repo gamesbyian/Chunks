@@ -13,8 +13,8 @@ class ServerToPhoneCopyTest {
         RemoteTransfer(hash.uppercase(), "Big Buck Bunny", size, done, true, "/srv/downloads")
     private fun source(
         host: String = "seed.example", announced: String? = null, port: Long = 51413,
-        private: Boolean = false, active: Boolean = true
-    ) = RemotePeerSource(host, announced, port, private, active)
+        private: Boolean = false, active: Boolean = true, bound: String? = null
+    ) = RemotePeerSource(host, announced, port, private, active, bound)
     private fun ip(vararg literals: String): (String) -> List<InetAddress> =
         { literals.map(InetAddress::getByName) }
 
@@ -33,6 +33,15 @@ class ServerToPhoneCopyTest {
         }
         assertEquals("peer.example", asked)
         assertEquals("[2001:db8:0:0:0:0:0:7]:51413", (plan as ServerToPhoneCopy.Ready).peer)
+    }
+
+    @Test fun aSpecificBindAddressBeatsTheWebHostButNotTheAnnouncedAddress() {
+        var asked = ""
+        val resolve: (String) -> List<InetAddress> = { asked = it; listOf(InetAddress.getByName(it)) }
+        val bound = ServerToPhoneCopy.plan(transfer(), source(host = "198.51.100.10", bound = "198.51.100.19"), resolve)
+        assertEquals("198.51.100.19:51413", (bound as ServerToPhoneCopy.Ready).peer)
+        ServerToPhoneCopy.plan(transfer(), source(announced = "198.51.100.20", bound = "198.51.100.19"), resolve)
+        assertEquals("198.51.100.20", asked)
     }
 
     @Test fun refusesWhatTheServerCannotSend() {

@@ -57,6 +57,10 @@ class SeedhostServerToPhoneCopyProbeTest {
         val seconds = System.getenv("CHUNKS_COPY_PROBE_SECONDS")?.toLongOrNull() ?: 300L
         require(maxBytes in 1L..(1024L shl 20) && seconds in 30L..1800L)
 
+        // Owner-supplied override, e.g. the rTorrent IP from the Seedhost
+        // Client Area's "Check IP" when rTorrent reports no address itself.
+        val peerIp = System.getenv("CHUNKS_COPY_PROBE_PEER_IP").orEmpty()
+        require(peerIp.isEmpty() || Regex("[0-9]{1,3}(\\.[0-9]{1,3}){3}").matches(peerIp))
         val target = System.getenv("CHUNKS_COPY_PROBE_HASH").orEmpty().lowercase()
         require(target.isEmpty() || Regex("[0-9a-f]{40}").matches(target))
 
@@ -86,11 +90,14 @@ class SeedhostServerToPhoneCopyProbeTest {
         var chosen: ServerToPhoneCopy.Ready? = null
         var chosenName = ""
         var chosenHash = ""
+        var sourceSeen = ""
         var privateCount = 0
         var inactiveCount = 0
         var otherCount = 0
         for (row in candidates) {
-            val source = remote.peerSource(row.hash)
+            val read = remote.peerSource(row.hash)
+            sourceSeen = "announced=${read.announcedAddress} bound=${read.boundAddress} rpcHost=${read.rpcHost}"
+            val source = if (peerIp.isEmpty()) read else read.copy(announcedAddress = peerIp)
             val plan = ServerToPhoneCopy.plan(row, source) { InetAddress.getAllByName(it).toList() }
             if (plan is ServerToPhoneCopy.Ready) { chosen = plan; chosenName = row.name; chosenHash = row.hash; break }
             when {
@@ -139,12 +146,12 @@ class SeedhostServerToPhoneCopyProbeTest {
                     "$peer=${tcpReach(peer)}"
                 }
             println("CHUNKS_SEEDHOST_COPY: INCONCLUSIVE $summary tcp=$tcp serverPeers=$serverPeers " +
-                "listenPortNow=$portNow rpcHostTcp=[$rpcHostTcp]")
+                "listenPortNow=$portNow rpcHostTcp=[$rpcHostTcp] $sourceSeen override=${peerIp.ifEmpty { "none" }}")
             fail("INCONCLUSIVE server peer reachability or copy: $summary")
         }
         assertTrue(phone.flushCompletedForLibraryRead(hash, 30_000))
         assertEquals(plan.bytes, latest.wantedBytes)
-        println("CHUNKS_SEEDHOST_COPY: VERIFIED $summary")
+        println("CHUNKS_SEEDHOST_COPY: VERIFIED $summary $sourceSeen override=${peerIp.ifEmpty { "none" }}")
     }
 
     /** One 10 s TCP connect to "ip:port" or "[ip6]:port"; sends no bytes. */
