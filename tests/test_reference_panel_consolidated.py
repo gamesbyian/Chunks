@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import gzip
 import json
 import sys
 import tempfile
@@ -131,6 +132,39 @@ class ConsolidatedReferenceTests(unittest.TestCase):
             self.assertEqual(sum(1 for command, _ in ellipsis if command == 'moveTo'), 3)
             for ch in "'‘’…":
                 self.assertTrue(recording(face, ch))
+
+    def test_clamped_pair_evidence_is_complete_and_reproducible(self):
+        for weight, style in WEIGHTS.items():
+            with self.subTest(style=style):
+                info = self.report['weights'][style]['kerning']
+                file_info = info['clipped_pair_report']
+                archive = OUT / file_info['file']
+                compressed = archive.read_bytes()
+                self.assertEqual(digest(archive), file_info['sha256'])
+                self.assertEqual(gzip.compress(gzip.decompress(compressed),
+                                               compresslevel=9, mtime=0), compressed)
+                raw = gzip.decompress(compressed)
+                self.assertEqual(len(raw), file_info['uncompressed_bytes'])
+                report = json.loads(raw)
+                self.assertEqual(report['schema'], 1)
+                self.assertEqual(report['weight'], weight)
+                self.assertEqual(report['punctuation_references'], len(ALL_PUNCTUATION))
+                self.assertEqual(report['source_font_sha256'],
+                                 digest(BASE / f'ChunksReferencePanel-{style}-DotlessKerned.otf'))
+                pairs = report['pairs']
+                self.assertEqual(len(pairs), file_info['count'])
+                self.assertEqual(len(pairs), info['clipped_at_72_units'])
+                self.assertGreater(len(pairs), 100)
+                self.assertEqual(pairs[:12], info['worst_clipped_pair_examples'])
+                previous = float('inf')
+                for item in pairs:
+                    self.assertEqual(len(item['pair']), 2)
+                    self.assertTrue(any(ch in ALL_PUNCTUATION for ch in item['pair']))
+                    self.assertLessEqual(abs(item['applied_xadvance_units']), 72)
+                    distance = abs(item['unapplied_units'])
+                    self.assertGreater(distance, 0)
+                    self.assertLessEqual(distance, previous + 0.001)
+                    previous = distance
 
     def test_raw_punctuation_compilation_deterministic(self):
         with tempfile.TemporaryDirectory() as temp:

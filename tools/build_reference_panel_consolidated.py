@@ -9,6 +9,7 @@ punctuation on those *final* CFF curves. Earlier experiments remain byte intact.
 from __future__ import annotations
 
 import argparse
+import gzip
 import hashlib
 import json
 import tempfile
@@ -137,6 +138,7 @@ def punctuation_kern(raw: Path, output: Path, weight: int) -> dict:
     records = []
     sampled = 0
     clipped = 0
+    clipped_pairs = []
     for first in chars:
         if not masks[first]:
             continue
@@ -159,8 +161,22 @@ def punctuation_kern(raw: Path, output: Path, weight: int) -> dict:
             if change < 0:
                 change = max(change, minimum - shaped_gap)
             bounded = max(-126 * 0.072, min(126 * 0.072, change))
-            clipped += abs(change - bounded) > 0.001
+            was_clipped = abs(change - bounded) > 0.001
+            clipped += was_clipped
             units = round(bounded * font['head'].unitsPerEm / 126)
+            if was_clipped:
+                requested = change * font['head'].unitsPerEm / 126
+                clipped_pairs.append({
+                    'pair': first + second,
+                    'left_codepoint': f'U+{ord(first):04X}',
+                    'right_codepoint': f'U+{ord(second):04X}',
+                    'requested_xadvance_units': round(requested, 3),
+                    'applied_xadvance_units': units,
+                    'unapplied_units': round(requested - units, 3),
+                    'before_ink_gap_126px': round(shaped_gap, 4),
+                    'estimated_after_ink_gap_126px': round(shaped_gap + bounded, 4),
+                    'target_ink_gap_126px': round(target, 4),
+                })
             sampled += 1
             if abs(units) >= 13:
                 records.append((cmap[ord(first)], cmap[ord(second)], units))
@@ -196,10 +212,12 @@ def punctuation_kern(raw: Path, output: Path, weight: int) -> dict:
         raise AssertionError('Unicode changed during kerning')
     if final['hmtx'].metrics != font['hmtx'].metrics:
         raise AssertionError('Kerning accidentally changed advance metrics')
-    return {'sampled_punctuation_pairs': sampled,
-            'adjusted_punctuation_pairs': len(records),
-            'clipped_at_72_units': clipped,
-            'bounded_pairpos_subtables': lookup_count}
+    clipped_pairs.sort(key=lambda x: (-abs(x['unapplied_units']), x['pair']))
+    return ({'sampled_punctuation_pairs': sampled,
+             'adjusted_punctuation_pairs': len(records),
+             'clipped_at_72_units': clipped,
+             'worst_clipped_pair_examples': clipped_pairs[:12],
+             'bounded_pairpos_subtables': lookup_count}, clipped_pairs)
 
 
 def run(source_dir: Path, masters: Path, profile_file: Path, out: Path,
@@ -228,7 +246,22 @@ def run(source_dir: Path, masters: Path, profile_file: Path, out: Path,
         with tempfile.TemporaryDirectory() as temp:
             raw = Path(temp) / 'punctuation-raw.otf'
             geometry = apply_punctuation(source, masters, raw, weight, profile)
-            kern = punctuation_kern(raw, output, weight)
+            kern, clipped_pairs = punctuation_kern(raw, output, weight)
+        # Preserve every out-of-bounds desired delta in a deterministic
+        # compressed sidecar, rather than silently dropping raw measurements.
+        audit_path = out / f'reference-punctuation-clipped-{style}.json.gz'
+        audit = {'schema': 1, 'weight': weight, 'style': style,
+                 'source_font_sha256': digest(source),
+                 'punctuation_references': len(ALL_PUNCTUATION),
+                 'unit': 'font units per 1000 em; optical gaps sampled at 126px',
+                 'pairs': clipped_pairs}
+        audit_data = json.dumps(audit, ensure_ascii=False, sort_keys=True,
+                                separators=(',', ':')).encode('utf-8')
+        audit_path.write_bytes(gzip.compress(audit_data, compresslevel=9, mtime=0))
+        kern['clipped_pair_report'] = {'file': audit_path.name,
+                                       'sha256': digest(audit_path),
+                                       'count': len(clipped_pairs),
+                                       'uncompressed_bytes': len(audit_data)}
         final = TTFont(output)
         first = TTFont(source)
         if final.getBestCmap() != first.getBestCmap():
@@ -259,9 +292,12 @@ def run(source_dir: Path, masters: Path, profile_file: Path, out: Path,
                     continue
                 upstream = source_dir / f'ChunksReferencePanel-{style}-DotlessKerned.otf'
                 candidate = out / f'ChunksReferencePanel-{style}-Consolidated.otf'
-                if (upstream.exists() and candidate.exists()
+                artifact = item.get('kerning', {}).get('clipped_pair_report', {})
+                audit_path = out / artifact.get('file', 'missing')
+                if (upstream.exists() and candidate.exists() and audit_path.is_file()
                         and item['input_sha256'] == digest(upstream)
-                        and item['output_sha256'] == digest(candidate)):
+                        and item['output_sha256'] == digest(candidate)
+                        and artifact.get('sha256') == digest(audit_path)):
                     report['weights'][style] = item
     report['weights'] = {style: report['weights'][style]
                          for style in WEIGHTS.values() if style in report['weights']}

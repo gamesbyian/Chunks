@@ -117,3 +117,19 @@ The four newly added supplementary glyphs are explicitly **inferred designs**, n
 ### Verified supplementary-glyph build and optical outliers
 
 [CI run 40642509834](https://github.com/gamesbyian/Chunks/actions/runs/40642509834) passed the four-SVG source generation/check, five native CFF compilations, five-weight derived glyph and inherited-shaping tests, and actual-font specimen publishing. Generated OTFs/masters were checked into the feature branch; later source changes require a fresh exact-head check. After adding four new punctuation characters, the optical pair audit measured **8,368 / 8,474 / 8,790 / 8,863 / 8,925** additional punctuation-containing GPOS corrections for Regular through ExtraBold. Of these, **5,399 / 5,306 / 5,382 / 5,243 / 5,088** reached the configured ±72-unit cap. These counts are diagnostics only, not proof of good optical design. All sampled 14/24/48/82px ink gaps remained positive; the global minimum sampled at 14px was 0.6094px in ExtraBold. A follow-up needs per-pair unclipped deltas, intentional punctuation-role rules, and a genuine editorial review of the worst cases, not blanket relaxation of the cap.
+
+## Full bounded optical correction evidence (follow-up experiment)
+
+Earlier metrics recorded only total clipped pair counts, obscuring which punctuation joins require design attention. The consolidated builder now saves a deterministic, UTF-8 JSON **gzip sidecar per weight** with every requested adjustment exceeding the ±72-font-unit safety cap. Each pair includes the Unicode codepoints, raw requested XAdvance in font units, safe applied XAdvance, unapplied remainder, observed shaped 126px 18th-percentile ink gap, estimated post-adjustment clearance and optical target. Worst residuals are sorted deterministically, and the leading twelve cases are echoed in the compact JSON metrics; full sidecar SHA-256 and compressed/uncompressed sizes are recorded.
+
+`tools/render_reference_punctuation_clamps.py` reads those gzip reports and actual consolidated OTF files, and produces `reference-punctuation-clamp-review.png` with the most severely clipped punctuation pairs across all five weights. The complete reports are retained in `assets/fonts/experimental/consolidated/reference-punctuation-clipped-{Style}.json.gz`; CI artifacts include these files. No codepoint mapping, charstring, font advance or requested design safety bound is changed merely by collecting diagnostics. Future hand-edited mark geometry and kern exceptions must be justified against these concrete cases, then rerun all glyph/shaping and Android tests. Neither a negative desired correction nor a high clip count alone constitutes a detected collision or authorizes bypassing the bounds.
+
+To inspect one report using the standard library:
+
+```sh
+python -c 'import gzip,json; p="assets/fonts/experimental/consolidated/reference-punctuation-clipped-Regular.json.gz"; r=json.loads(gzip.decompress(open(p,"rb").read())); print(*r["pairs"][:20],sep="\\n")'
+```
+
+### First exact compiled measurement receipt
+
+[CI run 40643072801](https://github.com/gamesbyian/Chunks/actions/runs/40643072801) passed: native five-weight CFF build, complete compressed clipped-pair receipts, deterministic full-count tests, actual-font stress/specimen atlases, and source/OTF artifact publication. The recorded outlier counts are **5,399 Regular; 5,306 Medium; 5,382 Semibold; 5,243 Bold; 5,088 ExtraBold**. Illustrative highest unresolved requests include `Ç*` and `p…` in Regular, with desired corrections around −435/−426 font units, respectively; only −72 units are applied. These are often punctuation optical/semantic exceptions, not permissions to expand kerning bounds. Revalidate against the final source-head CI after generated receipts are committed, and use the atlas to rank manual design changes.

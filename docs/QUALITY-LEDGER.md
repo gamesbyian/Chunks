@@ -1,5 +1,7 @@
 # Chunks evidence and release gate ledger
 
+**Font #429, 2026-10-28, nonshipping source audit:** [CI run 40643072801](https://github.com/gamesbyian/Chunks/actions/runs/40643072801) passed five native CFF compilations, all compressed outlier data checks, glyph/shaping tests, real OTF specimen and worst-pair review atlas. Per-weight clipped corrections 5,399/5,306/5,382/5,243/5,088 (Regular to ExtraBold); corresponding deterministic gzip SHA-256 is recorded in five JSON metrics rows. Bounds stay ±72 units; extreme wishes including `Ç*` and `p…` exceed 300 units and require semantics-aware optical review, not cap removal. **PR remains open until final exact-head CI/merge.** These are compiled font and source tests, *not* real Android 200% scale, TalkBack, visual type-design or release acceptance; follow #347.
+
 ## 2026-10-28 latest verified results and unresolved gates
 
 - #420 MERGED at 7c1e378010fcb025622c6678e8f09dd02dd60b12. Exact head 18d2c18fc241dafe9ad280baf78351ec6066ef98, Android/JVM run 40639911487 and API35 run 40639911464 both success. Two Android libtorrent JNI sessions exchanged 900,000 genuine BitTorrent TCP peer bytes over emulator localhost; finished pieces, exact native CACHE_FLUSHED and independent filesystem SHA-256 verified. Physical handset and external swarm NOT proven.
