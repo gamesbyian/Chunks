@@ -35,7 +35,13 @@ internal object SnapshotVerifiedTorrentDocumentV1 {
             "Torrent definition is empty or too large"
         }
         val frozen = original.copyOf()
-        val parsed = TorrentMetainfoReader.preview(frozen)
+        val parsed = try {
+            TorrentMetainfoReader.preview(frozen)
+        } catch (invalid: Exception) {
+            throw IllegalArgumentException(
+                "Snapshot torrent definition failed independent verification", invalid
+            )
+        }
         require(parsed.infoHashV1 == infoHashV1 && parsed.name == item.originalName) {
             "Torrent name or infohash differs from the verified snapshot"
         }
