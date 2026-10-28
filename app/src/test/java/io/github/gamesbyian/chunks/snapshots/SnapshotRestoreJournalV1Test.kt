@@ -132,6 +132,16 @@ class SnapshotRestoreJournalV1Test {
         reject { open(store) }
     }
 
+    @Test fun all512ReviewedEntriesFitDurableJournalAfterTargetPlaceReview() {
+        val store = MemoryStore()
+        val names = (0 until 512).map { it.toString(16).padStart(40, '0') }
+        val journal = open(store, names)
+        for (name in names) journal.prepare(name, place)
+        assertEquals(512, open(store, names).entries().count {
+            it.phase == SnapshotRestoreJournalV1.Phase.READY
+        })
+    }
+
     @Test fun anExplicitRefusalCannotBeResumedAsAnAdd() {
         val store = MemoryStore()
         val journal = open(store)
