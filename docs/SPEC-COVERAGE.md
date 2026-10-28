@@ -5,12 +5,12 @@
 
 | Acceptance slice | Required behavior | Evidence status, 2026-10-28 |
 |---|---|---|
-| Plain hostname | Add HTTPS, plan bounded same-origin provider/generic endpoints, verify version plus complete main view | In open PR #463; earlier Android/JVM and visual CI passed, current merged-base head needs re-test |
-| Explicit ruTorrent instance URL | Respect account prefix and numbered /rutorrent2/ /rutorrent3/ tenant; map only that root's HTTP-RPC plugin | In PR #463; fixture-tested; secondary Seedhost instances have earlier independent read-only evidence |
-| Exact RPC URL | Preserve /RPC1, /RPC2, /xmlrpc, custom prefix/port without searching a different tenant | In PR #463; unverified direct HTTPS Transdrone-derived /ianseeds/RPC1 candidate |
-| Providers/custom setups | Major providers plus self-hosted, arbitrary TLS reverse proxy and advanced manual path | Limited SeedHost/Ultra/Whatbox/Appbox/Feral/RapidSeedbox patterns in PR #463; broader catalog #464 |
-| Credentials and HTTPS | Challenge-based Basic/Digest, scoped password, strict TLS, no redirect, no downgrade, auth-failure stop | Existing transport and Keystore foundation, initial discovery in PR #463; CA/SSO/VPN and granular diagnostics planned |
-| Capability selection | Successful version + valid main view, then safe method-level comparison; distinguish read-only/partial functionality | First version+main tier in PR #463; read-only method grading and endpoint choice pending #464 |
+| Plain hostname | Add HTTPS, plan bounded same-origin provider/generic endpoints, verify version plus complete main view | Merged #463; exact-head Android/JVM 40766948769 and native atlas 40766948771 passed (fixture/JVM tier, no live provider proof) |
+| Explicit ruTorrent instance URL | Respect account prefix and numbered /rutorrent2/ /rutorrent3/ tenant; map only that root's HTTP-RPC plugin | Merged #463; fixture-tested; secondary Seedhost instances have earlier independent read-only evidence |
+| Exact RPC URL | Preserve /RPC1, /RPC2, /xmlrpc, custom prefix/port without searching a different tenant | Merged #463; unverified direct HTTPS Transdrone-derived /ianseeds/RPC1 candidate |
+| Providers/custom setups | Major providers plus self-hosted, arbitrary TLS reverse proxy and advanced manual path | Limited SeedHost/Ultra/Whatbox/Appbox/Feral/RapidSeedbox patterns in merged #463; broader catalog #464 |
+| Credentials and HTTPS | Challenge-based Basic/Digest, scoped password, strict TLS, no redirect, no downgrade, auth-failure stop | Existing transport and Keystore foundation, initial discovery in merged #463; CA/SSO/VPN and granular diagnostics planned |
+| Capability selection | Successful version + valid main view, then safe method-level comparison; distinguish read-only/partial functionality | First version+main tier in merged #463; read-only method grading and endpoint choice pending #464 |
 | Onboarding and repair | Minimal form, saved independently verified profiles, cancel/progress, actionable errors, advanced repair, 48dp/200%/TalkBack | Minimal form + verified save in merged #463. **Progress ("Checking n of N: … (/path)", polite live region), safe Cancel, per-attempt path-only outcomes and category-specific next steps implemented in the Smart Connect progress/repair PR** (JVM + API35 Compose tests). Advanced manual endpoint form, 200%/TalkBack device checks and live provider evidence still open. |
 | Live acceptance | Credential-protected, manual, instance-scoped tests and Android handset validation | Existing Seedhost HTTP-RPC evidence; Smart Connect end-to-end and other providers not yet proven |
 

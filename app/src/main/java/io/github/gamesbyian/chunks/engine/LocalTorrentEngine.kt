@@ -620,6 +620,74 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     }
 
     /**
+     * Apply a single explicitly confirmed episode-first rolling-window plan.
+     * Validate ALL original file identities and priorities before the first
+     * JNI write, then confirm complete readback. A partially applied batch is
+     * UNCERTAIN, never automatically rerun, since a prefix may have landed.
+     * Existing skipped files and downloaded payload are never touched.
+     */
+    internal fun focusEpisodesOnce(
+        infoHash: String,
+        reviewedPlan: LocalEpisodeFocusPlanner.Plan,
+        readbackTimeoutMs: Long = 5_000L
+    ): LocalFileBatchOutcome {
+        require(readbackTimeoutMs in 0L..60_000L)
+        val key = normal(infoHash)
+        val changes = reviewedPlan.changes
+        if (changes.isEmpty()) return LocalFileBatchOutcome.UNCHANGED
+        val handle: TorrentHandle
+        synchronized(this) {
+            handle = handles[key]?.takeIf { it.isValid }
+                ?: return LocalFileBatchOutcome.NOT_FOUND
+            val current = files(key) ?: return LocalFileBatchOutcome.STALE_REVIEW
+            val planned = LocalEpisodeFocusPlanner.plan(current)
+                ?: return LocalFileBatchOutcome.STALE_REVIEW
+            if (planned.firstEpisode.index != reviewedPlan.firstEpisode.index ||
+                planned.orderedEpisodes.map { it.index } !=
+                    reviewedPlan.orderedEpisodes.map { it.index } ||
+                planned.changes.map { it.reviewed.index to it.requestedPriority } !=
+                    changes.map { it.reviewed.index to it.requestedPriority })
+                return LocalFileBatchOutcome.STALE_REVIEW
+            // One full immutable snapshot of every proposed native mutation
+            // closes the stale-review boundary before any single change.
+            val byIndex = current.associateBy { it.index }
+            if (changes.size > 256 || changes.map { it.reviewed.index }.toSet().size != changes.size ||
+                changes.any { change ->
+                    val fresh = byIndex[change.reviewed.index]
+                    fresh == null || !fresh.wanted ||
+                        fresh.path != change.reviewed.path ||
+                        fresh.sizeBytes != change.reviewed.sizeBytes ||
+                        fresh.priority != change.reviewed.priority
+                }) return LocalFileBatchOutcome.STALE_REVIEW
+            try {
+                changes.forEach { change ->
+                    val priority = when (change.requestedPriority) {
+                        1 -> org.libtorrent4j.Priority.LOW
+                        4 -> org.libtorrent4j.Priority.DEFAULT
+                        7 -> org.libtorrent4j.Priority.TOP_PRIORITY
+                        else -> return LocalFileBatchOutcome.STALE_REVIEW
+                    }
+                    handle.filePriority(change.reviewed.index, priority)
+                }
+            } catch (_: Exception) { return LocalFileBatchOutcome.UNCERTAIN }
+        }
+        val deadline = System.nanoTime() + readbackTimeoutMs * 1_000_000L
+        while (true) {
+            val actual = try {
+                synchronized(this) {
+                    handles[key]?.takeIf { it.isValid }?.filePriorities()
+                }
+            } catch (_: Exception) { null }
+            if (actual != null && changes.all { change ->
+                    actual.getOrNull(change.reviewed.index)?.swig()?.toInt() ==
+                        change.requestedPriority
+                }) return LocalFileBatchOutcome.VERIFIED
+            if (System.nanoTime() >= deadline) return LocalFileBatchOutcome.UNCERTAIN
+            Thread.sleep(25)
+        }
+    }
+
+    /**
      * Apply a reviewed page-level file selection without deleting any bytes.
      * The entire preflight is validated against a fresh JNI file observation
      * before the first priority change. If any command/readback later fails,
