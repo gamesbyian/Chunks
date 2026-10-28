@@ -1302,6 +1302,7 @@ private fun TransfersScreen(
             )
             }
         }
+        item { RemoteCapabilityPanel(remote) }
         item {
             Text("Server snapshot. Start/stop and main-view session removal each require exact-target confirmation and readback. Session removal does not request payload deletion.",
                 style = MaterialTheme.typography.bodySmall)
