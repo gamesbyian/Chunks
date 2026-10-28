@@ -1,5 +1,14 @@
 # Chunks interaction and accessibility contract
 
+## Finish in Order: multi-file completion UX (planned, #415)
+
+In multi-file Add review once metadata is present, show optional **Finish in Order** with editable detected order (episode numbers, movie sequel order if reliably established, numbered chapters). Distinguish original file order from inferred semantic order; ambiguous titles must not be fabricated. Preview includes selected files, extras/subtitles grouped alongside their primary media when applicable, skipped files, and a clear Normal/Balanced/Finish First/Sequential Playback mode explanation. Preserve manual choices and make automatic mode an explicit opt-in or clearly disclosed saved preference.
+
+In torrent Files details show the active completion target, next files, completion state based on hash verification, file-level availability/blocked explanation when known, progress without speculative completion claims, and a one-tap **Finish this next** control. Reordering requires accessible Move up/down actions in addition to drag handles; allow pause automation, restore original normal scheduling, and review/edit conflicting individual priority overrides. On the phone's narrowest supported screen and at 200% text, controls must remain reachable with TalkBack, reduced motion and 48dp-class targets. Avoid continuous refresh animations.
+
+For remote rTorrent show exact capability-verified modes, including **ordering preference only / best effort** when strict piece-level control is unavailable. On RPC uncertainty display last confirmed state and require reconciliation, not automatic retry. For magnets, wait for verified metadata before claiming episode ordering. Warn that sequential modes can reduce total throughput/swarm health, and first-file completion cannot be promised where missing pieces are unavailable. Show no invented availability or ETA. Source/test implementation remains pending #415.
+
+
 ## Android Open with .torrent and magnet: implemented subset (2026-10-27)
 
 - Chunks accepts Android `magnet:` links and recognized `.torrent` content documents opened via `ACTION_VIEW` or sent via `ACTION_SEND` with `application/x-bittorrent`, `application/x-torrent` or `application/vnd.bittorrent`. Read a granted single `content://` URI only, validate v1 torrent metadata (2 MiB maximum), and show the same explicit local Add review as the internal picker. Opening alone must never submit or start a download. #353 accepted at Android/JVM/API35/visual tiers, not physical resolver/Files provider QA.
