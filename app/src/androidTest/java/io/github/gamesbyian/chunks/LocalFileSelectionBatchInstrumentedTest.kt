@@ -1,10 +1,15 @@
 package io.github.gamesbyian.chunks
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.gamesbyian.chunks.engine.LocalTransferFile
 import org.junit.Assert.*
@@ -24,11 +29,13 @@ class LocalFileSelectionBatchInstrumentedTest {
         var applied: Pair<List<LocalTransferFile>, Boolean>? = null
         rule.setContent {
             MaterialTheme {
-                LocalFileSelection(files, busy = false, transferKey = "abc",
-                    onFileWanted = { _, _ -> },
-                    onBatchFileWanted = { chosen, wanted ->
-                        applied = chosen to wanted
-                    })
+                // A real parent layout is essential: unpositioned root siblings
+                // overlap, and taps can hit the file rows instead of the buttons.
+                Column(Modifier.fillMaxSize().padding(16.dp)) {
+                    LocalFileSelection(files, busy = false, transferKey = "abc",
+                        onFileWanted = { _, _ -> },
+                        onBatchFileWanted = { chosen, wanted -> applied = chosen to wanted })
+                }
             }
         }
         rule.onNodeWithText("Skip page").performClick()
@@ -43,9 +50,11 @@ class LocalFileSelectionBatchInstrumentedTest {
         var calls = 0
         rule.setContent {
             MaterialTheme {
-                LocalFileSelection(files, busy = false, transferKey = "abc",
-                    onFileWanted = { _, _ -> },
-                    onBatchFileWanted = { _, _ -> calls++ })
+                Column(Modifier.fillMaxSize().padding(16.dp)) {
+                    LocalFileSelection(files, busy = false, transferKey = "abc",
+                        onFileWanted = { _, _ -> },
+                        onBatchFileWanted = { _, _ -> calls++ })
+                }
             }
         }
         rule.onNodeWithText("Select page").performClick()
@@ -57,9 +66,11 @@ class LocalFileSelectionBatchInstrumentedTest {
     @Test fun nativeBusyStateDisablesBatchSelection() {
         rule.setContent {
             MaterialTheme {
-                LocalFileSelection(files, busy = true, transferKey = "abc",
-                    onFileWanted = { _, _ -> },
-                    onBatchFileWanted = { _, _ -> })
+                Column(Modifier.fillMaxSize().padding(16.dp)) {
+                    LocalFileSelection(files, busy = true, transferKey = "abc",
+                        onFileWanted = { _, _ -> },
+                        onBatchFileWanted = { _, _ -> })
+                }
             }
         }
         rule.onNodeWithText("Skip page").assertIsNotEnabled()
