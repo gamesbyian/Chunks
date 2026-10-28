@@ -120,6 +120,8 @@ Refine the already planned direct-device Place work: discover Android's **standa
 
 ### Transfer-details source/destination copy and archive removal (owner, 2026-10-27)
 
+**Status 2026-10-28:** single-transfer Move Transfer (both directions) implemented at source/API35-test tier; Copy Transfer labels applied to the existing handoffs. Remaining: tracker-preserving passkey-safe server→phone copy, batch Copy/Move, real-server/handset Move acceptance. See [CROSS-ENGINE-TRANSFER-JOBS](CROSS-ENGINE-TRANSFER-JOBS.md).
+
 Build **Copy Transfer / Move Transfer** as metadata-driven torrent-job handoff, not payload movement. Provide destination profile/Place, verified job Add, separate approval and session-only source-job deletion for Move, batch consistency, crash reconciliation, and tests ensuring downloaded files are untouched. See CROSS-ENGINE-TRANSFER-JOBS.md. Independent storage relocation/library copy is a different feature.
 
 Also include **Delete archive after extraction** alongside per-transfer Remove/Remove & data actions, *and* in cleanup screens. First build complete source-to-output extraction manifest/independent readback, current torrent-file reference verification and scoped remote deletion capabilities; then dry-run exact targets, warnings that seeding may break, separate opt-in/confirmation, journalled deletion and postcondition tests. Name-only matches are ineligible. Acceptance covers remote unsupported, altered/missing outputs, hardlinks, incomplete extracts, interrupted delete, duplicate source references, and a seeding torrent explicitly warned of impending corruption. **Both features planned; no accepted implementation.**

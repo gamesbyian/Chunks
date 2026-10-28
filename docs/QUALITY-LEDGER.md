@@ -1,5 +1,10 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-28 Move Transfer (job-only) single-transfer slice (source evidence only)
+
+- Local agent-container run: `gradle :app:testDebugUnitTest --tests '*TransferMoveTest*'` 6/6 passed (stage machine: target before removal, fresh pre-removal target check, crash → UNCERTAIN, observation-only resolution, messages never claim files moved, codec). `:app:compileDebugAndroidTestKotlin` OK for `TransferMoveControlInstrumentedTest` (2 API35 Compose flows, fake ports); exact-head CI is the gate and is recorded on the PR.
+- **Not established:** real rTorrent `d.erase` via this UI, real phone engine removal via this UI, Seedhost, physical handset, batch.
+
 ## 2026-10-28 Smart Connect specification/implementation and connection evidence
 
 - **Owner direction:** a user should be able to connect rTorrent with a seedbox
