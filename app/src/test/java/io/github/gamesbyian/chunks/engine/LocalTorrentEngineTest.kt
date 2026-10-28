@@ -299,6 +299,75 @@ class LocalTorrentEngineTest {
             File(destination, "Chunks public fixture/episode.bin").readBytes())
     }
 
+    @Test fun legacyTrackerRepairVerifiesExactOriginalAndSurvivesRestartWithoutStarting() {
+        val fixture = fixture()
+        // libtorrent 2.1's TorrentBuilder defaults to hybrid v1/v2,
+        // intentionally refused by the app's strict v1 review importer.
+        // Generate a real v1-only definition for the exact user-source path.
+        val originalV1 = TorrentBuilder().path(fixture.root).pieceSize(64 * 1024)
+            .flags(TorrentBuilder.V1_ONLY).generate().entry().bencode()
+        val savedState = temp.newFolder("legacy-tracker-state")
+        val downloadPlace = temp.newFolder("legacy-tracker-place")
+        val engine = persistentEngine(savedState)
+        val existing = added(engine.addStopped(originalV1, downloadPlace))
+        val key = existing.infoHash
+        assertTrue(requireNotNull(engine.status(key)).stopped)
+        assertEquals(0, requireNotNull(engine.status(key)).trackers?.total)
+
+        val announce = "http://127.0.0.1:1/announce"
+        // Add announce at the root of the exact v1 torrent; keep the info
+        // dictionary identical so its infohash (and downloaded data) match.
+        val restoredSource = org.libtorrent4j.Entry.bdecode(originalV1)
+        restoredSource.dictionary()["announce"] = org.libtorrent4j.Entry(announce)
+        val repairedMetainfo = restoredSource.bencode()
+        val fromSource = io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader.preview(repairedMetainfo)
+        assertEquals(key, fromSource.infoHashV1)
+        assertEquals(1, fromSource.trackerCount)
+
+        assertEquals(LocalTrackerRepairOutcome.NOT_FOUND,
+            engine.repairMissingTrackers("f".repeat(40), repairedMetainfo))
+        val otherHash = originalV1.copyOf().apply { this[lastIndex - 8] = 'X'.code.toByte() }
+        assertEquals(LocalTrackerRepairOutcome.REFUSED,
+            engine.repairMissingTrackers(key, otherHash))
+        assertEquals(LocalTrackerRepairOutcome.REFUSED,
+            engine.repairMissingTrackers(key, originalV1))
+        assertEquals(LocalTrackerRepairOutcome.VERIFIED,
+            engine.repairMissingTrackers(key, repairedMetainfo))
+        val after = requireNotNull(engine.status(key))
+        assertTrue("Repair must not implicitly Start a legacy transfer", after.stopped)
+        assertEquals(1, after.trackers?.total)
+        assertEquals(downloadPlace.absolutePath, after.savePath)
+        assertEquals(0L, after.payloadDownloadedBytes)
+        assertEquals(LocalTrackerRepairOutcome.REFUSED,
+            engine.repairMissingTrackers(key, repairedMetainfo))
+        engine.close()
+
+        val restored = persistentEngine(savedState)
+        val reopened = requireNotNull(restored.status(key))
+        assertTrue("Restored legacy transfer still requires manual Start", reopened.stopped)
+        assertEquals(1, reopened.trackers?.total)
+        assertEquals(downloadPlace.absolutePath, reopened.savePath)
+        assertEquals(0L, reopened.payloadDownloadedBytes)
+        assertFalse("Repair never creates payload bytes",
+            File(downloadPlace, "Chunks public fixture/episode.bin").exists())
+    }
+
+    @Test fun legacyTrackerRepairRejectsRunningTorrentWithoutChangingItsTrackers() {
+        val fixture = fixture()
+        val originalV1 = TorrentBuilder().path(fixture.root).pieceSize(64 * 1024)
+            .flags(TorrentBuilder.V1_ONLY).generate().entry().bencode()
+        val engine = persistentEngine(temp.newFolder("running-repair-state"))
+        val original = added(engine.addStopped(originalV1, temp.newFolder("running-repair-place")))
+        val announce = "https://tracker.example.invalid/announce"
+        val withTracker = org.libtorrent4j.Entry.bdecode(originalV1)
+        withTracker.dictionary()["announce"] = org.libtorrent4j.Entry(announce)
+        val replacement = withTracker.bencode()
+        assertEquals(LocalCommandOutcome.VERIFIED, engine.resume(original.infoHash).outcome)
+        assertEquals(LocalTrackerRepairOutcome.REFUSED,
+            engine.repairMissingTrackers(original.infoHash, replacement))
+        assertEquals(0, engine.status(original.infoHash)?.trackers?.total)
+    }
+
     @Test fun refusesMagnetsWithoutExactlyOneV1Identity() {
         val engine = engine()
         val destination = temp.newFolder("d")
