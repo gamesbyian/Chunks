@@ -82,10 +82,10 @@ def create_svg(commands, width, height, codepoint):
         raise AssertionError(f'U+{codepoint:04X}: empty SVG path')
     return (
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" '
-        f'role="img" aria-label="Chunks derived punctuation U+{codepoint:04X}">\\n'
-        f'<title>Source-derived experimental U+{codepoint:04X} glyph</title>\\n'
-        f'<g fill="#0B0F17" fill-rule="evenodd"><path d="{path_data}"/></g>\\n'
-        f'</svg>\\n'
+        f'role="img" aria-label="Chunks derived punctuation U+{codepoint:04X}">\n'
+        f'<title>Source-derived experimental U+{codepoint:04X} glyph</title>\n'
+        f'<g fill="#0B0F17" fill-rule="evenodd"><path d="{path_data}"/></g>\n'
+        f'</svg>\n'
     )
 
 
@@ -136,7 +136,7 @@ def generate(source: Path, out: Path, check=False):
         'period_step_reference_px': PERIOD_STEP,
         'glyphs': built,
     }
-    svg_files['manifest.json'] = json.dumps(manifest, ensure_ascii=False, indent=2) + '\\n'
+    svg_files['manifest.json'] = json.dumps(manifest, ensure_ascii=False, indent=2) + '\n'
     if check:
         for filename, expected in svg_files.items():
             target = out / filename
