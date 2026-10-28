@@ -12,6 +12,9 @@
 
 Owner request #415 is fully specified in PRODUCT, UX, ARCHITECTURE, WORK-QUEUE and DECISIONS. Static per-file priorities (including open #412) do **not** satisfy this acceptance map.
 
+## Owner visual requirement: square artwork on local and remote transfers (#403)
+
+**Status: specified, not implemented or accepted.** Both transfer lists/details need recognizable square movie/TV art, generic icons for unidentified files, provider-independent native-square lookup priority, opt-in external requests, offline parser and confidence rejection, manual override, cache, privacy safeguards, accessible resilient cards and physical-device review. Detailed requirements/acceptance matrix: [TRANSFER-ARTWORK.md](TRANSFER-ARTWORK.md). Evidence gates: provider terms/auth verified; parser/mock-provider/consent/privacy tests; local+remote Compose visual 320px/200% and TalkBack; large-list performance; physically observed device behavior. Do not treat issue creation or screenshots as functional implementation.
 
 **2026-10-27 additional verified source/emulator coverage:** #356 **MERGED** crash-safe snapshot mutation-journal library (exact head `90e6c57b20058cf464f7847e63b248659f21a463`, JVM 40621529085, API35 40621528947), preserving uncertainty and requiring independent complete-inventory/exact-hash reconciliation before any future restored Add. It is not wired to either engine, so no automatic restore is claimed. #361 **MERGED** reviewed 40-file local Select/Skip with stale-priority preflight, verified native readback and partial-write uncertainty (JVM 40621178965, API35 40621179034). #375 **MERGED** read-only full local restore comparison search, filter and pagination up to 512 entries (JVM 40621808509). Current-main local biometric integration #378 and stacked remote per-account gate #369 remain unaccepted pending exact-head CI and physical Android auth evidence. Human handset/real BitTorrent peer-byte gates still open.
 
