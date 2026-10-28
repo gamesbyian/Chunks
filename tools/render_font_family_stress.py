@@ -63,12 +63,15 @@ def create(root:Path, out:Path):
                 bounds=draw.textbbox((0,0),text,font=font,anchor='lt')
                 text_width=bounds[2]-bounds[0]
                 text_height=bounds[3]-bounds[1]
+                advance_width=font.getlength(text)
                 # This is an actual fit finding, not a shrink-to-fit operation.
                 overflow=text_width>width-24 or text_height>row_h-18
                 if overflow:draw.rectangle((left+4,y+6,left+width-8,y+row_h-6),outline=(198,66,77),width=2)
                 draw.text((left+8,y+max(5,(row_h-text_height)//2)),text,font=font,anchor='lt',fill=INK)
                 info['samples'][sample_name]={'text':text,'ink_width_px':text_width,'ink_height_px':text_height,
-                    'available_width_px':width-24,'overflows_review_cell':overflow}
+                    'advance_width_px':round(advance_width,3),
+                    'available_width_px':width-24,'overflows_review_cell':overflow,
+                    'advance_overflows_review_cell':advance_width>width-24}
             report['samples'][key+f'/{size}']=info
         png=out/f'chunks-font-variants-{size}px.png'
         canvas.save(png,optimize=True)
@@ -85,13 +88,34 @@ def create(root:Path, out:Path):
                     source=baseline[sample_name]['ink_width_px']
                     target=candidate[sample_name]['ink_width_px']
                     ratio=round(target/max(1,source),4)
+                    base_advance=baseline[sample_name]['advance_width_px']
+                    candidate_advance=candidate[sample_name]['advance_width_px']
+                    advance_ratio=round(candidate_advance/max(1,base_advance),4)
+                    candidate[sample_name]['advance_vs_base_ratio']=advance_ratio
+                    candidate[sample_name]['ink_width_minus_advance_px']=round(target-candidate_advance,3)
                     candidate[sample_name]['width_vs_base_ratio']=ratio
                     if ratio>=1.15:
                         report['relative_width_review'].append({
                             'weight':style,'family':family,'size_px':size,
                             'sample':sample_name,'width_vs_base_ratio':ratio,
-                            'base_width_px':source,'candidate_width_px':target})
+                            'advance_vs_base_ratio':advance_ratio,
+                            'base_width_px':source,'candidate_width_px':target,
+                            'base_advance_px':base_advance,'candidate_advance_px':candidate_advance})
     report['relative_width_review_count']=len(report['relative_width_review'])
+    report['advance_width_review']=[]
+    for size in SIZES:
+        for style in WEIGHTS:
+            for family in ('panel','accent'):
+                samples=report['samples'][f'{style}/{family}/{size}']['samples']
+                for sample_name,_ in EXAMPLES:
+                    sample=samples[sample_name]
+                    if sample['advance_vs_base_ratio']>=1.15:
+                        report['advance_width_review'].append({
+                            'weight':style,'family':family,'size_px':size,
+                            'sample':sample_name,
+                            'advance_vs_base_ratio':sample['advance_vs_base_ratio'],
+                            'ink_width_vs_base_ratio':sample['width_vs_base_ratio']})
+    report['advance_width_review_count']=len(report['advance_width_review'])
     # Overflow is intentionally surfaced rather than hidden by reducing font size.
     report['overflow_count']=sum(int(s['overflows_review_cell']) for info in report['samples'].values() for s in info['samples'].values())
     dst=out/'chunks-font-visual-stress.json'
