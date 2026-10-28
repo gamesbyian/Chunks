@@ -1,6 +1,8 @@
 name: Build experimental Chunks Reference Panel weight studies
 on:
   push:
+    # Feature branches are validated by pull_request; only merged changes trigger push builds.
+    branches: [main]
     paths:
       - 'tools/build_reference_panel_weight_studies.py'
       - 'tools/reference_weight_profiles.json'

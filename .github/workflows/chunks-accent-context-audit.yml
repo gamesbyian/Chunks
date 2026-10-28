@@ -1,6 +1,8 @@
 name: Audit accent contextual spacing in Chunks reference fonts
 on:
   push:
+    # Validate changes to feature branches via pull_request; build merged changes on main only.
+    branches: [main]
     paths:
       - 'tools/audit_accent_context.py'
       - 'tests/test_accent_context_audit.py'

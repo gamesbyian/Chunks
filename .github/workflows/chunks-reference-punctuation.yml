@@ -1,6 +1,8 @@
 name: Trace and verify Chunks reference punctuation glyph variants
 on:
   push:
+    # Validate changes to feature branches via pull_request; build merged changes on main only.
+    branches: [main]
     paths:
       - 'docs/design/reference-images/03-typography-and-wordmark.png'
       - 'tools/trace_reference_punctuation.py'
