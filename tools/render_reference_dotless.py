@@ -5,7 +5,7 @@ from pathlib import Path
 from PIL import Image,ImageDraw,ImageFont
 
 ROOT=Path('.')
-SAMPLES=('ìíîïĩīĭǐȉȋỉĵ','Tìme to Ĵump!','Torrents, your way.','68% · Résumé 2024.mkv')
+SAMPLES=('įịìíîïĩīĭǐȉȋỉĵ','Tìme to Ĵump!','Torrents, your way.','68% · Résumé 2024.mkv')
 FAMILIES=(('AccentStudy','accent-studies','AccentStudy'),
           ('AccentKerned','accent-kerned','AccentKerned'),
           ('DotlessKerned','dotless-kerned','DotlessKerned'))

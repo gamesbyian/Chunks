@@ -2,12 +2,12 @@
   "status": "NONSHIPPING dotless-i-j reference glyph and contextual kerning prototype",
   "weights": {
     "Regular": {
-      "input_sha256": "8eeec47354e8e6fe13f7a190f67d91663c195c868a7a35f072c631476c1afc4c",
-      "output_sha256": "06fd2b142d7ddc9f0cf7d78091dbd438b2e894780395aa1e393d2f1989d3f5f3",
+      "input_sha256": "c8ca4061294b754f7622ae86e0036e2df44085150fdad9a59dc629081ccfb516",
+      "output_sha256": "da35bb88d9d8f9e1801e0b61f2ad2b71632f0b4e30a75bb27081e2c10ba5100d",
       "file": "ChunksReferencePanel-Regular-DotlessKerned.otf",
-      "reference_accent_glyphs": 256,
-      "candidate_pairs": 97280,
-      "adjusted_pairs": 95994,
+      "reference_accent_glyphs": 258,
+      "candidate_pairs": 98556,
+      "adjusted_pairs": 97270,
       "bounded_subtables": 27,
       "max_correction_units": 180,
       "clipped_pair_count": 1,
@@ -19,10 +19,10 @@
           "applied_units": 180
         }
       ],
-      "mean_abs_correction_units": 83.96,
+      "mean_abs_correction_units": 83.95,
       "source_scripts_unchanged": true,
       "base_font_sha256": "b1be17eb7f07a43db06e437e1d6cd891edc152a6b18aa76fac676921e8df0cbd",
-      "dotless_added": 12,
+      "dotless_added": 14,
       "dotless_glyphs": [
         {
           "glyph": "ì",
@@ -30,6 +30,7 @@
           "cp": "U+00EC",
           "x_shift": 93,
           "y_shift": 83,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             81,
@@ -50,6 +51,7 @@
           "cp": "U+00ED",
           "x_shift": 93,
           "y_shift": 85,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             92,
@@ -70,6 +72,7 @@
           "cp": "U+00EE",
           "x_shift": 93,
           "y_shift": 81,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             86,
@@ -90,6 +93,7 @@
           "cp": "U+00EF",
           "x_shift": 93,
           "y_shift": 48,
+          "below_mark": false,
           "marks": 2,
           "bbox": [
             78,
@@ -110,6 +114,7 @@
           "cp": "U+0129",
           "x_shift": 93,
           "y_shift": 50,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             69,
@@ -130,6 +135,7 @@
           "cp": "U+012B",
           "x_shift": 93,
           "y_shift": 31,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             74,
@@ -150,6 +156,7 @@
           "cp": "U+012D",
           "x_shift": 93,
           "y_shift": 60,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             85,
@@ -165,11 +172,33 @@
           ]
         },
         {
+          "glyph": "į",
+          "base": "i",
+          "cp": "U+012F",
+          "x_shift": 93,
+          "y_shift": 126,
+          "below_mark": true,
+          "marks": 1,
+          "bbox": [
+            92,
+            -59,
+            334,
+            767
+          ],
+          "source_dot_bounds": [
+            111,
+            644,
+            315,
+            767
+          ]
+        },
+        {
           "glyph": "ǐ",
           "base": "i",
           "cp": "U+01D0",
           "x_shift": 93,
           "y_shift": 80,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             80,
@@ -190,6 +219,7 @@
           "cp": "U+0209",
           "x_shift": 93,
           "y_shift": 79,
+          "below_mark": false,
           "marks": 2,
           "bbox": [
             36,
@@ -210,6 +240,7 @@
           "cp": "U+020B",
           "x_shift": 93,
           "y_shift": 56,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             83,
@@ -230,6 +261,7 @@
           "cp": "U+1EC9",
           "x_shift": 93,
           "y_shift": 90,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             92,
@@ -245,11 +277,33 @@
           ]
         },
         {
+          "glyph": "ị",
+          "base": "i",
+          "cp": "U+1ECB",
+          "x_shift": 93,
+          "y_shift": 172,
+          "below_mark": true,
+          "marks": 1,
+          "bbox": [
+            92,
+            -7,
+            334,
+            767
+          ],
+          "source_dot_bounds": [
+            111,
+            644,
+            315,
+            767
+          ]
+        },
+        {
           "glyph": "ĵ",
           "base": "j",
           "cp": "U+0135",
           "x_shift": 176,
           "y_shift": 83,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             92,
@@ -269,20 +323,20 @@
       "unicode_count": 856
     },
     "Medium": {
-      "input_sha256": "b8c8f388ed262420d5f120be953561e7c17cf22278cfcae39e78d42f705b068c",
-      "output_sha256": "d9ca1500b43ca6be03dec9133ac86cb958c13b797890274c73ae1da1140f19c8",
+      "input_sha256": "f4bb2490a55539bea9b76a370e288a2ea503d067970db1b2ccaf5bd9feb8e0e6",
+      "output_sha256": "ef41c2356684e60e72ec2eb72510a76021de2db2caec3d5022a3fe5891b8bc10",
       "file": "ChunksReferencePanel-Medium-DotlessKerned.otf",
-      "reference_accent_glyphs": 255,
-      "candidate_pairs": 96645,
-      "adjusted_pairs": 95456,
+      "reference_accent_glyphs": 257,
+      "candidate_pairs": 97917,
+      "adjusted_pairs": 96728,
       "bounded_subtables": 27,
       "max_correction_units": 180,
       "clipped_pair_count": 0,
       "clipped_pair_examples": [],
-      "mean_abs_correction_units": 80.81,
+      "mean_abs_correction_units": 80.79,
       "source_scripts_unchanged": true,
       "base_font_sha256": "7f8f8e037ddd8ce96edd3c5f9f50301a31b774474890ceeae8f13130f695f4b4",
-      "dotless_added": 12,
+      "dotless_added": 14,
       "dotless_glyphs": [
         {
           "glyph": "ì",
@@ -290,6 +344,7 @@
           "cp": "U+00EC",
           "x_shift": 87,
           "y_shift": 86,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             72,
@@ -310,6 +365,7 @@
           "cp": "U+00ED",
           "x_shift": 87,
           "y_shift": 88,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             87,
@@ -330,6 +386,7 @@
           "cp": "U+00EE",
           "x_shift": 87,
           "y_shift": 83,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             75,
@@ -350,6 +407,7 @@
           "cp": "U+00EF",
           "x_shift": 87,
           "y_shift": 55,
+          "below_mark": false,
           "marks": 2,
           "bbox": [
             63,
@@ -370,6 +428,7 @@
           "cp": "U+0129",
           "x_shift": 87,
           "y_shift": 57,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             56,
@@ -390,6 +449,7 @@
           "cp": "U+012B",
           "x_shift": 87,
           "y_shift": 38,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             66,
@@ -410,6 +470,7 @@
           "cp": "U+012D",
           "x_shift": 87,
           "y_shift": 63,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             73,
@@ -425,11 +486,33 @@
           ]
         },
         {
+          "glyph": "į",
+          "base": "i",
+          "cp": "U+012F",
+          "x_shift": 87,
+          "y_shift": 123,
+          "below_mark": true,
+          "marks": 1,
+          "bbox": [
+            87,
+            -66,
+            338,
+            771
+          ],
+          "source_dot_bounds": [
+            106,
+            640,
+            319,
+            771
+          ]
+        },
+        {
           "glyph": "ǐ",
           "base": "i",
           "cp": "U+01D0",
           "x_shift": 87,
           "y_shift": 82,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             68.81,
@@ -450,6 +533,7 @@
           "cp": "U+0209",
           "x_shift": 87,
           "y_shift": 85,
+          "below_mark": false,
           "marks": 2,
           "bbox": [
             10,
@@ -470,6 +554,7 @@
           "cp": "U+020B",
           "x_shift": 87,
           "y_shift": 58,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             69,
@@ -490,6 +575,7 @@
           "cp": "U+1EC9",
           "x_shift": 87,
           "y_shift": 95,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             87,
@@ -505,11 +591,33 @@
           ]
         },
         {
+          "glyph": "ị",
+          "base": "i",
+          "cp": "U+1ECB",
+          "x_shift": 87,
+          "y_shift": 162,
+          "below_mark": true,
+          "marks": 1,
+          "bbox": [
+            87,
+            -29,
+            338,
+            771
+          ],
+          "source_dot_bounds": [
+            106,
+            640,
+            319,
+            771
+          ]
+        },
+        {
           "glyph": "ĵ",
           "base": "j",
           "cp": "U+0135",
           "x_shift": 170,
           "y_shift": 84,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             87,
@@ -529,12 +637,12 @@
       "unicode_count": 856
     },
     "Semibold": {
-      "input_sha256": "ff26af162b06bce4ad9fc27429be8c892f7464e3d93d8cd986719f56f3e97538",
-      "output_sha256": "4741b67b8e2a5ddae60b131345322f75fbe42e44a2f8c2a10bc1b91ea1fa225a",
+      "input_sha256": "b5e886c0970f337a5cee58f6eefee35871f3c4649ec8a64e061383baeb626d9b",
+      "output_sha256": "d379666be3a186a1a59a86c5dc96ece2161dbe9edbe4ccea0b2dad3a4aa6d6d0",
       "file": "ChunksReferencePanel-Semibold-DotlessKerned.otf",
-      "reference_accent_glyphs": 255,
-      "candidate_pairs": 96645,
-      "adjusted_pairs": 95645,
+      "reference_accent_glyphs": 257,
+      "candidate_pairs": 97917,
+      "adjusted_pairs": 96917,
       "bounded_subtables": 27,
       "max_correction_units": 180,
       "clipped_pair_count": 1,
@@ -546,10 +654,10 @@
           "applied_units": -180
         }
       ],
-      "mean_abs_correction_units": 77.21,
+      "mean_abs_correction_units": 77.2,
       "source_scripts_unchanged": true,
       "base_font_sha256": "c9eb1151374044b0622f10d09d42ba4814da5c8920de4184d7de1ed673c63f50",
-      "dotless_added": 12,
+      "dotless_added": 14,
       "dotless_glyphs": [
         {
           "glyph": "ì",
@@ -557,6 +665,7 @@
           "cp": "U+00EC",
           "x_shift": 83,
           "y_shift": 88,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             65,
@@ -577,6 +686,7 @@
           "cp": "U+00ED",
           "x_shift": 83,
           "y_shift": 90,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             82,
@@ -597,6 +707,7 @@
           "cp": "U+00EE",
           "x_shift": 83,
           "y_shift": 85,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             67,
@@ -617,6 +728,7 @@
           "cp": "U+00EF",
           "x_shift": 83,
           "y_shift": 61,
+          "below_mark": false,
           "marks": 2,
           "bbox": [
             50,
@@ -637,6 +749,7 @@
           "cp": "U+0129",
           "x_shift": 83,
           "y_shift": 62,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             46,
@@ -657,6 +770,7 @@
           "cp": "U+012B",
           "x_shift": 83,
           "y_shift": 45,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             60,
@@ -677,6 +791,7 @@
           "cp": "U+012D",
           "x_shift": 83,
           "y_shift": 65,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             63,
@@ -692,11 +807,33 @@
           ]
         },
         {
+          "glyph": "į",
+          "base": "i",
+          "cp": "U+012F",
+          "x_shift": 83,
+          "y_shift": 118,
+          "below_mark": true,
+          "marks": 1,
+          "bbox": [
+            82,
+            -75,
+            344,
+            776
+          ],
+          "source_dot_bounds": [
+            101,
+            635,
+            324,
+            776
+          ]
+        },
+        {
           "glyph": "ǐ",
           "base": "i",
           "cp": "U+01D0",
           "x_shift": 83,
           "y_shift": 84,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             58.63,
@@ -717,6 +854,7 @@
           "cp": "U+0209",
           "x_shift": 83,
           "y_shift": 90,
+          "below_mark": false,
           "marks": 2,
           "bbox": [
             -12,
@@ -737,6 +875,7 @@
           "cp": "U+020B",
           "x_shift": 83,
           "y_shift": 59,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             58,
@@ -757,6 +896,7 @@
           "cp": "U+1EC9",
           "x_shift": 83,
           "y_shift": 99,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             82,
@@ -772,11 +912,33 @@
           ]
         },
         {
+          "glyph": "ị",
+          "base": "i",
+          "cp": "U+1ECB",
+          "x_shift": 83,
+          "y_shift": 151,
+          "below_mark": true,
+          "marks": 1,
+          "bbox": [
+            82,
+            -52,
+            344,
+            776
+          ],
+          "source_dot_bounds": [
+            101,
+            635,
+            324,
+            776
+          ]
+        },
+        {
           "glyph": "ĵ",
           "base": "j",
           "cp": "U+0135",
           "x_shift": 163,
           "y_shift": 86,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             82,
@@ -796,12 +958,12 @@
       "unicode_count": 856
     },
     "Bold": {
-      "input_sha256": "d3f4b250ca542f7759bf3994d09b2116ed66633d7c08c5037d9dbdfa67341b42",
-      "output_sha256": "ed28d6170c5295d32ece68699f8ff548c0198b4e03163fdbd83789ba6b6dc962",
+      "input_sha256": "07602a02fb98a7e4603a5d5b519f01cc94499df5c8be6f39dca39fc6f1ff1389",
+      "output_sha256": "f2e85000fedf06dfec47f4ca82588f19d3a1ff0ef8881848f68d1aec2e2080ad",
       "file": "ChunksReferencePanel-Bold-DotlessKerned.otf",
-      "reference_accent_glyphs": 255,
-      "candidate_pairs": 96645,
-      "adjusted_pairs": 95739,
+      "reference_accent_glyphs": 257,
+      "candidate_pairs": 97917,
+      "adjusted_pairs": 97011,
       "bounded_subtables": 27,
       "max_correction_units": 180,
       "clipped_pair_count": 1,
@@ -813,10 +975,10 @@
           "applied_units": -180
         }
       ],
-      "mean_abs_correction_units": 73.27,
+      "mean_abs_correction_units": 73.29,
       "source_scripts_unchanged": true,
       "base_font_sha256": "60154e2e82213c54085856f43baf125a1395f18cf30c612c1ba217fe39ec275d",
-      "dotless_added": 12,
+      "dotless_added": 14,
       "dotless_glyphs": [
         {
           "glyph": "ì",
@@ -824,6 +986,7 @@
           "cp": "U+00EC",
           "x_shift": 77,
           "y_shift": 89,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             56,
@@ -844,6 +1007,7 @@
           "cp": "U+00ED",
           "x_shift": 77,
           "y_shift": 91,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             77,
@@ -864,6 +1028,7 @@
           "cp": "U+00EE",
           "x_shift": 77,
           "y_shift": 85,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             56,
@@ -884,6 +1049,7 @@
           "cp": "U+00EF",
           "x_shift": 77,
           "y_shift": 67,
+          "below_mark": false,
           "marks": 2,
           "bbox": [
             34,
@@ -904,6 +1070,7 @@
           "cp": "U+0129",
           "x_shift": 77,
           "y_shift": 67,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             32,
@@ -924,6 +1091,7 @@
           "cp": "U+012B",
           "x_shift": 77,
           "y_shift": 51,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             52,
@@ -944,6 +1112,7 @@
           "cp": "U+012D",
           "x_shift": 77,
           "y_shift": 66,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             50,
@@ -959,11 +1128,33 @@
           ]
         },
         {
+          "glyph": "į",
+          "base": "i",
+          "cp": "U+012F",
+          "x_shift": 77,
+          "y_shift": 113,
+          "below_mark": true,
+          "marks": 1,
+          "bbox": [
+            77,
+            -85,
+            349,
+            781
+          ],
+          "source_dot_bounds": [
+            96,
+            629,
+            329,
+            781
+          ]
+        },
+        {
           "glyph": "ǐ",
           "base": "i",
           "cp": "U+01D0",
           "x_shift": 77,
           "y_shift": 84,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             45.83,
@@ -984,6 +1175,7 @@
           "cp": "U+0209",
           "x_shift": 77,
           "y_shift": 93,
+          "below_mark": false,
           "marks": 2,
           "bbox": [
             -41,
@@ -1004,6 +1196,7 @@
           "cp": "U+020B",
           "x_shift": 77,
           "y_shift": 59,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             43,
@@ -1024,6 +1217,7 @@
           "cp": "U+1EC9",
           "x_shift": 77,
           "y_shift": 102,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             77,
@@ -1039,11 +1233,33 @@
           ]
         },
         {
+          "glyph": "ị",
+          "base": "i",
+          "cp": "U+1ECB",
+          "x_shift": 77,
+          "y_shift": 139,
+          "below_mark": true,
+          "marks": 1,
+          "bbox": [
+            77,
+            -78,
+            349,
+            781
+          ],
+          "source_dot_bounds": [
+            96,
+            629,
+            329,
+            781
+          ]
+        },
+        {
           "glyph": "ĵ",
           "base": "j",
           "cp": "U+0135",
           "x_shift": 156,
           "y_shift": 87,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             77,
@@ -1063,12 +1279,12 @@
       "unicode_count": 856
     },
     "ExtraBold": {
-      "input_sha256": "2fba6b9b5b14a9b979fccb2b1ae0ade37a8bd6e8571b6bbe6a77b18769773f9b",
-      "output_sha256": "d6cb0f9d47b527cc70303533114240c81d0ef60d55dafc024fbb178e3f687088",
+      "input_sha256": "a4e3fe7fcd16b94dec32eafedd0379f64caa5d941d51ac73e9cd1851809df89b",
+      "output_sha256": "52904a660f587830753e644f6e4980e14396ffea9b300913949bbc081051ff54",
       "file": "ChunksReferencePanel-ExtraBold-DotlessKerned.otf",
-      "reference_accent_glyphs": 255,
-      "candidate_pairs": 96645,
-      "adjusted_pairs": 95899,
+      "reference_accent_glyphs": 257,
+      "candidate_pairs": 97917,
+      "adjusted_pairs": 97171,
       "bounded_subtables": 27,
       "max_correction_units": 180,
       "clipped_pair_count": 2,
@@ -1086,10 +1302,10 @@
           "applied_units": -180
         }
       ],
-      "mean_abs_correction_units": 69.52,
+      "mean_abs_correction_units": 69.55,
       "source_scripts_unchanged": true,
       "base_font_sha256": "e733329166a81e191ffa42ff10d2f03f2a7e45ca045a90134c12071234675a43",
-      "dotless_added": 12,
+      "dotless_added": 14,
       "dotless_glyphs": [
         {
           "glyph": "ì",
@@ -1097,6 +1313,7 @@
           "cp": "U+00EC",
           "x_shift": 72,
           "y_shift": 93,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             48,
@@ -1117,6 +1334,7 @@
           "cp": "U+00ED",
           "x_shift": 72,
           "y_shift": 95,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             71,
@@ -1137,6 +1355,7 @@
           "cp": "U+00EE",
           "x_shift": 72,
           "y_shift": 89,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             46,
@@ -1157,6 +1376,7 @@
           "cp": "U+00EF",
           "x_shift": 72,
           "y_shift": 75,
+          "below_mark": false,
           "marks": 2,
           "bbox": [
             20,
@@ -1177,6 +1397,7 @@
           "cp": "U+0129",
           "x_shift": 72,
           "y_shift": 75,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             20,
@@ -1197,6 +1418,7 @@
           "cp": "U+012B",
           "x_shift": 72,
           "y_shift": 59,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             45,
@@ -1217,6 +1439,7 @@
           "cp": "U+012D",
           "x_shift": 72,
           "y_shift": 70,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             39,
@@ -1232,11 +1455,33 @@
           ]
         },
         {
+          "glyph": "į",
+          "base": "i",
+          "cp": "U+012F",
+          "x_shift": 72,
+          "y_shift": 109,
+          "below_mark": true,
+          "marks": 1,
+          "bbox": [
+            71,
+            -93,
+            354,
+            787
+          ],
+          "source_dot_bounds": [
+            90,
+            624,
+            335,
+            787
+          ]
+        },
+        {
           "glyph": "ǐ",
           "base": "i",
           "cp": "U+01D0",
           "x_shift": 72,
           "y_shift": 88,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             35.18,
@@ -1257,6 +1502,7 @@
           "cp": "U+0209",
           "x_shift": 72,
           "y_shift": 100,
+          "below_mark": false,
           "marks": 2,
           "bbox": [
             -65,
@@ -1277,6 +1523,7 @@
           "cp": "U+020B",
           "x_shift": 72,
           "y_shift": 62,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             30,
@@ -1297,6 +1544,7 @@
           "cp": "U+1EC9",
           "x_shift": 72,
           "y_shift": 108,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             71,
@@ -1312,11 +1560,33 @@
           ]
         },
         {
+          "glyph": "ị",
+          "base": "i",
+          "cp": "U+1ECB",
+          "x_shift": 72,
+          "y_shift": 128,
+          "below_mark": true,
+          "marks": 1,
+          "bbox": [
+            71,
+            -101,
+            354,
+            787
+          ],
+          "source_dot_bounds": [
+            90,
+            624,
+            335,
+            787
+          ]
+        },
+        {
           "glyph": "ĵ",
           "base": "j",
           "cp": "U+0135",
           "x_shift": 148,
           "y_shift": 89,
+          "below_mark": false,
           "marks": 1,
           "bbox": [
             71,
@@ -1377,5 +1647,5 @@
       "unicode_count": 856
     }
   },
-  "total_dotless_added": 60
+  "total_dotless_added": 70
 }
