@@ -1,5 +1,6 @@
 # Chunks specification coverage and acceptance map
 
+> **Owner correction (2026-10-28):** Cross-engine **Copy Transfer** and **Move Transfer** operate on torrent **jobs only**, never downloaded file bytes. Move adds and verifies the target job, then separately confirms session-only removal of the source job, leaving all source files untouched. Destination downloads independently. Prior text proposing payload transfer, file migration or waiting for target seeding under these names is superseded by [the authoritative transfer-job contract](CROSS-ENGINE-TRANSFER-JOBS.md).
 ## Smart Connect: zero-friction rTorrent remote onboarding (#463, #464)
 
 | Acceptance slice | Required behavior | Evidence status, 2026-10-28 |
