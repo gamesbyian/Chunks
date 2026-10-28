@@ -129,3 +129,7 @@ To inspect one report using the standard library:
 ```sh
 python -c 'import gzip,json; p="assets/fonts/experimental/consolidated/reference-punctuation-clipped-Regular.json.gz"; r=json.loads(gzip.decompress(open(p,"rb").read())); print(*r["pairs"][:20],sep="\\n")'
 ```
+
+### First exact compiled measurement receipt
+
+[CI run 40643072801](https://github.com/gamesbyian/Chunks/actions/runs/40643072801) passed: native five-weight CFF build, complete compressed clipped-pair receipts, deterministic full-count tests, actual-font stress/specimen atlases, and source/OTF artifact publication. The recorded outlier counts are **5,399 Regular; 5,306 Medium; 5,382 Semibold; 5,243 Bold; 5,088 ExtraBold**. Illustrative highest unresolved requests include `Ç*` and `p…` in Regular, with desired corrections around −435/−426 font units, respectively; only −72 units are applied. These are often punctuation optical/semantic exceptions, not permissions to expand kerning bounds. Revalidate against the final source-head CI after generated receipts are committed, and use the atlas to rank manual design changes.
