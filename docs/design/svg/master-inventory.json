@@ -10,8 +10,8 @@
   },
   "totals": {
     "approved": 1,
-    "vectorDraft": 742,
-    "planned": 60,
+    "vectorDraft": 778,
+    "planned": 24,
     "aliases": 19
   },
   "assets": [
@@ -1459,78 +1459,89 @@
       "id": "character-combinations/folder-with-background-blobs",
       "category": "character-combinations",
       "label": "folder with background blobs",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "Concept composition derived from sheets 01, 04, 06 and existing vector masters; approximate, no approved fixed wording",
+      "path": "docs/design/svg/scenes/character-combinations/folder-with-background-blobs.svg"
     },
     {
       "id": "character-combinations/folder-with-colourful-block-contents",
       "category": "character-combinations",
       "label": "folder with colourful block contents",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "Concept composition derived from sheets 01, 04, 06 and existing vector masters; approximate, no approved fixed wording",
+      "path": "docs/design/svg/scenes/character-combinations/folder-with-colourful-block-contents.svg"
     },
     {
       "id": "character-combinations/folder-and-green-download-cube",
       "category": "character-combinations",
       "label": "folder and green download cube",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "Concept composition derived from sheets 01, 04, 06 and existing vector masters; approximate, no approved fixed wording",
+      "path": "docs/design/svg/scenes/character-combinations/folder-and-green-download-cube.svg"
     },
     {
       "id": "character-combinations/folder-storage-download-media-lineup",
       "category": "character-combinations",
       "label": "folder-storage-download-media lineup",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "Concept composition derived from sheets 01, 04, 06 and existing vector masters; approximate, no approved fixed wording",
+      "path": "docs/design/svg/scenes/character-combinations/folder-storage-download-media-lineup.svg"
     },
     {
       "id": "character-combinations/compact-four-character-lineup",
       "category": "character-combinations",
       "label": "compact four-character lineup",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "Concept composition derived from sheets 01, 04, 06 and existing vector masters; approximate, no approved fixed wording",
+      "path": "docs/design/svg/scenes/character-combinations/compact-four-character-lineup.svg"
     },
     {
       "id": "character-combinations/four-character-diagonal",
       "category": "character-combinations",
       "label": "four-character diagonal",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "Concept composition derived from sheets 01, 04, 06 and existing vector masters; approximate, no approved fixed wording",
+      "path": "docs/design/svg/scenes/character-combinations/four-character-diagonal.svg"
     },
     {
       "id": "character-combinations/four-character-monochrome",
       "category": "character-combinations",
       "label": "four-character monochrome",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "Concept composition derived from sheets 01, 04, 06 and existing vector masters; approximate, no approved fixed wording",
+      "path": "docs/design/svg/scenes/character-combinations/four-character-monochrome.svg"
     },
     {
       "id": "character-combinations/folder-and-doodle-hero",
       "category": "character-combinations",
       "label": "folder and doodle hero",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "Concept composition derived from sheets 01, 04, 06 and existing vector masters; approximate, no approved fixed wording",
+      "path": "docs/design/svg/scenes/character-combinations/folder-and-doodle-hero.svg"
     },
     {
       "id": "character-combinations/folder-and-crown",
       "category": "character-combinations",
       "label": "folder and crown",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "Concept composition derived from sheets 01, 04, 06 and existing vector masters; approximate, no approved fixed wording",
+      "path": "docs/design/svg/scenes/character-combinations/folder-and-crown.svg"
     },
     {
       "id": "character-combinations/light-hero-character-scene",
       "category": "character-combinations",
       "label": "light hero character scene",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "Concept composition derived from sheets 01, 04, 06 and existing vector masters; approximate, no approved fixed wording",
+      "path": "docs/design/svg/scenes/character-combinations/light-hero-character-scene.svg"
     },
     {
       "id": "character-combinations/dark-hero-character-scene",
       "category": "character-combinations",
       "label": "dark hero character scene",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "Concept composition derived from sheets 01, 04, 06 and existing vector masters; approximate, no approved fixed wording",
+      "path": "docs/design/svg/scenes/character-combinations/dark-hero-character-scene.svg"
     },
     {
       "id": "brand-fidelity/exact-reference-bespoke-chunks-wordmark-outlines",
@@ -2296,64 +2307,73 @@
       "id": "stickers/rounded-text-highlight-yellow",
       "category": "stickers",
       "label": "rounded text highlight yellow",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "Concept composition derived from sheets 01, 04, 06 and existing vector masters; approximate, no approved fixed wording",
+      "path": "docs/design/svg/scenes/stickers/rounded-text-highlight-yellow.svg"
     },
     {
       "id": "stickers/rounded-text-highlight-cyan",
       "category": "stickers",
       "label": "rounded text highlight cyan",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "Concept composition derived from sheets 01, 04, 06 and existing vector masters; approximate, no approved fixed wording",
+      "path": "docs/design/svg/scenes/stickers/rounded-text-highlight-cyan.svg"
     },
     {
       "id": "stickers/rounded-text-highlight-purple",
       "category": "stickers",
       "label": "rounded text highlight purple",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "Concept composition derived from sheets 01, 04, 06 and existing vector masters; approximate, no approved fixed wording",
+      "path": "docs/design/svg/scenes/stickers/rounded-text-highlight-purple.svg"
     },
     {
       "id": "stickers/rounded-text-highlight-pink",
       "category": "stickers",
       "label": "rounded text highlight pink",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "Concept composition derived from sheets 01, 04, 06 and existing vector masters; approximate, no approved fixed wording",
+      "path": "docs/design/svg/scenes/stickers/rounded-text-highlight-pink.svg"
     },
     {
       "id": "stickers/white-outlined-speech-bubble",
       "category": "stickers",
       "label": "white outlined speech bubble",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "Concept composition derived from sheets 01, 04, 06 and existing vector masters; approximate, no approved fixed wording",
+      "path": "docs/design/svg/scenes/stickers/white-outlined-speech-bubble.svg"
     },
     {
       "id": "stickers/purple-speech-bubble-blank",
       "category": "stickers",
       "label": "purple speech bubble blank",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "Concept composition derived from sheets 01, 04, 06 and existing vector masters; approximate, no approved fixed wording",
+      "path": "docs/design/svg/scenes/stickers/purple-speech-bubble-blank.svg"
     },
     {
       "id": "stickers/yellow-speech-bubble-blank",
       "category": "stickers",
       "label": "yellow speech bubble blank",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "Concept composition derived from sheets 01, 04, 06 and existing vector masters; approximate, no approved fixed wording",
+      "path": "docs/design/svg/scenes/stickers/yellow-speech-bubble-blank.svg"
     },
     {
       "id": "stickers/green-speech-bubble-blank",
       "category": "stickers",
       "label": "green speech bubble blank",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "Concept composition derived from sheets 01, 04, 06 and existing vector masters; approximate, no approved fixed wording",
+      "path": "docs/design/svg/scenes/stickers/green-speech-bubble-blank.svg"
     },
     {
       "id": "stickers/pink-speech-bubble-blank",
       "category": "stickers",
       "label": "pink speech bubble blank",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "Concept composition derived from sheets 01, 04, 06 and existing vector masters; approximate, no approved fixed wording",
+      "path": "docs/design/svg/scenes/stickers/pink-speech-bubble-blank.svg"
     },
     {
       "id": "ui-components/compact-torrent-card",
@@ -3127,113 +3147,129 @@
       "id": "promotional-compositions/brand-hero",
       "category": "promotional-compositions",
       "label": "brand hero",
-      "status": "planned",
-      "source": "01-overview-visual-direction.png"
+      "status": "vector-draft",
+      "source": "Concept composition derived from sheets 01, 04, 06 and existing vector masters; approximate, no approved fixed wording",
+      "path": "docs/design/svg/scenes/promotional-compositions/brand-hero.svg"
     },
     {
       "id": "promotional-compositions/onboarding-splash",
       "category": "promotional-compositions",
       "label": "onboarding splash",
-      "status": "planned",
-      "source": "01-overview-visual-direction.png"
+      "status": "vector-draft",
+      "source": "Concept composition derived from sheets 01, 04, 06 and existing vector masters; approximate, no approved fixed wording",
+      "path": "docs/design/svg/scenes/promotional-compositions/onboarding-splash.svg"
     },
     {
       "id": "promotional-compositions/empty-state-folder-with-crown",
       "category": "promotional-compositions",
       "label": "empty state folder with crown",
-      "status": "planned",
-      "source": "01-overview-visual-direction.png"
+      "status": "vector-draft",
+      "source": "Concept composition derived from sheets 01, 04, 06 and existing vector masters; approximate, no approved fixed wording",
+      "path": "docs/design/svg/scenes/promotional-compositions/empty-state-folder-with-crown.svg"
     },
     {
       "id": "promotional-compositions/folder-among-colour-blobs",
       "category": "promotional-compositions",
       "label": "folder among colour blobs",
-      "status": "planned",
-      "source": "01-overview-visual-direction.png"
+      "status": "vector-draft",
+      "source": "Concept composition derived from sheets 01, 04, 06 and existing vector masters; approximate, no approved fixed wording",
+      "path": "docs/design/svg/scenes/promotional-compositions/folder-among-colour-blobs.svg"
     },
     {
       "id": "promotional-compositions/four-character-promotional-poster",
       "category": "promotional-compositions",
       "label": "four-character promotional poster",
-      "status": "planned",
-      "source": "01-overview-visual-direction.png"
+      "status": "vector-draft",
+      "source": "Concept composition derived from sheets 01, 04, 06 and existing vector masters; approximate, no approved fixed wording",
+      "path": "docs/design/svg/scenes/promotional-compositions/four-character-promotional-poster.svg"
     },
     {
       "id": "promotional-compositions/dark-background-mascot-poster",
       "category": "promotional-compositions",
       "label": "dark-background mascot poster",
-      "status": "planned",
-      "source": "01-overview-visual-direction.png"
+      "status": "vector-draft",
+      "source": "Concept composition derived from sheets 01, 04, 06 and existing vector masters; approximate, no approved fixed wording",
+      "path": "docs/design/svg/scenes/promotional-compositions/dark-background-mascot-poster.svg"
     },
     {
       "id": "promotional-compositions/light-background-mascot-poster",
       "category": "promotional-compositions",
       "label": "light-background mascot poster",
-      "status": "planned",
-      "source": "01-overview-visual-direction.png"
+      "status": "vector-draft",
+      "source": "Concept composition derived from sheets 01, 04, 06 and existing vector masters; approximate, no approved fixed wording",
+      "path": "docs/design/svg/scenes/promotional-compositions/light-background-mascot-poster.svg"
     },
     {
       "id": "promotional-compositions/marketing-hero-banner-wide",
       "category": "promotional-compositions",
       "label": "marketing hero banner wide",
-      "status": "planned",
-      "source": "01-overview-visual-direction.png"
+      "status": "vector-draft",
+      "source": "Concept composition derived from sheets 01, 04, 06 and existing vector masters; approximate, no approved fixed wording",
+      "path": "docs/design/svg/scenes/promotional-compositions/marketing-hero-banner-wide.svg"
     },
     {
       "id": "promotional-compositions/marketing-hero-vertical",
       "category": "promotional-compositions",
       "label": "marketing hero vertical",
-      "status": "planned",
-      "source": "01-overview-visual-direction.png"
+      "status": "vector-draft",
+      "source": "Concept composition derived from sheets 01, 04, 06 and existing vector masters; approximate, no approved fixed wording",
+      "path": "docs/design/svg/scenes/promotional-compositions/marketing-hero-vertical.svg"
     },
     {
       "id": "promotional-compositions/app-store-promotional-panel",
       "category": "promotional-compositions",
       "label": "app-store promotional panel",
-      "status": "planned",
-      "source": "01-overview-visual-direction.png"
+      "status": "vector-draft",
+      "source": "Concept composition derived from sheets 01, 04, 06 and existing vector masters; approximate, no approved fixed wording",
+      "path": "docs/design/svg/scenes/promotional-compositions/app-store-promotional-panel.svg"
     },
     {
       "id": "promotional-compositions/fast-downloads-shield-and-speed-features",
       "category": "promotional-compositions",
       "label": "fast downloads shield and speed features",
-      "status": "planned",
-      "source": "01-overview-visual-direction.png"
+      "status": "vector-draft",
+      "source": "Concept composition derived from sheets 01, 04, 06 and existing vector masters; approximate, no approved fixed wording",
+      "path": "docs/design/svg/scenes/promotional-compositions/fast-downloads-shield-and-speed-features.svg"
     },
     {
       "id": "promotional-compositions/workspace-transfer-illustration",
       "category": "promotional-compositions",
       "label": "workspace transfer illustration",
-      "status": "planned",
-      "source": "01-overview-visual-direction.png"
+      "status": "vector-draft",
+      "source": "Concept composition derived from sheets 01, 04, 06 and existing vector masters; approximate, no approved fixed wording",
+      "path": "docs/design/svg/scenes/promotional-compositions/workspace-transfer-illustration.svg"
     },
     {
       "id": "promotional-compositions/storage-cleanup-illustration",
       "category": "promotional-compositions",
       "label": "storage cleanup illustration",
-      "status": "planned",
-      "source": "01-overview-visual-direction.png"
+      "status": "vector-draft",
+      "source": "Concept composition derived from sheets 01, 04, 06 and existing vector masters; approximate, no approved fixed wording",
+      "path": "docs/design/svg/scenes/promotional-compositions/storage-cleanup-illustration.svg"
     },
     {
       "id": "promotional-compositions/torrent-details-illustration",
       "category": "promotional-compositions",
       "label": "torrent details illustration",
-      "status": "planned",
-      "source": "01-overview-visual-direction.png"
+      "status": "vector-draft",
+      "source": "Concept composition derived from sheets 01, 04, 06 and existing vector masters; approximate, no approved fixed wording",
+      "path": "docs/design/svg/scenes/promotional-compositions/torrent-details-illustration.svg"
     },
     {
       "id": "promotional-compositions/colourful-corner-frame",
       "category": "promotional-compositions",
       "label": "colourful corner frame",
-      "status": "planned",
-      "source": "01-overview-visual-direction.png"
+      "status": "vector-draft",
+      "source": "Concept composition derived from sheets 01, 04, 06 and existing vector masters; approximate, no approved fixed wording",
+      "path": "docs/design/svg/scenes/promotional-compositions/colourful-corner-frame.svg"
     },
     {
       "id": "promotional-compositions/footer-confetti-decorative-background",
       "category": "promotional-compositions",
       "label": "footer confetti decorative background",
-      "status": "planned",
-      "source": "01-overview-visual-direction.png"
+      "status": "vector-draft",
+      "source": "Concept composition derived from sheets 01, 04, 06 and existing vector masters; approximate, no approved fixed wording",
+      "path": "docs/design/svg/scenes/promotional-compositions/footer-confetti-decorative-background.svg"
     },
     {
       "id": "media-art/orange-landscape-cover",
