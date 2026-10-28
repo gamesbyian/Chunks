@@ -117,6 +117,47 @@ class TransferPrivacySessionTest {
         assertTrue(p.mayView(local))
     }
 
+    @Test fun policyChangeNeedsFreshAuthAndCannotUsePreviousUnlockOrStaleCallback() {
+        val p = session()
+        p.configure(local, TransferLockMode.ONCE_PER_PROCESS, false)
+        assertNull(p.beginPolicyChange(local))
+        val unlock = requireNotNull(p.beginUnlock(local))
+        assertTrue(p.finishUnlock(unlock, true))
+        val policyTicket = requireNotNull(p.beginPolicyChange(local))
+        assertNull(p.beginPolicyChange(local)) // One pending change per scope.
+        assertFalse(p.finishPolicyChange(policyTicket, false))
+        val second = requireNotNull(p.beginPolicyChange(local))
+        p.onBackground()
+        assertFalse(p.finishPolicyChange(second, true))
+        assertTrue(p.mayView(local)) // Existing process grant persists.
+        val third = requireNotNull(p.beginPolicyChange(local))
+        p.lockNow(local)
+        assertFalse(p.finishPolicyChange(third, true))
+        assertFalse(p.mayView(local))
+        assertNull(p.beginPolicyChange(local))
+        assertTrue(p.finishUnlock(requireNotNull(p.beginUnlock(local)), true))
+        val fourth = requireNotNull(p.beginPolicyChange(local))
+        assertTrue(p.finishPolicyChange(fourth, true))
+        assertFalse(p.finishPolicyChange(fourth, true)) // Consumed ticket.
+        assertTrue(p.configure(local, TransferLockMode.NEVER, true))
+        assertTrue(p.mayView(local))
+    }
+
+    @Test fun changingPolicyRequiresScopeSpecificTicketAndCancellationRevokesIt() {
+        val p = session()
+        p.configure(local, TransferLockMode.ONCE_PER_PROCESS, false)
+        p.configure(alice, TransferLockMode.ONCE_PER_PROCESS, false)
+        assertTrue(p.finishUnlock(requireNotNull(p.beginUnlock(local)), true))
+        assertTrue(p.finishUnlock(requireNotNull(p.beginUnlock(alice)), true))
+        val localChange = requireNotNull(p.beginPolicyChange(local))
+        p.onCancelPolicyChange(localChange)
+        assertFalse(p.finishPolicyChange(localChange, true))
+        val aliceChange = requireNotNull(p.beginPolicyChange(alice))
+        assertTrue(p.finishPolicyChange(aliceChange, true))
+        assertTrue(p.mayView(local))
+        assertTrue(p.mayView(alice))
+    }
+
     @Test fun disabledByDefaultAndFailedAuthNeverUnlock() {
         val p = session()
         assertTrue(p.mayView("unconfigured"))
