@@ -16,8 +16,9 @@ from PIL import ImageFont
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tools'))
 from build_reference_panel_consolidated import (
-    EXPECTED, SAMPLES, WEIGHTS, apply_punctuation, digest,
+    EXPECTED, SUPPLEMENTAL, ALL_PUNCTUATION, SAMPLES, WEIGHTS, apply_punctuation, digest,
 )
+from build_reference_punctuation_supplements import generate
 from spacing_optimizer import ink_gaps_at_size
 
 BASE = ROOT / 'assets/fonts/experimental/dotless-kerned'
@@ -40,6 +41,13 @@ class ConsolidatedReferenceTests(unittest.TestCase):
 
     def test_exact_source_and_five_complete_otfs(self):
         self.assertEqual(len(EXPECTED), 28)
+        self.assertEqual(len(SUPPLEMENTAL), 4)
+        self.assertEqual(len(ALL_PUNCTUATION), 32)
+        generate(MASTERS, MASTERS / 'supplemental', check=True)
+        self.assertEqual(self.report['punctuation_count'], 32)
+        self.assertEqual(self.report['supplemental_derived_punctuation_count'], 4)
+        self.assertEqual(self.report['supplemental_manifest_sha256'],
+                         digest(MASTERS / 'supplemental' / 'manifest.json'))
         self.assertEqual(set(self.report['weights']), set(WEIGHTS.values()))
         manifest = json.loads((MASTERS / 'manifest.json').read_text())
         self.assertEqual(set(EXPECTED), set(manifest['glyphs']))
@@ -53,7 +61,7 @@ class ConsolidatedReferenceTests(unittest.TestCase):
                 self.assertEqual(row['input_sha256'], digest(original))
                 self.assertEqual(row['output_sha256'], digest(final_path))
                 self.assertEqual(row['font'], final_path.name)
-                self.assertEqual(len(row['punctuation']), 28)
+                self.assertEqual(len(row['punctuation']), 32)
                 f = TTFont(final_path)
                 base = TTFont(original)
                 self.assertEqual(f.sfntVersion, 'OTTO')
@@ -72,10 +80,11 @@ class ConsolidatedReferenceTests(unittest.TestCase):
                                  f'ChunksReferencePanelConsolidated-{style}')
                 self.assertGreater(row['kerning']['adjusted_punctuation_pairs'], 0)
                 self.assertGreater(row['kerning']['sampled_punctuation_pairs'], 0)
-                for char in EXPECTED:
+                for char in ALL_PUNCTUATION:
                     item = row['punctuation'][f'U+{ord(char):04X}']
+                    master_dir = MASTERS / 'supplemental' if char in SUPPLEMENTAL else MASTERS
                     self.assertEqual(item['source_svg_sha256'],
-                                     digest(MASTERS / f'U+{ord(char):04X}.svg'))
+                                     digest(master_dir / f'U+{ord(char):04X}.svg'))
                     self.assertNotEqual(recording(f, char), recording(base, char), (style, char))
                     self.assertGreater(item['advance_units'], 0)
                     self.assertGreater(item['ink_area_ratio'], 0)
@@ -109,6 +118,20 @@ class ConsolidatedReferenceTests(unittest.TestCase):
                 self.assertTrue(gaps, (style, size))
                 self.assertGreater(min(gaps), -0.5, (style, size, min(gaps)))
 
+    def test_derivative_quotes_and_ellipsis_keep_native_shape(self):
+        manifest = json.loads((MASTERS / 'supplemental' / 'manifest.json').read_text())
+        self.assertEqual(set(manifest['glyphs']), set(SUPPLEMENTAL))
+        self.assertEqual(manifest['glyphs']["'"]['source_glyph'], '”')
+        self.assertEqual(manifest['glyphs']['‘']['source_glyph'], '“')
+        self.assertEqual(manifest['glyphs']['…']['source_glyph'], '.')
+        for style in WEIGHTS.values():
+            face = TTFont(OUT / f'ChunksReferencePanel-{style}-Consolidated.otf')
+            self.assertEqual(recording(face, "'"), recording(face, '’'))
+            ellipsis = recording(face, '…')
+            self.assertEqual(sum(1 for command, _ in ellipsis if command == 'moveTo'), 3)
+            for ch in "'‘’…":
+                self.assertTrue(recording(face, ch))
+
     def test_raw_punctuation_compilation_deterministic(self):
         with tempfile.TemporaryDirectory() as temp:
             first = Path(temp) / 'first.otf'
@@ -119,7 +142,7 @@ class ConsolidatedReferenceTests(unittest.TestCase):
             b = apply_punctuation(original, MASTERS, second, 400, profile)
             self.assertEqual(a, b)
             self.assertEqual(digest(first), digest(second))
-            self.assertEqual(len(a), 28)
+            self.assertEqual(len(a), 32)
 
 
 if __name__ == '__main__':

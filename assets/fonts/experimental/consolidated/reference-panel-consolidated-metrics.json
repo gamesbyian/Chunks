@@ -1,19 +1,20 @@
 {
   "status": "NONSHIPPING reference-panel consolidated candidate; editorial review pending",
-  "punctuation_count": 28,
+  "punctuation_count": 32,
+  "original_reference_punctuation_count": 28,
+  "supplemental_derived_punctuation_count": 4,
+  "supplemental_manifest_sha256": "f19e4b1711c6af5e5afaa16d4283b42cab3b0f97e23ec1b398997bf1370d082b",
   "source_manifest_sha256": "abbf1e343e6349be1a8c098faa56ae3321af928103233b207277801a73a75b8a",
   "weight_profile_sha256": "7da88e239d51208e052c8a359ddf04c724b3aa70e6cd7ad686d64b7f27425e46",
   "intentional_source_fallbacks": [
-    "U+0027 apostrophe",
-    "U+2026 ellipsis",
-    "untraced punctuation"
+    "untraced dashes and punctuation"
   ],
   "weights": {
     "Regular": {
       "font": "ChunksReferencePanel-Regular-Consolidated.otf",
       "weight": 400,
       "input_sha256": "da35bb88d9d8f9e1801e0b61f2ad2b71632f0b4e30a75bb27081e2c10ba5100d",
-      "output_sha256": "6710110847b322de87e00969bbc9bfa9a0fc1803810286df5745199fdf413acd",
+      "output_sha256": "f92e3ca7caef4eec208a16276150ff571c4e0b96e39df8c58925bf321d8d015a",
       "unicode_count": 856,
       "preserved_source_shaping": true,
       "punctuation": {
@@ -520,12 +521,84 @@
           "backoff_factors": [],
           "advance_units": 422,
           "lsb_units": 84
+        },
+        "U+0027": {
+          "source_svg_sha256": "04f918079a21dbb31e6fa0b9108d9bc599e02604cd1d27f126ddca064891dc76",
+          "source_bbox": [
+            0,
+            542,
+            8,
+            555
+          ],
+          "topology": [
+            1,
+            0
+          ],
+          "ink_area_ratio": 0.59924,
+          "erosion_reference_px": 0.672,
+          "backoff_factors": [],
+          "advance_units": 269,
+          "lsb_units": 84
+        },
+        "U+2018": {
+          "source_svg_sha256": "f6847580e687b97f02f237d61e6207ffa526436249c67c995950cf55d9fed131",
+          "source_bbox": [
+            0,
+            542,
+            7,
+            555
+          ],
+          "topology": [
+            1,
+            0
+          ],
+          "ink_area_ratio": 0.55547,
+          "erosion_reference_px": 0.672,
+          "backoff_factors": [],
+          "advance_units": 250,
+          "lsb_units": 84
+        },
+        "U+2019": {
+          "source_svg_sha256": "8c56910e16e1cd19eaba29111046ec680305716944ea05e4c293683bbe91a072",
+          "source_bbox": [
+            0,
+            542,
+            8,
+            555
+          ],
+          "topology": [
+            1,
+            0
+          ],
+          "ink_area_ratio": 0.59924,
+          "erosion_reference_px": 0.672,
+          "backoff_factors": [],
+          "advance_units": 269,
+          "lsb_units": 84
+        },
+        "U+2026": {
+          "source_svg_sha256": "747d9065012265917bbf5ce2b423a03140574dcec7cae1714dfc640e56b88591",
+          "source_bbox": [
+            0,
+            560,
+            34,
+            568
+          ],
+          "topology": [
+            3,
+            0
+          ],
+          "ink_area_ratio": 0.58003,
+          "erosion_reference_px": 0.672,
+          "backoff_factors": [],
+          "advance_units": 768,
+          "lsb_units": 84
         }
       },
       "kerning": {
-        "sampled_punctuation_pairs": 7483,
-        "adjusted_punctuation_pairs": 7270,
-        "clipped_at_72_units": 4461,
+        "sampled_punctuation_pairs": 8583,
+        "adjusted_punctuation_pairs": 8368,
+        "clipped_at_72_units": 5399,
         "bounded_pairpos_subtables": 14
       },
       "tracking_em": {
@@ -590,7 +663,7 @@
       "font": "ChunksReferencePanel-Medium-Consolidated.otf",
       "weight": 500,
       "input_sha256": "ef41c2356684e60e72ec2eb72510a76021de2db2caec3d5022a3fe5891b8bc10",
-      "output_sha256": "f738ac0e9a2ce5a3a8968c2c738255fd7eea7db33f3b7a46306ebd13400c9cb9",
+      "output_sha256": "06805b8e2f4e0f8d3c333bb4c00c15d8f607846094d15adf1961b4c56547a9bc",
       "unicode_count": 856,
       "preserved_source_shaping": true,
       "punctuation": {
@@ -1097,12 +1170,84 @@
           "backoff_factors": [],
           "advance_units": 422,
           "lsb_units": 81
+        },
+        "U+0027": {
+          "source_svg_sha256": "04f918079a21dbb31e6fa0b9108d9bc599e02604cd1d27f126ddca064891dc76",
+          "source_bbox": [
+            0,
+            542,
+            8,
+            555
+          ],
+          "topology": [
+            1,
+            0
+          ],
+          "ink_area_ratio": 0.67803,
+          "erosion_reference_px": 0.525,
+          "backoff_factors": [],
+          "advance_units": 269,
+          "lsb_units": 81
+        },
+        "U+2018": {
+          "source_svg_sha256": "f6847580e687b97f02f237d61e6207ffa526436249c67c995950cf55d9fed131",
+          "source_bbox": [
+            0,
+            542,
+            7,
+            555
+          ],
+          "topology": [
+            1,
+            0
+          ],
+          "ink_area_ratio": 0.63993,
+          "erosion_reference_px": 0.525,
+          "backoff_factors": [],
+          "advance_units": 250,
+          "lsb_units": 81
+        },
+        "U+2019": {
+          "source_svg_sha256": "8c56910e16e1cd19eaba29111046ec680305716944ea05e4c293683bbe91a072",
+          "source_bbox": [
+            0,
+            542,
+            8,
+            555
+          ],
+          "topology": [
+            1,
+            0
+          ],
+          "ink_area_ratio": 0.67803,
+          "erosion_reference_px": 0.525,
+          "backoff_factors": [],
+          "advance_units": 269,
+          "lsb_units": 81
+        },
+        "U+2026": {
+          "source_svg_sha256": "747d9065012265917bbf5ce2b423a03140574dcec7cae1714dfc640e56b88591",
+          "source_bbox": [
+            0,
+            560,
+            34,
+            568
+          ],
+          "topology": [
+            3,
+            0
+          ],
+          "ink_area_ratio": 0.65799,
+          "erosion_reference_px": 0.525,
+          "backoff_factors": [],
+          "advance_units": 768,
+          "lsb_units": 81
         }
       },
       "kerning": {
-        "sampled_punctuation_pairs": 7521,
-        "adjusted_punctuation_pairs": 7363,
-        "clipped_at_72_units": 4380,
+        "sampled_punctuation_pairs": 8635,
+        "adjusted_punctuation_pairs": 8474,
+        "clipped_at_72_units": 5306,
         "bounded_pairpos_subtables": 14
       },
       "tracking_em": {
@@ -1159,7 +1304,7 @@
       "small_size_minimum_gaps_px": {
         "14": 0.785,
         "24": 1.6562,
-        "48": 4.6562,
+        "48": 4.5781,
         "82": 8.2969
       }
     },
@@ -1167,7 +1312,7 @@
       "font": "ChunksReferencePanel-Semibold-Consolidated.otf",
       "weight": 600,
       "input_sha256": "d379666be3a186a1a59a86c5dc96ece2161dbe9edbe4ccea0b2dad3a4aa6d6d0",
-      "output_sha256": "b6a164f82c76403ce7e9d19506871fa84ec1223a00f74bcfe992b72942cfa25e",
+      "output_sha256": "5dd044fe0908c6285e4570a12a934be8df014d35b9a963253ec91be18eb29257",
       "unicode_count": 856,
       "preserved_source_shaping": true,
       "punctuation": {
@@ -1674,12 +1819,84 @@
           "backoff_factors": [],
           "advance_units": 422,
           "lsb_units": 78
+        },
+        "U+0027": {
+          "source_svg_sha256": "04f918079a21dbb31e6fa0b9108d9bc599e02604cd1d27f126ddca064891dc76",
+          "source_bbox": [
+            0,
+            542,
+            8,
+            555
+          ],
+          "topology": [
+            1,
+            0
+          ],
+          "ink_area_ratio": 0.77363,
+          "erosion_reference_px": 0.357,
+          "backoff_factors": [],
+          "advance_units": 269,
+          "lsb_units": 78
+        },
+        "U+2018": {
+          "source_svg_sha256": "f6847580e687b97f02f237d61e6207ffa526436249c67c995950cf55d9fed131",
+          "source_bbox": [
+            0,
+            542,
+            7,
+            555
+          ],
+          "topology": [
+            1,
+            0
+          ],
+          "ink_area_ratio": 0.74663,
+          "erosion_reference_px": 0.357,
+          "backoff_factors": [],
+          "advance_units": 250,
+          "lsb_units": 78
+        },
+        "U+2019": {
+          "source_svg_sha256": "8c56910e16e1cd19eaba29111046ec680305716944ea05e4c293683bbe91a072",
+          "source_bbox": [
+            0,
+            542,
+            8,
+            555
+          ],
+          "topology": [
+            1,
+            0
+          ],
+          "ink_area_ratio": 0.77363,
+          "erosion_reference_px": 0.357,
+          "backoff_factors": [],
+          "advance_units": 269,
+          "lsb_units": 78
+        },
+        "U+2026": {
+          "source_svg_sha256": "747d9065012265917bbf5ce2b423a03140574dcec7cae1714dfc640e56b88591",
+          "source_bbox": [
+            0,
+            560,
+            34,
+            568
+          ],
+          "topology": [
+            3,
+            0
+          ],
+          "ink_area_ratio": 0.75306,
+          "erosion_reference_px": 0.357,
+          "backoff_factors": [],
+          "advance_units": 768,
+          "lsb_units": 78
         }
       },
       "kerning": {
-        "sampled_punctuation_pairs": 7842,
-        "adjusted_punctuation_pairs": 7670,
-        "clipped_at_72_units": 4476,
+        "sampled_punctuation_pairs": 8966,
+        "adjusted_punctuation_pairs": 8790,
+        "clipped_at_72_units": 5382,
         "bounded_pairpos_subtables": 14
       },
       "tracking_em": {
@@ -1744,7 +1961,7 @@
       "font": "ChunksReferencePanel-Bold-Consolidated.otf",
       "weight": 700,
       "input_sha256": "f2e85000fedf06dfec47f4ca82588f19d3a1ff0ef8881848f68d1aec2e2080ad",
-      "output_sha256": "842d1ac96d99a5205d2bbdae2129e4ff59d74f58e284f74539e209325a1ed509",
+      "output_sha256": "c75eff65b923cb5d281b4b8913f9cea17ba4a9679d18476d382d5eebc6d42c3e",
       "unicode_count": 856,
       "preserved_source_shaping": true,
       "punctuation": {
@@ -2251,12 +2468,84 @@
           "backoff_factors": [],
           "advance_units": 422,
           "lsb_units": 75
+        },
+        "U+0027": {
+          "source_svg_sha256": "04f918079a21dbb31e6fa0b9108d9bc599e02604cd1d27f126ddca064891dc76",
+          "source_bbox": [
+            0,
+            542,
+            8,
+            555
+          ],
+          "topology": [
+            1,
+            0
+          ],
+          "ink_area_ratio": 0.87959,
+          "erosion_reference_px": 0.181,
+          "backoff_factors": [],
+          "advance_units": 269,
+          "lsb_units": 75
+        },
+        "U+2018": {
+          "source_svg_sha256": "f6847580e687b97f02f237d61e6207ffa526436249c67c995950cf55d9fed131",
+          "source_bbox": [
+            0,
+            542,
+            7,
+            555
+          ],
+          "topology": [
+            1,
+            0
+          ],
+          "ink_area_ratio": 0.86195,
+          "erosion_reference_px": 0.181,
+          "backoff_factors": [],
+          "advance_units": 250,
+          "lsb_units": 75
+        },
+        "U+2019": {
+          "source_svg_sha256": "8c56910e16e1cd19eaba29111046ec680305716944ea05e4c293683bbe91a072",
+          "source_bbox": [
+            0,
+            542,
+            8,
+            555
+          ],
+          "topology": [
+            1,
+            0
+          ],
+          "ink_area_ratio": 0.87959,
+          "erosion_reference_px": 0.181,
+          "backoff_factors": [],
+          "advance_units": 269,
+          "lsb_units": 75
+        },
+        "U+2026": {
+          "source_svg_sha256": "747d9065012265917bbf5ce2b423a03140574dcec7cae1714dfc640e56b88591",
+          "source_bbox": [
+            0,
+            560,
+            34,
+            568
+          ],
+          "topology": [
+            3,
+            0
+          ],
+          "ink_area_ratio": 0.85975,
+          "erosion_reference_px": 0.181,
+          "backoff_factors": [],
+          "advance_units": 768,
+          "lsb_units": 75
         }
       },
       "kerning": {
-        "sampled_punctuation_pairs": 7842,
-        "adjusted_punctuation_pairs": 7714,
-        "clipped_at_72_units": 4355,
+        "sampled_punctuation_pairs": 8994,
+        "adjusted_punctuation_pairs": 8863,
+        "clipped_at_72_units": 5243,
         "bounded_pairpos_subtables": 14
       },
       "tracking_em": {
@@ -2321,7 +2610,7 @@
       "font": "ChunksReferencePanel-ExtraBold-Consolidated.otf",
       "weight": 800,
       "input_sha256": "52904a660f587830753e644f6e4980e14396ffea9b300913949bbc081051ff54",
-      "output_sha256": "df2ea07e005427ee1379bc79dbe457d6c254b310be73f755c1fc4726a7095940",
+      "output_sha256": "55ba6f8a114a0da6223023bde4e0b6ad12d469616b2743ac471d8415b1d8813c",
       "unicode_count": 856,
       "preserved_source_shaping": true,
       "punctuation": {
@@ -2828,12 +3117,84 @@
           "backoff_factors": [],
           "advance_units": 422,
           "lsb_units": 71
+        },
+        "U+0027": {
+          "source_svg_sha256": "04f918079a21dbb31e6fa0b9108d9bc599e02604cd1d27f126ddca064891dc76",
+          "source_bbox": [
+            0,
+            542,
+            8,
+            555
+          ],
+          "topology": [
+            1,
+            0
+          ],
+          "ink_area_ratio": 1.0,
+          "erosion_reference_px": 0.0,
+          "backoff_factors": [],
+          "advance_units": 269,
+          "lsb_units": 71
+        },
+        "U+2018": {
+          "source_svg_sha256": "f6847580e687b97f02f237d61e6207ffa526436249c67c995950cf55d9fed131",
+          "source_bbox": [
+            0,
+            542,
+            7,
+            555
+          ],
+          "topology": [
+            1,
+            0
+          ],
+          "ink_area_ratio": 1.0,
+          "erosion_reference_px": 0.0,
+          "backoff_factors": [],
+          "advance_units": 250,
+          "lsb_units": 71
+        },
+        "U+2019": {
+          "source_svg_sha256": "8c56910e16e1cd19eaba29111046ec680305716944ea05e4c293683bbe91a072",
+          "source_bbox": [
+            0,
+            542,
+            8,
+            555
+          ],
+          "topology": [
+            1,
+            0
+          ],
+          "ink_area_ratio": 1.0,
+          "erosion_reference_px": 0.0,
+          "backoff_factors": [],
+          "advance_units": 269,
+          "lsb_units": 71
+        },
+        "U+2026": {
+          "source_svg_sha256": "747d9065012265917bbf5ce2b423a03140574dcec7cae1714dfc640e56b88591",
+          "source_bbox": [
+            0,
+            560,
+            34,
+            568
+          ],
+          "topology": [
+            3,
+            0
+          ],
+          "ink_area_ratio": 1.0,
+          "erosion_reference_px": 0.0,
+          "backoff_factors": [],
+          "advance_units": 768,
+          "lsb_units": 71
         }
       },
       "kerning": {
-        "sampled_punctuation_pairs": 7904,
-        "adjusted_punctuation_pairs": 7770,
-        "clipped_at_72_units": 4234,
+        "sampled_punctuation_pairs": 9062,
+        "adjusted_punctuation_pairs": 8925,
+        "clipped_at_72_units": 5088,
         "bounded_pairpos_subtables": 14
       },
       "tracking_em": {
