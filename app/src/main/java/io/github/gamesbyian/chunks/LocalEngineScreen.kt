@@ -55,6 +55,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.engine.LocalAddResult
 import io.github.gamesbyian.chunks.engine.LocalCommandOutcome
+import io.github.gamesbyian.chunks.engine.LocalEpisodeFocusPlanner
 import io.github.gamesbyian.chunks.engine.LocalFileBatchOutcome
 import io.github.gamesbyian.chunks.engine.LocalEngineConfig
 import io.github.gamesbyian.chunks.engine.LocalRateLimits
@@ -1032,6 +1033,46 @@ internal fun LocalEngineScreen(
                         }
                     }
                 },
+                onFocusEpisodes = { reviewedPlan ->
+                    performLocalMutation {
+                        try {
+                            val result = withContext(Dispatchers.IO) {
+                                LocalEngineHolder.current()?.focusEpisodesOnce(
+                                    transfer.infoHash, reviewedPlan)
+                                    ?: LocalFileBatchOutcome.NOT_FOUND
+                            }
+                            if (result !in setOf(LocalFileBatchOutcome.VERIFIED,
+                                    LocalFileBatchOutcome.UNCHANGED)) {
+                                inventoryFrame = inventoryFrame.copy(stale = true)
+                            }
+                            message = when (result) {
+                                LocalFileBatchOutcome.VERIFIED ->
+                                    "Episode-first priorities verified. The first unfinished " +
+                                    "episode is High; later episodes receive background priority. " +
+                                    "This is a one-time focus, not automatic completion scheduling."
+                                LocalFileBatchOutcome.UNCHANGED ->
+                                    "Episodes already have this focus. No priorities changed."
+                                LocalFileBatchOutcome.STALE_REVIEW ->
+                                    "Episode files or priorities changed. Refresh the file list " +
+                                    "and review the order again."
+                                LocalFileBatchOutcome.NOT_FOUND ->
+                                    "Transfer is no longer available on the phone."
+                                LocalFileBatchOutcome.UNCERTAIN ->
+                                    "Some episode priorities may have changed. Refresh the exact " +
+                                    "file list before taking another action; no automatic retry."
+                            }
+                            files = withContext(Dispatchers.IO) {
+                                LocalEngineHolder.current()?.files(transfer.infoHash)
+                            }
+                        } catch (cancel: kotlinx.coroutines.CancellationException) {
+                            throw cancel
+                        } catch (_: Exception) {
+                            inventoryFrame = inventoryFrame.copy(stale = true)
+                            files = null
+                            message = "Episode-priority change is uncertain. Refresh first."
+                        }
+                    }
+                },
                 onFilePriority = { reviewed, newPriority ->
                     performLocalMutation {
                         try {
@@ -1278,6 +1319,7 @@ internal fun LocalTransferCard(
     onFileWanted: (Int, Boolean) -> Unit = { _, _ -> },
     onBatchFileWanted: ((List<LocalTransferFile>, Boolean) -> Unit)? = null,
     onFilePriority: ((LocalTransferFile, Int) -> Unit)? = null,
+    onFocusEpisodes: ((LocalEpisodeFocusPlanner.Plan) -> Unit)? = null,
     alias: String? = null,
     onSaveAlias: ((String?) -> Boolean)? = null,
     onPrepareRemote: (() -> Unit)? = null,
@@ -1404,7 +1446,8 @@ internal fun LocalTransferCard(
             if (filesShown) LocalFileSelection(
                 files, busy, transferKey = transfer.infoHash,
                 onFileWanted = onFileWanted, onBatchFileWanted = onBatchFileWanted,
-                onFilePriority = onFilePriority
+                onFilePriority = onFilePriority,
+                onFocusEpisodes = onFocusEpisodes
             )
             if (confirmRemove) {
                 Text("Remove from the phone engine only. Downloaded files stay in Chunks' folder; sharing of this torrent stops.")
@@ -1431,6 +1474,7 @@ internal fun LocalFileSelection(
     transferKey: String? = null,
     onBatchFileWanted: ((List<LocalTransferFile>, Boolean) -> Unit)? = null,
     onFilePriority: ((LocalTransferFile, Int) -> Unit)? = null,
+    onFocusEpisodes: ((LocalEpisodeFocusPlanner.Plan) -> Unit)? = null,
     onFileWanted: (Int, Boolean) -> Unit
 ) {
     if (files == null) {
@@ -1460,8 +1504,45 @@ internal fun LocalFileSelection(
     var priorityEditorIndex by remember(transferKey, page, reviewFingerprint) {
         mutableStateOf<Int?>(null)
     }
+    var pendingEpisodeFocus by remember(transferKey, reviewFingerprint) {
+        mutableStateOf(false)
+    }
+    val focusPlan = remember(files) { LocalEpisodeFocusPlanner.plan(files) }
+
     Text("Untick a file to skip downloading it. Already downloaded parts are kept.",
         style = MaterialTheme.typography.bodySmall)
+    if (onFocusEpisodes != null && focusPlan != null) {
+        OutlinedButton(onClick = { pendingEpisodeFocus = !pendingEpisodeFocus },
+            enabled = !busy,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+            Text("Focus first unfinished episode (one time)")
+        }
+        if (pendingEpisodeFocus) {
+            Text("Detected first episode: " +
+                focusPlan.firstEpisode.path.substringAfterLast('/') +
+                ". This one-time change gives it High native priority, keeps " +
+                "the following episode at Normal, and assigns later episodes " +
+                "Low priority. ${focusPlan.changes.size} existing file priorities " +
+                "will change, including manual settings. No files are skipped, " +
+                "deleted or downloaded automatically. This does not guarantee " +
+                "completion order or advance automatically to the next episode.",
+                style = MaterialTheme.typography.bodySmall)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = {
+                    pendingEpisodeFocus = false
+                    onFocusEpisodes(focusPlan)
+                }, enabled = !busy && focusPlan.changes.isNotEmpty(),
+                    modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                    Text("Confirm episode focus")
+                }
+                OutlinedButton(onClick = { pendingEpisodeFocus = false },
+                    modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                    Text("Cancel")
+                }
+            }
+        }
+    }
+
     if (pageCount > 1) {
         Text("Files page " + (page + 1) + " of " + pageCount + " (" + files.size + " files)",
             style = MaterialTheme.typography.bodySmall)
