@@ -75,7 +75,8 @@ def transform(commands, dx=0, dy=0):
 
 
 def create_svg(commands, width, height, codepoint):
-    pen = SVGPathPen(None)
+    # Eliminate floating-point noise such as 3.380000000000001 in editable SVGs.
+    pen = SVGPathPen(None, ntos=lambda n: f'{n:.3f}'.rstrip('0').rstrip('.'))
     replayRecording(commands, pen)
     path_data = pen.getCommands()
     if not path_data:
