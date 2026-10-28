@@ -47,3 +47,9 @@ Palette experiments are retained rather than reconciled by fiat: Brand Essence u
 A dedicated browser workflow tests the vector workbench at 320×700, 412×892 and 791×900 CSS pixels, with additional 200% font-size simulation at 320 px. Its artifacts capture light/dark screens, an exported self-contained SVG and JSON evidence. Tests cover horizontal overflow, 96-card pagination, keyboard Arrow/Shift+Arrow editing, pointer dragging, 44 px touch target minimums, console errors, and SVG export/embedded recipe.
 
 These are real **Chromium browser** tests, not physical Android phone testing, TalkBack certification, native Compose acceptance or optical signoff. To reproduce locally, serve docs/design/svg using the HTTP command above, then install playwright and its Chromium browser and run node tools/tests/svg_workbench_mobile.cjs. A Playwright-hosted temporary server is used by the test; it does not change the app.
+
+## Per-asset completion and quality dossier
+
+[Machine-readable QA ledger](quality-dossier.json) · [Human-readable review and outstanding acceptance gates](QUALITY-REVIEW.md)
+
+The 815 SVG files, 20 direct aliases, and canonical launcher are structurally accounted for. Each asset has a conservative provenance class and an explicit optical review status. **First-pass inventory complete** means every named asset has a corresponding real vector or identified master, **not** every illustration has achieved pixel-faithful visual approval. The dossier is checked by `python3 tools/audit_svg_inventory.py` in PR CI; use `--write` after deliberate asset changes to regenerate it. Never mark a vector draft as approved merely because rendering or contour IoU passes.
