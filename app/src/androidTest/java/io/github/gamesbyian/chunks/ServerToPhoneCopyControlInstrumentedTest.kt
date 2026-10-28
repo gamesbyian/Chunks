@@ -35,6 +35,8 @@ class ServerToPhoneCopyControlInstrumentedTest {
 
     private fun answer(method: String): String = when (method) {
         "network.local_address" -> "<value><string></string></value>"
+        // Read-only (#460). A wildcard bind names no specific peer address.
+        "network.bind_address" -> "<value><string>0.0.0.0</string></value>"
         "network.listen.port" -> "<value><i8>6890</i8></value>"
         "d.is_private" -> "<value><i8>$isPrivate</i8></value>"
         "d.is_active" -> "<value><i8>1</i8></value>"
@@ -97,7 +99,8 @@ class ServerToPhoneCopyControlInstrumentedTest {
         assertEquals(listOf("magnet:?xt=urn:btih:${hash.lowercase()}&dn=Big%20Buck%20Bunny&x.pe=127.0.0.1:6890"),
             reviewed)
         assertTrue("Only read-only commands: $methods", methods.toSet() ==
-            setOf("network.local_address", "network.listen.port", "d.is_private", "d.is_active"))
+            setOf("network.local_address", "network.bind_address", "network.listen.port",
+                "d.is_private", "d.is_active"))
     }
 
     @Test fun privateTransferIsRefusedWithAReasonAndNoHandoff() {
