@@ -84,6 +84,7 @@
           "ink_area_ratio": 0.7541,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -93,6 +94,7 @@
           "ink_area_ratio": 0.7465,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -102,6 +104,7 @@
           "ink_area_ratio": 0.7494,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -111,6 +114,7 @@
           "ink_area_ratio": 0.7691,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -120,6 +124,7 @@
           "ink_area_ratio": 0.7096,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -129,6 +134,7 @@
           "ink_area_ratio": 0.7166,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -138,6 +144,7 @@
           "ink_area_ratio": 0.7354,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -147,6 +154,7 @@
           "ink_area_ratio": 0.7562,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -156,6 +164,7 @@
           "ink_area_ratio": 0.7193,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -165,6 +174,7 @@
           "ink_area_ratio": 0.7192,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -174,6 +184,7 @@
           "ink_area_ratio": 0.7556,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -183,6 +194,7 @@
           "ink_area_ratio": 0.7265,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -192,6 +204,7 @@
           "ink_area_ratio": 0.7761,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -201,6 +214,7 @@
           "ink_area_ratio": 0.7669,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -210,6 +224,7 @@
           "ink_area_ratio": 0.779,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -219,6 +234,7 @@
           "ink_area_ratio": 0.7457,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -228,6 +244,7 @@
           "ink_area_ratio": 0.7822,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -237,6 +254,7 @@
           "ink_area_ratio": 0.7522,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -246,6 +264,7 @@
           "ink_area_ratio": 0.7108,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -255,6 +274,7 @@
           "ink_area_ratio": 0.7405,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -264,6 +284,7 @@
           "ink_area_ratio": 0.7439,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -273,6 +294,7 @@
           "ink_area_ratio": 0.756,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -282,6 +304,7 @@
           "ink_area_ratio": 0.7778,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -291,6 +314,7 @@
           "ink_area_ratio": 0.7582,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -300,6 +324,7 @@
           "ink_area_ratio": 0.7359,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -309,6 +334,7 @@
           "ink_area_ratio": 0.7353,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -318,6 +344,7 @@
           "ink_area_ratio": 0.7245,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -327,6 +354,7 @@
           "ink_area_ratio": 0.7266,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -336,6 +364,7 @@
           "ink_area_ratio": 0.682,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -345,6 +374,7 @@
           "ink_area_ratio": 0.7378,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -354,6 +384,7 @@
           "ink_area_ratio": 0.7256,
           "stroke_offset_px": 1.248,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -363,6 +394,7 @@
           "ink_area_ratio": 0.7941,
           "stroke_offset_px": 1.2,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -372,6 +404,7 @@
           "ink_area_ratio": 0.7617,
           "stroke_offset_px": 1.312,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -381,6 +414,7 @@
           "ink_area_ratio": 0.7132,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -390,6 +424,7 @@
           "ink_area_ratio": 0.7509,
           "stroke_offset_px": 1.04,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -399,6 +434,7 @@
           "ink_area_ratio": 0.7733,
           "stroke_offset_px": 1.04,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -408,6 +444,7 @@
           "ink_area_ratio": 0.7313,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -417,6 +454,7 @@
           "ink_area_ratio": 0.7851,
           "stroke_offset_px": 1.088,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -426,6 +464,7 @@
           "ink_area_ratio": 0.7082,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -435,6 +474,7 @@
           "ink_area_ratio": 0.7194,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -444,6 +484,7 @@
           "ink_area_ratio": 0.725,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -453,6 +494,7 @@
           "ink_area_ratio": 0.7357,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -462,6 +504,7 @@
           "ink_area_ratio": 0.738,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -471,6 +514,7 @@
           "ink_area_ratio": 0.7618,
           "stroke_offset_px": 1.2,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -480,6 +524,7 @@
           "ink_area_ratio": 0.6594,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -489,6 +534,7 @@
           "ink_area_ratio": 0.7792,
           "stroke_offset_px": 1.2,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -498,6 +544,7 @@
           "ink_area_ratio": 0.6998,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -507,6 +554,7 @@
           "ink_area_ratio": 0.7072,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -516,6 +564,7 @@
           "ink_area_ratio": 0.7387,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -525,6 +574,7 @@
           "ink_area_ratio": 0.7014,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -534,6 +584,7 @@
           "ink_area_ratio": 0.7175,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -543,6 +594,7 @@
           "ink_area_ratio": 0.681,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -552,6 +604,7 @@
           "ink_area_ratio": 0.7636,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -561,6 +614,7 @@
           "ink_area_ratio": 0.712,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -570,6 +624,7 @@
           "ink_area_ratio": 0.7031,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -579,6 +634,7 @@
           "ink_area_ratio": 0.6792,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -588,6 +644,7 @@
           "ink_area_ratio": 0.7293,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -597,6 +654,7 @@
           "ink_area_ratio": 0.6706,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -606,6 +664,7 @@
           "ink_area_ratio": 0.7172,
           "stroke_offset_px": 1.44,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -615,6 +674,7 @@
           "ink_area_ratio": 0.6937,
           "stroke_offset_px": 1.6,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -624,6 +684,7 @@
           "ink_area_ratio": 0.749,
           "stroke_offset_px": 1.36,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -633,6 +694,7 @@
           "ink_area_ratio": 0.7148,
           "stroke_offset_px": 1.44,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         }
@@ -715,6 +777,7 @@
           "ink_area_ratio": 0.8075,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -724,6 +787,7 @@
           "ink_area_ratio": 0.8026,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -733,6 +797,7 @@
           "ink_area_ratio": 0.8029,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -742,6 +807,7 @@
           "ink_area_ratio": 0.8183,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -751,6 +817,7 @@
           "ink_area_ratio": 0.7717,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -760,6 +827,7 @@
           "ink_area_ratio": 0.7757,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -769,6 +837,7 @@
           "ink_area_ratio": 0.7907,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -778,6 +847,7 @@
           "ink_area_ratio": 0.8072,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -787,6 +857,7 @@
           "ink_area_ratio": 0.7753,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -796,6 +867,7 @@
           "ink_area_ratio": 0.7776,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -805,6 +877,7 @@
           "ink_area_ratio": 0.8067,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -814,6 +887,7 @@
           "ink_area_ratio": 0.7848,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -823,6 +897,7 @@
           "ink_area_ratio": 0.8228,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -832,6 +907,7 @@
           "ink_area_ratio": 0.8152,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -841,6 +917,7 @@
           "ink_area_ratio": 0.8271,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -850,6 +927,7 @@
           "ink_area_ratio": 0.8016,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -859,6 +937,7 @@
           "ink_area_ratio": 0.8291,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -868,6 +947,7 @@
           "ink_area_ratio": 0.8059,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -877,6 +957,7 @@
           "ink_area_ratio": 0.7709,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -886,6 +967,7 @@
           "ink_area_ratio": 0.794,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -895,6 +977,7 @@
           "ink_area_ratio": 0.7986,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -904,6 +987,7 @@
           "ink_area_ratio": 0.8073,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -913,6 +997,7 @@
           "ink_area_ratio": 0.8242,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -922,6 +1007,7 @@
           "ink_area_ratio": 0.8084,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -931,6 +1017,7 @@
           "ink_area_ratio": 0.7913,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -940,6 +1027,7 @@
           "ink_area_ratio": 0.7904,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -949,6 +1037,7 @@
           "ink_area_ratio": 0.7837,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -958,6 +1047,7 @@
           "ink_area_ratio": 0.7851,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -967,6 +1057,7 @@
           "ink_area_ratio": 0.7468,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -976,6 +1067,7 @@
           "ink_area_ratio": 0.7939,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -985,6 +1077,7 @@
           "ink_area_ratio": 0.7839,
           "stroke_offset_px": 0.975,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -994,6 +1087,7 @@
           "ink_area_ratio": 0.8384,
           "stroke_offset_px": 0.938,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1003,6 +1097,7 @@
           "ink_area_ratio": 0.8135,
           "stroke_offset_px": 1.025,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1012,6 +1107,7 @@
           "ink_area_ratio": 0.775,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1021,6 +1117,7 @@
           "ink_area_ratio": 0.8006,
           "stroke_offset_px": 0.812,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1030,6 +1127,7 @@
           "ink_area_ratio": 0.8188,
           "stroke_offset_px": 0.812,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1039,6 +1137,7 @@
           "ink_area_ratio": 0.7866,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1048,6 +1147,7 @@
           "ink_area_ratio": 0.827,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1057,6 +1157,7 @@
           "ink_area_ratio": 0.7715,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1066,6 +1167,7 @@
           "ink_area_ratio": 0.7779,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1075,6 +1177,7 @@
           "ink_area_ratio": 0.7837,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1084,6 +1187,7 @@
           "ink_area_ratio": 0.7926,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1093,6 +1197,7 @@
           "ink_area_ratio": 0.7936,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1102,6 +1207,7 @@
           "ink_area_ratio": 0.8103,
           "stroke_offset_px": 0.938,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1111,6 +1217,7 @@
           "ink_area_ratio": 0.7313,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1120,6 +1227,7 @@
           "ink_area_ratio": 0.8235,
           "stroke_offset_px": 0.938,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1129,6 +1237,7 @@
           "ink_area_ratio": 0.7644,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1138,6 +1247,7 @@
           "ink_area_ratio": 0.7669,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1147,6 +1257,7 @@
           "ink_area_ratio": 0.7928,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1156,6 +1267,7 @@
           "ink_area_ratio": 0.7638,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1165,6 +1277,7 @@
           "ink_area_ratio": 0.7769,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1174,6 +1287,7 @@
           "ink_area_ratio": 0.747,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1183,6 +1297,7 @@
           "ink_area_ratio": 0.8143,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1192,6 +1307,7 @@
           "ink_area_ratio": 0.7714,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1201,6 +1317,7 @@
           "ink_area_ratio": 0.7642,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1210,6 +1327,7 @@
           "ink_area_ratio": 0.7462,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1219,6 +1337,7 @@
           "ink_area_ratio": 0.7883,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1228,6 +1347,7 @@
           "ink_area_ratio": 0.7402,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1237,6 +1357,7 @@
           "ink_area_ratio": 0.7808,
           "stroke_offset_px": 1.125,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1246,6 +1367,7 @@
           "ink_area_ratio": 0.7585,
           "stroke_offset_px": 1.25,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1255,6 +1377,7 @@
           "ink_area_ratio": 0.8046,
           "stroke_offset_px": 1.062,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1264,6 +1387,7 @@
           "ink_area_ratio": 0.778,
           "stroke_offset_px": 1.125,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         }
@@ -1346,6 +1470,7 @@
           "ink_area_ratio": 0.8696,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1355,6 +1480,7 @@
           "ink_area_ratio": 0.8643,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1364,6 +1490,7 @@
           "ink_area_ratio": 0.8623,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1373,6 +1500,7 @@
           "ink_area_ratio": 0.8744,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1382,6 +1510,7 @@
           "ink_area_ratio": 0.8419,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1391,6 +1520,7 @@
           "ink_area_ratio": 0.8472,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1400,6 +1530,7 @@
           "ink_area_ratio": 0.8554,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1409,6 +1540,7 @@
           "ink_area_ratio": 0.8671,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1418,6 +1550,7 @@
           "ink_area_ratio": 0.8433,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1427,6 +1560,7 @@
           "ink_area_ratio": 0.8459,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1436,6 +1570,7 @@
           "ink_area_ratio": 0.8674,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1445,6 +1580,7 @@
           "ink_area_ratio": 0.8514,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1454,6 +1590,7 @@
           "ink_area_ratio": 0.8774,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1463,6 +1600,7 @@
           "ink_area_ratio": 0.8718,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1472,6 +1610,7 @@
           "ink_area_ratio": 0.8816,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1481,6 +1620,7 @@
           "ink_area_ratio": 0.8652,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1490,6 +1630,7 @@
           "ink_area_ratio": 0.8829,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1499,6 +1640,7 @@
           "ink_area_ratio": 0.8668,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1508,6 +1650,7 @@
           "ink_area_ratio": 0.8419,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1517,6 +1660,7 @@
           "ink_area_ratio": 0.8598,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1526,6 +1670,7 @@
           "ink_area_ratio": 0.8594,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1535,6 +1680,7 @@
           "ink_area_ratio": 0.8663,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1544,6 +1690,7 @@
           "ink_area_ratio": 0.8787,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1553,6 +1700,7 @@
           "ink_area_ratio": 0.8681,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1562,6 +1710,7 @@
           "ink_area_ratio": 0.855,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1571,6 +1720,7 @@
           "ink_area_ratio": 0.8561,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1580,6 +1730,7 @@
           "ink_area_ratio": 0.851,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1589,6 +1740,7 @@
           "ink_area_ratio": 0.8534,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1598,6 +1750,7 @@
           "ink_area_ratio": 0.8262,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1607,6 +1760,7 @@
           "ink_area_ratio": 0.8582,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1616,6 +1770,7 @@
           "ink_area_ratio": 0.8521,
           "stroke_offset_px": 0.663,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1625,6 +1780,7 @@
           "ink_area_ratio": 0.8882,
           "stroke_offset_px": 0.637,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1634,6 +1790,7 @@
           "ink_area_ratio": 0.8718,
           "stroke_offset_px": 0.697,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1643,6 +1800,7 @@
           "ink_area_ratio": 0.8431,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1652,6 +1810,7 @@
           "ink_area_ratio": 0.8596,
           "stroke_offset_px": 0.552,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1661,6 +1820,7 @@
           "ink_area_ratio": 0.8722,
           "stroke_offset_px": 0.552,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1670,6 +1830,7 @@
           "ink_area_ratio": 0.8522,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1679,6 +1840,7 @@
           "ink_area_ratio": 0.8784,
           "stroke_offset_px": 0.578,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1688,6 +1850,7 @@
           "ink_area_ratio": 0.8421,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1697,6 +1860,7 @@
           "ink_area_ratio": 0.8457,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1706,6 +1870,7 @@
           "ink_area_ratio": 0.8517,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1715,6 +1880,7 @@
           "ink_area_ratio": 0.8592,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1724,6 +1890,7 @@
           "ink_area_ratio": 0.8583,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1733,6 +1900,7 @@
           "ink_area_ratio": 0.8702,
           "stroke_offset_px": 0.637,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1742,6 +1910,7 @@
           "ink_area_ratio": 0.8132,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1751,6 +1920,7 @@
           "ink_area_ratio": 0.8769,
           "stroke_offset_px": 0.637,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1760,6 +1930,7 @@
           "ink_area_ratio": 0.8353,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1769,6 +1940,7 @@
           "ink_area_ratio": 0.8376,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1778,6 +1950,7 @@
           "ink_area_ratio": 0.8568,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1787,6 +1960,7 @@
           "ink_area_ratio": 0.8351,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1796,6 +1970,7 @@
           "ink_area_ratio": 0.8454,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1805,6 +1980,7 @@
           "ink_area_ratio": 0.8221,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1814,6 +1990,7 @@
           "ink_area_ratio": 0.8723,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1823,6 +2000,7 @@
           "ink_area_ratio": 0.8412,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1832,6 +2010,7 @@
           "ink_area_ratio": 0.8365,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1841,6 +2020,7 @@
           "ink_area_ratio": 0.8244,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1850,6 +2030,7 @@
           "ink_area_ratio": 0.8557,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1859,6 +2040,7 @@
           "ink_area_ratio": 0.8188,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1868,6 +2050,7 @@
           "ink_area_ratio": 0.8499,
           "stroke_offset_px": 0.765,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1877,6 +2060,7 @@
           "ink_area_ratio": 0.8333,
           "stroke_offset_px": 0.85,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1886,6 +2070,7 @@
           "ink_area_ratio": 0.868,
           "stroke_offset_px": 0.722,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1895,6 +2080,7 @@
           "ink_area_ratio": 0.8466,
           "stroke_offset_px": 0.765,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         }
@@ -1977,6 +2163,7 @@
           "ink_area_ratio": 0.9332,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1986,6 +2173,7 @@
           "ink_area_ratio": 0.9327,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -1995,6 +2183,7 @@
           "ink_area_ratio": 0.9287,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2004,6 +2193,7 @@
           "ink_area_ratio": 0.9369,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2013,6 +2203,7 @@
           "ink_area_ratio": 0.9184,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2022,6 +2213,7 @@
           "ink_area_ratio": 0.9193,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2031,6 +2223,7 @@
           "ink_area_ratio": 0.925,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2040,6 +2233,7 @@
           "ink_area_ratio": 0.9304,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2049,6 +2243,7 @@
           "ink_area_ratio": 0.9171,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2058,6 +2253,7 @@
           "ink_area_ratio": 0.9195,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2067,6 +2263,7 @@
           "ink_area_ratio": 0.9312,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2076,6 +2273,7 @@
           "ink_area_ratio": 0.9212,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2085,6 +2283,7 @@
           "ink_area_ratio": 0.9363,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2094,6 +2293,7 @@
           "ink_area_ratio": 0.9329,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2103,6 +2303,7 @@
           "ink_area_ratio": 0.9384,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2112,6 +2313,7 @@
           "ink_area_ratio": 0.9306,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2121,6 +2323,7 @@
           "ink_area_ratio": 0.9401,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2130,6 +2333,7 @@
           "ink_area_ratio": 0.9313,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2139,6 +2343,7 @@
           "ink_area_ratio": 0.9178,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2148,6 +2353,7 @@
           "ink_area_ratio": 0.9262,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2157,6 +2363,7 @@
           "ink_area_ratio": 0.9272,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2166,6 +2373,7 @@
           "ink_area_ratio": 0.9313,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2175,6 +2383,7 @@
           "ink_area_ratio": 0.9376,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2184,6 +2393,7 @@
           "ink_area_ratio": 0.9315,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2193,6 +2403,7 @@
           "ink_area_ratio": 0.9251,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2202,6 +2413,7 @@
           "ink_area_ratio": 0.9253,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2211,6 +2423,7 @@
           "ink_area_ratio": 0.9225,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2220,6 +2433,7 @@
           "ink_area_ratio": 0.9255,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2229,6 +2443,7 @@
           "ink_area_ratio": 0.9086,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2238,6 +2453,7 @@
           "ink_area_ratio": 0.928,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2247,6 +2463,7 @@
           "ink_area_ratio": 0.9239,
           "stroke_offset_px": 0.335,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2256,6 +2473,7 @@
           "ink_area_ratio": 0.9423,
           "stroke_offset_px": 0.323,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2265,6 +2483,7 @@
           "ink_area_ratio": 0.9349,
           "stroke_offset_px": 0.353,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2274,6 +2493,7 @@
           "ink_area_ratio": 0.9195,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2283,6 +2503,7 @@
           "ink_area_ratio": 0.9262,
           "stroke_offset_px": 0.28,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2292,6 +2513,7 @@
           "ink_area_ratio": 0.9339,
           "stroke_offset_px": 0.28,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2301,6 +2523,7 @@
           "ink_area_ratio": 0.9233,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2310,6 +2533,7 @@
           "ink_area_ratio": 0.9387,
           "stroke_offset_px": 0.292,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2319,6 +2543,7 @@
           "ink_area_ratio": 0.9186,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2328,6 +2553,7 @@
           "ink_area_ratio": 0.9201,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2337,6 +2563,7 @@
           "ink_area_ratio": 0.9242,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2346,6 +2573,7 @@
           "ink_area_ratio": 0.9273,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2355,6 +2583,7 @@
           "ink_area_ratio": 0.9276,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2364,6 +2593,7 @@
           "ink_area_ratio": 0.9328,
           "stroke_offset_px": 0.323,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2373,6 +2603,7 @@
           "ink_area_ratio": 0.9031,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2382,6 +2613,7 @@
           "ink_area_ratio": 0.9373,
           "stroke_offset_px": 0.323,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2391,6 +2623,7 @@
           "ink_area_ratio": 0.9147,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2400,6 +2633,7 @@
           "ink_area_ratio": 0.9162,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2409,6 +2643,7 @@
           "ink_area_ratio": 0.9255,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2418,6 +2653,7 @@
           "ink_area_ratio": 0.9144,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2427,6 +2663,7 @@
           "ink_area_ratio": 0.9201,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2436,6 +2673,7 @@
           "ink_area_ratio": 0.9073,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2445,6 +2683,7 @@
           "ink_area_ratio": 0.9345,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2454,6 +2693,7 @@
           "ink_area_ratio": 0.9188,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2463,6 +2703,7 @@
           "ink_area_ratio": 0.9149,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2472,6 +2713,7 @@
           "ink_area_ratio": 0.9093,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2481,6 +2723,7 @@
           "ink_area_ratio": 0.9262,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2490,6 +2733,7 @@
           "ink_area_ratio": 0.9055,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2499,6 +2743,7 @@
           "ink_area_ratio": 0.9231,
           "stroke_offset_px": 0.387,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2508,6 +2753,7 @@
           "ink_area_ratio": 0.9138,
           "stroke_offset_px": 0.43,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2517,6 +2763,7 @@
           "ink_area_ratio": 0.932,
           "stroke_offset_px": 0.365,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         },
@@ -2526,6 +2773,7 @@
           "ink_area_ratio": 0.9211,
           "stroke_offset_px": 0.387,
           "outline_source": "contour-aware-derivation",
+          "outline_encoding": "sampled-offset-polygons",
           "override_svg_sha256": null,
           "topology_adjustments": []
         }
