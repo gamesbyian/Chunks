@@ -215,11 +215,15 @@ internal fun SnapshotRestorePreviewPanel(
                     else "Compare saved snapshot with ${target.noun}")
             }
             if (expanded) {
-                Text("Snapshot restore comparison (read-only)",
+                Text(if (onReviewOneRestore != null)
+                    "Compare snapshot and review stopped restore"
+                    else "Snapshot restore comparison (read-only)",
                     style = MaterialTheme.typography.titleMedium)
                 Text("Compares a verified .chunksnap against every torrent in a " +
-                    "fresh, complete ${target.observation} observation. It can identify missing " +
-                    "torrent definitions, but cannot restore data or move downloaded files.")
+                    "fresh, complete ${target.observation} observation. It can identify " +
+                    "missing definitions. An explicitly confirmed phone restore adds " +
+                    "only a stopped transfer definition: no downloaded payload " +
+                    "files are migrated.")
                 Text("The existing ${target.noun} transfers stay untouched. A match means " +
                     "the exact torrent identity already exists here; it does not " +
                     "prove its payload is complete or correctly seeded.",
