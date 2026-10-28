@@ -212,10 +212,12 @@ def punctuation_kern(raw: Path, output: Path, weight: int) -> dict:
         raise AssertionError('Unicode changed during kerning')
     if final['hmtx'].metrics != font['hmtx'].metrics:
         raise AssertionError('Kerning accidentally changed advance metrics')
-    return {'sampled_punctuation_pairs': sampled,
-            'adjusted_punctuation_pairs': len(records),
-            'clipped_at_72_units': clipped,
-            'bounded_pairpos_subtables': lookup_count}
+    clipped_pairs.sort(key=lambda x: (-abs(x['unapplied_units']), x['pair']))
+    return ({'sampled_punctuation_pairs': sampled,
+             'adjusted_punctuation_pairs': len(records),
+             'clipped_at_72_units': clipped,
+             'worst_clipped_pair_examples': clipped_pairs[:12],
+             'bounded_pairpos_subtables': lookup_count}, clipped_pairs)
 
 
 def run(source_dir: Path, masters: Path, profile_file: Path, out: Path,
