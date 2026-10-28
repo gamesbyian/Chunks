@@ -15,7 +15,7 @@ REPORT=BASE/"QUALITY-REVIEW.md"
 def produce():
     inv=json.loads(INV.read_text(encoding="utf-8"))
     ids={a["id"]:a for a in inv["assets"]}
-    assert len(ids)==len(inv["assets"])==836
+    assert len(ids)==len(inv["assets"])==sum(inv["totals"].values())
     rows=[]
     actual=set()
     for a in sorted(inv["assets"],key=lambda x:x["id"]):
@@ -71,7 +71,7 @@ def produce():
         rows.append(entry)
     present={str(p.relative_to(ROOT)) for p in BASE.rglob("*.svg")}
     assert actual==present,(len(actual),len(present),list(present-actual)[:10])
-    assert len(actual)==inv["totals"]["vectorDraft"]==815
+    assert len(actual)==inv["totals"]["vectorDraft"]
     counts=dict(sorted(collections.Counter(a["provenanceClass"] for a in rows).items()))
     unreviewed=sum(a["opticalApproval"]=="not-verified" for a in rows)
     text_dependent=[a["id"] for a in rows if a.get("liveSvgText")]
@@ -89,12 +89,12 @@ def produce():
       "fontDependentIds":text_dependent,"openAcceptanceGates":gates,
       "canonicalLauncher":"docs/design/approved/chunks-app-icon-master.svg"}
     md=["# Chunks SVG inventory quality review","",
-      "All 815 first-pass SVGs exist and the 20 aliases resolve. This is not a declaration that every logo, sticker, icon or UI specimen matches its source exactly.","",
+      "All "+str(inv["totals"]["vectorDraft"])+" first-pass SVGs exist and "+str(inv["totals"]["aliases"])+" aliases resolve. This is not a declaration that every logo, sticker, icon or UI specimen matches its source exactly.","",
       "## Recorded categories","",
       "| Provenance | Entries |","| --- | ---: |"]
     md.extend("| "+k+" | "+str(v)+" |" for k,v in counts.items())
     md.extend(["","## Remaining verification","",
-      "Technical file coverage: 815/815. Missing named first-pass slots: 0.",
+      "Technical file coverage: "+str(len(actual))+"/"+str(inv["totals"]["vectorDraft"])+". Missing named first-pass slots: "+str(inv["totals"]["planned"])+".",
       "Unverified optical entries: "+str(unreviewed)+".",
       "Font-dependent SVGs: "+str(len(text_dependent))+".",
       ""])
@@ -114,5 +114,5 @@ def main():
     else:
         assert OUTPUT.read_text(encoding="utf-8")==a,"Stale quality dossier"
         assert REPORT.read_text(encoding="utf-8")==b,"Stale quality summary"
-    print("PASS: 836 accounted for; 815 SVGs, 20 aliases, 1 protected launcher.")
+    print("PASS: asset inventory, provenance and SVG files match the current manifest totals.")
 if __name__=="__main__":main()
