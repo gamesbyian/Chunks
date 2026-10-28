@@ -13,12 +13,13 @@ import java.io.File
 import java.io.FileOutputStream
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
  * Test-only renderer for experimental CFFs. These OTFs are staged in the
- * *instrumentation APK* by the CI workflow, never in the shipping app.
+ * debug-only APK's assets by dedicated CI, never in the release app.
  *
  * Native Android TextView measurements and actual Bitmap/Canvas pixels are
  * sampled at 1x and 2x logical text size, with the same finite panel width.
@@ -37,7 +38,12 @@ class ExperimentalTypefaceNativeInstrumentedTest {
     fun allFiveCandidateFacesRenderWithCompleteUnellipsizedTextAtNormalAndDoubleScale() {
         val inst = InstrumentationRegistry.getInstrumentation()
         val context = inst.targetContext
-        val assets = inst.context.assets
+        val assets = context.assets
+        // Other Android workflows deliberately do not stage the experimental
+        // faces. They may compile this test but must skip its data-dependent
+        // fixture, rather than fail unrelated Add/download UI test suites.
+        assumeTrue("Experimental debug font fixtures not staged",
+            assets.list("referenceFonts")?.count { it.endsWith("-Stacked.otf") } == 5)
         val dir = File(context.filesDir, "font-acceptance")
         assertTrue("Native font review output directory", dir.isDirectory || dir.mkdirs())
         val density = context.resources.displayMetrics.density
