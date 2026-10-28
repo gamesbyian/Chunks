@@ -2,7 +2,7 @@
 
 **Owner directive · 2026-10-27:** Every inconsistent reference-image variant is to receive its **own** independent SVG. Do not resolve away alternatives or select an undocumented winner. All six reference PNGs remain untouched, immediately alongside this plan.
 
-**Authoritative per-asset ledger:** [Master inventory](../svg/master-inventory.json) has **822 named entries** (778 SVG draft files, 19 direct aliases to existing masters, 24 planned reference-fidelity slots, and one existing approved SVG). Each entry has an ID, category, origin, status and exact file path when present. The inventory is the exhaustive tracking index; this document explains how to make and test assets. The CSV-like task list is *not* a competing product work queue: [WORK-QUEUE](../../WORK-QUEUE.md) remains the repo's ranked authority.
+**Authoritative per-asset ledger:** [Master inventory](../svg/master-inventory.json) has **836 named entries** (803 SVG draft files, 20 direct aliases to existing masters, 12 outstanding reference-fidelity slots, and one existing approved SVG). Each entry has an ID, category, origin, status and exact file path when present. The inventory is the exhaustive tracking index; this document explains how to make and test assets. The CSV-like task list is *not* a competing product work queue: [WORK-QUEUE](../../WORK-QUEUE.md) remains the repo's ranked authority.
 
 ## Reference map
 
@@ -60,9 +60,9 @@
 
 ## Current delivery checkpoint
 
-- **Delivered as vector drafts:** 778 standalone files: initial functional graphics, dimensionally separated characters, 25 exact-geometry approved-icon derivatives, 96 UI state specimens, 32 palette variants, 306 true path-based exploratory glyphs, 60 further icon/doodle variants, 34 launcher/media/Android specimens, 16 additional character parts and 36 scene/sticker compositions. Reference-fidelity approval is **not** implied.
+- **Delivered as vector drafts:** 803 files. The first functional/character/UI/type/palette/icon/scene batches remain editable. High-impact improvements since then: **six original Chunks wordmark letter silhouettes directly traced from reference PNG 03**, the hand-lettered primary tagline, the Big Files sticker lettering, and source-derived horizontal/stacked/reversed lockups. The original early hand-drawn draft logo variants have been preserved rather than overwritten.
 - **Already approved unchanged:** the official full-colour transparent launcher SVG, generated into the Android launcher via the existing pipeline.
-- **Remaining:** 24 reference-fidelity tasks, focused on exact wordmark path tracing, hand-lettered slogans and sticker wording; 19 additional visual roles explicitly reuse already existing SVG masters, without clone files.
+- **Remaining:** 12 specific reference-fidelity tasks, mostly smaller sticker slogans and polishing some splash/marketing compositions. 20 roles reuse identical existing masters rather than duplicating files.
 - **Important limitations:** the logos and taglines remain exploratory visual drafts rather than exact tracings; some fixed slogan stickers still use SVG `<text>` fallbacks. The 306 alphabet SVGs are stroked paths, not finished variable font outlines or OTF files. Neither the 96 UI component specimens nor the promotional artwork replaces native, accessible Android UI. The approved launcher SVG, its original reference PNG and all six reference sheets remain untouched.
 
-**Next practical step:** visually compare the rendered gallery/contact sheets with the actual six reference PNGs and hand-refine the 24 outstanding lettering/wordmark assets. Use the named palette variants rather than unilaterally choosing one. After pixel-fidelity and font selection, adapt the corresponding elements into accessible native Compose components; physical Pixel 6 Pro acceptance remains separate.
+**Next practical step:** source-trace and hand-clean the 12 remaining sticker/brand fidelity targets from the exact six PNG references; compare their outlines and shadow layers on a rendered atlas. Test letter-silhouette pixel IoU with `tools/check_svg_trace_fidelity.py`; treat the result as **technical contour similarity**, not owner visual sign-off or font readiness. Integrate approved components into accessible native Compose only after review.

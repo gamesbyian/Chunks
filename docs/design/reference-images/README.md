@@ -11,7 +11,7 @@
 | [05: UI components and states](05-ui-components-and-states.png) | Segmented progress bars, list cards, tabs, storage meters, action buttons, warning, disabled and error states |
 | [06: Colour, illustrations and stickers](06-colour-illustrations-and-stickers.png) | Palette, geometric background forms, 3D-style symbol family, playful stickers and empty-state art |
 
-**NEW:** [SVG production plan and 822-entry exhaustive inventory](SVG-ASSET-PRODUCTION-PLAN.md), [vector library](../svg/README.md), and [interactive mix-and-compare gallery](../svg/gallery.html). 778 SVG assets now exist, 19 identified roles reuse matching existing vectors, and 24 precision/fidelity tasks remain. The reference PNGs remain immutable. Approved launcher status remains unchanged.
+**NEW:** [SVG production plan and 822-entry exhaustive inventory](SVG-ASSET-PRODUCTION-PLAN.md), [vector library](../svg/README.md), and [interactive mix-and-compare gallery](../svg/gallery.html). 803 SVG assets now exist, 20 visual roles reuse matching existing masters, and 12 fidelity tasks remain. The reference PNGs remain immutable. Approved launcher status remains unchanged.
 
 ## Implementation status (first limited native slice)
 

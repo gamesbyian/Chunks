@@ -10,6 +10,10 @@ on:
       - '.github/workflows/svg-library-check.yml'
   workflow_dispatch:
 
+concurrency:
+  group: chunks-svg-structure-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 

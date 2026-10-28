@@ -26,6 +26,9 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends librsvg2-bin
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - name: Install reference silhouette comparator
         run: python3 -m pip install --disable-pip-version-check 'Pillow>=11,<13'
       - name: Rasterize every vector at two acceptance sizes
