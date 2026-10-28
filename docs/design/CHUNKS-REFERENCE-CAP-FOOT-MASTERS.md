@@ -23,7 +23,21 @@ The independently constructed source SVGs compiled into four CFF fonts with 856 
 | Semibold | 87.61% | 87.70% | 0.609px |
 | Bold | 94.49% | 95.09% | 0.705px |
 
-These are **shape measurements**, not perceptual stroke-weight or optical kerning approval. First-build tests verified 14,048 / 14,170 / 13,839 / 13,869 direct optical pair records across Regular through Bold. The complete source and binary hashes are in `assets/fonts/experimental/weight-studies/reference-panel-weight-study-metrics.json`. The source-branch CI run must be complemented by exact final PR-head checks before merge.
+These are **shape measurements**, not perceptual stroke-weight or optical kerning approval. First-build tests verified 14,048 / 14,170 / 13,839 / 13,869 direct optical pair records across Regular through Bold. The complete source and binary hashes are in `assets/fonts/experimental/weight-studies/reference-panel-weight-study-metrics.json`. The source-branch build and final exact PR-head checks completed successfully before merge.
+
+## Exact-head CI and integration receipt
+
+On 2026-10-28, [PR #491](https://github.com/gamesbyian/Chunks/pull/491) was **squash-merged** at `498bd63ad10cd54675b84a20dd3099e685807ef7` after all **seven exact PR-head checks** completed successfully on `fcbc6e852f80c215a83cad218f9bcc4aafb707dd`:
+
+- `trace-reference-glyphs`
+- `build-weight-studies`
+- `build-fonts`
+- `audit`
+- `visual-stress`
+- `build-experimental-font`
+- `five-accent-studies`
+
+The experimental Regular, Medium, Semibold, and Bold CFFs now include six independently edited reference-basic glyphs each (`H`, `I`, `L`, `T`, `i`, `l`); another 56 per face remain automatic/interim derivations. These checks prove build integrity, provenance and the documented geometric regression gates. **They do not establish optical approval, full Latin/mark design, actual Android Compose scaling, TalkBack behavior, or owner acceptance.** The original heavyweight art and shipping Android font files remain separate and unchanged. [Issue #347](https://github.com/gamesbyian/Chunks/issues/347) retains the remaining acceptance work.
 
 ## Next acceptance gates
 
