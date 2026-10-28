@@ -17,6 +17,15 @@ internal class AndroidSnapshotRestoreJournalStore(context: Context) :
 
     override fun read(key: String): String? = preferences.getString(key, null)
 
-    override fun commit(key: String, value: String): Boolean =
+    override fun compareAndCommit(
+        key: String, expected: String?, value: String
+    ): Boolean = synchronized(processLock) {
+        if (preferences.getString(key, null) != expected) return@synchronized false
         preferences.edit().putString(key, value).commit()
+    }
+
+    companion object {
+        /** Shared by every adapter instance in this app process. */
+        private val processLock = Any()
+    }
 }
