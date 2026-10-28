@@ -181,3 +181,7 @@ offline status without claiming server-side downloads stopped.
 See [SEEDHOST-REMOTE-TESTING](SEEDHOST-REMOTE-TESTING.md),
 [SECURITY](SECURITY.md), [QUALITY-LEDGER](QUALITY-LEDGER.md)
 and [WORK-QUEUE](WORK-QUEUE.md) for live acceptance boundaries.
+
+## Implementation note: progress, cancel and repair (2026-10-28)
+
+`RemoteSmartConnect.connect` reports each candidate before probing (`onAttempt`) and, on failure, returns per-candidate `Attempt(description, path, outcome)`. Only the description, the URL **path** and a short classified outcome (404, refused read-only check, login refused, redirect refused, non-XML-RPC reply) are ever shown: no hostnames with credentials, passwords or raw server replies. `repairAdvice` gives category-specific next steps (paste the browser's ruTorrent address, provider XML-RPC path, web-UI vs SSH password, certificate check, VPN/home network) and states that Chunks stops after one refused login to avoid account lockout. Cancel abandons the read-only discovery coroutine and fences any late result. Credentials are still only sent in response to a same-endpoint 401 challenge, so candidates answering 404 never receive the password.
