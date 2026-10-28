@@ -52,6 +52,7 @@ class LocalTransferPrivacyGateInstrumentedTest {
         }
         compose.onNodeWithText("Phone transfers locked").assertExists()
         compose.onNodeWithText("Unlock phone transfers").assertExists()
+        compose.onNodeWithText("Back to Chunks").assertExists()
         compose.onNodeWithText("PERSONAL TORRENT TITLE AND PATH").assertDoesNotExist()
         compose.runOnIdle { assertEquals(0, compositions) }
         assertFalse(TransferPrivacyRuntime.session.mayView(scope))
