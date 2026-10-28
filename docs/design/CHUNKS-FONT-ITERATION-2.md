@@ -23,3 +23,9 @@ python tools/audit_chunks_fonts.py --fonts assets/fonts/chunks --preview chunks-
 ```
 
 The licensed source and SIL OFL text must accompany redistributed derivatives.
+## Verified CI result / visual inspection
+
+- [GitHub Actions run 40607816631](https://github.com/gamesbyian/Chunks/actions/runs/40607816631) passed the five CFF font rebuilds, five source/glyph/format unit tests, full glyph audit, rendered five-weight specimen and binary/artifact generation.
+- The generated OTFs each retain **1,601 glyphs / 856 Unicode codepoints**. Their 151-character Latin optical probe examines **22,801 possible pairs per weight**, with weight-specific corrections from **18,826 (Regular)** to **14,017 (ExtraBold)**; these are counts, not subjective quality scores.
+- Measured tracking presets are preserved in per-weight JSON. Full-script-safe multiline leading spans approximately **1.60–1.67 em** by weight, while Latin-only display/body recommendations remain shorter. No Android renderer or human font inspection proof is implied by CI.
+- The rendered specimen was inspected: bold filled silhouettes now reflect the original six reference-traced letters much more closely than the source-foundation face; still open are matching the rest of the alphabet, checking outline fidelity at small sizes and intentional spacing around heavy counters.
