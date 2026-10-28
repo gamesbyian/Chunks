@@ -1,0 +1,69 @@
+{
+  "tracking_em": {
+    "display": -0.007,
+    "heading": 0.014,
+    "body": 0.018,
+    "small_labels": 0.024
+  },
+  "line_height_em": {
+    "display_latin": 1.14,
+    "heading_latin": 1.22,
+    "body_latin": 1.36,
+    "small_labels_latin": 1.42,
+    "body_multiscript": 1.67,
+    "small_labels_multiscript": 1.67
+  },
+  "tracking_audit": {
+    "ink_gap_measurements": {
+      "display": {
+        "observed_20pct_ink_gap_em": 0.085,
+        "target_ink_gap_em": 0.078,
+        "sampled_pairs": 21,
+        "lower_limit_em": -0.022,
+        "upper_limit_em": 0.01
+      },
+      "heading": {
+        "observed_20pct_ink_gap_em": 0.0853,
+        "target_ink_gap_em": 0.1,
+        "sampled_pairs": 44,
+        "lower_limit_em": -0.015,
+        "upper_limit_em": 0.014
+      },
+      "body": {
+        "observed_20pct_ink_gap_em": 0.0849,
+        "target_ink_gap_em": 0.122,
+        "sampled_pairs": 52,
+        "lower_limit_em": -0.004,
+        "upper_limit_em": 0.018
+      },
+      "small_labels": {
+        "observed_20pct_ink_gap_em": 0.0851,
+        "target_ink_gap_em": 0.138,
+        "sampled_pairs": 28,
+        "lower_limit_em": 0,
+        "upper_limit_em": 0.024
+      }
+    },
+    "all_glyph_vertical_extents": {
+      "low": -524,
+      "high": 1078,
+      "minimum_multiscript_line_height_em": 1.67
+    }
+  },
+  "base_sha256": "617faca03c2766ef39260c56cf6f2f1d6e2638465aa33ccba88703422374b8a8",
+  "optimized_sha256": "6f99adeba2e8a9f1cc2b8938fd33ed3861b511cd3119fc28cf80b56c8474d3bc",
+  "modified_glyphs": 62,
+  "measured_pairs": 22801,
+  "additional_optical_pairs": 13796,
+  "minimum_ink_gaps_px_before": {
+    "14": 1.4375,
+    "24": 2.65625,
+    "48": 5.3125
+  },
+  "minimum_ink_gaps_px_after": {
+    "14": 0.609375,
+    "24": 1.703125,
+    "48": 3.171875
+  },
+  "condition": "experimental; native proof required; source non-Latin native shaping retained"
+}
