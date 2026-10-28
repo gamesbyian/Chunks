@@ -850,8 +850,9 @@ internal fun LocalEngineScreen(
                                         "chunks-place-v1:" + folder.canonicalPath)
                                     val journal = SnapshotRestoreJournalV1.open(
                                         AndroidSnapshotRestoreJournalStore(context),
-                                        draft.archiveFingerprint, targetIdentity,
-                                        listOf(draft.original.infoHashV1))
+                                        SnapshotRestoreOnceV1.itemArchiveFingerprint(
+                                            draft.archiveFingerprint, draft.original.infoHashV1),
+                                        targetIdentity, listOf(draft.original.infoHashV1))
                                     SnapshotRestoreOnceV1.execute(
                                         journal = journal,
                                         reviewed = draft.original,
