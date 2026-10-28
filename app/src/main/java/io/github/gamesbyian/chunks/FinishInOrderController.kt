@@ -14,7 +14,11 @@ import java.util.Locale
  * and Collections). Commits are synchronous: the runner's write-ahead journal
  * is only trusted after [save] returns true.
  */
-internal class FinishInOrderStore(context: Context) {
+internal class FinishInOrderStore(
+    context: Context,
+    /** LOCAL_ENGINE_SCOPE for the phone, or an rTorrent endpoint + account scope. */
+    private val scope: String = TransferCollectionStore.LOCAL_ENGINE_SCOPE
+) {
     private val prefs = context.applicationContext.getSharedPreferences(
         "chunks_finish_in_order_v1", Context.MODE_PRIVATE)
     private val hashPattern = Regex("(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})")
@@ -40,7 +44,7 @@ internal class FinishInOrderStore(context: Context) {
 
     private fun key(infoHash: String): String {
         require(hashPattern.matches(infoHash)) { "Invalid transfer identity" }
-        val identity = TransferCollectionStore.LOCAL_ENGINE_SCOPE + "\u0000" +
+        val identity = scope + "\u0000" +
             infoHash.uppercase(Locale.ROOT)
         return "policy_" + MessageDigest.getInstance("SHA-256")
             .digest(identity.toByteArray(Charsets.UTF_8))
