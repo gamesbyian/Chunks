@@ -22,6 +22,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -67,6 +68,9 @@ internal fun LocalTransferPrivacyGate(
     var signal by remember { mutableStateOf<CancellationSignal?>(null) }
     var unlockTicket by remember { mutableStateOf<TransferPrivacySession.Ticket?>(null) }
     var policyTicket by remember { mutableStateOf<TransferPrivacySession.Ticket?>(null) }
+    val currentSignal by rememberUpdatedState(signal)
+    val currentUnlockTicket by rememberUpdatedState(unlockTicket)
+    val currentPolicyTicket by rememberUpdatedState(policyTicket)
 
     // Read both revisions so a background policy revocation or an auth callback
     // updates the visible gate immediately, without polling or persisted tokens.
@@ -82,11 +86,15 @@ internal fun LocalTransferPrivacyGate(
                 activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
         }
     }
-    DisposableEffect(scope) {
+    DisposableEffect(scope, activity) {
         onDispose {
-            signal?.cancel()
-            unlockTicket?.let { session.onCancelUnlock(it) }
-            policyTicket?.let { session.onCancelPolicyChange(it) }
+            currentSignal?.cancel()
+            currentUnlockTicket?.let { session.onCancelUnlock(it) }
+            currentPolicyTicket?.let { session.onCancelPolicyChange(it) }
+            // An Android rotation preserves the process's once-per-session
+            // grant. An actual exit from the transfer route does not satisfy
+            // EVERY_ENTRY on the next visit.
+            if (activity?.isChangingConfigurations != true) session.onExit(scope)
         }
     }
 
