@@ -23,15 +23,15 @@ class ExternalMagnetLocalHandoffInstrumentedTest {
 
     private fun openMagnet() {
         rule.runOnUiThread {
-            // Exercise Android's real singleTop intent delivery, rather than
-            // invoking Activity's protected onNewIntent callback in test code.
-            rule.activity.startActivity(
-                Intent(rule.activity, MainActivity::class.java).apply {
-                    action = Intent.ACTION_VIEW
-                    data = Uri.parse(magnet)
-                    addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                }
-            )
+            // ActivityScenario must retain ownership of its launched Activity.
+            // Starting a second MainActivity can strand the first PAUSED at
+            // teardown. Instrumentation dispatches the OS lifecycle callback
+            // to the same instance without replacing the test's Activity.
+            androidx.test.platform.app.InstrumentationRegistry.getInstrumentation()
+                .callActivityOnNewIntent(
+                    rule.activity,
+                    Intent(Intent.ACTION_VIEW, Uri.parse(magnet))
+                )
         }
         rule.waitUntil(15_000) {
             rule.onAllNodesWithText("On this phone (experimental)")
