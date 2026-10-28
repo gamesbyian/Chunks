@@ -162,7 +162,7 @@ class ReferencePanelWeightTests(unittest.TestCase):
         original={ch:source_polygons(GLYPHS/f'U+{ord(ch):04X}.svg',3)
                   for ch in ('I','l')}
         manifest=json.loads((STUDIES/'reference-panel-weight-study-metrics.json').read_text())
-        self.assertEqual(manifest['overrides_used'],12)
+        self.assertEqual(manifest['overrides_used'],16)
         for ch in ('I','l'):
             ratios=[]
             native_areas=[]
@@ -232,6 +232,44 @@ class ReferencePanelWeightTests(unittest.TestCase):
                 self.assertGreater(sum(op=='curveTo' for op,_ in record.value),2)
         self.assertEqual(areas, sorted(areas))
         self.assertLess(areas[-1],source.area)
+
+    def test_four_connected_H_masters_are_editorial_native_curves(self):
+        """Two stems and a middle joining bar must stay one connected path."""
+        old = source_polygons(GLYPHS/'U+0048.svg',3)
+        self.assertEqual(topology(old),(1,0))
+        metrics=json.loads((STUDIES/'reference-panel-weight-study-metrics.json').read_text())
+        areas=[]
+        for weight,style in WEIGHTS.items():
+            with self.subTest(style=style):
+                path=GLYPHS/'weight-overrides'/str(weight)/'U+0048.svg'
+                self.assertTrue(path.is_file())
+                new=source_polygons(path,3)
+                self.assertEqual(topology(new),(1,0))
+                self.assertGreater(new.area,400)
+                self.assertTrue(all(abs(a-b)<=3 for a,b in zip(new.bounds,old.bounds)))
+                self.assertTrue(.30<=new.area/old.area<=1.20)
+                areas.append(new.area)
+                root=ET.fromstring(path.read_text())
+                element=next(el for el in root.iter() if el.tag.endswith('path'))
+                pen=RecordingPen()
+                parse_path(element.attrib['d'],pen)
+                self.assertEqual(sum(op=='moveTo' for op,_ in pen.value),1)
+                self.assertGreaterEqual(sum(op=='qCurveTo' for op,_ in pen.value),12)
+                info=metrics['weights'][style]['glyph_geometry']['H']
+                self.assertEqual(info['outline_source'],'weight-specific-svg-master')
+                self.assertEqual(info['outline_encoding'],'native-bezier-curves')
+                self.assertEqual(info['components'],1)
+                self.assertEqual(info['counters'],0)
+                self.assertEqual(info['override_svg_sha256'],
+                                 hashlib.sha256(path.read_bytes()).hexdigest())
+                font=TTFont(STUDIES/f'ChunksReferencePanel-{style}-Study.otf')
+                record=RecordingPen()
+                font.getGlyphSet()[font.getBestCmap()[ord('H')]].draw(record)
+                self.assertEqual(sum(op=='moveTo' for op,_ in record.value),1)
+                self.assertGreaterEqual(sum(op=='curveTo' for op,_ in record.value),12)
+        self.assertEqual(areas,sorted(areas))
+        self.assertLess(areas[-1],old.area,
+                        'Heaviest draft H must not exceed unedited ExtraBold ink')
 
     def test_raw_build_is_deterministic_without_touching_accepted_masters(self):
         with tempfile.TemporaryDirectory() as d:
