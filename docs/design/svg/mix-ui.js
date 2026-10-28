@@ -30,20 +30,25 @@ workbench.innerHTML=
  '<input id="mix-recipe-file" type="file" accept=".json,application/json,.svg,image/svg+xml" hidden/></div>'+
  '<p id="mix-message" role="status" aria-live="polite" class="note"></p>';
 mix.insertAdjacentElement("afterend",workbench);
+// The SVG layer preview is a keyboard-operable surface in addition to the
+// sliders. Avoid making the actual SVG/image or dragged layers focus targets.
+mix.tabIndex=0;
+mix.setAttribute("role","group");
+mix.setAttribute("aria-label","Composition canvas. Arrow keys move the selected layer by one percent. Hold Shift for ten percent.");
 document.querySelector('label[for="opacity"]').hidden=true;
 document.querySelector("#opacity").hidden=true;
 const style=document.createElement("style");
 style.textContent=
- '.mix{touch-action:none;cursor:grab}.mix:active{cursor:grabbing}'+
+ '.mix{cursor:grab;outline-offset:4px}.mix:active{cursor:grabbing}.mix:focus-visible{outline:4px solid #FFD93D}'+
  '.mix .mix-layer{position:absolute;inset:0;transform-origin:center;pointer-events:none}'+
  '.mix .mix-layer img{position:absolute;inset:7%;width:86%;height:86%;object-fit:contain}'+
  '.mix-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:14px 0}'+
  '.mix-tools button{min-height:48px}.mix-tools select{min-height:48px}'+
- '.mix-sliders{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:12px}'+
- '.mix-sliders label{display:grid;gap:4px;font-size:14px}'+
- '.mix-sliders input{width:100%;min-height:44px}.mix-sliders output{color:#22d97a}'+
- '#mix-editor{border:1px solid #6b7280;border-radius:12px;padding:12px;margin:8px 0}'+
- '#mix-editor legend{font-weight:750}.tray article.mix-active{outline:3px solid #22d97a;outline-offset:2px}';
+ '.mix-sliders{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(165px,100%),1fr));gap:12px;min-width:0;max-width:100%}'+
+ '.mix-sliders label{display:grid;gap:4px;font-size:14px;min-width:0;overflow-wrap:anywhere}'+
+ '.mix-sliders input{width:100%;min-width:0;max-width:100%;min-height:44px}.mix-sliders output{color:#22d97a}'+
+ '#mix-editor{min-width:0;max-width:100%;border:1px solid #6b7280;border-radius:12px;padding:12px;margin:8px 0}'+
+ '#mix-editor legend{font-weight:750;overflow-wrap:anywhere;max-width:100%}.tray article.mix-active{outline:3px solid #22d97a;outline-offset:2px}';
 document.head.append(style);
 const propKeys=["x","y","scale","rotate","opacity"];
 function sourceById(id){return assets.find(a=>a.id===id);}
@@ -74,6 +79,9 @@ function updateLayerVisuals(){
  }
  const bg=document.querySelector("#mix-background").value;
  mix.style.background=bg==="transparent"?"":bg;
+ // Pan normally through an empty preview, but permit direct dragging once
+ // there is something to manipulate. CSS-only touch-action:none traps mobile scroll.
+ mix.style.touchAction=chosen.length?"none":"pan-y";
 }
 function updatePanel(){
  const e=current();
@@ -87,6 +95,11 @@ function updatePanel(){
    output.textContent=String(e[key])+(key==="rotate"?"°":"%");
   }
  }
+ document.querySelector("#mix-back").disabled=!e||chosen.indexOf(active)===0;
+ document.querySelector("#mix-forward").disabled=!e||chosen.indexOf(active)===chosen.length-1;
+ document.querySelector("#mix-reset").disabled=!e;
+ document.querySelector("#mix-save").disabled=!e;
+ document.querySelector("#mix-export").disabled=!e;
  for(const card of comp.querySelectorAll('article[data-chunks-asset-id]')){
   const selected=card.dataset.chunksAssetId===active;
   card.classList.toggle("mix-active",selected);
@@ -137,8 +150,9 @@ document.querySelector("#mix-reset").addEventListener("click",()=>{
  if(!active)return;editById[active]=mixer.edit({});updateLayerVisuals();updatePanel();
 });
 mix.addEventListener("pointerdown",event=>{
- if(!active)return;
+ if(!active||!event.isPrimary)return;
  const bounds=mix.getBoundingClientRect(),e=current();
+ if(bounds.width<=0||bounds.height<=0)return;
  dragging={id:active,pointer:event.pointerId,x:event.clientX,y:event.clientY,
    initialX:e.x,initialY:e.y,w:bounds.width,h:bounds.height};
  mix.setPointerCapture(event.pointerId);
@@ -150,8 +164,25 @@ mix.addEventListener("pointermove",event=>{
  e.y=Math.max(-100,Math.min(100,Math.round(dragging.initialY+100*(event.clientY-dragging.y)/dragging.h)));
  updateLayerVisuals();updatePanel();
 });
-mix.addEventListener("pointerup",()=>dragging=null);
-mix.addEventListener("pointercancel",()=>dragging=null);
+function finishDrag(event){
+ if(dragging&&dragging.pointer===event.pointerId)dragging=null;
+}
+mix.addEventListener("pointerup",finishDrag);
+mix.addEventListener("pointercancel",finishDrag);
+mix.addEventListener("lostpointercapture",finishDrag);
+mix.addEventListener("keydown",event=>{
+ if(!active||event.target!==mix)return;
+ const key=event.key;
+ if(!["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(key))return;
+ event.preventDefault();
+ const e=current(),step=event.shiftKey?10:1;
+ if(key==="ArrowLeft")e.x=Math.max(-100,e.x-step);
+ if(key==="ArrowRight")e.x=Math.min(100,e.x+step);
+ if(key==="ArrowUp")e.y=Math.max(-100,e.y-step);
+ if(key==="ArrowDown")e.y=Math.min(100,e.y+step);
+ updateLayerVisuals();updatePanel();
+ status("Moved "+active+" to horizontal "+e.x+"%, vertical "+e.y+"%.");
+});
 document.querySelector("#mix-save").addEventListener("click",()=>{
  if(!chosen.length)return;
  download("chunks-svg-mix.recipe.json",JSON.stringify(recipe(),null,2)+"\n","application/json");
@@ -188,7 +219,10 @@ document.querySelector("#mix-recipe-file").addEventListener("change",async event
 });
 document.querySelector("#mix-export").addEventListener("click",async event=>{
  if(!chosen.length)return;
- event.currentTarget.disabled=true;status("Assembling source-vector layers…");
+ // currentTarget is cleared once the browser leaves the synchronous event
+ // dispatch. Capture the element before awaiting SVG source fetches.
+ const exportButton=event.currentTarget;
+ exportButton.disabled=true;status("Assembling source-vector layers…");
  try{
   const selection=recipe();
   const contents=await Promise.all(selection.layers.map(async layer=>{
@@ -206,7 +240,7 @@ document.querySelector("#mix-export").addEventListener("click",async event=>{
   status("Standalone SVG exported. Original variants remain unchanged.");
  }catch(error){
   status("Export unavailable: "+error.message+". Serve the gallery through HTTP(S) with its SVG files.",true);
- }finally{event.currentTarget.disabled=false;}
+ }finally{exportButton.disabled=false;}
 });
 renderTray();
 })();
