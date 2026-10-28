@@ -100,7 +100,9 @@ data class LocalTransferFile(
     val path: String,
     val sizeBytes: Long,
     val doneBytes: Long,
-    val wanted: Boolean
+    val wanted: Boolean,
+    /** Native libtorrent file priority from IGNORE (0) to TOP (7). */
+    val priority: Int = if (wanted) 4 else 0
 )
 
 /** Bytes per second; 0 is unlimited. */
@@ -536,7 +538,8 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         return (0 until storage.numFiles()).asSequence().filter { !storage.padFileAt(it) }.take(limit).map { index ->
             LocalTransferFile(index, storage.filePath(index), storage.fileSize(index),
                 progress.getOrElse(index) { 0L },
-                priorities.getOrNull(index)?.let { it != org.libtorrent4j.Priority.IGNORE } ?: true)
+                priorities.getOrNull(index)?.let { it != org.libtorrent4j.Priority.IGNORE } ?: true,
+                priorities.getOrNull(index)?.swig()?.toInt() ?: 4)
         }.toList()
     }
 
@@ -561,6 +564,57 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             } ?: return LocalCommandOutcome.NOT_FOUND
             if ((observed != org.libtorrent4j.Priority.IGNORE) == wanted) return LocalCommandOutcome.VERIFIED
             if (System.nanoTime() >= deadline) return LocalCommandOutcome.UNCERTAIN
+            Thread.sleep(25)
+        }
+    }
+
+    /**
+     * Change one already-selected file's native piece scheduling priority.
+     * The full reviewed file identity, existing priority and enabled selection
+     * must still match before ANY write. No file is implicitly unskipped.
+     * Readback uncertainty is surfaced, never blindly retried or rolled back.
+     */
+    internal fun setFilePriority(
+        infoHash: String,
+        reviewed: LocalTransferFile,
+        requestedPriority: Int,
+        readbackTimeoutMs: Long = 5_000L
+    ): LocalFileBatchOutcome {
+        require(requestedPriority in setOf(1, 4, 7)) {
+            "Only explicit Low, Normal and High native priorities are supported"
+        }
+        require(readbackTimeoutMs in 0L..60_000L)
+        val key = normal(infoHash)
+        synchronized(this) {
+            val handle = handles[key]?.takeIf { it.isValid }
+                ?: return LocalFileBatchOutcome.NOT_FOUND
+            val actual = files(key)?.singleOrNull { it.index == reviewed.index }
+                ?: return LocalFileBatchOutcome.STALE_REVIEW
+            if (!reviewed.wanted || !actual.wanted ||
+                actual.path != reviewed.path ||
+                actual.sizeBytes != reviewed.sizeBytes ||
+                actual.priority != reviewed.priority)
+                return LocalFileBatchOutcome.STALE_REVIEW
+            if (actual.priority == requestedPriority)
+                return LocalFileBatchOutcome.UNCHANGED
+            val priority = when (requestedPriority) {
+                1 -> org.libtorrent4j.Priority.LOW
+                4 -> org.libtorrent4j.Priority.DEFAULT
+                else -> org.libtorrent4j.Priority.TOP_PRIORITY
+            }
+            try { handle.filePriority(reviewed.index, priority) }
+            catch (_: Exception) { return LocalFileBatchOutcome.UNCERTAIN }
+        }
+        val deadline = System.nanoTime() + readbackTimeoutMs * 1_000_000L
+        while (true) {
+            val observed = synchronized(this) {
+                try {
+                    handles[key]?.takeIf { it.isValid }?.filePriorities()
+                        ?.getOrNull(reviewed.index)?.swig()?.toInt()
+                } catch (_: Exception) { null }
+            }
+            if (observed == requestedPriority) return LocalFileBatchOutcome.VERIFIED
+            if (System.nanoTime() >= deadline) return LocalFileBatchOutcome.UNCERTAIN
             Thread.sleep(25)
         }
     }

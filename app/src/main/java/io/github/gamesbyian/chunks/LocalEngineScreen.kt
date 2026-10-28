@@ -1032,6 +1032,42 @@ internal fun LocalEngineScreen(
                         }
                     }
                 },
+                onFilePriority = { reviewed, newPriority ->
+                    performLocalMutation {
+                        try {
+                            val outcome = withContext(Dispatchers.IO) {
+                                LocalEngineHolder.current()?.setFilePriority(
+                                    transfer.infoHash, reviewed, newPriority)
+                                    ?: LocalFileBatchOutcome.NOT_FOUND
+                            }
+                            if (outcome !in setOf(LocalFileBatchOutcome.VERIFIED,
+                                    LocalFileBatchOutcome.UNCHANGED)) {
+                                inventoryFrame = inventoryFrame.copy(stale = true)
+                            }
+                            message = when (outcome) {
+                                LocalFileBatchOutcome.VERIFIED ->
+                                    "Native file download priority verified. No downloaded data was deleted."
+                                LocalFileBatchOutcome.UNCHANGED ->
+                                    "This file already has that priority. Nothing changed."
+                                LocalFileBatchOutcome.STALE_REVIEW ->
+                                    "File identity or priority changed during review. Refresh files first."
+                                LocalFileBatchOutcome.NOT_FOUND ->
+                                    "The target file or transfer was not found."
+                                LocalFileBatchOutcome.UNCERTAIN ->
+                                    "Native file priority change not confirmed. Refresh status before another change."
+                            }
+                            files = withContext(Dispatchers.IO) {
+                                LocalEngineHolder.current()?.files(transfer.infoHash)
+                            }
+                        } catch (cancel: kotlinx.coroutines.CancellationException) {
+                            throw cancel
+                        } catch (_: Exception) {
+                            inventoryFrame = inventoryFrame.copy(stale = true)
+                            files = null
+                            message = "File priority outcome is uncertain. Refresh before another change."
+                        }
+                    }
+                },
                 onBatchFileWanted = { reviewed, want ->
                     performLocalMutation {
                         try {
@@ -1241,6 +1277,7 @@ internal fun LocalTransferCard(
     onShowFiles: () -> Unit = {},
     onFileWanted: (Int, Boolean) -> Unit = { _, _ -> },
     onBatchFileWanted: ((List<LocalTransferFile>, Boolean) -> Unit)? = null,
+    onFilePriority: ((LocalTransferFile, Int) -> Unit)? = null,
     alias: String? = null,
     onSaveAlias: ((String?) -> Boolean)? = null,
     onPrepareRemote: (() -> Unit)? = null,
@@ -1366,7 +1403,8 @@ internal fun LocalTransferCard(
             }
             if (filesShown) LocalFileSelection(
                 files, busy, transferKey = transfer.infoHash,
-                onFileWanted = onFileWanted, onBatchFileWanted = onBatchFileWanted
+                onFileWanted = onFileWanted, onBatchFileWanted = onBatchFileWanted,
+                onFilePriority = onFilePriority
             )
             if (confirmRemove) {
                 Text("Remove from the phone engine only. Downloaded files stay in Chunks' folder; sharing of this torrent stops.")
@@ -1392,6 +1430,7 @@ internal fun LocalFileSelection(
     busy: Boolean,
     transferKey: String? = null,
     onBatchFileWanted: ((List<LocalTransferFile>, Boolean) -> Unit)? = null,
+    onFilePriority: ((LocalTransferFile, Int) -> Unit)? = null,
     onFileWanted: (Int, Boolean) -> Unit
 ) {
     if (files == null) {
@@ -1409,7 +1448,7 @@ internal fun LocalFileSelection(
     val reviewFingerprint = remember(files) {
         files.map { file ->
             listOf(file.index.toString(), file.path, file.sizeBytes.toString(),
-                file.wanted.toString())
+                file.wanted.toString(), file.priority.toString())
         }
     }
     // Key pending confirmation to the exact review identity instead of
@@ -1417,6 +1456,9 @@ internal fun LocalFileSelection(
     // newly clicked Select/Skip button on the first Compose frame.
     var pendingBatch by remember(transferKey, page, reviewFingerprint) {
         mutableStateOf<Boolean?>(null)
+    }
+    var priorityEditorIndex by remember(transferKey, page, reviewFingerprint) {
+        mutableStateOf<Int?>(null)
     }
     Text("Untick a file to skip downloading it. Already downloaded parts are kept.",
         style = MaterialTheme.typography.bodySmall)
@@ -1471,15 +1513,51 @@ internal fun LocalFileSelection(
         // Multiplying done bytes by 100 can overflow Long for large files.
         val percent = if (file.sizeBytes <= 0L) 100 else
             (file.doneBytes.toDouble() / file.sizeBytes * 100).toInt().coerceIn(0, 100)
-        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
-            .toggleable(value = file.wanted, enabled = !busy, role = Role.Checkbox,
-                onValueChange = { onFileWanted(file.index, it) }),
-            verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(checked = file.wanted, onCheckedChange = null)
-            Column(Modifier.padding(start = 8.dp).weight(1f)) {
-                Text(file.path.substringAfterLast('/'), style = MaterialTheme.typography.bodyMedium)
-                Text(Units.bytes(file.sizeBytes) + " · " + percent + "%" + if (file.wanted) "" else " · skipped",
-                    style = MaterialTheme.typography.bodySmall)
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.weight(1f).heightIn(min = 48.dp)
+                .toggleable(value = file.wanted, enabled = !busy, role = Role.Checkbox,
+                    onValueChange = { onFileWanted(file.index, it) }),
+                verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(checked = file.wanted, onCheckedChange = null)
+                Column(Modifier.padding(start = 8.dp).weight(1f)) {
+                    Text(file.path.substringAfterLast('/'),
+                        style = MaterialTheme.typography.bodyMedium)
+                    Text(Units.bytes(file.sizeBytes) + " · " + percent + "%" +
+                        if (file.wanted) "" else " · skipped",
+                        style = MaterialTheme.typography.bodySmall)
+                }
+            }
+            if (file.wanted && onFilePriority != null) {
+                val priorityName = when (file.priority) {
+                    1 -> "Low"
+                    4 -> "Normal"
+                    7 -> "High"
+                    else -> "Custom"
+                }
+                OutlinedButton(
+                    onClick = { priorityEditorIndex =
+                        if (priorityEditorIndex == file.index) null else file.index },
+                    enabled = !busy,
+                    modifier = Modifier.heightIn(min = 48.dp)
+                ) { Text("Priority: " + priorityName) }
+            }
+        }
+        if (file.wanted && priorityEditorIndex == file.index &&
+            onFilePriority != null) {
+            Text("Change download priority for " + file.path.substringAfterLast('/') +
+                ". This affects piece scheduling, not the files already downloaded.",
+                style = MaterialTheme.typography.bodySmall)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                listOf(1 to "Low", 4 to "Normal", 7 to "High").forEach { (value, label) ->
+                    OutlinedButton(
+                        onClick = {
+                            priorityEditorIndex = null
+                            onFilePriority(file, value)
+                        },
+                        enabled = !busy && file.priority != value,
+                        modifier = Modifier.weight(1f).heightIn(min = 48.dp)
+                    ) { Text(label) }
+                }
             }
         }
     }

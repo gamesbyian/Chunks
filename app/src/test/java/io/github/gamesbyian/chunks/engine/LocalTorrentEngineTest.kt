@@ -456,6 +456,88 @@ class LocalTorrentEngineTest {
         assertEquals(0L, state.payloadDownloadedBytes)
     }
 
+    @Test fun nativeLowNormalHighFilePrioritiesRequireExactFreshFileReview() {
+        val fixture = fixture()
+        val native = engine()
+        val dest = temp.newFolder("file-scheduling")
+        val transfer = added(native.addStopped(fixture.torrent, dest))
+        val original = requireNotNull(native.files(transfer.infoHash)).single {
+            it.path.endsWith("episode.bin")
+        }
+        assertEquals(4, original.priority)
+        assertTrue(original.wanted)
+        assertEquals(LocalFileBatchOutcome.VERIFIED,
+            native.setFilePriority(transfer.infoHash, original, 7))
+        val top = requireNotNull(native.files(transfer.infoHash)).single {
+            it.index == original.index
+        }
+        assertEquals(7, top.priority)
+        assertTrue(top.wanted)
+        assertEquals(LocalFileBatchOutcome.STALE_REVIEW,
+            native.setFilePriority(transfer.infoHash, original, 1))
+        assertEquals(LocalFileBatchOutcome.STALE_REVIEW,
+            native.setFilePriority(transfer.infoHash, top.copy(path = "wrong"), 1))
+        assertEquals(LocalFileBatchOutcome.UNCHANGED,
+            native.setFilePriority(transfer.infoHash, top, 7))
+        assertEquals(LocalFileBatchOutcome.VERIFIED,
+            native.setFilePriority(transfer.infoHash, top, 1))
+        val low = requireNotNull(native.files(transfer.infoHash)).single {
+            it.index == original.index
+        }
+        assertEquals(1, low.priority)
+        assertEquals(LocalFileBatchOutcome.VERIFIED,
+            native.setFilePriority(transfer.infoHash, low, 4))
+        assertEquals(4, requireNotNull(native.files(transfer.infoHash)).single {
+            it.index == original.index
+        }.priority)
+        assertEquals(LocalFileBatchOutcome.NOT_FOUND,
+            native.setFilePriority("f".repeat(40), low, 7))
+        try {
+            native.setFilePriority(transfer.infoHash, low, 0)
+            fail("Skipping needs a separate file selection control")
+        } catch (_: IllegalArgumentException) { }
+        val selected = requireNotNull(native.files(transfer.infoHash)).single {
+            it.index == original.index
+        }
+        assertEquals(LocalCommandOutcome.VERIFIED,
+            native.setFileWanted(transfer.infoHash, selected.index, false))
+        val skipped = requireNotNull(native.files(transfer.infoHash)).single {
+            it.index == original.index
+        }
+        assertEquals(0, skipped.priority)
+        assertEquals(LocalFileBatchOutcome.STALE_REVIEW,
+            native.setFilePriority(transfer.infoHash, skipped, 7))
+        assertTrue(requireNotNull(native.status(transfer.infoHash)).stopped)
+        assertEquals(0L, requireNotNull(native.status(transfer.infoHash)).payloadDownloadedBytes)
+    }
+
+    @Test fun reviewedNativeSchedulingPrioritySurvivesSavedEngineRestart() {
+        val fixture = fixture()
+        val state = temp.newFolder("file-priority-resume-state")
+        val destination = temp.newFolder("file-priority-resume-place")
+        val initial = persistentEngine(state)
+        val transfer = added(initial.addStopped(fixture.torrent, destination))
+        val original = requireNotNull(initial.files(transfer.infoHash)).single {
+            it.path.endsWith("episode.bin")
+        }
+        assertEquals(LocalFileBatchOutcome.VERIFIED,
+            initial.setFilePriority(transfer.infoHash, original, 7))
+        assertEquals(1, initial.saveResumeData())
+        initial.close()
+
+        val afterRestart = persistentEngine(state)
+        assertTrue(afterRestart.restoreProblems.isEmpty())
+        val restored = requireNotNull(afterRestart.files(transfer.infoHash)).single {
+            it.index == original.index
+        }
+        assertTrue(restored.wanted)
+        assertEquals(7, restored.priority)
+        val session = requireNotNull(afterRestart.status(transfer.infoHash))
+        assertTrue("An explicit scheduling preference must never auto-start", session.stopped)
+        assertEquals(destination.absolutePath, session.savePath)
+        assertEquals(0L, session.payloadDownloadedBytes)
+    }
+
     @Test fun skippedFileIsNotDownloadedUntilSelected() {
         val fixture = fixture()
         val seeder = engine()
