@@ -52,7 +52,7 @@ internal object SnapshotRestoreOnceV1 {
 
     fun localEngine(engine: LocalTorrentEngine): LocalTarget = object : LocalTarget {
         override fun completeHashes(): List<String>? =
-            try { engine.list().map { it.infoHash } } catch (_: Exception) { null }
+            try { engine.completeIdentityInventory() } catch (_: Exception) { null }
 
         override fun stoppedAfterReadback(infoHashV1: String): Boolean? =
             try { engine.status(infoHashV1)?.stopped } catch (_: Exception) { null }
