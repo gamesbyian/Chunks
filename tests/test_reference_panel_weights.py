@@ -162,7 +162,7 @@ class ReferencePanelWeightTests(unittest.TestCase):
         original={ch:source_polygons(GLYPHS/f'U+{ord(ch):04X}.svg',3)
                   for ch in ('I','l')}
         manifest=json.loads((STUDIES/'reference-panel-weight-study-metrics.json').read_text())
-        self.assertEqual(manifest['overrides_used'],16)
+        self.assertEqual(manifest['overrides_used'],24)
         for ch in ('I','l'):
             ratios=[]
             native_areas=[]
@@ -270,6 +270,49 @@ class ReferencePanelWeightTests(unittest.TestCase):
         self.assertEqual(areas,sorted(areas))
         self.assertLess(areas[-1],old.area,
                         'Heaviest draft H must not exceed unedited ExtraBold ink')
+
+    def test_four_T_and_four_L_masters_are_joined_rounded_native_paths(self):
+        """Separately authored cap and foot geometries, not offset polygons."""
+        root = GLYPHS/'weight-overrides'
+        ledger=json.loads((STUDIES/'reference-panel-weight-study-metrics.json').read_text())
+        for letter in ('T','L'):
+            reference=source_polygons(GLYPHS/f'U+{ord(letter):04X}.svg',3)
+            self.assertEqual(topology(reference),(1,0))
+            areas=[]
+            for weight,style in WEIGHTS.items():
+                with self.subTest(letter=letter,weight=weight):
+                    path=root/str(weight)/f'U+{ord(letter):04X}.svg'
+                    self.assertTrue(path.is_file())
+                    geom=source_polygons(path,3)
+                    self.assertTrue(geom.is_valid and geom.area>200)
+                    self.assertEqual(topology(geom),(1,0))
+                    self.assertTrue(all(abs(x-y)<=3
+                                        for x,y in zip(geom.bounds,reference.bounds)))
+                    self.assertTrue(.30<=geom.area/reference.area<=1.20)
+                    areas.append(geom.area)
+                    svg=ET.fromstring(path.read_text())
+                    element=next(x for x in svg.iter() if x.tag.endswith('path'))
+                    commands=RecordingPen()
+                    parse_path(element.attrib['d'],commands)
+                    self.assertEqual(sum(op=='moveTo' for op,_ in commands.value),1)
+                    self.assertGreaterEqual(sum(op=='qCurveTo' for op,_ in commands.value),8)
+                    info=ledger['weights'][style]['glyph_geometry'][letter]
+                    self.assertEqual(info['outline_source'],'weight-specific-svg-master')
+                    self.assertEqual(info['outline_encoding'],'native-bezier-curves')
+                    self.assertEqual(info['components'],1)
+                    self.assertEqual(info['counters'],0)
+                    self.assertEqual(info['override_svg_sha256'],
+                                     hashlib.sha256(path.read_bytes()).hexdigest())
+                    face=TTFont(STUDIES/f'ChunksReferencePanel-{style}-Study.otf')
+                    glyph=face.getBestCmap()[ord(letter)]
+                    compiled=RecordingPen()
+                    face.getGlyphSet()[glyph].draw(compiled)
+                    self.assertEqual(sum(op=='moveTo' for op,_ in compiled.value),1)
+                    self.assertGreaterEqual(sum(op=='curveTo' for op,_ in compiled.value),8)
+            self.assertEqual(areas,sorted(areas),
+                             f'{letter}: independent designs must gain ink from 400 to 700')
+            self.assertLess(areas[-1],reference.area,
+                            f'{letter}: Bold candidate must not exceed source ExtraBold')
 
     def test_raw_build_is_deterministic_without_touching_accepted_masters(self):
         with tempfile.TemporaryDirectory() as d:
