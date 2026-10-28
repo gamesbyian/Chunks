@@ -1,5 +1,9 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-28 Android 10/11 foreground-service crash (found by lint, reproduced on API 29)
+
+- `LocalEngineService` called API 31-only `Notification.Builder.setForegroundServiceBehavior` with minSdk 29. With the new API 29 service test and **without** the fix, run [40773235821](https://github.com/gamesbyian/Chunks/actions/runs/40773235821) failed with `NoSuchMethodError` from `onStartCommand`: starting any phone download on Android 10/11 crashed the app. Earlier "API 29 native write/resume/seed" evidence never started the foreground service. The fix PR's exact-head API 29 run (3 service tests, skip-intolerant) is the acceptance record; a physical Android 10/11 handset is still unverified.
+
 ## 2026-10-28 evening PR reconciliation (app lane)
 
 - **#463 MERGED** `ea5833e` (Smart Connect discovery) — see entry below; merge conflicts were documentation-only (both sides' ledger/queue paragraphs kept).
