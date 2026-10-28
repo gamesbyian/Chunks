@@ -16,8 +16,8 @@ from spacing_optimizer import ink_gaps_at_size
 SRC=ROOT/'assets/fonts/experimental/accent-studies'
 OUT=ROOT/'assets/fonts/experimental/dotless-kerned'
 BASE=ROOT/'assets/fonts/chunks'
-EXPECTED=set('ìíîïĩīĭǐȉȋỉĵ')
-EXCLUDED='įị'
+EXPECTED=set('ìíîïĩīĭǐȉȋỉĵįị')
+EXCLUDED=''
 CONTEXTS=('{}','A{}','{}V','T{}r','{}n','R{}s','{}r','W{}')
 
 def sha(path):return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -29,7 +29,7 @@ class DotlessAccentTests(unittest.TestCase):
 
     def test_real_five_weight_cff_and_provenance(self):
         self.assertEqual(set(self.m['weights']),set(WEIGHTS.values()))
-        self.assertEqual(self.m['total_dotless_added'],60)
+        self.assertEqual(self.m['total_dotless_added'],70)
         for weight,style in WEIGHTS.items():
             with self.subTest(style=style):
                 src=SRC/f'ChunksReferencePanel-{style}-AccentStudy.otf'
@@ -45,7 +45,8 @@ class DotlessAccentTests(unittest.TestCase):
                 self.assertEqual(f['name'].getDebugName(6),f'ChunksReferencePanelDotless-{style}')
                 row=self.m['weights'][style]
                 self.assertEqual(row['file'],path.name)
-                self.assertEqual(row['dotless_added'],12)
+                self.assertEqual(row['dotless_added'],14)
+                self.assertEqual(sum(1 for g in row['dotless_glyphs'] if g['below_mark']),2)
                 self.assertEqual(set(g['glyph'] for g in row['dotless_glyphs']),EXPECTED)
                 self.assertEqual(row['unicode_count'],856)
                 self.assertGreater(row['adjusted_pairs'],90000)
@@ -56,11 +57,9 @@ class DotlessAccentTests(unittest.TestCase):
                     self.assertEqual(f['hmtx'][cmap[ord(g['glyph'])]][0],f['hmtx'][cmap[ord(g['base'])]][0])
                     self.assertGreaterEqual(g['bbox'][3],650)
                 for ch in 'įị':
-                    name=cmap.get(ord(ch))
-                    if name:
-                        a=RecordingPen();b=RecordingPen()
-                        f.getGlyphSet()[name].draw(a);original.getGlyphSet()[name].draw(b)
-                        self.assertEqual(a.value,b.value,(style,ch))
+                    name=cmap[ord(ch)]
+                    self.assertEqual(len(contours(glyph_record(f.getGlyphSet(),name))),3,
+                                     (style,ch,'must retain stem, original dot and lower mark'))
 
     def test_ref_stems_replace_original_latin_i_j_accent_shapes(self):
         for style in WEIGHTS.values():
@@ -92,7 +91,7 @@ class DotlessAccentTests(unittest.TestCase):
                 self.assertEqual(f.getlength(sample),src.getlength(sample),(style,sample))
 
     def test_real_size_collision_sample(self):
-        samples=['ìíîïĩīĭǐȉȋỉĵ','Írish Ĵourney','Chüňks! Downloading 68%','Résumé télévision']
+        samples=['įịìíîïĩīĭǐȉȋỉĵ','Írish Ĵourney','Chüňks! Downloading 68%','Résumé télévision']
         for style in WEIGHTS.values():
             path=OUT/f'ChunksReferencePanel-{style}-DotlessKerned.otf'
             for size in (14,24,48,82):
@@ -108,6 +107,6 @@ class DotlessAccentTests(unittest.TestCase):
             shapes_b=build_dotless(base,source,second)
             self.assertEqual(shapes_a,shapes_b)
             self.assertEqual(first.read_bytes(),second.read_bytes())
-            self.assertEqual(len(shapes_a),12)
+            self.assertEqual(len(shapes_a),14)
 
 if __name__=='__main__':unittest.main()
