@@ -43,7 +43,9 @@ internal object ServerToPhoneCopy {
                 "Start it on the server, then try again.")
         if (source.listenPort !in 1L..65535L)
             return Refused("The server did not report a usable BitTorrent listening port.")
-        val host = source.announcedAddress ?: source.rpcHost
+        // Announced, then bound, then the web host: a seedbox's rTorrent often
+        // listens on a different address from the one serving ruTorrent.
+        val host = source.announcedAddress ?: source.boundAddress ?: source.rpcHost
         // A loopback peer is only meaningful for the loopback development rig.
         val loopbackServer = source.rpcHost in setOf("localhost", "127.0.0.1", "::1")
         val resolved = try { resolve(host) } catch (_: Exception) { emptyList() }

@@ -44,7 +44,9 @@ data class RemotePeerSource(
     val announcedAddress: String?,
     val listenPort: Long,
     val isPrivate: Boolean,
-    val isActive: Boolean
+    val isActive: Boolean,
+    /** network.bind_address when it names one specific address, else null. */
+    val boundAddress: String? = null
 )
 
 /**
@@ -144,9 +146,16 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         val announced = try {
             (call("network.local_address") as? String)?.trim()?.takeIf { it.isNotEmpty() && it.length <= 253 }
         } catch (_: RpcFault) { null }
+        // Seedboxes often bind rTorrent to an address other than the web
+        // host's; a wildcard bind says nothing about which one.
+        val bound = try {
+            (call("network.bind_address") as? String)?.trim()
+                ?.takeIf { it.isNotEmpty() && it.length <= 253 && it !in setOf("0.0.0.0", "::", "[::]") }
+        } catch (_: RpcFault) { null }
         return RemotePeerSource(
             rpcHost = endpoint.host.removePrefix("[").removeSuffix("]"),
             announcedAddress = announced,
+            boundAddress = bound,
             listenPort = number(call("network.listen.port")),
             isPrivate = number(call("d.is_private", listOf(hash))) != 0L,
             isActive = number(call("d.is_active", listOf(hash))) != 0L
