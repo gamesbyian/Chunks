@@ -16,6 +16,7 @@ from pathlib import Path
 from fontTools.ttLib import TTFont
 from fontTools.svgLib.path import parse_path
 from fontTools.pens.recordingPen import RecordingPen
+from fontTools.pens.boundsPen import BoundsPen
 from fontTools.pens.t2CharStringPen import T2CharStringPen
 from fontTools.pens.transformPen import TransformPen
 from shapely.geometry import Polygon, MultiPolygon
@@ -33,11 +34,18 @@ SAMPLES=['Chunks','TORRENTS, YOUR WAY.','Downloading 68%',
          '0123456789','Résumé télévision','Ärger Übergröße','Files (156)']
 
 
-def source_polygons(svg:Path, min_area:float):
+def master_path(svg:Path):
+    """Accept one self-contained SVG compound path; reject ignored transforms."""
     root=ET.fromstring(svg.read_text())
+    if any('transform' in el.attrib for el in root.iter()):
+        raise ValueError(f'{svg.name}: flatten transforms in editor before importing')
     paths=[el.attrib['d'] for el in root.iter() if el.tag.endswith('path')]
     if len(paths)!=1:raise ValueError(f'{svg.name}: expected exactly one compound path')
-    rec=RecordingPen();parse_path(paths[0],rec)
+    return paths[0]
+
+
+def source_polygons(svg:Path, min_area:float):
+    rec=RecordingPen();parse_path(master_path(svg),rec)
     rings=[];ring=[];pos=None
     for cmd, points in rec.value:
         if cmd=='moveTo':
@@ -51,6 +59,17 @@ def source_polygons(svg:Path, min_area:float):
                 t=j/8;u=1-t
                 ring.append((u*u*pos[0]+2*u*t*ctrl[0]+t*t*end[0],
                              u*u*pos[1]+2*u*t*ctrl[1]+t*t*end[1]))
+            pos=end
+        elif cmd=='curveTo':
+            # Independently hand-drawn masters may contain native cubic Beziers.
+            # Polygon sampling is for topology/bounds checks only; the CFF pen
+            # uses the *original* Bezier instructions without polygonization.
+            if len(points)!=3:raise ValueError(f'{svg.name}: cubic curve expected')
+            c1,c2,end=points
+            for j in range(1,17):
+                t=j/16;u=1-t
+                ring.append((u*u*u*pos[0]+3*u*u*t*c1[0]+3*u*t*t*c2[0]+t*t*t*end[0],
+                             u*u*u*pos[1]+3*u*u*t*c1[1]+3*u*t*t*c2[1]+t*t*t*end[1]))
             pos=end
         elif cmd=='lineTo':
             pos=points[0];ring.append(pos)
@@ -155,18 +174,32 @@ def make_weight(base:Path, glyphs_dir:Path, profile:dict, weight:int, raw:Path, 
         baseline=BASELINES[v['row']]
         pen=T2CharStringPen(width=0,glyphSet=font.getGlyphSet())
         transform=(SCALE,0,0,-SCALE,52,SCALE*(baseline-y0))
-        draw_geometry(reduced,TransformPen(pen,transform))
+        if has_master:
+            # Preserve the actual editor-authored quadratic/cubic Bezier handles.
+            # In particular, do not replace a reviewed manual master with
+            # shapely's temporary polygon samples used above for safety gates.
+            path_data=master_path(override_svg)
+            parse_path(path_data,TransformPen(pen,transform))
+            source_bounds=BoundsPen(None)
+            parse_path(path_data,source_bounds)
+            if source_bounds.bounds is None:
+                raise AssertionError(f'{ch}: empty native SVG override')
+            left=source_bounds.bounds[0]
+        else:
+            draw_geometry(reduced,TransformPen(pen,transform))
+            left=reduced.bounds[0]
         charstring=pen.getCharString(private=font['CFF '].cff.topDictIndex[0].Private,
                                      globalSubrs=font['CFF '].cff.GlobalSubrs)
         charstring.compile()
         if not charstring.bytecode:raise AssertionError(f'{ch} empty charstring')
         glyph=cmap[ord(ch)]
         characters[glyph]=charstring
-        font['hmtx'][glyph]=(round((v['width']+6)*SCALE), round(52+reduced.bounds[0]*SCALE))
+        font['hmtx'][glyph]=(round((v['width']+6)*SCALE), round(52+left*SCALE))
         report[ch]={'components':topology(reduced)[0],'counters':topology(reduced)[1],
                     'ink_area_ratio':round(reduced.area/geom.area,4),
                     'stroke_offset_px':(None if has_master else round(d,3)),
                     'outline_source':('weight-specific-svg-master' if has_master else 'contour-aware-derivation'),
+                    'outline_encoding':('native-bezier-curves' if has_master else 'sampled-offset-polygons'),
                     'override_svg_sha256':(hashlib.sha256(override_svg.read_bytes()).hexdigest() if has_master else None),
                     'topology_adjustments':clamps}
     style=WEIGHTS[weight]
