@@ -262,10 +262,14 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
     }
     var magnet by remember { mutableStateOf("") }
     var startAfterAdd by remember { mutableStateOf(true) }
+    var addFolderDraft by remember { mutableStateOf("") }
     var dht by remember { mutableStateOf(LocalEngineHolder.dhtPreferred(context)) }
     var dhtSaving by remember { mutableStateOf(false) }
     var dhtError by remember { mutableStateOf<String?>(null) }
     val destination = remember { LocalEngineHolder.appDownloads(context) }
+    val proposedAddDestination = remember(destination, addFolderDraft) {
+        LocalOwnedAddFolder.proposed(destination, addFolderDraft)
+    }
     LaunchedEffect(pending?.preview?.infoHashV1, destination) {
         addStorage = null
         val review = pending
@@ -397,6 +401,28 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
         Text("Downloads and seeds with Chunks' own engine. While a transfer runs, an ongoing notification keeps it going in the background, with Stop all; Android may still stop it, and from Android 15 limits this kind of background transfer to about 6 hours a day, after which Chunks pauses everything. Nothing connects to the network until you add a torrent. Transfers are remembered and come back stopped after Chunks restarts. Peers and trackers can see this phone's IP address.")
         Button(onClick = { picker.launch(arrayOf("*/*")) }, enabled = !busy && !inventoryStale && destination != null,
             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Choose .torrent file") }
+        OutlinedTextField(
+            value = addFolderDraft,
+            onValueChange = { addFolderDraft = it },
+            label = { Text("Optional phone download subfolder") },
+            placeholder = { Text("Leave blank for Chunks default") },
+            singleLine = true,
+            isError = proposedAddDestination == null,
+            enabled = !busy && !inventoryStale,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Text("Optional: give this new local transfer its own subfolder inside " +
+            "Chunks' app-owned Downloads. Leave blank for the default. " +
+            "An empty existing subfolder can be reused; a nonempty folder is " +
+            "refused to prevent collisions. No folder is created until Add is confirmed. " +
+            "This does not choose public Downloads, SD-card SAF storage, or a remote Place.",
+            style = MaterialTheme.typography.bodySmall)
+        if (proposedAddDestination == null)
+            Text("Use one plain folder name, without slashes, dot-prefixed names, " +
+                "control characters or path traversal.",
+                color = MaterialTheme.colorScheme.error)
+        else Text("Planned local Place: " + proposedAddDestination.absolutePath,
+            style = MaterialTheme.typography.bodySmall)
         Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
             .toggleable(value = dht, enabled = !dhtSaving, role = Role.Switch, onValueChange = { wanted ->
                 if (!dhtSaving) {
@@ -437,7 +463,7 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
             label = { Text("Or paste a magnet link") }, singleLine = true,
             modifier = Modifier.fillMaxWidth())
         if (magnet.isNotEmpty() && destination != null) {
-            Text("Saves into Chunks' folder. Magnets first discover metadata via peers/trackers; if Start after Add is selected, payload downloading begins after metadata arrives. Without peers, downloading cannot begin.",
+            Text("Saves into the selected Chunks-owned phone folder. Magnets first discover metadata via peers/trackers; if Start after Add is selected, payload downloading begins after metadata arrives. Without peers, downloading cannot begin.",
                 style = MaterialTheme.typography.bodySmall)
             if (LocalMagnetDiscoveryAdvice.warn(magnet, dht)) {
                 Text("This magnet has no usable tracker address and DHT is off. " +
@@ -448,10 +474,17 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
                     color = MaterialTheme.colorScheme.error)
             }
             OutlinedButton(onClick = {
+                val selectedDraft = addFolderDraft
+                val selectedMagnet = magnet
+                val autoStart = startAfterAdd
                 performLocalMutation {
                     try {
                         val result = withContext(Dispatchers.IO) {
-                            LocalEngineHolder.get(context).addMagnet(magnet, destination, autoStartAfterMetadata = startAfterAdd)
+                            val chosen = LocalOwnedAddFolder.prepare(destination, selectedDraft)
+                            if (chosen == null) LocalAddResult.Refused(
+                                "Chosen local subfolder is unavailable, nonempty or unsafe.")
+                            else LocalEngineHolder.get(context).addMagnet(
+                                selectedMagnet, chosen, autoStartAfterMetadata = autoStart)
                         }
                         message = when (result) {
                             is LocalAddResult.Refused -> result.reason
@@ -467,6 +500,7 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
                                 }
                             }
                             magnet = ""
+                            addFolderDraft = ""
                         }
                     } catch (cancel: kotlinx.coroutines.CancellationException) {
                         throw cancel
@@ -475,7 +509,9 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
                         message = "Magnet Add was not confirmed. Wait for a fresh transfer list and check for the magnet before retrying."
                     }
                 }
-            }, enabled = !busy && !inventoryStale && !dhtSaving, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text(if (startAfterAdd) "Add magnet and start" else "Add magnet (metadata only)") }
+            }, enabled = !busy && !inventoryStale && !dhtSaving &&
+                proposedAddDestination != null,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text(if (startAfterAdd) "Add magnet and start" else "Add magnet (metadata only)") }
         }
         if (destination == null) Text("Phone storage for Chunks is unavailable right now.",
             color = MaterialTheme.colorScheme.error)
@@ -489,18 +525,28 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
         }
 
         val add = pending
-        if (add != null && destination != null) LocalAddReview(add.preview, destination,
-            busy = busy || inventoryStale, startAfterAdd = startAfterAdd,
+        if (add != null && destination != null) LocalAddReview(
+            add.preview, proposedAddDestination ?: destination,
+            busy = busy || inventoryStale || proposedAddDestination == null,
+            startAfterAdd = startAfterAdd,
             storagePreflight = addStorage?.takeIf { it.first == add.preview.infoHashV1 }?.second,
             onConfirm = {
+                val selectedDraft = addFolderDraft
+                val autoStart = startAfterAdd
                 performLocalMutation {
                     try {
                         val result = withContext(Dispatchers.IO) {
-                            val engine = LocalEngineHolder.get(context)
-                            val added = engine.addStopped(add.bytes, destination)
-                            if (startAfterAdd && added is LocalAddResult.AddedStopped)
-                                added to engine.resume(added.status.infoHash)
-                            else added to null
+                            val chosen = LocalOwnedAddFolder.prepare(destination, selectedDraft)
+                            if (chosen == null)
+                                LocalAddResult.Refused(
+                                    "Chosen local subfolder is unavailable, nonempty or unsafe.") to null
+                            else {
+                                val engine = LocalEngineHolder.get(context)
+                                val added = engine.addStopped(add.bytes, chosen)
+                                if (autoStart && added is LocalAddResult.AddedStopped)
+                                    added to engine.resume(added.status.infoHash)
+                                else added to null
+                            }
                         }
                         val (added, started) = result
                         message = when (added) {
@@ -524,7 +570,10 @@ internal fun LocalEngineScreen(onBack: (() -> Unit)? = null) {
                                 null -> "Added stopped. Start manually from its transfer card."
                             }
                         }
-                        if (added !is LocalAddResult.Refused) pending = null
+                        if (added !is LocalAddResult.Refused) {
+                            pending = null
+                            addFolderDraft = ""
+                        }
                     } catch (cancel: kotlinx.coroutines.CancellationException) {
                         throw cancel
                     } catch (_: Exception) {
