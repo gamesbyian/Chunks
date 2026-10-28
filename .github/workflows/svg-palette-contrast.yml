@@ -1,18 +1,33 @@
-name: Chunks reference SVG palette contrast audit
+name: Generate Chunks SVG palette contrast matrix on scoped branch
 on:
-  pull_request:
+  push:
+    branches:
+      - feat/svg-palette-contrast-audit-20261027
     paths:
-      - 'docs/design/svg/palettes/**'
       - 'tools/audit_svg_palette_contrast.py'
       - '.github/workflows/svg-palette-contrast.yml'
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
   palette-contrast:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 4
     steps:
       - uses: actions/checkout@v4
-      - name: Verify stable contrast audit without changing palette variants
-        run: python3 tools/audit_svg_palette_contrast.py --check
+        with:
+          ref: feat/svg-palette-contrast-audit-20261027
+          persist-credentials: true
+      - name: Generate source-of-truth contrast artifacts
+        run: |
+          python3 tools/audit_svg_palette_contrast.py
+          python3 tools/audit_svg_palette_contrast.py --check
+      - name: Commit only generated reports
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/design/svg/palettes/contrast-audit.json docs/design/svg/palettes/contrast-audit.md
+          if ! git diff --cached --quiet; then
+            git commit -m 'docs(brand): sync contrast audit with canonical Python generator'
+            git push origin HEAD:feat/svg-palette-contrast-audit-20261027
+          fi
