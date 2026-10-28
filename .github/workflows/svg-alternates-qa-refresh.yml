@@ -1,0 +1,35 @@
+name: Refresh Chunks SVG alternate QA dossier
+on:
+  push:
+    branches:
+      - feat/svg-font-independent-alternates-20261027
+    paths:
+      - tools/audit_svg_inventory.py
+      - docs/design/svg/outlined-alternatives/**
+      - docs/design/svg/master-inventory.json
+      - .github/workflows/svg-alternates-qa-refresh.yml
+permissions:
+  contents: write
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/svg-font-independent-alternates-20261027
+      - name: Rebuild comprehensive provenance and validate all vectors
+        run: |
+          python3 tools/audit_svg_inventory.py --write
+          python3 tools/audit_svg_inventory.py
+          python3 tools/validate_svg_library.py
+          python3 tools/check_svg_approved_derivatives.py
+      - name: Commit only regenerated QA evidence
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add docs/design/svg/quality-dossier.json docs/design/svg/QUALITY-REVIEW.md
+          if ! git diff --cached --quiet; then
+            git commit -m 'docs(brand): refresh QA categories for ten non-destructive outlined SVG alternatives'
+            git push origin HEAD:feat/svg-font-independent-alternates-20261027
+          fi

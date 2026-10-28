@@ -1,0 +1,71 @@
+name: Trace and verify Chunks reference punctuation glyph variants
+on:
+  push:
+    paths:
+      - 'docs/design/reference-images/03-typography-and-wordmark.png'
+      - 'tools/trace_reference_punctuation.py'
+      - 'tools/render_reference_punctuation.py'
+      - 'tools/trace_reference_alphabet.py'
+      - 'tests/test_reference_punctuation.py'
+      - 'assets/fonts/source/reference-punctuation/**'
+      - 'docs/design/CHUNKS-REFERENCE-PUNCTUATION.md'
+      - '.github/workflows/chunks-reference-punctuation.yml'
+  pull_request:
+    paths:
+      - 'docs/design/reference-images/03-typography-and-wordmark.png'
+      - 'tools/trace_reference_punctuation.py'
+      - 'tools/render_reference_punctuation.py'
+      - 'tools/trace_reference_alphabet.py'
+      - 'tests/test_reference_punctuation.py'
+      - 'assets/fonts/source/reference-punctuation/**'
+      - '.github/workflows/chunks-reference-punctuation.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: chunks-punctuation-${{ github.event_name }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+jobs:
+  trace-source-glyphs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install pinned vector tracer and rasterizer
+        run: python -m pip install -r tools/requirements-chunks-reference-alphabet.txt
+      - name: Extract all 28 editable punctuation masters from unchanged PNG
+        run: python tools/trace_reference_punctuation.py
+      - name: Check reference identity, source hash, counters, shape provenance
+        run: python -m unittest discover -s tests -p test_reference_punctuation.py -v
+      - name: Render every exact SVG variant, including curly quotes
+        run: python tools/render_reference_punctuation.py
+      - name: Publish optional originals and specimen
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-reference-28-punctuation-svg-masters
+          path: |
+            assets/fonts/source/reference-punctuation/*
+            reference-punctuation-atlas.png
+          retention-days: 30
+      - name: Commit source-derived SVGs on feature branch only
+        if: github.event_name == 'push' && github.ref != 'refs/heads/main'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add assets/fonts/source/reference-punctuation
+          if ! git diff --cached --quiet; then
+            git commit -m 'build(fonts): retain all 28 source-derived punctuation SVGs'
+            branch="${GITHUB_REF#refs/heads/}"
+            for attempt in 1 2 3; do
+              git fetch origin "$branch"
+              git rebase "origin/$branch"
+              if git push origin "HEAD:$branch"; then exit 0; fi
+            done
+            echo 'Unable to reconcile generated SVG artifact commit' >&2
+            exit 1
+          fi

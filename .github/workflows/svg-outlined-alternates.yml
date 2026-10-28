@@ -1,0 +1,36 @@
+name: Generate Chunks font-independent SVG alternatives
+on:
+  push:
+    branches:
+      - feat/svg-font-independent-alternates-20261027
+    paths:
+      - tools/build_svg_outlined_alternatives.py
+      - .github/workflows/svg-outlined-alternates.yml
+permissions:
+  contents: write
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/svg-font-independent-alternates-20261027
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python3 -m pip install 'fonttools>=4.55,<5'
+      - name: Create independent outlined variants and verify determinism
+        run: |
+          python3 tools/build_svg_outlined_alternatives.py --write
+          python3 tools/build_svg_outlined_alternatives.py
+          python3 tools/validate_svg_library.py
+      - name: Commit new variants and manifest only
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add docs/design/svg/outlined-alternatives docs/design/svg/master-inventory.json docs/design/svg/gallery.html
+          if ! git diff --cached --quiet; then
+            git commit -m 'feat(brand): add ten static-outline alternatives without changing source SVGs'
+            git push origin HEAD:feat/svg-font-independent-alternates-20261027
+          fi
