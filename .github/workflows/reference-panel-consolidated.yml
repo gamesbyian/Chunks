@@ -6,6 +6,8 @@ on:
       - 'tools/build_reference_punctuation_supplements.py'
       - 'tools/render_reference_panel_consolidated.py'
       - 'tools/render_reference_accent_grid.py'
+      - 'tools/audit_reference_latin_coverage.py'
+      - 'tests/test_reference_latin_coverage.py'
       - 'tests/test_reference_accent_grid.py'
       - 'tools/render_reference_punctuation_clamps.py'
       - 'tools/build_reference_panel_weight_studies.py'
@@ -24,6 +26,8 @@ on:
       - 'tools/build_reference_punctuation_supplements.py'
       - 'tools/render_reference_panel_consolidated.py'
       - 'tools/render_reference_accent_grid.py'
+      - 'tools/audit_reference_latin_coverage.py'
+      - 'tests/test_reference_latin_coverage.py'
       - 'tests/test_reference_accent_grid.py'
       - 'tools/render_reference_punctuation_clamps.py'
       - 'tools/build_reference_panel_weight_studies.py'
@@ -71,6 +75,10 @@ jobs:
         run: python -m unittest discover -s tests -p test_reference_accent_grid.py -v
       - name: Render all 250-plus reconstructed Latin accents at four pixel sizes
         run: python tools/render_reference_accent_grid.py
+      - name: Classify all 856 mapped codepoints and identify unresolved Latin designs
+        run: |
+          python tools/audit_reference_latin_coverage.py
+          python -m unittest discover -s tests -p test_reference_latin_coverage.py -v
       - name: Upload candidates, full per-glyph metrics and source license
         uses: actions/upload-artifact@v4
         with:
@@ -81,6 +89,7 @@ jobs:
             reference-punctuation-clamp-review.png
             reference-accent-grid-*.png
             reference-accent-grid-metrics.json
+            reference-latin-coverage-ledger.json
             assets/fonts/source/reference-punctuation/supplemental/*
             assets/fonts/source/OFL.txt
           retention-days: 30

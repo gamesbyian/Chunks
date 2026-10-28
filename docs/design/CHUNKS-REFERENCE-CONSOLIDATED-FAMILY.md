@@ -144,3 +144,16 @@ The review output is paginated into at most 72 glyphs per sheet, across five wei
 python tools/render_reference_accent_grid.py
 python -m unittest discover -s tests -p test_reference_accent_grid.py -v
 ```
+
+## Provenance-based unresolved Latin design ledger
+
+`tools/audit_reference_latin_coverage.py` audits the Unicode cmap of every compiled five-weight Consolidated CFF against the actual accent, special i/j and basic-letter source manifests. Each mapped **Latin letter** receives one of six mutually exclusive per-weight statuses: `reference_base`, `recomposed`, `dotless_rebuilt`, `unrebuilt_simple_mark`, `unrebuilt_stacked_marks` or `unrebuilt_other_latin`. Canonical Unicode NFD analysis identifies one-mark ASCII-stem composites, multi-mark canonical decompositions, and remaining Latin letters/ligatures that require separate type-design research. It records per-weight counts, each glyph's Unicode name and decomposition, original manifest SHA-256, and the exact five compiled OTF hashes.
+
+This is a **precise source-artwork backlog**, not a Unicode coverage problem: a character may exist in the cmap and shape correctly while using an inherited Baloo 2 outline. The ledger does not infer that every unmapped combination should receive a new codepoint, nor that a source accent's contour is faithful. The output `reference-latin-coverage-ledger.json` is regenerated in the consolidated font CI and published with the real-font four-size accent sheets. Its tests enforce disjoint/exhaustive categories, complete five-weight provenance and deterministic output.
+
+```sh
+python tools/audit_reference_latin_coverage.py
+python -m unittest discover -s tests -p test_reference_latin_coverage.py -v
+```
+
+For future drawing priorities, begin with `unrebuilt_simple_mark` (if present), then `unrebuilt_stacked_marks`, then special letters/ligatures with no straightforward canonical ASCII-letter decomposition; preserve all preceding variants and test native shaping before promotion. Full coverage, visual consistency and real Android accessibility remain independent gates in #347.
