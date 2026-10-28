@@ -433,4 +433,60 @@ class LocalTorrentEngineTest {
             File(destination, "Chunks public fixture/episode.bin").readBytes())
         assertEquals(LocalCommandOutcome.NOT_FOUND, leecher.setFileWanted("c".repeat(40), 0, true))
     }
+
+    /**
+     * Regression: libtorrent 2.1 no longer carries a .torrent's announce /
+     * announce-list inside torrent_info, so an Add built from torrent_info
+     * alone never contacted its trackers and could only find injected peers.
+     * Here the leecher learns the seeder ONLY from the torrent's tracker.
+     */
+    @Test fun torrentFileTrackersAreAnnouncedSoPeersAreFoundWithoutInjection() {
+        LoopbackTracker().use { tracker ->
+            val parent = temp.newFolder("tracked-seed")
+            val root = File(parent, "Tracked fixture").apply { mkdirs() }
+            val payload = ByteArray(400_000).also { Random(7).nextBytes(it) }
+            File(root, "payload.bin").writeBytes(payload)
+            val torrent = TorrentBuilder().path(root).pieceSize(32 * 1024)
+                .addTracker(tracker.announceUrl).generate().entry().bencode()
+
+            val seeder = engine()
+            val seed = added(seeder.addStopped(torrent, parent))
+            assertEquals(LocalCommandOutcome.VERIFIED, seeder.resume(seed.infoHash).outcome)
+            waitFor { seeder.status(seed.infoHash)?.state == LocalTransferState.SEEDING }
+            waitFor(20_000) { tracker.announces.get() >= 1 }
+
+            val state = temp.newFolder("tracked-state")
+            val destination = temp.newFolder("tracked-destination")
+            val leecher = persistentEngine(state)
+            val leech = added(leecher.addStopped(torrent, destination))
+            assertEquals(LocalCommandOutcome.VERIFIED, leecher.resume(leech.infoHash).outcome)
+            requireFlushed(leecher, leech.infoHash)
+            assertArrayEquals(payload, File(destination, "Tracked fixture/payload.bin").readBytes())
+            assertTrue(leecher.saveResumeData() >= 1)
+            leecher.close()
+
+            // Trackers must also survive the resume file across a restart.
+            val before = tracker.announces.get()
+            val restarted = persistentEngine(state)
+            assertTrue(restarted.restoreProblems.isEmpty())
+            assertEquals(LocalCommandOutcome.VERIFIED, restarted.resume(leech.infoHash).outcome)
+            waitFor(20_000) { tracker.announces.get() > before }
+        }
+    }
+
+    @Test fun trackerTiersKeepAnnounceListOrderAndRejectUnsafeSchemes() {
+        fun str(value: String) = "${value.length}:$value"
+        fun list(vararg items: String) = "l" + items.joinToString("") + "e"
+        val info = str("info") + "d" + str("length") + "i1e" + str("name") + str("x") +
+            str("piece length") + "i16384e" + str("pieces") + str("01234567890123456789") + "e"
+        fun parse(prefix: String) = engine().trackerTiers("d${prefix}${info}e".toByteArray())
+        val tiered = parse(str("announce") + str("http://a/announce") + str("announce-list") + list(
+            list(str("http://b/announce"), str("udp://c:80/anno")),
+            list(str("http://b/announce"), str("file:///etc/pwd"), str("https://d/announce"))))
+        assertEquals(listOf("http://b/announce", "udp://c:80/anno", "https://d/announce"), tiered.first)
+        assertEquals(listOf(0, 0, 1), tiered.second)
+        assertEquals(listOf("http://a/announce") to listOf(0),
+            parse(str("announce") + str("http://a/announce")))
+        assertEquals(emptyList<String>() to emptyList<Int>(), parse(""))
+    }
 }
