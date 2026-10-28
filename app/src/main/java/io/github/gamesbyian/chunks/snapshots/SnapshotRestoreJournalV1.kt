@@ -85,7 +85,7 @@ internal class SnapshotRestoreJournalV1 private constructor(
         require(targetInventoryComplete) { "Cannot reconcile against partial inventory" }
         require(targetObservedHashes.size <= 20_000) { "Target inventory is unbounded" }
         val normalized = targetObservedHashes.map { it.lowercase(Locale.ROOT) }
-        require(normalized.all { V1_HASH.matches(it) } &&
+        require(normalized.all { TARGET_HASH.matches(it) } &&
             normalized.size == normalized.toSet().size) {
             "Invalid or duplicated target v1 identities"
         }
@@ -110,7 +110,7 @@ internal class SnapshotRestoreJournalV1 private constructor(
         require(targetInventoryComplete) { "Partial inventory cannot prove absence" }
         require(targetObservedHashes.size <= 20_000) { "Target inventory is unbounded" }
         val normalized = targetObservedHashes.map { it.lowercase(Locale.ROOT) }
-        require(normalized.all { V1_HASH.matches(it) } &&
+        require(normalized.all { TARGET_HASH.matches(it) } &&
             normalized.size == normalized.toSet().size &&
             infoHashV1 !in normalized) {
             "Identity present or target inventory untrustworthy"
@@ -160,6 +160,7 @@ internal class SnapshotRestoreJournalV1 private constructor(
         private const val MAX_ENTRIES = 512
         private const val MAX_STORED_CHARS = 55_000
         private val V1_HASH = Regex("[0-9a-f]{40}")
+        private val TARGET_HASH = Regex("[0-9a-f]{40}([0-9a-f]{24})?")
         private val FINGERPRINT = Regex("[0-9a-f]{64}")
 
         /**
