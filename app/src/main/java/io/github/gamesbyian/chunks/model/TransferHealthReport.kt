@@ -58,7 +58,7 @@ internal object TransferHealthReport {
         stale: Boolean,
         includeTitles: Boolean = false,
         capturedAt: Instant = Instant.now()
-    ): Prepared = build("rtorrent", transfers.size, includeTitles) { out ->
+    ): Prepared = build("rtorrent", transfers.size, includeTitles, capturedAt) { out ->
         val view = serverView.takeIf { it.matches(Regex("[a-zA-Z0-9_-]{1,48}")) } ?: "custom"
         out.append(",\"serverView\":").append(jsonQuoted(view))
         out.append(",\"fresh\":").append(!stale)
@@ -92,7 +92,7 @@ internal object TransferHealthReport {
         stale: Boolean,
         includeTitles: Boolean = false,
         capturedAt: Instant = Instant.now()
-    ): Prepared = build("local", transfers.size, includeTitles) { out ->
+    ): Prepared = build("local", transfers.size, includeTitles, capturedAt) { out ->
         out.append(",\"fresh\":").append(!stale)
         out.append(",\"observationCaveat\":").append(jsonQuoted(
             "Native status and peer count are one observation. Download counters are not a claim of newly hash-verified payload growth."))
@@ -121,14 +121,15 @@ internal object TransferHealthReport {
         source: String,
         observed: Int,
         includeTitles: Boolean,
+        capturedAt: Instant,
         writeRows: (StringBuilder) -> Unit
     ): Prepared {
         require(observed >= 0)
         val out = StringBuilder()
         out.append("{\"schema\":\"chunks-health-v1\",\"source\":")
             .append(jsonQuoted(source))
-            .append(",\"capturedAtUtc\":").append(jsonQuoted(Instant.now().toString()))
-            .append(",\"identitiesOmitted\":true")
+            .append(",\"capturedAtUtc\":").append(jsonQuoted(capturedAt.toString()))
+            .append(",\"hashesPathsTrackersOmitted\":true")
             .append(",\"torrentTitlesIncluded\":").append(includeTitles)
             .append(",\"observed\":").append(observed)
             .append(",\"reported\":").append(observed.coerceAtMost(MAX_ROWS))
