@@ -33,14 +33,16 @@ internal object LocalResumeMetainfoSourceV1 {
     }
 
     data class Recovery(
-        val capture: SnapshotInventoryCaptureV1.Capture,
+        val manifest: SnapshotManifestV1.Manifest,
+        val sourceCount: Int,
+        val omittedCount: Int,
         val metainfoByHash: Map<String, ByteArray>,
         val unavailableByHash: Map<String, Unavailable>
     ) {
         val verifiedRestorableCount: Int get() = metainfoByHash.size
-        val inventoryOnlyCount: Int get() = capture.manifest.items.size - metainfoByHash.size
+        val inventoryOnlyCount: Int get() = manifest.items.size - metainfoByHash.size
         fun toArchive(): ByteArray =
-            SnapshotManifestV1.encode(capture.manifest, metainfoByHash)
+            SnapshotManifestV1.encode(manifest, metainfoByHash)
     }
 
     fun capture(
@@ -118,10 +120,11 @@ internal object LocalResumeMetainfoSourceV1 {
                 item.copy(recovery = SnapshotManifestV1.Recovery.METAINFO)
             }
         }
-        val captured = inventory.copy(manifest = inventory.manifest.copy(items = upgraded))
+        val upgradedManifest = inventory.manifest.copy(items = upgraded)
         // The archive's higher-level schema enforces identical metainfo set,
         // name and exact hash before any result is exposed as verified.
-        SnapshotManifestV1.encode(captured.manifest, metadata)
-        return Recovery(captured, metadata, failures)
+        SnapshotManifestV1.encode(upgradedManifest, metadata)
+        return Recovery(upgradedManifest, inventory.sourceCount, inventory.omitted.size,
+            metadata, failures)
     }
 }
