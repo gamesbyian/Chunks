@@ -618,6 +618,11 @@ internal fun LocalEngineScreen(
             },
             onCancel = { pending = null })
 
+        io.github.gamesbyian.chunks.snapshots.LocalVerifiedSnapshotPanel(
+            transfers = transfers,
+            stale = inventoryStale,
+            busyEngine = busy
+        )
         LocalInventorySnapshotPanel(
             transfers = transfers,
             stale = inventoryStale,
