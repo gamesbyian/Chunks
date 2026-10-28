@@ -223,6 +223,7 @@ internal fun LocalEngineScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val finishInOrderStore = remember { FinishInOrderStore(context) }
     val collectionStore = remember(context) { TransferCollectionStore(context) }
     val aliasStore = remember(context) { TransferAliasStore(context) }
     var aliasRevision by remember { mutableStateOf(0) }
@@ -1156,7 +1157,24 @@ internal fun LocalEngineScreen(
                         }
                     }
                 },
-                onFocusEpisodes = { reviewedPlan ->
+                finishInOrder = { shownFiles ->
+                    FinishInOrderPanel(transfer.infoHash, shownFiles, busy || inventoryStale,
+                        onPrioritiesChanged = {
+                            scope.launch {
+                                files = try {
+                                    withContext(Dispatchers.IO) {
+                                        LocalEngineHolder.current()?.files(transfer.infoHash)
+                                    }
+                                } catch (cancel: kotlinx.coroutines.CancellationException) {
+                                    throw cancel
+                                } catch (_: Exception) { null }
+                            }
+                        })
+                },
+                // The one-time focus would fight a rolling policy, so it is
+                // only offered while Finish in Order is off for this transfer.
+                onFocusEpisodes = if (finishInOrderStore.get(transfer.infoHash) != null) null
+                    else { reviewedPlan ->
                     performLocalMutation {
                         try {
                             val result = withContext(Dispatchers.IO) {
@@ -1443,6 +1461,7 @@ internal fun LocalTransferCard(
     onBatchFileWanted: ((List<LocalTransferFile>, Boolean) -> Unit)? = null,
     onFilePriority: ((LocalTransferFile, Int) -> Unit)? = null,
     onFocusEpisodes: ((LocalEpisodeFocusPlanner.Plan) -> Unit)? = null,
+    finishInOrder: (@Composable (List<LocalTransferFile>) -> Unit)? = null,
     alias: String? = null,
     onSaveAlias: ((String?) -> Boolean)? = null,
     onPrepareRemote: (() -> Unit)? = null,
@@ -1570,7 +1589,8 @@ internal fun LocalTransferCard(
                 files, busy, transferKey = transfer.infoHash,
                 onFileWanted = onFileWanted, onBatchFileWanted = onBatchFileWanted,
                 onFilePriority = onFilePriority,
-                onFocusEpisodes = onFocusEpisodes
+                onFocusEpisodes = onFocusEpisodes,
+                finishInOrder = finishInOrder
             )
             if (confirmRemove) {
                 Text("Remove from the phone engine only. Downloaded files stay in Chunks' folder; sharing of this torrent stops.")
@@ -1598,6 +1618,7 @@ internal fun LocalFileSelection(
     onBatchFileWanted: ((List<LocalTransferFile>, Boolean) -> Unit)? = null,
     onFilePriority: ((LocalTransferFile, Int) -> Unit)? = null,
     onFocusEpisodes: ((LocalEpisodeFocusPlanner.Plan) -> Unit)? = null,
+    finishInOrder: (@Composable (List<LocalTransferFile>) -> Unit)? = null,
     onFileWanted: (Int, Boolean) -> Unit
 ) {
     if (files == null) {
@@ -1634,6 +1655,7 @@ internal fun LocalFileSelection(
 
     Text("Untick a file to skip downloading it. Already downloaded parts are kept.",
         style = MaterialTheme.typography.bodySmall)
+    finishInOrder?.invoke(files)
     if (onFocusEpisodes != null && focusPlan != null) {
         OutlinedButton(onClick = { pendingEpisodeFocus = !pendingEpisodeFocus },
             enabled = !busy,
