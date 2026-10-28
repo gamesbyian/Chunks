@@ -72,6 +72,8 @@ class SnapshotDocumentInspectInstrumentedTest {
         }
         compose.onNodeWithText("Inspect transfer snapshot").assertExists()
         compose.onNodeWithText("Choose .chunksnap file").assertExists()
+        // Keep the security contract stable without pinning a whole paragraph:
+        // #363 legitimately added a reviewed one-torrent document export.
         compose.onNodeWithText(
             "No transfer is added, started, stopped, deleted or altered.",
             substring = true

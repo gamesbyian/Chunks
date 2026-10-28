@@ -1,0 +1,38 @@
+name: Render Chunks font family and accent stress atlas
+on:
+  pull_request:
+    paths:
+      - 'assets/fonts/**'
+      - 'tools/render_font_family_stress.py'
+      - 'tests/test_font_shaped_advance_audit.py'
+      - '.github/workflows/chunks-font-visual-stress.yml'
+  push:
+    paths:
+      - 'assets/fonts/**'
+      - 'tools/render_font_family_stress.py'
+      - 'tests/test_font_shaped_advance_audit.py'
+      - '.github/workflows/chunks-font-visual-stress.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  visual-stress:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install actual-font renderer
+        run: python -m pip install -r tools/requirements-chunks-font.txt
+      - name: Render unscaled 14/24/48/82px samples from 15 OTFs
+        run: python tools/render_font_family_stress.py --out font-stress-artifacts
+      - name: Assert shaped advances and ink widths from actual compiled OTFs
+        run: python -m unittest discover -s tests -p test_font_shaped_advance_audit.py -v
+      - name: Upload 4 atlases and exact-sha measurement JSON
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-font-family-visual-stress
+          path: font-stress-artifacts/*
+          retention-days: 30
