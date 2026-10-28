@@ -80,6 +80,31 @@ class SharedTorrentDocumentInstrumentedTest {
             result.preview.infoHashV1)
     }
 
+    @Test fun sharedMetainfoStreamParserRefusesProvidersThatMakeNoProgress() {
+        val zeros = object : java.io.InputStream() {
+            var reads = 0
+            override fun read(): Int = -1
+            override fun read(bytes: ByteArray, offset: Int, length: Int): Int {
+                reads++
+                return 0
+            }
+        }
+        try {
+            SharedTorrentDocument.readStream(zeros)
+            fail("Zero-byte read loop must be bounded, including in remote Add picker")
+        } catch (e: java.io.IOException) {
+            assertTrue(e.message.orEmpty().contains("no torrent bytes"))
+        }
+        assertEquals(17, zeros.reads)
+
+        // Both VIEW/SEND and remote picker use the same strict v1 parser.
+        val reviewed = SharedTorrentDocument.readStream(
+            java.io.ByteArrayInputStream(goodBytes))
+        assertArrayEquals(goodBytes, reviewed.bytes)
+        assertEquals(TorrentMetainfoReader.preview(goodBytes).infoHashV1,
+            reviewed.preview.infoHashV1)
+    }
+
     @Test fun invalidAndOversizedContentCannotProduceReviewedTorrent() {
         val bad = document("not bencoded torrent".toByteArray())
         try {
