@@ -19,7 +19,8 @@
 - **VERIFIED** ([40756284173](https://github.com/gamesbyian/Chunks/actions/runs/40756284173), main `eb79a98`, 900 s, `peer_ip=5.79.112.219`, the same address the app found): `CHUNKS_SEEDHOST_COPY: VERIFIED name="debian-13.7.0-amd64-netinst.iso" hash=7acf8fb5…33b0 peer=5.79.112.219:53281 bytes=792723456 metadata=true verified=792723456 maxPeers=1 seconds=782`.
   - The JVM build of the phone engine got the metadata and all 792,723,456 piece-verified bytes, with the development Seedhost as its **only** peer (no tracker, no DHT).
   - Read-only toward the server; Copy, not Move.
-- **Not proven:** a physical handset, the in-app button flow on the real host, and a run without the override. The same address was auto-discovered, but the full copy ran with the override. Throughput was about 1 MB/s from a single peer.
+- **VERIFIED with auto-discovery** ([40759247300](https://github.com/gamesbyian/Chunks/actions/runs/40759247300), main `8977283`, no override, 1200 s limit): `peer=5.79.112.219:53281 … verified=792723456 maxPeers=1 seconds=748 announced=null bound=5.79.112.219 override=none`. The app's own address choice (`network.bind_address`) copied the full ISO.
+- **Not proven:** a physical handset, or the in-app button flow on the real host. Throughput was about 1 MB/s from a single peer.
 
 ## 2026-10-28 Seedhost server-to-phone copy probe with an owner-added public torrent
 
