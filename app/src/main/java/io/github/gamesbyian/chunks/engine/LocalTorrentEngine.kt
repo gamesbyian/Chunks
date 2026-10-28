@@ -645,7 +645,8 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             if (planned.firstEpisode.index != reviewedPlan.firstEpisode.index ||
                 planned.orderedEpisodes.map { it.index } !=
                     reviewedPlan.orderedEpisodes.map { it.index } ||
-                planned.changes != changes)
+                planned.changes.map { it.reviewed.index to it.requestedPriority } !=
+                    changes.map { it.reviewed.index to it.requestedPriority })
                 return LocalFileBatchOutcome.STALE_REVIEW
             // One full immutable snapshot of every proposed native mutation
             // closes the stale-review boundary before any single change.
