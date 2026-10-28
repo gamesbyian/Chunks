@@ -130,6 +130,24 @@ class LocalEngineScreenInstrumentedTest {
         assertEquals(1, removed)
     }
 
+    @Test fun nativePerTransferPayloadRatesAreVisibleOnRunningCards() {
+        val transfer = LocalTransferStatus("9".repeat(40), "Live peer fixture",
+            LocalTransferState.DOWNLOADING, stopped = false, progressPpm = 25_000,
+            wantedBytes = 1_000_000, doneBytes = 25_000,
+            payloadDownloadedBytes = 25_000, payloadUploadedBytes = 2_000,
+            peers = 1, savePath = "/x", error = null,
+            downloadPayloadRateBytesPerSecond = 4096,
+            uploadPayloadRateBytesPerSecond = 2048)
+        rule.setContent {
+            MaterialTheme {
+                LocalTransferCard(transfer, busy = false, onToggle = {}, onRemove = {})
+            }
+        }
+        rule.onNodeWithText("Live payload ↓", substring = true).assertExists()
+        rule.onNodeWithText("↑", substring = true).assertExists()
+        rule.onNodeWithText("Verified on disk", substring = true).assertExists()
+    }
+
     @Test fun staleInventoryDisablesNativeTransferMutationsAndFileSelection() {
         var toggles = 0
         var removals = 0

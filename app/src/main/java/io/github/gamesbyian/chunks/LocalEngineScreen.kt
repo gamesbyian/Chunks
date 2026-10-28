@@ -1136,6 +1136,15 @@ internal fun LocalTransferCard(
                 )
             }
             Text(stateLabel(transfer) + " · " + percent + "% · " + transfer.peers + " peers")
+            if (!transfer.stopped) {
+                // The libtorrent status sample is an instantaneous estimate;
+                // unlike the independent observed-growth window below, it
+                // must not be presented as verified bytes or a lasting trend.
+                Text("Live payload ↓ " +
+                    Units.bytes(transfer.downloadPayloadRateBytesPerSecond.toLong()) + "/s · ↑ " +
+                    Units.bytes(transfer.uploadPayloadRateBytesPerSecond.toLong()) + "/s",
+                    style = MaterialTheme.typography.bodySmall)
+            }
             LocalTrackerSummaryText.describe(transfer.trackers, transfer.stopped,
                 LocalEngineHolder.dhtPreferred(LocalContext.current))?.let {
                 Text(it, style = MaterialTheme.typography.bodySmall)
