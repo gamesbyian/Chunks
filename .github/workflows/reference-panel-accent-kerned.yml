@@ -1,0 +1,72 @@
+name: Build complete Chunks Reference Panel accent kerning family
+on:
+  push:
+    paths:
+      - 'tools/build_reference_accent_kerned.py'
+      - 'tools/render_reference_accent_kerned.py'
+      - 'tests/test_reference_accent_kerned.py'
+      - 'assets/fonts/experimental/accent-studies/**'
+      - 'assets/fonts/experimental/accent-kerned/**'
+      - '.github/workflows/reference-panel-accent-kerned.yml'
+  pull_request:
+    paths:
+      - 'tools/build_reference_accent_kerned.py'
+      - 'tools/render_reference_accent_kerned.py'
+      - 'tests/test_reference_accent_kerned.py'
+      - 'assets/fonts/experimental/accent-studies/**'
+      - 'assets/fonts/experimental/accent-kerned/**'
+      - '.github/workflows/reference-panel-accent-kerned.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: reference-panel-kerned-${{ github.event_name }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+jobs:
+  generate-and-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install OpenType and real HarfBuzz rendering requirements
+        run: python -m pip install -r tools/requirements-chunks-font.txt
+      - name: Build all five CFF fonts in separate processes to bound memory use
+        run: |
+          for weight in 400 500 600 700 800; do
+            python tools/build_reference_accent_kerned.py --weights "$weight"
+          done
+      - name: Verify 1,216 accents and all source shaping in compiled OTFs
+        run: python -m unittest discover -s tests -p test_reference_accent_kerned.py -v
+      - name: Render before/after specimens using actual generated OTFs
+        run: python tools/render_reference_accent_kerned.py
+      - name: Upload all five non-shipping family fonts and evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-reference-panel-five-kerned-accent-fonts
+          path: |
+            assets/fonts/experimental/accent-kerned/*
+            reference-accent-kerned-comparison.png
+            assets/fonts/source/OFL.txt
+          retention-days: 30
+      - name: Commit reproducibly generated variants on source branch only
+        if: github.event_name == 'push' && github.ref != 'refs/heads/main'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add assets/fonts/experimental/accent-kerned
+          if ! git diff --cached --quiet; then
+            git commit -m 'build(fonts): retain five bounded accent-kerning reference-panel OTFs'
+            branch="${GITHUB_REF#refs/heads/}"
+            for attempt in 1 2 3; do
+              git fetch origin "$branch"
+              git rebase "origin/$branch"
+              if git push origin "HEAD:$branch"; then exit 0; fi
+            done
+            echo 'Unable to publish generated fonts without conflicting with an updated branch' >&2
+            exit 1
+          fi
