@@ -4,6 +4,8 @@ on:
     paths:
       - 'app/src/androidTest/java/io/github/gamesbyian/chunks/ExperimentalTypefaceNativeInstrumentedTest.kt'
       - 'assets/fonts/experimental/stacked-studies/**'
+      - 'tools/export_native_font_screenshots.sh'
+      - 'tools/assert_debug_stacked_font_assets.sh'
       - '.github/workflows/experimental-font-android-render.yml'
   workflow_dispatch:
 permissions:
@@ -30,17 +32,17 @@ jobs:
           if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
             ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
           fi
-      - name: Stage experimental OTFs only into the instrumentation test APK
+      - name: Stage experimental OTFs only into debug app assets for native test
         run: |
           test ! -d app/src/main/assets/referenceFonts
-          mkdir -p app/src/androidTest/assets/referenceFonts
+          mkdir -p app/src/debug/assets/referenceFonts
           for style in Regular Medium Semibold Bold ExtraBold; do
             face="assets/fonts/experimental/stacked-studies/ChunksReferencePanel-${style}-Stacked.otf"
             test -s "$face"
-            cp "$face" app/src/androidTest/assets/referenceFonts/
+            cp "$face" app/src/debug/assets/referenceFonts/
             sha256sum "$face"
           done
-          test "$(find app/src/androidTest/assets/referenceFonts -type f -name '*.otf' | wc -l)" -eq 5
+          test "$(find app/src/debug/assets/referenceFonts -type f -name '*.otf' | wc -l)" -eq 5
       - name: Prepare API 35 x86_64 emulator hardware acceleration
         run: |
           test -c /dev/kvm
@@ -56,18 +58,10 @@ jobs:
           emulator-boot-timeout: 600
           disable-animations: true
           script: |
+            gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
+            bash tools/assert_debug_stacked_font_assets.sh
             gradle --no-daemon :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=io.github.gamesbyian.chunks.ExperimentalTypefaceNativeInstrumentedTest
-            mkdir -p "$RUNNER_TEMP/chunks-stacked-android-font"
-            for style in Regular Medium Semibold Bold ExtraBold; do
-              for size in 100pct 200pct; do
-                for sample in long_filename stacked_marks transfer_stats; do
-                  name="chunks-stacked-${style}-${size}-${sample}.png"
-                  adb exec-out run-as io.github.gamesbyian.chunks cat "files/font-acceptance/$name" > "$RUNNER_TEMP/chunks-stacked-android-font/$name"
-                  test -s "$RUNNER_TEMP/chunks-stacked-android-font/$name"
-                done
-              done
-            done
-            test "$(find "$RUNNER_TEMP/chunks-stacked-android-font" -name '*.png' | wc -l)" -eq 30
+            bash tools/export_native_font_screenshots.sh
       - name: Retain exact Android raster evidence
         if: always()
         uses: actions/upload-artifact@v4
