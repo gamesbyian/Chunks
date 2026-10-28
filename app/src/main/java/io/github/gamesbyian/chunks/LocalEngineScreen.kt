@@ -55,6 +55,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.engine.LocalAddResult
 import io.github.gamesbyian.chunks.engine.LocalCommandOutcome
+import io.github.gamesbyian.chunks.engine.LocalFileBatchOutcome
 import io.github.gamesbyian.chunks.engine.LocalEngineConfig
 import io.github.gamesbyian.chunks.engine.LocalRateLimits
 import io.github.gamesbyian.chunks.engine.LocalTorrentEngine
@@ -816,6 +817,44 @@ internal fun LocalEngineScreen(
                         }
                     }
                 },
+                onBatchFileWanted = { reviewed, want ->
+                    performLocalMutation {
+                        try {
+                            val result = withContext(Dispatchers.IO) {
+                                LocalEngineHolder.current()?.setFilesWantedBatch(
+                                    transfer.infoHash, reviewed, want)
+                                    ?: LocalFileBatchOutcome.NOT_FOUND
+                            }
+                            if (result !in setOf(LocalFileBatchOutcome.VERIFIED,
+                                    LocalFileBatchOutcome.UNCHANGED)) {
+                                inventoryFrame = inventoryFrame.copy(stale = true)
+                            }
+                            message = when (result) {
+                                LocalFileBatchOutcome.VERIFIED ->
+                                    "Page-level file selection verified. Previously downloaded bytes were kept."
+                                LocalFileBatchOutcome.UNCHANGED ->
+                                    "The selected files already have that priority. Nothing was changed."
+                                LocalFileBatchOutcome.STALE_REVIEW ->
+                                    "File selection changed since review. No batch write was submitted; refresh the file list."
+                                LocalFileBatchOutcome.NOT_FOUND ->
+                                    "Torrent metadata unavailable. No file batch was submitted."
+                                LocalFileBatchOutcome.UNCERTAIN ->
+                                    "Batch selection outcome uncertain: some priorities may have changed. " +
+                                        "Wait for fresh file readback before considering another action."
+                            }
+                            files = withContext(Dispatchers.IO) {
+                                LocalEngineHolder.current()?.files(transfer.infoHash)
+                            }
+                        } catch (cancel: kotlinx.coroutines.CancellationException) {
+                            throw cancel
+                        } catch (_: Exception) {
+                            inventoryFrame = inventoryFrame.copy(stale = true)
+                            files = null
+                            message = "Native batch file selection was not confirmed. " +
+                                "Wait for fresh status before trying again."
+                        }
+                    }
+                },
                 onPrepareRemote = onPrepareRemote?.let { send ->
                     {
                         val prepared = TorrentIdentityHandoff.prepare(
@@ -965,6 +1004,7 @@ internal fun LocalTransferCard(
     filesShown: Boolean = false,
     onShowFiles: () -> Unit = {},
     onFileWanted: (Int, Boolean) -> Unit = { _, _ -> },
+    onBatchFileWanted: ((List<LocalTransferFile>, Boolean) -> Unit)? = null,
     alias: String? = null,
     onSaveAlias: ((String?) -> Boolean)? = null,
     onPrepareRemote: (() -> Unit)? = null,
@@ -1063,7 +1103,10 @@ internal fun LocalTransferCard(
                     }
                 }
             }
-            if (filesShown) LocalFileSelection(files, busy, transferKey = transfer.infoHash, onFileWanted = onFileWanted)
+            if (filesShown) LocalFileSelection(
+                files, busy, transferKey = transfer.infoHash,
+                onFileWanted = onFileWanted, onBatchFileWanted = onBatchFileWanted
+            )
             if (confirmRemove) {
                 Text("Remove from the phone engine only. Downloaded files stay in Chunks' folder; sharing of this torrent stops.")
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1087,6 +1130,7 @@ internal fun LocalFileSelection(
     files: List<LocalTransferFile>?,
     busy: Boolean,
     transferKey: String? = null,
+    onBatchFileWanted: ((List<LocalTransferFile>, Boolean) -> Unit)? = null,
     onFileWanted: (Int, Boolean) -> Unit
 ) {
     if (files == null) {
@@ -1097,6 +1141,22 @@ internal fun LocalFileSelection(
     val pageCount = if (files.isEmpty()) 1 else (files.size - 1) / pageSize + 1
     var requestedPage by remember(transferKey, files.size) { mutableStateOf(0) }
     val page = requestedPage.coerceIn(0, pageCount - 1)
+    val pageFiles = files.drop(page * pageSize).take(pageSize)
+    // Native download progress can change every second. Do not dismiss a
+    // user's confirmation merely because doneBytes advances. Only a change
+    // to file identity, total size or wanted selection invalidates review.
+    val reviewFingerprint = remember(files) {
+        files.map { file ->
+            listOf(file.index.toString(), file.path, file.sizeBytes.toString(),
+                file.wanted.toString())
+        }
+    }
+    // Key pending confirmation to the exact review identity instead of
+    // clearing it from an asynchronous LaunchedEffect, which could race a
+    // newly clicked Select/Skip button on the first Compose frame.
+    var pendingBatch by remember(transferKey, page, reviewFingerprint) {
+        mutableStateOf<Boolean?>(null)
+    }
     Text("Untick a file to skip downloading it. Already downloaded parts are kept.",
         style = MaterialTheme.typography.bodySmall)
     if (pageCount > 1) {
@@ -1110,7 +1170,43 @@ internal fun LocalFileSelection(
                 modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Next page") }
         }
     }
-    files.drop(page * pageSize).take(pageSize).forEach { file ->
+    if (onBatchFileWanted != null && pageFiles.isNotEmpty()) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = { pendingBatch = true }, enabled = !busy,
+                modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                Text("Select page")
+            }
+            OutlinedButton(onClick = { pendingBatch = false }, enabled = !busy,
+                modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                Text("Skip page")
+            }
+        }
+        pendingBatch?.let { want ->
+            val changes = pageFiles.count { it.wanted != want }
+            Text(if (changes == 0) "All ${pageFiles.size} files on this page already " +
+                    (if (want) "are selected." else "are skipped.")
+                else "Review: " + (if (want) "select " else "skip ") +
+                    "${changes} of ${pageFiles.size} files on this page. " +
+                    "Already downloaded bytes are never deleted. Changing wanted pieces " +
+                    "may stop or resume downloading; other pages are untouched.",
+                style = MaterialTheme.typography.bodySmall)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = {
+                    val reviewed = pageFiles.toList()
+                    pendingBatch = null
+                    onBatchFileWanted(reviewed, want)
+                }, enabled = !busy && changes > 0,
+                    modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                    Text(if (want) "Confirm select page" else "Confirm skip page")
+                }
+                OutlinedButton(onClick = { pendingBatch = null },
+                    modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                    Text("Cancel")
+                }
+            }
+        }
+    }
+    pageFiles.forEach { file ->
         // Multiplying done bytes by 100 can overflow Long for large files.
         val percent = if (file.sizeBytes <= 0L) 100 else
             (file.doneBytes.toDouble() / file.sizeBytes * 100).toInt().coerceIn(0, 100)

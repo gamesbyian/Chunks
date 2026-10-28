@@ -438,6 +438,56 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         }
     }
 
+    /**
+     * Apply a reviewed page-level file selection without deleting any bytes.
+     * The entire preflight is validated against a fresh JNI file observation
+     * before the first priority change. If any command/readback later fails,
+     * report UNCERTAIN: never retry the batch automatically, because a prefix
+     * of native writes could already have landed.
+     */
+    internal fun setFilesWantedBatch(
+        infoHash: String,
+        reviewed: List<LocalTransferFile>,
+        wanted: Boolean,
+        readbackTimeoutMs: Long = 5_000L
+    ): LocalFileBatchOutcome {
+        require(readbackTimeoutMs in 0L..60_000L)
+        val key = normal(infoHash)
+        val selected: List<Int>
+        synchronized(this) {
+            val handle = handles[key] ?: return LocalFileBatchOutcome.NOT_FOUND
+            val current = files(key) ?: return LocalFileBatchOutcome.NOT_FOUND
+            val plan = LocalFileBatchPlanner.prepare(current, reviewed, wanted)
+                ?: return LocalFileBatchOutcome.STALE_REVIEW
+            selected = plan.indicesToChange
+            if (selected.isEmpty()) return LocalFileBatchOutcome.UNCHANGED
+            val priority = if (wanted) org.libtorrent4j.Priority.DEFAULT
+                else org.libtorrent4j.Priority.IGNORE
+            try {
+                for (index in selected) handle.filePriority(index, priority)
+            } catch (_: Exception) {
+                // A partial prefix may have applied. Do not roll back blindly.
+                return LocalFileBatchOutcome.UNCERTAIN
+            }
+        }
+        val deadline = System.nanoTime() + readbackTimeoutMs * 1_000_000L
+        while (true) {
+            val matched = synchronized(this) {
+                val handle = handles[key] ?: return LocalFileBatchOutcome.UNCERTAIN
+                try {
+                    val priority = handle.filePriorities()
+                    selected.all { index ->
+                        priority.getOrNull(index)?.let { (it !=
+                            org.libtorrent4j.Priority.IGNORE) == wanted } == true
+                    }
+                } catch (_: Exception) { false }
+            }
+            if (matched) return LocalFileBatchOutcome.VERIFIED
+            if (System.nanoTime() >= deadline) return LocalFileBatchOutcome.UNCERTAIN
+            Thread.sleep(25)
+        }
+    }
+
     /** Ask libtorrent to connect to one explicit peer (tests and user-supplied peers). */
     @Synchronized
     internal fun connectPeer(infoHash: String, peer: InetSocketAddress): Boolean {

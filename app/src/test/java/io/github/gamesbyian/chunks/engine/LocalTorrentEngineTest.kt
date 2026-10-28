@@ -358,6 +358,35 @@ class LocalTorrentEngineTest {
         assertFalse(engine.isDhtEnabled())
     }
 
+    @Test fun reviewedFilePageBatchUsesRealLibtorrentPrioritiesAndRejectsStaleInputs() {
+        val fixture = fixture()
+        val native = engine()
+        val dest = temp.newFolder("batch-file-selection")
+        val transfer = added(native.addStopped(fixture.torrent, dest))
+        val before = requireNotNull(native.files(transfer.infoHash))
+        assertEquals(2, before.size)
+        assertTrue(before.all { it.wanted })
+        assertEquals(LocalFileBatchOutcome.VERIFIED,
+            native.setFilesWantedBatch(transfer.infoHash, before, false))
+        val skipped = requireNotNull(native.files(transfer.infoHash))
+        assertTrue(skipped.all { !it.wanted })
+        assertEquals(LocalFileBatchOutcome.STALE_REVIEW,
+            native.setFilesWantedBatch(transfer.infoHash, before, true))
+        assertEquals(LocalFileBatchOutcome.UNCHANGED,
+            native.setFilesWantedBatch(transfer.infoHash, skipped, false))
+        assertEquals(LocalFileBatchOutcome.STALE_REVIEW,
+            native.setFilesWantedBatch(transfer.infoHash,
+                listOf(skipped.first().copy(path = "wrong-path"), skipped.last()), true))
+        assertEquals(LocalFileBatchOutcome.VERIFIED,
+            native.setFilesWantedBatch(transfer.infoHash, skipped, true))
+        assertTrue(requireNotNull(native.files(transfer.infoHash)).all { it.wanted })
+        assertEquals(LocalFileBatchOutcome.NOT_FOUND,
+            native.setFilesWantedBatch("f".repeat(40), before, false))
+        val state = requireNotNull(native.status(transfer.infoHash))
+        assertTrue(state.stopped)
+        assertEquals(0L, state.payloadDownloadedBytes)
+    }
+
     @Test fun skippedFileIsNotDownloadedUntilSelected() {
         val fixture = fixture()
         val seeder = engine()
