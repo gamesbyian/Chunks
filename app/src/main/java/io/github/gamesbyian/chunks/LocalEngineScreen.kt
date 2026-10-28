@@ -678,7 +678,23 @@ internal fun LocalEngineScreen(
             inventoryConfirmed = hasConfirmedLocalInventory,
             inventoryStale = inventoryStale,
             busyEngine = busy,
-            mutationGeneration = LocalScreenReader.revision.snapshot()
+            mutationGeneration = LocalScreenReader.revision.snapshot(),
+            onPrepareAdd = { originalBytes ->
+                // This callback changes only the local Add DRAFT, not the
+                // engine, destination folder, existing transfers or data.
+                try {
+                    val bytes = originalBytes.copyOf()
+                    pending = PendingLocalAdd(TorrentMetainfoReader.preview(bytes), bytes)
+                    addStorage = null
+                    message = "Original snapshot .torrent is ready for manual phone Add review. " +
+                        "Check the destination and Start choice before confirming; no Add occurred."
+                    scope.launch { scrollState.animateScrollTo(0) }
+                } catch (failure: Exception) {
+                    pending = null
+                    message = "Snapshot definition could not populate Add review: " +
+                        (failure.message ?: "Unsupported original torrent")
+                }
+            }
         )
         LocalInventorySnapshotPanel(
             transfers = transfers,
