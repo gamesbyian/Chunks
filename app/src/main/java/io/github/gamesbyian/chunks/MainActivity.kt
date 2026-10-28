@@ -342,6 +342,15 @@ private fun ChunksApp(sharedMagnet: String?) {
                 onLocalZipReview = { section = Section.ARCHIVES },
                 onInspectSnapshot = { section = Section.SNAPSHOT_INSPECT },
                 onLocalEngine = { section = Section.LOCAL },
+                hasPendingMagnet = magnet.isNotBlank(),
+                onReviewPhoneMagnet = {
+                    // Freeze the draft for one explicit local review. Remove
+                    // the remote draft so reconnect cannot submit it later.
+                    phoneHandoffMagnet = magnet
+                    magnet = ""
+                    section = Section.LOCAL
+                },
+                onDiscardMagnet = { magnet = "" },
                 onEndpoint = { endpoint = it }, onUsername = { username = it },
                 onPassword = { password = it },
                 onConnect = {
@@ -640,6 +649,9 @@ private fun ConnectionScreen(
     onLocalZipReview: () -> Unit,
     onInspectSnapshot: () -> Unit,
     onLocalEngine: () -> Unit,
+    hasPendingMagnet: Boolean,
+    onReviewPhoneMagnet: () -> Unit,
+    onDiscardMagnet: () -> Unit,
     onEndpoint: (String) -> Unit, onUsername: (String) -> Unit,
     onPassword: (String) -> Unit, onConnect: () -> Unit
 ) {
@@ -651,6 +663,14 @@ private fun ConnectionScreen(
     ) {
         item {
             ColoredPanel("Hello, server.", "Connect an existing rTorrent installation. Chunks connects over protected XML-RPC. Torrent changes require separate explicit confirmation.", Lilac)
+        }
+        if (hasPendingMagnet) item {
+            PendingMagnetPhoneOffer(
+                hasPendingMagnet = true,
+                busyConnecting = loading,
+                onReviewPhone = onReviewPhoneMagnet,
+                onDiscard = onDiscardMagnet
+            )
         }
         item {
             OutlinedButton(onClick = onLocalZipReview,
