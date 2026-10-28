@@ -1101,8 +1101,8 @@ internal fun LocalFileSelection(
     files: List<LocalTransferFile>?,
     busy: Boolean,
     transferKey: String? = null,
-    onFileWanted: (Int, Boolean) -> Unit,
-    onBatchFileWanted: ((List<LocalTransferFile>, Boolean) -> Unit)? = null
+    onBatchFileWanted: ((List<LocalTransferFile>, Boolean) -> Unit)? = null,
+    onFileWanted: (Int, Boolean) -> Unit
 ) {
     if (files == null) {
         Text("Loading files…", style = MaterialTheme.typography.bodySmall)
