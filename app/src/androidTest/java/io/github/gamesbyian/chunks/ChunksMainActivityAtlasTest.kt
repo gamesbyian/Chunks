@@ -289,10 +289,26 @@ class ChunksMainActivityAtlasTest {
         // occasionally raced focus here and left the queue unfiltered.
         rule.onNodeWithText("Search names or Places").performTextReplacement("Public.Example")
         dismissSearchKeyboard()
-        rule.waitUntil(15_000) {
-            rule.onAllNodes(hasSetTextAction() and hasText("Public.Example"))
-                .fetchSemanticsNodes().isNotEmpty() &&
-                rule.onAllNodesWithText("1 shown").fetchSemanticsNodes().isNotEmpty()
+        // The long remote header can place the filtered result count outside
+        // the composed LazyColumn viewport when the keyboard closes. A query
+        // field can be valid while an offscreen item has zero semantics nodes.
+        // Resolve via LazyList ScrollToIndex, as other queue tests already do.
+        // This still FAILS unless the real installed UI contains "1 shown".
+        try {
+            rule.onNode(hasScrollToIndexAction())
+                .performScrollToNode(hasText("1 shown"))
+            rule.onNodeWithText("1 shown").assertExists()
+        } catch (failure: AssertionError) {
+            save("app-search-filter-timeout-diagnostic-real-compose")
+            val lines = rule.onRoot(useUnmergedTree = true).printToString()
+                .lineSequence()
+                .filter { it.contains("shown") ||
+                    it.contains("Search names or Places") ||
+                    it.contains("Public.Example") ||
+                    it.contains("InputText") }
+                .take(25).joinToString(" | ").take(2800)
+            throw AssertionError("Search did not show one filter match. " +
+                "Visible relevant semantics=" + lines, failure)
         }
         // An actual installed-app queue action, not only an isolated editor
         // component. Wait for the filtered count, not just the IME's text;
