@@ -10,8 +10,9 @@
   },
   "totals": {
     "approved": 1,
-    "vectorDraft": 726,
-    "planned": 95
+    "vectorDraft": 742,
+    "planned": 60,
+    "aliases": 19
   },
   "assets": [
     {
@@ -1114,57 +1115,65 @@
       "id": "character-parts/folder-top-tab",
       "category": "character-parts",
       "label": "folder top tab",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "Approved icon geometry reused or new folder layer; experimental isolation.",
+      "path": "docs/design/svg/character-parts/folder-top-tab.svg"
     },
     {
       "id": "character-parts/folder-lip-and-outer-edge",
       "category": "character-parts",
       "label": "folder lip and outer edge",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "Approved icon geometry reused or new folder layer; experimental isolation.",
+      "path": "docs/design/svg/character-parts/folder-lip-and-outer-edge.svg"
     },
     {
       "id": "character-parts/folder-right-extrusion",
       "category": "character-parts",
       "label": "folder right extrusion",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "Approved icon geometry reused or new folder layer; experimental isolation.",
+      "path": "docs/design/svg/character-parts/folder-right-extrusion.svg"
     },
     {
       "id": "character-parts/folder-inner-rim",
       "category": "character-parts",
       "label": "folder inner rim",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "Approved icon geometry reused or new folder layer; experimental isolation.",
+      "path": "docs/design/svg/character-parts/folder-inner-rim.svg"
     },
     {
       "id": "character-parts/folder-front-highlight",
       "category": "character-parts",
       "label": "folder front highlight",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "Approved icon geometry reused or new folder layer; experimental isolation.",
+      "path": "docs/design/svg/character-parts/folder-front-highlight.svg"
     },
     {
       "id": "character-parts/folder-top-highlight",
       "category": "character-parts",
       "label": "folder top highlight",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "Approved icon geometry reused or new folder layer; experimental isolation.",
+      "path": "docs/design/svg/character-parts/folder-top-highlight.svg"
     },
     {
       "id": "character-parts/folder-side-shading",
       "category": "character-parts",
       "label": "folder side shading",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "Approved icon geometry reused or new folder layer; experimental isolation.",
+      "path": "docs/design/svg/character-parts/folder-side-shading.svg"
     },
     {
       "id": "character-parts/folder-lower-shadow",
       "category": "character-parts",
       "label": "folder lower shadow",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "Approved icon geometry reused or new folder layer; experimental isolation.",
+      "path": "docs/design/svg/character-parts/folder-lower-shadow.svg"
     },
     {
       "id": "character-parts/folder-left-eye",
@@ -1194,22 +1203,25 @@
       "id": "character-parts/folder-ground-shadow",
       "category": "character-parts",
       "label": "folder ground shadow",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "asset-alias",
+      "source": "Existing standalone SVG already meets same graphic role; alias avoids redundant duplicate file.",
+      "aliasOf": "vector/blue-folder/ground"
     },
     {
       "id": "character-parts/folder-monochrome-silhouette",
       "category": "character-parts",
       "label": "folder monochrome silhouette",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "asset-alias",
+      "source": "Existing standalone SVG already meets same graphic role; alias avoids redundant duplicate file.",
+      "aliasOf": "vector/blue-folder/monochrome"
     },
     {
       "id": "character-parts/folder-micro-simple-silhouette",
       "category": "character-parts",
       "label": "folder micro-simple silhouette",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "asset-alias",
+      "source": "Existing standalone SVG already meets same graphic role; alias avoids redundant duplicate file.",
+      "aliasOf": "launcher-concepts/launcher-micro-16px"
     },
     {
       "id": "character-parts/folder-with-colourful-contents",
@@ -1231,50 +1243,57 @@
       "id": "character-parts/folder-black-white-mark",
       "category": "character-parts",
       "label": "folder black/white mark",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "asset-alias",
+      "source": "Existing standalone SVG already meets same graphic role; alias avoids redundant duplicate file.",
+      "aliasOf": "launcher-concepts/notification-monochrome-folder"
     },
     {
       "id": "character-parts/folder-with-black-burst-strokes",
       "category": "character-parts",
       "label": "folder with black burst strokes",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "Approved icon geometry reused or new folder layer; experimental isolation.",
+      "path": "docs/design/svg/character-parts/folder-with-black-burst-strokes.svg"
     },
     {
       "id": "character-parts/purple-storage-cube-front",
       "category": "character-parts",
       "label": "purple storage cube front",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "asset-alias",
+      "source": "Existing standalone SVG already meets same graphic role; alias avoids redundant duplicate file.",
+      "aliasOf": "vector/purple-storage/front"
     },
     {
       "id": "character-parts/purple-storage-cube-top",
       "category": "character-parts",
       "label": "purple storage cube top",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "asset-alias",
+      "source": "Existing standalone SVG already meets same graphic role; alias avoids redundant duplicate file.",
+      "aliasOf": "vector/purple-storage/top"
     },
     {
       "id": "character-parts/purple-storage-cube-side",
       "category": "character-parts",
       "label": "purple storage cube side",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "asset-alias",
+      "source": "Existing standalone SVG already meets same graphic role; alias avoids redundant duplicate file.",
+      "aliasOf": "vector/purple-storage/side"
     },
     {
       "id": "character-parts/purple-cube-highlights",
       "category": "character-parts",
       "label": "purple cube highlights",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "asset-alias",
+      "source": "Existing standalone SVG already meets same graphic role; alias avoids redundant duplicate file.",
+      "aliasOf": "vector/purple-storage/highlight"
     },
     {
       "id": "character-parts/purple-cube-shadow",
       "category": "character-parts",
       "label": "purple cube shadow",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "asset-alias",
+      "source": "Existing standalone SVG already meets same graphic role; alias avoids redundant duplicate file.",
+      "aliasOf": "vector/purple-storage/ground-shadow"
     },
     {
       "id": "character-parts/purple-cube-three-disc-pictogram",
@@ -1288,36 +1307,41 @@
       "id": "character-parts/green-download-cube-front",
       "category": "character-parts",
       "label": "green download cube front",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "asset-alias",
+      "source": "Existing standalone SVG already meets same graphic role; alias avoids redundant duplicate file.",
+      "aliasOf": "vector/green-download/front"
     },
     {
       "id": "character-parts/green-download-cube-top",
       "category": "character-parts",
       "label": "green download cube top",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "asset-alias",
+      "source": "Existing standalone SVG already meets same graphic role; alias avoids redundant duplicate file.",
+      "aliasOf": "vector/green-download/top"
     },
     {
       "id": "character-parts/green-download-cube-side",
       "category": "character-parts",
       "label": "green download cube side",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "asset-alias",
+      "source": "Existing standalone SVG already meets same graphic role; alias avoids redundant duplicate file.",
+      "aliasOf": "vector/green-download/side"
     },
     {
       "id": "character-parts/green-cube-highlights",
       "category": "character-parts",
       "label": "green cube highlights",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "asset-alias",
+      "source": "Existing standalone SVG already meets same graphic role; alias avoids redundant duplicate file.",
+      "aliasOf": "vector/green-download/highlight"
     },
     {
       "id": "character-parts/green-cube-shadow",
       "category": "character-parts",
       "label": "green cube shadow",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "asset-alias",
+      "source": "Existing standalone SVG already meets same graphic role; alias avoids redundant duplicate file.",
+      "aliasOf": "vector/green-download/ground-shadow"
     },
     {
       "id": "character-parts/green-cube-arrow-pictogram",
@@ -1331,36 +1355,41 @@
       "id": "character-parts/coral-media-cube-front",
       "category": "character-parts",
       "label": "coral media cube front",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "asset-alias",
+      "source": "Existing standalone SVG already meets same graphic role; alias avoids redundant duplicate file.",
+      "aliasOf": "vector/coral-media/front"
     },
     {
       "id": "character-parts/coral-media-cube-top",
       "category": "character-parts",
       "label": "coral media cube top",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "asset-alias",
+      "source": "Existing standalone SVG already meets same graphic role; alias avoids redundant duplicate file.",
+      "aliasOf": "vector/coral-media/top"
     },
     {
       "id": "character-parts/coral-media-cube-side",
       "category": "character-parts",
       "label": "coral media cube side",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "asset-alias",
+      "source": "Existing standalone SVG already meets same graphic role; alias avoids redundant duplicate file.",
+      "aliasOf": "vector/coral-media/side"
     },
     {
       "id": "character-parts/coral-cube-highlights",
       "category": "character-parts",
       "label": "coral cube highlights",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "asset-alias",
+      "source": "Existing standalone SVG already meets same graphic role; alias avoids redundant duplicate file.",
+      "aliasOf": "vector/coral-media/highlight"
     },
     {
       "id": "character-parts/coral-cube-shadow",
       "category": "character-parts",
       "label": "coral cube shadow",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "asset-alias",
+      "source": "Existing standalone SVG already meets same graphic role; alias avoids redundant duplicate file.",
+      "aliasOf": "vector/coral-media/ground-shadow"
     },
     {
       "id": "character-parts/coral-cube-mountain-sun-pictogram",
@@ -1374,50 +1403,57 @@
       "id": "character-parts/plain-pink-3d-block",
       "category": "character-parts",
       "label": "plain pink 3D block",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png; original cubic vector exploration",
+      "path": "docs/design/svg/character-parts/plain-pink-3d-block.svg"
     },
     {
       "id": "character-parts/plain-yellow-3d-block",
       "category": "character-parts",
       "label": "plain yellow 3D block",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png; original cubic vector exploration",
+      "path": "docs/design/svg/character-parts/plain-yellow-3d-block.svg"
     },
     {
       "id": "character-parts/plain-blue-3d-block",
       "category": "character-parts",
       "label": "plain blue 3D block",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png; original cubic vector exploration",
+      "path": "docs/design/svg/character-parts/plain-blue-3d-block.svg"
     },
     {
       "id": "character-parts/plain-purple-3d-block",
       "category": "character-parts",
       "label": "plain purple 3D block",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png; original cubic vector exploration",
+      "path": "docs/design/svg/character-parts/plain-purple-3d-block.svg"
     },
     {
       "id": "character-parts/plain-green-3d-block",
       "category": "character-parts",
       "label": "plain green 3D block",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png; original cubic vector exploration",
+      "path": "docs/design/svg/character-parts/plain-green-3d-block.svg"
     },
     {
       "id": "character-parts/plain-orange-3d-block",
       "category": "character-parts",
       "label": "plain orange 3D block",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png; original cubic vector exploration",
+      "path": "docs/design/svg/character-parts/plain-orange-3d-block.svg"
     },
     {
       "id": "character-parts/three-dimensional-block-silhouette",
       "category": "character-parts",
       "label": "three-dimensional block silhouette",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png; original filled block silhouette",
+      "path": "docs/design/svg/character-parts/three-dimensional-block-silhouette.svg"
     },
     {
       "id": "character-combinations/folder-with-background-blobs",
