@@ -10,8 +10,8 @@
   },
   "totals": {
     "approved": 1,
-    "vectorDraft": 778,
-    "planned": 24,
+    "vectorDraft": 789,
+    "planned": 23,
     "aliases": 19
   },
   "assets": [
@@ -1547,8 +1547,10 @@
       "id": "brand-fidelity/exact-reference-bespoke-chunks-wordmark-outlines",
       "category": "brand-fidelity",
       "label": "exact reference bespoke Chunks wordmark outlines",
-      "status": "planned",
-      "source": "04-brand-lockups-and-app-icon.png"
+      "status": "vector-draft",
+      "source": "docs/design/reference-images/03-typography-and-wordmark.png; contour traced from the original image; visual QA pending",
+      "path": "docs/design/svg/brand/reference-traced/wordmark-original-black.svg",
+      "fidelity": "source-derived-auto-trace"
     },
     {
       "id": "brand-fidelity/primary-tagline-hand-lettered-outline",
@@ -7516,6 +7518,96 @@
       "path": "docs/design/svg/palettes/dimensional-materials/full-strip.svg",
       "source": "Artwork colours used by the independent draft 3D object library (not a replacement for the approved SVG gradients)",
       "sourceVariant": "dimensional-materials"
+    },
+    {
+      "id": "brand-reference-trace/wordmark-purple-offset",
+      "label": "Chunks wordmark reference silhouettes with purple offset",
+      "status": "vector-draft",
+      "category": "brand-fidelity",
+      "path": "docs/design/svg/brand/reference-traced/wordmark-purple-offset.svg",
+      "source": "docs/design/reference-images/03-typography-and-wordmark.png; independent contour-derived alternative",
+      "fidelity": "source-derived-auto-trace"
+    },
+    {
+      "id": "brand-reference-trace/wordmark-grey",
+      "label": "Chunks reference wordmark in monochrome grey",
+      "status": "vector-draft",
+      "category": "brand-fidelity",
+      "path": "docs/design/svg/brand/reference-traced/wordmark-grey.svg",
+      "source": "docs/design/reference-images/03-typography-and-wordmark.png; independent contour-derived alternative",
+      "fidelity": "source-derived-auto-trace"
+    },
+    {
+      "id": "brand-reference-trace/wordmark-white",
+      "label": "Chunks reference wordmark reversed white",
+      "status": "vector-draft",
+      "category": "brand-fidelity",
+      "path": "docs/design/svg/brand/reference-traced/wordmark-white.svg",
+      "source": "docs/design/reference-images/03-typography-and-wordmark.png; independent contour-derived alternative",
+      "fidelity": "source-derived-auto-trace"
+    },
+    {
+      "id": "brand-reference-trace/wordmark-white-on-near-black",
+      "label": "Chunks reference wordmark white on near-black",
+      "status": "vector-draft",
+      "category": "brand-fidelity",
+      "path": "docs/design/svg/brand/reference-traced/wordmark-white-on-near-black.svg",
+      "source": "docs/design/reference-images/03-typography-and-wordmark.png; independent contour-derived alternative",
+      "fidelity": "source-derived-auto-trace"
+    },
+    {
+      "id": "brand-reference-trace/letter-C",
+      "label": "Original traced Chunks wordmark letter C",
+      "status": "vector-draft",
+      "category": "brand-fidelity",
+      "path": "docs/design/svg/brand/reference-traced/letter-C.svg",
+      "source": "docs/design/reference-images/03-typography-and-wordmark.png; independent contour-derived alternative",
+      "fidelity": "source-derived-auto-trace"
+    },
+    {
+      "id": "brand-reference-trace/letter-h",
+      "label": "Original traced Chunks wordmark letter h",
+      "status": "vector-draft",
+      "category": "brand-fidelity",
+      "path": "docs/design/svg/brand/reference-traced/letter-h.svg",
+      "source": "docs/design/reference-images/03-typography-and-wordmark.png; independent contour-derived alternative",
+      "fidelity": "source-derived-auto-trace"
+    },
+    {
+      "id": "brand-reference-trace/letter-u",
+      "label": "Original traced Chunks wordmark letter u",
+      "status": "vector-draft",
+      "category": "brand-fidelity",
+      "path": "docs/design/svg/brand/reference-traced/letter-u.svg",
+      "source": "docs/design/reference-images/03-typography-and-wordmark.png; independent contour-derived alternative",
+      "fidelity": "source-derived-auto-trace"
+    },
+    {
+      "id": "brand-reference-trace/letter-n",
+      "label": "Original traced Chunks wordmark letter n",
+      "status": "vector-draft",
+      "category": "brand-fidelity",
+      "path": "docs/design/svg/brand/reference-traced/letter-n.svg",
+      "source": "docs/design/reference-images/03-typography-and-wordmark.png; independent contour-derived alternative",
+      "fidelity": "source-derived-auto-trace"
+    },
+    {
+      "id": "brand-reference-trace/letter-k",
+      "label": "Original traced Chunks wordmark letter k",
+      "status": "vector-draft",
+      "category": "brand-fidelity",
+      "path": "docs/design/svg/brand/reference-traced/letter-k.svg",
+      "source": "docs/design/reference-images/03-typography-and-wordmark.png; independent contour-derived alternative",
+      "fidelity": "source-derived-auto-trace"
+    },
+    {
+      "id": "brand-reference-trace/letter-s",
+      "label": "Original traced Chunks wordmark letter s",
+      "status": "vector-draft",
+      "category": "brand-fidelity",
+      "path": "docs/design/svg/brand/reference-traced/letter-s.svg",
+      "source": "docs/design/reference-images/03-typography-and-wordmark.png; independent contour-derived alternative",
+      "fidelity": "source-derived-auto-trace"
     }
   ]
 }
