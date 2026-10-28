@@ -1,5 +1,13 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-27 recovery: exact validated Android features
+
+- #328 corrected a shared native LazyColumn search assertion after keyboard dismissal, exact head e0e1594d58e47cfbed68960a8f8484cb1d382d86, JVM run 40608938948 and native run 40608938887 success; merge 4f98254f2ecf00ba3b0aac8122f020558ddd3e9a. It explains prior isolated atlas failures on #316/#324, not proof of those features failing.
+- #331 local inventory-only snapshot SAF export: exact head 9e285b760cacfbd1c551346dec427bea8aaa44bd, JVM 40610549425 and API35 40610549506 success, squash ed6370f3971f8b8243c24c2ea9e4217775979d03. Supports local observed-view reviewed inventory-only export, stale/busy exclusion, opt-in historical paths, CreateDocument, SHA-256 same-Uri readback. No verified .torrent definitions, payload bytes, resume data, import or physical-device acceptance.
+- #332 encrypted multi-profile rTorrent login chooser: exact head a378bc66a32e40e99a82c08be44369e38c46714d, JVM 40610656209, visual 40610656553, native API35 40610656748 all success, squash 8f67283f04d3023cc480567ea752f045c8b7bddb. Account-isolated AES-GCM device Keystore roster up to 12 profiles, explicit selection, forget and durable opt-out. No physical handset/login/fingerprint acceptance.
+- #330 accented-Latin class kerning: exact head 8fb5e57c88d6c64f3fed0dd316a1eb0a1e85edcf, font 40610403525, JVM 40610403608, visual 40610403503 success, squash 3e03af980ad2b5ddd47a9c381b34c8639aba02d5. No human-final font optical approval implied.
+- #335 private-by-default diagnostic export remains OPEN at this editorial checkpoint, not merged, subject to exact-head CI. No new measurement of real-peer received and verified byte growth.
+
 ## 2026-10-27 SVG visual asset inventory and reference-derived lettering (merged #315)
 
 - **Reference asset library / provenance gate:** 803 *independent* editable SVG drafts, 20 documented aliases to pre-existing equivalent SVG artwork, one untouched approved launcher master, and 12 explicit source-fidelity tasks remain in [master-inventory](design/svg/master-inventory.json) (836 named slots). All six source PNG sheets in `docs/design/reference-images/`, plus approved launcher PNG/SVG and Android runtime vector pipeline, remain unchanged. Assets include 306 individual exploratory path glyphs, exact approved-launcher sublayers, dynamic-UI design specimens, diverse palettes, launch concepts, character poses, thumbnails, stickers, and compositions. Source-traced original Chunks wordmark and two taglines have technical pixel-contour comparisons, not accepted final optical spacing or font licensing.
