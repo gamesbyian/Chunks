@@ -6,6 +6,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
@@ -101,6 +102,26 @@ class ServerToPhoneCopyControlInstrumentedTest {
         assertTrue("Only read-only commands: $methods", methods.toSet() ==
             setOf("network.local_address", "network.bind_address", "network.listen.port",
                 "d.is_private", "d.is_active"))
+    }
+
+    @Test fun enteredPeerAddressIsLabelledAndUsedOnlyAfterReview() {
+        val reviewed = ArrayList<String>()
+        show(complete()) { reviewed += it }
+        rule.onNodeWithText("Copy files to this phone").performClick()
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithText("Use a different server address…").fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithText("Use a different server address…").performClick()
+        rule.onNodeWithText("Server peer address").performTextInput("127.0.0.1")
+        rule.onNodeWithText("Check with this address").performClick()
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithText("(the address you entered)", substring = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        assertTrue(reviewed.isEmpty())
+        rule.onNodeWithText("Review phone Add").performClick()
+        assertEquals(listOf("magnet:?xt=urn:btih:${hash.lowercase()}&dn=Big%20Buck%20Bunny&x.pe=127.0.0.1:6890"),
+            reviewed)
     }
 
     @Test fun privateTransferIsRefusedWithAReasonAndNoHandoff() {

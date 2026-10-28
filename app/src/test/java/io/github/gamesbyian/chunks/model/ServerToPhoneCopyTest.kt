@@ -62,4 +62,31 @@ class ServerToPhoneCopyTest {
         val rig = ServerToPhoneCopy.plan(transfer(), source(host = "127.0.0.1", port = 6890), ip("127.0.0.1"))
         assertEquals("127.0.0.1:6890", (rig as ServerToPhoneCopy.Ready).peer)
     }
+
+    @Test fun enteredAddressOverridesReportedOnesAndIsLabelled() {
+        var asked = ""
+        val resolve: (String) -> List<InetAddress> = { asked = it; listOf(InetAddress.getByName("198.51.100.4")) }
+        val plan = ServerToPhoneCopy.plan(transfer(), source(announced = "wrong.example"), resolve,
+            addressOverride = " peer.seed.example ")
+        assertEquals("peer.seed.example", asked)
+        plan as ServerToPhoneCopy.Ready
+        assertEquals("198.51.100.4:51413", plan.peer)
+        assertEquals(ServerToPhoneCopy.AddressSource.ENTERED, plan.addressSource)
+        val bracketed = ServerToPhoneCopy.plan(transfer(), source(), ip("2001:db8::9"),
+            addressOverride = "[2001:db8::9]") as ServerToPhoneCopy.Ready
+        assertEquals("[2001:db8:0:0:0:0:0:9]:51413", bracketed.peer)
+    }
+
+    @Test fun enteredAddressMustBeABareHostAndUnresolvableOnesInviteCorrection() {
+        for (bad in listOf("https://seed.example", "seed.example:51413", "user:pw@seed.example",
+                "seed.example/path", "", "bad host")) {
+            val refused = ServerToPhoneCopy.plan(transfer(), source(), ip("203.0.113.9"), addressOverride = bad)
+            assertTrue(bad, refused is ServerToPhoneCopy.Refused && refused.addressProblem)
+        }
+        val unresolved = ServerToPhoneCopy.plan(transfer(), source(), { emptyList() })
+        assertTrue(unresolved is ServerToPhoneCopy.Refused && unresolved.addressProblem)
+        // A non-address refusal is not offered the address field.
+        val incomplete = ServerToPhoneCopy.plan(transfer(done = 1), source(), ip("203.0.113.9"))
+        assertTrue(incomplete is ServerToPhoneCopy.Refused && !incomplete.addressProblem)
+    }
 }
