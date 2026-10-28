@@ -70,6 +70,7 @@ import io.github.gamesbyian.chunks.model.Units
 import io.github.gamesbyian.chunks.organize.Classifier
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
+import io.github.gamesbyian.chunks.rpc.RemoteSmartConnect
 import io.github.gamesbyian.chunks.rpc.RemoteFile
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
 import io.github.gamesbyian.chunks.rpc.RemoteQueueActivityContext
@@ -420,16 +421,30 @@ private fun ChunksApp(
                         val saveThisLogin = rememberLogin
                         scope.launch {
                             try {
-                                val candidate = RTorrentRemote(settings)
-                                val v = candidate.version()
-                                val list = candidate.listTransfers(ticket.view)
+                                val discovered = RemoteSmartConnect.connect(
+                                    settings.endpoint, settings.username, settings.password
+                                ) { credentials ->
+                                    val connection = RTorrentRemote(credentials)
+                                    val verifiedVersion = connection.version()
+                                    val verifiedList = connection.listTransfers(ticket.view)
+                                    Triple(connection, verifiedVersion, verifiedList)
+                                }
+                                val (candidate, v, list) = discovered.response
+                                // Preserve a user's explicit saved URL and its
+                                // existing alias scope. For hostname-only auto
+                                // discovery, remember the verified exact RPC
+                                // endpoint so reconnection needs no path scan.
+                                val verifiedSettings = if (
+                                    RemoteSmartConnect.candidates(settings.endpoint, settings.username).size == 1
+                                ) settings else discovered.credentials
                                 if (remoteFence.current(ticket) && server == null) {
                                     inspectionFence.invalidate()
                                     mutationGate.reset()
                                     transfers = list
                                     snapshotRevision++
                                     version = v
-                                    aliasScope = endpoint.trim() + "\u0000" + username.trim()
+                                    aliasScope = verifiedSettings.endpoint.trim() + "\u0000" + username.trim()
+                                    endpoint = verifiedSettings.endpoint
                                     // Never carry another server/account's custom destination
                                     // into this Add draft. Blank selects the new server default.
                                     draftPath = ""
@@ -448,8 +463,8 @@ private fun ChunksApp(
                                     val retained = withContext(Dispatchers.IO) {
                                         try {
                                             if (saveThisLogin) {
-                                                val singleSaved = vault.save(settings)
-                                                val rosterSaved = profileRoster.saveVerified(settings)
+                                                val singleSaved = vault.save(verifiedSettings)
+                                                val rosterSaved = profileRoster.saveVerified(verifiedSettings)
                                                 singleSaved && rosterSaved
                                             } else {
                                                 val disabled = vault.setRememberingEnabled(false)
@@ -763,6 +778,7 @@ private fun ChunksApp(
 }
 
 private fun readableFailure(failure: Exception): String = when (failure) {
+    is RemoteSmartConnect.ConnectionFailed -> failure.message.orEmpty()
     is java.net.UnknownHostException -> "The server hostname could not be resolved."
     is java.net.SocketTimeoutException -> "The server did not respond before the timeout. If a command was submitted, its outcome must be checked before retrying."
     is java.net.ConnectException -> "The server did not accept the connection."
@@ -791,7 +807,7 @@ private fun ConnectionScreen(
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         item {
-            ColoredPanel("Hello, server.", "Connect an existing rTorrent installation. Chunks connects over protected XML-RPC. Torrent changes require separate explicit confirmation.", Lilac)
+            ColoredPanel("Hello, server.", "Paste your seedbox hostname or ruTorrent web address. Chunks checks known secure rTorrent endpoints automatically. Torrent changes require separate confirmation.", Lilac)
         }
         item {
             OutlinedButton(onClick = onLocalZipReview,
@@ -852,8 +868,8 @@ private fun ConnectionScreen(
         item {
             OutlinedTextField(
                 value = endpoint, onValueChange = onEndpoint,
-                label = { Text("ruTorrent web URL or RPC address") },
-                placeholder = { Text("https://server.example/rutorrent/") },
+                label = { Text("Seedbox hostname, ruTorrent URL or RPC address") },
+                placeholder = { Text("server.example or https://server.example/rutorrent/") },
                 singleLine = true, modifier = Modifier.fillMaxWidth()
             )
         }
@@ -902,7 +918,7 @@ private fun ConnectionScreen(
                 enabled = !loading && endpoint.isNotBlank(),
                 shape = RoundedCornerShape(18.dp),
                 modifier = Modifier.fillMaxWidth().height(56.dp)
-            ) { Text(if (loading) "Connecting…" else "Connect to rTorrent") }
+            ) { Text(if (loading) "Finding secure rTorrent…" else "Connect to rTorrent") }
         }
         if (error != null) item { Notice("Connection unsuccessful", error, Coral) }
         item {

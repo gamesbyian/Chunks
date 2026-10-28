@@ -34,3 +34,42 @@ Do not conflate method presence, release number, build/library flags, permission
 ## Measured interoperability evidence
 
 The rTorrent 0.9.8-1ubuntu0.1 package on an ephemeral Ubuntu GitHub runner, behind nginx localhost SCGI, answered Chunks' read-only Kotlin version, empty main-view list and method enumeration probes successfully in [run 40060755245](https://github.com/gamesbyian/Chunks/actions/runs/40060755245). This closes a single disposable-server path, not managed seedbox, modern JSON-RPC or authenticated HTTPS interoperability. The owning validation dimensions are in [RTORRENT-COMPATIBILITY-MATRIX.md](RTORRENT-COMPATIBILITY-MATRIX.md).
+
+## Provider-aware connection references (2026-10-28)
+
+This is a source index, **not** a claim that Chunks has connected to all
+providers. The active product contract and required acceptance are in
+[SMART-REMOTE-CONNECTION](SMART-REMOTE-CONNECTION.md) and
+[RTORRENT-COMPATIBILITY-MATRIX](RTORRENT-COMPATIBILITY-MATRIX.md).
+
+- SeedHost.eu Transdrone path and authentication:
+  https://www.seedhost.eu/client-area/knowledgebase/299/Transdrone-basic-configuration.html
+  and hosted ruTorrent integration:
+  https://www.seedhost.eu/client-area/knowledgebase/281/Prowlarr-basic-configuration.html
+- Ultra.cc remote client setup:
+  https://docs.ultra.cc/misc-guides/mobile-apps
+- Whatbox rTorrent XML-RPC reference:
+  https://whatbox.ca/wiki/editing_rtorrentrc
+- Swizzin rTorrent documentation:
+  https://docs.swizzin.net/applications/rtorrent/
+- QuickBox rTorrent application/gateway instructions:
+  https://quickbox.io/docs/applications/download-clients/rtorrent
+- Feral Hosting Transdrone example:
+  https://www.feralhosting.com/wiki/software/transdrone
+- RapidSeedbox ruTorrent RPC plugin instructions:
+  https://help.rapidseedbox.com/en/articles/8504545-connecting-your-home-sonarr-radarr-to-rsb-s-deluge-and-rutorrent
+- GigaDrive mobile BitTorrent client instructions:
+  https://docs.giga-rapid.com/en/guides/beginners/how-to-control-your-bittorrent-client-using-mobile-apps
+- Appbox ruTorrent/Transdroid:
+  https://billing.appbox.co/knowledgebase/166/ruTorrent-and-Transdroid.html?language=english
+- Seedbox.io Transdroid RPC variant:
+  https://docs.seedbox.io/shared-storage/applications/transdroid/
+- Self-hosted direct XML-RPC security/reference:
+  https://github.com/rakshasa/rtorrent-doc/blob/master/RPC-Setup-XMLRPC.md
+
+Provider documentation can be version-, plan- and deployment-specific.
+Keep a review date and measured sample for every rule. Distinguish
+*known browser URL*, *actual RPC mount*, *HTTP authentication principal*,
+*service-account/slot username*, and *instance*. Do not construct a
+hostname from a username or silently replace an explicit URL with a
+different instance; do not assume a bare `/RPC2` is globally supported.

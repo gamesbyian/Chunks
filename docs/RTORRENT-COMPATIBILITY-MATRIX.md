@@ -69,5 +69,41 @@ Transdrone's user interface; do not weaken Chunks' TLS requirement. Even if
 the candidate succeeds, rTorrent XML-RPC capability and ruTorrent upload
 fallback are different protocol surfaces and need separate acceptance.
 
-The refused inbound BitTorrent peer listener `5.79.112.210:53281` belongs
-to peer-wire reachability, not this remote-management acceptance matrix.
+The initial refused peer-wire TCP target `5.79.112.210:53281` was the
+ruTorrent web IP, **not** rTorrent's bound address. Merged #460 discovers
+`network.bind_address` = `5.79.112.219`, and protected single-peer
+server-to-phone Copy [run 40756284173](https://github.com/gamesbyian/Chunks/actions/runs/40756284173)
+verified all 792,723,456 bytes from the real host. This remains a
+**peer-wire test**, not evidence that any alternate management RPC route
+works or that SeedHost permits every inbound port.
+
+## Smart Connect rTorrent gateway acceptance tiers (2026-10-28)
+
+The [Smart Connect specification](SMART-REMOTE-CONNECTION.md) and [coverage
+matrix](SPEC-COVERAGE.md) define how endpoint discovery is validated:
+
+| Tier | Evidence | What it does **not** prove |
+|---|---|---|
+| 0: candidate URL | Safe same-origin provider pattern and valid HTTPS URI | Server exists, password works or endpoint is rTorrent |
+| 1: authenticated inventory | Authenticated `system.client_version`, bounded and valid `main` listing | Complete remote mutation permissions; upload fallback; different instance |
+| 2: read-only capabilities | Methods and representative exact-hash read-only getters observed, or unknown correctly classified | Setter effectiveness, filesystem access, remote Add/Erase |
+| 3: controlled mutation | Disposable exact-hash reviewed Add/Stop/Start/priorities/Remove, independent post-state verification | Another host version, physical transfer bytes, arbitrary directories |
+| 4: installed app / field | Native API35 and physical handset; TLS, login, lifecycle/accessibility, network changes | Other providers and custom security configurations by inference |
+
+Only Tier 0-1 auto-discovery is part of [open PR
+#463](https://github.com/gamesbyian/Chunks/pull/463). Its earlier deterministic
+Android/JVM and native visual CI passed before the documentation merge
+commit; final exact-head CI and live acceptance must be recorded before
+merging. Capability-ranked alternative endpoints, per-method granularity,
+typed auth/proxy failures, and self-hosted/other-vendor test matrix
+are in [issue #464](https://github.com/gamesbyian/Chunks/issues/464).
+Never send a mutation during connection discovery.
+
+Provider-specific gateway outcomes must not be generalized: e.g.
+a successful ruTorrent HTTP-RPC `action.php` path can have different
+permissions and upload support from direct `/RPC1`, `/RPC2` or `/xmlrpc`.
+If `system.listMethods` is unavailable, report introspection **unknown**,
+not proof of absence. Feral's account segment is not necessarily its
+HTTP authentication username. Pasted numbered `/rutorrent2/` or
+`/rutorrent3/` must never be replaced by `/rutorrent/` just to obtain
+a successful response.
