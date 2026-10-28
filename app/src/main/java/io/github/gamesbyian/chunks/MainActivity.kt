@@ -74,6 +74,8 @@ import io.github.gamesbyian.chunks.rpc.RemoteTransfer
 import io.github.gamesbyian.chunks.rpc.RemoteQueueActivityContext
 import io.github.gamesbyian.chunks.snapshots.SnapshotInventoryExportScreen
 import io.github.gamesbyian.chunks.snapshots.SnapshotDocumentInspectScreen
+import io.github.gamesbyian.chunks.privacy.LocalTransferPrivacyGate
+import io.github.gamesbyian.chunks.privacy.TransferPrivacyRuntime
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -102,6 +104,18 @@ class MainActivity : ComponentActivity() {
                 Surface(modifier = Modifier.fillMaxSize()) { ChunksApp(incomingMagnet) }
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        TransferPrivacyRuntime.onForeground()
+    }
+
+    override fun onStop() {
+        // Revokes foreground-return grants and pending biometric tickets.
+        // Never pauses the independent local torrent foreground service.
+        TransferPrivacyRuntime.onBackground()
+        super.onStop()
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -249,15 +263,17 @@ private fun ChunksApp(sharedMagnet: String?) {
         } else if (section == Section.SNAPSHOT_INSPECT) {
             SnapshotDocumentInspectScreen(onBack = { section = Section.TRANSFERS })
         } else if (section == Section.LOCAL && server == null) {
-            LocalEngineScreen(
-                onBack = { section = Section.TRANSFERS },
-                initialMagnet = phoneHandoffMagnet,
-                onPrefillConsumed = { phoneHandoffMagnet = null },
-                onPrepareRemote = { draft ->
-                    magnet = draft
-                    section = Section.TRANSFERS
-                }
-            )
+            LocalTransferPrivacyGate(scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE) {
+                LocalEngineScreen(
+                    onBack = { section = Section.TRANSFERS },
+                    initialMagnet = phoneHandoffMagnet,
+                    onPrefillConsumed = { phoneHandoffMagnet = null },
+                    onPrepareRemote = { draft ->
+                        magnet = draft
+                        section = Section.TRANSFERS
+                    }
+                )
+            }
         } else if (server == null) {
             ConnectionScreen(
                 endpoint = endpoint, username = username, password = password,
@@ -517,15 +533,19 @@ private fun ChunksApp(sharedMagnet: String?) {
                 Section.SNAPSHOT_INSPECT -> SnapshotDocumentInspectScreen(
                     onBack = { section = Section.TRANSFERS })
                 Section.ARCHIVES -> LocalZipReviewScreen(onBack = { section = Section.TRANSFERS })
-                Section.LOCAL -> LocalEngineScreen(
-                    onBack = { section = Section.TRANSFERS },
-                    initialMagnet = phoneHandoffMagnet,
-                    onPrefillConsumed = { phoneHandoffMagnet = null },
-                    onPrepareRemote = { draft ->
-                        magnet = draft
-                        section = Section.ADD
-                    }
-                )
+                Section.LOCAL -> LocalTransferPrivacyGate(
+                    scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE
+                ) {
+                    LocalEngineScreen(
+                        onBack = { section = Section.TRANSFERS },
+                        initialMagnet = phoneHandoffMagnet,
+                        onPrefillConsumed = { phoneHandoffMagnet = null },
+                        onPrepareRemote = { draft ->
+                            magnet = draft
+                            section = Section.ADD
+                        }
+                    )
+                }
                 Section.PLACES -> PlacesScreen(transfers) { path ->
                     draftPath = path
                     section = Section.ADD
