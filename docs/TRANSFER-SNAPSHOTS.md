@@ -62,3 +62,9 @@ E. **Remote inventory-only export entry point accepted (#302), rest remains:** w
 ## Non-goals for v1
 
 No downloaded data copy, no replacement server provisioning, no arbitrary remote filesystem access, no restoring active peers/ratio or exact historical completion, no general rTorrent session-state transplant, no implicit tracker passkey stripping that breaks a private torrent, and no guarantee that magnets can retrieve metadata. This feature composes with, but is independent of, local↔remote verified payload copy/move.
+
+## Multi-instance Seedhost acceptance targets (2026-10-27)
+
+Two owner-provisioned rTorrent test instances are available for eventual snapshot portability acceptance: https://ianseeds.wood.seedhost.eu/rutorrent2/ (username `ianseeds`, password secret `rTorrent_pass2`) and https://ianseeds.wood.seedhost.eu/rutorrent3/ (username `ianseeds`, password secret `rtorrent_pass3`). Credential names are case-sensitive. The canonical [Seedhost remote testing document](SEEDHOST-REMOTE-TESTING.md) owns configuration and safety instructions. No passwords belong in source, logs, exports or test fixtures.
+
+Cross-instance QA checklist: obtain fresh complete source and target inventories; export snapshot and verify the saved archive; inspect counts of genuinely recoverable definitions; preview missing-only target matches and explicit destination remaps; when an actual restore adapter is ready, import only explicitly authorized disposable test definitions as stopped, validate each exact infohash, duplicates, partial failures and crash-safe uncertain outcomes; repeat with instances reversed to detect per-host differences. Preserve source torrents and never claim payload migration. These instances have not yet passed Chunks connection or restoration acceptance, and read-only snapshot work must remain non-mutating.

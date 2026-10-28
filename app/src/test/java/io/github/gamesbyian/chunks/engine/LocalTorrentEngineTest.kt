@@ -507,4 +507,20 @@ class LocalTorrentEngineTest {
                 !instance.status(status.infoHash).toString().contains("announce"))
         }
     }
+
+    @Test fun exportedTorrentKeepsIdentityAndTrackersForServerHandoff() {
+        val fixture = fixture()
+        val tracked = TorrentBuilder().path(fixture.root).pieceSize(64 * 1024)
+            .flags(TorrentBuilder.V1_ONLY).addTracker("https://tracker.example/announce")
+            .generate().entry().bencode()
+        val instance = engine()
+        val status = added(instance.addStopped(tracked, fixture.root.parentFile))
+        val exported = requireNotNull(instance.exportTorrentFile(status.infoHash))
+        // The same strict reader the rTorrent Add review uses must accept it.
+        val preview = io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader.preview(exported)
+        assertEquals(status.infoHash, preview.infoHashV1)
+        assertEquals(listOf("https://tracker.example/announce"), instance.trackerTiers(exported).first)
+        assertTrue("Export must not change the transfer", instance.status(status.infoHash)!!.stopped)
+        assertNull(instance.exportTorrentFile("d".repeat(40)))
+    }
 }
