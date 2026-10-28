@@ -65,7 +65,8 @@ class SnapshotRestoreJournalV1Test {
             fail("No Add may begin if IN_FLIGHT could not be durably stored")
         } catch (_: IOException) { }
         assertEquals(SnapshotRestoreJournalV1.Phase.READY, journal.entries()[0].phase)
-        assertEquals(SnapshotRestoreJournalV1.Phase.READY, open(store).entries()[0].phase)
+        assertEquals(SnapshotRestoreJournalV1.Phase.READY,
+            open(store, listOf(one)).entries()[0].phase)
         store.canCommit = true
         journal.beforeAdd(one, place)
         assertEquals(SnapshotRestoreJournalV1.Phase.IN_FLIGHT, open(store).entries()[0].phase)
