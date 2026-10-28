@@ -83,7 +83,10 @@ data class LocalTransferStatus(
     /** libtorrent can be running without requesting payload when in upload-only mode. */
     val uploadOnly: Boolean = false,
     /** Counts only: tracker URLs can embed private passkeys and are never exposed. */
-    val trackers: LocalTrackerSummary? = null
+    val trackers: LocalTrackerSummary? = null,
+    /** Current native payload rates, sampled by libtorrent in bytes per second. */
+    val downloadPayloadRateBytesPerSecond: Int = 0,
+    val uploadPayloadRateBytesPerSecond: Int = 0
 )
 
 /** Aggregate tracker health for one transfer, without URLs or tracker messages. */
@@ -689,7 +692,9 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             uploadOnly = status.flags().and_(org.libtorrent4j.TorrentFlags.UPLOAD_MODE).non_zero(),
             savePath = handle.savePath(),
             error = error,
-            trackers = trackerSummary(handle)
+            trackers = trackerSummary(handle),
+            downloadPayloadRateBytesPerSecond = status.downloadPayloadRate().coerceAtLeast(0),
+            uploadPayloadRateBytesPerSecond = status.uploadPayloadRate().coerceAtLeast(0)
         )
     }
 
