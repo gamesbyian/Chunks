@@ -60,7 +60,11 @@ class PhoneStoragePanelInstrumentedTest {
             DeviceSpaceSnapshot(10 * gib, free, free == gib)
         }
         rule.setContent {
-            MaterialTheme { PhoneStoragePanel(readSpace = sample) }
+            MaterialTheme {
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                    PhoneStoragePanel(readSpace = sample)
+                }
+            }
         }
         rule.onNodeWithText("Phone storage").assertExists()
         rule.onNodeWithText("1.0 GiB free of 10.0 GiB").assertExists()
@@ -69,8 +73,8 @@ class PhoneStoragePanelInstrumentedTest {
         rule.onNodeWithText("Occupied or reserved on this volume, including other apps. Not Chunks torrent usage.")
             .assertExists()
         capture("phone-storage-low-native-compose")
-        rule.onNodeWithText("Refresh phone space").performClick()
-        rule.onNodeWithText("5.0 GiB free of 10.0 GiB").assertExists()
+        rule.onNodeWithText("Refresh phone space").performScrollTo().performClick()
+        rule.onNodeWithText("5.0 GiB free of 10.0 GiB").performScrollTo().assertExists()
         rule.onNodeWithText("No active Android low-storage alert detected. The numeric threshold is not exposed to apps.").assertExists()
         capture("phone-storage-normal-native-compose")
     }
