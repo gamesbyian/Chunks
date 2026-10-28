@@ -183,7 +183,12 @@ class RTorrentLibtorrentInteropTest {
             }
 
             val leechParent = File(rig.dataRoot, "interop-leech-" + System.nanoTime()).apply { mkdirs() }
-            val hash = addAndStart(rig.remote, torrent, leechParent)
+            // The server receives the document the phone engine exports for
+            // "Prepare on rTorrent", not the original file: identity and
+            // trackers must survive that handoff for rTorrent to find peers.
+            val handoff = requireNotNull(phone.exportTorrentFile(seed.infoHash))
+            val hash = addAndStart(rig.remote, handoff, leechParent)
+            assertEquals(seed.infoHash.lowercase(), hash.lowercase())
             // rTorrent learns the phone seeder only from its tracker announce
             // and dials it itself: no DHT, PEX or manual peer injection.
             waitFor("rTorrent to download from the phone engine") {
