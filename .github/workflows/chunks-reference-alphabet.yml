@@ -1,0 +1,78 @@
+name: Extract and validate Chunks reference alphabet variants
+on:
+  push:
+    paths:
+      - 'tools/trace_reference_alphabet.py'
+      - 'tools/render_reference_alphabet.py'
+      - 'tools/requirements-chunks-reference-alphabet.txt'
+      - 'docs/design/reference-images/03-typography-and-wordmark.png'
+      - 'assets/fonts/source/reference-alphabet/**'
+      - '.github/workflows/chunks-reference-alphabet.yml'
+  pull_request:
+    paths:
+      - 'tools/trace_reference_alphabet.py'
+      - 'tools/render_reference_alphabet.py'
+      - 'tools/requirements-chunks-reference-alphabet.txt'
+      - 'docs/design/reference-images/03-typography-and-wordmark.png'
+      - 'assets/fonts/source/reference-alphabet/**'
+      - '.github/workflows/chunks-reference-alphabet.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  trace-reference-glyphs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -r tools/requirements-chunks-reference-alphabet.txt
+      - name: Trace 62 editable glyphs from immutable reference PNG
+        run: python tools/trace_reference_alphabet.py
+      - name: Validate shape integrity, exact glyph count and contour holes
+        run: |
+          python - <<'PY'
+          import json, re, xml.etree.ElementTree as ET
+          from pathlib import Path
+          source=Path('assets/fonts/source/reference-alphabet')
+          data=json.loads((source/'manifest.json').read_text())
+          glyphs=data['glyphs']
+          expected=set('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789')
+          assert set(glyphs)==expected, (len(glyphs),len(expected-set(glyphs)))
+          masters=sorted(source.glob('U+*.svg'))
+          assert len(masters)==62,len(masters)
+          for ch,info in glyphs.items():
+              p=source/f'U+{ord(ch):04X}.svg'
+              tree=ET.parse(p)
+              assert tree.getroot().attrib.get('viewBox')
+              assert info['contours']>=1
+              assert info['width']>10 and info['height']>10
+              assert '<path' in p.read_text()
+          for ch in 'ABDOQRabdegopq0689':
+              assert glyphs[ch]['contours']>1,('counter missing',ch)
+          print('62 valid SVGs; row labels, provenance and counters verified')
+          PY
+      - name: Render reference-glyph specimen from the exact SVGs
+        run: python tools/render_reference_alphabet.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chunks-reference-62-glyph-masters
+          path: |
+            assets/fonts/source/reference-alphabet/**
+            chunks-reference-alphabet-atlas.png
+          retention-days: 30
+      - name: Commit regenerated masters on feature branch
+        if: github.event_name == 'push' && github.ref != 'refs/heads/main'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add assets/fonts/source/reference-alphabet
+          if ! git diff --cached --quiet; then
+            git commit -m 'build(fonts): regenerate all 62 source-traced glyph SVGs'
+            git push
+          fi
+      - name: Guard checked-in master drift on main
+        if: github.ref == 'refs/heads/main'
+        run: git diff --exit-code -- assets/fonts/source/reference-alphabet
