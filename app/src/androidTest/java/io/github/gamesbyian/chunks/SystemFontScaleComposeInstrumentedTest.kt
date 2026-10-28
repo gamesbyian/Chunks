@@ -26,6 +26,7 @@ import android.graphics.Bitmap
 import android.os.Environment
 import android.provider.MediaStore
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -260,6 +261,16 @@ class SystemFontScaleComposeInstrumentedTest {
             rule.onAllNodesWithText("It's all here.")
                 .fetchSemanticsNodes().isNotEmpty()
         }
+        // A green connection assertion alone is insufficient: Android's
+        // just-dismissed IME can retain a shortened viewport for several
+        // frames, cutting the lower controls in the first screenshot.
+        // Require the actual bottom Transfer action to be composed and
+        // visible before accepting these real 200% screen pixels.
+        rule.waitUntil(15_000) {
+            rule.onAllNodesWithText("Save inventory-only snapshot")
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithText("Save inventory-only snapshot").assertIsDisplayed()
         savePixels("transfers-initial")
         // Existing installed-app navigation paths with real Compose UI and
         // read-only localhost RPC records. Visit every main navigation destination and
