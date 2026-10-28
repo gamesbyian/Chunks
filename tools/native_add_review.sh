@@ -8,7 +8,7 @@ set +e
 # The dedicated 200% Compose acceptance class intentionally rejects a normal
 # system font scale; run it only through run_compose_system_font_200pct.sh.
 # Keep ALL ordinary Add/transfer instrumentation here, excluding only that class.
-gradle --no-daemon :app:connectedDebugAndroidTest \\
+gradle --no-daemon :app:connectedDebugAndroidTest \
   -Pandroid.testInstrumentationRunnerArguments.notClass=io.github.gamesbyian.chunks.SystemFontScaleComposeInstrumentedTest
 test_status=$?
 set -e
