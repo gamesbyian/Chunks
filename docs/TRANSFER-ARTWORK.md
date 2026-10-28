@@ -82,6 +82,47 @@ Use stable states `LOCAL_METADATA`, `QUEUED`, `PROVIDER_SEARCH`, `PARTIAL_METADA
 - Transfer details may use a larger version of the same artwork with an explicit **Change artwork / Remove artwork / Correct title match** affordance. Accessibility: descriptive title separate from decorative art, TalkBack actions and state descriptions, sufficient text contrast, focus order, keyboard access and reduced-motion placeholders. Include image-disable setting and data-saving preference; normal transfers remain fully usable without artwork.
 - Do not make image lookup a blocking step of Add or list refresh. Large queues load lazily, prioritize viewport, cancel requests on item exit, deduplicate media, and prevent stale asynchronous responses from binding to recycled rows.
 
+## Multi-format artwork gallery and scoped user overrides (owner requirement, 2026-10-27)
+
+Artwork is a **set of independently configurable visual roles**, not a single square image: at minimum **square tile (1:1)**, **portrait poster/cover** (source-preserving, typically 2:3 or book/album-native aspect), and **wide banner/hero** (typically 16:9 or source-native wide). Additional variants such as backdrop, logo or file-type icon can be introduced without schema migration. Each view chooses its appropriate role (compact transfer card/grid, poster library, banner/detail header), with a per-role fallback chain and content-aware crop/letterbox when necessary. Never force one image/crop across every view or distort source aspect ratios. Each torrent can individually pin a different image for **each** role.
+
+### Change artwork picker
+
+- A prominent **Change artwork** entry in local and remote transfer details opens a full-screen, accessible multi-format editor. Tabs/segmented roles: **Square**, **Poster**, **Banner** (and later extra roles). Display a responsive, scrollable grid of thumbnails merged from *all enabled providers* and local/embedded findings, with explicit source/attribution, dimensions, crop preview and identity confidence. Keep provider order and diversity configurable; never hide viable choices because the currently selected source answered first.
+- Provide **Search more**, **Change media match**, **Refresh providers**, **Upload/select image from device** (Android Photo Picker / SAF; persist permission or copy to app-private storage safely), and **Use image URL** (HTTPS retrieval with explicit request/preview) alongside **Remove / Reset to automatic**. Local source selection is supported even if remote artwork lookups are off. URL submission is not proof of license or safe content; validate type, bytes, pixels, redirects/host safety and user consent, and copy a bounded processed derivative to private storage for stable offline use. No unauthenticated remote server-file read is implied.
+- Choosing a candidate opens a crop/fit preview specific to the role, preserving the original image where permitted. Users can pan/zoom/set focal point or choose fit/blur-fill rather than destructive crop; save non-destructive crop parameters per visual role and allow later revision. Show correct art separately from metadata fields.
+- Save is explicit and immediate in local presentation metadata, with Undo and Reset. Artwork choices must never rename or move downloaded files, alter torrent metainfo, trigger rTorrent mutations, or overwrite an unrelated media item's art. Maintain source provenance and user-selected pinning across cache eviction, normal refresh and display-alias changes; protect locally imported source/derivatives from automatic cleanup until no assignments reference them.
+- Show pending/error/duplicate/empty gallery states; users can pick a built-in category visual deliberately. No provider requirement or network dependency to use local files.
+
+### Apply to related transfers: selectable inheritance scope
+
+After selecting artwork, provide context-aware **Apply to** controls with selectable scope (default **This torrent only**), preview of affected existing transfers and counts, and independent toggles **per artwork role**. Example scopes:
+
+| Content | Scope candidates |
+| --- | --- |
+| Television | This torrent; all episodes in this **season**; all seasons/episodes of this **show**; specific series/edition; optionally show-wide posters and season-specific banners independently |
+| Music | This torrent/release; all tracks on the **album**; all releases by the **artist**; optionally a whole artist discography; distinguish album/artist/compilation and multi-artist releases |
+| Books/audiobooks | This edition/file; all editions of the **book/work**; all books in a **series**; all books by the **author** (co-authored works require deliberate match) |
+| Comics/manga | This issue/variant; all issues of a **volume/arc**; whole **series**; publisher only if explicitly requested and identifiable |
+| Magazines | This issue; year/volume; all issues of the **magazine title** |
+| Movies | This exact release; this **movie/work** across releases; optional franchise/collection only with explicit choice |
+| Games | This edition/platform; all variants of a **game**; franchise only by explicit user scope |
+| Apps/software | This version/package; all releases sharing verified **package/app identity**; publisher only when explicitly selected |
+| Adult / miscellaneous | Same verified title/series/collection as supported; otherwise this torrent only, privacy gate unchanged |
+
+Use a shared **artwork assignment rule** keyed by verified media identity and explicit scope (work/series/season/artist/author/etc.), plus optional transfer-level and role-level overrides. Rules affect **Chunks display only**, both local and remote if selected and authorized; do not change the underlying torrent content. Scope identification must be evidence-backed: no accidental match from similar free-text names, same artist surname, similar show title, wrong edition, unverified remote profile or raw infohash guesses. For ambiguous groupings require user confirmation and show exclusions. New matching transfers may inherit saved artwork according to active rules; allow choosing **existing only** versus **existing and future matches**.
+
+Precedence is deterministic per artwork role: **explicit transfer+role pin > narrower confirmed group rule (season/album/issue/edition) > broader confirmed rule (show/artist/author/series) > automatic provider selection > built-in category art**. Within same specificity, newest explicit rule wins with transparent conflict preview and undo/history; never silently overwrite an individually pinned selection. Removing a scoped rule recomputes fallback for affected transfers without erasing more-specific pins. Support different scope choices for square/poster/banner of the same title.
+
+Show affected-transfer preview, known matched count, excluded/uncertain count, current overridden count and whether new arrivals inherit. Apply/undo atomically to local assignment rules, not as many remote writes; large lists must remain responsive. Reconciliation must handle transfers disappearing, duplicates across profiles, category changes, account isolation, offline rehydration and rules that no longer resolve. Never leak private locked transfer names when previewing a broad rule.
+
+### Format-aware image quality and acceptance
+
+Gallery filters: source, role, orientation/aspect, resolution, language, safe-content filter and image type where providers allow. Candidate ranking should prioritize exact content identity/edition and intended role first, then resolution, crop quality, provider reliability and source permissions. Use size-aware thumbnails but retain originals only where permitted and necessary for editing. When only poster art exists, the square role can use user-adjustable crop/fit while the poster role keeps the original; banners can use a separately chosen backdrop.
+
+Test fixtures: manually assign distinct square/poster/banner images to one transfer; attach one season rule and another show rule, preserving a pinned episode image; artist-wide artwork with an album-level override; author scope with co-authored ambiguous book; same film across separate release hashes; untrusted URL and picker cancellation; image crop re-edit; cache eviction; source removal; same-profile and cross-profile duplication; offline and privacy-locked behavior; 200% text and TalkBack gallery grid. Every role remains independently reversible, and no remote torrent mutation occurs.
+
+
 ## Storage, caching and failure
 
 - Bounded disk cache with app-private thumbnails (suggest 200–400px target initially, adjustable after profiling), memory limits, LRU eviction and deduplicated media keys; cap network concurrency, download size and decoded pixels. Persist only minimum metadata and ensure a clear-all control.
