@@ -29,9 +29,13 @@ object RemoteSmartConnect {
         val attempts: Int
     )
 
+    /** One tried candidate, safe to show: description, path only, outcome. */
+    data class Attempt(val description: String, val path: String, val outcome: String)
+
     class ConnectionFailed(
         val category: Category,
-        val tested: Int
+        val tested: Int,
+        val attempts: List<Attempt> = emptyList()
     ) : IOException(
         when (category) {
             Category.AUTH -> "Login rejected. Check the username/password for this rTorrent instance."
@@ -42,6 +46,48 @@ object RemoteSmartConnect {
     )
 
     enum class Category { AUTH, TLS, NETWORK, ENDPOINT }
+
+    /** Targeted next steps for a failed connection; never echoes secrets. */
+    fun repairAdvice(failure: ConnectionFailed, input: String): List<String> {
+        val explicit = "://" in input && try {
+            URI(input.trim()).rawPath.orEmpty().trim('/').isNotEmpty()
+        } catch (_: Exception) { false }
+        return when (failure.category) {
+            Category.AUTH -> listOf(
+                "Use the same username and password that open ruTorrent in your browser.",
+                "Some providers use a separate web-UI password from the SSH/FTP one.",
+                "Chunks stopped after the login was refused so repeated guesses cannot lock your account.")
+            Category.TLS -> listOf(
+                "Open the same address in your phone's browser and check that it shows a valid padlock.",
+                "If your server uses a self-signed certificate, Chunks cannot connect to it yet; it will not bypass certificate checks.")
+            Category.NETWORK -> listOf(
+                "Check the hostname for typos and that the phone is online.",
+                "If the server is only reachable on a home network or VPN, connect to that network first.")
+            Category.ENDPOINT -> buildList {
+                if (!explicit) add("Open ruTorrent in your browser and paste the full address from the address bar " +
+                    "(for example https://host/username/rutorrent/).")
+                else add("Check that this exact address opens ruTorrent or your provider's RPC page in a browser.")
+                add("If your provider documents an XML-RPC address (often ending in /RPC2 or /RPC1), paste that instead.")
+                if (failure.attempts.any { it.outcome.startsWith("No rTorrent gateway") })
+                    add("Addresses answering “not found” are not the right path on this server.")
+            }
+        }
+    }
+
+    /** Short user-facing reason for one candidate's failure. */
+    internal fun describe(failure: Exception): String {
+        val message = failure.message.orEmpty()
+        val status = Regex("HTTP (\\d{3})").find(message)?.groupValues?.get(1)?.toIntOrNull()
+        return when {
+            failure is RpcFault -> "Answered, but rTorrent refused the read-only check"
+            status == 404 -> "No rTorrent gateway here (HTTP 404)"
+            status == 401 || status == 403 -> "Login refused (HTTP $status)"
+            status in 300..399 -> "Redirected (HTTP $status); Chunks does not follow redirects with your login"
+            status != null -> "Server error (HTTP $status)"
+            failure is RpcReplyTooLarge -> "Answered with an unexpectedly large reply"
+            else -> "Answered, but not with an rTorrent XML-RPC reply"
+        }
+    }
 
     /** No network access, no login attempts, at most six HTTPS candidates. */
     fun candidates(input: String, username: String): List<Candidate> {
@@ -164,12 +210,18 @@ object RemoteSmartConnect {
         input: String,
         username: String,
         password: String,
+        /** Called before each candidate: 1-based index, total, candidate. */
+        onAttempt: (Int, Int, Candidate) -> Unit = { _, _, _ -> },
         probe: suspend (RemoteCredentials) -> T
     ): Verified<T> {
         val choices = candidates(input, username)
         var attempted = 0
+        val attempts = ArrayList<Attempt>()
         for (candidate in choices) {
             attempted++
+            onAttempt(attempted, choices.size, candidate)
+            val path = try { URI(candidate.endpoint).rawPath.orEmpty().ifEmpty { "/" } }
+                catch (_: Exception) { "/" }
             val credentials = RemoteCredentials(candidate.endpoint, username, password)
             try {
                 val result = probe(credentials)
@@ -188,10 +240,16 @@ object RemoteSmartConnect {
                         Category.AUTH
                     else -> Category.ENDPOINT
                 }
+                attempts += Attempt(candidate.description, path, when (category) {
+                    Category.ENDPOINT -> describe(failure)
+                    Category.AUTH -> "Login refused"
+                    Category.TLS -> "Secure connection failed"
+                    Category.NETWORK -> "Unreachable"
+                })
                 if (category != Category.ENDPOINT)
-                    throw ConnectionFailed(category, attempted)
+                    throw ConnectionFailed(category, attempted, attempts)
             }
         }
-        throw ConnectionFailed(Category.ENDPOINT, attempted)
+        throw ConnectionFailed(Category.ENDPOINT, attempted, attempts)
     }
 }
