@@ -36,7 +36,7 @@ unset url64 user64 pass64
 checkpoint=$(grep -E '^INSTRUMENTATION_STATUS: chunks_add_ui_stage=' "$log" | tail -n 1 |
  sed 's/^INSTRUMENTATION_STATUS: chunks_add_ui_stage=//' | tr -d '\r' || true)
 case "$checkpoint" in
- arguments|preflight|connect-failed|queue|add-draft|review|confirmed|outcome-not-verified|app-verified|independent-readback|erase-attempted|inventory-restored) ;;
+ arguments|preflight-inventory|preflight-default-place|preflight-custom-place|preflight|connect-failed|queue|add-draft|review|confirmed|outcome-not-verified|app-verified|independent-readback|erase-attempted|inventory-restored) ;;
  *) checkpoint=unavailable ;;
 esac
 echo "CHUNKS_ANDROID_ADD_UI: synthetic identity derives from run $GITHUB_RUN_ID; last fixed stage: $checkpoint"
@@ -52,4 +52,4 @@ if [ "$status" -ne 0 ] || ! grep -q '^INSTRUMENTATION_CODE: -1' "$log" ||
  echo "::error::Installed Android Add UI acceptance failed or uncertain at stage $checkpoint. Raw credentials/logs withheld. Reconcile the run's synthetic identity on the server before any retry."
  exit 1
 fi
-echo 'CHUNKS_ANDROID_ADD_UI: installed app UI added one synthetic magnet at the server default Place and reported Verified add+start; independent read confirmed exact hash, started state and default directory; exact Stop and session-only erase restored unrelated inventory. No payload bytes, peers or physical handset.'
+echo 'CHUNKS_ANDROID_ADD_UI: installed app UI added one synthetic magnet at a verified server Place (default, or corroborated parent when none is reported) and reported Verified add+start; independent read confirmed exact hash, started state and directory; exact Stop and session-only erase restored unrelated inventory. No payload bytes, peers or physical handset.'

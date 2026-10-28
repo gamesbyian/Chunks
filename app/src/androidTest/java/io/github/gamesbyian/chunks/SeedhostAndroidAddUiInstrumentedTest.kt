@@ -23,6 +23,7 @@ import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
 import io.github.gamesbyian.chunks.rpc.SessionEraseOutcome
+import io.github.gamesbyian.chunks.rpc.StoppedRemoteAddPlan
 import java.net.URI
 import java.security.MessageDigest
 import kotlinx.coroutines.delay
@@ -35,10 +36,12 @@ import org.junit.runner.RunWith
 
 /**
  * The installed app's REAL Add UI against the owner's development Seedhost:
- * connect, enter one unique synthetic magnet, keep the server's default Place,
- * Review, Confirm "add then start", and read the app's own outcome. An
- * independent adapter read then checks the exact hash, started state, default
- * directory and unchanged unrelated inventory. Cleanup is one exact-hash Stop
+ * connect, enter one unique synthetic magnet, keep the server's default Place
+ * (or, when the server reports none, type a parent folder corroborated from
+ * fresh reads of existing transfers; never a created folder), Review, Confirm
+ * "add then start", and read the app's own outcome. An independent adapter
+ * read then checks the exact hash, started state, directory and unchanged
+ * unrelated inventory. Cleanup is one exact-hash Stop
  * and one session-only erase of that fixture; payload files are never touched
  * (a metadata-less magnet has none). No step is retried after an uncertain
  * reply. Skipped unless the protected main-only workflow authorizes it.
@@ -94,7 +97,32 @@ class SeedhostAndroidAddUiInstrumentedTest {
         return remote.listTransfers("main").singleOrNull { it.hash.equals(hash, true) }
     }
 
-    @Test fun installedAppAddsOneSyntheticMagnetAtTheServerDefaultPlace() {
+    /**
+     * The development Seedhost reports no usable `directory.default`. Use the
+     * most common parent of completed single-file transfers whose directory a
+     * fresh exact read confirms, exactly as the scoped adapter test does.
+     */
+    private suspend fun corroboratedParent(remote: RTorrentRemote, inventory: List<RemoteTransfer>): String? {
+        val probe = "magnet:?xt=urn:btih:" + "a".repeat(40)
+        val parents = inventory.asSequence()
+            .filter { it.sizeBytes > 0 && it.completedBytes == it.sizeBytes }
+            .take(48).toList()
+            .mapNotNull { existing ->
+                val path = existing.directory
+                if (path.count { it == '/' } < 2 ||
+                    runCatching { StoppedRemoteAddPlan.fromMagnet(probe, path) }.isFailure) null
+                else {
+                    val fresh = runCatching { remote.call("d.directory", listOf(existing.hash)) as? String }.getOrNull()
+                    val multi = runCatching { remote.call("d.is_multi_file", listOf(existing.hash)) as? Number }.getOrNull()
+                    path.takeIf { it == fresh && multi?.toInt() == 0 }
+                }
+            }
+        return parents.groupingBy { it }.eachCount().entries
+            .sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
+            .firstOrNull()?.key
+    }
+
+    @Test fun installedAppAddsOneSyntheticMagnetAtAVerifiedServerPlace() {
         assumeTrue("Protected explicit trusted-main Add UI journey only",
             arg("chunks_add_ui_once") == "authorized")
         val url = requireNotNull(decoded("chunks_live_url_b64"))
@@ -118,10 +146,13 @@ class SeedhostAndroidAddUiInstrumentedTest {
         val magnet = "magnet:?xt=urn:btih:$hash&dn=$name&tr=http%3A%2F%2F127.0.0.1%3A1%2Fannounce"
 
         val remote = RTorrentRemote(RemoteCredentials(url, user, password))
-        val (before, serverDefault) = runBlocking {
-            remote.listTransfers("main").map { it.hash.lowercase() }.toSet() to remote.defaultDirectory()
-        }
-        requireNotNull(serverDefault) { "Server reports no default Place; refusing the Add" }
+        val inventory = runBlocking { remote.listTransfers("main") }
+        val before = inventory.map { it.hash.lowercase() }.toSet()
+        checkpoint("preflight-inventory")
+        val serverDefault = runBlocking { remote.defaultDirectory() }
+        val parent = serverDefault ?: runBlocking { corroboratedParent(remote, inventory) }
+        requireNotNull(parent) { "Neither a server default nor a corroborated parent; refusing the Add" }
+        checkpoint(if (serverDefault != null) "preflight-default-place" else "preflight-custom-place")
         require(hash !in before && runBlocking { remote.lookupName(hash) } == null) {
             "Synthetic identity is not unique; refusing the Add"
         }
@@ -146,18 +177,23 @@ class SeedhostAndroidAddUiInstrumentedTest {
             rule.onNodeWithText("+ Add torrent").performClick()
             rule.waitUntil(30_000) { visible("A place for every download.") }
             rule.onNodeWithText("Magnet link").performTextReplacement(magnet)
-            // The optional picker stays empty: the server's own default is used.
             rule.waitUntil(30_000) {
                 visible("Using rTorrent default Place:") || visible("No usable default Place was reported.")
             }
-            assertFalse("Server default Place unavailable", visible("No usable default Place was reported."))
+            // The app must agree with the preflight about the server default.
+            assertEquals(serverDefault != null, visible("Using rTorrent default Place:"))
+            if (serverDefault == null) {
+                scrollTo("Custom server folder (optional)")
+                rule.onNodeWithText("Custom server folder (optional)").performTextReplacement(parent)
+            }
             checkpoint("add-draft")
 
             scrollTo("Review Add")
             rule.onNodeWithText("Review Add").performClick()
             scrollTo("Confirm one server operation")
             assertTrue(visible("Infohash: $hash"))
-            assertTrue(visible("(server default; no directory override)"))
+            assertTrue(visible(if (serverDefault != null) "(server default; no directory override)"
+                else "(custom parent folder)"))
             capture("seedhost-android-add-ui-review")
             checkpoint("review")
 
@@ -177,7 +213,7 @@ class SeedhostAndroidAddUiInstrumentedTest {
             runBlocking {
                 val readback = findExact(remote, hash) { it?.started == true }
                 assertEquals("Independent read: exact hash started", true, readback?.started)
-                assertEquals("Independent read: server default Place", serverDefault, readback?.directory)
+                assertEquals("Independent read: reviewed Place", parent, readback?.directory)
                 assertEquals("Unrelated inventory identities changed", before + hash,
                     remote.listTransfers("main").map { it.hash.lowercase() }.toSet())
             }
@@ -215,7 +251,8 @@ class SeedhostAndroidAddUiInstrumentedTest {
     }
 
     private companion object {
-        val STAGES = setOf("arguments", "preflight", "connect-failed", "queue", "add-draft",
+        val STAGES = setOf("arguments", "preflight-inventory", "preflight-default-place",
+            "preflight-custom-place", "preflight", "connect-failed", "queue", "add-draft",
             "review", "confirmed", "outcome-not-verified", "app-verified",
             "independent-readback", "erase-attempted", "inventory-restored")
     }
