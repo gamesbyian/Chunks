@@ -78,16 +78,16 @@ class SystemFontScaleComposeInstrumentedTest {
         rule.waitForIdle()
         rule.onNodeWithContentDescription("chunks. Your downloads have places to be.")
             .assertExists()
-        savePixels("transfers")
+        savePixels("transfers-initial")
         // Existing installed-app navigation paths, no fake Composables and
         // no network actions. Visit every main navigation destination and
         // return to Transfers, retaining actual pixels for review.
         for (tab in listOf("Places", "Organize", "Server", "Transfers")) {
             rule.onNodeWithText(tab).assertExists().performClick()
             rule.waitForIdle()
-            savePixels(tab.lowercase())
+            savePixels(if (tab == "Transfers") "transfers-return" else tab.lowercase())
         }
-        // The initial Transfers image is deliberately overwritten by the
-        // post-navigation Transfers image: only four unique destinations.
+        // Five distinct real app captures: initial and return-to-Transfers,
+        // plus Places, Organize and Server, with no duplicate filenames.
     }
 }
