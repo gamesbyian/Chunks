@@ -2,18 +2,24 @@ package io.github.gamesbyian.chunks.snapshots
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -51,6 +57,11 @@ internal fun LocalSnapshotRestorePreviewPanel(
     var reading by remember { mutableStateOf(false) }
     var result by remember { mutableStateOf<SnapshotRestorePreviewV1.Preview?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
+    var search by remember { mutableStateOf("") }
+    var chosenDecision by remember {
+        mutableStateOf<SnapshotRestorePreviewV1.Decision?>(null)
+    }
+    var pageIndex by remember { mutableIntStateOf(0) }
 
     // Local status counters and peers may update each second. Identity changes
     // are the relevant source boundary. A stale/unverified frame remains
@@ -119,6 +130,9 @@ internal fun LocalSnapshotRestorePreviewPanel(
                     expanded = !expanded
                     result = null
                     error = null
+                    search = ""
+                    chosenDecision = null
+                    pageIndex = 0
                 },
                 enabled = !reading,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
@@ -169,7 +183,38 @@ internal fun LocalSnapshotRestorePreviewPanel(
                     Text("No destination was selected. No torrent was added, started, " +
                         "stopped, deleted, downloaded or otherwise changed.",
                         color = MaterialTheme.colorScheme.primary)
-                    preview.entries.take(30).forEach { entry ->
+                    OutlinedTextField(
+                        value = search,
+                        onValueChange = { search = it; pageIndex = 0 },
+                        label = { Text("Search compared names or infohashes") },
+                        singleLine = true, modifier = Modifier.fillMaxWidth()
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        FilterChip(
+                            selected = chosenDecision == null,
+                            onClick = { chosenDecision = null; pageIndex = 0 },
+                            label = { Text("All") },
+                            modifier = Modifier.heightIn(min = 48.dp)
+                        )
+                        SnapshotRestorePreviewV1.Decision.entries.forEach { choice ->
+                            FilterChip(
+                                selected = chosenDecision == choice,
+                                onClick = { chosenDecision = choice; pageIndex = 0 },
+                                label = { Text(choice.name.replace('_', ' ').lowercase()) },
+                                modifier = Modifier.heightIn(min = 48.dp)
+                            )
+                        }
+                    }
+                    val shown = SnapshotRestoreCompareCatalogV1.select(
+                        preview.entries, search, chosenDecision, pageIndex)
+                    Text("Showing ${shown.first}–${shown.last} of ${shown.matches} " +
+                        "matching records (${shown.total} compared).",
+                        style = MaterialTheme.typography.bodySmall)
+                    shown.entries.forEach { entry ->
                         val category = when (entry.decision) {
                             SnapshotRestorePreviewV1.Decision.ALREADY_PRESENT ->
                                 "Already on phone (skip)"
@@ -185,10 +230,23 @@ internal fun LocalSnapshotRestorePreviewPanel(
                         Text(entry.originalName + " · " + category,
                             style = MaterialTheme.typography.bodySmall)
                     }
-                    if (preview.entries.size > 30) {
-                        Text("Showing 30 of ${preview.entries.size} inspected entries. " +
-                            "No restore changes were made.",
-                            style = MaterialTheme.typography.bodySmall)
+                    if (shown.entries.isEmpty()) {
+                        Text("No records match these filters. No restore action was attempted.")
+                    }
+                    if (shown.hasPrevious || shown.hasNext) {
+                        Row(Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(
+                                onClick = { pageIndex = (shown.page - 1).coerceAtLeast(0) },
+                                enabled = shown.hasPrevious,
+                                modifier = Modifier.weight(1f).heightIn(min = 48.dp)
+                            ) { Text("Previous comparisons") }
+                            OutlinedButton(
+                                onClick = { pageIndex = shown.page + 1 },
+                                enabled = shown.hasNext,
+                                modifier = Modifier.weight(1f).heightIn(min = 48.dp)
+                            ) { Text("Next comparisons") }
+                        }
                     }
                     Text("Next steps are explicit Place remapping, a durable per-item " +
                         "import journal and exact-hash readback. A preview alone " +
