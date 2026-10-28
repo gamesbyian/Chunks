@@ -1,0 +1,53 @@
+name: Seedhost instances 2 and 3 read-only adapter probe
+
+# Owner-provisioned snapshot test instances (docs/SEEDHOST-REMOTE-TESTING.md).
+# Strictly read-only: authenticated version + complete main-view listing with
+# the app's own Kotlin adapter. No Add, Start, Stop, Erase or file access.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chunks-seedhost-instances-readonly
+  cancel-in-progress: false
+
+jobs:
+  read-only:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        instance: ["2", "3"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+      - name: Install Android API 37 SDK
+        run: |
+          printf "y\n" | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
+          if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          fi
+      - name: Kotlin adapter lists instance ${{ matrix.instance }} (read-only)
+        env:
+          CHUNKS_LIVE_RUTORRENT_URL: https://ianseeds.wood.seedhost.eu/rutorrent${{ matrix.instance }}/
+          CHUNKS_LIVE_RTORRENT_USER: ianseeds
+          # Owner-named, per-instance secrets; never the primary instance's pair.
+          CHUNKS_LIVE_RTORRENT_PASS: ${{ matrix.instance == '2' && secrets.rTorrent_pass2 || secrets.rtorrent_pass3 }}
+        run: |
+          test -n "$CHUNKS_LIVE_RTORRENT_PASS" || { echo "::error::Password secret for instance ${{ matrix.instance }} is not configured"; exit 1; }
+          gradle --no-daemon --console=plain :app:testDebugUnitTest \
+            --tests io.github.gamesbyian.chunks.rpc.SeedhostAdapterSmokeTest
+          # The test returns early without a URL; require its success marker.
+          report=app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.SeedhostAdapterSmokeTest.xml
+          grep -o 'CHUNKS_KOTLIN_SEEDHOST_READONLY: [^<]*' "$report" | head -1 | tee -a "$GITHUB_STEP_SUMMARY"
+          grep -q 'CHUNKS_KOTLIN_SEEDHOST_READONLY: authenticated' "$report"
