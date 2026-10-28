@@ -93,7 +93,12 @@ internal fun LocalTransferPrivacyGate(
     // updates the visible gate immediately, without polling or persisted tokens.
     @Suppress("UNUSED_VARIABLE")
     val observedRevisions = foregroundRevision to localRevision
-    val allowed = mode == TransferLockMode.NEVER || session.mayView(scope)
+    // Removing Android's secure screen lock cannot leave a previously granted
+    // Chunks UI scope visibly unlocked within this process.
+    val deviceStillSecure = activity != null &&
+        TransferDeviceAuthenticator.hasSecureLock(activity)
+    val allowed = mode == TransferLockMode.NEVER ||
+        (deviceStillSecure && session.mayView(scope))
 
     DisposableEffect(activity, mode != TransferLockMode.NEVER) {
         if (mode != TransferLockMode.NEVER)
