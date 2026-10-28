@@ -10,8 +10,8 @@
   },
   "totals": {
     "approved": 1,
-    "vectorDraft": 800,
-    "planned": 14,
+    "vectorDraft": 803,
+    "planned": 12,
     "aliases": 20
   },
   "assets": [
@@ -1565,8 +1565,10 @@
       "id": "brand-fidelity/alternate-tagline-hand-lettered-outline",
       "category": "brand-fidelity",
       "label": "alternate tagline hand-lettered outline",
-      "status": "planned",
-      "source": "04-brand-lockups-and-app-icon.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; crop 765,35,930,180; pixel silhouette traced",
+      "path": "docs/design/svg/brand/reference-traced/big-files-lettering-black.svg",
+      "fidelity": "source-derived-auto-trace"
     },
     {
       "id": "brand-fidelity/white-label-on-dark-with-underline",
@@ -2270,8 +2272,10 @@
       "id": "stickers/yellow-big-files-sticker-exact-hand-lettering",
       "category": "stickers",
       "label": "yellow Big Files sticker exact hand-lettering",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png; traced lettering, independently recreated yellow sticker geometry",
+      "path": "docs/design/svg/brand/reference-traced/big-files-yellow-sticker.svg",
+      "fidelity": "source-derived-auto-trace"
     },
     {
       "id": "stickers/white-same-torrents-sticker",
@@ -7652,6 +7656,15 @@
       "path": "docs/design/svg/brand/reference-traced/primary-lockup-source-traced.svg",
       "source": "03-typography-and-wordmark.png; source-traced vector lettering",
       "fidelity": "source-derived-auto-trace"
+    },
+    {
+      "id": "brand-reference-trace/big-files-lettering-white",
+      "category": "brand-fidelity",
+      "label": "BIG FILES. BRIGHTER DAYS. lettering white reversed",
+      "status": "vector-draft",
+      "path": "docs/design/svg/brand/reference-traced/big-files-lettering-white.svg",
+      "fidelity": "source-derived-auto-trace",
+      "source": "03-typography-and-wordmark.png"
     }
   ]
 }
