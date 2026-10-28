@@ -49,6 +49,10 @@ Legend: **Implemented (limited)** = code merged, may have some suitable specific
 | Accessibility and visual character | Native emulator atlases exist; human approval and physical TalkBack/200% unproven | #8/#9: 48dp targets, large type, keyboard, reduced motion, RTL, contrast and dense queues |
 | Shipping, safety, dependencies | Debug APK, paired SHA-256/source checkout receipt (#209), mocked-adb receipt/physical-device preflight helper (#219), and targeted CI; no signed release or final secure profile storage decision | #10/#9: license, SBOM, signing, distribution, credential revocation, supported-platform matrix |
 
+## Android system Open with acceptance (owner, 2026-10-27)
+
+**Requirement, not yet verified:** Installed Chunks appears among eligible Android handlers for `.torrent` files opened by Files/Downloads/browser/other providers and for `magnet:` hyperlinks; Android's preferred/sole handler policy can open it directly, with normal chooser semantics when multiple handlers exist. Current magnet VIEW and text SEND integration is partial only; Share is distinct from file Open with. Trace acceptance through manifest intent-filter/resolver API-level tests, URI-grant/ContentResolver and MIME variations, cold/warm/locked-session Add-draft intake, existing engine/default Place choice and reviewed Add, negative/malformed/generic-content cases, and real phone chooser/default/competing-client accessibility tests. Track priority only in WORK-QUEUE; product semantics in PRODUCT, UX, ARCHITECTURE.
+
 ## Cross-cutting behavior contracts missing from happy-path checks
 
 1. **State freshness and identity:** Every operation names engine + hash + actual file mapping generation; snapshots include timestamp/freshness. After UI recycle, app death, offline transition or server-side concurrent ruTorrent mutation, a new command requires fresh preflight. A timeout stays **uncertain** and offers **read-only** reconciliation; no blind write retries.

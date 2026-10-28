@@ -10,6 +10,12 @@ An Android-native, delightful, deeply capable BitTorrent client and first-class 
 
 A torrent client is a data-integrity tool: none of its charm is worth lost bytes. The user's mixed library is valid; do not demand movies and TV live in separate top-level directories.
 
+## Android-wide torrent and magnet opening (owner requirement, 2026-10-27)
+
+When Chunks is installed, Android must offer it as a capable handler when a user opens a `.torrent` file from Downloads, Files, a browser or another content provider, or activates a `magnet:` link in another app. Register appropriate Android `ACTION_VIEW` intent filters for `magnet` URI schemes and torrent file `content://` / supported `file://` sources, recognizing relevant MIME types including `application/x-bittorrent` and carefully handling providers that report generic MIME types. Support `ACTION_SEND` and text magnets as a complementary Share workflow, not a substitute for Open with.
+
+Respect Android's resolver: present Chunks among available apps, let users select **Always** / their preferred handler where Android offers it, and permit direct opening when Android itself resolves Chunks as the sole/default handler. Do not force a Chunks-specific chooser or attempt to override the OS's preferred app. Accept the incoming item into a validated Add draft with optional local or remote engine choice, existing default Place, optional Change/recent locations and explicit user-reviewed Add (Start after Add follows existing defaults). Never automatically submit merely because the OS opened Chunks. Preserve incoming data across cold start, warm start, authentication/unlock and connection selection without leaking private source URIs or tracker passkeys; safely report malformed, revoked, inaccessible or oversized input. **Required end-to-end behavior; existing magnet/Share integration is only partial evidence, not proof of all file-opening routes.**
+
 ## Three nouns, five different identities
 
 - **Transfer**: one engine-managed BitTorrent download/seed, scoped to a specific engine and server/device. Its torrent info hash does not equal a physical file path.

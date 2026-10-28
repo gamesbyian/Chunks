@@ -114,4 +114,6 @@ document.querySelector('#opacity').addEventListener('input',renderTray);
 document.querySelector('#copy').addEventListener('click',async()=>{const paths=chosen.map(x=>assets.find(a=>a.id===x).src).join('\n');try{await navigator.clipboard.writeText(paths);document.querySelector('#copy').textContent='Paths copied';}catch{document.querySelector('#copy').textContent='Copy unavailable in this browser';}});
 setSurface('light');refresh(true);
 </script>
+<script src="mix-engine.js"></script>
+<script src="mix-ui.js"></script>
 </body></html>

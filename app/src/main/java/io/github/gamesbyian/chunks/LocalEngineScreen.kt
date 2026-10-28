@@ -74,6 +74,7 @@ import io.github.gamesbyian.chunks.model.ManualCollectionPager
 import io.github.gamesbyian.chunks.model.LocalQueueCatalog
 import io.github.gamesbyian.chunks.model.LocalQueueFilter
 import io.github.gamesbyian.chunks.model.LocalQueueOrder
+import io.github.gamesbyian.chunks.snapshots.LocalSnapshotRestorePreviewPanel
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoPreview
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader
 import java.io.ByteArrayOutputStream
@@ -213,6 +214,9 @@ internal fun LocalEngineScreen(
         mutableStateOf(LocalInventoryFrame<LocalTransferStatus>(emptyList(),
             stale = LocalScreenReader.revision.blocksMutations()))
     }
+    // An initial empty Compose list is not an observed empty engine. Restore
+    // comparisons require at least one actually accepted native list read.
+    var hasConfirmedLocalInventory by remember { mutableStateOf(false) }
     val transfers = inventoryFrame.entries
     val inventoryStale = inventoryFrame.stale || LocalScreenReader.revision.blocksMutations()
     var transferPage by remember { mutableStateOf(0) }
@@ -330,6 +334,7 @@ internal fun LocalEngineScreen(
                     // A sample scheduled before an uncertain mutation cannot
                     // clear its safety latch, even if it finishes afterward.
                     if (LocalScreenReader.revision.acceptObservation(frame.revision, frame.transfers)) {
+                        if (frame.transfers != null) hasConfirmedLocalInventory = true
                         inventoryFrame = LocalInventoryFreshness.advance(inventoryFrame, frame.transfers)
                         observedDeltas = if (frame.transfers != null) {
                             progressHistory.observe(frame.transfers, SystemClock.elapsedRealtime())
@@ -618,6 +623,13 @@ internal fun LocalEngineScreen(
             },
             onCancel = { pending = null })
 
+        LocalSnapshotRestorePreviewPanel(
+            transfers = transfers,
+            inventoryConfirmed = hasConfirmedLocalInventory,
+            inventoryStale = inventoryStale,
+            busyEngine = busy,
+            mutationGeneration = LocalScreenReader.revision.snapshot()
+        )
         LocalInventorySnapshotPanel(
             transfers = transfers,
             stale = inventoryStale,
