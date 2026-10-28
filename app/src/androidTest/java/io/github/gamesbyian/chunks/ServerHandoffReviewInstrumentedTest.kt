@@ -42,8 +42,8 @@ class ServerHandoffReviewInstrumentedTest {
         }
         rule.waitForIdle()
         rule.onNodeWithText("phone-file.txt", substring = true).assertExists()
-        rule.onNodeWithText("From a transfer on this phone", substring = true).assertExists()
-        rule.onNodeWithText("may contain a private passkey", substring = true).assertExists()
+        rule.onNodeWithText("Original .torrent prepared on this phone", substring = true).assertExists()
+        rule.onNodeWithText("may contain private passkeys", substring = true).assertExists()
         assertEquals(1, consumed)
         assertEquals("Prefilling the review must not start any server mutation", 0, mutations)
     }
