@@ -15,12 +15,16 @@ def main():
     known = set()
     ids = set()
     pending = 0
+    aliases = []
     for asset in inv["assets"]:
         identifier = asset["id"]
         assert identifier not in ids, f"duplicate inventory id: {identifier}"
         ids.add(identifier)
         if asset["status"] == "planned":
             pending += 1
+            continue
+        if asset["status"] == "asset-alias":
+            aliases.append(asset)
             continue
         rel = asset["path"]
         assert rel.endswith(".svg"), f"asset isn't SVG: {rel}"
@@ -49,6 +53,14 @@ def main():
     actual = {str(p.relative_to(ROOT)) for p in BASE.rglob("*.svg")}
     unlisted = actual - known
     assert not unlisted, f"SVG file(s) missing in inventory: {sorted(unlisted)}"
+    by_id = {entry["id"]: entry for entry in inv["assets"]}
+    for alias in aliases:
+        assert "path" not in alias, f"Alias must not claim an extra file: {alias['id']}"
+        target = by_id.get(alias.get("aliasOf"))
+        assert target and target["status"] in {"vector-draft", "approved-existing"}, f"Invalid alias target: {alias['id']}"
+        assert target["id"] != alias["id"], f"Self-alias: {alias['id']}"
+    assert len(aliases) == inv["totals"].get("aliases", 0), "Alias count mismatch"
+    assert len(inv["assets"]) == sum(inv["totals"].values()), "Inventory status count mismatch"
     assert inv["totals"]["approved"] == 1
     assert len(actual) == inv["totals"]["vectorDraft"], (len(actual), inv["totals"]["vectorDraft"])
     assert pending == inv["totals"]["planned"], (pending, inv["totals"]["planned"])
@@ -68,7 +80,12 @@ def main():
     expected_gallery = {str(p.relative_to(BASE)) for p in BASE.rglob("*.svg")}
     assert len(gallery_paths) == len(set(gallery_paths)), "duplicate gallery SVG paths"
     assert set(gallery_paths) == expected_gallery, f"gallery mismatch: missing {sorted(expected_gallery-set(gallery_paths))}, extra {sorted(set(gallery_paths)-expected_gallery)}"
-    print(f"SVG library PASS: {len(actual)} vector drafts and gallery entries, 1 unchanged approved external master, {pending} planned targets.")
+    # The type specimen SVGs must encode their glyph via geometry, not runtime fonts.
+    for typ in (BASE / "typography").rglob("*.svg"):
+        doc = ET.parse(typ).getroot()
+        assert not any(el.tag.rsplit("}", 1)[-1] == "text" for el in doc.iter()), f"Font-dependent glyph: {typ}"
+    assert len(list((BASE / "typography").rglob("*.svg"))) == 306, "Incomplete specimen glyph families"
+    print(f"SVG library PASS: {len(actual)} vectors and gallery entries; {len(aliases)} reused masters; {pending} fidelity tasks outstanding.")
 if __name__ == "__main__":
     try:
         main()
