@@ -4,8 +4,10 @@ import android.content.ContentResolver
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -13,11 +15,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -74,11 +79,17 @@ internal fun SnapshotDocumentInspectScreen(onBack: () -> Unit) {
     var busy by remember { mutableStateOf(false) }
     var inspected by remember { mutableStateOf<SnapshotManifestV1.Verified?>(null) }
     var problem by remember { mutableStateOf<String?>(null) }
+    var search by remember { mutableStateOf("") }
+    var recoveryFilter by remember { mutableStateOf<SnapshotManifestV1.Recovery?>(null) }
+    var pageIndex by remember { mutableIntStateOf(0) }
     val choose = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             busy = true
             inspected = null
             problem = null
+            search = ""
+            recoveryFilter = null
+            pageIndex = 0
             scope.launch {
                 try {
                     inspected = withContext(Dispatchers.IO) {
@@ -138,12 +149,65 @@ internal fun SnapshotDocumentInspectScreen(onBack: () -> Unit) {
             Text("This screen is read-only. Restoring to a target engine remains " +
                 "unavailable until destination checks, exact identity deduplication " +
                 "and a durable import journal are implemented.")
-            items.take(30).forEach { item ->
-                Text(item.originalName + " · " + item.recovery.wire,
-                    style = MaterialTheme.typography.bodySmall)
+            OutlinedTextField(
+                value = search,
+                onValueChange = { search = it; pageIndex = 0 },
+                singleLine = true,
+                label = { Text("Find original name or v1 infohash") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FilterChip(
+                    selected = recoveryFilter == null,
+                    onClick = { recoveryFilter = null; pageIndex = 0 },
+                    label = { Text("All") },
+                    modifier = Modifier.heightIn(min = 48.dp)
+                )
+                SnapshotManifestV1.Recovery.entries.forEach { option ->
+                    FilterChip(
+                        selected = recoveryFilter == option,
+                        onClick = { recoveryFilter = option; pageIndex = 0 },
+                        label = { Text(option.wire) },
+                        modifier = Modifier.heightIn(min = 48.dp)
+                    )
+                }
             }
-            if (items.size > 30) Text("Showing the first 30 entries of " + items.size +
-                ". No transfer definitions were changed.")
+            val result = SnapshotInspectCatalogV1.select(
+                items, search, recoveryFilter, pageIndex
+            )
+            Text("Showing " + result.firstIndex + "–" + result.lastIndex +
+                " of " + result.matchingCount + " matching records (" +
+                result.totalCount + " in archive).",
+                style = MaterialTheme.typography.bodySmall)
+            result.items.forEach { item ->
+                Text(item.originalName + "\n" + item.infoHashV1 + " · " +
+                    item.recovery.wire, style = MaterialTheme.typography.bodySmall)
+            }
+            if (result.items.isEmpty()) {
+                Text("No records match these filters. This does not alter the archive.")
+            }
+            if (result.hasPrevious || result.hasNext) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = { pageIndex = (result.pageIndex - 1).coerceAtLeast(0) },
+                        enabled = result.hasPrevious,
+                        modifier = Modifier.weight(1f).heightIn(min = 48.dp)
+                    ) { Text("Previous") }
+                    OutlinedButton(
+                        onClick = { pageIndex = result.pageIndex + 1 },
+                        enabled = result.hasNext,
+                        modifier = Modifier.weight(1f).heightIn(min = 48.dp)
+                    ) { Text("Next") }
+                }
+            }
+            Text("Inspection is read-only. No torrent definitions were changed.",
+                style = MaterialTheme.typography.bodySmall)
         }
     }
 }
