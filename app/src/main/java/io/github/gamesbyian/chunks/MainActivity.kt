@@ -859,6 +859,12 @@ private fun TransfersScreen(
                     modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
                     Text("Save inventory-only snapshot")
                 }
+                BatchMagnetExportPanel(
+                    rows = visible.map { io.github.gamesbyian.chunks.model.BatchMagnetHandoff.Row(
+                        it.hash, it.name) },
+                    stale = stale || loading,
+                    sourceLabel = "remote"
+                )
                 OutlinedButton(onClick = onInspectSnapshot,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
                     Text("Inspect saved .chunksnap file")
