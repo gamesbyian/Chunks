@@ -176,7 +176,7 @@ class SeedhostAndroidAddUiInstrumentedTest {
 
         var added = false
         try {
-            rule.onNodeWithText("ruTorrent web URL or RPC address").performTextReplacement(url)
+            rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").performTextReplacement(url)
             rule.onNodeWithText("Username, if required").performTextReplacement(user)
             rule.onNodeWithText("Password").performTextReplacement(password)
             scrollTo("Connect to rTorrent")
