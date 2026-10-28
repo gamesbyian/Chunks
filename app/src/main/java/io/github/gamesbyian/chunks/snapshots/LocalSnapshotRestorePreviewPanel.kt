@@ -53,6 +53,51 @@ internal fun LocalSnapshotRestorePreviewPanel(
     mutationGeneration: Long,
     /** Only primes the existing Add review. Never adds a torrent. */
     onPrepareAdd: ((ByteArray) -> Unit)? = null
+) = SnapshotRestorePreviewPanel(
+    targetHashes = transfers.map { it.infoHash },
+    target = SnapshotRestoreTarget.PHONE,
+    inventoryConfirmed = inventoryConfirmed,
+    inventoryStale = inventoryStale,
+    busyEngine = busyEngine,
+    mutationGeneration = mutationGeneration,
+    onPrepareAdd = onPrepareAdd
+)
+
+/** Wording for the engine a snapshot is compared against. */
+internal data class SnapshotRestoreTarget(
+    val noun: String,
+    val title: String,
+    val observation: String,
+    val busyOperation: String,
+    val presentLabel: String,
+    val addLabel: String
+) {
+    companion object {
+        val PHONE = SnapshotRestoreTarget("phone", "Phone", "phone-engine",
+            "a native operation", "Already on phone (skip)",
+            "Review original .torrent in phone Add")
+        val SERVER = SnapshotRestoreTarget("rTorrent server", "rTorrent server",
+            "rTorrent server (all-transfers view)", "a server operation",
+            "Already on this server (skip)", "Review original .torrent in server Add")
+    }
+}
+
+/**
+ * Engine-neutral comparison. [targetHashes] must be one complete, fresh
+ * inventory of a single engine or profile; any change revokes the result.
+ */
+@Composable
+internal fun SnapshotRestorePreviewPanel(
+    targetHashes: List<String>,
+    target: SnapshotRestoreTarget,
+    inventoryConfirmed: Boolean,
+    inventoryStale: Boolean,
+    busyEngine: Boolean,
+    mutationGeneration: Long,
+    /** Only primes the existing Add review. Never adds a torrent. */
+    onPrepareAdd: ((ByteArray) -> Unit)? = null,
+    /** Only primes an Add review with a magnet-only record. Never adds. */
+    onPrepareMagnet: ((String) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -75,7 +120,7 @@ internal fun LocalSnapshotRestorePreviewPanel(
     // Local status counters and peers may update each second. Identity changes
     // are the relevant source boundary. A stale/unverified frame remains
     // unavailable even if its old hash list appears unchanged.
-    val observedHashes = transfers.map { it.infoHash.lowercase(Locale.ROOT) }
+    val observedHashes = targetHashes.map { it.lowercase(Locale.ROOT) }
     val targetReady = inventoryConfirmed && !inventoryStale && !busyEngine
     val latestHashes by rememberUpdatedState(observedHashes)
     val latestReady by rememberUpdatedState(targetReady)
@@ -85,7 +130,7 @@ internal fun LocalSnapshotRestorePreviewPanel(
         verifiedSource = null
         comparedHashes = null
         manualNotice = null
-        if (!targetReady) error = "A fresh, complete phone transfer list is required before comparison."
+        if (!targetReady) error = "A fresh, complete ${target.noun} transfer list is required before comparison."
     }
 
     val open = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -101,7 +146,7 @@ internal fun LocalSnapshotRestorePreviewPanel(
                 result = null
                 verifiedSource = null
                 comparedHashes = null
-                error = "Phone transfer inventory became stale. Refresh before trying again."
+                error = "${target.title} transfer inventory became stale. Refresh before trying again."
             } else {
                 reading = true
                 result = null
@@ -124,13 +169,13 @@ internal fun LocalSnapshotRestorePreviewPanel(
                             comparedHashes = frozen
                             comparedGeneration = frozenGeneration
                         } else {
-                            error = "Phone torrent identities changed during review. " +
+                            error = "${target.title} torrent identities changed during review. " +
                                 "The comparison was discarded; reopen the snapshot."
                         }
                     } catch (cancel: CancellationException) {
                         throw cancel
                     } catch (failure: Exception) {
-                        error = "Cannot verify this snapshot against the phone: " +
+                        error = "Cannot verify this snapshot against the ${target.noun}: " +
                             (failure.message ?: "Unsupported or unsafe archive")
                     } finally {
                         reading = false
@@ -160,25 +205,25 @@ internal fun LocalSnapshotRestorePreviewPanel(
                 enabled = !reading,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
             ) {
-                Text(if (expanded) "Close phone restore comparison"
-                    else "Compare saved snapshot with phone")
+                Text(if (expanded) "Close ${target.noun} restore comparison"
+                    else "Compare saved snapshot with ${target.noun}")
             }
             if (expanded) {
                 Text("Snapshot restore comparison (read-only)",
                     style = MaterialTheme.typography.titleMedium)
                 Text("Compares a verified .chunksnap against every torrent in a " +
-                    "fresh, complete phone-engine observation. It can identify missing " +
+                    "fresh, complete ${target.observation} observation. It can identify missing " +
                     "torrent definitions, but cannot restore data or move downloaded files.")
-                Text("The existing phone transfers stay untouched. A match means " +
+                Text("The existing ${target.noun} transfers stay untouched. A match means " +
                     "the exact torrent identity already exists here; it does not " +
                     "prove its payload is complete or correctly seeded.",
                     style = MaterialTheme.typography.bodySmall)
                 if (!targetReady) {
-                    Text("Phone inventory is not yet confirmed, is stale, or a native " +
-                        "operation is in progress. Wait for a fresh full read.",
+                    Text("${target.title} inventory is not yet confirmed, is stale, or " +
+                        "${target.busyOperation} is in progress. Wait for a fresh full read.",
                         color = MaterialTheme.colorScheme.error)
                 } else {
-                    Text("Current verified phone queue: ${transfers.size} transfer " +
+                    Text("Current verified ${target.noun} queue: ${observedHashes.size} transfer " +
                         "identities. Comparisons are discarded if this list changes.",
                         style = MaterialTheme.typography.bodySmall)
                 }
@@ -200,7 +245,7 @@ internal fun LocalSnapshotRestorePreviewPanel(
                 }
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 result?.let { preview ->
-                    Text("Compared with ${preview.targetInventoryCount} current phone transfers.",
+                    Text("Compared with ${preview.targetInventoryCount} current ${target.noun} transfers.",
                         style = MaterialTheme.typography.titleMedium)
                     Text("Already present: ${preview.alreadyPresentCount}. " +
                         "Missing definitions needing individual review: " +
@@ -246,7 +291,7 @@ internal fun LocalSnapshotRestorePreviewPanel(
                     shown.entries.forEach { entry ->
                         val category = when (entry.decision) {
                             SnapshotRestorePreviewV1.Decision.ALREADY_PRESENT ->
-                                "Already on phone (skip)"
+                                target.presentLabel
                             SnapshotRestorePreviewV1.Decision.METADATA_NEEDS_REVIEW ->
                                 "Missing: verified torrent metadata needs Add review"
                             SnapshotRestorePreviewV1.Decision.MAGNET_NEEDS_REVIEW ->
@@ -276,18 +321,48 @@ internal fun LocalSnapshotRestorePreviewPanel(
                                             completeFreshTarget = latestReady
                                         )
                                         onPrepareAdd(originalBytes)
-                                        manualNotice = "Original torrent prepared for phone Add review. " +
+                                        manualNotice = "Original torrent prepared for ${target.noun} Add review. " +
                                             "Choose its Place and confirm Add separately. No restore occurred."
                                         error = null
                                     } catch (failure: Exception) {
                                         manualNotice = null
                                         error = "Cannot prepare this torrent: " +
-                                            (failure.message ?: "Snapshot or phone inventory changed")
+                                            (failure.message ?: "Snapshot or ${target.noun} inventory changed")
                                     }
                                 },
                                 enabled = targetReady && !reading,
                                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                            ) { Text("Review original .torrent in phone Add") }
+                            ) { Text(target.addLabel) }
+                        }
+                        if (entry.decision == SnapshotRestorePreviewV1.Decision.MAGNET_NEEDS_REVIEW &&
+                            onPrepareMagnet != null) {
+                            OutlinedButton(
+                                onClick = {
+                                    try {
+                                        val link = SnapshotManualAddReviewV1.prepareMagnet(
+                                            verified = requireNotNull(verifiedSource) {
+                                                "Verified snapshot has expired"
+                                            },
+                                            reviewedEntry = entry,
+                                            frozenTargetHashes = requireNotNull(comparedHashes),
+                                            currentTargetHashes = latestHashes,
+                                            frozenGeneration = comparedGeneration,
+                                            currentGeneration = latestGeneration,
+                                            completeFreshTarget = latestReady
+                                        )
+                                        onPrepareMagnet(link)
+                                        manualNotice = "Magnet prepared for ${target.noun} Add review. " +
+                                            "Confirm Add separately. No restore occurred."
+                                        error = null
+                                    } catch (failure: Exception) {
+                                        manualNotice = null
+                                        error = "Cannot prepare this magnet: " +
+                                            (failure.message ?: "Snapshot or ${target.noun} inventory changed")
+                                    }
+                                },
+                                enabled = targetReady && !reading,
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                            ) { Text("Review magnet in ${target.noun} Add") }
                         }
                     }
                     if (shown.entries.isEmpty()) {
