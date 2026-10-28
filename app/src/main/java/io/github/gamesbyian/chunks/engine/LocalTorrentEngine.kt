@@ -275,6 +275,14 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         // Internet Archive torrents rely on these HTTP(S) sources.
         val seeds = webSeeds(torrentBytes)
         if (seeds.isNotEmpty()) params.setUrlSeeds(seeds)
+        // Likewise libtorrent 2.1's torrent_info no longer carries announce /
+        // announce-list: without this the torrent never contacts its trackers
+        // and can only reach peers found by DHT or injected directly.
+        val (trackers, tiers) = trackerTiers(torrentBytes)
+        if (trackers.isNotEmpty()) {
+            params.setTrackers(trackers)
+            params.setTrackerTiers(tiers)
+        }
         if (peers.isNotEmpty())
             params.peers(peers.map { TcpEndpoint(requireNotNull(it.address?.hostAddress), it.port) })
         val error = error_code()
@@ -654,6 +662,34 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             error = error
         )
     }
+
+    /**
+     * BEP 12 announce-list tiers (else BEP 3 announce) as parallel lists of
+     * URL and tier index. Only http(s)/udp trackers, bounded and de-duplicated.
+     */
+    internal fun trackerTiers(torrentBytes: ByteArray): Pair<List<String>, List<Int>> = try {
+        val root = Entry.bdecode(torrentBytes).dictionary()
+        fun usable(url: String) = url.length <= 2048 && url.none { it.isISOControl() || it == ' ' } &&
+            (url.startsWith("https://") || url.startsWith("http://") || url.startsWith("udp://"))
+        val tiers: List<List<String>> = root["announce-list"]
+            ?.takeIf { it.swig().type() == entry.data_type.list_t }
+            ?.list()?.mapNotNull { tier ->
+                if (tier.swig().type() != entry.data_type.list_t) null
+                else tier.list().filter { it.swig().type() == entry.data_type.string_t }.map { it.string() }
+            }?.filter { it.isNotEmpty() }.orEmpty()
+            .ifEmpty {
+                root["announce"]?.takeIf { it.swig().type() == entry.data_type.string_t }
+                    ?.let { listOf(listOf(it.string())) }.orEmpty()
+            }
+        val urls = ArrayList<String>()
+        val indexes = ArrayList<Int>()
+        tiers.take(16).forEachIndexed { tier, members ->
+            members.filter(::usable).forEach { url ->
+                if (url !in urls && urls.size < 64) { urls += url; indexes += tier }
+            }
+        }
+        urls to indexes
+    } catch (_: RuntimeException) { emptyList<String>() to emptyList() }
 
     /** Only plain http(s) web seeds, bounded in number and length. */
     private fun webSeeds(torrentBytes: ByteArray): List<String> = try {

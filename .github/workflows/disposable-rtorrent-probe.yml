@@ -7,6 +7,9 @@ on:
       - "app/src/test/java/io/github/gamesbyian/chunks/rpc/RTorrentDisposableMutationTest.kt"
       - "app/src/test/java/io/github/gamesbyian/chunks/rpc/RTorrentDisposableServerTest.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/rpc/RTorrentRemote.kt"
+      # Cross-implementation peer-wire proof (rTorrent <-> phone libtorrent4j engine).
+      - "app/src/test/java/io/github/gamesbyian/chunks/interop/**"
+      - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalTorrentEngine.kt"
 permissions:
   contents: read
 concurrency:
@@ -34,6 +37,13 @@ jobs:
           directory.default.set = $RUNNER_TEMP/chunks-data
           session.path.set = $RUNNER_TEMP/chunks-session
           network.scgi.open_port = 127.0.0.1:5000
+          # Fixed peer port for the interop test; no DHT/PEX/UDP trackers, so
+          # peers are found only through the test's own loopback tracker.
+          network.port_range.set = 6890-6890
+          network.port_random.set = no
+          dht.mode.set = disable
+          protocol.pex.set = no
+          trackers.use_udp.set = no
           system.daemon.set = true
           EOF
           cat > "$RUNNER_TEMP/chunks-nginx.conf" <<EOF
@@ -107,6 +117,13 @@ jobs:
           PY
             exit 1
           fi
+      - name: Cross-implementation payload exchange (rTorrent <-> phone engine)
+        env:
+          CHUNKS_DISPOSABLE_RT_URL: http://127.0.0.1:18080/RPC2
+          CHUNKS_DISPOSABLE_RT_PEER_PORT: "6890"
+          CHUNKS_DISPOSABLE_TARGET_DIR: ${{ runner.temp }}/chunks-data
+        run: |
+          gradle --no-daemon :app:testDebugUnitTest --tests 'io.github.gamesbyian.chunks.interop.RTorrentLibtorrentInteropTest'
       - name: Evidence summary
         if: always()
         run: |
