@@ -20,7 +20,14 @@ const server=http.createServer((req,res)=>{
  });
 });
 async function dimensions(page,stage){
- const d=await page.evaluate(()=>({inner:innerWidth,client:document.documentElement.clientWidth,scroll:document.documentElement.scrollWidth}));
+ const d=await page.evaluate(()=>{
+  const client=document.documentElement.clientWidth;
+  const offenders=[...document.querySelectorAll("body *")].filter(el=>{
+   const style=getComputedStyle(el),box=el.getBoundingClientRect();
+   return style.display!=="none" && box.width>0 && box.right>client+2;
+  }).slice(0,12).map(el=>({tag:el.tagName,id:el.id,className:String(el.className).slice(0,70),right:Math.round(el.getBoundingClientRect().right)}));
+  return {inner:innerWidth,client,scroll:document.documentElement.scrollWidth,offenders};
+ });
  assert.ok(d.scroll<=d.client+2,stage+" horizontal overflow: "+JSON.stringify(d));return d;
 }
 async function main(){
