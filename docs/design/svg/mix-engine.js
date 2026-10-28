@@ -10,7 +10,7 @@
   const rounded = value => Number(Number(value).toFixed(4)).toString();
   const between = (value, min, max) => Number.isFinite(Number(value))
     && Number(value) >= min && Number(value) <= max;
-  const allowedNames = /^[a-z0-9][a-z0-9._/-]{0,190}$/;
+  const allowedNames = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,190}$/;
   const sourceLimit = 1500000;
   function edit(input) {
     const a = input || {};
