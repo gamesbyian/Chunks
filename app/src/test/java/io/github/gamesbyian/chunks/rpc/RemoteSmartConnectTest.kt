@@ -41,6 +41,26 @@ class RemoteSmartConnectTest {
         }
     }
 
+    @Test fun feralUsesPastedTenantNotAuthUserForDirectRpc() {
+        assertEquals(listOf(
+            "https://apollo.feralhosting.com/slotowner/rtorrent/rpc",
+            "https://apollo.feralhosting.com/slotowner/rutorrent/plugins/httprpc/action.php"
+        ), RemoteSmartConnect.candidates(
+            "https://apollo.feralhosting.com/slotowner/rutorrent/", "rutorrent"
+        ).map { it.endpoint })
+        // A generic hostname plus login 'rutorrent' is insufficient to
+        // infer a Feral user's *slot* name.
+        assertFalse(RemoteSmartConnect.candidates(
+            "apollo.feralhosting.com", "rutorrent"
+        ).any { it.endpoint.contains("/slotowner/") })
+    }
+
+    @Test fun rapidSeedboxUsesItsDocumentedRpcPlugin() {
+        assertEquals("https://rt-example.a.seedbox.vip/plugins/rpc/rpc.php",
+            RemoteSmartConnect.candidates("rt-example.a.seedbox.vip", "user")
+                .first().endpoint)
+    }
+
     @Test fun preservesExplicitCustomPortAndRawEncodedRpcPath() {
         assertEquals(listOf("https://custom.example:9443/my%20account/RPC%202"),
             RemoteSmartConnect.candidates(
