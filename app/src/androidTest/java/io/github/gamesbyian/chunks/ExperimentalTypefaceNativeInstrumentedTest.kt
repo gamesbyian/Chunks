@@ -1,5 +1,8 @@
 package io.github.gamesbyian.chunks
 
+import android.content.ContentValues
+import android.os.Environment
+import android.provider.MediaStore
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -9,8 +12,6 @@ import android.view.View
 import android.widget.TextView
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import java.io.File
-import java.io.FileOutputStream
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
@@ -53,8 +54,10 @@ class ExperimentalTypefaceNativeInstrumentedTest {
         } else {
             assumeTrue("Experimental debug font fixtures not staged", staged.size == 5)
         }
-        val dir = File(context.filesDir, "font-acceptance")
-        assertTrue("Native font review output directory", dir.isDirectory || dir.mkdirs())
+        // Store exact raster receipts in public MediaStore, not target app-private
+        // filesDir: Gradle instrumentation may uninstall the debug APK when the
+        // test completes, making run-as unavailable before CI exports evidence.
+        val screenshots = MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
         val density = context.resources.displayMetrics.density
         val width = (340f * density).toInt().coerceAtLeast(300)
         var count = 0
@@ -100,11 +103,27 @@ class ExperimentalTypefaceNativeInstrumentedTest {
                     assertTrue("$style $factor $sampleId: only blank pixels",
                         pixels.any { it != Color.WHITE })
                     val sizeName = if (factor == 1f) "100pct" else "200pct"
-                    val output = File(dir, "chunks-stacked-$style-$sizeName-$sampleId.png")
-                    FileOutputStream(output).use { stream ->
-                        assertTrue("Bitmap PNG failed", image.compress(Bitmap.CompressFormat.PNG, 100, stream))
+                    val name = "chunks-stacked-$style-$sizeName-$sampleId.png"
+                    val values = ContentValues().apply {
+                        put(MediaStore.Images.Media.DISPLAY_NAME, name)
+                        put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+                        put(MediaStore.Images.Media.RELATIVE_PATH,
+                            "${Environment.DIRECTORY_PICTURES}/ChunksFontAtlas")
+                        put(MediaStore.Images.Media.IS_PENDING, 1)
                     }
-                    assertTrue("Screenshot missing", output.isFile && output.length() > 200)
+                    val uri = requireNotNull(context.contentResolver.insert(screenshots, values)) {
+                        "$name: MediaStore rejected native screenshot"
+                    }
+                    context.contentResolver.openOutputStream(uri).use { stream ->
+                        requireNotNull(stream) { "$name: MediaStore output stream missing" }
+                        assertTrue("$name: Bitmap PNG failed",
+                            image.compress(Bitmap.CompressFormat.PNG, 100, stream))
+                    }
+                    val published = ContentValues().apply {
+                        put(MediaStore.Images.Media.IS_PENDING, 0)
+                    }
+                    assertEquals("$name: media screenshot not published", 1,
+                        context.contentResolver.update(uri, published, null, null))
                     image.recycle()
                     count++
                 }
