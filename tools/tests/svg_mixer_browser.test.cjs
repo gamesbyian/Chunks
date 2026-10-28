@@ -64,3 +64,27 @@ test("an empty layer is safe and invalid recipes are rejected",async()=>{
  assert.equal(d.querySelector("#tray").hidden,true);
  dom.window.close();
 });
+
+test("an exported SVG recovers its original editable layers without external source injection",async()=>{
+ const dom=open(),d=dom.window.document;
+ const lib=dom.window.ChunksSvgMixer;
+ const sample=fs.readFileSync(path.join(root,"docs/design/svg/icons/navigation/transfers.svg"),"utf8");
+ const sample2=fs.readFileSync(path.join(root,"docs/design/svg/icons/files/folder.svg"),"utf8");
+ const svg=lib.compose([
+  {id:"navigation/transfers",svg:sample,x:12,opacity:75},
+  {id:"files/folder",svg:sample2,y:-22,scale:150}
+ ],"#FFD93D");
+ const control=d.querySelector("#mix-recipe-file");
+ Object.defineProperty(control,"files",{configurable:true,value:[{
+   name:"reopened.svg",type:"image/svg+xml",size:svg.length,text:async()=>svg
+ }]});
+ control.dispatchEvent(new dom.window.Event("change",{bubbles:true}));
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(d.querySelectorAll("#mix .mix-layer").length,2);
+ assert.equal(d.querySelector("#mix-background").value,"#FFD93D");
+ const layers=d.querySelectorAll("#mix .mix-layer");
+ assert.match(layers[1].style.transform,/scale\(1.5\)/);
+ assert.match(layers[0].style.transform,/translate\(12%, 0%\)/);
+ assert.match(d.querySelector("#mix-message").textContent,/restored/);
+ dom.window.close();
+});
