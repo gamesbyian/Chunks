@@ -133,3 +133,14 @@ python -c 'import gzip,json; p="assets/fonts/experimental/consolidated/reference
 ### First exact compiled measurement receipt
 
 [CI run 40643072801](https://github.com/gamesbyian/Chunks/actions/runs/40643072801) passed: native five-weight CFF build, complete compressed clipped-pair receipts, deterministic full-count tests, actual-font stress/specimen atlases, and source/OTF artifact publication. The recorded outlier counts are **5,399 Regular; 5,306 Medium; 5,382 Semibold; 5,243 Bold; 5,088 ExtraBold**. Illustrative highest unresolved requests include `Ç*` and `p…` in Regular, with desired corrections around −435/−426 font units, respectively; only −72 units are applied. These are often punctuation optical/semantic exceptions, not permissions to expand kerning bounds. Revalidate against the final source-head CI after generated receipts are committed, and use the atlas to rank manual design changes.
+
+## Reconstructed Latin accent glyph coverage atlases
+
+Phrase-only accent specimens cannot reveal whether one particular glyph is a custom reference reconstruction, the dotless-i/j special treatment, or an unchanged upstream Baloo 2 fallback. `tools/render_reference_accent_grid.py` reads the canonical five-weight source accent and dotless manifests and enumerates the union of **all reconstructed precomposed Latin forms** (over 250 unique Unicode codepoints). It verifies that each is present in all five **compiled Consolidated CFF OTFs**, checks exact 856-codepoint cmap parity, and marks every glyph cell with **R** (recomposed), **D** (custom i/j dotless/lower-mark) or **F** (retained source fallback for that particular weight).
+
+The review output is paginated into at most 72 glyphs per sheet, across five weights with shared baselines, at **14, 24, 48 and 82 pixels**. The resulting PNGs are named `reference-accent-grid-{size}px-p{page}.png`; the JSON manifest records every glyph/weight classification, original source-metrics SHA-256, each candidate OTF SHA-256 and every page's dimensions/hash. Four-size rendering and compact deterministic sample tests run in the [consolidated font workflow](../../.github/workflows/reference-panel-consolidated.yml). All sheets are **nonshipping**, based on real CFF glyphs rather than a newly invented drawing. The raw source mark contours can still differ from the custom reference alphabet style. Attached or stacked diacritics excluded by existing reconstruction rules are **not** falsely marked as rebuilt. This is an editorial diagnostic, not final proof of mark design or an Android emulator/phone accessibility test.
+
+```sh
+python tools/render_reference_accent_grid.py
+python -m unittest discover -s tests -p test_reference_accent_grid.py -v
+```
