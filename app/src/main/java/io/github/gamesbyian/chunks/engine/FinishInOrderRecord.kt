@@ -26,6 +26,18 @@ internal data class FinishInOrderRecord(
     val suspendedReason: String? = null,
     val finished: Boolean = false
 ) {
+    /**
+     * The user's own new order/mode for an active policy. Refused (null) while
+     * a journaled batch is unresolved. Verified baselines and pins carry over
+     * for files that stay in the order, so a hand-set priority stays pinned.
+     */
+    fun reordered(newPolicy: Policy): FinishInOrderRecord? {
+        if (pending.isNotEmpty()) return null
+        val kept = newPolicy.order.map { it.index }.toSet()
+        return copy(policy = newPolicy, lastApplied = lastApplied.filterKeys { it in kept },
+            pinned = pinned.filter { it in kept }.toSet(), finished = false)
+    }
+
     fun encode(): String = buildString {
         append("v=1\n")
         append("mode=").append(policy.mode.name).append('\n')

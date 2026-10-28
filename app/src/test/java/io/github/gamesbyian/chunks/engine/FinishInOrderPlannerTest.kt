@@ -125,4 +125,19 @@ class FinishInOrderPlannerTest {
         assertNull(FinishInOrderRecord.decode("v=2\nmode=BALANCED"))
         assertNull(FinishInOrderRecord.decode(record.encode().replace("applied=3:7", "applied=5:7")))
     }
+
+    @Test fun reorderKeepsPinsAndBaselinesButNeverOverridesAnUnresolvedJournal() {
+        val files = season.take(3)
+        val ids = files.map { it.index }
+        val record = FinishInOrderRecord(FinishInOrderPlanner.policyFor(Mode.BALANCED, files, ids),
+            lastApplied = mapOf(ids[0] to 7, ids[1] to 4), pinned = setOf(ids[2]), finished = true)
+        val swapped = requireNotNull(record.reordered(
+            FinishInOrderPlanner.policyFor(Mode.FINISH_FIRST, files, listOf(ids[1], ids[2]))))
+        assertEquals(listOf(ids[1], ids[2]), swapped.policy.order.map { it.index })
+        assertEquals(mapOf(ids[1] to 4), swapped.lastApplied)
+        assertEquals(setOf(ids[2]), swapped.pinned)
+        assertFalse(swapped.finished)
+        assertNull(record.copy(pending = listOf(FinishInOrderPlanner.Change(ids[0], 4, 7)))
+            .reordered(swapped.policy))
+    }
 }

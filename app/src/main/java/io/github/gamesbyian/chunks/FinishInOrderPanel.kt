@@ -52,11 +52,13 @@ internal fun FinishInOrderReview(
     source: FinishInOrderPlanner.OrderSource?,
     busy: Boolean,
     onConfirm: (Mode, List<Int>) -> Unit,
-    onCancel: () -> Unit
+    onCancel: () -> Unit,
+    initialMode: Mode = Mode.BALANCED,
+    confirmLabel: String = "Start Finish in Order"
 ) {
     val byIndex = remember(files) { files.associateBy { it.index } }
     var order by remember(initialOrder) { mutableStateOf(initialOrder) }
-    var mode by remember { mutableStateOf(Mode.BALANCED) }
+    var mode by remember(initialMode) { mutableStateOf(initialMode) }
     var page by remember(initialOrder) { mutableStateOf(0) }
     val pages = (order.size + REVIEW_ROWS - 1) / REVIEW_ROWS
 
@@ -109,7 +111,7 @@ internal fun FinishInOrderReview(
     }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Button(onClick = { onConfirm(mode, order) }, enabled = !busy && order.size >= 2,
-            modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Start Finish in Order") }
+            modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text(confirmLabel) }
         OutlinedButton(onClick = onCancel,
             modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Cancel") }
     }
@@ -239,11 +241,39 @@ internal fun FinishInOrderPanel(
             }
         } else {
             Text(finishInOrderStatus(current, plan, names), style = MaterialTheme.typography.bodySmall)
+            if (reviewing && current.pending.isEmpty()) {
+                FinishInOrderReview(files, current.policy.order.map { it.index }, null, busy || working,
+                    initialMode = current.policy.mode, confirmLabel = "Use this order",
+                    onConfirm = { mode, order ->
+                        reviewing = false
+                        act {
+                            withContext(Dispatchers.IO) {
+                                val saved = FinishInOrderController.exclusive {
+                                    val fresh = store.get(infoHash)
+                                    val next = fresh?.reordered(
+                                        FinishInOrderPlanner.policyFor(mode, files, order))
+                                    next != null && store.save(infoHash, next)
+                                }
+                                if (!saved) "The order could not be changed now (an earlier change " +
+                                    "is still unresolved, or saving failed). Nothing changed."
+                                else describe(FinishInOrderController.stepNow(context, infoHash))
+                                    ?: "New order saved. Priorities follow it from the next check."
+                            }
+                        }
+                    },
+                    onCancel = { reviewing = false })
+            }
             plan?.roles?.entries?.filter { it.value == FileRole.ACTIVE || it.value == FileRole.FALLBACK }
                 ?.forEach { (index, role) ->
                     Text((if (role == FileRole.ACTIVE) "High: " else "High (fallback): ") +
                         (names[index] ?: "file $index"), style = MaterialTheme.typography.bodySmall)
                 }
+            if (!reviewing && current.pending.isEmpty()) {
+                OutlinedButton(onClick = { reviewing = true }, enabled = !busy && !working,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                    Text("Change order or mode…")
+                }
+            }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (current.suspendedReason != null) {
                     Button(onClick = {
