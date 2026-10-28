@@ -6,8 +6,8 @@
       "built": 244,
       "skipped_undetected": 24,
       "source_sha256": "a31b5c8726a640beada2113e11002eaac75a79b575f6855fdd60e9dc5ecbf63e",
-      "reference_sha256": "9306183115efc90e4191a7bc0d791c6de426de1aeb82feadf8278f5311422e3e",
-      "output_sha256": "3d4a502fe828d41294e4b24e4d1c94a49dd31704246e7fcb48b3eeeb675e8399",
+      "reference_sha256": "c00222073397e4d479489c24d53f9cc8122c84a1f0c2eb50f8a59d44f332eb0a",
+      "output_sha256": "b1be17eb7f07a43db06e437e1d6cd891edc152a6b18aa76fac676921e8df0cbd",
       "glyphs": [
         {
           "glyph": "À",
@@ -166,12 +166,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 92,
-          "y_adjust": 72,
+          "y_adjust": 44,
           "bounds": [
             95,
-            65,
-            327,
-            889
+            95,
+            342,
+            861
           ]
         },
         {
@@ -181,12 +181,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 92,
-          "y_adjust": 72,
+          "y_adjust": 44,
           "bounds": [
-            118,
-            65,
-            341,
-            892
+            103,
+            95,
+            342,
+            864
           ]
         },
         {
@@ -196,12 +196,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 92,
-          "y_adjust": 77,
+          "y_adjust": 49,
           "bounds": [
             93,
-            65,
+            95,
             357,
-            891
+            863
           ]
         },
         {
@@ -211,12 +211,12 @@
           "direction": "above",
           "parts": 2,
           "x_adjust": 92,
-          "y_adjust": 55,
+          "y_adjust": 27,
           "bounds": [
             88,
-            65,
+            95,
             359,
-            832
+            804
           ]
         },
         {
@@ -1155,13 +1155,13 @@
           "base": "H",
           "direction": "above",
           "parts": 1,
-          "x_adjust": 77,
-          "y_adjust": 74,
+          "x_adjust": 78,
+          "y_adjust": 49,
           "bounds": [
-            113,
-            50,
-            695,
-            888
+            103,
+            74,
+            707,
+            863
           ]
         },
         {
@@ -1186,12 +1186,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 92,
-          "y_adjust": 50,
+          "y_adjust": 22,
           "bounds": [
             76,
-            65,
+            95,
             371,
-            840
+            812
           ]
         },
         {
@@ -1201,12 +1201,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 92,
-          "y_adjust": 46,
+          "y_adjust": 18,
           "bounds": [
             83,
-            65,
+            95,
             353,
-            801
+            773
           ]
         },
         {
@@ -1216,12 +1216,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 92,
-          "y_adjust": 69,
+          "y_adjust": 41,
           "bounds": [
             94,
-            65,
+            95,
             350,
-            862
+            834
           ]
         },
         {
@@ -1231,12 +1231,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 92,
-          "y_adjust": 55,
+          "y_adjust": 27,
           "bounds": [
-            118,
-            65,
-            327,
-            835
+            103,
+            95,
+            342,
+            807
           ]
         },
         {
@@ -1306,12 +1306,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 80,
-          "y_adjust": 136,
+          "y_adjust": 118,
           "bounds": [
-            114,
-            125,
+            92,
+            142,
             322,
-            987
+            969
           ]
         },
         {
@@ -1338,10 +1338,10 @@
           "x_adjust": 80,
           "y_adjust": 0,
           "bounds": [
-            114,
+            92,
             -219,
-            293,
-            803
+            313,
+            785
           ]
         },
         {
@@ -2071,12 +2071,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 92,
-          "y_adjust": 76,
+          "y_adjust": 48,
           "bounds": [
             91,
-            65,
+            95,
             355,
-            890
+            862
           ]
         },
         {
@@ -2296,12 +2296,12 @@
           "direction": "above",
           "parts": 2,
           "x_adjust": 92,
-          "y_adjust": 69,
+          "y_adjust": 41,
           "bounds": [
             19,
-            65,
-            332,
-            885
+            95,
+            342,
+            857
           ]
         },
         {
@@ -2311,12 +2311,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 92,
-          "y_adjust": 55,
+          "y_adjust": 27,
           "bounds": [
             94,
-            65,
+            95,
             350,
-            862
+            834
           ]
         },
         {
@@ -2685,13 +2685,13 @@
           "base": "H",
           "direction": "below",
           "parts": 1,
-          "x_adjust": 77,
+          "x_adjust": 78,
           "y_adjust": 0,
           "bounds": [
-            113,
+            103,
             -179,
-            695,
-            705
+            707,
+            680
           ]
         },
         {
@@ -2715,13 +2715,13 @@
           "base": "H",
           "direction": "below",
           "parts": 1,
-          "x_adjust": 77,
+          "x_adjust": 78,
           "y_adjust": 0,
           "bounds": [
-            113,
+            103,
             -188,
-            695,
-            705
+            707,
+            680
           ]
         },
         {
@@ -2763,10 +2763,10 @@
           "x_adjust": 80,
           "y_adjust": 0,
           "bounds": [
-            114,
+            92,
             -179,
-            293,
-            803
+            313,
+            785
           ]
         },
         {
@@ -2796,7 +2796,7 @@
             60,
             -173,
             348,
-            803
+            785
           ]
         },
         {
@@ -3421,12 +3421,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 92,
-          "y_adjust": 82,
+          "y_adjust": 54,
           "bounds": [
-            118,
-            65,
-            327,
-            916
+            103,
+            95,
+            342,
+            888
           ]
         },
         {
@@ -3438,10 +3438,10 @@
           "x_adjust": 92,
           "y_adjust": 0,
           "bounds": [
-            118,
+            103,
             -179,
-            327,
-            708
+            342,
+            680
           ]
         },
         {
@@ -3677,8 +3677,8 @@
       "built": 243,
       "skipped_undetected": 25,
       "source_sha256": "50b68167346fa4dc5f8c6c8326c0668cfaa0e0c1dacb927b04acd2b31834d529",
-      "reference_sha256": "4206a2bc920a91f315ac6f94f31ec199c46d5031615510f75907c4fdaa6bbd96",
-      "output_sha256": "44d846195c4f2fc9428dd9183119f2b8e67b7e2035843c56d7af02632245f07a",
+      "reference_sha256": "f077bc32e29b9d3113698c150beca437213cd312066a385ae104e3afbf817a5d",
+      "output_sha256": "7f8f8e037ddd8ce96edd3c5f9f50301a31b774474890ceeae8f13130f695f4b4",
       "glyphs": [
         {
           "glyph": "À",
@@ -3837,12 +3837,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 86,
-          "y_adjust": 76,
+          "y_adjust": 52,
           "bounds": [
             83,
-            65,
-            336,
-            899
+            87,
+            349,
+            875
           ]
         },
         {
@@ -3852,12 +3852,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 86,
-          "y_adjust": 76,
+          "y_adjust": 52,
           "bounds": [
-            109,
-            65,
+            95,
+            87,
             349,
-            903
+            879
           ]
         },
         {
@@ -3867,12 +3867,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 86,
-          "y_adjust": 79,
+          "y_adjust": 55,
           "bounds": [
             83,
-            65,
+            87,
             366,
-            901
+            877
           ]
         },
         {
@@ -3882,12 +3882,12 @@
           "direction": "above",
           "parts": 2,
           "x_adjust": 86,
-          "y_adjust": 59,
+          "y_adjust": 35,
           "bounds": [
             72,
-            65,
+            87,
             371,
-            850
+            826
           ]
         },
         {
@@ -4826,13 +4826,13 @@
           "base": "H",
           "direction": "above",
           "parts": 1,
-          "x_adjust": 75,
-          "y_adjust": 76,
+          "x_adjust": 76,
+          "y_adjust": 57,
           "bounds": [
-            104,
-            50,
-            705,
-            898
+            96,
+            67,
+            714,
+            879
           ]
         },
         {
@@ -4842,12 +4842,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 86,
-          "y_adjust": 52,
+          "y_adjust": 28,
           "bounds": [
             63,
-            65,
+            87,
             377,
-            857
+            833
           ]
         },
         {
@@ -4857,12 +4857,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 86,
-          "y_adjust": 45,
+          "y_adjust": 21,
           "bounds": [
             75,
-            65,
+            87,
             361,
-            817
+            793
           ]
         },
         {
@@ -4872,12 +4872,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 86,
-          "y_adjust": 70,
+          "y_adjust": 46,
           "bounds": [
             82,
-            65,
+            87,
             361,
-            875
+            851
           ]
         },
         {
@@ -4887,12 +4887,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 86,
-          "y_adjust": 57,
+          "y_adjust": 33,
           "bounds": [
-            109,
-            65,
-            336,
-            854
+            95,
+            87,
+            349,
+            830
           ]
         },
         {
@@ -4961,13 +4961,13 @@
           "base": "l",
           "direction": "above",
           "parts": 1,
-          "x_adjust": 76,
-          "y_adjust": 135,
+          "x_adjust": 75,
+          "y_adjust": 121,
           "bounds": [
-            106,
-            125,
-            335,
-            997
+            88,
+            138,
+            334,
+            983
           ]
         },
         {
@@ -4991,13 +4991,13 @@
           "base": "l",
           "direction": "below",
           "parts": 1,
-          "x_adjust": 76,
+          "x_adjust": 75,
           "y_adjust": 0,
           "bounds": [
-            106,
+            88,
             -228,
-            303,
-            803
+            318,
+            789
           ]
         },
         {
@@ -5727,12 +5727,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 86,
-          "y_adjust": 78,
+          "y_adjust": 54,
           "bounds": [
             79,
-            65,
+            87,
             364,
-            900
+            876
           ]
         },
         {
@@ -5952,12 +5952,12 @@
           "direction": "above",
           "parts": 2,
           "x_adjust": 86,
-          "y_adjust": 73,
+          "y_adjust": 49,
           "bounds": [
             7,
-            65,
-            344,
-            896
+            87,
+            349,
+            872
           ]
         },
         {
@@ -5967,12 +5967,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 86,
-          "y_adjust": 56,
+          "y_adjust": 32,
           "bounds": [
             82,
-            65,
+            87,
             361,
-            875
+            851
           ]
         },
         {
@@ -6341,13 +6341,13 @@
           "base": "H",
           "direction": "below",
           "parts": 1,
-          "x_adjust": 75,
+          "x_adjust": 76,
           "y_adjust": 0,
           "bounds": [
-            104,
+            96,
             -191,
-            705,
-            705
+            714,
+            686
           ]
         },
         {
@@ -6371,13 +6371,13 @@
           "base": "H",
           "direction": "below",
           "parts": 1,
-          "x_adjust": 75,
+          "x_adjust": 76,
           "y_adjust": 0,
           "bounds": [
-            104,
+            96,
             -197,
-            705,
-            705
+            714,
+            686
           ]
         },
         {
@@ -6416,13 +6416,13 @@
           "base": "l",
           "direction": "below",
           "parts": 1,
-          "x_adjust": 76,
+          "x_adjust": 75,
           "y_adjust": 0,
           "bounds": [
-            106,
+            88,
             -191,
-            303,
-            803
+            318,
+            789
           ]
         },
         {
@@ -6446,13 +6446,13 @@
           "base": "l",
           "direction": "below",
           "parts": 1,
-          "x_adjust": 76,
+          "x_adjust": 75,
           "y_adjust": 0,
           "bounds": [
-            56,
+            55,
             -183,
-            359,
-            803
+            358,
+            789
           ]
         },
         {
@@ -7077,12 +7077,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 86,
-          "y_adjust": 84,
+          "y_adjust": 60,
           "bounds": [
-            109,
-            65,
-            336,
-            935
+            95,
+            87,
+            349,
+            911
           ]
         },
         {
@@ -7094,10 +7094,10 @@
           "x_adjust": 86,
           "y_adjust": 0,
           "bounds": [
-            109,
+            95,
             -191,
-            336,
-            708
+            349,
+            684
           ]
         },
         {
@@ -7333,8 +7333,8 @@
       "built": 243,
       "skipped_undetected": 25,
       "source_sha256": "8261803c2870f91db32f3c0506475a31189c5f16a2dfba35a5c0371faee890ef",
-      "reference_sha256": "05e86e41709522e4d0c2f1a0191c489b675b3539959bc1e3409e062eb1f5617a",
-      "output_sha256": "0dafc22b1bbc8787ca17af6c7d38cdecb76d0bdd0babf15ebcbedbfee1d038fc",
+      "reference_sha256": "329d19bcaa3e24390c0e92930af54600f60145a6c9d9453f2088bc1a9626e819",
+      "output_sha256": "c9eb1151374044b0622f10d09d42ba4814da5c8920de4184d7de1ed673c63f50",
       "glyphs": [
         {
           "glyph": "À",
@@ -7493,12 +7493,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 82,
-          "y_adjust": 79,
+          "y_adjust": 65,
           "bounds": [
             73,
-            65,
-            346,
-            907
+            79,
+            357,
+            893
           ]
         },
         {
@@ -7508,12 +7508,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 82,
-          "y_adjust": 80,
+          "y_adjust": 66,
           "bounds": [
-            99,
-            65,
+            88,
+            79,
             358,
-            912
+            898
           ]
         },
         {
@@ -7523,12 +7523,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 82,
-          "y_adjust": 82,
+          "y_adjust": 68,
           "bounds": [
             75,
-            65,
+            79,
             376,
-            912
+            898
           ]
         },
         {
@@ -7538,12 +7538,12 @@
           "direction": "above",
           "parts": 2,
           "x_adjust": 82,
-          "y_adjust": 62,
+          "y_adjust": 48,
           "bounds": [
             58,
-            65,
+            79,
             384,
-            865
+            851
           ]
         },
         {
@@ -8482,13 +8482,13 @@
           "base": "H",
           "direction": "above",
           "parts": 1,
-          "x_adjust": 73,
-          "y_adjust": 79,
+          "x_adjust": 74,
+          "y_adjust": 68,
           "bounds": [
-            94,
-            50,
-            714,
-            909
+            89,
+            60,
+            722,
+            898
           ]
         },
         {
@@ -8498,12 +8498,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 82,
-          "y_adjust": 55,
+          "y_adjust": 41,
           "bounds": [
             53,
-            65,
+            79,
             385,
-            873
+            859
           ]
         },
         {
@@ -8513,12 +8513,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 82,
-          "y_adjust": 45,
+          "y_adjust": 31,
           "bounds": [
             69,
-            65,
+            79,
             370,
-            832
+            818
           ]
         },
         {
@@ -8528,12 +8528,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 82,
-          "y_adjust": 72,
+          "y_adjust": 58,
           "bounds": [
             72,
-            65,
+            79,
             373,
-            887
+            873
           ]
         },
         {
@@ -8543,12 +8543,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 82,
-          "y_adjust": 59,
+          "y_adjust": 45,
           "bounds": [
-            99,
-            65,
-            346,
-            871
+            88,
+            79,
+            357,
+            857
           ]
         },
         {
@@ -8617,13 +8617,13 @@
           "base": "l",
           "direction": "above",
           "parts": 1,
-          "x_adjust": 72,
-          "y_adjust": 135,
+          "x_adjust": 70,
+          "y_adjust": 127,
           "bounds": [
-            97,
-            125,
-            347,
-            1008
+            83,
+            131,
+            345,
+            1000
           ]
         },
         {
@@ -8647,13 +8647,13 @@
           "base": "l",
           "direction": "below",
           "parts": 1,
-          "x_adjust": 72,
+          "x_adjust": 70,
           "y_adjust": 0,
           "bounds": [
-            97,
+            83,
             -237,
-            311,
-            803
+            323,
+            795
           ]
         },
         {
@@ -9383,12 +9383,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 82,
-          "y_adjust": 81,
+          "y_adjust": 67,
           "bounds": [
             70,
-            65,
+            79,
             373,
-            911
+            897
           ]
         },
         {
@@ -9608,12 +9608,12 @@
           "direction": "above",
           "parts": 2,
           "x_adjust": 82,
-          "y_adjust": 77,
+          "y_adjust": 63,
           "bounds": [
             -3,
-            65,
-            356,
-            906
+            79,
+            357,
+            892
           ]
         },
         {
@@ -9623,12 +9623,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 82,
-          "y_adjust": 56,
+          "y_adjust": 42,
           "bounds": [
             73,
-            65,
+            79,
             373,
-            887
+            873
           ]
         },
         {
@@ -9997,13 +9997,13 @@
           "base": "H",
           "direction": "below",
           "parts": 1,
-          "x_adjust": 73,
+          "x_adjust": 74,
           "y_adjust": 0,
           "bounds": [
-            94,
+            89,
             -203,
-            714,
-            705
+            722,
+            694
           ]
         },
         {
@@ -10027,13 +10027,13 @@
           "base": "H",
           "direction": "below",
           "parts": 1,
-          "x_adjust": 73,
+          "x_adjust": 74,
           "y_adjust": 0,
           "bounds": [
-            94,
+            89,
             -206,
-            714,
-            705
+            722,
+            694
           ]
         },
         {
@@ -10072,13 +10072,13 @@
           "base": "l",
           "direction": "below",
           "parts": 1,
-          "x_adjust": 72,
+          "x_adjust": 70,
           "y_adjust": 0,
           "bounds": [
-            97,
+            83,
             -203,
-            311,
-            803
+            323,
+            795
           ]
         },
         {
@@ -10102,13 +10102,13 @@
           "base": "l",
           "direction": "below",
           "parts": 1,
-          "x_adjust": 72,
+          "x_adjust": 70,
           "y_adjust": 0,
           "bounds": [
-            52,
+            50,
             -193,
-            368,
-            803
+            366,
+            795
           ]
         },
         {
@@ -10733,12 +10733,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 82,
-          "y_adjust": 86,
+          "y_adjust": 72,
           "bounds": [
-            99,
-            65,
-            346,
-            953
+            88,
+            79,
+            357,
+            939
           ]
         },
         {
@@ -10750,10 +10750,10 @@
           "x_adjust": 82,
           "y_adjust": 0,
           "bounds": [
-            99,
+            88,
             -203,
-            346,
-            708
+            357,
+            694
           ]
         },
         {
@@ -10989,8 +10989,8 @@
       "built": 243,
       "skipped_undetected": 25,
       "source_sha256": "4c4d514999eae9192313499e31b5e69b84a348e7fac2b1554a7728c6a14aa5ae",
-      "reference_sha256": "5adbec0e0508784f5f83addc7fa108f4d92af66fe897f6100778393fe330e08e",
-      "output_sha256": "0126fdb72a8eb1ac4a00ba600347ae5a33029f010e258bb6356e5acadc4b24b7",
+      "reference_sha256": "b50a655d05d3b216e19870c268486caa5b6b4ddaeb427cf536b109e43941ff94",
+      "output_sha256": "60154e2e82213c54085856f43baf125a1395f18cf30c612c1ba217fe39ec275d",
       "glyphs": [
         {
           "glyph": "À",
@@ -11148,13 +11148,13 @@
           "base": "I",
           "direction": "above",
           "parts": 1,
-          "x_adjust": 75,
-          "y_adjust": 83,
+          "x_adjust": 76,
+          "y_adjust": 77,
           "bounds": [
-            59,
-            65,
-            355,
-            917
+            60,
+            71,
+            365,
+            911
           ]
         },
         {
@@ -11163,13 +11163,13 @@
           "base": "I",
           "direction": "above",
           "parts": 1,
-          "x_adjust": 75,
-          "y_adjust": 84,
+          "x_adjust": 76,
+          "y_adjust": 78,
           "bounds": [
-            89,
-            65,
-            367,
-            924
+            80,
+            71,
+            368,
+            918
           ]
         },
         {
@@ -11178,13 +11178,13 @@
           "base": "I",
           "direction": "above",
           "parts": 1,
-          "x_adjust": 75,
-          "y_adjust": 85,
+          "x_adjust": 76,
+          "y_adjust": 79,
           "bounds": [
-            64,
             65,
-            386,
-            924
+            71,
+            387,
+            918
           ]
         },
         {
@@ -11193,13 +11193,13 @@
           "base": "I",
           "direction": "above",
           "parts": 2,
-          "x_adjust": 75,
-          "y_adjust": 66,
+          "x_adjust": 76,
+          "y_adjust": 60,
           "bounds": [
-            40,
-            65,
-            397,
-            884
+            41,
+            71,
+            398,
+            878
           ]
         },
         {
@@ -12138,13 +12138,13 @@
           "base": "H",
           "direction": "above",
           "parts": 1,
-          "x_adjust": 70,
-          "y_adjust": 82,
+          "x_adjust": 71,
+          "y_adjust": 79,
           "bounds": [
-            85,
-            50,
-            724,
-            921
+            80,
+            52,
+            730,
+            918
           ]
         },
         {
@@ -12153,13 +12153,13 @@
           "base": "I",
           "direction": "above",
           "parts": 1,
-          "x_adjust": 75,
-          "y_adjust": 58,
+          "x_adjust": 76,
+          "y_adjust": 52,
           "bounds": [
-            38,
-            65,
-            391,
-            893
+            39,
+            71,
+            392,
+            887
           ]
         },
         {
@@ -12168,13 +12168,13 @@
           "base": "I",
           "direction": "above",
           "parts": 1,
-          "x_adjust": 75,
-          "y_adjust": 44,
+          "x_adjust": 76,
+          "y_adjust": 38,
           "bounds": [
-            59,
-            65,
-            379,
-            849
+            60,
+            71,
+            380,
+            843
           ]
         },
         {
@@ -12183,13 +12183,13 @@
           "base": "I",
           "direction": "above",
           "parts": 1,
-          "x_adjust": 75,
-          "y_adjust": 74,
+          "x_adjust": 76,
+          "y_adjust": 68,
           "bounds": [
-            59,
-            65,
-            385,
-            902
+            60,
+            71,
+            386,
+            896
           ]
         },
         {
@@ -12198,13 +12198,13 @@
           "base": "I",
           "direction": "above",
           "parts": 1,
-          "x_adjust": 75,
-          "y_adjust": 61,
+          "x_adjust": 76,
+          "y_adjust": 55,
           "bounds": [
-            89,
-            65,
-            355,
-            892
+            80,
+            71,
+            365,
+            886
           ]
         },
         {
@@ -12273,13 +12273,13 @@
           "base": "l",
           "direction": "above",
           "parts": 1,
-          "x_adjust": 67,
-          "y_adjust": 134,
+          "x_adjust": 66,
+          "y_adjust": 132,
           "bounds": [
-            88,
-            125,
-            361,
-            1019
+            77,
+            126,
+            360,
+            1017
           ]
         },
         {
@@ -12303,13 +12303,13 @@
           "base": "l",
           "direction": "below",
           "parts": 1,
-          "x_adjust": 67,
+          "x_adjust": 66,
           "y_adjust": 0,
           "bounds": [
-            88,
+            77,
             -247,
-            321,
-            803
+            329,
+            801
           ]
         },
         {
@@ -13038,13 +13038,13 @@
           "base": "I",
           "direction": "above",
           "parts": 1,
-          "x_adjust": 75,
-          "y_adjust": 84,
+          "x_adjust": 76,
+          "y_adjust": 78,
           "bounds": [
-            57,
-            65,
-            383,
-            923
+            58,
+            71,
+            384,
+            917
           ]
         },
         {
@@ -13263,13 +13263,13 @@
           "base": "I",
           "direction": "above",
           "parts": 2,
-          "x_adjust": 75,
-          "y_adjust": 81,
+          "x_adjust": 76,
+          "y_adjust": 75,
           "bounds": [
-            -16,
-            65,
-            369,
-            918
+            -15,
+            71,
+            370,
+            912
           ]
         },
         {
@@ -13278,13 +13278,13 @@
           "base": "I",
           "direction": "above",
           "parts": 1,
-          "x_adjust": 75,
-          "y_adjust": 57,
+          "x_adjust": 76,
+          "y_adjust": 51,
           "bounds": [
-            60,
-            65,
-            385,
-            901
+            61,
+            71,
+            386,
+            895
           ]
         },
         {
@@ -13653,13 +13653,13 @@
           "base": "H",
           "direction": "below",
           "parts": 1,
-          "x_adjust": 70,
+          "x_adjust": 71,
           "y_adjust": 0,
           "bounds": [
-            85,
+            80,
             -217,
-            724,
-            705
+            730,
+            702
           ]
         },
         {
@@ -13683,13 +13683,13 @@
           "base": "H",
           "direction": "below",
           "parts": 1,
-          "x_adjust": 70,
+          "x_adjust": 71,
           "y_adjust": 0,
           "bounds": [
-            85,
+            80,
             -217,
-            724,
-            705
+            730,
+            702
           ]
         },
         {
@@ -13728,13 +13728,13 @@
           "base": "l",
           "direction": "below",
           "parts": 1,
-          "x_adjust": 67,
+          "x_adjust": 66,
           "y_adjust": 0,
           "bounds": [
-            88,
+            77,
             -217,
-            321,
-            803
+            329,
+            801
           ]
         },
         {
@@ -13758,13 +13758,13 @@
           "base": "l",
           "direction": "below",
           "parts": 1,
-          "x_adjust": 67,
+          "x_adjust": 66,
           "y_adjust": 0,
           "bounds": [
-            48,
+            47,
             -204,
-            380,
-            803
+            379,
+            801
           ]
         },
         {
@@ -14388,13 +14388,13 @@
           "base": "I",
           "direction": "above",
           "parts": 1,
-          "x_adjust": 75,
-          "y_adjust": 89,
+          "x_adjust": 76,
+          "y_adjust": 83,
           "bounds": [
-            89,
-            65,
-            358,
-            975
+            80,
+            71,
+            365,
+            969
           ]
         },
         {
@@ -14403,13 +14403,13 @@
           "base": "I",
           "direction": "below",
           "parts": 1,
-          "x_adjust": 75,
+          "x_adjust": 76,
           "y_adjust": 0,
           "bounds": [
-            89,
+            80,
             -217,
-            355,
-            708
+            365,
+            702
           ]
         },
         {
