@@ -4,6 +4,9 @@
 
 **Owner-approved goal:** Chunks should make ordered bundles (TV seasons, sequel packs and other numbered media) progressively usable in logical sequence without manual micromanagement of each file's static priorities. Automatic suggested ordering and a dynamic completion scheduler are in scope. **Engineering choices subject to evidence:** Normal/Balanced/Finish First/capability-gated Sequential Playback modes; rolling bounded priority windows and front-file stall fallback. **Boundaries:** mode choice is opt-in or disclosed as preference; no guaranteed ordering when swarm availability prevents it; respect manual priority and skipped files; remote rTorrent capability is independently validated; no false physical-device acceptance. Tracked in #415 and canonical PRODUCT/UX/ARCHITECTURE/WORK-QUEUE/SPEC-COVERAGE.
 
+## 2026-10-27: owner-approved movie/TV transfer artwork
+
+**Owner direction:** Decorate local and rTorrent transfer cards/details with recognizable preferably-square movie/TV artwork reflecting the supplied colorful multi-phone mockup. This is approved desired UI behavior, **not** approval of a particular provider, account/paid API, third-party terms or silent network lookups. **Provisional engineering direction:** native-square Fanart.tv/TheTVDB first, constrained TMDB/crop fallback, opt-in privacy-safe enrichment, confidence threshold and user correction, offline icons/cache. Provider choice and implementation gated by research. [TRANSFER-ARTWORK.md](TRANSFER-ARTWORK.md), [#403](https://github.com/gamesbyian/Chunks/issues/403). **Planned, not shipped.**
 
 Reconciled 2026-10-26 after current implementation/evidence review. **Owner** means explicitly requested; **Adopted (provisional)** is an engineering direction that can change after evidence; **Open** needs validation or decision. Implementing an assumption does not retroactively make it owner-approved.
 
