@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.os.CancellationSignal
 import android.view.WindowManager
+import io.github.gamesbyian.chunks.LocalEngineService
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -132,6 +133,9 @@ internal fun LocalTransferPrivacyGate(
                 authenticatedForChange = false)
             if (configured) {
                 mode = requested
+                // Remove stale, clickable foreground-service Stop all actions
+                // immediately when protection becomes enabled.
+                LocalEngineService.redactActiveNotification(context)
                 settingsOpen = false
                 notice = null
                 localRevision++
@@ -161,6 +165,8 @@ internal fun LocalTransferPrivacyGate(
             if (fresh && store.setMode(scope, requested, authenticatedForChange = true) &&
                 session.configure(scope, requested, authenticatedForChange = true)) {
                 mode = requested
+                if (requested != TransferLockMode.NEVER)
+                    LocalEngineService.redactActiveNotification(context)
                 settingsOpen = false
                 notice = "Privacy setting saved. Re-authentication may be required."
             } else {
