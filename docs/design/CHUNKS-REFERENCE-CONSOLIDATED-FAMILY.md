@@ -84,3 +84,17 @@ remains in `assets/fonts/source/OFL.txt`.
 
 The existing punctuation SVG sources and all preceding experimental OTF families
 remain selectable variants, not overwritten or discarded.
+
+## Initial compiled five-face optical evidence (2026-10-28)
+
+[Source-head CI 40640492388](https://github.com/gamesbyian/Chunks/actions/runs/40640492388) and [push CI 40640487275](https://github.com/gamesbyian/Chunks/actions/runs/40640487275) passed all four compiled CFF tests, deterministic raw build, full Unicode parity, native CFF family-name separation, unchanged nonpunctuation glyph/advance/shaping samples, and actual specimen generation. The five OTFs and per-weight JSON are retained on PR [#421](https://github.com/gamesbyian/Chunks/pull/421). The bot artifact commit was `08e9a2b6ee6c9c78b5d745e15a0bb9c9703ce0ff`, followed by a documentation reconciliation; require a final exact-head run before merging.
+
+| Face | Additional punctuation GPOS pairs | Corrections clipped by safety bound | Minimum sampled ink gap at 14px |
+| --- | ---: | ---: | ---: |
+| Regular 400 | 7,270 | 4,461 | 0.8281px |
+| Medium 500 | 7,363 | 4,380 | 0.7850px |
+| Semibold 600 | 7,670 | 4,476 | 0.6250px |
+| Bold 700 | 7,714 | 4,355 | 0.7188px |
+| ExtraBold 800 | 7,770 | 4,234 | 0.6094px |
+
+All sampled gaps were positive at 14/24/48/82px, but **the large number of clipped adjustments requires focused optical design review**. A safety-bound correction is not necessarily an aesthetically optimal one. These are shaped Pillow/libraqm raster measurements and cannot certify exhaustive Unicode collision clearance, original-reference fidelity, Android system text rasterization or user acceptance. Preserve the unclipped raw requested deltas in a future expanded metrics iteration for prioritized editorial correction.
