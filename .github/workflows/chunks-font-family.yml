@@ -9,6 +9,7 @@ on:
       - 'tools/requirements-chunks-font.txt'
       - 'tests/test_font_pipeline.py'
       - 'assets/fonts/**'
+      - 'docs/design/CHUNKS-FONT-ITERATION-2.md'
       - '.github/workflows/chunks-font-family.yml'
   pull_request:
     paths:
