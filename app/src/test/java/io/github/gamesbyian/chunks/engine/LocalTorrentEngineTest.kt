@@ -364,6 +364,75 @@ class LocalTorrentEngineTest {
             File(destination, "Chunks public fixture/episode.bin").readBytes())
     }
 
+    @Test fun legacyTrackerRepairVerifiesExactOriginalAndSurvivesRestartWithoutStarting() {
+        val fixture = fixture()
+        // libtorrent 2.1's TorrentBuilder defaults to hybrid v1/v2,
+        // intentionally refused by the app's strict v1 review importer.
+        // Generate a real v1-only definition for the exact user-source path.
+        val originalV1 = TorrentBuilder().path(fixture.root).pieceSize(64 * 1024)
+            .flags(TorrentBuilder.V1_ONLY).generate().entry().bencode()
+        val savedState = temp.newFolder("legacy-tracker-state")
+        val downloadPlace = temp.newFolder("legacy-tracker-place")
+        val engine = persistentEngine(savedState)
+        val existing = added(engine.addStopped(originalV1, downloadPlace))
+        val key = existing.infoHash
+        assertTrue(requireNotNull(engine.status(key)).stopped)
+        assertEquals(0, requireNotNull(engine.status(key)).trackers?.total)
+
+        val announce = "http://127.0.0.1:1/announce"
+        // Add announce at the root of the exact v1 torrent; keep the info
+        // dictionary identical so its infohash (and downloaded data) match.
+        val restoredSource = org.libtorrent4j.Entry.bdecode(originalV1)
+        restoredSource.dictionary()["announce"] = org.libtorrent4j.Entry(announce)
+        val repairedMetainfo = restoredSource.bencode()
+        val fromSource = io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader.preview(repairedMetainfo)
+        assertEquals(key, fromSource.infoHashV1)
+        assertEquals(1, fromSource.trackerCount)
+
+        assertEquals(LocalTrackerRepairOutcome.NOT_FOUND,
+            engine.repairMissingTrackers("f".repeat(40), repairedMetainfo))
+        val otherHash = originalV1.copyOf().apply { this[lastIndex - 8] = 'X'.code.toByte() }
+        assertEquals(LocalTrackerRepairOutcome.REFUSED,
+            engine.repairMissingTrackers(key, otherHash))
+        assertEquals(LocalTrackerRepairOutcome.REFUSED,
+            engine.repairMissingTrackers(key, originalV1))
+        assertEquals(LocalTrackerRepairOutcome.VERIFIED,
+            engine.repairMissingTrackers(key, repairedMetainfo))
+        val after = requireNotNull(engine.status(key))
+        assertTrue("Repair must not implicitly Start a legacy transfer", after.stopped)
+        assertEquals(1, after.trackers?.total)
+        assertEquals(downloadPlace.absolutePath, after.savePath)
+        assertEquals(0L, after.payloadDownloadedBytes)
+        assertEquals(LocalTrackerRepairOutcome.REFUSED,
+            engine.repairMissingTrackers(key, repairedMetainfo))
+        engine.close()
+
+        val restored = persistentEngine(savedState)
+        val reopened = requireNotNull(restored.status(key))
+        assertTrue("Restored legacy transfer still requires manual Start", reopened.stopped)
+        assertEquals(1, reopened.trackers?.total)
+        assertEquals(downloadPlace.absolutePath, reopened.savePath)
+        assertEquals(0L, reopened.payloadDownloadedBytes)
+        assertFalse("Repair never creates payload bytes",
+            File(downloadPlace, "Chunks public fixture/episode.bin").exists())
+    }
+
+    @Test fun legacyTrackerRepairRejectsRunningTorrentWithoutChangingItsTrackers() {
+        val fixture = fixture()
+        val originalV1 = TorrentBuilder().path(fixture.root).pieceSize(64 * 1024)
+            .flags(TorrentBuilder.V1_ONLY).generate().entry().bencode()
+        val engine = persistentEngine(temp.newFolder("running-repair-state"))
+        val original = added(engine.addStopped(originalV1, temp.newFolder("running-repair-place")))
+        val announce = "https://tracker.example.invalid/announce"
+        val withTracker = org.libtorrent4j.Entry.bdecode(originalV1)
+        withTracker.dictionary()["announce"] = org.libtorrent4j.Entry(announce)
+        val replacement = withTracker.bencode()
+        assertEquals(LocalCommandOutcome.VERIFIED, engine.resume(original.infoHash).outcome)
+        assertEquals(LocalTrackerRepairOutcome.REFUSED,
+            engine.repairMissingTrackers(original.infoHash, replacement))
+        assertEquals(0, engine.status(original.infoHash)?.trackers?.total)
+    }
+
     @Test fun refusesMagnetsWithoutExactlyOneV1Identity() {
         val engine = engine()
         val destination = temp.newFolder("d")
@@ -450,6 +519,88 @@ class LocalTorrentEngineTest {
         val state = requireNotNull(native.status(transfer.infoHash))
         assertTrue(state.stopped)
         assertEquals(0L, state.payloadDownloadedBytes)
+    }
+
+    @Test fun nativeLowNormalHighFilePrioritiesRequireExactFreshFileReview() {
+        val fixture = fixture()
+        val native = engine()
+        val dest = temp.newFolder("file-scheduling")
+        val transfer = added(native.addStopped(fixture.torrent, dest))
+        val original = requireNotNull(native.files(transfer.infoHash)).single {
+            it.path.endsWith("episode.bin")
+        }
+        assertEquals(4, original.priority)
+        assertTrue(original.wanted)
+        assertEquals(LocalFileBatchOutcome.VERIFIED,
+            native.setFilePriority(transfer.infoHash, original, 7))
+        val top = requireNotNull(native.files(transfer.infoHash)).single {
+            it.index == original.index
+        }
+        assertEquals(7, top.priority)
+        assertTrue(top.wanted)
+        assertEquals(LocalFileBatchOutcome.STALE_REVIEW,
+            native.setFilePriority(transfer.infoHash, original, 1))
+        assertEquals(LocalFileBatchOutcome.STALE_REVIEW,
+            native.setFilePriority(transfer.infoHash, top.copy(path = "wrong"), 1))
+        assertEquals(LocalFileBatchOutcome.UNCHANGED,
+            native.setFilePriority(transfer.infoHash, top, 7))
+        assertEquals(LocalFileBatchOutcome.VERIFIED,
+            native.setFilePriority(transfer.infoHash, top, 1))
+        val low = requireNotNull(native.files(transfer.infoHash)).single {
+            it.index == original.index
+        }
+        assertEquals(1, low.priority)
+        assertEquals(LocalFileBatchOutcome.VERIFIED,
+            native.setFilePriority(transfer.infoHash, low, 4))
+        assertEquals(4, requireNotNull(native.files(transfer.infoHash)).single {
+            it.index == original.index
+        }.priority)
+        assertEquals(LocalFileBatchOutcome.NOT_FOUND,
+            native.setFilePriority("f".repeat(40), low, 7))
+        try {
+            native.setFilePriority(transfer.infoHash, low, 0)
+            fail("Skipping needs a separate file selection control")
+        } catch (_: IllegalArgumentException) { }
+        val selected = requireNotNull(native.files(transfer.infoHash)).single {
+            it.index == original.index
+        }
+        assertEquals(LocalCommandOutcome.VERIFIED,
+            native.setFileWanted(transfer.infoHash, selected.index, false))
+        val skipped = requireNotNull(native.files(transfer.infoHash)).single {
+            it.index == original.index
+        }
+        assertEquals(0, skipped.priority)
+        assertEquals(LocalFileBatchOutcome.STALE_REVIEW,
+            native.setFilePriority(transfer.infoHash, skipped, 7))
+        assertTrue(requireNotNull(native.status(transfer.infoHash)).stopped)
+        assertEquals(0L, requireNotNull(native.status(transfer.infoHash)).payloadDownloadedBytes)
+    }
+
+    @Test fun reviewedNativeSchedulingPrioritySurvivesSavedEngineRestart() {
+        val fixture = fixture()
+        val state = temp.newFolder("file-priority-resume-state")
+        val destination = temp.newFolder("file-priority-resume-place")
+        val initial = persistentEngine(state)
+        val transfer = added(initial.addStopped(fixture.torrent, destination))
+        val original = requireNotNull(initial.files(transfer.infoHash)).single {
+            it.path.endsWith("episode.bin")
+        }
+        assertEquals(LocalFileBatchOutcome.VERIFIED,
+            initial.setFilePriority(transfer.infoHash, original, 7))
+        assertEquals(1, initial.saveResumeData())
+        initial.close()
+
+        val afterRestart = persistentEngine(state)
+        assertTrue(afterRestart.restoreProblems.isEmpty())
+        val restored = requireNotNull(afterRestart.files(transfer.infoHash)).single {
+            it.index == original.index
+        }
+        assertTrue(restored.wanted)
+        assertEquals(7, restored.priority)
+        val session = requireNotNull(afterRestart.status(transfer.infoHash))
+        assertTrue("An explicit scheduling preference must never auto-start", session.stopped)
+        assertEquals(destination.absolutePath, session.savePath)
+        assertEquals(0L, session.payloadDownloadedBytes)
     }
 
     @Test fun skippedFileIsNotDownloadedUntilSelected() {
@@ -553,6 +704,24 @@ class LocalTorrentEngineTest {
         assertEquals(listOf("http://a/announce") to listOf(0),
             parse(str("announce") + str("http://a/announce")))
         assertEquals(emptyList<String>() to emptyList<Int>(), parse(""))
+    }
+
+    @Test fun trackerSummaryCountsWorkingTrackersWithoutExposingUrls() {
+        LoopbackTracker().use { tracker ->
+            val parent = temp.newFolder("summary-seed")
+            val root = File(parent, "Summary fixture").apply { mkdirs() }
+            File(root, "payload.bin").writeBytes(ByteArray(40_000).also { Random(3).nextBytes(it) })
+            val torrent = TorrentBuilder().path(root).pieceSize(16 * 1024)
+                .addTracker(tracker.announceUrl).generate().entry().bencode()
+            val instance = engine()
+            val status = added(instance.addStopped(torrent, parent))
+            assertEquals(LocalTrackerSummary(1, 0, 0, 0), status.trackers)
+            assertEquals(LocalCommandOutcome.VERIFIED, instance.resume(status.infoHash).outcome)
+            waitFor(20_000) { instance.status(status.infoHash)?.trackers?.working == 1 }
+            assertTrue(instance.status(status.infoHash).toString().contains("trackers=LocalTrackerSummary"))
+            assertTrue("Status must never carry tracker URLs",
+                !instance.status(status.infoHash).toString().contains("announce"))
+        }
     }
 
     @Test fun exportedTorrentKeepsIdentityAndTrackersForServerHandoff() {

@@ -64,8 +64,18 @@ class LocalEngineService : Service() {
         /** Pause every running transfer and persist state. Safe to call without the service. */
         fun pauseAll(context: Context) {
             val engine = LocalEngineHolder.current() ?: return
-            engine.list().filter { !it.stopped }.forEach { engine.pause(it.infoHash, readbackTimeoutMs = 2_000) }
-            engine.saveResumeData()
+            // Attempt each Stop independently. One uncertain native command
+            // must not prevent pausing the other active phone transfers.
+            val active = try { engine.list().filter { !it.stopped } }
+                catch (_: Exception) { null }
+            active?.forEach { transfer ->
+                try { engine.pause(transfer.infoHash, readbackTimeoutMs = 2_000) }
+                catch (_: Exception) {
+                    // An uncertain outcome must be observed afresh, not retried.
+                }
+            }
+            // Always attempt persistence, including after a failed Stop.
+            try { engine.saveResumeData() } catch (_: Exception) { }
         }
     }
 

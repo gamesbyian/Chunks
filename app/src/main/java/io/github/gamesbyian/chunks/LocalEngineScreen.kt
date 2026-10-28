@@ -58,6 +58,7 @@ import io.github.gamesbyian.chunks.engine.LocalCommandOutcome
 import io.github.gamesbyian.chunks.engine.LocalFileBatchOutcome
 import io.github.gamesbyian.chunks.engine.LocalEngineConfig
 import io.github.gamesbyian.chunks.engine.LocalRateLimits
+import io.github.gamesbyian.chunks.engine.LocalTrackerRepairOutcome
 import io.github.gamesbyian.chunks.engine.LocalTorrentEngine
 import io.github.gamesbyian.chunks.engine.LocalTransferState
 import io.github.gamesbyian.chunks.engine.LocalTransferFile
@@ -202,6 +203,8 @@ internal fun LocalEngineScreen(
     onBack: (() -> Unit)? = null,
     initialMagnet: String? = null,
     initialTorrentUri: Uri? = null,
+    /** A connected, independently privacy-gated rTorrent Add screen is available. */
+    canReviewOnConnectedServer: Boolean = false,
     onTorrentConsumed: () -> Unit = {},
     onPrefillConsumed: () -> Unit = {},
     onPrepareRemote: ((String) -> Unit)? = null,
@@ -257,6 +260,11 @@ internal fun LocalEngineScreen(
     var filesFor by remember { mutableStateOf<String?>(null) }
     var files by remember { mutableStateOf<List<LocalTransferFile>?>(null) }
     var pending by remember { mutableStateOf<PendingLocalAdd?>(null) }
+    var repairSelectionHash by remember { mutableStateOf<String?>(null) }
+    var repairSelectionBusy by remember { mutableStateOf(false) }
+    var repairReview by remember {
+        mutableStateOf<Pair<String, SharedTorrentDocument.Reviewed>?>(null)
+    }
     var addStorage by remember {
         mutableStateOf<Pair<String, LocalAddStoragePreflight>?>(null)
     }
@@ -444,6 +452,37 @@ internal fun LocalEngineScreen(
         }
     }
 
+    val trackerRepairPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        val selectedHash = repairSelectionHash
+        repairSelectionHash = null
+        if (uri == null || selectedHash == null) return@rememberLauncherForActivityResult
+        repairSelectionBusy = true
+        repairReview = null
+        scope.launch {
+            try {
+                val reviewed = withContext(Dispatchers.IO) {
+                    SharedTorrentDocument.read(context.contentResolver, uri)
+                }
+                if (reviewed.preview.infoHashV1 != selectedHash) {
+                    message = "This .torrent has a different infohash. The existing phone transfer was untouched."
+                } else if (reviewed.preview.trackerCount < 1) {
+                    message = "That .torrent contains no usable tracker announce endpoints. Nothing changed."
+                } else {
+                    repairReview = selectedHash to reviewed
+                    message = "Original identity verified. Review the tracker repair below before confirming."
+                }
+            } catch (cancel: kotlinx.coroutines.CancellationException) {
+                throw cancel
+            } catch (_: Exception) {
+                message = "This .torrent was unavailable, invalid or unsupported. No tracker change occurred."
+            } finally {
+                repairSelectionBusy = false
+            }
+        }
+    }
+
     LaunchedEffect(initialTorrentUri) {
         val externalUri = initialTorrentUri ?: return@LaunchedEffect
         // Never start the torrent from an external VIEW/SEND Intent. Only
@@ -466,6 +505,12 @@ internal fun LocalEngineScreen(
     }
 
     val scrollState = rememberScrollState()
+    LaunchedEffect(repairReview?.first) {
+        // The source chooser is launched from a card deep in a long queue.
+        // Return to the review at the top rather than hide a confirmation
+        // elsewhere in the scrollable page.
+        if (repairReview != null) scrollState.animateScrollTo(0)
+    }
     val viewportHeightPx = with(LocalDensity.current) {
         LocalConfiguration.current.screenHeightDp.dp.roundToPx()
     }
@@ -601,6 +646,84 @@ internal fun LocalEngineScreen(
                 proposedAddDestination != null,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text(if (startAfterAdd) "Add magnet and start" else "Add magnet (metadata only)") }
         }
+        repairReview?.let { prepared ->
+            val (hash, source) = prepared
+            val observed = transfers.singleOrNull { it.infoHash == hash }
+            val eligible = observed?.stopped == true && observed.metadataKnown &&
+                observed.trackers?.total == 0 && !inventoryStale && !busy &&
+                !repairSelectionBusy
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.fillMaxWidth().padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Review missing-tracker repair",
+                        style = MaterialTheme.typography.titleMedium)
+                    Text("Original: " + source.preview.name + " · " +
+                        source.preview.trackerCount + " usable tracker(s)")
+                    Text("Matching exact infohash: " + hash,
+                        style = MaterialTheme.typography.bodySmall)
+                    Text("Only the missing tracker list in this stopped phone torrent " +
+                        "will be restored, then saved to its existing resume record. " +
+                        "No downloaded files, destination, file priorities, or running " +
+                        "state are changed. Tracker addresses may contain private " +
+                        "passkeys and can disclose your IP if you later Start. " +
+                        "Repair never starts a torrent or makes an rTorrent request.",
+                        style = MaterialTheme.typography.bodySmall)
+                    if (!eligible) {
+                        Text("The phone queue changed, became stale, or the transfer " +
+                            "already has trackers or is running. The repair cannot proceed.",
+                            color = MaterialTheme.colorScheme.error)
+                    }
+                    Row(Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = {
+                                // One confirmed native operation. The engine repeats
+                                // all identity/stop/empty-tracker checks atomically.
+                                repairReview = null
+                                performLocalMutation {
+                                    try {
+                                        val result = withContext(Dispatchers.IO) {
+                                            LocalEngineHolder.current()
+                                                ?.repairMissingTrackers(hash, source.bytes)
+                                                ?: LocalTrackerRepairOutcome.NOT_FOUND
+                                        }
+                                        message = when (result) {
+                                            LocalTrackerRepairOutcome.VERIFIED ->
+                                                "Missing trackers restored and verified in the " +
+                                                "saved phone session. The torrent is still stopped; " +
+                                                "press Start separately when ready."
+                                            LocalTrackerRepairOutcome.REFUSED ->
+                                                "Tracker repair refused: the original or current " +
+                                                "stopped transfer did not satisfy the safety checks."
+                                            LocalTrackerRepairOutcome.NOT_FOUND ->
+                                                "That torrent is no longer in the phone engine."
+                                            LocalTrackerRepairOutcome.UNCERTAIN -> {
+                                                inventoryFrame = inventoryFrame.copy(stale = true)
+                                                "Tracker repair or resume persistence was not verified. " +
+                                                "Refresh the phone list before making another change; " +
+                                                "do not blindly retry."
+                                            }
+                                        }
+                                    } catch (cancel: kotlinx.coroutines.CancellationException) {
+                                        throw cancel
+                                    } catch (_: Exception) {
+                                        inventoryFrame = inventoryFrame.copy(stale = true)
+                                        message = "Tracker repair was not confirmed. Check a fresh " +
+                                            "phone status before any other change."
+                                    }
+                                }
+                            },
+                            enabled = eligible, modifier = Modifier.weight(1f)
+                                .heightIn(min = 48.dp)
+                        ) { Text("Confirm repair") }
+                        OutlinedButton(
+                            onClick = { repairReview = null },
+                            modifier = Modifier.weight(1f).heightIn(min = 48.dp)
+                        ) { Text("Cancel") }
+                    }
+                }
+            }
+        }
         if (placeResolution != null && destination == null)
             Text("Phone storage for Chunks is unavailable right now.",
                 color = MaterialTheme.colorScheme.error)
@@ -614,6 +737,19 @@ internal fun LocalEngineScreen(
         }
 
         val add = pending
+        if (add != null && canReviewOnConnectedServer &&
+            onPrepareRemoteTorrent != null) {
+            ReviewedTorrentTargetChooser(
+                verifiedTorrentBytes = add.bytes,
+                enabled = !busy && !inventoryStale,
+                onPrepareServerReview = { original ->
+                    // The parent only enables this action for an authenticated,
+                    // independently privacy-gated remote target.
+                    onPrepareRemoteTorrent(original)
+                    pending = null
+                }
+            )
+        }
         if (add != null && destination != null) LocalAddReview(
             add.preview, proposedAddDestination ?: destination,
             placeTitle = place?.title,
@@ -810,6 +946,13 @@ internal fun LocalEngineScreen(
                 aliasStore.get(TransferCollectionStore.LOCAL_ENGINE_SCOPE, transfer.infoHash)
             }
             LocalTransferCard(transfer, busy || inventoryStale,
+                onRepairTrackers = if (transfer.stopped && transfer.metadataKnown &&
+                    transfer.trackers?.total == 0) ({
+                    repairReview = null
+                    repairSelectionHash = transfer.infoHash
+                    message = null
+                    trackerRepairPicker.launch(arrayOf("*/*"))
+                }) else null,
                 observedGrowth = observedDeltas[transfer.infoHash].takeIf {
                     !inventoryStale && !busy
                 },
@@ -886,6 +1029,42 @@ internal fun LocalEngineScreen(
                             inventoryFrame = inventoryFrame.copy(stale = true)
                             files = null
                             message = "File selection or readback failed. Wait for fresh status before trying again."
+                        }
+                    }
+                },
+                onFilePriority = { reviewed, newPriority ->
+                    performLocalMutation {
+                        try {
+                            val outcome = withContext(Dispatchers.IO) {
+                                LocalEngineHolder.current()?.setFilePriority(
+                                    transfer.infoHash, reviewed, newPriority)
+                                    ?: LocalFileBatchOutcome.NOT_FOUND
+                            }
+                            if (outcome !in setOf(LocalFileBatchOutcome.VERIFIED,
+                                    LocalFileBatchOutcome.UNCHANGED)) {
+                                inventoryFrame = inventoryFrame.copy(stale = true)
+                            }
+                            message = when (outcome) {
+                                LocalFileBatchOutcome.VERIFIED ->
+                                    "Native file download priority verified. No downloaded data was deleted."
+                                LocalFileBatchOutcome.UNCHANGED ->
+                                    "This file already has that priority. Nothing changed."
+                                LocalFileBatchOutcome.STALE_REVIEW ->
+                                    "File identity or priority changed during review. Refresh files first."
+                                LocalFileBatchOutcome.NOT_FOUND ->
+                                    "The target file or transfer was not found."
+                                LocalFileBatchOutcome.UNCERTAIN ->
+                                    "Native file priority change not confirmed. Refresh status before another change."
+                            }
+                            files = withContext(Dispatchers.IO) {
+                                LocalEngineHolder.current()?.files(transfer.infoHash)
+                            }
+                        } catch (cancel: kotlinx.coroutines.CancellationException) {
+                            throw cancel
+                        } catch (_: Exception) {
+                            inventoryFrame = inventoryFrame.copy(stale = true)
+                            files = null
+                            message = "File priority outcome is uncertain. Refresh before another change."
                         }
                     }
                 },
@@ -1098,9 +1277,11 @@ internal fun LocalTransferCard(
     onShowFiles: () -> Unit = {},
     onFileWanted: (Int, Boolean) -> Unit = { _, _ -> },
     onBatchFileWanted: ((List<LocalTransferFile>, Boolean) -> Unit)? = null,
+    onFilePriority: ((LocalTransferFile, Int) -> Unit)? = null,
     alias: String? = null,
     onSaveAlias: ((String?) -> Boolean)? = null,
     onPrepareRemote: (() -> Unit)? = null,
+    onRepairTrackers: (() -> Unit)? = null,
     observedGrowth: LocalProgressHistory.ObservedDelta? = null
 ) {
     var confirmRemove by remember(transfer.infoHash) { mutableStateOf(false) }
@@ -1121,6 +1302,19 @@ internal fun LocalTransferCard(
                 )
             }
             Text(stateLabel(transfer) + " · " + percent + "% · " + transfer.peers + " peers")
+            if (!transfer.stopped) {
+                // The libtorrent status sample is an instantaneous estimate;
+                // unlike the independent observed-growth window below, it
+                // must not be presented as verified bytes or a lasting trend.
+                Text("Live payload ↓ " +
+                    Units.bytes(transfer.downloadPayloadRateBytesPerSecond.toLong()) + "/s · ↑ " +
+                    Units.bytes(transfer.uploadPayloadRateBytesPerSecond.toLong()) + "/s",
+                    style = MaterialTheme.typography.bodySmall)
+            }
+            LocalTrackerSummaryText.describe(transfer.trackers, transfer.stopped,
+                LocalEngineHolder.dhtPreferred(LocalContext.current))?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall)
+            }
             ChunkedProgressBar(progress = transfer.progressPpm / 1_000_000f,
                 modifier = Modifier.fillMaxWidth().semantics { stateDescription = "$percent percent complete" })
             // totalWantedDone is hash-verified completed payload; allTimeDownload
@@ -1171,6 +1365,14 @@ internal fun LocalTransferCard(
                     Text(if (filesShown) "Hide files" else "Files")
                 }
             }
+            if (onRepairTrackers != null && transfer.stopped &&
+                transfer.metadataKnown && transfer.trackers?.total == 0) {
+                OutlinedButton(
+                    onClick = onRepairTrackers,
+                    enabled = !busy,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                ) { Text("Repair missing trackers from original .torrent…") }
+            }
             if (onPrepareRemote != null &&
                 TorrentIdentityHandoff.prepare(transfer.infoHash, transfer.name) != null) {
                 OutlinedButton(onClick = { confirmHandoff = true }, enabled = !busy,
@@ -1201,7 +1403,8 @@ internal fun LocalTransferCard(
             }
             if (filesShown) LocalFileSelection(
                 files, busy, transferKey = transfer.infoHash,
-                onFileWanted = onFileWanted, onBatchFileWanted = onBatchFileWanted
+                onFileWanted = onFileWanted, onBatchFileWanted = onBatchFileWanted,
+                onFilePriority = onFilePriority
             )
             if (confirmRemove) {
                 Text("Remove from the phone engine only. Downloaded files stay in Chunks' folder; sharing of this torrent stops.")
@@ -1227,6 +1430,7 @@ internal fun LocalFileSelection(
     busy: Boolean,
     transferKey: String? = null,
     onBatchFileWanted: ((List<LocalTransferFile>, Boolean) -> Unit)? = null,
+    onFilePriority: ((LocalTransferFile, Int) -> Unit)? = null,
     onFileWanted: (Int, Boolean) -> Unit
 ) {
     if (files == null) {
@@ -1244,7 +1448,7 @@ internal fun LocalFileSelection(
     val reviewFingerprint = remember(files) {
         files.map { file ->
             listOf(file.index.toString(), file.path, file.sizeBytes.toString(),
-                file.wanted.toString())
+                file.wanted.toString(), file.priority.toString())
         }
     }
     // Key pending confirmation to the exact review identity instead of
@@ -1252,6 +1456,9 @@ internal fun LocalFileSelection(
     // newly clicked Select/Skip button on the first Compose frame.
     var pendingBatch by remember(transferKey, page, reviewFingerprint) {
         mutableStateOf<Boolean?>(null)
+    }
+    var priorityEditorIndex by remember(transferKey, page, reviewFingerprint) {
+        mutableStateOf<Int?>(null)
     }
     Text("Untick a file to skip downloading it. Already downloaded parts are kept.",
         style = MaterialTheme.typography.bodySmall)
@@ -1306,15 +1513,51 @@ internal fun LocalFileSelection(
         // Multiplying done bytes by 100 can overflow Long for large files.
         val percent = if (file.sizeBytes <= 0L) 100 else
             (file.doneBytes.toDouble() / file.sizeBytes * 100).toInt().coerceIn(0, 100)
-        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
-            .toggleable(value = file.wanted, enabled = !busy, role = Role.Checkbox,
-                onValueChange = { onFileWanted(file.index, it) }),
-            verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(checked = file.wanted, onCheckedChange = null)
-            Column(Modifier.padding(start = 8.dp).weight(1f)) {
-                Text(file.path.substringAfterLast('/'), style = MaterialTheme.typography.bodyMedium)
-                Text(Units.bytes(file.sizeBytes) + " · " + percent + "%" + if (file.wanted) "" else " · skipped",
-                    style = MaterialTheme.typography.bodySmall)
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.weight(1f).heightIn(min = 48.dp)
+                .toggleable(value = file.wanted, enabled = !busy, role = Role.Checkbox,
+                    onValueChange = { onFileWanted(file.index, it) }),
+                verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(checked = file.wanted, onCheckedChange = null)
+                Column(Modifier.padding(start = 8.dp).weight(1f)) {
+                    Text(file.path.substringAfterLast('/'),
+                        style = MaterialTheme.typography.bodyMedium)
+                    Text(Units.bytes(file.sizeBytes) + " · " + percent + "%" +
+                        if (file.wanted) "" else " · skipped",
+                        style = MaterialTheme.typography.bodySmall)
+                }
+            }
+            if (file.wanted && onFilePriority != null) {
+                val priorityName = when (file.priority) {
+                    1 -> "Low"
+                    4 -> "Normal"
+                    7 -> "High"
+                    else -> "Custom"
+                }
+                OutlinedButton(
+                    onClick = { priorityEditorIndex =
+                        if (priorityEditorIndex == file.index) null else file.index },
+                    enabled = !busy,
+                    modifier = Modifier.heightIn(min = 48.dp)
+                ) { Text("Priority: " + priorityName) }
+            }
+        }
+        if (file.wanted && priorityEditorIndex == file.index &&
+            onFilePriority != null) {
+            Text("Change download priority for " + file.path.substringAfterLast('/') +
+                ". This affects piece scheduling, not the files already downloaded.",
+                style = MaterialTheme.typography.bodySmall)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                listOf(1 to "Low", 4 to "Normal", 7 to "High").forEach { (value, label) ->
+                    OutlinedButton(
+                        onClick = {
+                            priorityEditorIndex = null
+                            onFilePriority(file, value)
+                        },
+                        enabled = !busy && file.priority != value,
+                        modifier = Modifier.weight(1f).heightIn(min = 48.dp)
+                    ) { Text(label) }
+                }
             }
         }
     }

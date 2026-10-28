@@ -30,6 +30,7 @@ class LocalEngineServiceInstrumentedTest {
     private val notifications get() = context.getSystemService(NotificationManager::class.java)
     private lateinit var work: File
     private var hash: String? = null
+    private var secondHash: String? = null
 
     @Before fun setUp() {
         instrumentation.uiAutomation.grantRuntimePermission(context.packageName, Manifest.permission.POST_NOTIFICATIONS)
@@ -38,6 +39,7 @@ class LocalEngineServiceInstrumentedTest {
 
     @After fun tearDown() {
         hash?.let { LocalEngineHolder.current()?.removeKeepingData(it) }
+        secondHash?.let { LocalEngineHolder.current()?.removeKeepingData(it) }
         context.stopService(Intent(context, LocalEngineService::class.java))
         work.deleteRecursively()
     }
@@ -68,6 +70,38 @@ class LocalEngineServiceInstrumentedTest {
             .setAction(LocalEngineService.ACTION_STOP_ALL))
         waitFor("transfer paused by Stop all") { engine.status(added.infoHash)?.stopped == true }
         waitFor("notification removed") { !ongoing() }
+    }
+
+    @Test fun notificationStopAllPausesEveryRunningTransferNotJustTheFirst() {
+        fun torrent(name: String, seed: Int): ByteArray {
+            val root = File(work, name).apply { mkdirs() }
+            File(root, "payload.bin").writeBytes(ByteArray(65_536).also {
+                Random(seed.toLong()).nextBytes(it)
+            })
+            return TorrentBuilder().path(root).pieceSize(16 * 1024).generate()
+                .entry().bencode()
+        }
+        val engine = LocalEngineHolder.get(context)
+        val first = (engine.addStopped(torrent("Batch one", 9), work)
+            as LocalAddResult.AddedStopped).status
+        val second = (engine.addStopped(torrent("Batch two", 10), work)
+            as LocalAddResult.AddedStopped).status
+        hash = first.infoHash
+        secondHash = second.infoHash
+        assertEquals(LocalCommandOutcome.VERIFIED, engine.resume(first.infoHash).outcome)
+        assertEquals(LocalCommandOutcome.VERIFIED, engine.resume(second.infoHash).outcome)
+
+        LocalEngineService.start(context)
+        waitFor("notification with both active transfers") { ongoing() }
+        context.startForegroundService(Intent(context, LocalEngineService::class.java)
+            .setAction(LocalEngineService.ACTION_STOP_ALL))
+        waitFor("both transfers paused by one Stop all") {
+            engine.status(first.infoHash)?.stopped == true &&
+                engine.status(second.infoHash)?.stopped == true
+        }
+        waitFor("foreground notification removed after both paused") { !ongoing() }
+        assertEquals(0L, engine.status(first.infoHash)?.payloadDownloadedBytes)
+        assertEquals(0L, engine.status(second.infoHash)?.payloadDownloadedBytes)
     }
 
     @Test fun serviceStopsItselfOnceNothingIsRunning() {

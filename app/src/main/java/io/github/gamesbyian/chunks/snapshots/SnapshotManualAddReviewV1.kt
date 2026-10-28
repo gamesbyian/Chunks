@@ -27,11 +27,7 @@ internal object SnapshotManualAddReviewV1 {
             reviewedEntry.selectedForReview) {
             "Only missing verified torrent definitions can populate Add review"
         }
-        val target = currentTargetHashes.map { it.lowercase(Locale.ROOT) }
-        require(target.size == target.toSet().size &&
-            target.all { it.matches(Regex("(?:[0-9a-f]{40}|[0-9a-f]{64})")) }) {
-            "Phone inventory contains an ambiguous identity"
-        }
+        val target = verifiedTargetHashes(currentTargetHashes)
         require(reviewedEntry.infoHashV1 !in target) {
             "Torrent already exists in the phone inventory"
         }
@@ -67,8 +63,8 @@ internal object SnapshotManualAddReviewV1 {
             reviewedEntry.selectedForReview) {
             "Only missing magnet records can populate an Add review"
         }
-        val target = currentTargetHashes.map { it.lowercase(Locale.ROOT) }
-        require(target.size == target.toSet().size && reviewedEntry.infoHashV1 !in target) {
+        val target = verifiedTargetHashes(currentTargetHashes)
+        require(reviewedEntry.infoHashV1 !in target) {
             "Torrent already exists in the target inventory"
         }
         val matched = verified.manifest.items.singleOrNull {
@@ -84,4 +80,21 @@ internal object SnapshotManualAddReviewV1 {
         }
         return magnet
     }
+
+    /**
+     * A complete inventory is only useful as an absence proof when every
+     * identity is well-formed and unambiguous. Apply the same fail-closed
+     * check to both original-metainfo and magnet-only manual Add drafts.
+     */
+    private fun verifiedTargetHashes(hashes: List<String>): Set<String> {
+        require(hashes.size <= 20_000) { "Target inventory exceeds comparison limit" }
+        val normalized = hashes.map { it.lowercase(Locale.ROOT) }
+        require(normalized.all { TARGET_HASH.matches(it) } &&
+            normalized.size == normalized.toSet().size) {
+            "Target inventory contains unsupported or duplicated identities"
+        }
+        return normalized.toSet()
+    }
+
+    private val TARGET_HASH = Regex("[0-9a-f]{40}([0-9a-f]{24})?")
 }

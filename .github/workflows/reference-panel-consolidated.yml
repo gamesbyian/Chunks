@@ -1,0 +1,81 @@
+name: Consolidated Chunks Reference Panel CFF font specimens
+on:
+  push:
+    paths:
+      - 'tools/build_reference_panel_consolidated.py'
+      - 'tools/render_reference_panel_consolidated.py'
+      - 'tools/build_reference_panel_weight_studies.py'
+      - 'tools/build_reference_accent_kerned.py'
+      - 'tools/build_chunks_fonts.py'
+      - 'tests/test_reference_panel_consolidated.py'
+      - 'assets/fonts/source/reference-punctuation/**'
+      - 'assets/fonts/experimental/dotless-kerned/**'
+      - 'assets/fonts/experimental/consolidated/**'
+      - 'tools/reference_weight_profiles.json'
+      - '.github/workflows/reference-panel-consolidated.yml'
+      - 'docs/design/CHUNKS-REFERENCE-CONSOLIDATED-FAMILY.md'
+  pull_request:
+    paths:
+      - 'tools/build_reference_panel_consolidated.py'
+      - 'tools/render_reference_panel_consolidated.py'
+      - 'tools/build_reference_panel_weight_studies.py'
+      - 'tools/build_reference_accent_kerned.py'
+      - 'tools/build_chunks_fonts.py'
+      - 'tests/test_reference_panel_consolidated.py'
+      - 'assets/fonts/source/reference-punctuation/**'
+      - 'assets/fonts/experimental/dotless-kerned/**'
+      - 'assets/fonts/experimental/consolidated/**'
+      - 'tools/reference_weight_profiles.json'
+      - '.github/workflows/reference-panel-consolidated.yml'
+      - 'docs/design/CHUNKS-REFERENCE-CONSOLIDATED-FAMILY.md'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: chunks-font-consolidated-${{ github.event_name }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+jobs:
+  assemble-five-nonshipping-cff-faces:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install pinned font geometry and HarfBuzz shaping dependencies
+        run: python -m pip install -r tools/requirements-reference-panel-weights.txt
+      - name: Rebuild all five final-outline punctuation candidates and optical GPOS
+        run: python tools/build_reference_panel_consolidated.py
+      - name: Verify exact 28 reference punctuation forms, 856 codepoints and unchanged nonpunctuation shapes
+        run: python -m unittest discover -s tests -p test_reference_panel_consolidated.py -v
+      - name: Render five-weight native CFF typography specimen
+        run: python tools/render_reference_panel_consolidated.py
+      - name: Upload candidates, full per-glyph metrics and source license
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-five-consolidated-reference-panel-otfs
+          path: |
+            assets/fonts/experimental/consolidated/*
+            reference-panel-consolidated-five-weights.png
+            assets/fonts/source/OFL.txt
+          retention-days: 30
+      - name: Check in reproducible nonshipping OTFs from feature branch only
+        if: github.event_name == 'push' && github.ref != 'refs/heads/main'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add assets/fonts/experimental/consolidated
+          if ! git diff --cached --quiet; then
+            git commit -m 'build(font): preserve five compiled consolidated reference OTFs'
+            branch="${GITHUB_REF#refs/heads/}"
+            for attempt in 1 2 3; do
+              git fetch origin "$branch"
+              git rebase "origin/$branch"
+              if git push origin "HEAD:$branch"; then exit 0; fi
+            done
+            echo 'Concurrent changes prevented safe artifact commit' >&2
+            exit 1
+          fi

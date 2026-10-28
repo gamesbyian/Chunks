@@ -28,7 +28,8 @@ internal object LocalFileBatchPlanner {
             val actual = live[item.index] ?: return null
             if (actual.path != item.path ||
                 actual.sizeBytes != item.sizeBytes ||
-                actual.wanted != item.wanted) return null
+                actual.wanted != item.wanted ||
+                actual.priority != item.priority) return null
             if (actual.wanted != want) changes += item.index
         }
         return Plan(changes, reviewed.size)
