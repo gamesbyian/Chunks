@@ -183,6 +183,9 @@ def build(originals: Path, stacked: Path, out: Path, only=None):
                 output.write_bytes(raw.read_bytes())
                 opt = {'adjusted_pairs': 0, 'clipped_pair_count': 0}
         rename(output, style)
+        if 'output_sha256' in opt:
+            opt['pre_family_name_sha256'] = opt.pop('output_sha256')
+        opt['output_sha256'] = digest(output)
         final = TTFont(output)
         if (final.getBestCmap() != TTFont(previous).getBestCmap() or
                 final['OS/2'].usWeightClass != weight):
