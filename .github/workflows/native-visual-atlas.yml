@@ -7,6 +7,9 @@ on:
       - "tools/native_visual_atlas.py"
       - "tools/native_atlas_capture.sh"
       - "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/ChunksBrandHeader.kt"
+      - "app/src/main/res/font/chunks_extrabold.otf"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/ChunksBrandHeaderInstrumentedTest.kt"
       - "docs/design/approved/chunks-app-icon-master.svg"
       - "app/src/main/res/drawable/chunks_launcher_artwork.xml"
       - "app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml"
@@ -68,7 +71,7 @@ jobs:
           disable-animations: true
           script: |
             bash tools/native_atlas_capture.sh
-            gradle --no-daemon :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=io.github.gamesbyian.chunks.ChunksLauncherIconInstrumentedTest
+            gradle --no-daemon :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=io.github.gamesbyian.chunks.ChunksLauncherIconInstrumentedTest\n            gradle --no-daemon :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=io.github.gamesbyian.chunks.ChunksBrandHeaderInstrumentedTest
       - name: Upload exact emulator screenshots and report
         if: always()
         uses: actions/upload-artifact@v4
