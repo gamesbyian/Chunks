@@ -36,13 +36,13 @@ unset url64 user64 pass64
 checkpoint=$(grep -E '^INSTRUMENTATION_STATUS: chunks_add_ui_stage=' "$log" | tail -n 1 |
  sed 's/^INSTRUMENTATION_STATUS: chunks_add_ui_stage=//' | tr -d '\r' || true)
 case "$checkpoint" in
- arguments|preflight-inventory|preflight-default-place|preflight-custom-place|preflight|connect-failed|queue|add-draft|review|confirmed|outcome-not-verified|app-verified|independent-readback|erase-attempted|inventory-restored) ;;
+ arguments|preflight-inventory|preflight-default-place|preflight-custom-place|preflight|connect-failed|queue|add-open|magnet-entered|place-status|add-draft|review|confirmed|outcome-not-verified|app-verified|independent-readback|erase-attempted|inventory-restored) ;;
  *) checkpoint=unavailable ;;
 esac
 echo "CHUNKS_ANDROID_ADD_UI: synthetic identity derives from run $GITHUB_RUN_ID; last fixed stage: $checkpoint"
 destination="$RUNNER_TEMP/chunks-seedhost-add-ui"
 mkdir -p "$destination"
-for image in seedhost-android-add-ui-review.png seedhost-android-add-ui-outcome.png; do
+for image in seedhost-android-add-ui-draft-failure.png seedhost-android-add-ui-review.png seedhost-android-add-ui-outcome.png; do
  adb pull "/sdcard/Pictures/ChunksAddAtlas/$image" "$destination/$image" >/dev/null 2>&1 || true
 done
 if [ "$status" -ne 0 ] || ! grep -q '^INSTRUMENTATION_CODE: -1' "$log" ||
