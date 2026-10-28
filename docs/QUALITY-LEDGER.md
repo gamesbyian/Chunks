@@ -11,6 +11,16 @@
 - **VERIFIED on an Android API35 emulator (#453, MERGED `3fac5df96132`):** exact head `61fcd89` passed Android/JVM [40740843962](https://github.com/gamesbyian/Chunks/actions/runs/40740843962) and the API35 suite [40740844005](https://github.com/gamesbyian/Chunks/actions/runs/40740844005); the new test is skipped there without arguments. Dispatch [40742469530](https://github.com/gamesbyian/Chunks/actions/runs/40742469530) on main `3fac5df` copied the same sanitized Debian torrent into the debuggable app's cache. The app's native Android libtorrent engine logged `CHUNKS_ANDROID_SWARM: VERIFIED hash=7acf8fb590b2060dd9c3146ef770169d593433b0 verified=36962304 target=33554432 maxPeers=49 trackers=(total=1, working=1) seconds=18`. The emulator sat behind the runner's NAT.
 - **Not proven (JVM run):** this is libtorrent4j on a desktop JVM; a physical handset, NAT or mobile networks, long-running seeding, or a full-file SHA-256 against the published ISO checksum (only a 32 MiB budget was fetched).
 
+## 2026-10-28 Seedhost → phone payload Copy VERIFIED on the real host (#460)
+
+- **Cause of the refusals:** rTorrent on this host is bound to `5.79.112.219` (owner: Client Area "Check IP", the same for all three instances). It reports no `network.local_address`, so Chunks fell back to the ruTorrent hostname, `5.79.112.210`, which refuses the peer port.
+- **#460 (MERGED `eb79a985a547`):** exact head `b6771a5` passed Android/JVM [40755712179](https://github.com/gamesbyian/Chunks/actions/runs/40755712179) and disposable rTorrent 0.9.8 + Arch [40755712170](https://github.com/gamesbyian/Chunks/actions/runs/40755712170). Copy now prefers a specific `network.bind_address` over the web host, and the probe takes an optional `peer_ip`.
+- **Run without an override** ([40756272768](https://github.com/gamesbyian/Chunks/actions/runs/40756272768), main `eb79a98`, 120 s): the app found `bound=5.79.112.219` by itself. TCP was `open`, and phone and server each saw one peer. No metadata arrived within 120 s; that run's time limit was too short to show more.
+- **VERIFIED** ([40756284173](https://github.com/gamesbyian/Chunks/actions/runs/40756284173), main `eb79a98`, 900 s, `peer_ip=5.79.112.219`, the same address the app found): `CHUNKS_SEEDHOST_COPY: VERIFIED name="debian-13.7.0-amd64-netinst.iso" hash=7acf8fb5…33b0 peer=5.79.112.219:53281 bytes=792723456 metadata=true verified=792723456 maxPeers=1 seconds=782`.
+  - The JVM build of the phone engine got the metadata and all 792,723,456 piece-verified bytes, with the development Seedhost as its **only** peer (no tracker, no DHT).
+  - Read-only toward the server; Copy, not Move.
+- **Not proven:** a physical handset, the in-app button flow on the real host, and a run without the override. The same address was auto-discovered, but the full copy ran with the override. Throughput was about 1 MB/s from a single peer.
+
 ## 2026-10-28 Seedhost server-to-phone copy probe with an owner-added public torrent
 
 - The owner added the official Debian 13.7.0 netinst (public, `7acf8fb590b2…33b0`) to the primary Seedhost ruTorrent; it completed and is seeding.
