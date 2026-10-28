@@ -57,6 +57,28 @@ class LocalTransferPrivacyGateInstrumentedTest {
         assertFalse(TransferPrivacyRuntime.session.mayView(scope))
     }
 
+    @Test fun persistedOptOutCannotOverrideAnAlreadyEnabledProcessLock() {
+        val store = TransferPrivacyPolicyStore(context)
+        assertTrue(store.setMode(scope, TransferLockMode.ONCE_PER_PROCESS, false))
+        assertTrue(TransferPrivacyRuntime.session.configure(
+            scope, TransferLockMode.ONCE_PER_PROCESS, true))
+        // Simulates an external/legacy preferences downgrade in the SAME
+        // process, without calling the live gate's authenticated policy flow.
+        assertTrue(store.setMode(scope, TransferLockMode.NEVER, true))
+        var composed = false
+        compose.setContent {
+            MaterialTheme {
+                LocalTransferPrivacyGate(scope) {
+                    composed = true
+                    Text("NEVER DISCLOSE SOURCE")
+                }
+            }
+        }
+        compose.onNodeWithText("Phone transfers locked").assertExists()
+        compose.onNodeWithText("NEVER DISCLOSE SOURCE").assertDoesNotExist()
+        compose.runOnIdle { assertFalse(composed) }
+    }
+
     @Test fun optOutDefaultShowsContentButOffersExplicitPrivacySettings() {
         compose.setContent {
             MaterialTheme {
