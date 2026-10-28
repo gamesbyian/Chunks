@@ -1113,7 +1113,6 @@ internal fun LocalFileSelection(
     var requestedPage by remember(transferKey, files.size) { mutableStateOf(0) }
     val page = requestedPage.coerceIn(0, pageCount - 1)
     val pageFiles = files.drop(page * pageSize).take(pageSize)
-    var pendingBatch by remember(transferKey, page) { mutableStateOf<Boolean?>(null) }
     // Native download progress can change every second. Do not dismiss a
     // user's confirmation merely because doneBytes advances. Only a change
     // to file identity, total size or wanted selection invalidates review.
@@ -1123,7 +1122,12 @@ internal fun LocalFileSelection(
                 file.wanted.toString())
         }
     }
-    LaunchedEffect(reviewFingerprint) { pendingBatch = null }
+    // Key pending confirmation to the exact review identity instead of
+    // clearing it from an asynchronous LaunchedEffect, which could race a
+    // newly clicked Select/Skip button on the first Compose frame.
+    var pendingBatch by remember(transferKey, page, reviewFingerprint) {
+        mutableStateOf<Boolean?>(null)
+    }
     Text("Untick a file to skip downloading it. Already downloaded parts are kept.",
         style = MaterialTheme.typography.bodySmall)
     if (pageCount > 1) {
