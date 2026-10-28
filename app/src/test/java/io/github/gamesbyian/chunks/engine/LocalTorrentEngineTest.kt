@@ -490,6 +490,24 @@ class LocalTorrentEngineTest {
         assertEquals(emptyList<String>() to emptyList<Int>(), parse(""))
     }
 
+    @Test fun trackerSummaryCountsWorkingTrackersWithoutExposingUrls() {
+        LoopbackTracker().use { tracker ->
+            val parent = temp.newFolder("summary-seed")
+            val root = File(parent, "Summary fixture").apply { mkdirs() }
+            File(root, "payload.bin").writeBytes(ByteArray(40_000).also { Random(3).nextBytes(it) })
+            val torrent = TorrentBuilder().path(root).pieceSize(16 * 1024)
+                .addTracker(tracker.announceUrl).generate().entry().bencode()
+            val instance = engine()
+            val status = added(instance.addStopped(torrent, parent))
+            assertEquals(LocalTrackerSummary(1, 0, 0, 0), status.trackers)
+            assertEquals(LocalCommandOutcome.VERIFIED, instance.resume(status.infoHash).outcome)
+            waitFor(20_000) { instance.status(status.infoHash)?.trackers?.working == 1 }
+            assertTrue(instance.status(status.infoHash).toString().contains("trackers=LocalTrackerSummary"))
+            assertTrue("Status must never carry tracker URLs",
+                !instance.status(status.infoHash).toString().contains("announce"))
+        }
+    }
+
     @Test fun exportedTorrentKeepsIdentityAndTrackersForServerHandoff() {
         val fixture = fixture()
         val tracked = TorrentBuilder().path(fixture.root).pieceSize(64 * 1024)
