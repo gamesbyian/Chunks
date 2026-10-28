@@ -46,6 +46,11 @@ internal object SharedTorrentDocument {
         require(uri.scheme == ContentResolver.SCHEME_CONTENT) { "Only Android content documents are accepted" }
         val input = resolver.openInputStream(uri)
             ?: throw IOException("The source app did not grant access to the torrent document")
+        return readStream(input)
+    }
+
+    /** Shared bounded parser for Android VIEW, SEND and the remote file picker. */
+    internal fun readStream(input: java.io.InputStream): Reviewed {
         val bytes = input.use { stream ->
             val output = ByteArrayOutputStream()
             val buffer = ByteArray(16_384)
