@@ -4,7 +4,7 @@ The owner authorized eight additional transfer inputs for development and testin
 
 ## Six currently committed metainfo files
 
-The following six files were placed in the repository root by the owner:
+The following six files were originally placed in the repository root by the owner and are now stored unchanged under `tests/fixtures/owner-supplied/`:
 
 - `898 Hebrew Fonts  784 TTF & 114 OTF [IPT].torrent`
 - `A_Thousand_Details-A_Baixa_em_2010s-(ATD038)-16BIT-WEB-FLAC-2026-PTC [IPT].torrent`
@@ -13,7 +13,7 @@ The following six files were placed in the repository root by the owner:
 - `Kenny_Summit-Perfect_Stranger-(SLACKER027)-16BIT-WEB-FLAC-2026-TR [IPT].torrent`
 - `Poison_Zcora-How_It_Feels_To_Be_Plundered-(BGTF003)-16BIT-WEB-FLAC-2026-TR [IPT].torrent`
 
-**Security hold:** `[IPT]` may indicate private-tracker metainfo containing unique announce passkeys. Before relocating, committing regenerated copies, uploading artifacts, invoking network tests, or feeding into public CI, inspect bencoded announce/announce-list, url-list and related properties locally with **redacted output**. Do not print or commit credentials. Repository is public, so a discovered passkey may already be exposed in Git history even if the file is subsequently moved or removed; report to the owner so tracker credentials can be rotated if needed. Prefer sanitized synthetic metainfo for routine CI; never silently strip trackers from source files and claim the resulting infohash or metadata behavior is equivalent.
+**Fixture handling note:** `[IPT]` may indicate private-tracker metainfo containing unique announce passkeys. Before relocating, committing regenerated copies, uploading artifacts, invoking network tests, or feeding into public CI, inspect bencoded announce/announce-list, url-list and related properties locally with **redacted output**. Do not print or commit credentials. Repository is public, so a discovered passkey may already be exposed in Git history even if the file is subsequently moved or removed; report to the owner so tracker credentials can be rotated if needed. Prefer sanitized synthetic metainfo for routine CI; never silently strip trackers from source files and claim the resulting infohash or metadata behavior is equivalent.
 
 ## Two provided magnet-link identities
 
