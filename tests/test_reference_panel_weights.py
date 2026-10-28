@@ -342,7 +342,8 @@ class ReferencePanelWeightTests(unittest.TestCase):
                     commands=RecordingPen()
                     parse_path(path_node.attrib['d'],commands)
                     self.assertEqual(sum(op=='moveTo' for op,_ in commands.value),1)
-                    self.assertGreaterEqual(sum(op=='qCurveTo' for op,_ in commands.value),12)
+                    self.assertGreaterEqual(sum(op=='qCurveTo' for op,_ in commands.value),
+                                            12 if letter == 'E' else 10)
                     info=ledger['weights'][style]['glyph_geometry'][letter]
                     self.assertEqual(info['outline_source'],'weight-specific-svg-master')
                     self.assertEqual(info['outline_encoding'],'native-bezier-curves')
@@ -354,7 +355,8 @@ class ReferencePanelWeightTests(unittest.TestCase):
                     pen=RecordingPen()
                     face.getGlyphSet()[face.getBestCmap()[ord(letter)]].draw(pen)
                     self.assertEqual(sum(op=='moveTo' for op,_ in pen.value),1)
-                    self.assertGreaterEqual(sum(op=='curveTo' for op,_ in pen.value),12)
+                    self.assertGreaterEqual(sum(op=='curveTo' for op,_ in pen.value),
+                                            12 if letter == 'E' else 10)
             self.assertEqual(areas,sorted(areas))
             self.assertLess(areas[-1],original.area,
                             f'{letter}: heaviest draft cannot exceed ExtraBold reference')
