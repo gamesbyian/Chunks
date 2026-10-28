@@ -5,7 +5,6 @@ import android.graphics.Bitmap
 import android.os.Environment
 import android.provider.MediaStore
 import androidx.compose.ui.graphics.asAndroidBitmap
-import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
