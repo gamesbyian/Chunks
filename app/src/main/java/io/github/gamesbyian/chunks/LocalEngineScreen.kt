@@ -79,6 +79,7 @@ import io.github.gamesbyian.chunks.model.LocalQueueOrder
 import io.github.gamesbyian.chunks.snapshots.LocalSnapshotRestorePreviewPanel
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoPreview
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader
+import io.github.gamesbyian.chunks.model.LocalBatchLifecycle
 import java.io.ByteArrayOutputStream
 import java.io.File
 import kotlinx.coroutines.Dispatchers
@@ -723,6 +724,27 @@ internal fun LocalEngineScreen(
             onMembershipChanged = {
                 registeredNames = nameRegistry.names(TransferCollectionStore.LOCAL_ENGINE_SCOPE)
                 collectionRevision++
+            },
+            onBatchLifecycle = { ids, start ->
+                val targets = transfers.filter { it.infoHash in ids }
+                    .map { LocalBatchLifecycle.Target(it.infoHash, it.stopped) }
+                performLocalMutation {
+                    val report = withContext(Dispatchers.IO) {
+                        val engine = LocalEngineHolder.get(context)
+                        try {
+                            LocalBatchLifecycle.run(targets, start) { hash, wanted ->
+                                if (wanted) engine.resume(hash).outcome else engine.pause(hash).outcome
+                            }
+                        } catch (_: IllegalArgumentException) { null }
+                    }
+                    message = if (report == null) "This selection cannot be changed as a batch. Nothing changed."
+                    else LocalBatchLifecycle.describe(report)
+                    if (start && (report?.verified ?: 0) > 0) {
+                        try { LocalEngineService.start(context) } catch (_: Exception) {
+                            message += " Android refused the background service; keep Chunks open."
+                        }
+                    }
+                }
             }
         )
         CollectionNameManager(
