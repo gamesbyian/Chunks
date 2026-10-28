@@ -1,5 +1,7 @@
 # Chunks: permanent agent operating contract
 
+> **Owner correction (2026-10-28):** Cross-engine **Copy Transfer** and **Move Transfer** operate on torrent **jobs only**, never downloaded file bytes. Move adds and verifies the target job, then separately confirms session-only removal of the source job, leaving all source files untouched. Destination downloads independently. Prior text proposing payload transfer, file migration or waiting for target seeding under these names is superseded by [the authoritative transfer-job contract](docs/CROSS-ENGINE-TRANSFER-JOBS.md).
+
 **Mission:** Build Chunks into a colourful, deeply usable **Android-native BitTorrent client and first-class rTorrent remote**, with intuitive Places, independent Collections, clean optional display aliases and safe control of seeding data. No functionality is considered delivered merely because it is written into a specification.
 
 **Transfer privacy feature:** Before changing the protected transfer screens, Android authentication, credential persistence or notification visibility, consult [docs/TRANSFER-PRIVACY-LOCK.md](docs/TRANSFER-PRIVACY-LOCK.md). Keep its planned status distinct from verified functionality.
