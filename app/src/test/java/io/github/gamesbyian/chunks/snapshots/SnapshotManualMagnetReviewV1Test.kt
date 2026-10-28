@@ -39,6 +39,28 @@ class SnapshotManualMagnetReviewV1Test {
         reject { prepare(snapshot = archive(magnet + "&xt=urn:btih:" + "c".repeat(40))) }
     }
 
+    @Test fun refreshedMagnetTargetRequiresCompleteValidDistinctIdentities() {
+        val snapshot = archive()
+        val reviewed = SnapshotRestorePreviewV1.plan(snapshot, listOf(other), true).entries.single()
+        // A caller must not turn a malformed/ambiguous unchanged inventory
+        // into evidence that the reviewed torrent is absent.
+        for (untrustworthy in listOf(
+            listOf("not-a-hash"),
+            listOf(other, other.uppercase()),
+            listOf("g".repeat(40)),
+            listOf("f".repeat(41))
+        )) {
+            reject {
+                SnapshotManualAddReviewV1.prepareMagnet(snapshot, reviewed,
+                    untrustworthy, untrustworthy, 3, 3, true)
+            }
+        }
+        // A correctly formed v2 identity can coexist in the comparison;
+        // this importer still restores only verified v1 snapshot records.
+        assertEquals(magnet, SnapshotManualAddReviewV1.prepareMagnet(snapshot, reviewed,
+            listOf("c".repeat(64)), listOf("c".repeat(64)), 3, 3, true))
+    }
+
     private fun reject(block: () -> Unit) {
         try { block(); fail("Unsafe magnet draft was permitted") } catch (_: IllegalArgumentException) {}
     }
