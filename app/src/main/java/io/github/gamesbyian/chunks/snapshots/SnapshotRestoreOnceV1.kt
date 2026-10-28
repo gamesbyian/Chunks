@@ -27,6 +27,8 @@ internal object SnapshotRestoreOnceV1 {
     interface LocalTarget {
         /** Must be one successful COMPLETE engine inventory; null means unavailable. */
         fun completeHashes(): List<String>?
+        /** Independent status readback; null is unavailable, never success. */
+        fun stoppedAfterReadback(infoHashV1: String): Boolean?
         /** An attempted native Add. False is uncertain, never proof of no mutation. */
         fun submitStopped(originalTorrent: ByteArray, chosenPlace: File): Boolean
     }
@@ -34,6 +36,9 @@ internal object SnapshotRestoreOnceV1 {
     fun localEngine(engine: LocalTorrentEngine): LocalTarget = object : LocalTarget {
         override fun completeHashes(): List<String>? =
             try { engine.list().map { it.infoHash } } catch (_: Exception) { null }
+
+        override fun stoppedAfterReadback(infoHashV1: String): Boolean? =
+            try { engine.status(infoHashV1)?.stopped } catch (_: Exception) { null }
 
         override fun submitStopped(originalTorrent: ByteArray, chosenPlace: File): Boolean =
             try {
@@ -66,7 +71,8 @@ internal object SnapshotRestoreOnceV1 {
             return Outcome.REFUSED
         val frozen = canonicalInventory(frozenHashes) ?: return Outcome.STALE_TARGET
         if (hash in frozen) return Outcome.STALE_TARGET
-        val observed = canonicalInventory(target.completeHashes() ?: return Outcome.STALE_TARGET)
+        val observed = canonicalInventory(try { target.completeHashes() }
+            catch (_: Exception) { null } ?: return Outcome.STALE_TARGET)
             ?: return Outcome.STALE_TARGET
         if (observed != frozen || hash in observed) return Outcome.STALE_TARGET
 
@@ -98,9 +104,11 @@ internal object SnapshotRestoreOnceV1 {
             // observed postcondition; journal separately records that fact.
             try { journal.acknowledged(hash) } catch (_: Exception) { }
         }
-        val after = canonicalInventory(target.completeHashes() ?: return Outcome.UNCERTAIN)
+        val after = canonicalInventory(try { target.completeHashes() }
+            catch (_: Exception) { null } ?: return Outcome.UNCERTAIN)
             ?: return Outcome.UNCERTAIN
-        if (hash !in after) return Outcome.UNCERTAIN
+        if (hash !in after || try { target.stoppedAfterReadback(hash) != true }
+            catch (_: Exception) { true }) return Outcome.UNCERTAIN
         // Presence does not establish downloaded payload or completed files.
         try { journal.reconcileWithCompleteTarget(after, true) }
         catch (_: Exception) { return Outcome.UNCERTAIN }
