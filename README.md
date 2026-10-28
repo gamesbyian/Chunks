@@ -13,6 +13,12 @@ Chunks is an Android-native BitTorrent client and first-class rTorrent remote. I
 - **Organization:** Editable, reversible local display aliases, source-only explained clean-title proposals and limited batch review/conditional Undo. No automated physical backing rename or unsourced episode guest-name inference.
 - **Storage and ZIP:** Advisory storage caps/warnings/cleanup-impact models and a read-only phone-space card. Bounded local ZIP preflight and **manual verified extraction into a newly created SAF folder**, with cancel/journal/recovery and source kept intact, have tested emulator/fixture-provider paths. No real quota enforcement, destructive cleanup wizard, general remote file operations or auto-extract. Physical provider and process-kill acceptance is pending.
 
+## Connecting Chunks to rTorrent
+
+**Smart Connect** aims to let users paste their seedbox hostname or ruTorrent URL, enter a username and password, and have Chunks automatically discover an authenticated HTTPS rTorrent endpoint. An exact numbered ruTorrent URL must stay within its instance; custom self-hosted XML-RPC URLs remain available. Verified profiles use Android Keystore, with opt-out and Forget controls. The connection handshake reads only server identity/inventory, never mutates transfers.
+
+**Status:** [PR #463](https://github.com/gamesbyian/Chunks/pull/463) contains the first discovery implementation, pending final merge and exact-head acceptance. Provider catalog, capability-ranked gateways, actionable repair, SSO/custom certificates/VPN and full Android/real-provider tests remain in [issue #464](https://github.com/gamesbyian/Chunks/issues/464). See the [Smart Connect contract](docs/SMART-REMOTE-CONNECTION.md), [coverage matrix](docs/SPEC-COVERAGE.md), and [three-instance SeedHost connection guide](docs/SEEDHOST-REMOTE-TESTING.md). The remote-control HTTPS port is separate from incoming BitTorrent peer ports.
+
 ## Documentation and engineering
 
 **Visual design:** The [canonical transparent Chunks app icon](docs/design/approved/chunks-app-icon-master.svg) is the SVG source of truth; the [original PNG](docs/design/approved/chunks-app-icon-master.png) remains reference-only. Android packages a generated native VectorDrawable rather than the PNG (see [BUILD](docs/BUILD.md)). [Six Chunks concept references and implementation notes](docs/design/reference-images/README.md) capture the owner-selected chunky, high-contrast direction. These visual studies do not supersede product capabilities, safety or accessibility contracts.
