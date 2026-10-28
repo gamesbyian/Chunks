@@ -11,6 +11,8 @@
 | Safety/accessibility | No silent mutation of manual priority or backing files; 48dp-class and TalkBack controls; no fabricated ETAs; no real-device claims from fixtures | SPECIFIED, NOT VERIFIED |
 
 Owner request #415 is fully specified in PRODUCT, UX, ARCHITECTURE, WORK-QUEUE and DECISIONS. Static per-file priorities (including open #412) do **not** satisfy this acceptance map.
+**Manual customization coverage (unimplemented):** Multi-provider choice grid, individual square/poster/banner roles, local upload and image-URL ingestion, per-role crop/fit, manual override precedence, context-sensitive show/season/artist/album/author/series/issue rules with affected-count confirmation, future inheritance, undo, cache ownership and remote isolation. Tests specified in [TRANSFER-ARTWORK.md](TRANSFER-ARTWORK.md), #403.
+
 **Expanded coverage (unimplemented):** Cross-media taxonomy and provider registry (including adult metadata opt-in), independent metadata+image fallback across provider misses, bounded rate limits/cooldowns, GIS search-term inference and license/safety validation, guaranteed generic vector art, user correction and offline graceful degradation. Fixture coverage and UI/physical evidence in [TRANSFER-ARTWORK](TRANSFER-ARTWORK.md), tracked #403.
 
 ## Owner visual requirement: square artwork on local and remote transfers (#403)
