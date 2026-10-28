@@ -22,7 +22,6 @@ import kotlinx.coroutines.runBlocking
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
 import org.junit.After
-import android.content.ContentValues
 import android.graphics.Bitmap
 import android.os.Environment
 import android.provider.MediaStore
@@ -49,12 +48,14 @@ import org.junit.runner.RunWith
  * CompositionLocalProvider or merely doubling individual text pixel sizes.
  *
  * This is a diagnostic, source-controlled smoke gate for actual app navigation
- * and five surviving pixel screenshots, not a running TalkBack audit or final
- * font-art approval. It does not mutate torrents or require remote credentials.
+ * and six surviving pixel screenshots, not a running TalkBack audit or final
+ * font-art approval. It uses a local synthetic read-only RPC endpoint and
+ * never mutates torrents or requires external credentials.
  */
 @RunWith(AndroidJUnit4::class)
 class SystemFontScaleComposeInstrumentedTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
+
     // Exactly the same deterministic, read-only XML-RPC fixture as the
     // installed native Add/Transfers acceptance test. No external network.
     private var server: ServerSocket? = null
@@ -260,8 +261,8 @@ class SystemFontScaleComposeInstrumentedTest {
                 .fetchSemanticsNodes().isNotEmpty()
         }
         savePixels("transfers-initial")
-        // Existing installed-app navigation paths, no fake Composables and
-        // no network actions. Visit every main navigation destination and
+        // Existing installed-app navigation paths with real Compose UI and
+        // read-only localhost RPC records. Visit every main navigation destination and
         // return to Transfers, retaining actual pixels for review.
         for (tab in listOf("Places", "Organize", "Server", "Transfers")) {
             rule.onNodeWithText(tab).assertExists().performScrollTo().performClick()
