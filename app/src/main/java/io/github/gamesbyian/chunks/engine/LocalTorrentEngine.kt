@@ -445,7 +445,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
      * report UNCERTAIN: never retry the batch automatically, because a prefix
      * of native writes could already have landed.
      */
-    fun setFilesWantedBatch(
+    internal fun setFilesWantedBatch(
         infoHash: String,
         reviewed: List<LocalTransferFile>,
         wanted: Boolean,
