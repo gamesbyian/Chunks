@@ -5,7 +5,7 @@
   "weights": {
     "Regular": {
       "file": "Chunks-Regular.otf",
-      "bytes": 590084,
+      "bytes": 592548,
       "glyphs": 1601,
       "mapped_codepoints": 856,
       "vertical_metrics": {
@@ -17,25 +17,145 @@
       "optical_kerning": {
         "measured_glyphs": 151,
         "examined_pairs": 22801,
-        "adjusted_pairs": 18951,
-        "median_absolute_adjustment": 41.0,
-        "residual_90pct": 37.4
+        "adjusted_pairs": 18826,
+        "median_absolute_adjustment": 40.0,
+        "residual_90pct": 34.6
+      },
+      "wordmark_glyphs": {
+        "C": {
+          "native_advance": 588,
+          "native_bbox": [
+            54,
+            -13,
+            539,
+            621
+          ],
+          "outline_source": "reference_trace",
+          "nominal_stroke": 34,
+          "reference_inset": 12.0,
+          "silhouette_polygons": 1
+        },
+        "h": {
+          "native_advance": 551,
+          "native_bbox": [
+            77,
+            -5,
+            476,
+            655
+          ],
+          "outline_source": "reference_trace",
+          "nominal_stroke": 34,
+          "reference_inset": 12.0,
+          "silhouette_polygons": 1
+        },
+        "u": {
+          "native_advance": 550,
+          "native_bbox": [
+            75,
+            -13,
+            475,
+            467
+          ],
+          "outline_source": "reference_trace",
+          "nominal_stroke": 34,
+          "reference_inset": 12.0,
+          "silhouette_polygons": 1
+        },
+        "n": {
+          "native_advance": 550,
+          "native_bbox": [
+            75,
+            -5,
+            475,
+            475
+          ],
+          "outline_source": "reference_trace",
+          "nominal_stroke": 34,
+          "reference_inset": 12.0,
+          "silhouette_polygons": 1
+        },
+        "k": {
+          "native_advance": 487,
+          "native_bbox": [
+            77,
+            -6,
+            456,
+            655
+          ],
+          "outline_source": "reference_trace",
+          "nominal_stroke": 34,
+          "reference_inset": 12.0,
+          "silhouette_polygons": 1
+        },
+        "s": {
+          "native_advance": 447,
+          "native_bbox": [
+            46,
+            -13,
+            401,
+            475
+          ],
+          "outline_source": "reference_trace",
+          "nominal_stroke": 34,
+          "reference_inset": 12.0,
+          "silhouette_polygons": 1
+        }
       },
       "tracking_em": {
-        "display": -0.008,
-        "heading": -0.002,
-        "body": 0.0057
+        "display": -0.022,
+        "heading": -0.0148,
+        "body": 0.0073,
+        "small_labels": 0.0239
       },
       "line_height_em": {
-        "display": 1.14,
-        "heading": 1.22,
-        "body": 1.36,
-        "small_labels": 1.42
+        "display_latin": 1.14,
+        "heading_latin": 1.22,
+        "body_latin": 1.36,
+        "small_labels_latin": 1.42,
+        "body_multiscript": 1.6,
+        "small_labels_multiscript": 1.65
+      },
+      "spacing_audit": {
+        "ink_gap_measurements": {
+          "display": {
+            "observed_20pct_ink_gap_em": 0.1147,
+            "target_ink_gap_em": 0.078,
+            "sampled_pairs": 21,
+            "lower_limit_em": -0.022,
+            "upper_limit_em": 0.01
+          },
+          "heading": {
+            "observed_20pct_ink_gap_em": 0.1148,
+            "target_ink_gap_em": 0.1,
+            "sampled_pairs": 44,
+            "lower_limit_em": -0.015,
+            "upper_limit_em": 0.014
+          },
+          "body": {
+            "observed_20pct_ink_gap_em": 0.1147,
+            "target_ink_gap_em": 0.122,
+            "sampled_pairs": 52,
+            "lower_limit_em": -0.004,
+            "upper_limit_em": 0.018
+          },
+          "small_labels": {
+            "observed_20pct_ink_gap_em": 0.1141,
+            "target_ink_gap_em": 0.138,
+            "sampled_pairs": 28,
+            "lower_limit_em": 0,
+            "upper_limit_em": 0.024
+          }
+        },
+        "all_glyph_vertical_extents": {
+          "low": -470,
+          "high": 1018,
+          "minimum_multiscript_line_height_em": 1.55
+        }
       }
     },
     "Medium": {
       "file": "Chunks-Medium.otf",
-      "bytes": 592344,
+      "bytes": 594472,
       "glyphs": 1601,
       "mapped_codepoints": 856,
       "vertical_metrics": {
@@ -47,25 +167,145 @@
       "optical_kerning": {
         "measured_glyphs": 151,
         "examined_pairs": 22801,
-        "adjusted_pairs": 18176,
-        "median_absolute_adjustment": 35.0,
-        "residual_90pct": 17.67
+        "adjusted_pairs": 18402,
+        "median_absolute_adjustment": 34.0,
+        "residual_90pct": 15.8
+      },
+      "wordmark_glyphs": {
+        "C": {
+          "native_advance": 584,
+          "native_bbox": [
+            49,
+            -14,
+            540,
+            622
+          ],
+          "outline_source": "reference_trace",
+          "nominal_stroke": 43,
+          "reference_inset": 9.0,
+          "silhouette_polygons": 1
+        },
+        "h": {
+          "native_advance": 560,
+          "native_bbox": [
+            71,
+            -6,
+            490,
+            657
+          ],
+          "outline_source": "reference_trace",
+          "nominal_stroke": 43,
+          "reference_inset": 9.0,
+          "silhouette_polygons": 1
+        },
+        "u": {
+          "native_advance": 558,
+          "native_bbox": [
+            69,
+            -14,
+            489,
+            474
+          ],
+          "outline_source": "reference_trace",
+          "nominal_stroke": 43,
+          "reference_inset": 9.0,
+          "silhouette_polygons": 1
+        },
+        "n": {
+          "native_advance": 558,
+          "native_bbox": [
+            69,
+            -6,
+            489,
+            482
+          ],
+          "outline_source": "reference_trace",
+          "nominal_stroke": 43,
+          "reference_inset": 9.0,
+          "silhouette_polygons": 1
+        },
+        "k": {
+          "native_advance": 504,
+          "native_bbox": [
+            71,
+            -7,
+            474,
+            657
+          ],
+          "outline_source": "reference_trace",
+          "nominal_stroke": 43,
+          "reference_inset": 9.0,
+          "silhouette_polygons": 1
+        },
+        "s": {
+          "native_advance": 458,
+          "native_bbox": [
+            45,
+            -14,
+            416,
+            482
+          ],
+          "outline_source": "reference_trace",
+          "nominal_stroke": 43,
+          "reference_inset": 9.0,
+          "silhouette_polygons": 1
+        }
       },
       "tracking_em": {
-        "display": -0.01,
-        "heading": -0.0035,
-        "body": 0.005
+        "display": -0.022,
+        "heading": -0.0071,
+        "body": 0.0148,
+        "small_labels": 0.024
       },
       "line_height_em": {
-        "display": 1.14,
-        "heading": 1.22,
-        "body": 1.36,
-        "small_labels": 1.42
+        "display_latin": 1.14,
+        "heading_latin": 1.22,
+        "body_latin": 1.36,
+        "small_labels_latin": 1.42,
+        "body_multiscript": 1.6,
+        "small_labels_multiscript": 1.65
+      },
+      "spacing_audit": {
+        "ink_gap_measurements": {
+          "display": {
+            "observed_20pct_ink_gap_em": 0.1071,
+            "target_ink_gap_em": 0.078,
+            "sampled_pairs": 21,
+            "lower_limit_em": -0.022,
+            "upper_limit_em": 0.01
+          },
+          "heading": {
+            "observed_20pct_ink_gap_em": 0.1071,
+            "target_ink_gap_em": 0.1,
+            "sampled_pairs": 44,
+            "lower_limit_em": -0.015,
+            "upper_limit_em": 0.014
+          },
+          "body": {
+            "observed_20pct_ink_gap_em": 0.1072,
+            "target_ink_gap_em": 0.122,
+            "sampled_pairs": 52,
+            "lower_limit_em": -0.004,
+            "upper_limit_em": 0.018
+          },
+          "small_labels": {
+            "observed_20pct_ink_gap_em": 0.1068,
+            "target_ink_gap_em": 0.138,
+            "sampled_pairs": 28,
+            "lower_limit_em": 0,
+            "upper_limit_em": 0.024
+          }
+        },
+        "all_glyph_vertical_extents": {
+          "low": -483,
+          "high": 1033,
+          "minimum_multiscript_line_height_em": 1.58
+        }
       }
     },
     "Semibold": {
       "file": "Chunks-Semibold.otf",
-      "bytes": 589172,
+      "bytes": 593688,
       "glyphs": 1601,
       "mapped_codepoints": 856,
       "vertical_metrics": {
@@ -77,25 +317,145 @@
       "optical_kerning": {
         "measured_glyphs": 151,
         "examined_pairs": 22801,
-        "adjusted_pairs": 17398,
+        "adjusted_pairs": 17551,
         "median_absolute_adjustment": 32.0,
-        "residual_90pct": 4.96
+        "residual_90pct": 1.74
+      },
+      "wordmark_glyphs": {
+        "C": {
+          "native_advance": 580,
+          "native_bbox": [
+            45,
+            -15,
+            541,
+            623
+          ],
+          "outline_source": "reference_trace",
+          "nominal_stroke": 53,
+          "reference_inset": 6.0,
+          "silhouette_polygons": 1
+        },
+        "h": {
+          "native_advance": 567,
+          "native_bbox": [
+            66,
+            -6,
+            503,
+            658
+          ],
+          "outline_source": "reference_trace",
+          "nominal_stroke": 53,
+          "reference_inset": 6.0,
+          "silhouette_polygons": 1
+        },
+        "u": {
+          "native_advance": 565,
+          "native_bbox": [
+            64,
+            -14,
+            501,
+            479
+          ],
+          "outline_source": "reference_trace",
+          "nominal_stroke": 53,
+          "reference_inset": 6.0,
+          "silhouette_polygons": 1
+        },
+        "n": {
+          "native_advance": 566,
+          "native_bbox": [
+            64,
+            -6,
+            501,
+            487
+          ],
+          "outline_source": "reference_trace",
+          "nominal_stroke": 53,
+          "reference_inset": 6.0,
+          "silhouette_polygons": 1
+        },
+        "k": {
+          "native_advance": 520,
+          "native_bbox": [
+            66,
+            -7,
+            490,
+            658
+          ],
+          "outline_source": "reference_trace",
+          "nominal_stroke": 53,
+          "reference_inset": 6.0,
+          "silhouette_polygons": 1
+        },
+        "s": {
+          "native_advance": 469,
+          "native_bbox": [
+            45,
+            -15,
+            430,
+            488
+          ],
+          "outline_source": "reference_trace",
+          "nominal_stroke": 53,
+          "reference_inset": 6.0,
+          "silhouette_polygons": 1
+        }
       },
       "tracking_em": {
-        "display": -0.012,
-        "heading": -0.005,
-        "body": 0.0043
+        "display": -0.022,
+        "heading": -0.0001,
+        "body": 0.018,
+        "small_labels": 0.024
       },
       "line_height_em": {
-        "display": 1.14,
-        "heading": 1.22,
-        "body": 1.36,
-        "small_labels": 1.42
+        "display_latin": 1.14,
+        "heading_latin": 1.22,
+        "body_latin": 1.36,
+        "small_labels_latin": 1.42,
+        "body_multiscript": 1.61,
+        "small_labels_multiscript": 1.65
+      },
+      "spacing_audit": {
+        "ink_gap_measurements": {
+          "display": {
+            "observed_20pct_ink_gap_em": 0.1001,
+            "target_ink_gap_em": 0.078,
+            "sampled_pairs": 21,
+            "lower_limit_em": -0.022,
+            "upper_limit_em": 0.01
+          },
+          "heading": {
+            "observed_20pct_ink_gap_em": 0.1001,
+            "target_ink_gap_em": 0.1,
+            "sampled_pairs": 44,
+            "lower_limit_em": -0.015,
+            "upper_limit_em": 0.014
+          },
+          "body": {
+            "observed_20pct_ink_gap_em": 0.1,
+            "target_ink_gap_em": 0.122,
+            "sampled_pairs": 52,
+            "lower_limit_em": -0.004,
+            "upper_limit_em": 0.018
+          },
+          "small_labels": {
+            "observed_20pct_ink_gap_em": 0.0996,
+            "target_ink_gap_em": 0.138,
+            "sampled_pairs": 28,
+            "lower_limit_em": 0,
+            "upper_limit_em": 0.024
+          }
+        },
+        "all_glyph_vertical_extents": {
+          "low": -496,
+          "high": 1047,
+          "minimum_multiscript_line_height_em": 1.61
+        }
       }
     },
     "Bold": {
       "file": "Chunks-Bold.otf",
-      "bytes": 583812,
+      "bytes": 585964,
       "glyphs": 1601,
       "mapped_codepoints": 856,
       "vertical_metrics": {
@@ -107,25 +467,145 @@
       "optical_kerning": {
         "measured_glyphs": 151,
         "examined_pairs": 22801,
-        "adjusted_pairs": 15751,
+        "adjusted_pairs": 15586,
         "median_absolute_adjustment": 27.0,
-        "residual_90pct": 0.47
+        "residual_90pct": 0.48
+      },
+      "wordmark_glyphs": {
+        "C": {
+          "native_advance": 575,
+          "native_bbox": [
+            40,
+            -17,
+            542,
+            624
+          ],
+          "outline_source": "reference_trace",
+          "nominal_stroke": 62,
+          "reference_inset": 3.0,
+          "silhouette_polygons": 1
+        },
+        "h": {
+          "native_advance": 577,
+          "native_bbox": [
+            60,
+            -7,
+            519,
+            660
+          ],
+          "outline_source": "reference_trace",
+          "nominal_stroke": 62,
+          "reference_inset": 3.0,
+          "silhouette_polygons": 1
+        },
+        "u": {
+          "native_advance": 574,
+          "native_bbox": [
+            58,
+            -15,
+            517,
+            487
+          ],
+          "outline_source": "reference_trace",
+          "nominal_stroke": 62,
+          "reference_inset": 3.0,
+          "silhouette_polygons": 1
+        },
+        "n": {
+          "native_advance": 575,
+          "native_bbox": [
+            58,
+            -7,
+            517,
+            495
+          ],
+          "outline_source": "reference_trace",
+          "nominal_stroke": 62,
+          "reference_inset": 3.0,
+          "silhouette_polygons": 1
+        },
+        "k": {
+          "native_advance": 539,
+          "native_bbox": [
+            60,
+            -8,
+            510,
+            660
+          ],
+          "outline_source": "reference_trace",
+          "nominal_stroke": 62,
+          "reference_inset": 3.0,
+          "silhouette_polygons": 1
+        },
+        "s": {
+          "native_advance": 481,
+          "native_bbox": [
+            43,
+            -16,
+            447,
+            496
+          ],
+          "outline_source": "reference_trace",
+          "nominal_stroke": 62,
+          "reference_inset": 3.0,
+          "silhouette_polygons": 1
+        }
       },
       "tracking_em": {
-        "display": -0.014,
-        "heading": -0.0065,
-        "body": 0.0035
+        "display": -0.0144,
+        "heading": 0.0077,
+        "body": 0.018,
+        "small_labels": 0.024
       },
       "line_height_em": {
-        "display": 1.14,
-        "heading": 1.22,
-        "body": 1.36,
-        "small_labels": 1.42
+        "display_latin": 1.14,
+        "heading_latin": 1.22,
+        "body_latin": 1.36,
+        "small_labels_latin": 1.42,
+        "body_multiscript": 1.64,
+        "small_labels_multiscript": 1.65
+      },
+      "spacing_audit": {
+        "ink_gap_measurements": {
+          "display": {
+            "observed_20pct_ink_gap_em": 0.0924,
+            "target_ink_gap_em": 0.078,
+            "sampled_pairs": 21,
+            "lower_limit_em": -0.022,
+            "upper_limit_em": 0.01
+          },
+          "heading": {
+            "observed_20pct_ink_gap_em": 0.0923,
+            "target_ink_gap_em": 0.1,
+            "sampled_pairs": 44,
+            "lower_limit_em": -0.015,
+            "upper_limit_em": 0.014
+          },
+          "body": {
+            "observed_20pct_ink_gap_em": 0.0923,
+            "target_ink_gap_em": 0.122,
+            "sampled_pairs": 52,
+            "lower_limit_em": -0.004,
+            "upper_limit_em": 0.018
+          },
+          "small_labels": {
+            "observed_20pct_ink_gap_em": 0.0903,
+            "target_ink_gap_em": 0.138,
+            "sampled_pairs": 28,
+            "lower_limit_em": 0,
+            "upper_limit_em": 0.024
+          }
+        },
+        "all_glyph_vertical_extents": {
+          "low": -511,
+          "high": 1064,
+          "minimum_multiscript_line_height_em": 1.64
+        }
       }
     },
     "ExtraBold": {
       "file": "Chunks-ExtraBold.otf",
-      "bytes": 577956,
+      "bytes": 579636,
       "glyphs": 1601,
       "mapped_codepoints": 856,
       "vertical_metrics": {
@@ -137,20 +617,140 @@
       "optical_kerning": {
         "measured_glyphs": 151,
         "examined_pairs": 22801,
-        "adjusted_pairs": 13944,
+        "adjusted_pairs": 14017,
         "median_absolute_adjustment": 24.0,
         "residual_90pct": 0.48
       },
+      "wordmark_glyphs": {
+        "C": {
+          "native_advance": 571,
+          "native_bbox": [
+            35,
+            -18,
+            543,
+            625
+          ],
+          "outline_source": "reference_trace",
+          "nominal_stroke": 70,
+          "reference_inset": 0.0,
+          "silhouette_polygons": 1
+        },
+        "h": {
+          "native_advance": 585,
+          "native_bbox": [
+            54,
+            -8,
+            532,
+            661
+          ],
+          "outline_source": "reference_trace",
+          "nominal_stroke": 70,
+          "reference_inset": 0.0,
+          "silhouette_polygons": 1
+        },
+        "u": {
+          "native_advance": 582,
+          "native_bbox": [
+            52,
+            -16,
+            530,
+            493
+          ],
+          "outline_source": "reference_trace",
+          "nominal_stroke": 70,
+          "reference_inset": 0.0,
+          "silhouette_polygons": 1
+        },
+        "n": {
+          "native_advance": 583,
+          "native_bbox": [
+            52,
+            -8,
+            530,
+            501
+          ],
+          "outline_source": "reference_trace",
+          "nominal_stroke": 70,
+          "reference_inset": 0.0,
+          "silhouette_polygons": 1
+        },
+        "k": {
+          "native_advance": 555,
+          "native_bbox": [
+            54,
+            -9,
+            527,
+            661
+          ],
+          "outline_source": "reference_trace",
+          "nominal_stroke": 70,
+          "reference_inset": 0.0,
+          "silhouette_polygons": 1
+        },
+        "s": {
+          "native_advance": 492,
+          "native_bbox": [
+            40,
+            -17,
+            462,
+            502
+          ],
+          "outline_source": "reference_trace",
+          "nominal_stroke": 70,
+          "reference_inset": 0.0,
+          "silhouette_polygons": 1
+        }
+      },
       "tracking_em": {
-        "display": -0.016,
-        "heading": -0.008,
-        "body": 0.0027
+        "display": -0.0067,
+        "heading": 0.014,
+        "body": 0.018,
+        "small_labels": 0.024
       },
       "line_height_em": {
-        "display": 1.14,
-        "heading": 1.22,
-        "body": 1.36,
-        "small_labels": 1.42
+        "display_latin": 1.14,
+        "heading_latin": 1.22,
+        "body_latin": 1.36,
+        "small_labels_latin": 1.42,
+        "body_multiscript": 1.67,
+        "small_labels_multiscript": 1.67
+      },
+      "spacing_audit": {
+        "ink_gap_measurements": {
+          "display": {
+            "observed_20pct_ink_gap_em": 0.0847,
+            "target_ink_gap_em": 0.078,
+            "sampled_pairs": 21,
+            "lower_limit_em": -0.022,
+            "upper_limit_em": 0.01
+          },
+          "heading": {
+            "observed_20pct_ink_gap_em": 0.0837,
+            "target_ink_gap_em": 0.1,
+            "sampled_pairs": 44,
+            "lower_limit_em": -0.015,
+            "upper_limit_em": 0.014
+          },
+          "body": {
+            "observed_20pct_ink_gap_em": 0.0834,
+            "target_ink_gap_em": 0.122,
+            "sampled_pairs": 52,
+            "lower_limit_em": -0.004,
+            "upper_limit_em": 0.018
+          },
+          "small_labels": {
+            "observed_20pct_ink_gap_em": 0.0816,
+            "target_ink_gap_em": 0.138,
+            "sampled_pairs": 28,
+            "lower_limit_em": 0,
+            "upper_limit_em": 0.024
+          }
+        },
+        "all_glyph_vertical_extents": {
+          "low": -524,
+          "high": 1078,
+          "minimum_multiscript_line_height_em": 1.67
+        }
       }
     }
   }
