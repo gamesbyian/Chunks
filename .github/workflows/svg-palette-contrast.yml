@@ -1,0 +1,18 @@
+name: Chunks reference SVG palette contrast audit
+on:
+  pull_request:
+    paths:
+      - 'docs/design/svg/palettes/**'
+      - 'tools/audit_svg_palette_contrast.py'
+      - '.github/workflows/svg-palette-contrast.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  palette-contrast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify stable contrast audit without changing palette variants
+        run: python3 tools/audit_svg_palette_contrast.py --check

@@ -1,0 +1,354 @@
+{
+  "schema": 1,
+  "scope": "reference colour pairs only; no theme changes",
+  "surfaces": {
+    "dark": "#0B0F17",
+    "light": "#F8FAFC"
+  },
+  "thresholds": {
+    "normalText": 4.5,
+    "largeTextOrIcon": 3.0
+  },
+  "variants": [
+    {
+      "key": "brand-essence",
+      "certainty": "printed-reference",
+      "description": "Colour and illustrations sheet, values explicitly printed",
+      "rows": [
+        {
+          "token": "pink",
+          "hex": "#FF4EC4",
+          "darkText": "6.52",
+          "lightText": "2.81",
+          "candidate": "near-black",
+          "candidateRatio": "6.52",
+          "normalTextAA": true,
+          "iconOnDark": true,
+          "iconOnLight": false
+        },
+        {
+          "token": "purple",
+          "hex": "#A56BFF",
+          "darkText": "5.61",
+          "lightText": "3.27",
+          "candidate": "near-black",
+          "candidateRatio": "5.61",
+          "normalTextAA": true,
+          "iconOnDark": true,
+          "iconOnLight": true
+        },
+        {
+          "token": "blue",
+          "hex": "#3B82FF",
+          "darkText": "5.32",
+          "lightText": "3.45",
+          "candidate": "near-black",
+          "candidateRatio": "5.32",
+          "normalTextAA": true,
+          "iconOnDark": true,
+          "iconOnLight": true
+        },
+        {
+          "token": "yellow",
+          "hex": "#FFD93D",
+          "darkText": "13.92",
+          "lightText": "1.32",
+          "candidate": "near-black",
+          "candidateRatio": "13.92",
+          "normalTextAA": true,
+          "iconOnDark": true,
+          "iconOnLight": false
+        },
+        {
+          "token": "green",
+          "hex": "#22D97A",
+          "darkText": "10.30",
+          "lightText": "1.78",
+          "candidate": "near-black",
+          "candidateRatio": "10.30",
+          "normalTextAA": true,
+          "iconOnDark": true,
+          "iconOnLight": false
+        },
+        {
+          "token": "cyan",
+          "hex": "#00D4FF",
+          "darkText": "10.83",
+          "lightText": "1.69",
+          "candidate": "near-black",
+          "candidateRatio": "10.83",
+          "normalTextAA": true,
+          "iconOnDark": true,
+          "iconOnLight": false
+        },
+        {
+          "token": "near_black",
+          "hex": "#0B0F17",
+          "darkText": "1.00",
+          "lightText": "18.33",
+          "candidate": "off-white",
+          "candidateRatio": "18.33",
+          "normalTextAA": true,
+          "iconOnDark": false,
+          "iconOnLight": true
+        },
+        {
+          "token": "surface",
+          "hex": "#1A1F2B",
+          "darkText": "1.16",
+          "lightText": "15.74",
+          "candidate": "off-white",
+          "candidateRatio": "15.74",
+          "normalTextAA": true,
+          "iconOnDark": false,
+          "iconOnLight": true
+        },
+        {
+          "token": "muted",
+          "hex": "#2E3647",
+          "darkText": "1.58",
+          "lightText": "11.57",
+          "candidate": "off-white",
+          "candidateRatio": "11.57",
+          "normalTextAA": true,
+          "iconOnDark": false,
+          "iconOnLight": true
+        },
+        {
+          "token": "secondary",
+          "hex": "#6B7280",
+          "darkText": "3.97",
+          "lightText": "4.62",
+          "candidate": "off-white",
+          "candidateRatio": "4.62",
+          "normalTextAA": true,
+          "iconOnDark": true,
+          "iconOnLight": true
+        },
+        {
+          "token": "divider",
+          "hex": "#E5E7EB",
+          "darkText": "15.49",
+          "lightText": "1.18",
+          "candidate": "near-black",
+          "candidateRatio": "15.49",
+          "normalTextAA": true,
+          "iconOnDark": true,
+          "iconOnLight": false
+        },
+        {
+          "token": "light",
+          "hex": "#F8FAFC",
+          "darkText": "18.33",
+          "lightText": "1.00",
+          "candidate": "near-black",
+          "candidateRatio": "18.33",
+          "normalTextAA": true,
+          "iconOnDark": true,
+          "iconOnLight": false
+        }
+      ]
+    },
+    {
+      "key": "type-hierarchy",
+      "certainty": "visually-interpreted-needs-verification",
+      "description": "Typography and colour hierarchy sheet, values interpreted from small raster labels; candidate values pending manual verification",
+      "rows": [
+        {
+          "token": "brand",
+          "hex": "#A855F7",
+          "darkText": "4.85",
+          "lightText": "3.78",
+          "candidate": "near-black",
+          "candidateRatio": "4.85",
+          "normalTextAA": true,
+          "iconOnDark": true,
+          "iconOnLight": true
+        },
+        {
+          "token": "pink",
+          "hex": "#FF4EB8",
+          "darkText": "6.42",
+          "lightText": "2.85",
+          "candidate": "near-black",
+          "candidateRatio": "6.42",
+          "normalTextAA": true,
+          "iconOnDark": true,
+          "iconOnLight": false
+        },
+        {
+          "token": "blue",
+          "hex": "#22C1FF",
+          "darkText": "9.26",
+          "lightText": "1.98",
+          "candidate": "near-black",
+          "candidateRatio": "9.26",
+          "normalTextAA": true,
+          "iconOnDark": true,
+          "iconOnLight": false
+        },
+        {
+          "token": "yellow",
+          "hex": "#FFD400",
+          "darkText": "13.40",
+          "lightText": "1.37",
+          "candidate": "near-black",
+          "candidateRatio": "13.40",
+          "normalTextAA": true,
+          "iconOnDark": true,
+          "iconOnLight": false
+        },
+        {
+          "token": "success",
+          "hex": "#33D17A",
+          "darkText": "9.63",
+          "lightText": "1.90",
+          "candidate": "near-black",
+          "candidateRatio": "9.63",
+          "normalTextAA": true,
+          "iconOnDark": true,
+          "iconOnLight": false
+        },
+        {
+          "token": "warning",
+          "hex": "#FF8A3D",
+          "darkText": "8.18",
+          "lightText": "2.24",
+          "candidate": "near-black",
+          "candidateRatio": "8.18",
+          "normalTextAA": true,
+          "iconOnDark": true,
+          "iconOnLight": false
+        },
+        {
+          "token": "error",
+          "hex": "#FF4E5C",
+          "darkText": "5.93",
+          "lightText": "3.09",
+          "candidate": "near-black",
+          "candidateRatio": "5.93",
+          "normalTextAA": true,
+          "iconOnDark": true,
+          "iconOnLight": true
+        },
+        {
+          "token": "neutral",
+          "hex": "#E6EAF0",
+          "darkText": "15.88",
+          "lightText": "1.15",
+          "candidate": "near-black",
+          "candidateRatio": "15.88",
+          "normalTextAA": true,
+          "iconOnDark": true,
+          "iconOnLight": false
+        }
+      ]
+    },
+    {
+      "key": "dimensional-materials",
+      "certainty": "design-exploration",
+      "description": "Artwork colours used by the independent draft 3D object library (not a replacement for the approved SVG gradients)",
+      "rows": [
+        {
+          "token": "folder_front",
+          "hex": "#05BCFF",
+          "darkText": "8.81",
+          "lightText": "2.08",
+          "candidate": "near-black",
+          "candidateRatio": "8.81",
+          "normalTextAA": true,
+          "iconOnDark": true,
+          "iconOnLight": false
+        },
+        {
+          "token": "folder_back",
+          "hex": "#0A75E8",
+          "darkText": "4.31",
+          "lightText": "4.25",
+          "candidate": "near-black",
+          "candidateRatio": "4.31",
+          "normalTextAA": false,
+          "iconOnDark": true,
+          "iconOnLight": true
+        },
+        {
+          "token": "folder_side",
+          "hex": "#004EC8",
+          "darkText": "2.67",
+          "lightText": "6.86",
+          "candidate": "off-white",
+          "candidateRatio": "6.86",
+          "normalTextAA": true,
+          "iconOnDark": false,
+          "iconOnLight": true
+        },
+        {
+          "token": "storage_front",
+          "hex": "#A46AFF",
+          "darkText": "5.56",
+          "lightText": "3.30",
+          "candidate": "near-black",
+          "candidateRatio": "5.56",
+          "normalTextAA": true,
+          "iconOnDark": true,
+          "iconOnLight": true
+        },
+        {
+          "token": "storage_side",
+          "hex": "#6632D7",
+          "darkText": "2.74",
+          "lightText": "6.68",
+          "candidate": "off-white",
+          "candidateRatio": "6.68",
+          "normalTextAA": true,
+          "iconOnDark": false,
+          "iconOnLight": true
+        },
+        {
+          "token": "download_front",
+          "hex": "#30E655",
+          "darkText": "11.49",
+          "lightText": "1.60",
+          "candidate": "near-black",
+          "candidateRatio": "11.49",
+          "normalTextAA": true,
+          "iconOnDark": true,
+          "iconOnLight": false
+        },
+        {
+          "token": "download_side",
+          "hex": "#00B83D",
+          "darkText": "7.24",
+          "lightText": "2.53",
+          "candidate": "near-black",
+          "candidateRatio": "7.24",
+          "normalTextAA": true,
+          "iconOnDark": true,
+          "iconOnLight": false
+        },
+        {
+          "token": "media_front",
+          "hex": "#FF5869",
+          "darkText": "6.26",
+          "lightText": "2.93",
+          "candidate": "near-black",
+          "candidateRatio": "6.26",
+          "normalTextAA": true,
+          "iconOnDark": true,
+          "iconOnLight": false
+        },
+        {
+          "token": "media_side",
+          "hex": "#E83C68",
+          "darkText": "4.82",
+          "lightText": "3.80",
+          "candidate": "near-black",
+          "candidateRatio": "4.82",
+          "normalTextAA": true,
+          "iconOnDark": true,
+          "iconOnLight": true
+        }
+      ]
+    }
+  ]
+}
