@@ -10,9 +10,9 @@
   },
   "totals": {
     "approved": 1,
-    "vectorDraft": 789,
-    "planned": 23,
-    "aliases": 19
+    "vectorDraft": 800,
+    "planned": 14,
+    "aliases": 20
   },
   "assets": [
     {
@@ -1556,8 +1556,10 @@
       "id": "brand-fidelity/primary-tagline-hand-lettered-outline",
       "category": "brand-fidelity",
       "label": "primary tagline hand-lettered outline",
-      "status": "planned",
-      "source": "04-brand-lockups-and-app-icon.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png source-traced lettering; compositional variants still require optical approval",
+      "path": "docs/design/svg/brand/reference-traced/tagline-torrents-your-way.svg",
+      "fidelity": "source-derived-auto-trace"
     },
     {
       "id": "brand-fidelity/alternate-tagline-hand-lettered-outline",
@@ -1570,43 +1572,55 @@
       "id": "brand-fidelity/white-label-on-dark-with-underline",
       "category": "brand-fidelity",
       "label": "white label on dark with underline",
-      "status": "planned",
-      "source": "04-brand-lockups-and-app-icon.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png source-traced lettering; compositional variants still require optical approval",
+      "path": "docs/design/svg/brand/reference-traced/white-on-dark-lockup-source-traced.svg",
+      "fidelity": "source-derived-auto-trace"
     },
     {
       "id": "brand-fidelity/grey-monochrome-logo-lockup",
       "category": "brand-fidelity",
       "label": "grey monochrome logo lockup",
-      "status": "planned",
-      "source": "04-brand-lockups-and-app-icon.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png source-traced lettering; compositional variants still require optical approval",
+      "path": "docs/design/svg/brand/reference-traced/grey-monochrome-lockup-source-traced.svg",
+      "fidelity": "source-derived-auto-trace"
     },
     {
       "id": "brand-fidelity/black-monochrome-logo-lockup",
       "category": "brand-fidelity",
       "label": "black monochrome logo lockup",
-      "status": "planned",
-      "source": "04-brand-lockups-and-app-icon.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png source-traced lettering; compositional variants still require optical approval",
+      "path": "docs/design/svg/brand/reference-traced/black-monochrome-lockup-source-traced.svg",
+      "fidelity": "source-derived-auto-trace"
     },
     {
       "id": "brand-fidelity/full-stacked-four-character-brand-lockup",
       "category": "brand-fidelity",
       "label": "full stacked four-character brand lockup",
-      "status": "planned",
-      "source": "04-brand-lockups-and-app-icon.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png source-traced lettering; compositional variants still require optical approval",
+      "path": "docs/design/svg/brand/reference-traced/stacked-four-characters-source-traced.svg",
+      "fidelity": "source-derived-auto-trace"
     },
     {
       "id": "brand-fidelity/horizontal-four-character-brand-lockup",
       "category": "brand-fidelity",
       "label": "horizontal four-character brand lockup",
-      "status": "planned",
-      "source": "04-brand-lockups-and-app-icon.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png source-traced lettering; compositional variants still require optical approval",
+      "path": "docs/design/svg/brand/reference-traced/horizontal-four-characters-source-traced.svg",
+      "fidelity": "source-derived-auto-trace"
     },
     {
       "id": "brand-fidelity/mini-logo-for-16-px",
       "category": "brand-fidelity",
       "label": "mini logo for 16 px",
-      "status": "planned",
-      "source": "04-brand-lockups-and-app-icon.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png source-traced lettering; compositional variants still require optical approval",
+      "path": "docs/design/svg/brand/reference-traced/mini-C-source-traced.svg",
+      "fidelity": "source-derived-auto-trace"
     },
     {
       "id": "brand-fidelity/cream-launch-screen-frame",
@@ -1619,15 +1633,18 @@
       "id": "brand-fidelity/brand-wordmark-without-offset-shadow",
       "category": "brand-fidelity",
       "label": "brand wordmark without offset shadow",
-      "status": "planned",
-      "source": "04-brand-lockups-and-app-icon.png"
+      "status": "asset-alias",
+      "source": "Identical reference-derived wordmark with no offset already exists",
+      "aliasOf": "brand-fidelity/exact-reference-bespoke-chunks-wordmark-outlines"
     },
     {
       "id": "brand-fidelity/brand-wordmark-black-shadow-white-stroke",
       "category": "brand-fidelity",
       "label": "brand wordmark black shadow white stroke",
-      "status": "planned",
-      "source": "04-brand-lockups-and-app-icon.png"
+      "status": "vector-draft",
+      "source": "03-typography-and-wordmark.png source-traced lettering; compositional variants still require optical approval",
+      "path": "docs/design/svg/brand/reference-traced/black-with-white-stroke-lockup-source-traced.svg",
+      "fidelity": "source-derived-auto-trace"
     },
     {
       "id": "brand-fidelity/splash-screen-decorative-composition",
@@ -7607,6 +7624,33 @@
       "category": "brand-fidelity",
       "path": "docs/design/svg/brand/reference-traced/letter-s.svg",
       "source": "docs/design/reference-images/03-typography-and-wordmark.png; independent contour-derived alternative",
+      "fidelity": "source-derived-auto-trace"
+    },
+    {
+      "id": "brand-reference-trace/tagline-torrents-with-underline",
+      "category": "brand-fidelity",
+      "label": "Source-traced TORRENTS, YOUR WAY. with separate yellow marker underline",
+      "status": "vector-draft",
+      "path": "docs/design/svg/brand/reference-traced/tagline-torrents-with-underline.svg",
+      "source": "03-typography-and-wordmark.png; source-traced vector lettering",
+      "fidelity": "source-derived-auto-trace"
+    },
+    {
+      "id": "brand-reference-trace/tagline-torrents-white",
+      "category": "brand-fidelity",
+      "label": "Source-traced TORRENTS, YOUR WAY. white",
+      "status": "vector-draft",
+      "path": "docs/design/svg/brand/reference-traced/tagline-torrents-white.svg",
+      "source": "03-typography-and-wordmark.png; source-traced vector lettering",
+      "fidelity": "source-derived-auto-trace"
+    },
+    {
+      "id": "brand-reference-trace/primary-lockup-source-traced",
+      "category": "brand-fidelity",
+      "label": "Original-source traced Chunks wordmark and tagline with purple and yellow accents",
+      "status": "vector-draft",
+      "path": "docs/design/svg/brand/reference-traced/primary-lockup-source-traced.svg",
+      "source": "03-typography-and-wordmark.png; source-traced vector lettering",
       "fidelity": "source-derived-auto-trace"
     }
   ]
