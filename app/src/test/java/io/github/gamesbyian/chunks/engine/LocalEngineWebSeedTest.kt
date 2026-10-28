@@ -40,6 +40,22 @@ class LocalEngineWebSeedTest {
     private fun sha256(bytes: ByteArray) =
         MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
 
+    /**
+     * A native complete/seeding state can precede libtorrent's asynchronous
+     * disk-cache flush. A separately computed SHA-256 is only valid evidence
+     * once this exact torrent emits CACHE_FLUSHED.
+     */
+    private fun requireStableCompletedBytes(engine: LocalTorrentEngine, hash: String) {
+        waitFor(30_000) {
+            engine.status(hash)?.let {
+                it.progressPpm == 1_000_000 &&
+                    it.state in setOf(LocalTransferState.SEEDING, LocalTransferState.FINISHED)
+            } == true
+        }
+        assertTrue("Independently readable bytes require exact-hash native cache flush",
+            engine.flushCompletedForLibraryRead(hash, timeoutMs = 30_000))
+    }
+
     /** Minimal HTTP server with single-range support, as BEP 19 clients require. */
     private fun serve(bytes: ByteArray): HttpServer = HttpServer.create(
         InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0).apply {
@@ -69,6 +85,7 @@ class LocalEngineWebSeedTest {
             val added = (engine.addStopped(torrent, destination) as LocalAddResult.AddedStopped).status
             assertEquals(LocalCommandOutcome.VERIFIED, engine.resume(added.infoHash).outcome)
             waitFor(60_000) { engine.status(added.infoHash)?.progressPpm == 1_000_000 }
+            requireStableCompletedBytes(engine, added.infoHash)
             assertEquals(sha256(payload), sha256(File(destination, "sample.ogg").readBytes()))
         } finally {
             server.stop(0)
@@ -91,6 +108,7 @@ class LocalEngineWebSeedTest {
         val added = (engine.addStopped(File(torrentPath).readBytes(), destination) as LocalAddResult.AddedStopped).status
         assertEquals(LocalCommandOutcome.VERIFIED, engine.resume(added.infoHash).outcome)
         waitFor(180_000) { engine.status(added.infoHash)?.progressPpm == 1_000_000 }
+        requireStableCompletedBytes(engine, added.infoHash)
         val finished = requireNotNull(engine.status(added.infoHash))
         assertFalse("Start was acknowledged but libtorrent is still paused", finished.stopped)
         // allTimeDownload may exclude HTTP web-seed payload; completed wanted
