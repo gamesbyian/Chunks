@@ -16,6 +16,23 @@ import java.util.Locale
  * Payload bytes, prior per-file priorities and existing sessions are not moved.
  */
 internal object SnapshotRestoreOnceV1 {
+    /**
+     * Each single-item journal needs a distinct archive/target key. Using the
+     * full archive fingerprint alone would pin the first item's singleton
+     * roster and prevent restoring *any other* item in the same snapshot.
+     * Bind the exact source archive and exact infohash into the derived scope.
+     */
+    fun itemArchiveFingerprint(archiveFingerprint: String, infoHashV1: String): String {
+        require(archiveFingerprint.matches(Regex("[a-f0-9]{64}")) &&
+            infoHashV1.matches(Regex("[a-f0-9]{40}"))) {
+            "Unsupported restore journal identity"
+        }
+        val bytes = ("chunks.restore.item.v1:" + archiveFingerprint + ":" + infoHashV1)
+            .toByteArray(java.nio.charset.StandardCharsets.US_ASCII)
+        return java.security.MessageDigest.getInstance("SHA-256").digest(bytes)
+            .joinToString("") { "%02x".format(Locale.ROOT, it.toInt() and 255) }
+    }
+
     enum class Outcome {
         VERIFIED_PRESENT_STOPPED,
         REFUSED,
