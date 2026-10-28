@@ -1,0 +1,75 @@
+{
+  "status": "NONSHIPPING bounded accent-context kerning inheritance; base family unchanged",
+  "weights": {
+    "Regular": {
+      "input_sha256": "b1be17eb7f07a43db06e437e1d6cd891edc152a6b18aa76fac676921e8df0cbd",
+      "output_sha256": "88586e97166f6f44354c826eb2d62944a19be4124d79d666e8b49244479f8be3",
+      "file": "ChunksReferencePanel-Regular-AccentKerned.otf",
+      "reference_accent_glyphs": 244,
+      "candidate_pairs": 89792,
+      "adjusted_pairs": 88551,
+      "bounded_subtables": 26,
+      "max_correction_units": 180,
+      "clipped_pair_count": 0,
+      "clipped_pair_examples": [],
+      "mean_abs_correction_units": 84.33,
+      "source_scripts_unchanged": true
+    },
+    "Medium": {
+      "input_sha256": "7f8f8e037ddd8ce96edd3c5f9f50301a31b774474890ceeae8f13130f695f4b4",
+      "output_sha256": "4768f8f6a00bb4d5b7e0621b44239545338cf02a511e515e132fd2c0e60e8792",
+      "file": "ChunksReferencePanel-Medium-AccentKerned.otf",
+      "reference_accent_glyphs": 243,
+      "candidate_pairs": 89181,
+      "adjusted_pairs": 88047,
+      "bounded_subtables": 26,
+      "max_correction_units": 180,
+      "clipped_pair_count": 0,
+      "clipped_pair_examples": [],
+      "mean_abs_correction_units": 81.13,
+      "source_scripts_unchanged": true
+    },
+    "Semibold": {
+      "input_sha256": "c9eb1151374044b0622f10d09d42ba4814da5c8920de4184d7de1ed673c63f50",
+      "output_sha256": "ac7964e8aee258267c832782d2f8b77c81f70286c4780b937fec9ce59b8dc722",
+      "file": "ChunksReferencePanel-Semibold-AccentKerned.otf",
+      "reference_accent_glyphs": 243,
+      "candidate_pairs": 89181,
+      "adjusted_pairs": 88223,
+      "bounded_subtables": 26,
+      "max_correction_units": 180,
+      "clipped_pair_count": 0,
+      "clipped_pair_examples": [],
+      "mean_abs_correction_units": 77.47,
+      "source_scripts_unchanged": true
+    },
+    "Bold": {
+      "input_sha256": "60154e2e82213c54085856f43baf125a1395f18cf30c612c1ba217fe39ec275d",
+      "output_sha256": "3793c15181a58f7e0b0a3b1780c99f92fa07a8fe299076f8edfe45a83eba2135",
+      "file": "ChunksReferencePanel-Bold-AccentKerned.otf",
+      "reference_accent_glyphs": 243,
+      "candidate_pairs": 89181,
+      "adjusted_pairs": 88315,
+      "bounded_subtables": 26,
+      "max_correction_units": 180,
+      "clipped_pair_count": 0,
+      "clipped_pair_examples": [],
+      "mean_abs_correction_units": 73.34,
+      "source_scripts_unchanged": true
+    },
+    "ExtraBold": {
+      "input_sha256": "e733329166a81e191ffa42ff10d2f03f2a7e45ca045a90134c12071234675a43",
+      "output_sha256": "e87a83c93b631712fd14b2da525be10411548ecf25e68cfb468f4cb024d4ff21",
+      "file": "ChunksReferencePanel-ExtraBold-AccentKerned.otf",
+      "reference_accent_glyphs": 243,
+      "candidate_pairs": 89181,
+      "adjusted_pairs": 88457,
+      "bounded_subtables": 26,
+      "max_correction_units": 180,
+      "clipped_pair_count": 0,
+      "clipped_pair_examples": [],
+      "mean_abs_correction_units": 69.5,
+      "source_scripts_unchanged": true
+    }
+  }
+}
