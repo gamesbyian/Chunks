@@ -38,6 +38,33 @@ class LocalInventorySnapshotPanelInstrumentedTest {
         ).assertExists()
     }
 
+    @Test fun realMetainfoExportRemainsSeparateOptInAndShowsPrivateTrackerWarning() {
+        compose.setContent {
+            MaterialTheme {
+                LocalInventorySnapshotPanel(inventory, stale = false, busyEngine = false)
+            }
+        }
+        compose.onNodeWithText("Save phone transfer inventory").performClick()
+        compose.onNodeWithText("Choose file for phone inventory").assertIsEnabled()
+        compose.onNodeWithText("Recover verified .torrent definitions (sensitive)")
+            .performClick()
+        compose.onNodeWithText("Preview verified torrent definitions").assertIsEnabled()
+        compose.onNodeWithText("Private tracker credentials", substring = true).assertExists()
+        compose.onNodeWithText("Save reviewed sensitive .chunksnap").assertDoesNotExist()
+    }
+
+    @Test fun staleNativeViewNeverAllowsSensitiveMetainfoPreview() {
+        compose.setContent {
+            MaterialTheme {
+                LocalInventorySnapshotPanel(inventory, stale = true, busyEngine = false)
+            }
+        }
+        compose.onNodeWithText("Save phone transfer inventory").performClick()
+        compose.onNodeWithText("Recover verified .torrent definitions (sensitive)")
+            .performClick()
+        compose.onNodeWithText("Preview verified torrent definitions").assertIsNotEnabled()
+    }
+
     @Test fun staleLocalFrameCannotExportAsFresh() {
         compose.setContent {
             MaterialTheme {
