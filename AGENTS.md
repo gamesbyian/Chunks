@@ -1,5 +1,7 @@
 # Chunks: permanent agent operating contract
 
+**rTorrent onboarding owner contract (2026-10-28):** Treat [Smart Connect](docs/SMART-REMOTE-CONNECTION.md) as canonical for connection discovery, credential security, multi-instance identity, provider-specific paths and acceptance. Remote users should generally need only a hostname/ruTorrent URL and credentials; preserve manual/self-hosted options. Check the [coverage matrix](docs/SPEC-COVERAGE.md) and [work queue](docs/WORK-QUEUE.md) before calling this shipped or provider-compatible.
+
 **Mission:** Build Chunks into a colourful, deeply usable **Android-native BitTorrent client and first-class rTorrent remote**, with intuitive Places, independent Collections, clean optional display aliases and safe control of seeding data. No functionality is considered delivered merely because it is written into a specification.
 
 **Transfer privacy feature:** Before changing the protected transfer screens, Android authentication, credential persistence or notification visibility, consult [docs/TRANSFER-PRIVACY-LOCK.md](docs/TRANSFER-PRIVACY-LOCK.md). Keep its planned status distinct from verified functionality.
