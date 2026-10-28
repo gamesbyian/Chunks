@@ -1,0 +1,112 @@
+name: Build signed Chunks release APK (manual)
+
+# Manual and main-only. Produces a signed, verified chunks-release APK plus a
+# SHA-256 / signing-certificate receipt as a workflow artifact. It never
+# creates a GitHub Release and never publishes an unsigned APK. A signed
+# build is publisher authenticity only: it is not physical-device or
+# release acceptance (see docs/QUALITY-LEDGER.md and docs/BUILD.md).
+on:
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: "Semantic version, e.g. 0.2.0-alpha.1"
+        required: true
+      version_code:
+        description: "Monotonic Android versionCode (integer > previous release)"
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chunks-signed-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CHUNKS_SOURCE_SHA: ${{ github.sha }}
+      CHUNKS_VERSION_NAME: ${{ inputs.version_name }}
+      CHUNKS_VERSION_CODE: ${{ inputs.version_code }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate inputs and required signing secrets
+        env:
+          KEYSTORE_B64: ${{ secrets.CHUNKS_RELEASE_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.CHUNKS_RELEASE_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.CHUNKS_RELEASE_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.CHUNKS_RELEASE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          [[ "$CHUNKS_VERSION_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]] || { echo "Invalid version_name"; exit 1; }
+          [[ "$CHUNKS_VERSION_CODE" =~ ^[1-9][0-9]{0,9}$ ]] || { echo "Invalid version_code"; exit 1; }
+          for name in KEYSTORE_B64 STORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              echo "Missing signing secret for $name; refusing to build an unsigned release."
+              exit 1
+            fi
+          done
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Verify SVG-derived launcher vector is up to date
+        run: node tools/generate_launcher_vector.cjs --check
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+      - name: Install Android API 37 SDK
+        run: |
+          printf "y\n" | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
+          if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          fi
+      - name: JVM tests, then signed release build
+        env:
+          KEYSTORE_B64: ${{ secrets.CHUNKS_RELEASE_KEYSTORE_BASE64 }}
+          CHUNKS_RELEASE_STORE_PASSWORD: ${{ secrets.CHUNKS_RELEASE_STORE_PASSWORD }}
+          CHUNKS_RELEASE_KEY_ALIAS: ${{ secrets.CHUNKS_RELEASE_KEY_ALIAS }}
+          CHUNKS_RELEASE_KEY_PASSWORD: ${{ secrets.CHUNKS_RELEASE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          umask 077
+          export CHUNKS_RELEASE_KEYSTORE="$RUNNER_TEMP/chunks-release.jks"
+          trap 'rm -f "$CHUNKS_RELEASE_KEYSTORE"' EXIT
+          printf '%s' "$KEYSTORE_B64" | base64 -d > "$CHUNKS_RELEASE_KEYSTORE"
+          gradle --no-daemon :app:testDebugUnitTest :app:assembleRelease
+      - name: Verify signature, rename and write receipt
+        run: |
+          set -euo pipefail
+          out=app/build/outputs/apk/release
+          test ! -e "$out/app-release-unsigned.apk"
+          test -s "$out/app-release.apk"
+          apksigner="$ANDROID_HOME/build-tools/36.0.0/apksigner"
+          "$apksigner" verify --verbose --print-certs "$out/app-release.apk" > "$RUNNER_TEMP/signature.txt"
+          # minSdk 29: a v3 (or v2) APK Signature Scheme block is required.
+          grep -Eq "Verified using v[23] scheme \(APK Signature Scheme v[23]\): true" "$RUNNER_TEMP/signature.txt"
+          apk="$out/chunks-release-$CHUNKS_VERSION_NAME.apk"
+          cp "$out/app-release.apk" "$apk"
+          {
+            echo "Chunks signed release $CHUNKS_VERSION_NAME (versionCode $CHUNKS_VERSION_CODE)"
+            echo "Source commit: $CHUNKS_SOURCE_SHA"
+            sha256sum "$apk" | sed "s#$out/##"
+            grep "certificate SHA-256 digest" "$RUNNER_TEMP/signature.txt"
+            echo "Publisher authenticity only; not physical-device or release acceptance."
+          } > "$out/CHUNKS-RELEASE-SHA256.txt"
+          cat "$out/CHUNKS-RELEASE-SHA256.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chunks-release-${{ inputs.version_name }}
+          path: |
+            app/build/outputs/apk/release/chunks-release-*.apk
+            app/build/outputs/apk/release/CHUNKS-RELEASE-SHA256.txt
+          if-no-files-found: error
+          retention-days: 30

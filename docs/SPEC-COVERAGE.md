@@ -90,7 +90,7 @@ Legend: **Implemented (limited)** = code merged, may have some suitable specific
 | Remote capacity, deletion and extraction | Monitor-only or unsupported until separate privileges; cannot equate remote and phone storage | #2/#3/#70: independent verified provider and storage root; explicit refusals acceptable |
 | Expert tracker/peer/rate/queue/server settings | Partially surfaced, comprehensive control matrix planned/capability-detected | #1/#8: avoid promises before allowlisted method/host/device evidence |
 | Accessibility and visual character | Native emulator atlases exist; human approval and physical TalkBack/200% unproven | #8/#9: 48dp targets, large type, keyboard, reduced motion, RTL, contrast and dense queues |
-| Shipping, safety, dependencies | Debug APK, paired SHA-256/source checkout receipt (#209), mocked-adb receipt/physical-device preflight helper (#219), and targeted CI; no signed release or final secure profile storage decision | #10/#9: license, SBOM, signing, distribution, credential revocation, supported-platform matrix |
+| Shipping, safety, dependencies | Debug APK, paired SHA-256/source checkout receipt (#209), mocked-adb receipt/physical-device preflight helper (#219), and targeted CI; manual main-only signed-release workflow and Gradle signing config exist (signature path verified locally with a throwaway key), but **no owner release key/secrets yet, so no signed release has been produced**; no final secure profile storage decision | #10/#9: license, SBOM, signing, distribution, credential revocation, supported-platform matrix |
 
 ## Android system Open with acceptance (owner, 2026-10-27)
 
