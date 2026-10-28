@@ -13,6 +13,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.assertEquals
@@ -83,7 +84,7 @@ class SystemFontScaleComposeInstrumentedTest {
         // no network actions. Visit every main navigation destination and
         // return to Transfers, retaining actual pixels for review.
         for (tab in listOf("Places", "Organize", "Server", "Transfers")) {
-            rule.onNodeWithText(tab).assertExists().performClick()
+            rule.onNodeWithText(tab).assertExists().performScrollTo().performClick()
             rule.waitForIdle()
             savePixels(if (tab == "Transfers") "transfers-return" else tab.lowercase())
         }
