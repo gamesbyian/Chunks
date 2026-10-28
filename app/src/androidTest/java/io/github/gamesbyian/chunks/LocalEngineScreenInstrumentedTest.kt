@@ -177,6 +177,54 @@ class LocalEngineScreenInstrumentedTest {
         assertEquals(listOf(0 to false, 2 to true), toggles)
     }
 
+    @Test fun perFilePriorityRequiresExplicitFileReviewAndKeepsSkippedFilesUntouched() {
+        val changes = mutableListOf<Pair<Int, Int>>()
+        val files = listOf(
+            LocalTransferFile(0, "Season 1/Feature.mkv", 1024, 0, true, priority = 4),
+            LocalTransferFile(1, "Season 1/Skipped.mkv", 128, 0, false, priority = 0))
+        rule.setContent {
+            MaterialTheme {
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+                    .padding(16.dp)) {
+                    LocalFileSelection(
+                        files = files, busy = false, transferKey = "priority-review",
+                        onFileWanted = { _, _ -> },
+                        onFilePriority = { reviewed, priority ->
+                            changes += reviewed.index to priority
+                        })
+                }
+            }
+        }
+        rule.onNodeWithText("Priority: Normal").assertExists()
+        rule.onNodeWithText("Skipped.mkv").assertExists()
+        assertEquals(0, changes.size)
+        rule.onNodeWithText("Priority: Normal").performClick()
+        rule.onNodeWithText("Change download priority for Feature.mkv", substring = true)
+            .assertExists()
+        rule.onNodeWithText("High").performScrollTo().performClick()
+        assertEquals(listOf(0 to 7), changes)
+        // The skipped file has no priority editor, so it cannot be
+        // unintentionally selected or scheduled by this control.
+        rule.onNodeWithText("Priority: Normal").assertExists()
+        assertEquals(1, changes.size)
+    }
+
+    @Test fun busyFilePriorityCannotBeEditedUntilInventoryIsFresh() {
+        var changes = 0
+        rule.setContent {
+            MaterialTheme {
+                LocalFileSelection(
+                    files = listOf(LocalTransferFile(0, "Movie.mkv",
+                        1024, 0, true, priority = 1)),
+                    busy = true, transferKey = "stale-priorities",
+                    onFileWanted = { _, _ -> },
+                    onFilePriority = { _, _ -> changes++ })
+            }
+        }
+        rule.onNodeWithText("Priority: Low").assertIsNotEnabled()
+        assertEquals(0, changes)
+    }
+
     @Test fun selectionPagesReachEveryFileWithoutRenderingHugeLists() {
         val selected = mutableListOf<Pair<Int, Boolean>>()
         val files = (0 until 85).map { index ->
