@@ -8,6 +8,9 @@ In torrent Files details show the active completion target, next files, completi
 
 For remote rTorrent show exact capability-verified modes, including **ordering preference only / best effort** when strict piece-level control is unavailable. On RPC uncertainty display last confirmed state and require reconciliation, not automatic retry. For magnets, wait for verified metadata before claiming episode ordering. Warn that sequential modes can reduce total throughput/swarm health, and first-file completion cannot be promised where missing pieces are unavailable. Show no invented availability or ETA. Source/test implementation remains pending #415.
 
+## Square movie/TV artwork in transfers (planned, owner reference)
+
+For phone and remote transfer rows use a stable square leading thumbnail (normal target 64–80dp when room permits), softly rounded and center-cropped without stretching, as shown in the owner reference mockup. Preserve title, accessible status chip, segmented progress, speed figures, sizes and 48dp-class pause/resume actions. Larger art in transfer details with Change/Remove/Correct match. On 320px and 200% type adapt the card layout; do not compress functional targets. During loading/unknown/offline use static category icons and maintain card bounds. Thumbnails are decorative to screen readers: expose media identification through text, keep logical focus order and high-contrast, and obey privacy lock. External lookups are opt-in with manual override and an image-disable setting. Mockup comparison, populated local/remote queues, 200% text, TalkBack and physical-device review are acceptance gates. See [TRANSFER-ARTWORK](TRANSFER-ARTWORK.md), [#403](https://github.com/gamesbyian/Chunks/issues/403). **Unimplemented.**
 
 ## Android Open with .torrent and magnet: implemented subset (2026-10-27)
 
