@@ -8,7 +8,7 @@ import argparse,json,hashlib
 from pathlib import Path
 from fontTools.ttLib import TTFont
 from build_chunks_fonts import optical_kerning,add_gpos_pairs
-from spacing_optimizer import ink_gaps_at_size
+from spacing_optimizer import ink_gaps_at_size,measured_presets
 
 GLYPHS='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
 SAMPLES=['Chunks','TORRENTS, YOUR WAY.','Downloading 68%','0123456789','Résumé télévision']
@@ -29,7 +29,9 @@ def optimize(source,out,report):
     if check.getBestCmap()!=TTFont(source).getBestCmap():raise AssertionError('Unicode coverage changed')
     after={str(sz):min(ink_gaps_at_size(out,SAMPLES,px=sz)) for sz in (14,24,48)}
     if min(after.values())<.25:raise AssertionError(f'New collision in result {after}')
-    stats={'base_sha256':hashlib.sha256(source.read_bytes()).hexdigest(),
+    track, lines, typography = measured_presets(out, check, 800)
+    stats={'tracking_em':track,'line_height_em':lines,'tracking_audit':typography,
+        'base_sha256':hashlib.sha256(source.read_bytes()).hexdigest(),
         'optimized_sha256':hashlib.sha256(out.read_bytes()).hexdigest(),
         'modified_glyphs':len(changed),'measured_pairs':stat['examined_pairs'],
         'additional_optical_pairs':len(selected),'minimum_ink_gaps_px_before':before,
