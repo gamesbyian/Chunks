@@ -12,6 +12,9 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import java.util.concurrent.Executors
+import io.github.gamesbyian.chunks.privacy.TransferPrivacyPolicyStore
+import io.github.gamesbyian.chunks.privacy.TransferLockMode
+import io.github.gamesbyian.chunks.privacy.LocalServicePrivacyPolicy
 
 /**
  * Keeps the in-process local engine alive while the user has transfers running,
@@ -29,6 +32,33 @@ class LocalEngineService : Service() {
 
         fun start(context: Context) {
             context.startForegroundService(Intent(context, LocalEngineService::class.java))
+        }
+
+        /** Immediately remove any old unredacted/status-action notification
+         * on enabling privacy, rather than waiting for the next poll tick. */
+        fun redactActiveNotification(context: Context) {
+            val manager = context.getSystemService(NotificationManager::class.java)
+                ?: return
+            val active = try {
+                manager.activeNotifications.any { it.id == NOTIFICATION_ID }
+            } catch (_: Exception) { false }
+            if (!active) return
+            val open = PendingIntent.getActivity(context, 0,
+                Intent(context, MainActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+            try {
+                manager.notify(NOTIFICATION_ID, Notification.Builder(context, CHANNEL_ID)
+                    .setSmallIcon(android.R.drawable.stat_sys_download)
+                    .setContentTitle("Chunks on this phone")
+                    .setContentText("Transfer activity hidden by Chunks privacy lock.")
+                    .setVisibility(Notification.VISIBILITY_SECRET)
+                    .setOngoing(true).setOnlyAlertOnce(true).setContentIntent(open)
+                    .build())
+            } catch (_: RuntimeException) {
+                // The policy remains enabled; future service ticks also redact.
+                // Never let an OEM notification failure reopen transfer content.
+            }
         }
 
         /** Pause every running transfer and persist state. Safe to call without the service. */
@@ -82,6 +112,14 @@ class LocalEngineService : Service() {
         startForeground(NOTIFICATION_ID, notification("Checking transfers…"),
             ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
         if (intent?.action == ACTION_STOP_ALL) {
+            // A forged/replayed PendingIntent cannot bypass a locally enabled
+            // privacy gate. Android's mandatory onTimeout is intentionally
+            // separate and must still be allowed to stop the engine.
+            if (!LocalServicePrivacyPolicy.allowUserStopCommand(privacyMode())) {
+                handler.removeCallbacks(tick)
+                handler.post(tick)
+                return START_NOT_STICKY
+            }
             stopping = true
             requestStopAll()
             return START_NOT_STICKY
@@ -160,22 +198,34 @@ class LocalEngineService : Service() {
         super.onDestroy()
     }
 
+    private fun privacyMode(): TransferLockMode = try {
+        TransferPrivacyPolicyStore(this).mode(TransferCollectionStore.LOCAL_ENGINE_SCOPE)
+    } catch (_: Exception) {
+        // An unreadable persisted policy must never be a user-action bypass.
+        TransferLockMode.ONCE_PER_PROCESS
+    }
+
     private fun notification(text: String): Notification {
+        val policy = privacyMode()
         val open = PendingIntent.getActivity(this, 0,
             Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-        val stopAll = PendingIntent.getForegroundService(this, 1,
-            Intent(this, LocalEngineService::class.java).setAction(ACTION_STOP_ALL),
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-        return Notification.Builder(this, CHANNEL_ID)
+        val builder = Notification.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.stat_sys_download)
             .setContentTitle("Chunks on this phone")
-            .setContentText(text)
+            .setContentText(LocalServicePrivacyPolicy.notificationText(policy, text))
+            .setVisibility(if (policy == TransferLockMode.NEVER)
+                Notification.VISIBILITY_PRIVATE else Notification.VISIBILITY_SECRET)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setContentIntent(open)
-            .addAction(Notification.Action.Builder(null, "Stop all", stopAll).build())
             .setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)
-            .build()
+        if (LocalServicePrivacyPolicy.allowStopAllNotificationAction(policy)) {
+            val stopAll = PendingIntent.getForegroundService(this, 1,
+                Intent(this, LocalEngineService::class.java).setAction(ACTION_STOP_ALL),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+            builder.addAction(Notification.Action.Builder(null, "Stop all", stopAll).build())
+        }
+        return builder.build()
     }
 }
