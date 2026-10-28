@@ -23,7 +23,15 @@ CASES = [
 
 def run():
     source = Image.open(REF).convert("RGB")
-    assert source.size == (1536, 1152), f"Original reference dimensions changed: {source.size}"
+    # The owner-supplied 1536x1152 original was downsampled to 1448x1086
+    # when committed as the immutable reference PNG. The contour coordinates
+    # are in the original 1536-space. Upscale the *read-only in-memory*
+    # comparison image; never rewrite either reference.
+    if source.size == (1448, 1086):
+        source = source.resize((1536, 1152), Image.Resampling.BICUBIC)
+    elif source.size != (1536, 1152):
+        raise ValueError(f"Unexpected Chunks reference size {source.size}; manually recalibrate crops")
+    print("Reference comparison coordinate space: 1536x1152 (source PNG unchanged).")
     with TemporaryDirectory(prefix="chunks-brand-trace-") as scratch:
         for name, asset, crop, threshold, minimum in CASES:
             bounds = crop
