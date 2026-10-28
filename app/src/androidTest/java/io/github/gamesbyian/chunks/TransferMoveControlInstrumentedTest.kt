@@ -7,7 +7,6 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.gamesbyian.chunks.model.TransferMove
@@ -74,7 +73,7 @@ class TransferMoveControlInstrumentedTest {
         rule.onNodeWithText("Downloaded files stay on the phone", substring = true).assertExists()
         assertEquals(0, removals.get())
         sourceSeen = Observation.Absent
-        rule.onNodeWithText("Remove original job").performScrollTo().performClick()
+        rule.onNodeWithText("Remove original job").performClick()
         waitFor("Moved: the job now lives on the server")
         assertEquals(1, removals.get())
         assertNull(TransferMoveStore(context).get(TransferMove.Direction.PHONE_TO_SERVER, hash))
@@ -89,7 +88,7 @@ class TransferMoveControlInstrumentedTest {
             .copy(stage = TransferMove.Stage.TARGET_VERIFIED))
         show({ Observation.Present }, { sourceSeen }, removals, starts, removeFails = true)
         rule.onNodeWithText("Remove original job from the phone…").performClick()
-        rule.onNodeWithText("Remove original job").performScrollTo().performClick()
+        rule.onNodeWithText("Remove original job").performClick()
         waitFor("could not confirm whether the original job was removed")
         assertEquals(1, removals.get())
         rule.onNodeWithText("Check the original job").performClick()
