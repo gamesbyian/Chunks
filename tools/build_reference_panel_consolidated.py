@@ -292,9 +292,12 @@ def run(source_dir: Path, masters: Path, profile_file: Path, out: Path,
                     continue
                 upstream = source_dir / f'ChunksReferencePanel-{style}-DotlessKerned.otf'
                 candidate = out / f'ChunksReferencePanel-{style}-Consolidated.otf'
-                if (upstream.exists() and candidate.exists()
+                artifact = item.get('kerning', {}).get('clipped_pair_report', {})
+                audit_path = out / artifact.get('file', 'missing')
+                if (upstream.exists() and candidate.exists() and audit_path.is_file()
                         and item['input_sha256'] == digest(upstream)
-                        and item['output_sha256'] == digest(candidate)):
+                        and item['output_sha256'] == digest(candidate)
+                        and artifact.get('sha256') == digest(audit_path)):
                     report['weights'][style] = item
     report['weights'] = {style: report['weights'][style]
                          for style in WEIGHTS.values() if style in report['weights']}
