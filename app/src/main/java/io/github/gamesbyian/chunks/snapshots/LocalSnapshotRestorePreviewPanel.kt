@@ -20,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -49,13 +50,21 @@ internal fun LocalSnapshotRestorePreviewPanel(
     inventoryConfirmed: Boolean,
     inventoryStale: Boolean,
     busyEngine: Boolean,
-    mutationGeneration: Long
+    mutationGeneration: Long,
+    /** Only primes the existing Add review. Never adds a torrent. */
+    onPrepareAdd: ((ByteArray) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var expanded by remember { mutableStateOf(false) }
     var reading by remember { mutableStateOf(false) }
     var result by remember { mutableStateOf<SnapshotRestorePreviewV1.Preview?>(null) }
+    // The verified source stays in process memory only while the exact target
+    // inventory/revision that was compared remains current.
+    var verifiedSource by remember { mutableStateOf<SnapshotManifestV1.Verified?>(null) }
+    var comparedHashes by remember { mutableStateOf<List<String>?>(null) }
+    var comparedGeneration by remember { mutableLongStateOf(-1L) }
+    var manualNotice by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var search by remember { mutableStateOf("") }
     var chosenDecision by remember {
@@ -73,6 +82,9 @@ internal fun LocalSnapshotRestorePreviewPanel(
     val latestGeneration by rememberUpdatedState(mutationGeneration)
     LaunchedEffect(observedHashes, targetReady, mutationGeneration) {
         result = null
+        verifiedSource = null
+        comparedHashes = null
+        manualNotice = null
         if (!targetReady) error = "A fresh, complete phone transfer list is required before comparison."
     }
 
@@ -87,22 +99,30 @@ internal fun LocalSnapshotRestorePreviewPanel(
             if (!latestReady) {
                 reading = false
                 result = null
+                verifiedSource = null
+                comparedHashes = null
                 error = "Phone transfer inventory became stale. Refresh before trying again."
             } else {
                 reading = true
                 result = null
+                verifiedSource = null
+                comparedHashes = null
+                manualNotice = null
                 error = null
                 scope.launch {
                     try {
                         val candidate = withContext(Dispatchers.IO) {
                             val inspected = SnapshotDocumentReaderV1.inspect(
                                 context.contentResolver, uri)
-                            SnapshotRestorePreviewV1.plan(
+                            inspected to SnapshotRestorePreviewV1.plan(
                                 inspected, frozen, targetInventoryComplete = true)
                         }
                         if (latestReady && latestHashes == frozen &&
                             latestGeneration == frozenGeneration) {
-                            result = candidate
+                            result = candidate.second
+                            verifiedSource = candidate.first
+                            comparedHashes = frozen
+                            comparedGeneration = frozenGeneration
                         } else {
                             error = "Phone torrent identities changed during review. " +
                                 "The comparison was discarded; reopen the snapshot."
@@ -129,6 +149,9 @@ internal fun LocalSnapshotRestorePreviewPanel(
                 onClick = {
                     expanded = !expanded
                     result = null
+                    verifiedSource = null
+                    comparedHashes = null
+                    manualNotice = null
                     error = null
                     search = ""
                     chosenDecision = null
@@ -163,6 +186,9 @@ internal fun LocalSnapshotRestorePreviewPanel(
                     onClick = {
                         reading = true
                         result = null
+                        verifiedSource = null
+                        comparedHashes = null
+                        manualNotice = null
                         error = null
                         open.launch(arrayOf("*/*"))
                     },
@@ -209,6 +235,9 @@ internal fun LocalSnapshotRestorePreviewPanel(
                             )
                         }
                     }
+                    manualNotice?.let {
+                        Text(it, style = MaterialTheme.typography.bodySmall)
+                    }
                     val shown = SnapshotRestoreCompareCatalogV1.select(
                         preview.entries, search, chosenDecision, pageIndex)
                     Text("Showing ${shown.first}–${shown.last} of ${shown.matches} " +
@@ -229,6 +258,37 @@ internal fun LocalSnapshotRestorePreviewPanel(
                         }
                         Text(entry.originalName + " · " + category,
                             style = MaterialTheme.typography.bodySmall)
+                        if (entry.decision == SnapshotRestorePreviewV1.Decision.METADATA_NEEDS_REVIEW &&
+                            onPrepareAdd != null) {
+                            OutlinedButton(
+                                onClick = {
+                                    try {
+                                        val source = requireNotNull(verifiedSource) {
+                                            "Verified snapshot has expired"
+                                        }
+                                        val originalBytes = SnapshotManualAddReviewV1.prepare(
+                                            verified = source,
+                                            reviewedEntry = entry,
+                                            frozenTargetHashes = requireNotNull(comparedHashes),
+                                            currentTargetHashes = latestHashes,
+                                            frozenGeneration = comparedGeneration,
+                                            currentGeneration = latestGeneration,
+                                            completeFreshTarget = latestReady
+                                        )
+                                        onPrepareAdd(originalBytes)
+                                        manualNotice = "Original torrent prepared for phone Add review. " +
+                                            "Choose its Place and confirm Add separately. No restore occurred."
+                                        error = null
+                                    } catch (failure: Exception) {
+                                        manualNotice = null
+                                        error = "Cannot prepare this torrent: " +
+                                            (failure.message ?: "Snapshot or phone inventory changed")
+                                    }
+                                },
+                                enabled = targetReady && !reading,
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                            ) { Text("Review original .torrent in phone Add") }
+                        }
                     }
                     if (shown.entries.isEmpty()) {
                         Text("No records match these filters. No restore action was attempted.")
