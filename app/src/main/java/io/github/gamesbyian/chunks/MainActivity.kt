@@ -751,6 +751,9 @@ private fun TransfersScreen(
                     modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
                     Text("Save inventory-only snapshot")
                 }
+                RemoteTransferHealthExportPanel(
+                    transfers = list, serverView = view, stale = stale || loading
+                )
                 OutlinedButton(onClick = onInspectSnapshot,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
                     Text("Inspect saved .chunksnap file")
