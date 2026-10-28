@@ -19,6 +19,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Install isolated DOM testing dependency
+        run: npm install --no-save --ignore-scripts --no-package-lock 'jsdom@26.1.0'
+      - name: Smoke-test gallery search, controls, selection and layer stacking
+        run: node --test tools/tests/svg_mixer_browser.test.cjs
       - name: Test safe SVG export, XML parsing and editable JSON recipes
         run: node --test tools/tests/svg_mixer.test.cjs
       - name: Check full SVG manifest and gallery
