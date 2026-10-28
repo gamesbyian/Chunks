@@ -11,6 +11,8 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import org.libtorrent4j.AddTorrentParams
+import org.libtorrent4j.AnnounceEntry
+import io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader
 import org.libtorrent4j.AlertListener
 import org.libtorrent4j.Entry
 import org.libtorrent4j.Vectors
@@ -109,6 +111,9 @@ data class LocalRateLimits(val downloadBytesPerSecond: Int = 0, val uploadBytesP
 enum class LocalCommandOutcome { VERIFIED, UNCERTAIN, NOT_FOUND }
 
 data class LocalCommandResult(val outcome: LocalCommandOutcome, val status: LocalTransferStatus?)
+
+/** Exact v1 identity-gated, stopped-only repair of a legacy transfer with no trackers. */
+enum class LocalTrackerRepairOutcome { VERIFIED, REFUSED, UNCERTAIN, NOT_FOUND }
 
 sealed class LocalAddResult {
     data class AddedStopped(val status: LocalTransferStatus) : LocalAddResult()
@@ -431,6 +436,88 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         // Never hand out a document whose identity drifted from this transfer.
         val check = TorrentInfo.bdecode(bytes)
         return bytes.takeIf { check.isValid && identity(check) == normal(infoHash) }
+    }
+
+    /**
+     * Repair the missing announce list in a PRE-#392 local .torrent already in
+     * this engine, without removing, resuming, rechecking, moving, or replacing
+     * any payload. The caller must separately review a user-chosen, strictly
+     * validated original .torrent; this method independently verifies its v1
+     * identity and refuses any transfer that is running or already has trackers.
+     *
+     * An uncertain native write or resume-data flush MUST NOT be retried
+     * automatically. Subsequent list/status will reveal any applied trackers.
+     * Neither URLs nor native exception messages are ever returned.
+     */
+    @Synchronized
+    fun repairMissingTrackers(
+        infoHash: String,
+        originalTorrent: ByteArray
+    ): LocalTrackerRepairOutcome {
+        check(started) { "Engine not started" }
+        val key = normal(infoHash)
+        val handle = handles[key]?.takeIf { it.isValid }
+            ?: return LocalTrackerRepairOutcome.NOT_FOUND
+        if (!originalTorrent.size.let { it in 1..TorrentMetainfoReader.MAX_BYTES })
+            return LocalTrackerRepairOutcome.REFUSED
+        val verified = try { TorrentMetainfoReader.preview(originalTorrent) }
+            catch (_: Exception) { return LocalTrackerRepairOutcome.REFUSED }
+        if (verified.infoHashV1 != key || verified.trackerCount == 0)
+            return LocalTrackerRepairOutcome.REFUSED
+        val before = try { snapshot(key, handle) }
+            catch (_: Exception) { null }
+            ?: return LocalTrackerRepairOutcome.UNCERTAIN
+        if (!before.stopped || !before.metadataKnown)
+            return LocalTrackerRepairOutcome.REFUSED
+        val current = try { handle.trackers() } catch (_: Exception) {
+            return LocalTrackerRepairOutcome.UNCERTAIN
+        }
+        if (current.isNotEmpty()) return LocalTrackerRepairOutcome.REFUSED
+
+        // Use the same bounded, tier-preserving extraction as a fresh Add.
+        val (urls, tiers) = trackerTiers(originalTorrent)
+        if (urls.isEmpty() || urls.size != tiers.size)
+            return LocalTrackerRepairOutcome.REFUSED
+        val proposed = urls.mapIndexed { index, url ->
+            AnnounceEntry(url).also { it.tier(tiers[index].toShort()) }
+        }
+        try { handle.replaceTrackers(proposed) } catch (_: Exception) {
+            return LocalTrackerRepairOutcome.UNCERTAIN
+        }
+        val readback = try { handle.trackers() } catch (_: Exception) {
+            return LocalTrackerRepairOutcome.UNCERTAIN
+        }
+        val expected = proposed.map { it.url() to it.tier() }.toSet()
+        if (readback.size != proposed.size ||
+            readback.map { it.url() to it.tier() }.toSet() != expected)
+            return LocalTrackerRepairOutcome.UNCERTAIN
+        val after = try { snapshot(key, handle) } catch (_: Exception) { null }
+        if (after?.stopped != true || after.savePath != before.savePath)
+            return LocalTrackerRepairOutcome.UNCERTAIN
+
+        // A fresh in-memory tracker list does not establish crash-safe repair.
+        // Require the exact stopped torrent's persisted resume data to contain
+        // the same tracker list before declaring completion.
+        val state = config.stateDirectory ?: return LocalTrackerRepairOutcome.UNCERTAIN
+        val saved = try { saveResumeData() } catch (_: Exception) {
+            return LocalTrackerRepairOutcome.UNCERTAIN
+        }
+        if (saved != handles.size) return LocalTrackerRepairOutcome.UNCERTAIN
+        val onDisk = try {
+            val file = File(state, "$key.resume")
+            if (!file.isFile || file.length() !in 1..MAX_RESUME_BYTES) null
+            else {
+                val error = error_code()
+                val params = libtorrent.read_resume_data_ex(
+                    Vectors.bytes2byte_vector(file.readBytes()), error)
+                if (error.value() != 0 || params == null) null
+                else AddTorrentParams(params)
+            }
+        } catch (_: Exception) { null }
+        val persisted = onDisk?.getTrackers()?.toSet()
+        return if (persisted == urls.toSet())
+            LocalTrackerRepairOutcome.VERIFIED
+        else LocalTrackerRepairOutcome.UNCERTAIN
     }
 
     /** Files with progress and selection, or null if unknown or metadata is not yet known. */
