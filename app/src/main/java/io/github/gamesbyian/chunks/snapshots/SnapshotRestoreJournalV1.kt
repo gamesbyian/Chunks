@@ -158,7 +158,7 @@ internal class SnapshotRestoreJournalV1 private constructor(
     companion object {
         private const val VERSION = "chunks-import-journal-v1"
         private const val MAX_ENTRIES = 512
-        private const val MAX_STORED_CHARS = 55_000
+        private const val MAX_STORED_CHARS = 100_000
         private val V1_HASH = Regex("[0-9a-f]{40}")
         private val TARGET_HASH = Regex("[0-9a-f]{40}([0-9a-f]{24})?")
         private val FINGERPRINT = Regex("[0-9a-f]{64}")
