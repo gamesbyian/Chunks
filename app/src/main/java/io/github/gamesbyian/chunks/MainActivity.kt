@@ -75,6 +75,8 @@ import io.github.gamesbyian.chunks.rpc.RemoteTransfer
 import io.github.gamesbyian.chunks.rpc.RemoteQueueActivityContext
 import io.github.gamesbyian.chunks.snapshots.SnapshotInventoryExportScreen
 import io.github.gamesbyian.chunks.snapshots.SnapshotDocumentInspectScreen
+import io.github.gamesbyian.chunks.snapshots.SnapshotRestorePreviewPanel
+import io.github.gamesbyian.chunks.snapshots.SnapshotRestoreTarget
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -553,7 +555,27 @@ private fun ChunksApp(
                     transfers = transfers, view = currentView,
                     snapshotRevision = snapshotRevision,
                     stale = stale, loading = loading,
-                    onBack = { section = Section.TRANSFERS }
+                    onBack = { section = Section.TRANSFERS },
+                    restorePanel = {
+                        // Only the complete "main" view is a whole-server
+                        // inventory; filtered views cannot prove absence.
+                        SnapshotRestorePreviewPanel(
+                            targetHashes = transfers.map { it.hash },
+                            target = SnapshotRestoreTarget.SERVER,
+                            inventoryConfirmed = currentView == "main" && snapshotRevision > 0,
+                            inventoryStale = stale,
+                            busyEngine = loading,
+                            mutationGeneration = snapshotRevision,
+                            onPrepareAdd = { document ->
+                                serverHandoffTorrent = document
+                                section = Section.ADD
+                            },
+                            onPrepareMagnet = { link ->
+                                magnet = link
+                                section = Section.ADD
+                            }
+                        )
+                    }
                 )
                 Section.SNAPSHOT_INSPECT -> SnapshotDocumentInspectScreen(
                     onBack = { section = Section.TRANSFERS })
