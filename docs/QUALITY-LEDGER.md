@@ -1,5 +1,9 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-28 batch Copy Transfer to server (source evidence only)
+
+- `BatchServerCopy` + phone batch panel section: JVM `BatchServerCopyTest` 3/3 locally (order, duplicate skip, missing/mismatched definition never sent, stop at first unconfirmed Add with no retry, selection validation); 2 API35 Compose tests added. Uses the existing `loadStoppedTorrentBytes` at the server default Place with readback. **Not established:** real rTorrent batch run, Seedhost, handset.
+
 ## 2026-10-28 evening PR reconciliation (app lane)
 
 - **#463 MERGED** `ea5833e` (Smart Connect discovery) — see entry below; merge conflicts were documentation-only (both sides' ledger/queue paragraphs kept).

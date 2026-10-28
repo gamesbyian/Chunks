@@ -5,6 +5,8 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -70,5 +72,39 @@ class LocalBatchCollectionPanelInstrumentedTest {
         }
         compose.onNodeWithText("Batch organize phone transfers").assertIsNotEnabled()
         compose.onNodeWithText("Select shown (2)").assertDoesNotExist()
+    }
+
+    @Test fun batchCopyToServerNeedsSeparateConfirmationAndSendsExactlyTheSelection() {
+        val store = TransferCollectionStore(InstrumentationRegistry.getInstrumentation().targetContext)
+        val copied = ArrayList<List<String>>()
+        compose.setContent {
+            MaterialTheme {
+                androidx.compose.foundation.layout.Column(androidx.compose.ui.Modifier.verticalScroll(
+                    androidx.compose.foundation.rememberScrollState())) {
+                    LocalBatchCollectionPanel(transfers, transfers, inventoryStale = false, store = store,
+                        onMembershipChanged = {}, copyServerLabel = "seed.example",
+                        onBatchCopyToServer = { copied += it })
+                }
+            }
+        }
+        compose.onNodeWithText("Batch organize phone transfers").performClick()
+        compose.onNodeWithText("Public transfer two").performClick()
+        compose.onNodeWithText("Copy Transfer to server (1)…").performScrollTo().performClick()
+        compose.onNodeWithText("Downloaded files are not transferred", substring = true).assertExists()
+        assertTrue(copied.isEmpty())
+        compose.onNodeWithText("Confirm copy to server").performScrollTo().performClick()
+        assertEquals(listOf(listOf(h2)), copied)
+    }
+
+    @Test fun batchCopyIsHiddenWhenSignedOut() {
+        val store = TransferCollectionStore(InstrumentationRegistry.getInstrumentation().targetContext)
+        compose.setContent {
+            MaterialTheme {
+                LocalBatchCollectionPanel(transfers, transfers, inventoryStale = false, store = store,
+                    onMembershipChanged = {})
+            }
+        }
+        compose.onNodeWithText("Batch organize phone transfers").performClick()
+        compose.onNodeWithText("Copy selected to the server").assertDoesNotExist()
     }
 }

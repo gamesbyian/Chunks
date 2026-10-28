@@ -99,6 +99,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** One engine per process. It lives only as long as Android keeps Chunks running. */
+/** Adds one exact .torrent as a stopped job at the signed-in server's default Place. */
+internal class LocalServerCopyLink(
+    val hostLabel: String,
+    val addStoppedAtDefault: suspend (ByteArray) -> io.github.gamesbyian.chunks.rpc.RemoteAddOutcome
+)
+
 internal object LocalEngineHolder {
     private var engine: LocalTorrentEngine? = null
 
@@ -215,6 +221,8 @@ internal fun LocalEngineScreen(
     initialTorrentUri: Uri? = null,
     /** A connected, independently privacy-gated rTorrent Add screen is available. */
     canReviewOnConnectedServer: Boolean = false,
+    /** The signed-in rTorrent account for batch Copy Transfer to server; null when signed out. */
+    serverCopy: LocalServerCopyLink? = null,
     onTorrentConsumed: () -> Unit = {},
     onPrefillConsumed: () -> Unit = {},
     onPrepareRemote: ((String) -> Unit)? = null,
@@ -984,6 +992,35 @@ internal fun LocalEngineScreen(
             onMembershipChanged = {
                 registeredNames = nameRegistry.names(TransferCollectionStore.LOCAL_ENGINE_SCOPE)
                 collectionRevision++
+            },
+            copyServerLabel = serverCopy?.hostLabel,
+            onBatchCopyToServer = serverCopy?.let { link ->
+                { ids ->
+                    val items = transfers.filter { it.infoHash in ids }
+                        .map { io.github.gamesbyian.chunks.model.BatchServerCopy.Item(it.infoHash, it.name) }
+                    performLocalMutation {
+                        val problem = io.github.gamesbyian.chunks.model.BatchServerCopy.validate(items)
+                        message = if (problem != null) problem else try {
+                            val report = io.github.gamesbyian.chunks.model.BatchServerCopy.run(items,
+                                exportTorrent = { hash ->
+                                    withContext(Dispatchers.IO) {
+                                        LocalEngineHolder.current()?.exportTorrentFile(hash)
+                                    }
+                                },
+                                addStopped = link.addStoppedAtDefault)
+                            report.summary() + report.results
+                                .filter { it.second != io.github.gamesbyian.chunks.model.BatchServerCopy.Result.ADDED }
+                                .take(10).joinToString("") { (item, result) ->
+                                    "\n• " + item.name.take(80) + ": " + result.label
+                                }
+                        } catch (cancel: kotlinx.coroutines.CancellationException) {
+                            throw cancel
+                        } catch (_: Exception) {
+                            "The batch copy stopped unexpectedly. Check the server list before " +
+                                "copying again; nothing is retried automatically."
+                        }
+                    }
+                }
             },
             onBatchLifecycle = { ids, start ->
                 val targets = transfers.filter { it.infoHash in ids }
