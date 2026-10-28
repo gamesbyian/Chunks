@@ -13,6 +13,9 @@ on:
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/Android10StoragePermissionDialogInstrumentedTest.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/LocalEngineScreen.kt"
       - "tools/android10_downloads_instrumentation.sh"
+      - "app/src/main/java/io/github/gamesbyian/chunks/LocalEngineService.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/LocalService*.kt"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalEngineServiceInstrumentedTest.kt"
       - ".github/workflows/android10-downloads-instrumentation.yml"
   workflow_dispatch:
 

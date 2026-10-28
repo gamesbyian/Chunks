@@ -37,4 +37,14 @@ status=$?
 set -e
 grep -E '^INSTRUMENTATION_STATUS: (class|test)=|^INSTRUMENTATION_STATUS_CODE:|^OK |^FAILURES|^Tests run' "$log" || true
 fail_if_skipped_or_failed "$status" 'OK (6 tests)' "Android 10 shared Downloads instrumentation"
-echo "CHUNKS_ANDROID10_DOWNLOADS: API 29 user tapped Allow storage access then Android's own Allow, and new Adds switched to Downloads/Chunks Downloads; legacy storage + grant let the native engine write, resume and seed there"
+# 3. The foreground download service and its notification on API 29
+#    (an API 31-only builder call once crashed it here).
+set +e
+adb shell am instrument -w -r \
+ -e class io.github.gamesbyian.chunks.LocalEngineServiceInstrumentedTest \
+ io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner >"$log" 2>&1
+status=$?
+set -e
+grep -E '^INSTRUMENTATION_STATUS: test=|^INSTRUMENTATION_STATUS_CODE:|^OK |^FAILURES' "$log" || true
+fail_if_skipped_or_failed "$status" 'OK (3 tests)' "Android 10 foreground download service"
+echo "CHUNKS_ANDROID10_DOWNLOADS: API 29 user tapped Allow storage access then Android's own Allow, and new Adds switched to Downloads/Chunks Downloads; legacy storage + grant let the native engine write, resume and seed there; the foreground service ran, showed its notification and Stop all paused transfers"
