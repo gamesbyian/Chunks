@@ -1,5 +1,8 @@
 # Chunks evidence and release gate ledger
 
+**Font #421, 2026-10-28, pending:** Exact nonshipping consolidation branch at `d7fd010cf3dc15f703f11f7b9f215b9e1bedda4c`; [CI workflow run 40640305773](https://github.com/gamesbyian/Chunks/actions/runs/40640305773) started. This is **source/proposed test evidence only**, not an accepted font build or Android device acceptance. Expected outputs: five CFF faces, 28 source-punctuation overlays per weight, shape/cmap/shaping invariants, compiled-OTF PNG and SHA metrics. Do not mark green or merge until actual exact-head results are inspected. Manual font editorial, normal/200% Android typography, TalkBack and release selection remain blocked by [#347](https://github.com/gamesbyian/Chunks/issues/347).
+
+
 ## 2026-10-28 handoff: verified native-rate merge and CI-gated improvements
 
 - **#410 MERGED:** Native per-transfer upload/download payload speed display distinct from verified disk progress, squash `febb3085bc9d8163359f47ca2f8939f54c81f4fc`, exact head `23550f0af0034a5fcca24b91a33d39e3e988d130`. Android/JVM [40636451887](https://github.com/gamesbyian/Chunks/actions/runs/40636451887), installed API35 [40636451912](https://github.com/gamesbyian/Chunks/actions/runs/40636451912), modern+legacy disposable rTorrent [40636452019](https://github.com/gamesbyian/Chunks/actions/runs/40636452019) **all passed**. Speed samples alone are not proof of delivered hash-verified bytes.
