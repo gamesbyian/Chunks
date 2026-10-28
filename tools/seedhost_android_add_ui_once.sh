@@ -39,7 +39,10 @@ case "$checkpoint" in
  arguments|preflight-inventory|preflight-default-place|preflight-custom-place|preflight|connect-failed|queue|add-open|magnet-entered|place-status|add-draft|review|confirmed|outcome-not-verified|app-verified|independent-readback|erase-attempted|inventory-restored) ;;
  *) checkpoint=unavailable ;;
 esac
-echo "CHUNKS_ANDROID_ADD_UI: synthetic identity derives from run $GITHUB_RUN_ID; last fixed stage: $checkpoint"
+kind=$(grep -E '^INSTRUMENTATION_STATUS: chunks_add_ui_failure=' "$log" | tail -n 1 |
+ sed 's/^INSTRUMENTATION_STATUS: chunks_add_ui_failure=//' | tr -d '\r' || true)
+[[ "$kind" =~ ^[A-Za-z]{1,60}$ ]] || kind=none
+echo "CHUNKS_ANDROID_ADD_UI: synthetic identity derives from run $GITHUB_RUN_ID; last fixed stage: $checkpoint; draft failure kind: $kind"
 destination="$RUNNER_TEMP/chunks-seedhost-add-ui"
 mkdir -p "$destination"
 for image in seedhost-android-add-ui-draft-failure.png seedhost-android-add-ui-review.png seedhost-android-add-ui-outcome.png; do

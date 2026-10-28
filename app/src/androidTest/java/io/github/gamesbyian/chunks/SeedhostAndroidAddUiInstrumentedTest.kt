@@ -80,6 +80,22 @@ class SeedhostAndroidAddUiInstrumentedTest {
         }, null, null) == 1)
     }
 
+    /** Only an exception's class name, letters only: never its message. */
+    private fun failureKind(failure: Throwable) {
+        val kind = failure.javaClass.simpleName.takeIf { it.matches(Regex("[A-Za-z]{1,60}")) } ?: "Unnamed"
+        InstrumentationRegistry.getInstrumentation().sendStatus(
+            2, Bundle().apply { putString("chunks_add_ui_failure", kind) })
+    }
+
+    private fun hideKeyboard() {
+        rule.runOnUiThread {
+            val view = rule.activity.window.decorView
+            rule.activity.getSystemService(android.view.inputmethod.InputMethodManager::class.java)
+                ?.hideSoftInputFromWindow(view.windowToken, 0)
+        }
+        rule.waitForIdle()
+    }
+
     private fun scrollTo(text: String) =
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(text, substring = true))
 
@@ -179,11 +195,13 @@ class SeedhostAndroidAddUiInstrumentedTest {
             checkpoint("add-open")
             try {
                 rule.onNodeWithText("Magnet link").performTextReplacement(magnet)
+                hideKeyboard()
                 checkpoint("magnet-entered")
                 // The Add screen is a LazyColumn: the Place status line under the
-                // folder field is not composed until scrolled into view.
-                scrollTo("Custom server folder (optional)")
+                // folder field is not composed until scrolled into view, and a
+                // focused field can pull the list back, so re-scroll while waiting.
                 rule.waitUntil(30_000) {
+                    runCatching { scrollTo("Custom server folder (optional)") }
                     visible("Using rTorrent default Place:") || visible("No usable default Place was reported.")
                 }
                 // The app must agree with the preflight about the server default.
@@ -191,11 +209,16 @@ class SeedhostAndroidAddUiInstrumentedTest {
                 checkpoint("place-status")
                 if (serverDefault == null) {
                     rule.onNodeWithText("Custom server folder (optional)").performTextReplacement(parent)
-                    rule.waitUntil(10_000) { visible("Using custom Place.") }
+                    hideKeyboard()
+                    rule.waitUntil(10_000) {
+                        runCatching { scrollTo("Custom server folder (optional)") }
+                        visible("Using custom Place.")
+                    }
                 }
             } catch (failure: Throwable) {
                 // Post-login Add screen only (no credential is on screen).
                 runCatching { capture("seedhost-android-add-ui-draft-failure") }
+                failureKind(failure)
                 throw failure
             }
             checkpoint("add-draft")
@@ -230,6 +253,9 @@ class SeedhostAndroidAddUiInstrumentedTest {
                     remote.listTransfers("main").map { it.hash.lowercase() }.toSet())
             }
             checkpoint("independent-readback")
+        } catch (failure: Throwable) {
+            failureKind(failure)
+            throw failure
         } finally {
             // Clean up ONLY the identity this run created, once each, from a
             // fresh read. Never Stop/erase after an uncertain reply blindly.
