@@ -1,5 +1,9 @@
 # Chunks security, privacy and operation authority
 
+## Current multi-profile and support-report privacy boundaries (2026-10-27)
+
+Merged #332 implements Android Keystore AES-GCM encrypted remembered rTorrent credentials for at most 12 account-scoped profiles. Saved account selection never contacts the server; successful authenticated Connect is required before adding saved credentials. Device-local opt-out and profile forget remain distinct from the still-unimplemented biometric transfer-view lock. Tested with JVM/native API35, not physical phone or actual fingerprint/PIN. Merged #331 offers bounded local inventory-only snapshots without payloads, credentials or restorable .torrent records, with historical paths excluded unless explicitly selected. Proposed #335 local/remote download-health reports are default-redacted one-frame observations, intentionally omitting hashes, paths, endpoints, usernames, tracker details and raw errors; optional names require user opt-in, and any exported artifact should be handled privately. Never call an observed Start flag or zero rate proof of verified payload movement.
+
 Updated after CRITICAL-REVIEW-2026-10-24.md. Public source repository, untrusted torrent metadata, powerful rTorrent RPC and destructive filesystem operations create a combined trust problem. The primary objective is protecting users' private server credentials and valuable already-seeding data.
 
 ## Local ↔ remote copy/move and archive-delete threat boundaries
