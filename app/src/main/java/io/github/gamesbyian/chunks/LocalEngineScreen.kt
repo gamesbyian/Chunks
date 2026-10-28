@@ -61,6 +61,7 @@ import io.github.gamesbyian.chunks.engine.LocalTransferFile
 import io.github.gamesbyian.chunks.engine.LocalTransferStatus
 import io.github.gamesbyian.chunks.model.Units
 import io.github.gamesbyian.chunks.model.LocalInventoryFrame
+import io.github.gamesbyian.chunks.snapshots.LocalInventorySnapshotPanel
 import io.github.gamesbyian.chunks.model.TorrentIdentityHandoff
 import io.github.gamesbyian.chunks.model.LocalAddStoragePreflight
 import io.github.gamesbyian.chunks.model.LocalAddStoragePlanner
@@ -596,6 +597,11 @@ internal fun LocalEngineScreen(
             },
             onCancel = { pending = null })
 
+        LocalInventorySnapshotPanel(
+            transfers = transfers,
+            stale = inventoryStale,
+            busyEngine = busy
+        )
         LocalBatchCollectionPanel(
             transfers = transfers,
             shown = displayedTransfers,
