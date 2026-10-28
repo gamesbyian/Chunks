@@ -10,7 +10,6 @@ import io.github.gamesbyian.chunks.LocalEngineService
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -405,7 +404,9 @@ private fun TransferPrivacyGate(
                 }
                 notice?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
             }
-            Box(Modifier.fillMaxWidth().weight(1f)) {
+            // A Column, not a Box: the connected route passes several
+            // siblings (tabs, notices, screen) that must stack, not overlap.
+            Column(Modifier.fillMaxWidth().weight(1f)) {
                 content()
             }
         }
