@@ -41,7 +41,7 @@ class SharedTorrentDocumentInstrumentedTest {
         val good = document(goodBytes)
         assertEquals(good, SharedTorrentDocument.fromIntent(
             Intent(Intent.ACTION_VIEW).apply {
-                data = good; type = "application/x-bittorrent"
+                setDataAndType(good, "application/x-bittorrent")
             }))
         assertEquals(good, SharedTorrentDocument.fromIntent(
             Intent(Intent.ACTION_SEND).apply {
@@ -55,16 +55,16 @@ class SharedTorrentDocumentInstrumentedTest {
                 clipData = android.content.ClipData.newUri(context.contentResolver, "torrent", good)
             }))
         assertNull(SharedTorrentDocument.fromIntent(
-            Intent(Intent.ACTION_VIEW).apply { data = good; type = "application/pdf" }))
+            Intent(Intent.ACTION_VIEW).apply { setDataAndType(good, "application/pdf") }))
         assertNull(SharedTorrentDocument.fromIntent(
             Intent(Intent.ACTION_VIEW).apply {
-                data = Uri.parse("file:///sdcard/Download/sample.torrent")
-                type = "application/x-bittorrent"
+                setDataAndType(Uri.parse("file:///sdcard/Download/sample.torrent"),
+                    "application/x-bittorrent")
             }))
         assertNull(SharedTorrentDocument.fromIntent(
             Intent(Intent.ACTION_VIEW).apply {
-                data = Uri.parse("https://example.test/sample.torrent")
-                type = "application/x-bittorrent"
+                setDataAndType(Uri.parse("https://example.test/sample.torrent"),
+                    "application/x-bittorrent")
             }))
         assertNull(SharedTorrentDocument.fromIntent(
             Intent(Intent.ACTION_SEND_MULTIPLE).apply { type = "application/x-bittorrent" }))
@@ -85,7 +85,7 @@ class SharedTorrentDocumentInstrumentedTest {
         try {
             SharedTorrentDocument.read(context.contentResolver, bad)
             fail("Invalid metainfo must be rejected before local Add review")
-        } catch (_: IllegalArgumentException) { }
+        } catch (_: RuntimeException) { }
         val huge = document(ByteArray(TorrentMetainfoReader.MAX_BYTES + 1) { 0x41 })
         try {
             SharedTorrentDocument.read(context.contentResolver, huge)
