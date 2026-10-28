@@ -596,6 +596,10 @@ internal fun LocalEngineScreen(
             },
             onCancel = { pending = null })
 
+        LocalTransferHealthExportPanel(
+            transfers = transfers,
+            stale = inventoryStale || busy
+        )
         LocalBatchCollectionPanel(
             transfers = transfers,
             shown = displayedTransfers,
