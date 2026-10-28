@@ -4,6 +4,7 @@ import java.net.URI
 import java.net.UnknownHostException
 import java.net.ConnectException
 import java.net.SocketTimeoutException
+import java.net.NoRouteToHostException
 import java.io.IOException
 import kotlinx.coroutines.CancellationException
 import javax.net.ssl.SSLException
@@ -178,11 +179,12 @@ object RemoteSmartConnect {
                 val category = when {
                     failure is SSLException -> Category.TLS
                     failure is UnknownHostException || failure is ConnectException ||
-                        failure is SocketTimeoutException -> Category.NETWORK
+                        failure is SocketTimeoutException || failure is NoRouteToHostException -> Category.NETWORK
                     failure is IOException &&
                         Regex("(?i)HTTP (?:401|403)(?:\\D|$)").containsMatchIn(failure.message.orEmpty()) ->
                         Category.AUTH
-                    failure is IOException && failure.message.orEmpty().contains("authentication challenge", true) ->
+                    failure is IOException && (failure.message.orEmpty().contains("authentication challenge", true) ||
+                            failure.message.orEmpty().contains("authentication required", true)) ->
                         Category.AUTH
                     else -> Category.ENDPOINT
                 }
