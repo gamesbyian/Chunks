@@ -31,12 +31,15 @@ from spacing_optimizer import ink_gaps_at_size, measured_presets
 PUNCT_BASELINE = 568  # normalized source-image row, matching manifest
 LEFT_OFFSET = 52
 EXPECTED = '!?.,:;“”()[]{}@#$%&*+-=<>/\\"'
-# Characters without a distinct reference path intentionally remain inherited:
-# apostrophe U+0027, ellipsis U+2026, dashes, symbols absent from the PNG.
+SUPPLEMENTAL = "'‘’…"
+ALL_PUNCTUATION = EXPECTED + SUPPLEMENTAL
+# Supplemental glyphs are explicitly derived from reference contours, not
+# presented as separately traced originals. Other punctuation remains inherited.
 SAMPLES = (
     'Chunks! Files (156)', 'Downloading 68%', 'TORRENTS, YOUR WAY.',
     'A/B\\C: 2026-10-27', 'Torrents [1] {2}', '“Résumé” & Music',
     'What? 100% complete.', 'Seeding 8/12 @ 4.2 MB/s',
+    "It's 'Chunks'… and we're downloading.", '“They’re here…” she said.',
 )
 SIZES = (14, 24, 48, 82)
 
@@ -52,17 +55,25 @@ def apply_punctuation(source: Path, masters: Path, out: Path, weight: int,
     source_glyphs = manifest['glyphs']
     if set(source_glyphs) != set(EXPECTED) or len(source_glyphs) != 28:
         raise AssertionError('Expected exactly 28 source punctuation mappings')
+    supplemental_dir = masters / 'supplemental'
+    supplements = json.loads((supplemental_dir / 'manifest.json').read_text())
+    if set(supplements['glyphs']) != set(SUPPLEMENTAL):
+        raise AssertionError('Missing four independently editable derivative glyphs')
+    if supplements['source_original_manifest_sha256'] != digest(masters / 'manifest.json'):
+        raise AssertionError('Derived glyphs were generated against a different reference manifest')
+    source_glyphs = {**source_glyphs, **supplements['glyphs']}
     font = TTFont(source, recalcBBoxes=True, recalcTimestamp=False)
     cmap = font.getBestCmap()
     if font.sfntVersion != 'OTTO' or 'CFF ' not in font:
         raise AssertionError('Only the native CFF reference candidates are accepted')
-    missing = [c for c in EXPECTED if ord(c) not in cmap]
+    missing = [c for c in ALL_PUNCTUATION if ord(c) not in cmap]
     if missing:
         raise AssertionError(f'Punctuation absent from the source cmap: {missing!r}')
     characters = font['CFF '].cff.topDictIndex[0].CharStrings
     geom_report = {}
     for char, item in source_glyphs.items():
-        svg = masters / f'U+{ord(char):04X}.svg'
+        svg_dir = supplemental_dir if char in SUPPLEMENTAL else masters
+        svg = svg_dir / f'U+{ord(char):04X}.svg'
         original = source_polygons(svg, min_area=0.15)
         # Punctuation contains many naturally fragile strokes. Back off the
         # source's letter-eroding profile and preserve all components/counters.
@@ -113,10 +124,10 @@ def punctuation_kern(raw: Path, output: Path, weight: int) -> dict:
         raise RuntimeError('Pillow with HarfBuzz/libraqm required')
     font = TTFont(raw, recalcTimestamp=False)
     cmap = font.getBestCmap()
-    punct = set(EXPECTED)
+    punct = set(ALL_PUNCTUATION)
     # Include source punctuation, Latin base and existing common accented forms,
     # leaving unrelated scripts and bare letter-to-letter kerning untouched.
-    chars = list(dict.fromkeys(CANDIDATE_ALPHABET + EXPECTED))
+    chars = list(dict.fromkeys(CANDIDATE_ALPHABET + ALL_PUNCTUATION))
     chars = [c for c in chars if ord(c) in cmap]
     pil = ImageFont.truetype(str(raw), 126, layout_engine=ImageFont.Layout.RAQM)
     masks = {c: get_mask(pil, c) for c in chars}
@@ -202,11 +213,13 @@ def run(source_dir: Path, masters: Path, profile_file: Path, out: Path,
         raise ValueError('Unsupported font weight')
     out.mkdir(parents=True, exist_ok=True)
     report = {'status': 'NONSHIPPING reference-panel consolidated candidate; editorial review pending',
-              'punctuation_count': 28,
+              'punctuation_count': len(ALL_PUNCTUATION),
+              'original_reference_punctuation_count': len(EXPECTED),
+              'supplemental_derived_punctuation_count': len(SUPPLEMENTAL),
+              'supplemental_manifest_sha256': digest(masters / 'supplemental' / 'manifest.json'),
               'source_manifest_sha256': digest(master_manifest),
               'weight_profile_sha256': digest(profile_file),
-              'intentional_source_fallbacks': ['U+0027 apostrophe', 'U+2026 ellipsis',
-                                                'untraced punctuation'],
+              'intentional_source_fallbacks': ['untraced dashes and punctuation'],
               'weights': {}}
     for weight in selected:
         style = WEIGHTS[weight]
