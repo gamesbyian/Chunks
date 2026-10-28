@@ -81,8 +81,13 @@ data class LocalTransferStatus(
     /** False while a magnet is still fetching its metadata. */
     val metadataKnown: Boolean = true,
     /** libtorrent can be running without requesting payload when in upload-only mode. */
-    val uploadOnly: Boolean = false
+    val uploadOnly: Boolean = false,
+    /** Counts only: tracker URLs can embed private passkeys and are never exposed. */
+    val trackers: LocalTrackerSummary? = null
 )
+
+/** Aggregate tracker health for one transfer, without URLs or tracker messages. */
+data class LocalTrackerSummary(val total: Int, val working: Int, val updating: Int, val failing: Int)
 
 /** One file inside a local transfer; `wanted = false` means libtorrent will not download it. */
 data class LocalTransferFile(
@@ -659,9 +664,26 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             metadataKnown = status.hasMetadata(),
             uploadOnly = status.flags().and_(org.libtorrent4j.TorrentFlags.UPLOAD_MODE).non_zero(),
             savePath = handle.savePath(),
-            error = error
+            error = error,
+            trackers = trackerSummary(handle)
         )
     }
+
+    private fun trackerSummary(handle: TorrentHandle): LocalTrackerSummary? = try {
+        val entries = handle.trackers()
+        var working = 0
+        var updating = 0
+        var failing = 0
+        for (entry in entries) {
+            val states = entry.endpoints().filter { it.enabled() }.map { it.infohashV1() }
+            when {
+                states.any { it.isWorking } -> working++
+                states.any { it.updating() } -> updating++
+                states.any { it.fails() > 0 } -> failing++
+            }
+        }
+        LocalTrackerSummary(entries.size, working, updating, failing)
+    } catch (_: RuntimeException) { null }
 
     /**
      * BEP 12 announce-list tiers (else BEP 3 announce) as parallel lists of

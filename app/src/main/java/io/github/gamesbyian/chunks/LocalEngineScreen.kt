@@ -1079,6 +1079,10 @@ internal fun LocalTransferCard(
                 )
             }
             Text(stateLabel(transfer) + " · " + percent + "% · " + transfer.peers + " peers")
+            LocalTrackerSummaryText.describe(transfer.trackers, transfer.stopped,
+                LocalEngineHolder.dhtPreferred(LocalContext.current))?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall)
+            }
             ChunkedProgressBar(progress = transfer.progressPpm / 1_000_000f,
                 modifier = Modifier.fillMaxWidth().semantics { stateDescription = "$percent percent complete" })
             // totalWantedDone is hash-verified completed payload; allTimeDownload
