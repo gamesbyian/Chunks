@@ -63,7 +63,7 @@ class AndroidSnapshotRestoreOnceInstrumentedTest {
                     placeId, emptyList(), true,
                     object : SnapshotRestoreOnceV1.LocalTarget {
                         override fun completeHashes() = emptyList<String>()
-                        override fun stoppedAfterReadback(infoHashV1: String) = true
+                        override fun observedStoppedPlace(infoHashV1: String) = destination
                         override fun submitStopped(
                             originalTorrent: ByteArray, chosenPlace: File
                         ): Boolean { throw AssertionError("duplicate native Add must not run") }
