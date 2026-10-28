@@ -32,6 +32,7 @@ internal class TransferPrivacySession(
         var generation: Long = 0,
         var authorized: Boolean = false,
         var challengeNonce: Long? = null,
+        var policyChangeNonce: Long? = null,
         var leftBackgroundAt: Long? = null
     )
 
@@ -93,6 +94,38 @@ internal class TransferPrivacySession(
         return true
     }
 
+    /**
+     * Disabling or changing an enabled policy needs a DISTINCT fresh platform
+     * authentication, not a prior session unlock. In-flight callbacks are
+     * invalidated on background or manual Lock now.
+     */
+    @Synchronized
+    fun beginPolicyChange(scope: String): Ticket? {
+        val gate = gates[scope] ?: return null
+        if (gate.mode == TransferLockMode.NEVER || !mayView(scope) ||
+            gate.policyChangeNonce != null || gate.challengeNonce != null) return null
+        val ticket = Ticket(scope, gate.generation, nextNonce++)
+        gate.policyChangeNonce = ticket.nonce
+        return ticket
+    }
+
+    @Synchronized
+    fun finishPolicyChange(ticket: Ticket, deviceAuthenticated: Boolean): Boolean {
+        val gate = gates[ticket.scope] ?: return false
+        if (gate.generation != ticket.generation ||
+            gate.policyChangeNonce != ticket.nonce) return false
+        gate.policyChangeNonce = null
+        return deviceAuthenticated && gate.authorized &&
+            gate.mode != TransferLockMode.NEVER
+    }
+
+    @Synchronized
+    fun onCancelPolicyChange(ticket: Ticket) {
+        val gate = gates[ticket.scope] ?: return
+        if (gate.generation == ticket.generation &&
+            gate.policyChangeNonce == ticket.nonce) gate.policyChangeNonce = null
+    }
+
     /** Manual lock affects only its specific engine/profile. */
     @Synchronized
     fun lockNow(scope: String) {
@@ -100,6 +133,7 @@ internal class TransferPrivacySession(
         gate.generation++
         gate.authorized = false
         gate.challengeNonce = null
+        gate.policyChangeNonce = null
         gate.leftBackgroundAt = null
     }
 
@@ -111,15 +145,17 @@ internal class TransferPrivacySession(
             // A platform prompt that leaves the foreground must not deliver a
             // delayed success to this session. Keep an existing once-per-process
             // grant intact, but revoke the pending prompt generation everywhere.
-            if (gate.challengeNonce != null) {
+            if (gate.challengeNonce != null || gate.policyChangeNonce != null) {
                 gate.generation++
                 gate.challengeNonce = null
+                gate.policyChangeNonce = null
             }
             when (gate.mode) {
                 TransferLockMode.EACH_FOREGROUND_RETURN -> {
                     gate.generation++
                     gate.authorized = false
                     gate.challengeNonce = null
+                    gate.policyChangeNonce = null
                 }
                 TransferLockMode.AFTER_FIVE_MINUTES_BACKGROUND -> {
                     if (gate.leftBackgroundAt == null) gate.leftBackgroundAt = now
@@ -160,6 +196,7 @@ internal class TransferPrivacySession(
             gate.generation++
             gate.authorized = false
             gate.challengeNonce = null
+            gate.policyChangeNonce = null
             gate.leftBackgroundAt = null
         }
     }

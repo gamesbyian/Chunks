@@ -31,7 +31,9 @@ class PhoneStorageCapInstrumentedTest {
 
     @Test fun nativeCapSaveAndClearNeverPretendToEnforceQuota() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val root = requireNotNull(LocalEngineHolder.appDownloads(context))
+        // The panel keys its advisory cap on the folder it actually measures:
+        // the resolved default download Place (e.g. Downloads/Chunks Downloads).
+        val root = requireNotNull(LocalDownloadPlaces.measuredRoot(context))
         val store = LocalCapPreferenceStore(context)
         val gib = 1024L * 1024 * 1024
         store.set(root, null)

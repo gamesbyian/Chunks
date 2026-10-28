@@ -78,7 +78,7 @@ internal fun PhoneStoragePanel(
     val reader = readSpace ?: DeviceSpaceProbe::read
     var snapshot by remember(context, readSpace) { mutableStateOf(reader(context)) }
     val scope = rememberCoroutineScope()
-    val downloadRoot = remember(context) { LocalEngineHolder.appDownloads(context) }
+    val downloadRoot = remember(context) { LocalDownloadPlaces.measuredRoot(context) }
     val capStore = remember(context) { LocalCapPreferenceStore(context) }
     var savedCap by remember(context, downloadRoot) { mutableStateOf(capStore.get(downloadRoot)) }
     var capDraft by remember(context, downloadRoot) {
@@ -98,7 +98,7 @@ internal fun PhoneStoragePanel(
     suspend fun surveyFolder() = withContext(Dispatchers.IO) {
         try {
             readFolder?.invoke(context)
-                ?: LocalFolderInventoryProbe.measure(LocalEngineHolder.appDownloads(context))
+                ?: LocalFolderInventoryProbe.measure(downloadRoot)
         } catch (_: Exception) {
             LocalFolderInventory(null, 0, false)
         }
