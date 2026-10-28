@@ -22,9 +22,18 @@ internal object SharedTorrentDocument {
         if (intent == null) return null
         val uri = when (intent.action) {
             Intent.ACTION_VIEW -> intent.data
-            Intent.ACTION_SEND -> @Suppress("DEPRECATION")
-                (intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
-                    ?: intent.clipData?.takeIf { it.itemCount == 1 }?.getItemAt(0)?.uri)
+            Intent.ACTION_SEND -> {
+                // Android may supply EXTRA_STREAM and ClipData together to grant
+                // access to the same document. Never silently choose one of
+                // multiple or conflicting URIs: this screen reviews one torrent.
+                @Suppress("DEPRECATION")
+                val streamUri = intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
+                val clip = intent.clipData
+                if (clip != null && clip.itemCount != 1) return null
+                val clipUri = clip?.getItemAt(0)?.uri
+                if (streamUri != null && clipUri != null && streamUri != clipUri) return null
+                streamUri ?: clipUri
+            }
             else -> null
         } ?: return null
         // No file:// or HTTP(S) source, even when a caller lies about its type.
