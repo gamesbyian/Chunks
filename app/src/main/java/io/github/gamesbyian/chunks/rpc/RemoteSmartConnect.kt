@@ -5,6 +5,7 @@ import java.net.UnknownHostException
 import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.io.IOException
+import kotlinx.coroutines.CancellationException
 import javax.net.ssl.SSLException
 
 /**
@@ -56,7 +57,7 @@ object RemoteSmartConnect {
         }
         require(!uri.host.isNullOrBlank() && uri.rawUserInfo == null &&
             uri.rawQuery == null && uri.rawFragment == null &&
-            uri.rawAuthority?.length in 1..255) {
+            (uri.rawAuthority?.length?.let { it in 1..255 } == true)) {
             "Enter a host/URL without embedded credentials, query or fragment"
         }
         val origin = "${uri.scheme.lowercase()}://${uri.rawAuthority}"
@@ -149,12 +150,15 @@ object RemoteSmartConnect {
                 val result = probe(credentials)
                 return Verified(credentials, result, candidate.description, attempted)
             } catch (failure: Exception) {
+                if (failure is CancellationException) throw failure
                 val category = when {
                     failure is SSLException -> Category.TLS
                     failure is UnknownHostException || failure is ConnectException ||
                         failure is SocketTimeoutException -> Category.NETWORK
                     failure is IOException &&
                         Regex("(?i)HTTP (?:401|403)(?:\\D|$)").containsMatchIn(failure.message.orEmpty()) ->
+                        Category.AUTH
+                    failure is IOException && failure.message.orEmpty().contains("authentication challenge", true) ->
                         Category.AUTH
                     else -> Category.ENDPOINT
                 }
