@@ -304,6 +304,37 @@ class LocalEngineScreenInstrumentedTest {
         assertEquals(0, changes)
     }
 
+    @Test fun episodeFocusNeedsExplicitSecondTapAndNeverChangesWantedSelection() {
+        var plans = 0
+        var received: io.github.gamesbyian.chunks.engine.LocalEpisodeFocusPlanner.Plan? = null
+        val season = listOf(
+            LocalTransferFile(10, "Season/Series S01E03.mkv", 8192, 0, true, 4),
+            LocalTransferFile(20, "Season/Series S01E01.mkv", 8192, 0, true, 4),
+            LocalTransferFile(30, "Season/Series S01E02.mkv", 8192, 0, true, 4),
+            LocalTransferFile(40, "Season/Series S01E04.mkv", 8192, 0, false, 0))
+        rule.setContent {
+            MaterialTheme {
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+                    .padding(16.dp)) {
+                    LocalFileSelection(files = season, busy = false,
+                        transferKey = "focus-preview",
+                        onFileWanted = { _, _ -> },
+                        onFocusEpisodes = { plan -> plans++; received = plan })
+                }
+            }
+        }
+        rule.onNodeWithText("Focus first unfinished episode (one time)")
+            .performScrollTo().performClick()
+        rule.onNodeWithText("Detected first episode: Series S01E01.mkv",
+            substring = true).assertExists()
+        assertEquals(0, plans)
+        rule.onNodeWithText("Confirm episode focus").performScrollTo().performClick()
+        assertEquals(1, plans)
+        assertEquals(20, received?.firstEpisode?.index)
+        assertEquals(listOf(20, 30, 10), received?.orderedEpisodes?.map { it.index })
+        assertEquals(true, season[3].wanted == false)
+    }
+
     @Test fun selectionPagesReachEveryFileWithoutRenderingHugeLists() {
         val selected = mutableListOf<Pair<Int, Boolean>>()
         val files = (0 until 85).map { index ->
