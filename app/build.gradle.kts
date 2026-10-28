@@ -131,3 +131,24 @@ val verifyChunksLauncherArtwork by tasks.registering(VerifyChunksLauncherArtwork
     referencePngBlob.set("03a8677e9c90f4b455e67683fcc4a2b79517b1ea")
 }
 tasks.named("preBuild").configure { dependsOn(verifyChunksLauncherArtwork) }
+
+
+/** Real CFF source-of-truth font may be copied into Android resources, never silently forked. */
+val verifyChunksWordmarkFont by tasks.registering {
+    group = "verification"
+    description = "Verify packaged Chunks display OTF and OFL license are byte-identical to repo masters"
+    val sourceFont = rootProject.file("assets/fonts/chunks/Chunks-ExtraBold.otf")
+    val packagedFont = project.file("src/main/res/font/chunks_extrabold.otf")
+    val sourceLicense = rootProject.file("assets/fonts/source/OFL.txt")
+    val packagedLicense = project.file("src/main/assets/licenses/Baloo2-OFL.txt")
+    inputs.files(sourceFont, packagedFont, sourceLicense, packagedLicense)
+    doLast {
+        check(sourceFont.readBytes().contentEquals(packagedFont.readBytes())) {
+            "Android font is stale: regenerate with the Chunks font family CI pipeline"
+        }
+        check(sourceLicense.readBytes().contentEquals(packagedLicense.readBytes())) {
+            "Bundled modified-font OFL license must remain byte-identical to its source"
+        }
+    }
+}
+tasks.named("preBuild").configure { dependsOn(verifyChunksWordmarkFont) }
