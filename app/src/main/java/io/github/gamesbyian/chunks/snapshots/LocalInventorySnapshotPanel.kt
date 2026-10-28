@@ -43,6 +43,11 @@ import kotlinx.coroutines.withContext
  * torrent metainfo, so all records are INVENTORY ONLY: never promise restore.
  * No libtorrent call is made during capture or SAF publication.
  */
+private data class VerifiedResumeReview(
+    val identity: List<Triple<String, String, String>>,
+    val recovery: LocalResumeMetainfoSourceV1.Recovery
+)
+
 @Composable
 internal fun LocalInventorySnapshotPanel(
     transfers: List<LocalTransferStatus>,
@@ -61,7 +66,7 @@ internal fun LocalInventorySnapshotPanel(
     var includeDefinitions by remember { mutableStateOf(false) }
     var inspectingResumes by remember { mutableStateOf(false) }
     var verifiedResumes by remember {
-        mutableStateOf<LocalResumeMetainfoSourceV1.Recovery?>(null)
+        mutableStateOf<VerifiedResumeReview?>(null)
     }
     var resumeProblem by remember { mutableStateOf<String?>(null) }
     // A successful live transfer frame may change counters each second.
@@ -199,7 +204,11 @@ internal fun LocalInventorySnapshotPanel(
                                                 Triple(it.infoHash, it.name,
                                                     if (usePaths) it.savePath else "")
                                             }) {
-                                            verifiedResumes = candidate
+                                            verifiedResumes = VerifiedResumeReview(
+                                                frozen.map {
+                                                    Triple(it.infoHash, it.name,
+                                                        if (usePaths) it.savePath else "")
+                                                }, candidate)
                                         } else {
                                             resumeProblem = "Transfer inventory changed. " +
                                                 "Refresh and inspect again."
@@ -219,7 +228,8 @@ internal fun LocalInventorySnapshotPanel(
                             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                         ) { Text(if (inspectingResumes) "Inspecting saved native records…" else
                             "Preview verified torrent definitions") }
-                        verifiedResumes?.let { recovery ->
+                        verifiedResumes?.let { review ->
+                            val recovery = review.recovery
                             Text("Verified real v1 definitions: " +
                                 recovery.verifiedRestorableCount + "; remaining inventory-only: " +
                                 recovery.inventoryOnlyCount + "; unsupported/omitted: " +
@@ -239,11 +249,7 @@ internal fun LocalInventorySnapshotPanel(
                                                 selected.toArchive()
                                             }
                                             if (currentStale || currentBusyEngine || !currentOptIn ||
-                                                currentReviewIdentity != selected.manifest.items.map {
-                                                    Triple(it.infoHashV1, it.originalName,
-                                                        if (historicalPaths)
-                                                            it.sourceDirectoryHint.orEmpty() else "")
-                                                }) {
+                                                currentReviewIdentity != review.identity) {
                                                 result = "Source became stale. Preview again before saving."
                                                 saving = false
                                             } else {
