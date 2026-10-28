@@ -263,7 +263,10 @@ private fun ChunksApp(sharedMagnet: String?) {
         } else if (section == Section.SNAPSHOT_INSPECT) {
             SnapshotDocumentInspectScreen(onBack = { section = Section.TRANSFERS })
         } else if (section == Section.LOCAL && server == null) {
-            LocalTransferPrivacyGate(scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE) {
+            LocalTransferPrivacyGate(
+                scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
+                onBack = { section = Section.TRANSFERS }
+            ) {
                 LocalEngineScreen(
                     onBack = { section = Section.TRANSFERS },
                     initialMagnet = phoneHandoffMagnet,
@@ -534,7 +537,8 @@ private fun ChunksApp(sharedMagnet: String?) {
                     onBack = { section = Section.TRANSFERS })
                 Section.ARCHIVES -> LocalZipReviewScreen(onBack = { section = Section.TRANSFERS })
                 Section.LOCAL -> LocalTransferPrivacyGate(
-                    scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE
+                    scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
+                    onBack = { section = Section.TRANSFERS }
                 ) {
                     LocalEngineScreen(
                         onBack = { section = Section.TRANSFERS },
