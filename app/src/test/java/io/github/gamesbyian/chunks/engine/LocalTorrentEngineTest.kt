@@ -523,4 +523,25 @@ class LocalTorrentEngineTest {
         assertTrue("Export must not change the transfer", instance.status(status.infoHash)!!.stopped)
         assertNull(instance.exportTorrentFile("d".repeat(40)))
     }
+
+    @Test fun batchStartAndStopUseRealReadbackForEachSelectedTransfer() {
+        val instance = engine()
+        val ids = (1..2).map { n ->
+            val parent = temp.newFolder("batch-$n")
+            val root = File(parent, "Batch $n").apply { mkdirs() }
+            File(root, "p.bin").writeBytes(ByteArray(20_000).also { Random(n.toLong()).nextBytes(it) })
+            val torrent = TorrentBuilder().path(root).pieceSize(16 * 1024).generate().entry().bencode()
+            added(instance.addStopped(torrent, parent)).infoHash
+        }
+        fun targets() = ids.map {
+            io.github.gamesbyian.chunks.model.LocalBatchLifecycle.Target(it, instance.status(it)!!.stopped) }
+        val started = io.github.gamesbyian.chunks.model.LocalBatchLifecycle.run(targets(), true) { h, s ->
+            if (s) instance.resume(h).outcome else instance.pause(h).outcome }
+        assertEquals(2, started.verified)
+        assertTrue(ids.all { instance.status(it)?.stopped == false })
+        val stopped = io.github.gamesbyian.chunks.model.LocalBatchLifecycle.run(targets(), false) { h, s ->
+            if (s) instance.resume(h).outcome else instance.pause(h).outcome }
+        assertEquals(2, stopped.verified)
+        assertTrue(ids.all { instance.status(it)?.stopped == true })
+    }
 }
