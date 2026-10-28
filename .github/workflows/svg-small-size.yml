@@ -1,0 +1,30 @@
+name: Chunks SVG native-size icon review
+on:
+  pull_request:
+    paths:
+      - 'docs/design/svg/**'
+      - 'tools/svg_small_size_atlas.py'
+      - '.github/workflows/svg-small-size.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  icon-scale-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install independent SVG renderer
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends librsvg2-bin
+          python3 -m pip install --disable-pip-version-check 'Pillow>=11,<13'
+      - name: Render native Android icon sizes
+        run: python3 tools/svg_small_size_atlas.py --out generated/svg-small-size
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: chunks-svg-small-size-${{ github.sha }}
+          path: generated/svg-small-size/
+          if-no-files-found: error
+          retention-days: 7
