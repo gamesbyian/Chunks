@@ -166,6 +166,14 @@ def punctuation_kern(raw: Path, output: Path, weight: int) -> dict:
     ):
         for plat, encoding, lang in ((3, 1, 0x409), (1, 0, 0)):
             font['name'].setName(name, name_id, plat, encoding, lang)
+    # The internal CFF Name INDEX and Top DICT must agree with OpenType name
+    # IDs or installing this alternate beside DotlessKerned may collide.
+    cff = font['CFF '].cff
+    postscript = f'ChunksReferencePanelConsolidated-{style}'
+    cff.fontNames = [postscript]
+    cff.topDictIndex[0].FamilyName = family
+    cff.topDictIndex[0].FullName = f'{family} {style}'
+    cff.topDictIndex[0].Weight = style
     os2 = font['OS/2']
     os2.fsSelection = (os2.fsSelection & ~((1 << 5) | (1 << 6))) | (
         (1 << 5) if weight >= 700 else (1 << 6))
