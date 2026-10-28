@@ -56,7 +56,7 @@ class ExperimentalTypefaceNativeInstrumentedTest {
                         setTextColor(Color.BLACK)
                         setBackgroundColor(Color.WHITE)
                         setPadding(12, 8, 12, 8)
-                        isSingleLine = false
+                        setSingleLine(false)
                         ellipsize = null
                         contentDescription = text
                         importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
