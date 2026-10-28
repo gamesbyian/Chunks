@@ -2,24 +2,24 @@
   "status": "NONSHIPPING interim weight study: automated offsets; manual masters still required",
   "source_manifest_sha256": "34413dfabd6d1f846b2dd833e21fa2b57e9b03b06330e4e9a479d082150fca83",
   "profile_sha256": "7da88e239d51208e052c8a359ddf04c724b3aa70e6cd7ad686d64b7f27425e46",
-  "overrides_sha256": "e732f191283b01345a86d11ec3688dfd8350699bd23cea88a12f8b9652e31dde",
-  "overrides_used": 16,
+  "overrides_sha256": "f0e223a7f175db4b8b0a4b3b816aa20acea9635e3f9bafefaf947555c121c391",
+  "overrides_used": 24,
   "source_svg_sha256": "f475ea924418981a766978dde97ebb97ba7b0866110e1b72b17ac026fbad7aba",
   "accepted_extra_bold_remains_separate": "assets/fonts/experimental/ChunksReferencePanel-ExtraBold-Optical.otf",
   "weights": {
     "Regular": {
       "weight": 400,
       "file": "ChunksReferencePanel-Regular-Study.otf",
-      "sha256": "9306183115efc90e4191a7bc0d791c6de426de1aeb82feadf8278f5311422e3e",
+      "sha256": "9142f894b1db058716d7e21aceebf97817c178c02a7d0d25dbb83807ac07a0d8",
       "glyphs_changed": 62,
       "codepoints": 856,
-      "kerning_direct_pairs": 14115,
+      "kerning_direct_pairs": 14048,
       "kerning_probe": {
         "measured_glyphs": 151,
         "examined_pairs": 22801,
-        "adjusted_pairs": 14797,
-        "median_absolute_adjustment": 62.0,
-        "residual_90pct": 41.42
+        "adjusted_pairs": 14730,
+        "median_absolute_adjustment": 63.0,
+        "residual_90pct": 42.91
       },
       "min_sampled_gap_px": {
         "14": 0.828,
@@ -191,11 +191,11 @@
         "L": {
           "components": 1,
           "counters": 0,
-          "ink_area_ratio": 0.7265,
-          "stroke_offset_px": 1.6,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.7193,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "d1ad04d26dc2b1b86f3876740475ac68dd8bd3b551748297447e6c98d1c779ee",
           "topology_adjustments": []
         },
         "M": {
@@ -271,11 +271,11 @@
         "T": {
           "components": 1,
           "counters": 0,
-          "ink_area_ratio": 0.7405,
-          "stroke_offset_px": 1.6,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.7322,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "9263f984670d1dcdbecb18bd45a8a696a885d2ae5473077372358824e7e27bdd",
           "topology_adjustments": []
         },
         "U": {
@@ -703,16 +703,16 @@
     "Medium": {
       "weight": 500,
       "file": "ChunksReferencePanel-Medium-Study.otf",
-      "sha256": "4206a2bc920a91f315ac6f94f31ec199c46d5031615510f75907c4fdaa6bbd96",
+      "sha256": "cf4f34e56a11a3ed10ff61a8d72e7c70c7d660e22e59b90df9ca7cd3b0a24dbc",
       "glyphs_changed": 62,
       "codepoints": 856,
-      "kerning_direct_pairs": 14224,
+      "kerning_direct_pairs": 14170,
       "kerning_probe": {
         "measured_glyphs": 151,
         "examined_pairs": 22801,
-        "adjusted_pairs": 14706,
+        "adjusted_pairs": 14652,
         "median_absolute_adjustment": 60.0,
-        "residual_90pct": 34.33
+        "residual_90pct": 34.79
       },
       "min_sampled_gap_px": {
         "14": 0.594,
@@ -721,7 +721,7 @@
       },
       "tracking_em": {
         "display": -0.022,
-        "heading": -0.0079,
+        "heading": -0.008,
         "body": 0.0145,
         "small_labels": 0.024
       },
@@ -736,14 +736,14 @@
       "tracking_details": {
         "ink_gap_measurements": {
           "display": {
-            "observed_20pct_ink_gap_em": 0.1075,
+            "observed_20pct_ink_gap_em": 0.1079,
             "target_ink_gap_em": 0.078,
             "sampled_pairs": 21,
             "lower_limit_em": -0.022,
             "upper_limit_em": 0.01
           },
           "heading": {
-            "observed_20pct_ink_gap_em": 0.1079,
+            "observed_20pct_ink_gap_em": 0.108,
             "target_ink_gap_em": 0.1,
             "sampled_pairs": 44,
             "lower_limit_em": -0.015,
@@ -757,7 +757,7 @@
             "upper_limit_em": 0.018
           },
           "small_labels": {
-            "observed_20pct_ink_gap_em": 0.1076,
+            "observed_20pct_ink_gap_em": 0.1077,
             "target_ink_gap_em": 0.138,
             "sampled_pairs": 28,
             "lower_limit_em": 0,
@@ -884,11 +884,11 @@
         "L": {
           "components": 1,
           "counters": 0,
-          "ink_area_ratio": 0.7848,
-          "stroke_offset_px": 1.25,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.7975,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "fc09fa5362fcdab61d2782b3c7dd9f602b1b911543ac64e8ae496ce1f8b18a9d",
           "topology_adjustments": []
         },
         "M": {
@@ -964,11 +964,11 @@
         "T": {
           "components": 1,
           "counters": 0,
-          "ink_area_ratio": 0.794,
-          "stroke_offset_px": 1.25,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.8024,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "69ee65506038581b03fe54059b9fb99623948d9eb490a93651695f7d84a25df9",
           "topology_adjustments": []
         },
         "U": {
@@ -1396,16 +1396,16 @@
     "Semibold": {
       "weight": 600,
       "file": "ChunksReferencePanel-Semibold-Study.otf",
-      "sha256": "05e86e41709522e4d0c2f1a0191c489b675b3539959bc1e3409e062eb1f5617a",
+      "sha256": "77c035294bdc7feda3caaeb5ac5fb429f27ff1d6e94c53de05b5fecff5f9e6a2",
       "glyphs_changed": 62,
       "codepoints": 856,
-      "kerning_direct_pairs": 13920,
+      "kerning_direct_pairs": 13839,
       "kerning_probe": {
         "measured_glyphs": 151,
         "examined_pairs": 22801,
-        "adjusted_pairs": 14265,
+        "adjusted_pairs": 14184,
         "median_absolute_adjustment": 57.0,
-        "residual_90pct": 29.39
+        "residual_90pct": 29.64
       },
       "min_sampled_gap_px": {
         "14": 0.609,
@@ -1577,11 +1577,11 @@
         "L": {
           "components": 1,
           "counters": 0,
-          "ink_area_ratio": 0.8514,
-          "stroke_offset_px": 0.85,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.877,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "9f46dfa435b331026784045520ca7127ab7bb64dfa0e0fcd49b0babcd5d00eac",
           "topology_adjustments": []
         },
         "M": {
@@ -1657,11 +1657,11 @@
         "T": {
           "components": 1,
           "counters": 0,
-          "ink_area_ratio": 0.8598,
-          "stroke_offset_px": 0.85,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.8761,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "4f129073dd5c6462d0574fa8e362cce721b6b1e19132ab096d46b6180ebe78a8",
           "topology_adjustments": []
         },
         "U": {
@@ -2089,21 +2089,21 @@
     "Bold": {
       "weight": 700,
       "file": "ChunksReferencePanel-Bold-Study.otf",
-      "sha256": "5adbec0e0508784f5f83addc7fa108f4d92af66fe897f6100778393fe330e08e",
+      "sha256": "7fcdf9e573f86562314a89b21bb6b17276e2f574a8e6a2a6c555aca24fca713c",
       "glyphs_changed": 62,
       "codepoints": 856,
-      "kerning_direct_pairs": 13933,
+      "kerning_direct_pairs": 13869,
       "kerning_probe": {
         "measured_glyphs": 151,
         "examined_pairs": 22801,
-        "adjusted_pairs": 14093,
+        "adjusted_pairs": 14029,
         "median_absolute_adjustment": 56.0,
         "residual_90pct": 27.34
       },
       "min_sampled_gap_px": {
         "14": 0.705,
         "24": 1.438,
-        "48": 3.938
+        "48": 3.906
       },
       "tracking_em": {
         "display": -0.0143,
@@ -2136,7 +2136,7 @@
             "upper_limit_em": 0.014
           },
           "body": {
-            "observed_20pct_ink_gap_em": 0.0925,
+            "observed_20pct_ink_gap_em": 0.0926,
             "target_ink_gap_em": 0.122,
             "sampled_pairs": 51,
             "lower_limit_em": -0.004,
@@ -2270,11 +2270,11 @@
         "L": {
           "components": 1,
           "counters": 0,
-          "ink_area_ratio": 0.9212,
-          "stroke_offset_px": 0.43,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.9509,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "3d7ee86cecfd9439afb164951947a0db04a4a55e9c8ea01034e534b05bd2a1ec",
           "topology_adjustments": []
         },
         "M": {
@@ -2350,11 +2350,11 @@
         "T": {
           "components": 1,
           "counters": 0,
-          "ink_area_ratio": 0.9262,
-          "stroke_offset_px": 0.43,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.9449,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "528e723c05885a31402ded287a3ef8035c69cd62d94ed965357f8bb611d98f19",
           "topology_adjustments": []
         },
         "U": {
