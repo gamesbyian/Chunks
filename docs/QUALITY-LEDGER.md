@@ -28,7 +28,9 @@
     - It reads only `network.listen.port`, `network.local_address`, `d.is_private` and `d.is_active`, and refuses incomplete, private or inactive transfers with a reason.
     - It resolves the server to an IP literal (libtorrent drops hostnames in `x.pe`) and opens the phone's own magnet Add review with `x.pe=<ip>:<port>`.
   - **Real rTorrent 0.9.8 interop, now required in CI:** the phone engine was given only that magnet (no `.torrent`, tracker or DHT). It received metadata and every piece from rTorrent, with byte-exact files and `d.up.total` ≥ payload. The server transfer was still complete, started and unchanged (**Copy, not Move**).
-  - **Not proven:** Seedhost inbound peer reachability (probe #448), a physical phone/NAT, and phone → server payload copy.
+  - **Seedhost probe (#448/#450, read-only, no server mutation):** [40654175230](https://github.com/gamesbyian/Chunks/actions/runs/40654175230) (64 MiB cap, 2 candidates), [40654400472](https://github.com/gamesbyian/Chunks/actions/runs/40654400472) and [40655394250](https://github.com/gamesbyian/Chunks/actions/runs/40655394250) (512 MiB cap, 12 smallest complete started transfers) were all **INCONCLUSIVE before any peer contact**: `private=12 inactive=0 other=0`. The development inventory's small transfers are private-tracker torrents, which Copy refuses by design.
+  - Seedhost inbound peer reachability therefore remains **untested**. It needs one completed public torrent on the server, which is an owner action or an approved fixture Add with conventional seeders.
+  - **Not proven:** a physical phone/NAT, and phone → server payload copy.
 - **Network limit for real-swarm evidence:** this cloud container allows outbound TCP only on 80/443 (plus DNS); arbitrary peer ports and DHT UDP time out, so a real Internet peer swarm cannot be exercised from it.
 
 ## 2026-10-28 latest verified results and unresolved gates
