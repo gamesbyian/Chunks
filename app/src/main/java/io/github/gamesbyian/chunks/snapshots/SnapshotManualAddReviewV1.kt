@@ -45,4 +45,43 @@ internal object SnapshotManualAddReviewV1 {
         return SnapshotVerifiedTorrentDocumentV1
             .prepare(verified, reviewedEntry.infoHashV1).bytes
     }
+
+    /**
+     * The same fences for a magnet-only record: it can only prefill an Add
+     * draft, and only when its btih is exactly the reviewed missing identity.
+     */
+    fun prepareMagnet(
+        verified: SnapshotManifestV1.Verified,
+        reviewedEntry: SnapshotRestorePreviewV1.Entry,
+        frozenTargetHashes: List<String>,
+        currentTargetHashes: List<String>,
+        frozenGeneration: Long,
+        currentGeneration: Long,
+        completeFreshTarget: Boolean
+    ): String {
+        require(completeFreshTarget && frozenGeneration == currentGeneration &&
+            frozenTargetHashes == currentTargetHashes) {
+            "Target inventory changed after snapshot comparison; reopen the archive"
+        }
+        require(reviewedEntry.decision == SnapshotRestorePreviewV1.Decision.MAGNET_NEEDS_REVIEW &&
+            reviewedEntry.selectedForReview) {
+            "Only missing magnet records can populate an Add review"
+        }
+        val target = currentTargetHashes.map { it.lowercase(Locale.ROOT) }
+        require(target.size == target.toSet().size && reviewedEntry.infoHashV1 !in target) {
+            "Torrent already exists in the target inventory"
+        }
+        val matched = verified.manifest.items.singleOrNull {
+            it.infoHashV1 == reviewedEntry.infoHashV1 && it.originalName == reviewedEntry.originalName
+        } ?: throw IllegalArgumentException("Snapshot row does not match reviewed torrent")
+        val magnet = requireNotNull(matched.magnet?.takeIf {
+            matched.recovery == SnapshotManifestV1.Recovery.MAGNET
+        }) { "Snapshot record has no magnet" }
+        val btih = Regex("(?i)[?&]xt=urn:btih:([0-9a-f]{40})(?:&|$)").findAll(magnet)
+            .map { it.groupValues[1].lowercase(Locale.ROOT) }.toList()
+        require(magnet.startsWith("magnet:?") && btih == listOf(reviewedEntry.infoHashV1)) {
+            "Snapshot magnet does not name exactly the reviewed identity"
+        }
+        return magnet
+    }
 }

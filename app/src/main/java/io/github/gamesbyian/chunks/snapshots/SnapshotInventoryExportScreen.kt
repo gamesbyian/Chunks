@@ -53,7 +53,9 @@ internal fun SnapshotInventoryExportScreen(
     snapshotRevision: Long,
     stale: Boolean,
     loading: Boolean,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    /** Optional read-only comparison/restore-review panel for this server. */
+    restorePanel: (@Composable () -> Unit)? = null
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -219,5 +221,6 @@ internal fun SnapshotInventoryExportScreen(
                 "It does not add, start, stop, delete, or copy any torrent on your server.",
             style = MaterialTheme.typography.bodySmall
         )
+        restorePanel?.invoke()
     }
 }
