@@ -46,3 +46,9 @@ python -m unittest discover -s tests -p test_reference_stacked_grid.py -v
 ```
 
 The CI workflow publishes the eight PNG sheets and JSON report with the five OTFs. Classification as **B** means safely processed by the conservative source-geometry rules, not that the glyph has received visual or linguistic design approval. Android normal/200% sizing and TalkBack remain untested.
+
+## Android native text rendering gate (test-only, not deployment)
+
+`.github/workflows/experimental-font-android-render.yml` stages the five **existing experimental** Stacked OTFs into the **Android instrumentation APK's assets**, not `app/src/main/assets`, `app/src/main/res/font` or any shipping resource. It boots an API 35 x86_64 Pixel emulator and invokes `ExperimentalTypefaceNativeInstrumentedTest`. Real Android `TextView` and `Canvas` rasterization is exercised for **each of five CFF weights** at simulated 100% and 200% text size across a long multilingual torrent filename, difficult stacked marks, and transfer stats with accents, quotes and ellipses. The test verifies complete unellipsized string layout, nonempty native bitmap ink, accessibility labels and concrete screenshot files, expecting **30 PNG renders**. CI retains the evidence separately from the signed or ordinary Android APK.
+
+**Limits:** these are authentic native Android TextView pixels and accessibility properties, not equivalent to the app's Compose typography integration, a running TalkBack screen reader, device-specific 200% nonlinear font scaling or owner approval of the source reference contours. This still needs manual visual inspection and the native app's full 200%/TalkBack screenshot matrix before any candidate can replace the approved font. No experimental fonts are shipped or installed as the app's runtime font.
