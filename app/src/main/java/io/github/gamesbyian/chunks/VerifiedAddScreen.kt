@@ -47,7 +47,6 @@ import io.github.gamesbyian.chunks.rpc.RemoteAddAndStart
 import io.github.gamesbyian.chunks.rpc.StoppedRemoteAddPlan
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoPreview
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader
-import java.io.ByteArrayOutputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -130,22 +129,12 @@ fun VerifiedAddScreen(
             scope.launch {
                 try {
                     val result = withContext(Dispatchers.IO) {
-                        val input = context.contentResolver.openInputStream(uri)
-                            ?: error("The selected document cannot be opened")
-                        input.use {
-                            val accumulator = ByteArrayOutputStream()
-                            val buffer = ByteArray(16_384)
-                            while (true) {
-                                val count = it.read(buffer)
-                                if (count < 0) break
-                                require(accumulator.size() + count <= TorrentMetainfoReader.MAX_BYTES) {
-                                    "Torrent metadata exceeds 2 MiB"
-                                }
-                                accumulator.write(buffer, 0, count)
-                            }
-                            val bytes = accumulator.toByteArray()
-                            TorrentMetainfoReader.preview(bytes) to bytes
-                        }
+                        // Share one fail-closed content:// reader with Android
+                        // VIEW/SEND. The previous picker loop could spin forever
+                        // on a broken provider that kept returning zero bytes.
+                        val reviewed = SharedTorrentDocument.read(
+                            context.contentResolver, uri)
+                        reviewed.preview to reviewed.bytes
                     }
                     selectedTorrent = result.first
                     selectedBytes = result.second
