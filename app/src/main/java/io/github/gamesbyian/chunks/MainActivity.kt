@@ -259,9 +259,22 @@ private fun ChunksApp(sharedMagnet: String?) {
         ChunksBrandHeader()
 
         if (section == Section.ARCHIVES) {
-            LocalZipReviewScreen(onBack = { section = Section.TRANSFERS })
+            // Local ZIP filenames and contents are also local-library data.
+            // A protected phone must never expose this alternate entry route.
+            LocalTransferPrivacyGate(
+                scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
+                onBack = { section = Section.TRANSFERS }
+            ) {
+                LocalZipReviewScreen(onBack = { section = Section.TRANSFERS })
+            }
         } else if (section == Section.SNAPSHOT_INSPECT) {
-            SnapshotDocumentInspectScreen(onBack = { section = Section.TRANSFERS })
+            // Offline .chunksnap files can contain private tracker names/passkeys.
+            LocalTransferPrivacyGate(
+                scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
+                onBack = { section = Section.TRANSFERS }
+            ) {
+                SnapshotDocumentInspectScreen(onBack = { section = Section.TRANSFERS })
+            }
         } else if (section == Section.LOCAL && server == null) {
             LocalTransferPrivacyGate(
                 scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
