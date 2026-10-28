@@ -82,3 +82,12 @@ These two instances are configured by the owner for testing but Chunks connectiv
 ## Owner-supplied torrent input security (2026-10-27)
 
 The six owner-uploaded repository-root `[IPT].torrent` inputs and two additional magnet identities are inventoried in [USER-SUPPLIED-TORRENT-TEST-INPUTS.md](USER-SUPPLIED-TORRENT-TEST-INPUTS.md). Inspect private-tracker announce fields for embedded passkeys before adding these to protected Seedhost test runs or publishing artifacts. Never automatically start them during CI. Prefer licensed, disposable public fixtures for actual server Add/restore tests. The owner supplied these for app testing, not as evidence of download success or permission to redistribute payload files.
+
+## Installed Android Add-screen journey (protected, mutating, 2026-10-28)
+
+[`seedhost-android-add-ui-once.yml`](../.github/workflows/seedhost-android-add-ui-once.yml) is dispatch-only and main-only, and runs only with `apply_add: true` (default false).
+- **What it does:** on an API35 emulator, the installed app's real Add screen adds **one** run-unique synthetic magnet (unreachable loopback tracker, so no payload or peers). It uses the server default Place or, because this host's `directory.default` is `~/downloads`, a parent corroborated from fresh reads of existing completed single-file transfers. It then requires the app's own Verified add+start outcome.
+- **How it checks:** an independent adapter read checks the exact hash, the started state and the directory.
+- **How it cleans up:** one exact Stop and one session-only erase of that identity only, then a check that main-view identities equal the preflight set. No step is retried after an uncertain reply.
+- **What it publishes:** only fixed stage labels, an allow-listed exception class name, and post-login screenshots (never the login screen).
+- **Status:** first accepted in run [40652034320](https://github.com/gamesbyian/Chunks/actions/runs/40652034320). Emulator, not a physical handset.
