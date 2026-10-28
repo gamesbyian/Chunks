@@ -136,7 +136,7 @@ def main(write):
         if write:path.parent.mkdir(parents=True,exist_ok=True);path.write_text(svg,encoding='utf8')
         elif not path.exists() or path.read_text(encoding='utf8')!=svg:raise RuntimeError(f'Stale SVG {path}')
     manifest['totals']['planned']=0
-    manifest['totals']['vectorDraft']=815
+    manifest['totals']['vectorDraft']=sum(a['status']=='vector-draft' for a in manifest['assets'])
     if write:MAN.write_text(json.dumps(manifest,indent=2,ensure_ascii=False)+'\n',encoding='utf8')
     elif json.loads(MAN.read_text(encoding='utf8'))['totals']!=manifest['totals']:raise RuntimeError('Counts mismatch')
     html=HTML.read_text(encoding='utf8')
@@ -152,7 +152,7 @@ def main(write):
     gallery.sort(key=lambda row:row['id'])
     body=json.dumps(gallery,ensure_ascii=False,separators=(',',':')).replace('<','\\u003c').replace('>','\\u003e').replace('&','\\u0026')
     updated=html[:match.start(2)]+body+html[match.end(2):]
-    updated=re.sub(r'<strong>\d+ draft SVGs</strong>','<strong>815 draft SVGs</strong>',updated)
+    updated=re.sub(r'<strong>\d+ draft SVGs</strong>','<strong>%d draft SVGs</strong>'%manifest['totals']['vectorDraft'],updated)
     if write:HTML.write_text(updated,encoding='utf8')
     elif HTML.read_text(encoding='utf8')!=updated:raise RuntimeError('Gallery stale')
     provenance={'schema':1,'sources':['docs/design/reference-images/06-colour-illustrations-and-stickers.png',
@@ -163,7 +163,7 @@ def main(write):
     content=json.dumps(provenance,indent=2)+'\n'; p=DEST/'provenance.json'
     if write:p.write_text(content,encoding='utf8')
     elif not p.exists() or p.read_text(encoding='utf8')!=content:raise RuntimeError('Provenance stale')
-    print('PASS: 12 generated SVG candidates; library total 815; none raster-embedded')
+    print('PASS: 12 sticker SVG candidates verified; total %d library SVGs, none raster-embedded'%manifest['totals']['vectorDraft'])
 if __name__=='__main__':
     arg=argparse.ArgumentParser();arg.add_argument('--write',action='store_true')
     main(arg.parse_args().write)

@@ -19,8 +19,8 @@ This is an original, **all-variants-preserved** SVG collection. No source PNG is
 - `scenes/`: 36 character combinations, promotional scenes and editable empty sticker shapes.
 - `brand/reference-traced/`: original PNG-silhouette-derived Chunks lettering, fixed taglines and alternate logo lockups, including constituent glyphs. Only source-contour precision is measured; manual approval remains open.
 - `fidelity/`: 12 additional independently renderable sticker and brand-screen SVG candidates, generated deterministically from original reference contours, checked-in Chunks font outlines and approved SVG geometry; no live text or embedded PNGs. [Fidelity and review notes](fidelity/README.md).
-- `master-inventory.json`: 836 named targets: 815 distinct SVG drafts, 20 exact graphic aliases, zero missing first-pass slots (optical review and native integration are still outstanding), 1 protected launcher source.
-- `gallery.html`: fully searchable static library of 815 current SVG drafts, with category filters, dark/light/checkerboard surfaces, side-by-side comparison and an experimental layer preview.
+- `master-inventory.json`: 846 named targets: 825 distinct SVG drafts, 20 exact graphic aliases, zero missing first-pass slots (optical review and native integration are still outstanding), 1 protected launcher source.
+- `gallery.html`: fully searchable static library of 825 current SVG drafts, with category filters, dark/light/checkerboard surfaces, side-by-side comparison and an experimental layer preview.
 - `python3 tools/validate_svg_library.py`: validates manifest, XML, self-contained SVG structure, gallery coverage and file coverage. CI runs it on relevant PRs.
 
 ## Experimental layer composition workbench
@@ -53,3 +53,7 @@ These are real **Chromium browser** tests, not physical Android phone testing, T
 [Machine-readable QA ledger](quality-dossier.json) · [Human-readable review and outstanding acceptance gates](QUALITY-REVIEW.md)
 
 The 815 SVG files, 20 direct aliases, and canonical launcher are structurally accounted for. Each asset has a conservative provenance class and an explicit optical review status. **First-pass inventory complete** means every named asset has a corresponding real vector or identified master, **not** every illustration has achieved pixel-faithful visual approval. The dossier is checked by `python3 tools/audit_svg_inventory.py` in PR CI; use `--write` after deliberate asset changes to regenerate it. Never mark a vector draft as approved merely because rendering or contour IoU passes.
+
+## Independent outlined variants of older SVG text specimens
+
+Ten original legacy SVGs still use live `<text>` and are intentionally preserved for historical comparison. Ten new path-only alternatives live in `outlined-alternatives/` with unique IDs and provenance entries; they use the checked-in Chunks ExtraBold OTF outlines in place of font-dependent text. They are **new interpretations**, not pixel-exact replicas of the original fallback font. Run `python3 tools/build_svg_outlined_alternatives.py` to check deterministic output; add `--write` only to regenerate these explicitly experimental alternatives. The [quality dossier](quality-dossier.json) inventories both old and outlined variants without pretending the old files are font-independent.

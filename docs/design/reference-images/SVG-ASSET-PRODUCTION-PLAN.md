@@ -2,7 +2,7 @@
 
 **Owner directive · 2026-10-27:** Every inconsistent reference-image variant is to receive its **own** independent SVG. Do not resolve away alternatives or select an undocumented winner. All six reference PNGs remain untouched, immediately alongside this plan.
 
-**Authoritative per-asset ledger:** [Master inventory](../svg/master-inventory.json) has **836 named entries** (815 SVG draft files, 20 direct aliases to existing masters, zero uncreated first-pass asset slots, and one existing approved SVG). Each entry has an ID, category, origin, status and exact file path when present. The inventory is the exhaustive tracking index; this document explains how to make and test assets. The CSV-like task list is *not* a competing product work queue: [WORK-QUEUE](../../WORK-QUEUE.md) remains the repo's ranked authority.
+**Authoritative per-asset ledger:** [Master inventory](../svg/master-inventory.json) has **846 named entries** (825 SVG draft files, 20 direct aliases to existing masters, zero uncreated first-pass asset slots, and one existing approved SVG). Each entry has an ID, category, origin, status and exact file path when present. The inventory is the exhaustive tracking index; this document explains how to make and test assets. The CSV-like task list is *not* a competing product work queue: [WORK-QUEUE](../../WORK-QUEUE.md) remains the repo's ranked authority.
 
 ## Reference map
 
@@ -70,3 +70,7 @@
 ## First-pass inventory closure and precision review
 
 All 815 independent SVGs exist and the 20 shared visual roles resolve to an existing SVG. This closes the **asset creation inventory**, not the artistic sign-off process. The [per-asset quality dossier](../svg/quality-dossier.json) and [acceptance checklist](../svg/QUALITY-REVIEW.md) record the remaining optical, small-size, colour and Android accessibility gates. Reconcile the variants through the gallery and visual atlas without deleting any competing reference treatments or replacing the canonical approved launcher. Non-traced lettering must retain its original provenance labels even where a font outline has been substituted.
+
+## Additional final variants: path-only legacy text alternatives
+
+Ten brand/sticker/A–Z-sort SVGs use system-dependent `<text>` elements. Their originals are retained untouched. Ten new counterparts under `docs/design/svg/outlined-alternatives/` contain glyph paths from the licensed checked-in Chunks ExtraBold font and are inventoried with source links. Their letter proportions differ from the original fallback-font interpretation, so manual review is still necessary. The expanded inventory is **825 SVGs, 20 aliases, one approved master, zero uncreated roles**. The QA dossier lists 10 deliberately preserved font-dependent historical SVGs rather than hiding them.

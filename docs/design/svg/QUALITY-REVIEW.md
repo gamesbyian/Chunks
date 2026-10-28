@@ -1,6 +1,6 @@
 # Chunks SVG inventory quality review
 
-All 815 first-pass SVGs exist and the 20 aliases resolve. This is not a declaration that every logo, sticker, icon or UI specimen matches its source exactly.
+All 825 first-pass SVGs exist and 20 aliases resolve. This is not a declaration that every logo, sticker, icon or UI specimen matches its source exactly.
 
 ## Recorded categories
 
@@ -9,7 +9,7 @@ All 815 first-pass SVGs exist and the 20 aliases resolve. This is not a declarat
 | canonical-geometry-derivative | 13 |
 | canonical-launcher | 1 |
 | exploratory-letter-glyph | 306 |
-| font-outline-interpretation | 6 |
+| font-outline-interpretation | 16 |
 | illustrative-vector-draft | 331 |
 | master-alias | 20 |
 | native-ui-design-specimen | 96 |
@@ -19,8 +19,8 @@ All 815 first-pass SVGs exist and the 20 aliases resolve. This is not a declarat
 
 ## Remaining verification
 
-Technical file coverage: 815/815. Missing named first-pass slots: 0.
-Unverified optical entries: 835.
+Technical file coverage: 825/825. Missing named first-pass slots: 0.
+Unverified optical entries: 845.
 Font-dependent SVGs: 10.
 
 - [ ] Review source overlays for image and lettering fidelity
