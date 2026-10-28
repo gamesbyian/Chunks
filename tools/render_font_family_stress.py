@@ -73,6 +73,25 @@ def create(root:Path, out:Path):
         png=out/f'chunks-font-variants-{size}px.png'
         canvas.save(png,optimize=True)
         report['images'][str(size)]=png.name
+    # Width drift is a font-specific signal, unlike the arbitrary comparison-cell edge.
+    # Record it for every sample at every weight/size, without false pass/fail claims.
+    report['relative_width_review']=[]
+    for size in SIZES:
+        for style in WEIGHTS:
+            baseline=report['samples'][f'{style}/base/{size}']['samples']
+            for family in ('panel','accent'):
+                candidate=report['samples'][f'{style}/{family}/{size}']['samples']
+                for sample_name,_ in EXAMPLES:
+                    source=baseline[sample_name]['ink_width_px']
+                    target=candidate[sample_name]['ink_width_px']
+                    ratio=round(target/max(1,source),4)
+                    candidate[sample_name]['width_vs_base_ratio']=ratio
+                    if ratio>=1.15:
+                        report['relative_width_review'].append({
+                            'weight':style,'family':family,'size_px':size,
+                            'sample':sample_name,'width_vs_base_ratio':ratio,
+                            'base_width_px':source,'candidate_width_px':target})
+    report['relative_width_review_count']=len(report['relative_width_review'])
     # Overflow is intentionally surfaced rather than hidden by reducing font size.
     report['overflow_count']=sum(int(s['overflows_review_cell']) for info in report['samples'].values() for s in info['samples'].values())
     dst=out/'chunks-font-visual-stress.json'
