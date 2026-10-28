@@ -1,0 +1,33 @@
+name: Check reproducibility of Chunks SVG source candidates
+
+on:
+  pull_request:
+    paths:
+      - 'tools/complete_svg_reference_assets.py'
+      - 'docs/design/svg/fidelity/**'
+      - 'docs/design/svg/gallery.html'
+      - 'docs/design/svg/master-inventory.json'
+      - 'docs/design/reference-images/06-colour-illustrations-and-stickers.png'
+      - 'assets/fonts/chunks/Chunks-ExtraBold.otf'
+      - '.github/workflows/svg-complete-reference-assets.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  candidate-reproducibility:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install trace dependencies
+        run: python3 -m pip install 'numpy>=2,<3' 'opencv-python-headless>=4.11,<5' 'Pillow>=11,<13' 'fonttools>=4.55,<5'
+      - name: Check 12 regenerated SVG files and the inventory
+        run: |
+          python3 tools/complete_svg_reference_assets.py
+          python3 tools/validate_svg_library.py
+          python3 tools/check_svg_approved_derivatives.py

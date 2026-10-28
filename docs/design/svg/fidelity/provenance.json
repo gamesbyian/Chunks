@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "sources": [
+    "docs/design/reference-images/06-colour-illustrations-and-stickers.png",
+    "docs/design/approved/chunks-app-icon-master.svg",
+    "assets/fonts/chunks/Chunks-ExtraBold.otf"
+  ],
+  "approval": "Technical vector drafts, not pixel-exact optical acceptance",
+  "imageEmbedding": false,
+  "approvedLauncherModified": false,
+  "assets": {
+    "black-outlined-same-torrents-sticker": "bundled-otf-outlined-interpretation",
+    "cream-launch-screen-frame": "approved-vector-recomposition",
+    "green-fast-private-sticker-exact-hand-lettering": "source-contour-draft",
+    "onboarding-brand-hero-composition": "approved-vector-recomposition",
+    "pink-movies-shows-sticker-exact-hand-lettering": "source-contour-draft",
+    "purple-download-organise-sticker-exact-hand-lettering": "source-contour-draft",
+    "splash-screen-decorative-composition": "approved-vector-recomposition",
+    "white-same-torrents-sticker": "bundled-otf-outlined-interpretation",
+    "white-same-vibes-sticker": "bundled-otf-outlined-interpretation",
+    "yellow-same-files-sticker": "bundled-otf-outlined-interpretation",
+    "yellow-simple-icons-sticker": "bundled-otf-outlined-interpretation",
+    "yellow-your-torrents-sticker": "bundled-otf-outlined-interpretation"
+  }
+}

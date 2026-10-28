@@ -6,6 +6,7 @@ on:
       - 'docs/design/svg/**'
       - 'tools/render_svg_atlas.py'
       - 'tools/check_svg_trace_fidelity.py'
+      - 'tools/svg_sticker_comparison.py'
       - '.github/workflows/svg-render-atlas.yml'
   workflow_dispatch:
 
@@ -35,6 +36,16 @@ jobs:
         run: python3 tools/render_svg_atlas.py --out generated/svg-atlas --sizes 32,160
       - name: Measure traced lettering against the original reference PNG
         run: python3 tools/check_svg_trace_fidelity.py
+      - name: Compare reference sticker contours with rendered vectors
+        run: python3 tools/svg_sticker_comparison.py --out generated/svg-sticker-comparison
+      - name: Preserve sticker comparison artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-sticker-comparison-${{ github.sha }}
+          path: generated/svg-sticker-comparison/
+          if-no-files-found: warn
+          retention-days: 7
       - name: Preserve browseable render proof
         if: always()
         uses: actions/upload-artifact@v4

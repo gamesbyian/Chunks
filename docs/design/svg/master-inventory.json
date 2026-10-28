@@ -10,8 +10,8 @@
   },
   "totals": {
     "approved": 1,
-    "vectorDraft": 803,
-    "planned": 12,
+    "vectorDraft": 815,
+    "planned": 0,
     "aliases": 20
   },
   "assets": [
@@ -1628,8 +1628,10 @@
       "id": "brand-fidelity/cream-launch-screen-frame",
       "category": "brand-fidelity",
       "label": "cream launch-screen frame",
-      "status": "planned",
-      "source": "04-brand-lockups-and-app-icon.png"
+      "status": "vector-draft",
+      "source": "04-brand-lockups-and-app-icon.png; reproducible original vector; optical approval pending",
+      "path": "docs/design/svg/fidelity/cream-launch-screen-frame.svg",
+      "fidelity": "approved-vector-recomposition"
     },
     {
       "id": "brand-fidelity/brand-wordmark-without-offset-shadow",
@@ -1652,29 +1654,37 @@
       "id": "brand-fidelity/splash-screen-decorative-composition",
       "category": "brand-fidelity",
       "label": "splash screen decorative composition",
-      "status": "planned",
-      "source": "04-brand-lockups-and-app-icon.png"
+      "status": "vector-draft",
+      "source": "04-brand-lockups-and-app-icon.png; reproducible original vector; optical approval pending",
+      "path": "docs/design/svg/fidelity/splash-screen-decorative-composition.svg",
+      "fidelity": "approved-vector-recomposition"
     },
     {
       "id": "brand-fidelity/onboarding-brand-hero-composition",
       "category": "brand-fidelity",
       "label": "onboarding brand hero composition",
-      "status": "planned",
-      "source": "04-brand-lockups-and-app-icon.png"
+      "status": "vector-draft",
+      "source": "04-brand-lockups-and-app-icon.png; reproducible original vector; optical approval pending",
+      "path": "docs/design/svg/fidelity/onboarding-brand-hero-composition.svg",
+      "fidelity": "approved-vector-recomposition"
     },
     {
       "id": "brand-fidelity/black-outlined-same-torrents-sticker",
       "category": "brand-fidelity",
       "label": "black outlined Same Torrents sticker",
-      "status": "planned",
-      "source": "04-brand-lockups-and-app-icon.png"
+      "status": "vector-draft",
+      "source": "04-brand-lockups-and-app-icon.png; reproducible original vector; optical approval pending",
+      "path": "docs/design/svg/fidelity/black-outlined-same-torrents-sticker.svg",
+      "fidelity": "bundled-otf-outlined-interpretation"
     },
     {
       "id": "brand-fidelity/yellow-same-files-sticker",
       "category": "brand-fidelity",
       "label": "yellow Same Files sticker",
-      "status": "planned",
-      "source": "04-brand-lockups-and-app-icon.png"
+      "status": "vector-draft",
+      "source": "04-brand-lockups-and-app-icon.png; reproducible original vector; optical approval pending",
+      "path": "docs/design/svg/fidelity/yellow-same-files-sticker.svg",
+      "fidelity": "bundled-otf-outlined-interpretation"
     },
     {
       "id": "launcher-concepts/folder-with-cubes-dimensional-concept",
@@ -2281,50 +2291,64 @@
       "id": "stickers/white-same-torrents-sticker",
       "category": "stickers",
       "label": "white Same Torrents sticker",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png; reproducible original vector; optical approval pending",
+      "path": "docs/design/svg/fidelity/white-same-torrents-sticker.svg",
+      "fidelity": "bundled-otf-outlined-interpretation"
     },
     {
       "id": "stickers/purple-download-organise-sticker-exact-hand-lettering",
       "category": "stickers",
       "label": "purple Download Organise sticker exact hand-lettering",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png; reproducible original vector; optical approval pending",
+      "path": "docs/design/svg/fidelity/purple-download-organise-sticker-exact-hand-lettering.svg",
+      "fidelity": "source-contour-draft"
     },
     {
       "id": "stickers/green-fast-private-sticker-exact-hand-lettering",
       "category": "stickers",
       "label": "green Fast Private sticker exact hand-lettering",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png; reproducible original vector; optical approval pending",
+      "path": "docs/design/svg/fidelity/green-fast-private-sticker-exact-hand-lettering.svg",
+      "fidelity": "source-contour-draft"
     },
     {
       "id": "stickers/pink-movies-shows-sticker-exact-hand-lettering",
       "category": "stickers",
       "label": "pink Movies Shows sticker exact hand-lettering",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png; reproducible original vector; optical approval pending",
+      "path": "docs/design/svg/fidelity/pink-movies-shows-sticker-exact-hand-lettering.svg",
+      "fidelity": "source-contour-draft"
     },
     {
       "id": "stickers/yellow-simple-icons-sticker",
       "category": "stickers",
       "label": "yellow Simple Icons sticker",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png; reproducible original vector; optical approval pending",
+      "path": "docs/design/svg/fidelity/yellow-simple-icons-sticker.svg",
+      "fidelity": "bundled-otf-outlined-interpretation"
     },
     {
       "id": "stickers/white-same-vibes-sticker",
       "category": "stickers",
       "label": "white Same Vibes sticker",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png; reproducible original vector; optical approval pending",
+      "path": "docs/design/svg/fidelity/white-same-vibes-sticker.svg",
+      "fidelity": "bundled-otf-outlined-interpretation"
     },
     {
       "id": "stickers/yellow-your-torrents-sticker",
       "category": "stickers",
       "label": "yellow Your Torrents sticker",
-      "status": "planned",
-      "source": "06-colour-illustrations-and-stickers.png"
+      "status": "vector-draft",
+      "source": "06-colour-illustrations-and-stickers.png; reproducible original vector; optical approval pending",
+      "path": "docs/design/svg/fidelity/yellow-your-torrents-sticker.svg",
+      "fidelity": "bundled-otf-outlined-interpretation"
     },
     {
       "id": "stickers/rounded-text-highlight-yellow",
