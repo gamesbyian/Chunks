@@ -219,7 +219,10 @@ document.querySelector("#mix-recipe-file").addEventListener("change",async event
 });
 document.querySelector("#mix-export").addEventListener("click",async event=>{
  if(!chosen.length)return;
- event.currentTarget.disabled=true;status("Assembling source-vector layers…");
+ // currentTarget is cleared once the browser leaves the synchronous event
+ // dispatch. Capture the element before awaiting SVG source fetches.
+ const exportButton=event.currentTarget;
+ exportButton.disabled=true;status("Assembling source-vector layers…");
  try{
   const selection=recipe();
   const contents=await Promise.all(selection.layers.map(async layer=>{
@@ -237,7 +240,7 @@ document.querySelector("#mix-export").addEventListener("click",async event=>{
   status("Standalone SVG exported. Original variants remain unchanged.");
  }catch(error){
   status("Export unavailable: "+error.message+". Serve the gallery through HTTP(S) with its SVG files.",true);
- }finally{event.currentTarget.disabled=false;}
+ }finally{exportButton.disabled=false;}
 });
 renderTray();
 })();
