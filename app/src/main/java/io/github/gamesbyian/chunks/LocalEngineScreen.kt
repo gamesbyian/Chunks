@@ -505,6 +505,12 @@ internal fun LocalEngineScreen(
     }
 
     val scrollState = rememberScrollState()
+    LaunchedEffect(repairReview?.first) {
+        // The source chooser is launched from a card deep in a long queue.
+        // Return to the review at the top rather than hide a confirmation
+        // elsewhere in the scrollable page.
+        if (repairReview != null) scrollState.animateScrollTo(0)
+    }
     val viewportHeightPx = with(LocalDensity.current) {
         LocalConfiguration.current.screenHeightDp.dp.roundToPx()
     }
