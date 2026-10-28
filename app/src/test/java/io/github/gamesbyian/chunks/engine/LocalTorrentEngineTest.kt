@@ -442,6 +442,33 @@ class LocalTorrentEngineTest {
         assertEquals(0L, requireNotNull(native.status(transfer.infoHash)).payloadDownloadedBytes)
     }
 
+    @Test fun reviewedNativeSchedulingPrioritySurvivesSavedEngineRestart() {
+        val fixture = fixture()
+        val state = temp.newFolder("file-priority-resume-state")
+        val destination = temp.newFolder("file-priority-resume-place")
+        val initial = persistentEngine(state)
+        val transfer = added(initial.addStopped(fixture.torrent, destination))
+        val original = requireNotNull(initial.files(transfer.infoHash)).single {
+            it.path.endsWith("episode.bin")
+        }
+        assertEquals(LocalFileBatchOutcome.VERIFIED,
+            initial.setFilePriority(transfer.infoHash, original, 7))
+        assertEquals(1, initial.saveResumeData())
+        initial.close()
+
+        val afterRestart = persistentEngine(state)
+        assertTrue(afterRestart.restoreProblems.isEmpty())
+        val restored = requireNotNull(afterRestart.files(transfer.infoHash)).single {
+            it.index == original.index
+        }
+        assertTrue(restored.wanted)
+        assertEquals(7, restored.priority)
+        val session = requireNotNull(afterRestart.status(transfer.infoHash))
+        assertTrue("An explicit scheduling preference must never auto-start", session.stopped)
+        assertEquals(destination.absolutePath, session.savePath)
+        assertEquals(0L, session.payloadDownloadedBytes)
+    }
+
     @Test fun skippedFileIsNotDownloadedUntilSelected() {
         val fixture = fixture()
         val seeder = engine()
