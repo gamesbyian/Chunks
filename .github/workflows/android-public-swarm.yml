@@ -1,0 +1,79 @@
+name: Android public peer swarm
+
+# Real Internet peer evidence for the app's native engine on an API35
+# emulator: collect the official Debian netinst torrent (web seeds stripped,
+# only bttracker.debian.org kept), then download a bounded hash-verified byte
+# budget from ordinary BitTorrent peers. No secrets, no rTorrent. Emulator
+# behind the runner's NAT; not a physical handset or mobile network.
+on:
+  workflow_dispatch:
+    inputs:
+      budget_mib:
+        description: "Hash-verified MiB to download before stopping (1-256)"
+        type: number
+        default: 16
+        required: true
+      seconds:
+        description: "Time limit for peers to deliver the budget (30-1800)"
+        type: number
+        default: 600
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chunks-android-swarm-${{ github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  android-swarm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Collect the Debian netinst torrent (no web seeds, Debian tracker only)
+        env:
+          BUDGET_MIB: ${{ inputs.budget_mib }}
+          SECONDS_LIMIT: ${{ inputs.seconds }}
+        run: |
+          set -euo pipefail
+          [[ "$BUDGET_MIB" =~ ^[0-9]{1,3}$ && "$BUDGET_MIB" -ge 1 && "$BUDGET_MIB" -le 256 ]] || { echo "::error::Invalid budget"; exit 1; }
+          [[ "$SECONDS_LIMIT" =~ ^[0-9]{2,4}$ && "$SECONDS_LIMIT" -ge 30 && "$SECONDS_LIMIT" -le 1800 ]] || { echo "::error::Invalid time limit"; exit 1; }
+          python3 -I tools/public_fixture_collector.py --debian-netinst \
+            --max-total-mib 4096 --output-dir "$RUNNER_TEMP/public"
+          python3 -I -c 'import json,os;t=json.load(open(os.environ["RUNNER_TEMP"]+"/public/manifest.json"))["torrent"];assert t["infohash_v1"] and t["tracker_retained"];print("CHUNKS_ANDROID_SWARM_SOURCE:",t["name"],t["infohash_v1"],t["total_bytes"])'
+          {
+            echo "CHUNKS_PUBLIC_SWARM_TORRENT=$RUNNER_TEMP/public/source-sanitized.torrent"
+            echo "CHUNKS_PUBLIC_SWARM_BUDGET_BYTES=$(( BUDGET_MIB * 1048576 ))"
+            echo "CHUNKS_PUBLIC_SWARM_SECONDS=$SECONDS_LIMIT"
+          } >> "$GITHUB_ENV"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+      - name: Install pinned Android compile toolchain
+        run: |
+          printf 'y\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
+          if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          fi
+      - name: Compile app and instrumented tests
+        run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
+      - name: Enable Android emulator KVM
+        run: |
+          test -c /dev/kvm
+          sudo chmod 0666 /dev/kvm
+      - name: API35 native engine downloads a verified budget from ordinary peers
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          emulator-boot-timeout: 600
+          disable-animations: true
+          script: bash tools/android_public_swarm.sh
