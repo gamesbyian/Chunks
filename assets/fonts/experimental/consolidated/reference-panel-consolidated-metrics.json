@@ -599,7 +599,147 @@
         "sampled_punctuation_pairs": 8583,
         "adjusted_punctuation_pairs": 8368,
         "clipped_at_72_units": 5399,
-        "bounded_pairpos_subtables": 14
+        "worst_clipped_pair_examples": [
+          {
+            "pair": "Ç*",
+            "left_codepoint": "U+00C7",
+            "right_codepoint": "U+002A",
+            "requested_xadvance_units": -434.598,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -362.598,
+            "before_ink_gap_126px": 69.2494,
+            "estimated_after_ink_gap_126px": 60.1774,
+            "target_ink_gap_126px": 14.49
+          },
+          {
+            "pair": "p…",
+            "left_codepoint": "U+0070",
+            "right_codepoint": "U+2026",
+            "requested_xadvance_units": -425.635,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -353.635,
+            "before_ink_gap_126px": 68.12,
+            "estimated_after_ink_gap_126px": 59.048,
+            "target_ink_gap_126px": 14.49
+          },
+          {
+            "pair": "Ç\"",
+            "left_codepoint": "U+00C7",
+            "right_codepoint": "U+0022",
+            "requested_xadvance_units": -421.582,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -349.582,
+            "before_ink_gap_126px": 67.6094,
+            "estimated_after_ink_gap_126px": 58.5374,
+            "target_ink_gap_126px": 14.49
+          },
+          {
+            "pair": "Ç”",
+            "left_codepoint": "U+00C7",
+            "right_codepoint": "U+201D",
+            "requested_xadvance_units": -421.582,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -349.582,
+            "before_ink_gap_126px": 67.6094,
+            "estimated_after_ink_gap_126px": 58.5374,
+            "target_ink_gap_126px": 14.49
+          },
+          {
+            "pair": "…q",
+            "left_codepoint": "U+2026",
+            "right_codepoint": "U+0071",
+            "requested_xadvance_units": -420.714,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -348.714,
+            "before_ink_gap_126px": 67.5,
+            "estimated_after_ink_gap_126px": 58.428,
+            "target_ink_gap_126px": 14.49
+          },
+          {
+            "pair": "Ç'",
+            "left_codepoint": "U+00C7",
+            "right_codepoint": "U+0027",
+            "requested_xadvance_units": -419.836,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -347.836,
+            "before_ink_gap_126px": 67.3894,
+            "estimated_after_ink_gap_126px": 58.3174,
+            "target_ink_gap_126px": 14.49
+          },
+          {
+            "pair": "Ç’",
+            "left_codepoint": "U+00C7",
+            "right_codepoint": "U+2019",
+            "requested_xadvance_units": -419.836,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -347.836,
+            "before_ink_gap_126px": 67.3894,
+            "estimated_after_ink_gap_126px": 58.3174,
+            "target_ink_gap_126px": 14.49
+          },
+          {
+            "pair": "Ç‘",
+            "left_codepoint": "U+00C7",
+            "right_codepoint": "U+2018",
+            "requested_xadvance_units": -411.662,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -339.662,
+            "before_ink_gap_126px": 66.3594,
+            "estimated_after_ink_gap_126px": 57.2874,
+            "target_ink_gap_126px": 14.49
+          },
+          {
+            "pair": "Ç“",
+            "left_codepoint": "U+00C7",
+            "right_codepoint": "U+201C",
+            "requested_xadvance_units": -411.662,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -339.662,
+            "before_ink_gap_126px": 66.3594,
+            "estimated_after_ink_gap_126px": 57.2874,
+            "target_ink_gap_126px": 14.49
+          },
+          {
+            "pair": "è:",
+            "left_codepoint": "U+00E8",
+            "right_codepoint": "U+003A",
+            "requested_xadvance_units": -397.183,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -325.183,
+            "before_ink_gap_126px": 64.535,
+            "estimated_after_ink_gap_126px": 55.463,
+            "target_ink_gap_126px": 14.49
+          },
+          {
+            "pair": "é:",
+            "left_codepoint": "U+00E9",
+            "right_codepoint": "U+003A",
+            "requested_xadvance_units": -397.183,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -325.183,
+            "before_ink_gap_126px": 64.535,
+            "estimated_after_ink_gap_126px": 55.463,
+            "target_ink_gap_126px": 14.49
+          },
+          {
+            "pair": "ê:",
+            "left_codepoint": "U+00EA",
+            "right_codepoint": "U+003A",
+            "requested_xadvance_units": -397.183,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -325.183,
+            "before_ink_gap_126px": 64.535,
+            "estimated_after_ink_gap_126px": 55.463,
+            "target_ink_gap_126px": 14.49
+          }
+        ],
+        "bounded_pairpos_subtables": 14,
+        "clipped_pair_report": {
+          "file": "reference-punctuation-clipped-Regular.json.gz",
+          "sha256": "2cf186e6328a9a58f524ff3a7e79e9c30f2d442c9831f30e4f2df6a0019b1637",
+          "count": 5399,
+          "uncompressed_bytes": 1393818
+        }
       },
       "tracking_em": {
         "display": -0.022,
@@ -1248,7 +1388,147 @@
         "sampled_punctuation_pairs": 8635,
         "adjusted_punctuation_pairs": 8474,
         "clipped_at_72_units": 5306,
-        "bounded_pairpos_subtables": 14
+        "worst_clipped_pair_examples": [
+          {
+            "pair": "…q",
+            "left_codepoint": "U+2026",
+            "right_codepoint": "U+0071",
+            "requested_xadvance_units": -416.468,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -344.468,
+            "before_ink_gap_126px": 66.02,
+            "estimated_after_ink_gap_126px": 56.948,
+            "target_ink_gap_126px": 13.545
+          },
+          {
+            "pair": "Ç*",
+            "left_codepoint": "U+00C7",
+            "right_codepoint": "U+002A",
+            "requested_xadvance_units": -413.085,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -341.085,
+            "before_ink_gap_126px": 65.5938,
+            "estimated_after_ink_gap_126px": 56.5217,
+            "target_ink_gap_126px": 13.545
+          },
+          {
+            "pair": "Ç\"",
+            "left_codepoint": "U+00C7",
+            "right_codepoint": "U+0022",
+            "requested_xadvance_units": -401.181,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -329.181,
+            "before_ink_gap_126px": 64.0938,
+            "estimated_after_ink_gap_126px": 55.0217,
+            "target_ink_gap_126px": 13.545
+          },
+          {
+            "pair": "Ç”",
+            "left_codepoint": "U+00C7",
+            "right_codepoint": "U+201D",
+            "requested_xadvance_units": -399.196,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -327.196,
+            "before_ink_gap_126px": 63.8438,
+            "estimated_after_ink_gap_126px": 54.7717,
+            "target_ink_gap_126px": 13.545
+          },
+          {
+            "pair": "Ç'",
+            "left_codepoint": "U+00C7",
+            "right_codepoint": "U+0027",
+            "requested_xadvance_units": -393.244,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -321.244,
+            "before_ink_gap_126px": 63.0938,
+            "estimated_after_ink_gap_126px": 54.0217,
+            "target_ink_gap_126px": 13.545
+          },
+          {
+            "pair": "Ç‘",
+            "left_codepoint": "U+00C7",
+            "right_codepoint": "U+2018",
+            "requested_xadvance_units": -391.26,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -319.26,
+            "before_ink_gap_126px": 62.8438,
+            "estimated_after_ink_gap_126px": 53.7717,
+            "target_ink_gap_126px": 13.545
+          },
+          {
+            "pair": "Ç’",
+            "left_codepoint": "U+00C7",
+            "right_codepoint": "U+2019",
+            "requested_xadvance_units": -391.26,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -319.26,
+            "before_ink_gap_126px": 62.8438,
+            "estimated_after_ink_gap_126px": 53.7717,
+            "target_ink_gap_126px": 13.545
+          },
+          {
+            "pair": "Ç“",
+            "left_codepoint": "U+00C7",
+            "right_codepoint": "U+201C",
+            "requested_xadvance_units": -391.26,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -319.26,
+            "before_ink_gap_126px": 62.8438,
+            "estimated_after_ink_gap_126px": 53.7717,
+            "target_ink_gap_126px": 13.545
+          },
+          {
+            "pair": "è;",
+            "left_codepoint": "U+00E8",
+            "right_codepoint": "U+003B",
+            "requested_xadvance_units": -366.384,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -294.384,
+            "before_ink_gap_126px": 59.7094,
+            "estimated_after_ink_gap_126px": 50.6374,
+            "target_ink_gap_126px": 13.545
+          },
+          {
+            "pair": "é;",
+            "left_codepoint": "U+00E9",
+            "right_codepoint": "U+003B",
+            "requested_xadvance_units": -366.384,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -294.384,
+            "before_ink_gap_126px": 59.7094,
+            "estimated_after_ink_gap_126px": 50.6374,
+            "target_ink_gap_126px": 13.545
+          },
+          {
+            "pair": "ê;",
+            "left_codepoint": "U+00EA",
+            "right_codepoint": "U+003B",
+            "requested_xadvance_units": -366.384,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -294.384,
+            "before_ink_gap_126px": 59.7094,
+            "estimated_after_ink_gap_126px": 50.6374,
+            "target_ink_gap_126px": 13.545
+          },
+          {
+            "pair": "ë;",
+            "left_codepoint": "U+00EB",
+            "right_codepoint": "U+003B",
+            "requested_xadvance_units": -366.384,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -294.384,
+            "before_ink_gap_126px": 59.7094,
+            "estimated_after_ink_gap_126px": 50.6374,
+            "target_ink_gap_126px": 13.545
+          }
+        ],
+        "bounded_pairpos_subtables": 14,
+        "clipped_pair_report": {
+          "file": "reference-punctuation-clipped-Medium.json.gz",
+          "sha256": "01511b961534750d5fb3f8ee161f8216cd6fb8071cc09d6742b658c1d98e6a93",
+          "count": 5306,
+          "uncompressed_bytes": 1374848
+        }
       },
       "tracking_em": {
         "display": -0.022,
@@ -1897,7 +2177,147 @@
         "sampled_punctuation_pairs": 8966,
         "adjusted_punctuation_pairs": 8790,
         "clipped_at_72_units": 5382,
-        "bounded_pairpos_subtables": 14
+        "worst_clipped_pair_examples": [
+          {
+            "pair": "Ç*",
+            "left_codepoint": "U+00C7",
+            "right_codepoint": "U+002A",
+            "requested_xadvance_units": -394.236,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -322.236,
+            "before_ink_gap_126px": 62.2737,
+            "estimated_after_ink_gap_126px": 53.2018,
+            "target_ink_gap_126px": 12.6
+          },
+          {
+            "pair": "Ç\"",
+            "left_codepoint": "U+00C7",
+            "right_codepoint": "U+0022",
+            "requested_xadvance_units": -380.903,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -308.903,
+            "before_ink_gap_126px": 60.5938,
+            "estimated_after_ink_gap_126px": 51.5217,
+            "target_ink_gap_126px": 12.6
+          },
+          {
+            "pair": "Ç”",
+            "left_codepoint": "U+00C7",
+            "right_codepoint": "U+201D",
+            "requested_xadvance_units": -375.942,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -303.942,
+            "before_ink_gap_126px": 59.9688,
+            "estimated_after_ink_gap_126px": 50.8967,
+            "target_ink_gap_126px": 12.6
+          },
+          {
+            "pair": "Ç'",
+            "left_codepoint": "U+00C7",
+            "right_codepoint": "U+0027",
+            "requested_xadvance_units": -372.966,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -300.966,
+            "before_ink_gap_126px": 59.5938,
+            "estimated_after_ink_gap_126px": 50.5217,
+            "target_ink_gap_126px": 12.6
+          },
+          {
+            "pair": "Ç‘",
+            "left_codepoint": "U+00C7",
+            "right_codepoint": "U+2018",
+            "requested_xadvance_units": -370.982,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -298.982,
+            "before_ink_gap_126px": 59.3438,
+            "estimated_after_ink_gap_126px": 50.2717,
+            "target_ink_gap_126px": 12.6
+          },
+          {
+            "pair": "Ç“",
+            "left_codepoint": "U+00C7",
+            "right_codepoint": "U+201C",
+            "requested_xadvance_units": -370.982,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -298.982,
+            "before_ink_gap_126px": 59.3438,
+            "estimated_after_ink_gap_126px": 50.2717,
+            "target_ink_gap_126px": 12.6
+          },
+          {
+            "pair": "Ç’",
+            "left_codepoint": "U+00C7",
+            "right_codepoint": "U+2019",
+            "requested_xadvance_units": -368.006,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -296.006,
+            "before_ink_gap_126px": 58.9688,
+            "estimated_after_ink_gap_126px": 49.8967,
+            "target_ink_gap_126px": 12.6
+          },
+          {
+            "pair": "…4",
+            "left_codepoint": "U+2026",
+            "right_codepoint": "U+0034",
+            "requested_xadvance_units": -355.481,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -283.481,
+            "before_ink_gap_126px": 57.3906,
+            "estimated_after_ink_gap_126px": 48.3186,
+            "target_ink_gap_126px": 12.6
+          },
+          {
+            "pair": "F…",
+            "left_codepoint": "U+0046",
+            "right_codepoint": "U+2026",
+            "requested_xadvance_units": -336.012,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -264.012,
+            "before_ink_gap_126px": 54.9375,
+            "estimated_after_ink_gap_126px": 45.8655,
+            "target_ink_gap_126px": 12.6
+          },
+          {
+            "pair": "P…",
+            "left_codepoint": "U+0050",
+            "right_codepoint": "U+2026",
+            "requested_xadvance_units": -335.02,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -263.02,
+            "before_ink_gap_126px": 54.8125,
+            "estimated_after_ink_gap_126px": 45.7405,
+            "target_ink_gap_126px": 12.6
+          },
+          {
+            "pair": "Ç=",
+            "left_codepoint": "U+00C7",
+            "right_codepoint": "U+003D",
+            "requested_xadvance_units": -305.417,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -233.417,
+            "before_ink_gap_126px": 51.0825,
+            "estimated_after_ink_gap_126px": 42.0105,
+            "target_ink_gap_126px": 12.6
+          },
+          {
+            "pair": "\\Y",
+            "left_codepoint": "U+005C",
+            "right_codepoint": "U+0059",
+            "requested_xadvance_units": -289.509,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -217.509,
+            "before_ink_gap_126px": 49.0781,
+            "estimated_after_ink_gap_126px": 40.0061,
+            "target_ink_gap_126px": 12.6
+          }
+        ],
+        "bounded_pairpos_subtables": 14,
+        "clipped_pair_report": {
+          "file": "reference-punctuation-clipped-Semibold.json.gz",
+          "sha256": "f5dbac32fa608e30ef41b6e6865b5bb4f3656d2a66d4ac1572419bfb8b5c21c4",
+          "count": 5382,
+          "uncompressed_bytes": 1383046
+        }
       },
       "tracking_em": {
         "display": -0.022,
@@ -2546,7 +2966,147 @@
         "sampled_punctuation_pairs": 8994,
         "adjusted_punctuation_pairs": 8863,
         "clipped_at_72_units": 5243,
-        "bounded_pairpos_subtables": 14
+        "worst_clipped_pair_examples": [
+          {
+            "pair": "Ç*",
+            "left_codepoint": "U+00C7",
+            "right_codepoint": "U+002A",
+            "requested_xadvance_units": -372.966,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -300.966,
+            "before_ink_gap_126px": 58.6487,
+            "estimated_after_ink_gap_126px": 49.5768,
+            "target_ink_gap_126px": 11.655
+          },
+          {
+            "pair": "…4",
+            "left_codepoint": "U+2026",
+            "right_codepoint": "U+0034",
+            "requested_xadvance_units": -355.045,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -283.045,
+            "before_ink_gap_126px": 56.3906,
+            "estimated_after_ink_gap_126px": 47.3186,
+            "target_ink_gap_126px": 11.655
+          },
+          {
+            "pair": "Ç\"",
+            "left_codepoint": "U+00C7",
+            "right_codepoint": "U+0022",
+            "requested_xadvance_units": -351.696,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -279.696,
+            "before_ink_gap_126px": 55.9688,
+            "estimated_after_ink_gap_126px": 46.8967,
+            "target_ink_gap_126px": 11.655
+          },
+          {
+            "pair": "Ç'",
+            "left_codepoint": "U+00C7",
+            "right_codepoint": "U+0027",
+            "requested_xadvance_units": -344.871,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -272.871,
+            "before_ink_gap_126px": 55.1088,
+            "estimated_after_ink_gap_126px": 46.0367,
+            "target_ink_gap_126px": 11.655
+          },
+          {
+            "pair": "Ç”",
+            "left_codepoint": "U+00C7",
+            "right_codepoint": "U+201D",
+            "requested_xadvance_units": -343.76,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -271.76,
+            "before_ink_gap_126px": 54.9688,
+            "estimated_after_ink_gap_126px": 45.8967,
+            "target_ink_gap_126px": 11.655
+          },
+          {
+            "pair": "Ç‘",
+            "left_codepoint": "U+00C7",
+            "right_codepoint": "U+2018",
+            "requested_xadvance_units": -341.776,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -269.776,
+            "before_ink_gap_126px": 54.7188,
+            "estimated_after_ink_gap_126px": 45.6467,
+            "target_ink_gap_126px": 11.655
+          },
+          {
+            "pair": "Ç“",
+            "left_codepoint": "U+00C7",
+            "right_codepoint": "U+201C",
+            "requested_xadvance_units": -341.776,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -269.776,
+            "before_ink_gap_126px": 54.7188,
+            "estimated_after_ink_gap_126px": 45.6467,
+            "target_ink_gap_126px": 11.655
+          },
+          {
+            "pair": "Ç’",
+            "left_codepoint": "U+00C7",
+            "right_codepoint": "U+2019",
+            "requested_xadvance_units": -336.935,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -264.935,
+            "before_ink_gap_126px": 54.1088,
+            "estimated_after_ink_gap_126px": 45.0367,
+            "target_ink_gap_126px": 11.655
+          },
+          {
+            "pair": "P…",
+            "left_codepoint": "U+0050",
+            "right_codepoint": "U+2026",
+            "requested_xadvance_units": -334.583,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -262.583,
+            "before_ink_gap_126px": 53.8125,
+            "estimated_after_ink_gap_126px": 44.7405,
+            "target_ink_gap_126px": 11.655
+          },
+          {
+            "pair": "F…",
+            "left_codepoint": "U+0046",
+            "right_codepoint": "U+2026",
+            "requested_xadvance_units": -327.639,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -255.639,
+            "before_ink_gap_126px": 52.9375,
+            "estimated_after_ink_gap_126px": 43.8655,
+            "target_ink_gap_126px": 11.655
+          },
+          {
+            "pair": "\\Y",
+            "left_codepoint": "U+005C",
+            "right_codepoint": "U+0059",
+            "requested_xadvance_units": -289.072,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -217.072,
+            "before_ink_gap_126px": 48.0781,
+            "estimated_after_ink_gap_126px": 39.0061,
+            "target_ink_gap_126px": 11.655
+          },
+          {
+            "pair": "\\Ý",
+            "left_codepoint": "U+005C",
+            "right_codepoint": "U+00DD",
+            "requested_xadvance_units": -289.072,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -217.072,
+            "before_ink_gap_126px": 48.0781,
+            "estimated_after_ink_gap_126px": 39.0061,
+            "target_ink_gap_126px": 11.655
+          }
+        ],
+        "bounded_pairpos_subtables": 14,
+        "clipped_pair_report": {
+          "file": "reference-punctuation-clipped-Bold.json.gz",
+          "sha256": "23ec8c72b6e7ab54728d32be7d4190b1e7c4ed720a1bc3df3d626a853a6fb9a7",
+          "count": 5243,
+          "uncompressed_bytes": 1357719
+        }
       },
       "tracking_em": {
         "display": -0.0143,
@@ -3195,7 +3755,147 @@
         "sampled_punctuation_pairs": 9062,
         "adjusted_punctuation_pairs": 8925,
         "clipped_at_72_units": 5088,
-        "bounded_pairpos_subtables": 14
+        "worst_clipped_pair_examples": [
+          {
+            "pair": "Ç*",
+            "left_codepoint": "U+00C7",
+            "right_codepoint": "U+002A",
+            "requested_xadvance_units": -355.228,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -283.228,
+            "before_ink_gap_126px": 55.4688,
+            "estimated_after_ink_gap_126px": 46.3967,
+            "target_ink_gap_126px": 10.71
+          },
+          {
+            "pair": "…4",
+            "left_codepoint": "U+2026",
+            "right_codepoint": "U+0034",
+            "requested_xadvance_units": -346.672,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -274.672,
+            "before_ink_gap_126px": 54.3906,
+            "estimated_after_ink_gap_126px": 45.3186,
+            "target_ink_gap_126px": 10.71
+          },
+          {
+            "pair": "F…",
+            "left_codepoint": "U+0046",
+            "right_codepoint": "U+2026",
+            "requested_xadvance_units": -327.202,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -255.202,
+            "before_ink_gap_126px": 51.9375,
+            "estimated_after_ink_gap_126px": 42.8655,
+            "target_ink_gap_126px": 10.71
+          },
+          {
+            "pair": "P…",
+            "left_codepoint": "U+0050",
+            "right_codepoint": "U+2026",
+            "requested_xadvance_units": -326.21,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -254.21,
+            "before_ink_gap_126px": 51.8125,
+            "estimated_after_ink_gap_126px": 42.7405,
+            "target_ink_gap_126px": 10.71
+          },
+          {
+            "pair": "[]",
+            "left_codepoint": "U+005B",
+            "right_codepoint": "U+005D",
+            "requested_xadvance_units": -286.156,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -214.156,
+            "before_ink_gap_126px": 46.7656,
+            "estimated_after_ink_gap_126px": 37.6936,
+            "target_ink_gap_126px": 10.71
+          },
+          {
+            "pair": "\\Y",
+            "left_codepoint": "U+005C",
+            "right_codepoint": "U+0059",
+            "requested_xadvance_units": -280.699,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -208.699,
+            "before_ink_gap_126px": 46.0781,
+            "estimated_after_ink_gap_126px": 37.0061,
+            "target_ink_gap_126px": 10.71
+          },
+          {
+            "pair": "\\Ý",
+            "left_codepoint": "U+005C",
+            "right_codepoint": "U+00DD",
+            "requested_xadvance_units": -280.699,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -208.699,
+            "before_ink_gap_126px": 46.0781,
+            "estimated_after_ink_gap_126px": 37.0061,
+            "target_ink_gap_126px": 10.71
+          },
+          {
+            "pair": "\\Ÿ",
+            "left_codepoint": "U+005C",
+            "right_codepoint": "U+0178",
+            "requested_xadvance_units": -280.699,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -208.699,
+            "before_ink_gap_126px": 46.0781,
+            "estimated_after_ink_gap_126px": 37.0061,
+            "target_ink_gap_126px": 10.71
+          },
+          {
+            "pair": ">Y",
+            "left_codepoint": "U+003E",
+            "right_codepoint": "U+0059",
+            "requested_xadvance_units": -268.919,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -196.919,
+            "before_ink_gap_126px": 44.5938,
+            "estimated_after_ink_gap_126px": 35.5217,
+            "target_ink_gap_126px": 10.71
+          },
+          {
+            "pair": ">Ý",
+            "left_codepoint": "U+003E",
+            "right_codepoint": "U+00DD",
+            "requested_xadvance_units": -268.919,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -196.919,
+            "before_ink_gap_126px": 44.5938,
+            "estimated_after_ink_gap_126px": 35.5217,
+            "target_ink_gap_126px": 10.71
+          },
+          {
+            "pair": ">Ÿ",
+            "left_codepoint": "U+003E",
+            "right_codepoint": "U+0178",
+            "requested_xadvance_units": -268.919,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -196.919,
+            "before_ink_gap_126px": 44.5938,
+            "estimated_after_ink_gap_126px": 35.5217,
+            "target_ink_gap_126px": 10.71
+          },
+          {
+            "pair": "<1",
+            "left_codepoint": "U+003C",
+            "right_codepoint": "U+0031",
+            "requested_xadvance_units": -260.541,
+            "applied_xadvance_units": -72,
+            "unapplied_units": -188.541,
+            "before_ink_gap_126px": 43.5381,
+            "estimated_after_ink_gap_126px": 34.4661,
+            "target_ink_gap_126px": 10.71
+          }
+        ],
+        "bounded_pairpos_subtables": 14,
+        "clipped_pair_report": {
+          "file": "reference-punctuation-clipped-ExtraBold.json.gz",
+          "sha256": "83c4d5b3813b2019a5a38290596c1e651adce542ebb5dad7a31f594485c3ab47",
+          "count": 5088,
+          "uncompressed_bytes": 1311870
+        }
       },
       "tracking_em": {
         "display": -0.007,
