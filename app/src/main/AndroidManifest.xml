@@ -40,6 +40,17 @@
                 <data android:scheme="content" android:mimeType="application/x-torrent" />
                 <data android:scheme="content" android:mimeType="application/vnd.bittorrent" />
             </intent-filter>
+            <!-- Some Files providers publish a real .torrent as generic
+                 binary. Never claim every octet-stream: restrict VIEW to a
+                 content URI with a .torrent path. Android 12+ supports the
+                 exact suffix; pathPattern also covers supported older APIs. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" android:host="*"
+                    android:mimeType="application/octet-stream"
+                    android:pathPattern=".*\\.torrent" android:pathSuffix=".torrent" />
+            </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
