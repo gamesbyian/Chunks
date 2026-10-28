@@ -292,6 +292,24 @@ internal fun LocalEngineScreen(
     var dht by remember { mutableStateOf(LocalEngineHolder.dhtPreferred(context)) }
     var dhtSaving by remember { mutableStateOf(false) }
     var dhtError by remember { mutableStateOf<String?>(null) }
+    // Both the preferences switch and a trackerless-magnet shortcut use this
+    // same readback-gated transaction. Never flip the UI state optimistically.
+    fun requestDhtSetting(wanted: Boolean) {
+        if (dhtSaving) return
+        dhtSaving = true
+        dhtError = null
+        scope.launch {
+            val confirmed = withContext(Dispatchers.IO) {
+                try { LocalEngineHolder.setDhtPreferred(context, wanted) }
+                catch (_: Exception) { false }
+            }
+            dht = LocalEngineHolder.dhtPreferred(context)
+            dhtError = if (confirmed) null else
+                "DHT setting could not be confirmed. The live network state may be uncertain; " +
+                "do not assume discovery is enabled or disabled until you check again."
+            dhtSaving = false
+        }
+    }
     val destination = remember { LocalEngineHolder.appDownloads(context) }
     val proposedAddDestination = remember(destination, addFolderDraft) {
         LocalOwnedAddFolder.proposed(destination, addFolderDraft)
@@ -463,24 +481,8 @@ internal fun LocalEngineScreen(
         else Text("Planned local Place: " + proposedAddDestination.absolutePath,
             style = MaterialTheme.typography.bodySmall)
         Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
-            .toggleable(value = dht, enabled = !dhtSaving, role = Role.Switch, onValueChange = { wanted ->
-                if (!dhtSaving) {
-                    dhtSaving = true
-                    dhtError = null
-                    scope.launch {
-                        val confirmed = withContext(Dispatchers.IO) {
-                            try { LocalEngineHolder.setDhtPreferred(context, wanted) }
-                            catch (_: Exception) { false }
-                        }
-                        // Switch only after confirmed native readback + durable preference.
-                        dht = LocalEngineHolder.dhtPreferred(context)
-                        dhtError = if (confirmed) null else
-                            "DHT setting could not be confirmed. The live network state may be uncertain; " +
-                            "do not assume discovery is enabled or disabled until you check again."
-                        dhtSaving = false
-                    }
-                }
-            }), verticalAlignment = Alignment.CenterVertically) {
+            .toggleable(value = dht, enabled = !dhtSaving, role = Role.Switch,
+                onValueChange = ::requestDhtSetting), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text("Find peers without trackers (DHT)")
                 Text("Needed for most magnet links. Off by default: when on, this phone's IP address is shared with the public DHT network.",
@@ -504,14 +506,13 @@ internal fun LocalEngineScreen(
         if (magnet.isNotEmpty() && destination != null) {
             Text("Saves into the selected Chunks-owned phone folder. Magnets first discover metadata via peers/trackers; if Start after Add is selected, payload downloading begins after metadata arrives. Without peers, downloading cannot begin.",
                 style = MaterialTheme.typography.bodySmall)
-            if (LocalMagnetDiscoveryAdvice.warn(magnet, dht)) {
-                Text("This magnet has no usable tracker address and DHT is off. " +
-                    "Chunks may be unable to find peers and fetch its metadata. " +
-                    "Enable DHT above or use a .torrent file with tracker information. " +
-                    "Without metadata or peers, downloading cannot begin.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error)
-            }
+            LocalMagnetDiscoveryPrompt(
+                magnet = magnet,
+                dhtEnabled = dht,
+                applying = dhtSaving,
+                blocked = busy || inventoryStale,
+                onEnable = { requestDhtSetting(true) }
+            )
             OutlinedButton(onClick = {
                 val selectedDraft = addFolderDraft
                 val selectedMagnet = magnet
