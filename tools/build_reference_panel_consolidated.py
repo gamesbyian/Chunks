@@ -102,7 +102,7 @@ def apply_punctuation(source: Path, masters: Path, out: Path, weight: int,
     out.parent.mkdir(parents=True, exist_ok=True)
     font.save(out)
     check = TTFont(out)
-    if check.getBestCmap() != cmap or not {'GDEF', 'GSUB', 'GPOS'}.issubset(check):
+    if check.getBestCmap() != cmap or not {'GDEF', 'GSUB', 'GPOS'}.issubset(check.keys()):
         raise AssertionError('Unicode or native shaping tables changed')
     return geom_report
 
