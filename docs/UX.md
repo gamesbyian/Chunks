@@ -1,5 +1,12 @@
 # Chunks interaction and accessibility contract
 
+## Android Open with .torrent and magnet: implemented subset (2026-10-27)
+
+- Chunks accepts Android `magnet:` links and recognized `.torrent` content documents opened via `ACTION_VIEW` or sent via `ACTION_SEND` with `application/x-bittorrent`, `application/x-torrent` or `application/vnd.bittorrent`. Read a granted single `content://` URI only, validate v1 torrent metadata (2 MiB maximum), and show the same explicit local Add review as the internal picker. Opening alone must never submit or start a download. #353 accepted at Android/JVM/API35/visual tiers, not physical resolver/Files provider QA.
+- Android chooses the appropriate capable application, including Always/Just once default handling where offered. Chunks must not override the OS resolver. Users should see origin, verified torrent name/hash and optional destination review before confirming Add, with meaningful inaccessible/revoked/unsupported errors. Other MIME types, generic `application/octet-stream`, `file://` or direct remote target selection are **still unspecified at implementation tier**, even though broader intent compatibility is required in PRODUCT. Do not broadly register a binary catchall and hijack unrelated files.
+- Local trackerless magnets show a **voluntary** one-tap DHT choice and an address-disclosure warning; choice takes effect only after verified native readback and never asserts that seeders exist (#357). Existing default DHT remains off.
+- Offline verified snapshot inspector searches and pages all manifest entries (#359). A user may individually export an exact-verified original v1 .torrent to their chosen SAF provider (#363); warn that raw tracker URLs can contain passkeys, and clearly distinguish independent document export from restoring a torrent to a running engine. No payload bytes move.
+
 ## Official launcher icon (owner SVG update, 2026-10-27)
 
 - **Canonical brand artwork:** `docs/design/approved/chunks-app-icon-master.svg` is the editable, transparent master. It contains the happy cyan folder, purple document, green download and coral image tile; exclude the black rounded-square bezel from the image source.
