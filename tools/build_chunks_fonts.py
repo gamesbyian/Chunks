@@ -23,6 +23,8 @@ from fontTools.pens.qu2cuPen import Qu2CuPen
 from fontTools.pens.t2CharStringPen import T2CharStringPen
 from fontTools.ttLib.tables import otTables
 from fontTools.ttLib.tables.otBase import ValueRecord
+from brand_glyphs import apply_brand_glyphs
+from spacing_optimizer import measured_presets
 
 WEIGHTS = {400:'Regular',500:'Medium',600:'Semibold',700:'Bold',800:'ExtraBold'}
 # Sample identical across weights for a fair trend comparison.
@@ -234,8 +236,10 @@ def to_cff(font, fontname):
     return font
 
 
-def build(source, outdir, only=None):
+def build(source, outdir, only=None, brand_svg=None):
     source=Path(source);outdir=Path(outdir);outdir.mkdir(parents=True,exist_ok=True)
+    brand_svg=Path(brand_svg or (Path(__file__).resolve().parent.parent/'assets/fonts/source/reference-traced-wordmark.svg'))
+    if not brand_svg.is_file(): raise FileNotFoundError(f'Missing editable wordmark glyph master: {brand_svg}')
     result={'source':source.name, 'version':'0.1.0', 'purpose':'draft reference-based family; not exact original vector data', 'weights':{}}
     for weight,style in WEIGHTS.items():
         if only and weight not in only:continue
@@ -250,11 +254,12 @@ def build(source, outdir, only=None):
         else:font['OS/2'].fsSelection &= ~(1<<5)
         nice_name(font,style)
         metrics=optimize_vertical_metrics(font)
-        with tempfile.TemporaryDirectory() as scratch:
-            interim=Path(scratch)/'spacing.ttf';font.save(interim)
-            records, optical=optical_kerning(interim,font,weight)
-            add_gpos_pairs(font,records)
         cff=to_cff(font,'Chunks '+style)
+        glyphs=apply_brand_glyphs(cff,weight,brand_svg)
+        with tempfile.TemporaryDirectory() as scratch:
+            interim=Path(scratch)/'spacing.otf';cff.save(interim)
+            records, optical=optical_kerning(interim,cff,weight)
+            add_gpos_pairs(cff,records)
         path=outdir/f'Chunks-{style}.otf'
         cff.save(path,reorderTables=True)
         # Reopening is an important acceptance check. No TTF masquerading as .otf.
@@ -262,12 +267,11 @@ def build(source, outdir, only=None):
         assert check.sfntVersion=='OTTO' and 'CFF ' in check and 'glyf' not in check
         assert check['OS/2'].usWeightClass==weight
         assert len(check.getBestCmap())>=150
+        track,lines,tracking_audit=measured_presets(path,check,weight)
         stats={'file':path.name,'bytes':path.stat().st_size,'glyphs':len(check.getGlyphOrder()),
                'mapped_codepoints':len(check.getBestCmap()),'vertical_metrics':metrics,
-               'optical_kerning':optical,'tracking_em':{'display':round(-.008*(weight-400)/400-.008,4),
-                                                        'heading':round(-.006*(weight-400)/400-.002,4),
-                                                        'body':round(.005+(500-weight)/400*.003,4)},
-               'line_height_em':{'display':1.14,'heading':1.22,'body':1.36,'small_labels':1.42}}
+               'optical_kerning':optical,'wordmark_glyphs':glyphs,'tracking_em':track,
+               'line_height_em':lines,'spacing_audit':tracking_audit}
         result['weights'][style]=stats
         print(f"{style}: {stats['mapped_codepoints']} chars, {stats['optical_kerning']['adjusted_pairs']} adjusted kern pairs, {stats['bytes']/1024:.0f} KiB")
     (outdir/'chunks-font-metrics.json').write_text(json.dumps(result,indent=2,ensure_ascii=False)+'\n',encoding='utf8')
@@ -278,4 +282,5 @@ if __name__=='__main__':
     p.add_argument('--source',required=True,type=Path)
     p.add_argument('--out',default='assets/fonts/chunks',type=Path)
     p.add_argument('--only',nargs='*',type=int,choices=list(WEIGHTS))
-    a=p.parse_args();build(a.source,a.out,set(a.only) if a.only else None)
+    p.add_argument('--brand-svg',type=Path,help='Editable brand wordmark skeleton SVG, default tracked under assets/fonts/source')
+    a=p.parse_args();build(a.source,a.out,set(a.only) if a.only else None, brand_svg=a.brand_svg)

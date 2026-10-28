@@ -3,12 +3,20 @@ on:
   push:
     paths:
       - 'tools/build_chunks_fonts.py'
+      - 'tools/brand_glyphs.py'
+      - 'tools/spacing_optimizer.py'
+      - 'tools/audit_chunks_fonts.py'
       - 'tools/requirements-chunks-font.txt'
-      - 'assets/fonts/source/**'
+      - 'tests/test_font_pipeline.py'
+      - 'assets/fonts/**'
       - '.github/workflows/chunks-font-family.yml'
   pull_request:
     paths:
       - 'tools/build_chunks_fonts.py'
+      - 'tools/brand_glyphs.py'
+      - 'tools/spacing_optimizer.py'
+      - 'tools/audit_chunks_fonts.py'
+      - 'tests/test_font_pipeline.py'
       - 'tools/requirements-chunks-font.txt'
       - 'assets/fonts/**'
       - '.github/workflows/chunks-font-family.yml'
@@ -18,7 +26,7 @@ permissions:
 jobs:
   build-fonts:
     runs-on: ubuntu-latest
-    timeout-minutes: 18
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
@@ -27,37 +35,31 @@ jobs:
         with:
           python-version: '3.11'
       - run: python -m pip install -r tools/requirements-chunks-font.txt
-      - name: Build true CFF OTF font family and optical kerning
+      - name: Build true CFF fonts with custom Chunks outlines and optical kerning
         run: python tools/build_chunks_fonts.py --source 'assets/fonts/source/Baloo2[wght].ttf' --out assets/fonts/chunks
-      - name: Validate glyph coverage, weights and OpenType formatting
+      - name: Test editable stroke masters, deterministic outlines and font outputs
+        run: python -m unittest discover -s tests -p 'test_font_pipeline.py' -v
+      - name: Audit glyph coverage, shaping, vertical metrics and render specimens
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          from fontTools.ttLib import TTFont
-          names={400:'Regular',500:'Medium',600:'Semibold',700:'Bold',800:'ExtraBold'}
-          for w,s in names.items():
-            p=Path('assets/fonts/chunks')/f'Chunks-{s}.otf'
-            assert p.exists(),p
-            f=TTFont(p)
-            assert f.sfntVersion=='OTTO' and 'CFF ' in f and 'glyf' not in f
-            assert f['OS/2'].usWeightClass==w
-            assert len(f.getBestCmap()) >= 350
-            assert all(ord(c) in f.getBestCmap() for c in 'Chunks ÁÉÜäñ1234$€£¥')
-            assert 'GPOS' in f and 'GSUB' in f and 'GDEF' in f
-            print(p, p.stat().st_size, 'bytes;',len(f.getBestCmap()), 'characters')
-          PY
-      - name: Upload complete family and metrics
+          python tools/audit_chunks_fonts.py \
+            --fonts assets/fonts/chunks \
+            --preview chunks-font-specimen.png \
+            --report chunks-font-audit.json
+      - name: Upload OTFs, spacing audit and rendered specimens
         uses: actions/upload-artifact@v4
         with:
           name: chunks-otf-family
-          path: assets/fonts/chunks/*
-      - name: Commit deterministic builds on source branch
+          path: |
+            assets/fonts/chunks/*
+            chunks-font-specimen.png
+            chunks-font-audit.json
+      - name: Commit deterministic font builds on source branch
         if: github.event_name == 'push' && github.ref != 'refs/heads/main'
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add assets/fonts/chunks
           if ! git diff --cached --quiet; then
-            git commit -m 'build(fonts): check in optimized five-weight Chunks OTFs'
+            git commit -m 'build(fonts): regenerate vector-derived OTFs and measured typography presets'
             git push
           fi
