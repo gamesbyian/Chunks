@@ -169,6 +169,45 @@ class CollectorTest(unittest.TestCase):
         self.assertEqual("CC BY-SA 3.0", manifest["attribution"]["license_short_name"])
         self.assertEqual(104793, manifest["asset"]["bytes"])
 
+    def debian_responses(self, torrent, sums_hash=None, index_names=("debian-13.7.0-amd64-netinst.iso.torrent",)):
+        index = "".join('<a href="%s">x</a> <a href="debian-edu-13.7.0-amd64-netinst.iso.torrent">' % n
+                        for n in index_names).encode()
+        sums = ("%s  debian-13.7.0-amd64-netinst.iso.torrent\n" % (sums_hash or hashlib.sha256(torrent).hexdigest())
+                + "ab" * 32 + "  debian-13.7.0-amd64-netinst.iso\n").encode()
+        def fake(url, cap):
+            return {f.DEBIAN_BT_CD: index, f.DEBIAN_BT_CD + "SHA256SUMS": sums,
+                    f.DEBIAN_BT_CD + "debian-13.7.0-amd64-netinst.iso.torrent": torrent}[url]
+        return fake
+
+    def test_debian_netinst_checked_against_published_sums_and_webseeds_stripped(self):
+        info = {b"name": b"debian-13.7.0-amd64-netinst.iso", b"length": 5,
+                b"piece length": 262144, b"pieces": b"\x01" * 20}
+        torrent = enc({b"announce": b"http://bttracker.debian.org:6969/announce", b"info": info,
+                       b"url-list": [b"https://cdimage.debian.org/x.iso"], b"comment": b"c"})
+        with patch.object(f, "fetch", self.debian_responses(torrent)):
+            manifest, safe = f.debian_fixture(1 << 30)
+        self.assertEqual(manifest["torrent"]["infohash_v1"], hashlib.sha1(enc(info)).hexdigest())
+        self.assertTrue(manifest["torrent"]["tracker_retained"])
+        self.assertEqual(manifest["published_sha256"]["iso"], "ab" * 32)
+        self.assertNotIn(b"url-list", safe)
+        self.assertIn(b"bttracker.debian.org", safe)
+        with patch.object(f, "fetch", self.debian_responses(torrent, sums_hash="00" * 32)), \
+                self.assertRaises(ValueError):
+            f.debian_fixture(1 << 30)
+        with patch.object(f, "fetch", self.debian_responses(torrent, index_names=(
+                "debian-13.7.0-amd64-netinst.iso.torrent", "debian-13.8.0-amd64-netinst.iso.torrent"))), \
+                self.assertRaises(ValueError):
+            f.debian_fixture(1 << 30)
+        foreign = enc({b"announce": b"http://evil.example:6969/announce", b"info": info})
+        with patch.object(f, "fetch", self.debian_responses(foreign)), self.assertRaises(ValueError):
+            f.debian_fixture(1 << 30)
+
+    def test_archive_mode_does_not_retain_debian_tracker(self):
+        raw = enc({b"info": self.info, b"announce": b"http://bttracker.debian.org:6969/announce"})
+        safe, details = f.torrent_summary(raw, 100)
+        self.assertFalse(details["tracker_retained"])
+        self.assertNotIn(b"debian", safe)
+
     def test_host_and_source_validation(self):
         for url in ("http://archive.org/metadata/a",
                     "https://notarchive.org/download/a",
