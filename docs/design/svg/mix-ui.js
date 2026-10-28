@@ -27,7 +27,7 @@ workbench.innerHTML=
  '<div class="mix-tools"><button type="button" id="mix-export">Export standalone SVG</button>'+
  '<button type="button" id="mix-save">Save editable recipe</button>'+
  '<button type="button" id="mix-load">Load recipe</button>'+
- '<input id="mix-recipe-file" type="file" accept=".json,application/json" hidden/></div>'+
+ '<input id="mix-recipe-file" type="file" accept=".json,application/json,.svg,image/svg+xml" hidden/></div>'+
  '<p id="mix-message" role="status" aria-live="polite" class="note"></p>';
 mix.insertAdjacentElement("afterend",workbench);
 document.querySelector('label[for="opacity"]').hidden=true;
@@ -161,12 +161,28 @@ document.querySelector("#mix-load").addEventListener("click",()=>document.queryS
 document.querySelector("#mix-recipe-file").addEventListener("change",async event=>{
  const f=event.target.files?.[0];if(!f)return;
  try{
-  if(f.size>32768)throw new Error("Recipe exceeds 32 KiB");
-  const data=mixer.normalizeRecipe(JSON.parse(await f.text()),assets.map(a=>a.id));
+  const isSvg=f.name.toLowerCase().endsWith(".svg")||f.type==="image/svg+xml";
+  if(f.size>(isSvg?6000000:32768))throw new Error("File exceeds allowed size");
+  const contents=await f.text();
+  let recipeData;
+  if(isSvg){
+   // Only parse inert XML metadata. Never insert uploaded SVG markup into DOM.
+   if(/<!DOCTYPE|<!ENTITY|<script\b|<foreignObject\b/i.test(contents)){
+    throw new Error("Unsupported XML constructs");
+   }
+   const parsed=new DOMParser().parseFromString(contents,"image/svg+xml");
+   if(parsed.querySelector("parsererror"))throw new Error("Malformed SVG");
+   const metadata=parsed.getElementById("chunks-mix-recipe");
+   if(!metadata || metadata.tagName.toLowerCase()!=="metadata"){
+    throw new Error("SVG has no Chunks edit recipe");
+   }
+   recipeData=JSON.parse(metadata.textContent);
+  }else recipeData=JSON.parse(contents);
+  const data=mixer.normalizeRecipe(recipeData,assets.map(a=>a.id));
   chosen.splice(0);for(const key of Object.keys(editById))delete editById[key];
   for(const layer of data.layers){chosen.push(layer.id);editById[layer.id]=mixer.edit(layer);}
   active=chosen.at(-1);document.querySelector("#mix-background").value=data.background;
-  refresh();renderTray();status("Editable recipe loaded.");
+  refresh();renderTray();status("Editable composition restored.");
  }catch(error){status("Recipe rejected: "+error.message,true);}
  finally{event.target.value="";}
 });
