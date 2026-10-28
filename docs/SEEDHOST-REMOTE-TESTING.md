@@ -103,3 +103,70 @@ The read-only copy probe ([`seedhost-copy-to-phone-readonly.yml`](../.github/wor
 5. Tell the agent. It dispatches the probe on `main` with `max_mib` `800`, `seconds` `900` and `hash` set to the Debian infohash from the swarm runs (`7acf8fb590b2060dd9c3146ef770169d593433b0` for 13.7.0). Size order alone is not enough: run [40744688203](https://github.com/gamesbyian/Chunks/actions/runs/40744688203) found 40 smaller complete transfers, all private. The probe sends no mutation: the runner's phone engine downloads the payload with the server as its only peer and discards it.
 
 The owner may stop or remove the transfer at any time afterwards. Removing its data is the owner's own ruTorrent action; Chunks automation never deletes it. An INCONCLUSIVE result with `maxPeers=0` means the runner could not reach the server's peer port (hosting firewall or NAT), not a Chunks Copy defect.
+
+## Seedhost connection profiles and Transdrone cross-check (owner screenshots, 2026-10-28)
+
+**Use the already tested Chunks HTTPS profiles first.** The three owner-provisioned
+ruTorrent web roots are separate instances on the primary service and are
+**not interchangeable**:
+
+| Chunks profile | Credential-free ruTorrent root (auto-mapped to `plugins/httprpc/action.php`) | User | Password secret | Evidence |
+|---|---|---|---|---|
+| Primary | `https://ianseeds.wood.seedhost.eu/rutorrent/` | `rtorrent_user` secret | `rtorrent_pass` | Authenticated Kotlin read/write and API35 read-only/add; see QUALITY-LEDGER |
+| Second | `https://ianseeds.wood.seedhost.eu/rutorrent2/` | `ianseeds` | `rTorrent_pass2` | Read-only version + empty main-view listing [40630941499](https://github.com/gamesbyian/Chunks/actions/runs/40630941499) |
+| Third | `https://ianseeds.wood.seedhost.eu/rutorrent3/` | `ianseeds` | `rtorrent_pass3` | Read-only version + empty main-view listing [40630941499](https://github.com/gamesbyian/Chunks/actions/runs/40630941499) |
+
+The corresponding HTTPS HTTP-RPC plugin paths are `/rutorrent/plugins/httprpc/action.php`,
+`/rutorrent2/plugins/httprpc/action.php` and
+`/rutorrent3/plugins/httprpc/action.php`, respectively, on
+`ianseeds.wood.seedhost.eu`. All three are already supported by
+`RemoteEndpointHints`; do not hardcode different username prefixes into those
+successful paths. Their shared hostname does not make their inventories or
+passwords interchangeable.
+
+**Independent working-client evidence:** On the owner's Android device,
+Transdrone successfully controls the primary instance with server type
+*rTorrent*, hostname `wood.seedhost.eu`, username `ianseeds`, an **empty**
+port-number field, SCGI mount point `/ianseeds/RPC1`, authentication **enabled**
+(the "Disable authentication" checkbox is unchecked) and **Use SSL unchecked**.
+This is evidence that Transdrone can use that configured path. It **does not**
+prove HTTPS is available at `https://wood.seedhost.eu/ianseeds/RPC1`, that
+blank port definitively means 80, that the client does not redirect, or that
+`/ianseeds/RPC2` / `RPC3` exist. Those are separate hypotheses. Never
+substitute `ianseeds.wood.seedhost.eu` for `wood.seedhost.eu` when testing the
+Transdrone-derived alternative, and never infer that `ianseeds` is a hostname
+prefix from the Transdrone screen.
+
+**Security policy:** Chunks intentionally rejects insecure remote HTTP outside
+loopback. The user-supplied Transdrone screenshot is *not* authorization to send
+passwords over HTTP or loosen this protection. First test the **candidate**
+`https://wood.seedhost.eu/ianseeds/RPC1` using an authenticated read-only
+request with the *primary* secrets. If it fails, retain the working HTTPS
+ruTorrent plugin endpoint; report the HTTP-only compatibility difference
+instead of disabling TLS validation. Do not automatically redirect credentials
+between hosts, silently downgrade to HTTP or attempt unverified numbered SCGI
+mounts. Direct SCGI/XML-RPC might also lack ruTorrent's separate torrent-upload
+fallback; capability-test it independently.
+
+**Agent one-click protocol:** [`seedhost-endpoint-compatibility.yml`](../.github/workflows/seedhost-endpoint-compatibility.yml)
+is manual-only, trusted-`main`-only and read-only; select exactly one of
+`primary-rutorrent-https`, `second-rutorrent-https`,
+`third-rutorrent-https` or `primary-scgi-https-candidate`.
+It maps the exact corresponding URL and **correct case-sensitive secret** to
+the existing Kotlin `SeedhostAdapterSmokeTest`. The test must independently
+authenticate, read `system.client_version` and list `main` before marking
+the selected endpoint verified. A candidate failure does **not** invalidate the
+separately proven ruTorrent path. The existing
+[`seedhost-instances-readonly.yml`](../.github/workflows/seedhost-instances-readonly.yml)
+remains the two-instance matrix probe; the existing primary protected workflows
+remain authoritative for deeper primary acceptance. Never run live probes on PR
+heads, conflate a passing fixture/unit test with the dispatched live test, or
+send mutations to instances 2/3 simply because credentials work.
+
+**Peer networking is separate:** rTorrent's randomized incoming BitTorrent
+peer port (owner observed TCP `53281` with refused incoming connections)
+is neither HTTP remote-management port 443 nor the SCGI mount path. A
+successful XML-RPC connection establishes *control-plane* reachability only,
+not inbound peer connectivity, torrent availability, seeding, or file transfer
+between the phone and seedbox. Keep the Seedhost hosting-firewall question
+separately tracked in WORK-QUEUE and await a provider-confirmed port policy.
