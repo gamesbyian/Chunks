@@ -31,6 +31,22 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="magnet" />
             </intent-filter>
+            <!-- Read-only external .torrent document handoff. The app never
+                 starts a torrent until the existing Add review is confirmed. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" android:mimeType="application/x-bittorrent" />
+                <data android:scheme="content" android:mimeType="application/x-torrent" />
+                <data android:scheme="content" android:mimeType="application/vnd.bittorrent" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="application/x-bittorrent" />
+                <data android:mimeType="application/x-torrent" />
+                <data android:mimeType="application/vnd.bittorrent" />
+            </intent-filter>
         </activity>
         <service
             android:name=".LocalEngineService"
