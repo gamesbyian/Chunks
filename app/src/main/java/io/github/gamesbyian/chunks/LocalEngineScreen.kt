@@ -618,30 +618,16 @@ internal fun LocalEngineScreen(
         val add = pending
         if (add != null && canReviewOnConnectedServer &&
             onPrepareRemoteTorrent != null) {
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.fillMaxWidth().padding(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Choose where to add this .torrent",
-                        style = MaterialTheme.typography.titleSmall)
-                    Text("You can use the phone destination below, or prepare this exact " +
-                        "verified .torrent for the connected rTorrent server. The server " +
-                        "will download its own payload: no downloaded files move. " +
-                        "Original tracker URLs may contain private passkeys. " +
-                        "Nothing is sent until you confirm the server Add.",
-                        style = MaterialTheme.typography.bodySmall)
-                    OutlinedButton(
-                        onClick = {
-                            // Keep the original bytes, including tracker metadata,
-                            // inside the existing privacy-gated remote Add review.
-                            // This button only changes a draft, never an engine.
-                            onPrepareRemoteTorrent(add.bytes.copyOf())
-                            pending = null
-                        },
-                        enabled = !busy && !inventoryStale,
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                    ) { Text("Review .torrent on connected server") }
+            ReviewedTorrentTargetChooser(
+                verifiedTorrentBytes = add.bytes,
+                enabled = !busy && !inventoryStale,
+                onPrepareServerReview = { original ->
+                    // The parent only enables this action for an authenticated,
+                    // independently privacy-gated remote target.
+                    onPrepareRemoteTorrent(original)
+                    pending = null
                 }
-            }
+            )
         }
         if (add != null && destination != null) LocalAddReview(
             add.preview, proposedAddDestination ?: destination,
