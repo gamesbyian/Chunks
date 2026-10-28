@@ -109,6 +109,43 @@ internal object SnapshotArchiveV1 {
         }
     }
 
+    /**
+     * The ZIP entry reader must make forward progress. Even a malicious or
+     * broken provider that repeatedly returns zero cannot spin on the UI/IO
+     * coroutine indefinitely. Does not depend on the ZIP stream's length
+     * claim, and never materializes more than the remaining byte budget.
+     */
+    internal fun readBoundedMember(
+        input: java.io.InputStream,
+        individualLimit: Int,
+        remainingTotal: Long
+    ): ByteArray {
+        require(individualLimit in 1..MAX_TORRENT_BYTES &&
+            remainingTotal in 0L..MAX_TOTAL_UNCOMPRESSED) {
+            "Invalid snapshot member read budget"
+        }
+        val output = ByteArrayOutputStream()
+        val buffer = ByteArray(8192)
+        var noProgress = 0
+        while (true) {
+            val read = input.read(buffer)
+            if (read < 0) break
+            if (read == 0) {
+                require(++noProgress <= 16) {
+                    "Snapshot ZIP member provider made no progress"
+                }
+                continue
+            }
+            noProgress = 0
+            require(output.size().toLong() + read <= individualLimit &&
+                output.size().toLong() + read <= remainingTotal) {
+                "Snapshot member decompression limit exceeded"
+            }
+            output.write(buffer, 0, read)
+        }
+        return output.toByteArray()
+    }
+
     fun decode(archive: ByteArray): Contents {
         require(archive.isNotEmpty() && archive.size <= MAX_ARCHIVE_BYTES) {
             "Snapshot archive is empty or too large"
@@ -131,19 +168,10 @@ internal object SnapshotArchiveV1 {
                     CHECKSUM_NAME -> MAX_MANIFEST_BYTES
                     else -> MAX_TORRENT_BYTES
                 }
-                val output = ByteArrayOutputStream()
-                val buffer = ByteArray(8192)
-                while (true) {
-                    val read = zip.read(buffer)
-                    if (read < 0) break
-                    expandedBytes += read
-                    require(output.size().toLong() + read <= individualLimit &&
-                        expandedBytes <= MAX_TOTAL_UNCOMPRESSED) {
-                        "Snapshot member decompression limit exceeded"
-                    }
-                    output.write(buffer, 0, read)
-                }
-                members[name] = output.toByteArray()
+                val bytes = readBoundedMember(zip, individualLimit,
+                    MAX_TOTAL_UNCOMPRESSED - expandedBytes)
+                expandedBytes += bytes.size.toLong()
+                members[name] = bytes
                 zip.closeEntry()
             }
         }

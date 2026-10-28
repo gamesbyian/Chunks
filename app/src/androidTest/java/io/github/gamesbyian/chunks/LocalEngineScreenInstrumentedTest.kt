@@ -30,6 +30,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.gamesbyian.chunks.engine.LocalTransferFile
 import io.github.gamesbyian.chunks.engine.LocalTransferState
+import io.github.gamesbyian.chunks.engine.LocalTrackerSummary
 import io.github.gamesbyian.chunks.engine.LocalTransferStatus
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoPreview
 import java.io.File
@@ -130,6 +131,84 @@ class LocalEngineScreenInstrumentedTest {
         assertEquals(1, removed)
     }
 
+    @Test fun nativePerTransferPayloadRatesAreVisibleOnRunningCards() {
+        val transfer = LocalTransferStatus("9".repeat(40), "Live peer fixture",
+            LocalTransferState.DOWNLOADING, stopped = false, progressPpm = 25_000,
+            wantedBytes = 1_000_000, doneBytes = 25_000,
+            payloadDownloadedBytes = 25_000, payloadUploadedBytes = 2_000,
+            peers = 1, savePath = "/x", error = null,
+            downloadPayloadRateBytesPerSecond = 4096,
+            uploadPayloadRateBytesPerSecond = 2048)
+        rule.setContent {
+            MaterialTheme {
+                LocalTransferCard(transfer, busy = false, onToggle = {}, onRemove = {})
+            }
+        }
+        rule.onNodeWithText("Live payload ↓", substring = true).assertExists()
+        rule.onNodeWithText("↑", substring = true).assertExists()
+        rule.onNodeWithText("Verified on disk", substring = true).assertExists()
+    }
+
+    @Test fun trackerlessStoppedCardOffersExplicitRepairWithoutStartingOrRemoving() {
+        var repairs = 0
+        var starts = 0
+        var removals = 0
+        val stopped = LocalTransferStatus("e".repeat(40), "Saved before tracker fix",
+            LocalTransferState.DOWNLOADING, stopped = true, progressPpm = 0,
+            wantedBytes = 1000, doneBytes = 0, payloadDownloadedBytes = 0,
+            payloadUploadedBytes = 0, peers = 0, savePath = "/x", error = null,
+            trackers = LocalTrackerSummary(total = 0, working = 0, updating = 0, failing = 0))
+        rule.setContent {
+            MaterialTheme {
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
+                    LocalTransferCard(stopped, busy = false, onToggle = { starts++ },
+                        onRemove = { removals++ }, onRepairTrackers = { repairs++ })
+                }
+            }
+        }
+        rule.onNodeWithText("Repair missing trackers from original .torrent…")
+            .performScrollTo().performClick()
+        assertEquals(1, repairs)
+        assertEquals(0, starts)
+        assertEquals(0, removals)
+    }
+
+    @Test fun staleNativeInventoryCannotOpenLegacyTrackerRepairPicker() {
+        var repairs = 0
+        val saved = LocalTransferStatus("e".repeat(40), "Stale saved torrent",
+            LocalTransferState.DOWNLOADING, stopped = true, progressPpm = 0,
+            wantedBytes = 1_000, doneBytes = 0, payloadDownloadedBytes = 0,
+            payloadUploadedBytes = 0, peers = 0, savePath = "/x", error = null,
+            trackers = LocalTrackerSummary(total = 0, working = 0, updating = 0, failing = 0))
+        rule.setContent {
+            MaterialTheme {
+                LocalTransferCard(saved, busy = true, onToggle = {},
+                    onRemove = {}, onRepairTrackers = { repairs++ })
+            }
+        }
+        rule.onNodeWithText("Repair missing trackers from original .torrent…")
+            .assertIsNotEnabled()
+        assertEquals(0, repairs)
+    }
+
+    @Test fun runningOrAlreadyTrackedTorrentNeverOffersLegacyRepair() {
+        val tracked = LocalTransferStatus("e".repeat(40), "Already healthy",
+            LocalTransferState.DOWNLOADING, stopped = true, progressPpm = 10_000,
+            wantedBytes = 1000, doneBytes = 10, payloadDownloadedBytes = 10,
+            payloadUploadedBytes = 0, peers = 0, savePath = "/x", error = null,
+            trackers = LocalTrackerSummary(total = 1, working = 0, updating = 1, failing = 0))
+        rule.setContent {
+            MaterialTheme {
+                Column(Modifier.fillMaxSize().padding(16.dp)) {
+                    LocalTransferCard(tracked, busy = false, onToggle = {},
+                        onRemove = {}, onRepairTrackers = {})
+                }
+            }
+        }
+        rule.onNodeWithText("Repair missing trackers from original .torrent…")
+            .assertDoesNotExist()
+    }
+
     @Test fun staleInventoryDisablesNativeTransferMutationsAndFileSelection() {
         var toggles = 0
         var removals = 0
@@ -175,6 +254,54 @@ class LocalEngineScreenInstrumentedTest {
         rule.onNodeWithText("Episode 01.mkv").performClick()
         rule.onNodeWithText("Sample.mkv").performClick()
         assertEquals(listOf(0 to false, 2 to true), toggles)
+    }
+
+    @Test fun perFilePriorityRequiresExplicitFileReviewAndKeepsSkippedFilesUntouched() {
+        val changes = mutableListOf<Pair<Int, Int>>()
+        val files = listOf(
+            LocalTransferFile(0, "Season 1/Feature.mkv", 1024, 0, true, priority = 4),
+            LocalTransferFile(1, "Season 1/Skipped.mkv", 128, 0, false, priority = 0))
+        rule.setContent {
+            MaterialTheme {
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+                    .padding(16.dp)) {
+                    LocalFileSelection(
+                        files = files, busy = false, transferKey = "priority-review",
+                        onFileWanted = { _, _ -> },
+                        onFilePriority = { reviewed, priority ->
+                            changes += reviewed.index to priority
+                        })
+                }
+            }
+        }
+        rule.onNodeWithText("Priority: Normal").assertExists()
+        rule.onNodeWithText("Skipped.mkv").assertExists()
+        assertEquals(0, changes.size)
+        rule.onNodeWithText("Priority: Normal").performClick()
+        rule.onNodeWithText("Change download priority for Feature.mkv", substring = true)
+            .assertExists()
+        rule.onNodeWithText("High").performScrollTo().performClick()
+        assertEquals(listOf(0 to 7), changes)
+        // The skipped file has no priority editor, so it cannot be
+        // unintentionally selected or scheduled by this control.
+        rule.onNodeWithText("Priority: Normal").assertExists()
+        assertEquals(1, changes.size)
+    }
+
+    @Test fun busyFilePriorityCannotBeEditedUntilInventoryIsFresh() {
+        var changes = 0
+        rule.setContent {
+            MaterialTheme {
+                LocalFileSelection(
+                    files = listOf(LocalTransferFile(0, "Movie.mkv",
+                        1024, 0, true, priority = 1)),
+                    busy = true, transferKey = "stale-priorities",
+                    onFileWanted = { _, _ -> },
+                    onFilePriority = { _, _ -> changes++ })
+            }
+        }
+        rule.onNodeWithText("Priority: Low").assertIsNotEnabled()
+        assertEquals(0, changes)
     }
 
     @Test fun selectionPagesReachEveryFileWithoutRenderingHugeLists() {
