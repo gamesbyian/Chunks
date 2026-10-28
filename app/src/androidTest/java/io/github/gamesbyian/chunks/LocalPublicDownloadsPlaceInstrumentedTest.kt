@@ -1,6 +1,7 @@
 package io.github.gamesbyian.chunks
 
 import android.os.Build
+import android.os.Environment
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.gamesbyian.chunks.engine.LocalAddResult
@@ -27,7 +28,8 @@ import org.libtorrent4j.TorrentBuilder
  * Capability acceptance for the shared Downloads/Chunks Downloads Place:
  * the Android native engine writes a payload there over loopback, the bytes
  * read back exactly, a restarted engine resumes from those files without any
- * peer, and then seeds them to a fresh peer. Emulator evidence only: not a
+ * peer, and then seeds them to a fresh peer. Runs on Android 10 (after the
+ * storage grant) and Android 11+. Emulator evidence only: not a
  * physical handset, SD card, reinstall/ownership or uninterrupted-seeding proof.
  */
 @RunWith(AndroidJUnit4::class)
@@ -71,9 +73,29 @@ class LocalPublicDownloadsPlaceInstrumentedTest {
         }
     }
 
+    /**
+     * Android 10 needs legacy storage (from the manifest flag, fixed at install)
+     * plus the user's storage permissions; the test grants exactly what the
+     * "Allow storage access" button requests. Android 11+ needs nothing.
+     */
+    private fun allowSharedDownloads() {
+        assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+        if (Build.VERSION.SDK_INT != Build.VERSION_CODES.Q) return
+        @Suppress("DEPRECATION")
+        assertTrue("requestLegacyExternalStorage was not honored on Android 10",
+            Environment.isExternalStorageLegacy())
+        val before = LocalDownloadPlaces.choices(context)
+            .single { it.place.kind == LocalPlaceKind.PUBLIC_DOWNLOADS }
+        if (before.failure != null) assertTrue("Unexpected Android 10 refusal: ${before.failure}",
+            before.needsStoragePermission)
+        val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+        LocalDownloadPlaces.ANDROID_10_STORAGE_PERMISSIONS.forEach {
+            automation.grantRuntimePermission(context.packageName, it)
+        }
+    }
+
     @Test fun publicDownloadsIsTheVerifiedDefaultWhereAndroidAllowsIt() {
-        assumeTrue("Shared Downloads needs Android 11+ without broad storage permission",
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+        allowSharedDownloads()
         val choices = LocalDownloadPlaces.choices(context)
         val public = choices.single { it.place.kind == LocalPlaceKind.PUBLIC_DOWNLOADS }
         assertNull("Public Downloads write probe failed: ${public.failure}", public.failure)
@@ -84,7 +106,7 @@ class LocalPublicDownloadsPlaceInstrumentedTest {
     }
 
     @Test fun nativeEngineWritesResumesAndSeedsFromPublicChunksDownloads() {
-        assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+        allowSharedDownloads()
         val public = LocalDownloadPlaces.choices(context)
             .single { it.place.kind == LocalPlaceKind.PUBLIC_DOWNLOADS }
         val root = requireNotNull(LocalDownloadPlaces.materialize(public.place)) {

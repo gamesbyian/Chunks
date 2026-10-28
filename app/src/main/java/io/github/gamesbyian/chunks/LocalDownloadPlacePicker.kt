@@ -32,7 +32,8 @@ import androidx.compose.ui.unit.dp
 internal fun LocalDownloadPlacePicker(
     resolution: LocalPlaceResolution?,
     enabled: Boolean,
-    onChoose: (LocalPlaceChoice) -> Unit
+    onChoose: (LocalPlaceChoice) -> Unit,
+    onRequestStoragePermission: () -> Unit = {}
 ) {
     var expanded by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -48,6 +49,14 @@ internal fun LocalDownloadPlacePicker(
         }
         resolution?.notice?.let {
             Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+        }
+        // Android 10 only: an explicit, user-started request. Granting it lets
+        // the regular write probe decide; it is never asked for on its own.
+        if (resolution != null && resolution.choices.any { it.needsStoragePermission }) {
+            TextButton(onClick = onRequestStoragePermission, enabled = enabled,
+                modifier = Modifier.heightIn(min = 48.dp)) {
+                Text("Allow storage access for Downloads/" + LocalDownloadPlaces.PUBLIC_FOLDER_NAME)
+            }
         }
         if (resolution != null && resolution.choices.size > 1) {
             TextButton(onClick = { expanded = !expanded }, enabled = enabled,

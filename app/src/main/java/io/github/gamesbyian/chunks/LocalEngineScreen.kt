@@ -37,6 +37,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -328,7 +329,12 @@ internal fun LocalEngineScreen(
     // The resolved default Place for new Adds, write-probed on the IO lane.
     // Choosing another Place is optional and only offered once verified.
     var placeResolution by remember { mutableStateOf<LocalPlaceResolution?>(null) }
-    LaunchedEffect(Unit) {
+    var placeCheck by remember { mutableIntStateOf(0) }
+    // Android 10: after the user answers, re-probe; a grant alone never selects
+    // Downloads, the write probe and the remembered choice still decide.
+    val storagePermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()) { placeCheck++ }
+    LaunchedEffect(placeCheck) {
         placeResolution = withContext(Dispatchers.IO) {
             try { LocalDownloadPlaces.resolve(context) } catch (_: Exception) {
                 LocalPlaceResolution(null, emptyList(),
@@ -547,6 +553,9 @@ internal fun LocalEngineScreen(
                     if (saved) placeResolution = placeResolution?.copy(selected = choice.place, notice = null)
                     else message = "That download location could not be saved. The previous default is unchanged."
                 }
+            },
+            onRequestStoragePermission = {
+                storagePermission.launch(LocalDownloadPlaces.ANDROID_10_STORAGE_PERMISSIONS)
             }
         )
         OutlinedTextField(
