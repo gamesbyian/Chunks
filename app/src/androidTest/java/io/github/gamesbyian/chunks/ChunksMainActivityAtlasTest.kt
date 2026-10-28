@@ -287,6 +287,12 @@ class ChunksMainActivityAtlasTest {
         // Keeping this search after Save also proves the original remains searchable.
         // Set the query through the field's own SetText action: IME text input
         // occasionally raced focus here and left the queue unfiltered.
+        // Reporting and batch-export controls above this LazyColumn item can
+        // push Search beyond the initially composed viewport. Scroll to the
+        // actual editable field first, not merely to the queue's header.
+        // This keeps a real installed-app SetText + one-match assertion.
+        rule.onNode(hasScrollToIndexAction())
+            .performScrollToNode(hasText("Search names or Places"))
         rule.onNodeWithText("Search names or Places").performTextReplacement("Public.Example")
         dismissSearchKeyboard()
         // The long remote header can place the filtered result count outside

@@ -623,6 +623,18 @@ internal fun LocalEngineScreen(
             stale = inventoryStale,
             busyEngine = busy
         )
+        LocalTransferHealthExportPanel(
+            transfers = transfers,
+            stale = inventoryStale || busy
+        )
+        BatchMagnetExportPanel(
+            rows = displayedTransfers.map {
+                io.github.gamesbyian.chunks.model.BatchMagnetHandoff.Row(
+                    it.infoHash, it.name)
+            },
+            stale = inventoryStale || busy,
+            sourceLabel = "phone"
+        )
         LocalBatchCollectionPanel(
             transfers = transfers,
             shown = displayedTransfers,
