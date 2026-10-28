@@ -35,3 +35,7 @@ Output: five `assets/fonts/experimental/dotless-kerned/ChunksReferencePanel-{wei
 - Do not assume 856 Unicode mappings mean all 856 characters share faithful custom Chunks artwork. Source licensing and attribution remain required.
 
 See [issue #347](https://github.com/gamesbyian/Chunks/issues/347) for the complete visual/engineering acceptance gate.
+
+## Verified compiled family
+
+[GitHub Actions run 40626169784](https://github.com/gamesbyian/Chunks/actions/runs/40626169784) built and validated all five OTFs from the repository's exact source scripts and committed the binary outputs to its source branch. Their exact output file SHA-256 values and 60 custom i/j shapes are recorded in `reference-dotless-kerned-metrics.json`. The first PR CI [run 40626189082](https://github.com/gamesbyian/Chunks/actions/runs/40626189082) passed all five font/build/spacing/outline regression tests and the actual CFF specimen rendering. The generated binary check-in is intentionally followed by a human-authored workflow/document update to rerun exact-head checks before merge.
