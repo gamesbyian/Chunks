@@ -35,6 +35,9 @@ class ReferenceOpticalKerningTest(unittest.TestCase):
             metrics=Path(tmp)/'metrics.json'
             report=optimize(before,regenerated,metrics)
             self.assertEqual(report['modified_glyphs'],62)
+            self.assertEqual(set(report['tracking_em']), {'display','heading','body','small_labels'})
+            self.assertGreaterEqual(report['line_height_em']['body_multiscript'],1.6)
+            self.assertIn('all_glyph_vertical_extents',report['tracking_audit'])
             self.assertEqual(report['measured_pairs'],22801)
             self.assertGreater(report['additional_optical_pairs'],5000)
             self.assertEqual(hashlib.sha256(regenerated.read_bytes()).hexdigest(),hashlib.sha256(after.read_bytes()).hexdigest())
