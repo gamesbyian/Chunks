@@ -69,7 +69,8 @@ class SnapshotRestoreJournalV1Test {
             open(store, listOf(one)).entries()[0].phase)
         store.canCommit = true
         journal.beforeAdd(one, place)
-        assertEquals(SnapshotRestoreJournalV1.Phase.IN_FLIGHT, open(store).entries()[0].phase)
+        assertEquals(SnapshotRestoreJournalV1.Phase.IN_FLIGHT,
+            open(store, listOf(one)).entries()[0].phase)
     }
 
     @Test fun immutableArchiveTargetAndRosterPreventWrongProfileReplay() {
