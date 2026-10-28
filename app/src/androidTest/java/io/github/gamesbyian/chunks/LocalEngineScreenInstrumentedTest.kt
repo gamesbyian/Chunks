@@ -30,6 +30,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.gamesbyian.chunks.engine.LocalTransferFile
 import io.github.gamesbyian.chunks.engine.LocalTransferState
+import io.github.gamesbyian.chunks.engine.LocalTrackerSummary
 import io.github.gamesbyian.chunks.engine.LocalTransferStatus
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoPreview
 import java.io.File
@@ -128,6 +129,48 @@ class LocalEngineScreenInstrumentedTest {
         capture("local-engine-remove-confirm-real-compose")
         rule.onNodeWithText("Remove, keep files").performClick()
         assertEquals(1, removed)
+    }
+
+    @Test fun trackerlessStoppedCardOffersExplicitRepairWithoutStartingOrRemoving() {
+        var repairs = 0
+        var starts = 0
+        var removals = 0
+        val stopped = LocalTransferStatus("e".repeat(40), "Saved before tracker fix",
+            LocalTransferState.DOWNLOADING, stopped = true, progressPpm = 0,
+            wantedBytes = 1000, doneBytes = 0, payloadDownloadedBytes = 0,
+            payloadUploadedBytes = 0, peers = 0, savePath = "/x", error = null,
+            trackers = LocalTrackerSummary(total = 0, working = 0, updating = 0, failing = 0))
+        rule.setContent {
+            MaterialTheme {
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
+                    LocalTransferCard(stopped, busy = false, onToggle = { starts++ },
+                        onRemove = { removals++ }, onRepairTrackers = { repairs++ })
+                }
+            }
+        }
+        rule.onNodeWithText("Repair missing trackers from original .torrent…")
+            .performScrollTo().performClick()
+        assertEquals(1, repairs)
+        assertEquals(0, starts)
+        assertEquals(0, removals)
+    }
+
+    @Test fun runningOrAlreadyTrackedTorrentNeverOffersLegacyRepair() {
+        val tracked = LocalTransferStatus("e".repeat(40), "Already healthy",
+            LocalTransferState.DOWNLOADING, stopped = true, progressPpm = 10_000,
+            wantedBytes = 1000, doneBytes = 10, payloadDownloadedBytes = 10,
+            payloadUploadedBytes = 0, peers = 0, savePath = "/x", error = null,
+            trackers = LocalTrackerSummary(total = 1, working = 0, updating = 1, failing = 0))
+        rule.setContent {
+            MaterialTheme {
+                Column(Modifier.fillMaxSize().padding(16.dp)) {
+                    LocalTransferCard(tracked, busy = false, onToggle = {},
+                        onRemove = {}, onRepairTrackers = {})
+                }
+            }
+        }
+        rule.onNodeWithText("Repair missing trackers from original .torrent…")
+            .assertDoesNotExist()
     }
 
     @Test fun staleInventoryDisablesNativeTransferMutationsAndFileSelection() {
