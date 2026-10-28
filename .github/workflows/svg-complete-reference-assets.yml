@@ -1,0 +1,50 @@
+name: Generate Chunks SVG reference variants
+on:
+  push:
+    branches:
+      - feat/svg-fidelity-stickers-and-scenes-20261027
+    paths:
+      - tools/complete_svg_reference_assets.py
+      - .github/workflows/svg-complete-reference-assets.yml
+permissions:
+  contents: write
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/svg-fidelity-stickers-and-scenes-20261027
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python3 -m pip install 'numpy>=2,<3' 'opencv-python-headless>=4.11,<5' 'Pillow>=11,<13' 'fonttools>=4.55,<5'
+      - name: Generate and verify exact outputs
+        run: |
+          python3 tools/complete_svg_reference_assets.py --write
+          python3 tools/complete_svg_reference_assets.py
+          python3 tools/validate_svg_library.py
+          python3 tools/check_svg_approved_derivatives.py
+      - name: Verify vector rendering
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends librsvg2-bin
+          python3 tools/render_svg_atlas.py --out generated/svg-atlas --sizes 32,160
+      - name: Commit generated SVG sources
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/design/svg/fidelity docs/design/svg/master-inventory.json docs/design/svg/gallery.html
+          if ! git diff --cached --quiet; then
+            git commit -m 'feat(brand): generate 12 source-preserving SVG visual candidates'
+            git push origin HEAD:feat/svg-fidelity-stickers-and-scenes-20261027
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: chunks-svg-fidelity-preview
+          path: generated/svg-atlas/
+          if-no-files-found: warn
+          retention-days: 7
