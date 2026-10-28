@@ -59,15 +59,22 @@ class SeedhostServerToPhoneCopyProbeTest {
             .sortedBy { it.sizeBytes }.take(12)
         var chosen: ServerToPhoneCopy.Ready? = null
         var chosenName = ""
+        var privateCount = 0
+        var inactiveCount = 0
+        var otherCount = 0
         for (row in candidates) {
-            val plan = ServerToPhoneCopy.plan(row, remote.peerSource(row.hash)) {
-                InetAddress.getAllByName(it).toList()
-            }
+            val source = remote.peerSource(row.hash)
+            val plan = ServerToPhoneCopy.plan(row, source) { InetAddress.getAllByName(it).toList() }
             if (plan is ServerToPhoneCopy.Ready) { chosen = plan; chosenName = row.name; break }
+            when {
+                source.isPrivate -> privateCount++
+                !source.isActive -> inactiveCount++
+                else -> otherCount++
+            }
         }
         if (chosen == null) {
             println("CHUNKS_SEEDHOST_COPY: INCONCLUSIVE no complete, active, public transfer up to $maxBytes bytes " +
-                "among ${candidates.size} candidates")
+                "among ${candidates.size} candidates (private=$privateCount inactive=$inactiveCount other=$otherCount)")
             fail("INCONCLUSIVE: no eligible transfer")
         }
         val plan = requireNotNull(chosen)
