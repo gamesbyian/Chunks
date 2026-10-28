@@ -47,7 +47,7 @@ Use the **Android platform's standard primary Downloads location**, normally the
 
 ## Transfer details: copy/move between local and remote (owner, 2026-10-27)
 
-On each transfer-details screen show **Copy Transfer to phone/server** and **Move Transfer to phone/server** for torrent-job handoff. Both add a new torrent job with no payload copying. Copy preserves original job and files. Move, after verified target Add and separate approval, removes only original source job, retaining all original files. See CROSS-ENGINE-TRANSFER-JOBS.md. **Planned, not shipped.**
+On each transfer-details screen show **Copy Transfer to phone/server** and **Move Transfer to phone/server** for torrent-job handoff. Both add a new torrent job with no payload copying. Copy preserves original job and files. Move, after verified target Add and separate approval, removes only original source job, retaining all original files. See CROSS-ENGINE-TRANSFER-JOBS.md. **Planned, not shipped.** The separately labelled, already shipped **Copy files to this phone** action for a completed server transfer (`ServerToPhoneCopyControl`, real-host verified in run [40756284173](https://github.com/gamesbyian/Chunks/actions/runs/40756284173)) is a distinct payload capability: it adds a phone job that fetches and hash-verifies bytes from the server's peer address, leaves the server job seeding, and must keep its own label and evidence.
 
 ## Remove transfer: extracted archive cleanup (owner, 2026-10-27)
 
