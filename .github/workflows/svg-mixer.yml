@@ -4,6 +4,7 @@ on:
     paths:
       - 'docs/design/svg/gallery.html'
       - 'docs/design/svg/mix-engine.js'
+      - 'docs/design/svg/mix-ui.js'
       - 'tools/tests/svg_mixer.test.cjs'
       - '.github/workflows/svg-mixer.yml'
   workflow_dispatch:
@@ -18,7 +19,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Verify safe SVG composition, XML parsing and JSON recipe roundtrip
+      - name: Test safe SVG export, XML parsing and editable JSON recipes
         run: node --test tools/tests/svg_mixer.test.cjs
-      - name: Verify the complete SVG gallery source catalogue
+      - name: Check full SVG manifest and gallery
         run: python3 tools/validate_svg_library.py
