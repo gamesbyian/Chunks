@@ -49,3 +49,25 @@ PR [#150](https://github.com/gamesbyian/Chunks/pull/150) adds disposable real-se
 ## Archive webseed versus ordinary rTorrent swarm (2026-10-27)
 
 Internet Archive's BitTorrents FAQ (https://archivesupport.zendesk.com/hc/en-us/articles/360004715251-Archive-BitTorrents) explains that Archive torrents rely heavily on GetRight/BEP19 webseeds and some rTorrent clients do not support them; Archive seeder statistics may count webseeds. Consequently, a stopped or zero-byte Archive fixture with no confirmed conventional BitTorrent peers is **not evidence** of a Chunks Start implementation failure. Archive metainfo remains appropriate for licensed provenance and stopped-Add hash/destination validation. Hosted downloaded-byte acceptance requires a separately confirmed reachable ordinary peer swarm, peer connection and both cumulative received and hash-verified byte growth. Local libtorrent4j has different webseed capability. Avoid assuming every rTorrent build has identical protocol support without testing.
+
+## Three Seedhost HTTPS profiles and Transdrone direct-SCGI hypothesis (2026-10-28)
+
+The protected read-only probe [40630941499](https://github.com/gamesbyian/Chunks/actions/runs/40630941499)
+verified Kotlin `system.client_version` plus empty `main` views for
+`/rutorrent2/` and `/rutorrent3/` on the HTTPS HTTP-RPC gateway.
+The primary `/rutorrent/` has separate and stronger write-path evidence.
+For exact URLs, independent password-secret names and dispatch instructions,
+see [SEEDHOST-REMOTE-TESTING](SEEDHOST-REMOTE-TESTING.md).
+
+The owner's *working Transdrone* Android profile instead uses
+`wood.seedhost.eu`, `/ianseeds/RPC1`, authentication on, SSL off and no
+explicit port. Chunks accepts direct *HTTPS* XML-RPC paths but has **not yet
+verified** `https://wood.seedhost.eu/ianseeds/RPC1`. Test that candidate
+only via the manual, read-only `seedhost-endpoint-compatibility.yml` probe.
+Do not infer TCP/80 success, HTTPS support, or sibling SCGI paths from
+Transdrone's user interface; do not weaken Chunks' TLS requirement. Even if
+the candidate succeeds, rTorrent XML-RPC capability and ruTorrent upload
+fallback are different protocol surfaces and need separate acceptance.
+
+The refused inbound BitTorrent peer listener `5.79.112.210:53281` belongs
+to peer-wire reachability, not this remote-management acceptance matrix.
