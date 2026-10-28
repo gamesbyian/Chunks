@@ -39,3 +39,7 @@ See [issue #347](https://github.com/gamesbyian/Chunks/issues/347) for the comple
 ## Iteration 0.310: lower marks
 
 The second checked-in revision also constructs `į` and `ị` from the reference `i` stem **without discarding its dot**. Unlike the upper-mark forms, the source lower ogonek can overlap the baseline intentionally. The generator is explicitly restricted to Unicode `COMBINING OGONEK` and `COMBINING DOT BELOW`: other lower marks are not guessed. Tests require **14 reconstructed forms per weight (70 total)**, three contours in each lower marked letter (stem, existing dot, mark), identical standalone advance to custom `i`, correct contextual base-pair shaping, zero source-font changes, and positive actual ink clearance at 14/24/48/82px. The prior twelve-form build remains recoverable from PR #389.
+
+### Verified second iteration
+
+[Source-head CI run 40627007152](https://github.com/gamesbyian/Chunks/actions/runs/40627007152) passed and generated five **14-form** experimental CFF OTFs, with exact input/output SHA-256 recorded in the resulting `reference-dotless-kerned-metrics.json`. It added only `į` and `ị` to the already-validated 12-form variant; original Android fonts, source masters, installed brand typography and licensed base glyphs remain untouched. Because generated files were committed by the workflow robot, this documentation update requests another exact-head CI pass before the source PR is merged.
