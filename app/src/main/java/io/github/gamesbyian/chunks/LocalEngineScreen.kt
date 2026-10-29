@@ -244,6 +244,9 @@ internal fun LocalEngineScreen(
     moveServer: LocalMoveServer? = null,
     onTorrentConsumed: () -> Unit = {},
     onPrefillConsumed: () -> Unit = {},
+    /** Pre-fills the list search (for example an exact infohash from All environments). */
+    initialSearch: String? = null,
+    onSearchConsumed: () -> Unit = {},
     onPrepareRemote: ((String) -> Unit)? = null,
     /** Receives a verified exported .torrent for the server's Add review. */
     onPrepareRemoteTorrent: ((ByteArray) -> Unit)? = null
@@ -273,6 +276,14 @@ internal fun LocalEngineScreen(
     var transferPage by remember { mutableStateOf(0) }
     var transferSearch by remember { mutableStateOf("") }
     var transferFilter by remember { mutableStateOf(LocalQueueFilter.ALL) }
+    LaunchedEffect(initialSearch) {
+        if (!initialSearch.isNullOrBlank()) {
+            transferSearch = initialSearch
+            // A filter must not hide the transfer the user asked to open.
+            transferFilter = LocalQueueFilter.ALL
+            onSearchConsumed()
+        }
+    }
     val sortStore = remember(context) { TransferListSortStore(context) }
     val savedSort = remember(sortStore) {
         sortStore.get(TransferListSortStore.PHONE, LocalQueueOrder.entries.toTypedArray())

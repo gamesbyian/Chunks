@@ -8,6 +8,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.test.core.app.ApplicationProvider
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -112,7 +113,9 @@ class CombinedTransfersScreenTest {
 
     @Test fun environmentColourChoicePersistsAndRestores() {
         show()
-        rule.onNodeWithText("Environment colours…").performScrollTo().performClick()
+        rule.onNode(androidx.compose.ui.test.hasScrollToIndexAction())
+            .performScrollToNode(androidx.compose.ui.test.hasText("Environment colours…"))
+        rule.onNodeWithText("Environment colours…").performClick()
         val serverId = io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverId(
             aliasScope.substringBefore('\u0000'), "ian")
         val automatic = EnvironmentColourStore(context).load().hueOf(serverId)
@@ -125,7 +128,9 @@ class CombinedTransfersScreenTest {
         assertEquals(io.github.gamesbyian.chunks.model.EnvironmentHue.PINK,
             EnvironmentColourStore(context).load().hueOf(serverId))
         rule.onRoot().captureRoboImage("build/chunks-visual/combined-colours.png")
-        rule.onNodeWithText("Restore automatic colour").performScrollTo().performClick()
+        rule.onNode(androidx.compose.ui.test.hasScrollToIndexAction())
+            .performScrollToNode(androidx.compose.ui.test.hasText("Restore automatic colour"))
+        rule.onNodeWithText("Restore automatic colour").performClick()
         assertEquals(automatic, EnvironmentColourStore(context).load().hueOf(serverId))
     }
 }

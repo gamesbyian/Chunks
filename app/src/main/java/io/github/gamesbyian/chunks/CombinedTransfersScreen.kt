@@ -187,6 +187,8 @@ internal fun CombinedTransfersScreen(
     savedProfiles: List<CombinedSavedProfile>,
     onOpenPhone: () -> Unit,
     onOpenServer: (() -> Unit)?,
+    /** Opens this exact transfer in its own environment's list; only phone and the signed-in server. */
+    onOpenTransfer: (UnifiedTransferKey) -> Unit = {},
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -269,6 +271,10 @@ internal fun CombinedTransfersScreen(
     val colourStore = remember(context) { EnvironmentColourStore(context) }
     var palette by remember(labels.keys.toList()) { mutableStateOf(colourStore.ensure(labels.keys.toList())) }
     var choosingColours by remember { mutableStateOf(false) }
+    // Only environments with a live list here can open a row there.
+    fun openFor(key: UnifiedTransferKey): (() -> Unit)? =
+        if (key.environment == EnvironmentSnapshots.PHONE || (serverId != null && key.environment == serverId))
+            ({ onOpenTransfer(key) }) else null
 
     val sources = buildList {
         val phoneStale = phoneFrame.stale || PhoneMutationFence.revision.blocksMutations() || batchRunning
@@ -459,14 +465,16 @@ internal fun CombinedTransfersScreen(
                 items(group.transfers, key = { "row-" + it.key.environment.value + it.key.infoHash }) { row ->
                     CombinedTransferRow(row, labels[row.key.environment].orEmpty(), palette.hueOf(row.key.environment),
                         selection = if (selecting) row.key in selected else null,
-                        onSelect = { on -> selected = if (on) selected + row.key else selected - row.key })
+                        onSelect = { on -> selected = if (on) selected + row.key else selected - row.key },
+                        onOpen = openFor(row.key))
                 }
             }
         } else {
             items(result.transfers, key = { "row-" + it.key.environment.value + it.key.infoHash }) { row ->
                 CombinedTransferRow(row, labels[row.key.environment].orEmpty(), palette.hueOf(row.key.environment),
                     selection = if (selecting) row.key in selected else null,
-                    onSelect = { on -> selected = if (on) selected + row.key else selected - row.key })
+                    onSelect = { on -> selected = if (on) selected + row.key else selected - row.key },
+                    onOpen = openFor(row.key))
             }
         }
         item {
@@ -518,7 +526,9 @@ private fun CombinedTransferRow(
     hue: EnvironmentHue?,
     /** Null when not selecting. */
     selection: Boolean? = null,
-    onSelect: (Boolean) -> Unit = {}
+    onSelect: (Boolean) -> Unit = {},
+    /** Null for environments only listed here (no live list to open). */
+    onOpen: (() -> Unit)? = null
 ) {
     val accent = hue?.let { Color(it.argb) } ?: ChunksColors.Outline
     // The hue is used for the label only where it meets AA on this surface.
@@ -541,6 +551,10 @@ private fun CombinedTransferRow(
             Text(combinedRowFacts(row), style = MaterialTheme.typography.bodySmall)
             if (row.hasError) Text("Needs attention in its own list", color = ChunksColors.Red,
                 style = MaterialTheme.typography.bodySmall)
+            if (onOpen != null) OutlinedButton(onClick = onOpen, modifier = Modifier.heightIn(min = 48.dp)
+                .semantics { contentDescription = "Open ${row.displayName} in $environmentLabel" }) {
+                Text("Open in its list")
+            }
         }
     }
 }
