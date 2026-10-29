@@ -5,8 +5,9 @@ The [documentation architecture and authoring standard](DOCUMENTATION-STANDARD.m
 ## Agent entry points
 
 - [AGENTS](../AGENTS.md): required operating instructions and safety rules.
-- [WORK-QUEUE](WORK-QUEUE.md): only active priority/order authority; reconcile with live PRs/issues.
-- [QUALITY-LEDGER](QUALITY-LEDGER.md): accepted test evidence and limitations.
+- [WORK-QUEUE](WORK-QUEUE.md): concise active priority/order authority; reconcile with live PRs/issues.
+- [Historical queue archive](archive/WORK-QUEUE-2026-10-29-preconsolidation.md): preserved earlier milestone narratives; not a live plan.
+- [QUALITY-LEDGER](QUALITY-LEDGER.md): append-only dated test evidence and limitations; not a current task queue.
 - [SPEC-COVERAGE](SPEC-COVERAGE.md): required versus implemented capability and acceptance gaps.
 - [CI-POLICY](CI-POLICY.md): runner costs, test gates and workflows.
 
