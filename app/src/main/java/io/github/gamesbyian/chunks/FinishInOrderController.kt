@@ -60,7 +60,24 @@ internal class FinishInOrderStore(
         prefs.edit().remove(key(infoHash)).commit()
     } catch (_: RuntimeException) { false }
 
-    private companion object { const val AFTER_METADATA = "after_metadata_v1" }
+    /**
+     * Opt-in preference: pre-tick Finish in Order on *new* multi-file Add
+     * reviews in this scope. Off by default. It never touches existing
+     * transfers, and each Add can still be unticked.
+     */
+    fun defaultForNewAdds(): Boolean = try {
+        prefs.getBoolean(DEFAULT_NEW_ADDS + scope, false)
+    } catch (_: RuntimeException) { false }
+
+    @Synchronized
+    fun setDefaultForNewAdds(enabled: Boolean): Boolean = try {
+        prefs.edit().putBoolean(DEFAULT_NEW_ADDS + scope, enabled).commit()
+    } catch (_: RuntimeException) { false }
+
+    private companion object {
+        const val AFTER_METADATA = "after_metadata_v1"
+        const val DEFAULT_NEW_ADDS = "default_new_adds_v1:"
+    }
 
     private fun key(infoHash: String): String {
         require(hashPattern.matches(infoHash)) { "Invalid transfer identity" }

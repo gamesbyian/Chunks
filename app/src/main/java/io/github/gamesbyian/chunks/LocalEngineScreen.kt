@@ -644,16 +644,16 @@ internal fun LocalEngineScreen(
         OutlinedTextField(value = magnet, onValueChange = { magnet = it.trim() },
             label = { Text("Or paste a magnet link") }, singleLine = true,
             modifier = Modifier.fillMaxWidth())
-        var magnetFinishInOrder by remember(magnet) { mutableStateOf(false) }
+        var finishInOrderDefault by remember { mutableStateOf(finishInOrderStore.defaultForNewAdds()) }
+        var magnetFinishInOrder by remember(magnet) { mutableStateOf(finishInOrderDefault) }
         if (magnet.isNotEmpty() && destination != null) {
-            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                .toggleable(value = magnetFinishInOrder, enabled = !busy && !inventoryStale,
-                    role = Role.Checkbox, onValueChange = { magnetFinishInOrder = it }),
-                verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(checked = magnetFinishInOrder, enabled = !busy && !inventoryStale, onCheckedChange = null)
-                Text("Finish in Order once the file list arrives (episodes or numbered files)",
-                    modifier = Modifier.padding(start = 8.dp))
-            }
+            FinishInOrderAddChoice(
+                "Finish in Order once the file list arrives (episodes or numbered files)",
+                checked = magnetFinishInOrder, enabled = !busy && !inventoryStale,
+                onChecked = { magnetFinishInOrder = it },
+                defaultOn = finishInOrderDefault,
+                onDefault = { on -> if (finishInOrderStore.setDefaultForNewAdds(on)) finishInOrderDefault = on }
+            )
             Text("Saves into the download location shown above. Magnets first discover metadata via peers/trackers; if Start after Add is selected, payload downloading begins after metadata arrives. Without peers, downloading cannot begin.",
                 style = MaterialTheme.typography.bodySmall)
             LocalMagnetDiscoveryPrompt(
@@ -814,17 +814,16 @@ internal fun LocalEngineScreen(
                 }
             )
         }
-        var finishInOrderAfterAdd by remember(add?.preview?.infoHashV1) { mutableStateOf(false) }
+        var finishInOrderAfterAdd by remember(add?.preview?.infoHashV1) { mutableStateOf(finishInOrderDefault) }
         if (add != null && destination != null && add.preview.fileCount >= 2) {
-            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                .toggleable(value = finishInOrderAfterAdd, enabled = !busy && !inventoryStale,
-                    role = Role.Checkbox, onValueChange = { finishInOrderAfterAdd = it }),
-                verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(checked = finishInOrderAfterAdd, enabled = !busy && !inventoryStale, onCheckedChange = null)
-                Text("Finish in Order: prioritise the first episode or numbered file, then the next " +
+            FinishInOrderAddChoice(
+                "Finish in Order: prioritise the first episode or numbered file, then the next " +
                     "(set up before downloading starts; change or turn off from Files)",
-                    modifier = Modifier.padding(start = 8.dp))
-            }
+                checked = finishInOrderAfterAdd, enabled = !busy && !inventoryStale,
+                onChecked = { finishInOrderAfterAdd = it },
+                defaultOn = finishInOrderDefault,
+                onDefault = { on -> if (finishInOrderStore.setDefaultForNewAdds(on)) finishInOrderDefault = on }
+            )
         }
         if (add != null && destination != null) LocalAddReview(
             add.preview, proposedAddDestination ?: destination,
@@ -2061,6 +2060,31 @@ internal fun LocalSpeedLimits() {
         Text(if (saving) "Checking speed limits…" else "Save speed limits")
     }
     result?.let { Text(it, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }) }
+}
+
+/**
+ * Add-review Finish in Order choice plus the opt-in default for later Adds.
+ * The default only pre-ticks future Add reviews on this phone; it never
+ * changes a transfer that already exists.
+ */
+@Composable
+internal fun FinishInOrderAddChoice(
+    label: String, checked: Boolean, enabled: Boolean, onChecked: (Boolean) -> Unit,
+    defaultOn: Boolean, onDefault: (Boolean) -> Unit
+) = Column(Modifier.fillMaxWidth()) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
+        .toggleable(value = checked, enabled = enabled, role = Role.Checkbox, onValueChange = onChecked),
+        verticalAlignment = Alignment.CenterVertically) {
+        Checkbox(checked = checked, enabled = enabled, onCheckedChange = null)
+        Text(label, modifier = Modifier.padding(start = 8.dp))
+    }
+    if (checked || defaultOn) Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(start = 32.dp)
+        .toggleable(value = defaultOn, enabled = enabled, role = Role.Checkbox, onValueChange = onDefault),
+        verticalAlignment = Alignment.CenterVertically) {
+        Checkbox(checked = defaultOn, enabled = enabled, onCheckedChange = null)
+        Text("Tick this for new multi-file Adds on this phone. Existing transfers are not changed.",
+            style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(start = 8.dp))
+    }
 }
 
 /**
