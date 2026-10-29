@@ -60,7 +60,9 @@ jobs:
           profile: pixel_6
           emulator-boot-timeout: 600
           disable-animations: true
-          script: gradle --no-daemon -Pchunks.testBuildType=qaMinified :app:connectedQaMinifiedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=io.github.gamesbyian.chunks.MinifiedBuildSmokeInstrumentedTest
+          # A hung instrumentation must fail fast with a logcat, not eat the job.
+          script: |
+            timeout 900 gradle --no-daemon -Pchunks.testBuildType=qaMinified :app:connectedQaMinifiedAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=io.github.gamesbyian.chunks.MinifiedBuildSmokeInstrumentedTest || { adb logcat -d > app/build/outputs/qaminified-logcat.txt; exit 1; }
       - name: Require that the smoke test actually ran
         run: |
           python3 - <<'PY'
@@ -85,5 +87,6 @@ jobs:
             app/build/outputs/mapping/qaMinified/mapping.txt
             app/build/outputs/mapping/qaMinified/usage.txt
             app/build/outputs/androidTest-results/
+            app/build/outputs/qaminified-logcat.txt
           retention-days: 14
           if-no-files-found: warn

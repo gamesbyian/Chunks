@@ -8,3 +8,7 @@
 -keep class io.github.gamesbyian.chunks.engine.LocalAddResult** { *; }
 -keep class io.github.gamesbyian.chunks.engine.LocalCommand** { *; }
 -keep class io.github.gamesbyian.chunks.engine.LocalTransferStatus { *; }
+
+# No renaming in qaMinified: the separately built test APK then needs no
+# mapping. Shrinking and optimisation (the risky part for JNI) still run.
+-dontobfuscate
