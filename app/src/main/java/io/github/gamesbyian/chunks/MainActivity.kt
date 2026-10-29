@@ -221,6 +221,8 @@ private fun ChunksApp(
     var filesLoading by remember { mutableStateOf(false) }
     var magnet by remember { mutableStateOf("") }
     var phoneHandoffMagnet by remember { mutableStateOf<String?>(null) }
+    // A transfer opened from All environments: searched once on the phone list.
+    var phoneSearchPrefill by remember { mutableStateOf<String?>(null) }
     // A phone transfer's exported .torrent waiting for the server Add review.
     // Process memory only; consumed by that review, never auto-submitted.
     var serverHandoffTorrent by remember { mutableStateOf<ByteArray?>(null) }
@@ -407,6 +409,17 @@ private fun ChunksApp(
                 },
                 onOpenPhone = { section = Section.LOCAL },
                 onOpenServer = if (server != null) ({ section = Section.TRANSFERS }) else null,
+                onOpenTransfer = { key ->
+                    if (key.environment == io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE) {
+                        phoneSearchPrefill = key.infoHash
+                        section = Section.LOCAL
+                    } else {
+                        // Exact hash search on the signed-in server's own list.
+                        query = key.infoHash
+                        filter = TransferFilter.ALL
+                        section = Section.TRANSFERS
+                    }
+                },
                 onBack = { section = Section.TRANSFERS }
             )
         } else if (section == Section.SEEDING) {
@@ -424,6 +437,8 @@ private fun ChunksApp(
                     onSeedingRules = { section = Section.SEEDING },
                     onCombined = { section = Section.COMBINED },
                     initialMagnet = phoneHandoffMagnet,
+                    initialSearch = phoneSearchPrefill,
+                    onSearchConsumed = { phoneSearchPrefill = null },
                     initialTorrentUri = incomingTorrent,
                     onTorrentConsumed = onIncomingTorrentConsumed,
                     onPrefillConsumed = { phoneHandoffMagnet = null },
@@ -661,6 +676,8 @@ private fun ChunksApp(
                         onSeedingRules = { section = Section.SEEDING },
                         onCombined = { section = Section.COMBINED },
                         initialMagnet = phoneHandoffMagnet,
+                        initialSearch = phoneSearchPrefill,
+                        onSearchConsumed = { phoneSearchPrefill = null },
                         initialTorrentUri = incomingTorrent,
                         canReviewOnConnectedServer = true,
                         serverCopy = if (remotePrivacyScope == null) null
@@ -927,6 +944,7 @@ private fun ChunksApp(
                     },
                     onRefresh = refresh,
                     onSeedingRules = { section = Section.SEEDING },
+                    environmentLabel = serverEnvironmentLabel(aliasScope),
                     onDisconnect = {
                         // Invalidate every in-flight read before clearing UI state.
                         remoteFence.invalidate()
@@ -1985,7 +2003,9 @@ private fun ServerScreen(
     loading: Boolean, stale: Boolean, count: Int,
     credentialNotice: String?, savedLoginPresent: Boolean, onForgetLogin: () -> Unit,
     onRefresh: () -> Unit, onDisconnect: () -> Unit,
-    onSeedingRules: () -> Unit = {}
+    onSeedingRules: () -> Unit = {},
+    /** Exact server environment label, so the view choice states its scope. */
+    environmentLabel: String = "this server"
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -1998,6 +2018,7 @@ private fun ServerScreen(
         }
         item {
             Text("Server view", style = MaterialTheme.typography.titleLarge)
+            SettingScopeNote(environmentLabel)
             Text("Different rTorrent servers organize views differently. Chunks never assumes the current view covers every torrent.",
                 style = MaterialTheme.typography.bodySmall)
         }

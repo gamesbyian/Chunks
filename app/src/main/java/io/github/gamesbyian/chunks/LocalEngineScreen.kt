@@ -244,6 +244,9 @@ internal fun LocalEngineScreen(
     moveServer: LocalMoveServer? = null,
     onTorrentConsumed: () -> Unit = {},
     onPrefillConsumed: () -> Unit = {},
+    /** Pre-fills the list search (for example an exact infohash from All environments). */
+    initialSearch: String? = null,
+    onSearchConsumed: () -> Unit = {},
     onPrepareRemote: ((String) -> Unit)? = null,
     /** Receives a verified exported .torrent for the server's Add review. */
     onPrepareRemoteTorrent: ((ByteArray) -> Unit)? = null
@@ -273,6 +276,14 @@ internal fun LocalEngineScreen(
     var transferPage by remember { mutableStateOf(0) }
     var transferSearch by remember { mutableStateOf("") }
     var transferFilter by remember { mutableStateOf(LocalQueueFilter.ALL) }
+    LaunchedEffect(initialSearch) {
+        if (!initialSearch.isNullOrBlank()) {
+            transferSearch = initialSearch
+            // A filter must not hide the transfer the user asked to open.
+            transferFilter = LocalQueueFilter.ALL
+            onSearchConsumed()
+        }
+    }
     val sortStore = remember(context) { TransferListSortStore(context) }
     val savedSort = remember(sortStore) {
         sortStore.get(TransferListSortStore.PHONE, LocalQueueOrder.entries.toTypedArray())
@@ -657,6 +668,7 @@ internal fun LocalEngineScreen(
                 Text("Find peers without trackers (DHT)")
                 Text("Needed for most magnet links. Off by default: when on, this phone's IP address is shared with the public DHT network.",
                     style = MaterialTheme.typography.bodySmall)
+                SettingScopeNote(PHONE_ENVIRONMENT_LABEL)
                 if (dhtSaving) Text("Applying DHT setting…", style = MaterialTheme.typography.bodySmall)
                 dhtError?.let { Text(it, style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error) }
@@ -2073,6 +2085,7 @@ internal fun LocalSpeedLimits() {
     val downloadLimit = parseSpeedLimit(download)
     val uploadLimit = parseSpeedLimit(upload)
     Text("Speed limits", fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
+    SettingScopeNote(PHONE_ENVIRONMENT_LABEL)
     Text("In KiB per second; leave blank for unlimited. Devices on your own network are not limited.",
         style = MaterialTheme.typography.bodySmall)
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {

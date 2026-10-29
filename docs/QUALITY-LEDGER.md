@@ -1,5 +1,11 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-29 Open in its list from All environments (#567)
+
+- **Source slice:** phone and signed-in-server rows navigate to their own list, searched to the exact infohash with the filter reset. The phone screen gains a one-shot `initialSearch`. Rows from listed-only servers have no open action.
+- **Evidence tier:** Robolectric checks that the callback receives the exact environment ID and hash, and that listed-only rows show no action. The MainActivity navigation itself is not instrumented.
+- **Settings scope labels:** phone Speed limits and DHT, and the server's Server view, now state "Applies to: <environment> only. Other environments keep their own settings." beside the setting. This is source change only; it has not been checked on a device.
+
 ## 2026-10-29 date-added sort and All environments at real 200% system font (#567, #8)
 
 - **Source slice:**
@@ -7,7 +13,8 @@
   - The phone list offers **Added**, newest first and reversible.
   - The combined view offers **Date added**; server rows have no added time and sort last in both directions, never guessed from ruTorrent custom fields.
   - `SystemFontScaleComposeInstrumentedTest` opens All environments from the server list at Android system `fontScale=2.0`. It asserts the title, grouping, the spoken direction control, a real fixture server row and Select are displayed, then saves a seventh real-pixel capture.
-- **Evidence tier:** local JVM suite green. The 200% capture comes from this PR's `actual-system-font-200pct-compose` job. It is not a TalkBack audit or a handset run.
+- **Merged:** [#582](https://github.com/gamesbyian/Chunks/pull/582), squash `c64ff5a20c9d56628401cf8b6487599cee5b2531`, exact head `4e4dc734a5881a95266fb2e5bde956a55f662ff2`: [Android/JVM 40922734854](https://github.com/gamesbyian/Chunks/actions/runs/40922734854), [R8 40922734862](https://github.com/gamesbyian/Chunks/actions/runs/40922734862), [API35 native instrumentation 40922734887](https://github.com/gamesbyian/Chunks/actions/runs/40922734887), [real 200% system font incl. All environments 40922734823](https://github.com/gamesbyian/Chunks/actions/runs/40922734823), [disposable real rTorrent legacy + modern 40922734770](https://github.com/gamesbyian/Chunks/actions/runs/40922734770), [lifecycle repro 40922734813](https://github.com/gamesbyian/Chunks/actions/runs/40922734813).
+- **Evidence tier:** local JVM suite plus the CI above. The 200% run is emulator evidence; it is not a TalkBack audit or a handset run.
 
 ## 2026-10-29 #580 merged receipts (combined Start/Stop and colours)
 

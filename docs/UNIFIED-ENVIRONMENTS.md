@@ -121,6 +121,8 @@ The server label comes from the authenticated alias scope via the same address f
 - **Freshness:** a listing older than two minutes is marked out of date.
 - **Actions:** batch Start/Stop refuses rows from these servers: "only listed here; sign in to this server to change it".
 
+**Open in its list (PARTIAL).** Phone rows and signed-in-server rows offer *Open in its list*. It goes to that environment's own list, searched to the exact infohash with any filter cleared. Rows from servers that are only listed have no such action.
+
 Not yet built:
 - other actions from this view;
 - commands on any server other than the signed-in one (others are read-only listings);

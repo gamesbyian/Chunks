@@ -50,6 +50,8 @@ class CombinedSavedServersTest {
         rule.onNodeWithText("Server · bob @ b.example/RPC2: Could not load (connection refused) · 0 transfers")
             .assertExists()
         rule.onNodeWithText("Refresh other saved servers").assertExists()
+        // Listed-only rows have no live list to open.
+        rule.onNodeWithText("Open in its list").assertDoesNotExist()
     }
 
     @Test fun profileWithoutVerifiableScopeStaysLockedAndIsNeverFetched() {

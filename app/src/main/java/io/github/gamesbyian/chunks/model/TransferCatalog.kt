@@ -55,7 +55,9 @@ object TransferCatalog {
             needle.isEmpty() ||
                 label.contains(needle, ignoreCase = true) ||
                 item.name.contains(needle, ignoreCase = true) ||
-                item.directory.contains(needle, ignoreCase = true)
+                item.directory.contains(needle, ignoreCase = true) ||
+                // Exact identity search, used by "Open in its list" from All environments.
+                item.hash.contains(needle, ignoreCase = true)
         }.toList()
 
         // A zero-size (metadata-less) job has UNKNOWN size/progress and an

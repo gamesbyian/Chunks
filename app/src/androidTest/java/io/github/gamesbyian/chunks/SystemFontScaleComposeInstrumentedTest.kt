@@ -257,9 +257,14 @@ class SystemFontScaleComposeInstrumentedTest {
         rule.waitForIdle()
         // The Connect action is below the fold, especially at 200% type.
         // Only one actual click is sent; scroll for node attachment first.
-        rule.onNode(hasScrollToIndexAction())
-            .performScrollToNode(hasText("Connect to rTorrent"))
-        rule.waitForIdle()
+        // The IME hide above can resize the viewport after the first scroll and
+        // dispose the lazy item again; re-scroll until it is actually composed.
+        rule.waitUntil(15_000) {
+            rule.onNode(hasScrollToIndexAction())
+                .performScrollToNode(hasText("Connect to rTorrent"))
+            rule.waitForIdle()
+            rule.onAllNodesWithText("Connect to rTorrent").fetchSemanticsNodes().isNotEmpty()
+        }
         rule.onNodeWithText("Connect to rTorrent")
             .performSemanticsAction(SemanticsActions.OnClick)
         rule.waitUntil(20_000) {
@@ -308,6 +313,22 @@ class SystemFontScaleComposeInstrumentedTest {
         rule.onNodeWithText("Select…").assertIsDisplayed()
         rule.waitForIdle()
         savePixels("combined")
+        // Open in its list: the signed-in server's own list, searched to that exact hash.
+        combinedList.performScrollToNode(hasText("Big Buck Bunny public demo"))
+        rule.onNodeWithContentDescription("Open Big Buck Bunny public demo in", substring = true)
+            .performSemanticsAction(SemanticsActions.OnClick)
+        rule.waitForIdle()
+        // At 200% the count row can sit below the fold: scroll the server list to it.
+        rule.waitUntil(15_000) {
+            runCatching {
+                rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("1 shown"))
+            }.isSuccess && rule.onAllNodesWithText("1 shown").fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Big Buck Bunny public demo"))
+        rule.onNodeWithText("Big Buck Bunny public demo").assertExists()
+        // The other fixture transfers are filtered out by the exact-hash search.
+        assertTrue(rule.onAllNodesWithText("Public.Example.Long.Named.Archive.S01E01.mkv")
+            .fetchSemanticsNodes().isEmpty())
         // Seven distinct captures: unauthenticated Connection, initial and
         // return-to-Transfers, Places / Organize / Server and All environments.
         assertTrue("Test fixture unexpectedly failed: $fixtureProblem",
