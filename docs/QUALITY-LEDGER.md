@@ -1,5 +1,13 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-29 opt-in network loss and return with real peers (#569)
+
+- **Source slice:** `netflap=true` on the manual `android-public-swarm.yml` runs `tools/android_public_swarm_netflap.sh` (`AndroidPublicSwarmNetworkFlapInstrumentedTest`).
+  - During a foreground-service download, Wi-Fi and mobile data go off for 30 s and then back on, with the test signalled at each edge.
+  - **Required:** the job is not silently stopped, verified growth of ≥2 MiB resumes on the same engine, and the service survives.
+  - **Recorded:** bytes during the outage and time to recovery. Connectivity is always restored on exit.
+- **Evidence:** pending a manual dispatch after merge. Emulator networking only; this does not cover a real Wi-Fi↔cellular handover, a VPN or captive portals.
+
 ## 2026-10-29 opt-in Doze observation with real peers (#569)
 
 - **Source slice:** the manual `android-public-swarm.yml` gains `doze=true`, which runs `tools/android_public_swarm_doze.sh` (`AndroidPublicSwarmDozeInstrumentedTest`).

@@ -28,6 +28,16 @@ Do not use Secrets in fork/PR builds. Never connect the CI runner to a private r
   - **Phase B**, in a new process, must find no leftover ongoing notification, the transfer restored stopped, unchanged bytes and a 100% recheck.
   - **Failure conditions:** the script fails unless phase A armed and actually died, and phase B passed without being skipped.
 
+## Manual real-peer lifecycle modes (#568/#569)
+
+`android-public-swarm.yml` is manual-only, needs no secrets and uses the sanitized Debian netinst. It has these exclusive modes:
+- **default:** download a verified budget;
+- `interrupt`: SIGKILL mid-download, then check restore and continuation;
+- `doze`: forced deep idle during a foreground download;
+- `netflap`: Wi-Fi and data off for 30 s, then require recovery.
+
+A peer shortfall is reported as INCONCLUSIVE, never as engine acceptance. Each run is emulator evidence only.
+
 ## Targeted escalation (manual first)
 
 - XML-RPC parser and transport changes: deterministic fixture and fuzz/size/error cases, plus a bounded integration matrix when justified.
