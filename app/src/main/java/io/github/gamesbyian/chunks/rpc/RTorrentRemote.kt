@@ -198,12 +198,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         require(Regex("[A-Za-z][A-Za-z0-9_-]{0,39}").matches(view)) { "Invalid view" }
         val minimum = MINIMUM_FIELDS
         val extended = EXTENDED_FIELDS
-        val hashes = extractRows(call("download_list", listOf("", view))).map {
-            val hash = it as? String ?: error("Invalid torrent identity")
-            require(identityPattern.matches(hash)) { "Invalid torrent infohash in server view" }
-            hash
-        }
-        require(hashes.size <= MAX_TRANSFERS) { "Unexpectedly large torrent list" }
+        val hashes = readViewIdentities(view)
         if (hashes.isEmpty()) return emptyList()
 
         fun getters(fields: List<String>) = fields.map { it.removeSuffix("=") }
@@ -223,7 +218,30 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                 transfers += transfer
             }
         }
+        // The view can change while thousands of exact-hash getters are read.
+        // Refuse to publish a supposedly complete mixed-time inventory if its
+        // membership changed; do not retry or assume that page success proves
+        // a stable view. Reordering alone does not invalidate membership.
+        val endHashes = readViewIdentities(view)
+        check(hashes.size == endHashes.size &&
+            hashes.map { it.uppercase(java.util.Locale.ROOT) }.toSet() ==
+            endHashes.map { it.uppercase(java.util.Locale.ROOT) }.toSet()) {
+            "rTorrent view membership changed during paged read; refresh"
+        }
         return requireUniqueIdentities(transfers)
+    }
+
+    private suspend fun readViewIdentities(view: String): List<String> {
+        val hashes = extractRows(call("download_list", listOf("", view))).map {
+            val hash = it as? String ?: error("Invalid torrent identity")
+            require(identityPattern.matches(hash)) { "Invalid torrent infohash in server view" }
+            hash
+        }
+        require(hashes.size <= MAX_TRANSFERS) { "Unexpectedly large torrent list" }
+        require(hashes.map { it.uppercase(java.util.Locale.ROOT) }.toSet().size == hashes.size) {
+            "rTorrent server view contains duplicate transfer identities"
+        }
+        return hashes
     }
 
     private suspend fun pagedRows(hashes: List<String>, getters: List<String>): List<List<Any?>> {

@@ -278,7 +278,12 @@ class RTorrentRemoteFixtureTest {
     private fun hashFor(index: Int) = "%040X".format(index)
 
     /** Serves an oversized d.multicall2 and a paged download_list/system.multicall gateway. */
-    private fun largeQueue(count: Int, faultHash: String? = null) = Fixture { request, _ ->
+    private fun largeQueue(
+        count: Int, faultHash: String? = null, relistCount: Int? = null,
+        reverseRelist: Boolean = false
+    ): Fixture {
+        val readCount = java.util.concurrent.atomic.AtomicInteger(0)
+        return Fixture { request, _ ->
         when {
             request.contains("<methodName>d.multicall2</methodName>") -> Reply(200, result("<array><data>" +
                 (0 until count).joinToString("") { i ->
@@ -288,9 +293,16 @@ class RTorrentRemoteFixtureTest {
                         "<value><string>/data/fixture/$i</string></value><value><i8>0</i8></value>" +
                         "<value><i8>0</i8></value><value><i8>0</i8></value></data></array></value>"
                 } + "</data></array>"))
-            request.contains("<methodName>download_list</methodName>") -> Reply(200, result("<array><data>" +
-                (0 until count).joinToString("") { "<value><string>${hashFor(it)}</string></value>" } +
-                "</data></array>"))
+            request.contains("<methodName>download_list</methodName>") -> {
+                val readNumber = readCount.incrementAndGet()
+                val last = if (readNumber > 1) relistCount ?: count else count
+                val indexes = (0 until last).toList().let {
+                    if (readNumber > 1 && reverseRelist) it.asReversed() else it
+                }
+                Reply(200, result("<array><data>" +
+                    indexes.joinToString("") { "<value><string>${hashFor(it)}</string></value>" } +
+                    "</data></array>"))
+            }
             request.contains("<methodName>system.multicall</methodName>") -> {
                 val calls = Regex("<name>methodName</name><value><string>([a-z_.]+)</string></value></member>" +
                     "<member><name>params</name><value><array><data><value><string>([0-9A-F]{40})</string>")
@@ -314,6 +326,7 @@ class RTorrentRemoteFixtureTest {
                 } + "</data></array>"))
             }
             else -> Reply(200, fault(404, "Unexpected RPC method"))
+        }
         }
     }
 
@@ -340,6 +353,31 @@ class RTorrentRemoteFixtureTest {
             assertEquals(setOf("d.hash", "d.name", "d.size_bytes", "d.completed_bytes", "d.state",
                 "d.directory", "d.down.rate", "d.up.rate", "d.ratio"), getters)
             assertTrue(fixture.methods.all { it.length < 4_194_304 })
+        }
+    }
+
+    @Test fun changedMembershipDuringPagedReadFailsClosed() = runBlocking {
+        largeQueue(2, relistCount = 1).use { fixture ->
+            val remote = RTorrentRemote(RemoteCredentials(fixture.endpoint, "", ""))
+            val thrown = assertThrows(IllegalStateException::class.java) {
+                runBlocking { remote.listTransfersPaged("main") }
+            }
+            assertTrue(thrown.message.orEmpty().contains("membership changed"))
+            assertEquals(2, fixture.methods.count {
+                it.contains("<methodName>download_list</methodName>")
+            })
+            assertFalse(fixture.methods.any { it.contains("<methodName>d.erase</methodName>") })
+        }
+    }
+
+    @Test fun reorderedMembershipDuringPagedReadIsStillComplete() = runBlocking {
+        largeQueue(2, reverseRelist = true).use { fixture ->
+            val remote = RTorrentRemote(RemoteCredentials(fixture.endpoint, "", ""))
+            val transfers = remote.listTransfersPaged("main")
+            assertEquals(listOf(hashFor(0), hashFor(1)), transfers.map { it.hash })
+            assertEquals(2, fixture.methods.count {
+                it.contains("<methodName>download_list</methodName>")
+            })
         }
     }
 
