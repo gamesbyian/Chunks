@@ -1,5 +1,10 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-29 built-in POSIX libtorrent disk backend compatibility probe (#573)
+
+- **Merged:** [#573](https://github.com/gamesbyian/Chunks/pull/573), squash `061f6ec23aa08fc1284edc6730a7e9d2f107750b`, reviewed exact head `9da7fb1c2b1914b69d6db812665cf0f291a4f955`. Passed [Android foundation/JVM 40870815960](https://github.com/gamesbyian/Chunks/actions/runs/40870815960), [R8 40870815902](https://github.com/gamesbyian/Chunks/actions/runs/40870815902), [native Add instrumentation 40870816021](https://github.com/gamesbyian/Chunks/actions/runs/40870816021), [disposable rTorrent 40870815972](https://github.com/gamesbyian/Chunks/actions/runs/40870815972).
+- **Bounded proof:** optional `LocalEngineConfig.diskIoMode=POSIX` selects libtorrent4j's existing `SessionParams.setPosixDiskIO()` instead of introducing a new disk implementation; **default unchanged**. Desktop native real-loopback fixture receives multi-file bytes, flushes disk cache, independently checks exact file contents, saves resume and restores stopped with bytes intact. This establishes a working fallback **for disposable seekable desktop files**, not Android SAF/MediaStore, physical public Downloads, post-reinstall ownership or unattended background execution. Already accepted Android API35/API29 emulator public Downloads evidence remains distinct (#387/#436). Remaining #568 scope is physical and boundary acceptance, not wholesale storage replacement.
+
 ## 2026-10-29 first pure shared cross-engine observation and query (#571)
 
 - **Merged:** [#571](https://github.com/gamesbyian/Chunks/pull/571), squash `40d01124aeb18edef6b31569e4a5c14a708bd02d`, reviewed exact head `ccf964d6c3512d4b3232b0d822fa88ae46c7aa48`. Source-head workflows passed: [Android foundation 40868022939](https://github.com/gamesbyian/Chunks/actions/runs/40868022939), [R8 minified 40868022783](https://github.com/gamesbyian/Chunks/actions/runs/40868022783) and [native Add instrumentation 40868022967](https://github.com/gamesbyian/Chunks/actions/runs/40868022967).

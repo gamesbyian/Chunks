@@ -16,6 +16,8 @@ The initial audit underestimated Chunks' implementation. [#387](https://github.c
 
 **Copying policy:** this repo has not made a new licensing choice here. MIT/BSD/Apache-2.0 candidates are eligible for a reviewed *code import* with provenance, NOTICE/attribution and dependency audit. GPLv3/GPLv2+ apps are candidates for behavior, architecture, tests and independent reimplementation unless their copyleft obligations and the intended Chunks distribution license are deliberately accepted. Publication as open-source by itself does **not** grant unrestricted code mixing. A GitHub release from another project does not prove an approach works on the current Chunks target SDK.
 
+**Follow-through (2026-10-29):** [#573](https://github.com/gamesbyian/Chunks/pull/573) merged the existing libtorrent4j `SessionParams.setPosixDiskIO()` as an optional local-engine configuration, with exact native JVM multi-file bytes/flush/resume proof and four green source workflows. It **does not** replace the already working normal public Downloads path or prove any SAF/MediaStore native I/O. The next useful tests remain device/reinstall/provider failure boundaries, not another disk adapter.
+
 ## A. P0 Android viability and source code to inspect
 
 | Candidate and evidence | Exact upstream code/document | Reusable idea / Chunks adaptation | Licence and risk | Priority |
