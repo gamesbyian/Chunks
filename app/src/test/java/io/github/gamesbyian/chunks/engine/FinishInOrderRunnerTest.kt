@@ -112,6 +112,25 @@ class FinishInOrderRunnerTest {
         assertEquals(7, port.files.single { it.index == 9 }.priority)
     }
 
+    @Test fun finishThisNextMakesTheChosenFileActiveAndReleasesItsPin() = kotlinx.coroutines.runBlocking {
+        val port = FakePort(episodes(3))
+        val applied = (FinishInOrderRunner(port).step(hash, record(port)) as Step.Applied).record
+        // The user had hand-set episode 3 (index 9) to Low: pinned.
+        port.files.replaceAll { if (it.index == 9) it.copy(priority = 2) else it }
+        val pinned = (FinishInOrderRunner(port).step(hash, applied) as Step.Idle).record
+        assertEquals(setOf(9), pinned.pinned)
+
+        val next = requireNotNull(pinned.finishNext(9))
+        assertEquals(listOf(9, 3, 6), next.policy.order.map { it.index })
+        assertFalse(9 in next.pinned)
+        val step = FinishInOrderRunner(port).step(hash, next) as Step.Applied
+        assertEquals(9, step.plan.active)
+        assertEquals(mapOf(9 to 7, 3 to 4, 6 to 1), port.files.associate { it.index to it.priority })
+        // Unknown files and unresolved journals are refused.
+        assertNull(step.record.finishNext(42))
+        assertNull(step.record.copy(pending = listOf(Change(3, 4, 7))).finishNext(6))
+    }
+
     /** Fake engine whose sequential flag is observable and optionally unconfirmable. */
     private class SequentialPort(files: MutableList<LocalTransferFile>) : FinishInOrderRunner.Port {
         val inner = FakePort(files)

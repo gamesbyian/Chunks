@@ -2,6 +2,12 @@
 
 > **Authority:** shared domain model, capability and mutation boundaries. Product rules are in [PRODUCT](PRODUCT.md); implementation receipts and current task priority live in [QUALITY-LEDGER](QUALITY-LEDGER.md) and [WORK-QUEUE](WORK-QUEUE.md). Design notes do not imply physical acceptance.
 
+## Smart Seeding Rules domain and enforcement integration
+
+[SMART-SEEDING-RULES](SMART-SEEDING-RULES.md) defines policy semantics and state transitions. Model immutable rule ID, optional generated/custom human-facing label, match conditions and precedence, version, explicit environment-ID membership (including distinct future-environment opt-in), per-profile capability evaluation, and transfer-specific manual override separately. A rule's display label and a server's editable name must never serve as identity or match provenance.
+
+A shared policy evaluator works without network lookup and produces an explainable effective policy **per exact environment and infohash**, plus provenance, pending metadata, applicability and enforcement state. Add-intake coordinators apply the plan before Start only after verified target capabilities and command/readback; unknown or unsupported enforcement follows a user-approved hold/notify or explicit fallback. Local native and remote rTorrent adapters may enforce different subsets; remote policy managed by Chunks cannot be guaranteed while Chunks is disconnected. Saving a rule affects future intake by default; applying to existing jobs is a separate scope-reviewed operation with uncertain-write reconciliation. Neither a group membership nor ratio stop ever deletes torrent files. Distinguish per-transfer upload cap from shared aggregate budget. Do not record private announce URLs or passkeys in diagnostics.
+
 ## Cross-feature lifecycle for file identities (binding integration)
 
 The [EXTERNAL-FILE-ACCESS](EXTERNAL-FILE-ACCESS.md), [PLEX-FILENAME-REPAIR](PLEX-FILENAME-REPAIR.md), and [TRANSFER-FILE-RECOVERY](TRANSFER-FILE-RECOVERY.md) contracts share a typed file-reference service: immutable torrent file index/infohash, exact engine/server profile, actual backing-file location, separately optional Chunks display label, independently published copy, file version/generation, and proven read/rename/rebind capabilities. None of these identities may silently substitute for another. 

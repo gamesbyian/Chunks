@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/design/approved/chunks-app-icon-readme-black.svg" alt="Chunks app icon" width="220">
+</p>
+
 # chunks.
 
 **Your downloads have places to be.**
