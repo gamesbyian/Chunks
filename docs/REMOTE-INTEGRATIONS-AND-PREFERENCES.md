@@ -40,6 +40,10 @@ Service actions move through **available → confirmation → submitted → reco
 4. Optional service control requires explicit per-profile enablement, fresh authorization, exact service/host confirmation, affected-transfer impact and verified postcondition; timeout yields **uncertain** without blind replay.
 5. Generic RPC, shell, user/firewall edits, host reboot, package deployment and hidden credential redirects remain inaccessible. UI lock, connectivity loss, restore and provider role changes revoke sensitive control surfaces.
 
+## Separate indexer, storage and event integrations
+
+Specialist features remain in dedicated, independently permissioned contracts: [EXISTING-SERVICE-INTEGRATIONS](EXISTING-SERVICE-INTEGRATIONS.md) governs optional Prowlarr-compatible source integration and bounded Place-based storage sync; [CROSS-SEED-AND-PAYLOAD-COPY](CROSS-SEED-AND-PAYLOAD-COPY.md) governs manual verification and actual-byte copying; [EVENT-AUTOMATION](EVENT-AUTOMATION.md) governs optional user-authored event rules, webhooks and app handoffs. They **do not** grant remote service admin rights or displace primary torrent controls. The Discovery global off switch suppresses provider discovery, but not independent local-file Add or unrelated user-authorized transfer-event rules. A user-owned persistent remote executor must be proven separately; a rTorrent login alone never supplies one.
+
 ## Optional downstream integration (opt-in, disabled by default)
 
 - **F12.08 completion to media managers:** Offer an optional user-authorized completion handoff to an installed/routable media manager or library scanner using an individually documented adapter. Define exact event (hash-verified complete versus tracker or move status), selected environment, read-only content identity, configured destination and postcondition. Avoid exposing private tracker passkeys, names or IP addresses beyond the consented service; do not assume a Sonarr/Radarr/Plex instance exists or can access the same paths. A media-manager *import* is distinct from Chunks' Place mutation and library-copy operation; no automatic deletion of source seeding bytes.
