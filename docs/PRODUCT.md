@@ -2,6 +2,11 @@
 
 > **Authority:** binding owner product outcomes. Detailed feature rules live in the linked canonical contracts; feature completion and evidence live in [SPEC-COVERAGE](SPEC-COVERAGE.md) and [QUALITY-LEDGER](QUALITY-LEDGER.md). This document does not set implementation priority.
 
+## Combined transfer browsing and environment colour identity (owner direction, 2026-10-29)
+
+A user may view, search, filter, sort and select transfers from **any combination of enabled local and remote environments in one list**, including All. Sorting and filters operate on the combined transfer union. Each row remains recognizably attached to its originating environment; duplicate torrent hashes on different environments remain distinct jobs. Every environment receives an automatically assigned, customizable Chunks palette colour (excluding black/white), retained with stable identity. Environment names appear in the associated colour wherever scope is displayed, with accessible textual origin and non-colour fallbacks. A combined view never changes the Add destination or implicitly broadcasts rules, settings or actions across environments. Authoritative requirements and acceptance are in [UNIFIED-ENVIRONMENTS](UNIFIED-ENVIRONMENTS.md), with presentation behavior in [UX](UX.md). This is a specification, not an implementation claim.
+
+
 ## Human task outcomes, continuity and effective-rule explanations (binding, planned)
 
 Chunks offers optional **Task outcomes** (MF02) and **Continue task** (MF04), connecting a person's chosen goal to evidence from one or more exact local/remote transfer operations. Existing ordinary Add and transfer lists remain primary and task-free by default. The app must distinguish a sent/accepted command, verified job/data result, external steps needing confirmation, and user-marked completion. Resuming a human Task preserves context and prompts a safe read-only reconciliation, **never** replays a destructive or uncertain command or redirects it to another environment. Archiving or removing a Task never removes a transfer or its files. [Canonical task contract](TASK-OUTCOMES-AND-CONTINUITY.md).
