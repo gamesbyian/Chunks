@@ -4,7 +4,7 @@
 
 **Inputs:** [Multilingual aversion and abandonment research](https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md), [External 240-feature inventory](https://github.com/gamesbyian/Chunks/blob/26fec615e8241504011f319929c40d22cc35bd9f/docs/BITTORRENT-ECOSYSTEM-FEATURE-INVENTORY-2026-10-29.md) and [36-journey / 240-micro-workflow atlas](https://github.com/gamesbyian/Chunks/blob/7631199f79b6763a961da5a2a3665886eb6964d7/docs/BITTORRENT-USER-GOALS-AND-WORKFLOWS-2026-10-29.md). The machine-readable, inspectable counterpart is [the typed JSON graph](BITTORRENT-CONCEPT-GRAPH-2026-10-29.json).
 
-**Important epistemic boundary:** “Missing” here means **not explicitly represented as a complete capability in the 240-item inventory**, or **a relationship between existing capabilities is not covered there**. It emphatically does *not* mean no BitTorrent software anywhere implements it. Components, plugins, new releases and external services may already provide parts or even all of a candidate. All 66 H-series entries are hypotheses to investigate, not verified unmet market needs, commitments or requests to change a product.
+**Important epistemic boundary:** “Missing” here means **not explicitly represented as a complete capability in the 240-item inventory**, or **a relationship between existing capabilities is not covered there**. It emphatically does *not* mean no BitTorrent software anywhere implements it. Components, plugins, new releases and external services may already provide parts or even all of a candidate. All 69 H-series entries are hypotheses to investigate, not verified unmet market needs, commitments or requests to change a product.
 
 ## 1. Two views of the map
 
@@ -71,15 +71,17 @@ Existing tools have many of the boxes on the main line, and some tools bridge se
 | Cognitive demands | 21 | The mental work a user might be doing or trying to avoid |
 | Possible affective stakes | 21 | Anticipation, uncertainty, trust, loss concern, pride and other context-sensitive possibilities |
 | Gap domains | 11 | Qualitatively identified thin or discontinuous relationship zones |
-| Candidate feature hypotheses | 66 | Potential unrepresented connective capabilities |
+| Candidate feature hypotheses | 69 | Potential unrepresented connective capabilities |
 | Reported aversion factors | 55 | First-person complaints, distinctive cases and contingent perceptions from PR #539 |
 | Friction domains | 6 | Why people avoid, quit or reluctantly participate |
-| Possible exit or alternate paths | 18 | Conditional non-use, interruption, repair abandonment or switching routes |
+| Possible exit or alternate paths | 21 | Conditional non-use, interruption, repair abandonment or switching routes |
 | Additional evidence sources | 10 | Historical academic findings, individual user accounts and primary software guidance |
 | Individual aversion source records | 57 | Original links from PR #539; some share the same underlying discussion |
-| **Total** | **839** | Typed nodes available for query, visualization and revision |
+| Implementation and context evidence records | 25 | Documented client capabilities, OS rules, task-level accessibility reports and cross-domain studies |
+| Discontinuance theory categories | 7 | Cross-domain analytical taxonomy of different reasons for stopping |
+| **Total** | **877** | Typed nodes available for query, visualization and revision |
 
-The JSON contains **3,658 typed edges**, including 695 prior activity→feature links, 547 *co-support* relationships between feature concepts, 149 journey→activity memberships, 113 potential activity transitions and explicit relationships from the H hypotheses to the activities/features/cognitive demands/affective stakes they could affect.
+The JSON contains **3,832 typed edges**, including 695 prior activity→feature links, 547 *co-support* relationships between feature concepts, 149 journey→activity memberships, 113 potential activity transitions and explicit relationships from the H hypotheses to the activities/features/cognitive demands/affective stakes they could affect.
 
 **Caution about interpretation:** Co-support means that two features were linked to the *same described activity*. It proves neither that the features implement one another nor that they must both be present. The cognitive/affective mappings are analyst-supplied hypotheses, not interviews or psychological measurements. The graph retains the relationship type and evidence/interpretation level so those distinctions can be preserved.
 
@@ -302,6 +304,10 @@ These are deliberately phrased as **capability hypotheses**, not instructions to
 | **H65** | True remote service overhead accounting | Seedbox costs include transport, upkeep, time and storage constraints | A09.11 | F11.11 |
 | **H66** | Support sampling and access motives beyond price | Access to older regional material and preference exploration can motivate P2P | A12.01 | F09.01 |
 
+| **H67** | OS-aware background continuance and interruption explanation | An intended long-running transfer may be prevented by Android lifecycle limits without a torrent protocol failure | A20.11, A17.07, A04.12 | F14.07, F05.07 |
+| **H68** | Android destination and distribution-variant capability explanation | File access and allowed save paths vary by Android version, SAF permission and Play/F-Droid/direct packaging | A10.11, A02.07, A16.11 | F03.17, F14.13 |
+| **H69** | Assistive semantic parity for torrent states and controls | Accessible navigation alone does not guarantee readable speed, quota, peer, tracker, status and destructive-action meanings | A18.07, A04.01, A05.02 | F14.09, F08.03 |
+
 ### 6.1 What “missing” should mean at different levels
 
 1. **Missing from an inventory:** no explicit feature entry describes the *whole* hypothesized function, even though components may exist.
@@ -364,7 +370,7 @@ jq -r '.edges[] | select(.type=="co_supports_activity" and .weight>=2) | [.from,
 jq -r '.nodes[] | select(.type=="missing_capability_hypothesis") | [.id,.label,.missingLink] | @tsv' BITTORRENT-CONCEPT-GRAPH-2026-10-29.json
 ```
 
-The graph stores `confidence` labels such as `document-derived`, `previous_atlas_synthesis`, `derived_co_occurrence`, `interpretive`, and `hypothesis`. They describe **how the edge was produced**, not numerical probabilities of correctness. Human goals and affective stakes are attached at the *activity domain* level, a deliberate low-resolution first pass. It should not be treated as psychographic data about actual users. The 66 H nodes have more specifically chosen activity, feature, cognition and affective links.
+The graph stores `confidence` labels such as `document-derived`, `previous_atlas_synthesis`, `derived_co_occurrence`, `interpretive`, and `hypothesis`. They describe **how the edge was produced**, not numerical probabilities of correctness. Human goals and affective stakes are attached at the *activity domain* level, a deliberate low-resolution first pass. It should not be treated as psychographic data about actual users. The 69 H nodes have more specifically chosen activity, feature, cognition and affective links.
 
 **Edge types to keep separate:**
 
@@ -546,14 +552,47 @@ The graph now supports more specific investigation than another indiscriminate f
 
 **Highest-value new evidence types:** first-run recordings, task-level observation, before/after screenshots of real repair, abort logs with consent, longitudinal diary studies, client issue reports with reproduction steps, and provider-specific operation manuals. None of these justify invasive telemetry by default.
 
-## 11. Boundaries and handoff
+## 11. What further research changed: novelty, Android, accessibility and exit
 
-The research remains external and exploratory, now explicitly including users who decline, abandon or switch away from BitTorrent. It introduces **no new requirements**, makes **no assessment of the existing product**, creates **no backlog or prioritized roadmap**, and does not modify the underlying 240-feature inventory or the 240-activity atlas. No user study or instrumented usage data was collected. Neither the numerical graph size nor the 66 hypotheses should be interpreted as population coverage or proven novelty.
+The latest audit [separately documents 25 sources and their consequences](BITTORRENT-CONCEPT-MAP-EVIDENCE-AUDIT-2026-10-29.md). It is essential reading alongside the 69 H-series hypotheses. **Sixteen existing hypotheses have scope-limited validation status annotations in the JSON graph.** Most assessed cases have an existing partial implementation or source-specific precedent. These entries must not be advertised as new capabilities without a tighter definition and version-specific verification.
+
+### 11.1 Documented features that disprove broad novelty
+
+- **qui** already documents cross-seed matching using direct reuse, hardlinks and reflinks; cross-seed-aware automation; dry-run previews; safe-orphan inspection across known active instances; and backup restore preview. H07/H08/H10/H19/H20/H21/H24/H39/H61 can therefore not be treated as wholly unexplored software features.
+- Its *Export to Instance* operation moves a torrent registration between qBittorrent instances **without moving the payload**. It verifies destination registration health, but **assumes data is already present and defaults to skip-checking**. Thus H02/H17/H35 are partly addressed for registration state, not necessarily for the final byte-level user goal.
+- The remaining conceptual question is **the exact boundary of verified effect**: within one backend, between two client instances, on actual disk blocks, or all the way to the person's intended use.
+
+### 11.2 New external constraints and task-level evidence
+
+- **H67, Android long-running work:** Android 15+ imposes time budgets on certain background foreground-service types, while Android 14+ offers user-initiated data-transfer jobs. What works depends on API, task type, notification, initiation and operating conditions. The gap is not “invent a longer-running Android transfer” but **truthfully reconcile user intent with OS-authorized execution**.
+- **H68, Android storage access:** Android document-tree restrictions, Play Store all-files policies and documented differences between LibreTorrent packaging variants show that a requested folder can be a genuine capability limitation. Show this distinction in the map's cognitive and environmental edges.
+- **H69, accessible meaning:** first-person issue reports in Transmission and qBittorrent and a UNIT3D tracker issue show that keyboard/screen-reader focus is not equivalent to being able to identify uploaded bytes, ratio, status or tracker labels. LibreTorrent also documents accessibility improvements in 2026, so evidence supports an **uneven, task-specific landscape**, not absolute absence.
+
+### 11.3 Completion should not be misclassified as abandonment
+
+Cross-domain technology research distinguishes **seven kinds of discontinuance**: overuse, overload, proficiency, disenchantment, social, circumstantial and **solution**. Solution discontinuance is particularly relevant to one-off BitTorrent use: the person obtains what they needed, stops using the app and is satisfied. Also distinguish switching from one torrent client to another from stopping BitTorrent entirely. The graph now includes `TD01`–`TD07` and three explicit exit nodes:
+
+- `N19`: intentional successful departure after a one-off need is fulfilled;
+- `N20`: a change of torrent client while the person continues using the protocol;
+- `N21`: temporary suspension because external conditions changed.
+
+These concepts are **interpretive applications of general technology research**, not BitTorrent population measurements.
+
+### 11.4 New evidentiary discipline for “missing” claims
+
+The H series is now best treated as **validation questions**, with a feature's status recorded as `documented_existing_partial`, `externally_constrained_partially_implemented`, `reported_gap_with_partial_remediation` or `not_yet_checked`, as supported. A complete workflow matters: an existing cross-seed-safe delete operation does not establish universal remote file restoration; a transfer registration appearing on a remote host does not prove the payload has moved; and an accessible button does not prove accessible decision-making.
+
+Read the [detailed evidence register, disconfirmation matrix, Android platform analysis, accessibility cases, publisher workflows and research follow-ups](BITTORRENT-CONCEPT-MAP-EVIDENCE-AUDIT-2026-10-29.md) rather than equating a graph's count of hypotheses with the number of genuine absent features.
+
+## 12. Boundaries and handoff
+
+The research remains external and exploratory, now explicitly including users who decline, abandon or switch away from BitTorrent. It introduces **no new requirements**, makes **no assessment of the existing product**, creates **no backlog or prioritized roadmap**, and does not modify the underlying 240-feature inventory or the 240-activity atlas. No user study or instrumented usage data was collected. Neither the numerical graph size nor the 69 hypotheses should be interpreted as population coverage or proven novelty.
 
 **Artifacts:**
 
 - This document: readable conceptual map, sparsity interpretation, diagrams, all H hypotheses and research validation method.
 - [Typed graph data](BITTORRENT-CONCEPT-GRAPH-2026-10-29.json): full nodes, edges, IDs, alternative routes, cognitive and possible emotional relations, plus derived feature co-occurrence.
+- [Evidence audit](BITTORRENT-CONCEPT-MAP-EVIDENCE-AUDIT-2026-10-29.md): implementation disconfirmation, source-specific conclusions, Android and accessibility research, and refined exit taxonomy.
 - [Feature inventory](https://github.com/gamesbyian/Chunks/blob/26fec615e8241504011f319929c40d22cc35bd9f/docs/BITTORRENT-ECOSYSTEM-FEATURE-INVENTORY-2026-10-29.md): source-of-record for observed product capabilities.
 - [Activity atlas](https://github.com/gamesbyian/Chunks/blob/7631199f79b6763a961da5a2a3665886eb6964d7/docs/BITTORRENT-USER-GOALS-AND-WORKFLOWS-2026-10-29.md): source-of-record for illustrated user workflows.
 
