@@ -12,7 +12,8 @@
   - #519 entry-screen tiles `ab04d2d` (head `127737fa`: API35 40818275012, API29 40818275017, build 40818275155, atlas 40818275122, minified-smoke 40818275072);
   - #520 file rows + storage bar `938c95e` (head `3eb5765d`: API35 40819491492, API29 40819491475, build 40819491426, atlas 40819491494, minified-smoke 40819491471);
   - #522 API35 screenshot-pull retry `880328a` (head `a9862c2b`: API35 40816923510);
-  - #521 banners + 200% fixes `ef696f8` (head `abe16c96`: API35 40820549675, API29 40820549658, build 40820549669, atlas 40820549692, minified-smoke 40820549665).
+  - #521 banners + 200% fixes `ef696f8` (head `abe16c96`: API35 40820549675, API29 40820549658, build 40820549669, atlas 40820549692, minified-smoke 40820549665);
+  - #523 accent-panel contrast, ZIP review restyle and simpler `ActionTile` `220fcc3` (head `8f903319`: API35 40821692945, build 40821692900, atlas 40821693173, minified-smoke 40821692958).
 - **#511 R8 merged `052bc9f`** (head `a25c8b8d`): `minified-smoke` [40815893549](https://github.com/gamesbyian/Chunks/actions/runs/40815893549) passes. Two native engines move exact bytes and Compose renders on API35 against the R8-shrunk `qaMinified` build. How the first failures were diagnosed:
   1. Instrumentation hung because the test APK had been shrunk without keeping the runner.
   2. A bounded diagnostic run then showed `NoSuchMethodError androidx.tracing.Trace.endSection()`: libraries shared with the runner resolve from the shrunk app.
