@@ -1,5 +1,15 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-29 Smart Connect, Finish in Order default and approved ExtraBold
+
+- **Merged (squash, exact-head CI green):**
+  - #526 advanced exact RPC path (#464) `e04464f` (head `60a85fbb`: API35 40822994590, build 40822994610, atlas 40822994557, minified-smoke 40822994555);
+  - #527 opt-in Finish in Order default for new phone Adds (#415) `e1e6504` (head `d1799f3f`: API35 40823894681, API29 40823894689, build 40823894659, minified-smoke 40823894658);
+  - #528 approved reference-panel ExtraBold 800 shipped in Android `e2b6f61` (head `a1c198e8`: API35 40824699015, build 40824699156, atlas 40824699066, minified-smoke 40824699007, font audit 40824699113, visual-stress 40824699108, build-fonts 40824699106). Before merging, the packaged OTF was checked as byte-identical to `assets/fonts/experimental/consolidated/ChunksReferencePanel-ExtraBold-Consolidated.otf` (SHA-256 `55ba6f8a…813c`), with the same 856 mapped code points as the font it replaces;
+  - #529 saved-server address and last connection (#464) `fbb0a47` (head `9befdad1`: API35 40825055920, which ran the new Keystore roster tests, build 40825055812, atlas 40825055831, minified-smoke 40825055855);
+  - #525 docs `e578046`.
+- **Evidence tier:** JVM/Robolectric and API35 emulator only. None of these were exercised on a physical handset, TalkBack, a real provider or with human visual approval of the new ExtraBold in context.
+
 ## 2026-10-29 visual passes and R8 smoke (app lane)
 
 - **Owner direction (2026-10-29):** wording may change, the Chunks typeface may be used anywhere, and artwork may be chosen from the library and reference sheets. Specs win over the references, and no mockup feature is implemented. The design system is recorded in UX.md.
