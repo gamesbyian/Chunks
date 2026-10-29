@@ -20,7 +20,7 @@
 
 | Slice | Required outcome | Acceptance still open |
 |---|---|---|
-| Discovery opt-in and master off | Default no discovery egress; one accessible switch disables every search/feed/watch/subscription/notification/auto-add dispatch even after process death/reconnect; no impact on manual Add, active peers/torrents or Create & Share | Network interception including in-flight races, restart/restore, source persistence, stale subscription backlog |
+| Discovery opt-in and master off | Default no discovery egress; one accessible switch disables every **discovery-driven** search/feed/provider watcher/subscription/notification/auto-add dispatch even after process death/reconnect; no impact on manual Add, active peers/torrents or Create & Share | Network interception including in-flight races, restart/restore, source persistence, stale subscription backlog |
 | Integrated discover/search | Multi-provider search, reliable source/freshness/uncertainty, filters, saved searches, RSS, credentials and reviewed exact-target Add; separate Auto-add/Start consent | Public/test provider API, redacted private-source fixtures, 320×700/412×892, TalkBack/200%, no undisclosed queries |
 | Secondary Server tools | Profile-specific read-only host/storage/service state and optional safe Start/Stop/Restart with separate verified auth, precise impact preview and postcondition | Local-only absence, zero prime-screen displacement, two-profile tenant isolation, adapter capability/role faults, no arbitrary shell/reboot/user/firewall/install |
 
