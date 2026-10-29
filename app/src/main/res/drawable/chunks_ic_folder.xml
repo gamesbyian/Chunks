@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- GENERATED from docs/design/svg/icons/files/folder.svg by tools/generate_icon_vectors.cjs (sha256 99639b764e66a8a9); edit the SVG, then regenerate. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp" android:viewportWidth="64" android:viewportHeight="64">
+  <path android:pathData="M8 18 Q8 13 13 13 H26 L32 20 H51 Q56 20 56 25 V49 Q56 54 51 54 H13 Q8 54 8 49 Z" android:fillColor="#FF00D4FF" android:strokeColor="#FF0B0F17" android:strokeWidth="5" android:strokeLineCap="round" android:strokeLineJoin="round"/>
+</vector>
