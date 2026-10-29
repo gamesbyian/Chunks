@@ -390,4 +390,23 @@ class RTorrentRemoteFixtureTest {
             try { remote.lookupName("not-a-hash"); fail("must refuse") } catch (_: IllegalArgumentException) { }
         }
     }
+
+    @Test fun exactHashLookupDoesNotMistakeServerFaultForMissingTorrent() = runBlocking {
+        val hash = "A".repeat(40)
+        for (faultCode in listOf(-32601, -503)) {
+            Fixture { request, _ ->
+                assertTrue(request.contains("<methodName>d.name</methodName>"))
+                Reply(200, fault(faultCode, "Server rejected exact-hash lookup"))
+            }.use { fixture ->
+                val remote = RTorrentRemote(RemoteCredentials(fixture.endpoint, "", ""))
+                val received = assertThrows(RpcFault::class.java) {
+                    runBlocking { remote.lookupName(hash) }
+                }
+                assertEquals(faultCode.toString(), received.code)
+                assertEquals(1, fixture.methods.size)
+                assertFalse(fixture.methods.single().contains("load."))
+            }
+        }
+    }
+
 }
