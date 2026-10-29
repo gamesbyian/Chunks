@@ -54,7 +54,9 @@ internal fun FinishInOrderReview(
     onConfirm: (Mode, List<Int>) -> Unit,
     onCancel: () -> Unit,
     initialMode: Mode = Mode.BALANCED,
-    confirmLabel: String = "Start Finish in Order"
+    confirmLabel: String = "Start Finish in Order",
+    /** Phone engine only: rTorrent has no verified per-transfer equivalent. */
+    sequentialSupported: Boolean = false
 ) {
     val byIndex = remember(files) { files.associateBy { it.index } }
     var order by remember(initialOrder) { mutableStateOf(initialOrder) }
@@ -73,8 +75,11 @@ internal fun FinishInOrderReview(
         "files stay skipped, and any priority you change by hand later is left alone.",
         style = MaterialTheme.typography.bodySmall)
     Column(Modifier.selectableGroup()) {
-        listOf(Mode.BALANCED to "Balanced: next file at Normal, the rest Low",
-            Mode.FINISH_FIRST to "Finish first: everything after the current file Low")
+        (listOf(Mode.BALANCED to "Balanced: next file at Normal, the rest Low",
+            Mode.FINISH_FIRST to "Finish first: everything after the current file Low") +
+            (if (sequentialSupported) listOf(Mode.SEQUENTIAL_PLAYBACK to
+                "Sequential Playback: Finish first, and fetch the current file's pieces from start to end " +
+                    "so it can play sooner. Slower overall and less helpful to other peers.") else emptyList()))
             .forEach { (choice, label) ->
                 Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
                     .selectable(selected = mode == choice, role = Role.RadioButton,
@@ -123,8 +128,11 @@ internal fun finishInOrderStatus(
     plan: FinishInOrderPlanner.Decision.Plan?,
     names: Map<Int, String>
 ): String = buildString {
-    append(if (record.policy.mode == Mode.BALANCED) "Finish in Order (Balanced) is on. "
-        else "Finish in Order (Finish first) is on. ")
+    append(when (record.policy.mode) {
+        Mode.BALANCED -> "Finish in Order (Balanced) is on. "
+        Mode.FINISH_FIRST -> "Finish in Order (Finish first) is on. "
+        Mode.SEQUENTIAL_PLAYBACK -> "Finish in Order (Sequential Playback) is on. "
+    })
     when {
         record.suspendedReason != null -> append("Paused: ").append(record.suspendedReason)
         record.finished || plan?.finished == true ->
@@ -237,13 +245,14 @@ internal fun FinishInOrderPanel(
                             }
                         }
                     },
-                    onCancel = { reviewing = false })
+                    onCancel = { reviewing = false }, sequentialSupported = true)
             }
         } else {
             Text(finishInOrderStatus(current, plan, names), style = MaterialTheme.typography.bodySmall)
             if (reviewing && current.pending.isEmpty()) {
                 FinishInOrderReview(files, current.policy.order.map { it.index }, null, busy || working,
                     initialMode = current.policy.mode, confirmLabel = "Use this order",
+                    sequentialSupported = true,
                     onConfirm = { mode, order ->
                         reviewing = false
                         act {
@@ -296,9 +305,8 @@ internal fun FinishInOrderPanel(
                 OutlinedButton(onClick = {
                     act {
                         withContext(Dispatchers.IO) {
-                            if (FinishInOrderController.exclusive { store.remove(infoHash) }) "Finish in Order is off. Current file " +
-                                "priorities were left exactly as they are."
-                            else "Chunks could not turn Finish in Order off. Try again."
+                            FinishInOrderController.turnOff(context, infoHash)
+                                ?: "Chunks could not turn Finish in Order off. Nothing changed; try again."
                         }
                     }
                 }, enabled = !working,

@@ -21,6 +21,12 @@ internal class FinishInOrderRunner(private val port: Port) {
         suspend fun persistNativeState() {}
         /** Engines with only off/normal/high priorities (rTorrent). */
         val twoBands: Boolean get() = false
+        /** Per-transfer in-order piece picking; phone engine only. */
+        val supportsSequential: Boolean get() = false
+        /** Fresh observation of the transfer's sequential flag, or null. */
+        suspend fun sequential(infoHash: String): Boolean? = null
+        /** Set the flag; true only after readback confirms it. */
+        suspend fun setSequential(infoHash: String, on: Boolean): Boolean = false
     }
 
     sealed class Step {
@@ -76,6 +82,7 @@ internal class FinishInOrderRunner(private val port: Port) {
             // Already matching: adopt them as the baseline for manual-edit detection.
             record = record.copy(lastApplied = record.lastApplied + plan.desired)
             if (record != current) port.save(infoHash, record)
+            syncSequential(infoHash, record)?.let { return Step.Suspended(it) }
             return Step.Idle(record, plan)
         }
         val journaled = record.copy(pending = plan.changes)
@@ -92,7 +99,7 @@ internal class FinishInOrderRunner(private val port: Port) {
                     lastApplied = journaled.lastApplied + plan.desired)
                 port.save(infoHash, done)
                 port.persistNativeState()
-                Step.Applied(done, plan)
+                syncSequential(infoHash, done)?.let { Step.Suspended(it) } ?: Step.Applied(done, plan)
             }
             // Refused by the engine's own preflight before any native write.
             LocalFileBatchOutcome.STALE_REVIEW, LocalFileBatchOutcome.NOT_FOUND -> {
@@ -108,5 +115,28 @@ internal class FinishInOrderRunner(private val port: Port) {
                 Step.Suspended(suspended)
             }
         }
+    }
+
+    /**
+     * Sequential Playback is derived from the policy, so the flag is reconciled
+     * from a fresh observation rather than journaled: on only while a
+     * Sequential Playback policy is still unfinished, otherwise off. Returns a
+     * suspended record when the engine does not confirm the change; nothing
+     * is retried until the user reviews and resumes.
+     */
+    private suspend fun syncSequential(infoHash: String, record: FinishInOrderRecord): FinishInOrderRecord? {
+        if (!port.supportsSequential) return null
+        val wanted = record.policy.mode == FinishInOrderPlanner.Mode.SEQUENTIAL_PLAYBACK && !record.finished
+        val seen = port.sequential(infoHash) ?: return null
+        if (seen == wanted) return null
+        val confirmed = try { port.setSequential(infoHash, wanted) }
+            catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
+            catch (_: Exception) { false }
+        if (confirmed) { port.persistNativeState(); return null }
+        val suspended = record.copy(suspendedReason = if (wanted)
+            "Chunks could not confirm that Sequential Playback is on. File priorities still follow the order; review, then resume."
+            else "Chunks could not confirm that Sequential Playback is off. Review, then resume.")
+        port.save(infoHash, suspended)
+        return suspended
     }
 }
