@@ -138,10 +138,9 @@ internal fun TransferMoveControl(
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (current == null) {
             if (serverAliasScope == null) return@Column
-            OutlinedButton(onClick = { confirmingStart = !confirmingStart }, enabled = !busy && !working,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                Text("Move Transfer to $destination…")
-            }
+            ActionTile("Move Transfer to $destination…", ChunksColors.Pink,
+                onClick = { confirmingStart = !confirmingStart }, enabled = !busy && !working,
+                modifier = Modifier.fillMaxWidth(), icon = R.drawable.chunks_ic_move, stacked = false)
             if (confirmingStart) {
                 Text("Moves the torrent job, not its files. Chunks first opens the $destination's " +
                     "Add review for this torrent. After you add it there and Chunks confirms the new " +

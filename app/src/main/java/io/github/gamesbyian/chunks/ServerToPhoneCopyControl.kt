@@ -66,11 +66,11 @@ internal fun ServerToPhoneCopyControl(
         }
     }
 
-    OutlinedButton(
+    ActionTile(if (checking) "Checking the server…" else "Copy files to this phone", ChunksColors.Yellow,
         onClick = { editingAddress = false; check(null) },
         enabled = !stale && !checking,
-        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-    ) { Text(if (checking) "Checking the server…" else "Copy files to this phone") }
+        modifier = Modifier.fillMaxWidth(),
+        icon = R.drawable.chunks_ic_folder, stacked = false)
 
     when (val current = plan) {
         is ServerToPhoneCopy.Ready -> {
