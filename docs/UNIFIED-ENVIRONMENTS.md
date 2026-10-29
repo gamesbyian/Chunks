@@ -27,6 +27,12 @@ Use the same advanced Add, queue, network, diagnostics and settings flows in pho
 - A shared setting may optionally offer **Apply to all supported environments** only as explicit opt-in with preview of each target and unsupported/failed results. A partial failure cannot be reported as universal success. Persist independent overrides and distinguish Chunks-side presentation preferences from settings actually enforced by a torrent engine.
 - Defaults and recent Places belong to their exact environment; per-transfer changes do not silently update defaults. All destructive and irreversible actions include current target identities and refreshed capability/authority checks.
 
+## Discovery and secondary infrastructure navigation
+
+The integrated [Discover experience](INTAKE-QUEUE-AND-POLICIES.md) is a **Chunks-wide opt-in interface** with an immediate global off switch; any discovery-based Add still requires choosing an exact phone/remote environment, with per-environment limits, Places and seeding rules previewed. Disabled Discovery stops source polling and unattended Add independently of which environments are connected, but never stops existing torrents or manual Add. On/Off is not silently overridden by a newly added remote profile or an imported settings file.
+
+[Server tools](REMOTE-INTEGRATIONS-AND-PREFERENCES.md) are **remote-profile-specific and secondary** under Servers → selected remote → Server tools. No privileged admin actions or dashboard tiles become first-class Transfers/Add/Details controls; remote-only mode still emphasizes torrent use. Local-only mode has no Server tools screen. Multiple remote profiles never inherit one another's admin credentials/permissions, and a disconnected/unverified profile cannot present an optimistic management action.
+
 ## Capability differences
 - Capabilities are negotiated per engine, server profile, authenticated principal, version/build, storage permission and snapshot freshness, not hardcoded 'remote vs local' assumptions.
 - Common supported operations use identical surface and semantics. Unsupported/unknown commands are disabled or replaced by a truthful explanation and safe alternative, never optimistic simulation. Hidden controls are appropriate only for genuinely irrelevant concepts. Retain the placement/context when useful so users can find the expected operation.
