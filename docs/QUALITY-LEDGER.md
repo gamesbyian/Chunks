@@ -1,5 +1,13 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-29 opt-in Doze observation with real peers (#569)
+
+- **Source slice:** the manual `android-public-swarm.yml` gains `doze=true`, which runs `tools/android_public_swarm_doze.sh` (`AndroidPublicSwarmDozeInstrumentedTest`).
+  - A Debian netinst download runs under the foreground service.
+  - Once ≥4 MiB of verified bytes have arrived, the script unplugs the virtual battery, runs `dumpsys deviceidle force-idle`, confirms deep `IDLE` and signals the test.
+  - Over 90 s the test records `GROWTH` or `STALLED` in verified bytes while idle. It requires only that the service and engine stay alive and answering.
+  - The idle and battery state is restored on exit, and whether the app was on the system allowlist is logged.
+- **Evidence:** pending a manual dispatch after merge. Emulator only; it does not cover OEM power managers or natural idle entry on a handset.
 ## 2026-10-29 solo-agent batch safety and G2 plan reconciliation
 
 - **Merged #586 (P0 combined-batch safety):** [PR #586](https://github.com/gamesbyian/Chunks/pull/586), squash `d88d03a11c7f59ef199151fc302944c42a896686`, exact head `989077fe60f02d3717cfe3a0376f9e2cf357d44e`. [Android foundation/JVM 40944402686](https://github.com/gamesbyian/Chunks/actions/runs/40944402686), [R8 40944402821](https://github.com/gamesbyian/Chunks/actions/runs/40944402821) and [API35 native Add instrumentation 40944402760](https://github.com/gamesbyian/Chunks/actions/runs/40944402760) all passed. The shared batch controller now refuses incomplete live inventories, missing verified observation timestamps, and targets whose observed Start/Stop state differs from the reviewed state. Pure tests assert no command dispatch on these invalid sources, while healthy independent sources continue. Does **not** add command capability to saved-but-not-signed-in remotes or prove handset/network behavior.
