@@ -4,6 +4,17 @@
 
 [Agent instructions](../AGENTS.md) · [Documentation index](INDEX.md) · [Product contract](PRODUCT.md) · [Coverage gaps](SPEC-COVERAGE.md) · [Evidence](QUALITY-LEDGER.md) · [Documentation authoring standard](DOCUMENTATION-STANDARD.md)
 
+## Newly specified advanced-operations backlog (lower than current P0/P1)
+
+The 58 previously under-specified ecosystem items are assigned to canonical contracts: [intake/queue/policies](INTAKE-QUEUE-AND-POLICIES.md) (21), [files/protocol/diagnostics](FILES-PROTOCOL-AND-DIAGNOSTICS.md) (27) and [remote/integrations/preferences](REMOTE-INTEGRATIONS-AND-PREFERENCES.md) (10). **Specification does not imply shipped feature parity.** The following independently executable slices do not replace higher-priority real-phone/Seedhost/release acceptance and do not duplicate the separate Smart Seeding Rules lane.
+
+1. **Pure policy/intake model:** bounded URL metainfo and optional source normalization, queue priorities and stalls, timezone/DST calendars, quota counters, VPN-required fail-closed states. Test secrets, conflicting policy, counter resets and uncertainty before native integration.
+2. **Read-only diagnostics/inspection:** piece, peer, tracker/NAT and sampled traffic with source/timestamp; checksum/sidecar inspection and archive/path/link preflights. Test untrusted data, filesystem permissions, idempotency and unsupported servers without arbitrary remote write probes.
+3. **Portable settings and expert UX:** versioned redacted server/profile export, import preview and identity mapping, responsive expert columns, adaptive remote read-only polling and help/report redact-by-default. Prove no secret disclosure or remote auto-mutation after restore, then validate 320×700, 412×892, 200% font and TalkBack.
+4. **Opt-in external adapters:** feed/indexer sources, verified media completion handoff, independent cloud backup and advanced peer/protocol settings only once source/service-specific safety and capability evidence exist. No privileged seedbox admin panel is authorized by this queue.
+
+Open product-boundary choices go through D-ADVANCED-OPS-20261029 in [DECISIONS](DECISIONS.md) before implementing broader native indexer searching or privileged service management. Record completed code slices in SPEC-COVERAGE/QUALITY-LEDGER, not another running plan.
+
 ## Planned slice: Smart Seeding Rules
 
 Implement [SMART-SEEDING-RULES](SMART-SEEDING-RULES.md) in independently testable stages once conflicting active PRs and ownership have been checked: pure policy model and deterministic tracker matching; stable rule identities, generated/editable names and explicit multi-environment selection; per-profile capability/readback adapters; Add-route preview and guarded start; opt-in unattended import hold/fallback; scoped batch application and accessibility/host acceptance. Tests must distinguish intended rule selection from runtime-enforced policy. This is planned work, not a new P0 or an implementation claim.
