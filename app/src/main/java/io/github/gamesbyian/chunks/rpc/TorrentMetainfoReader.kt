@@ -12,7 +12,11 @@ data class TorrentMetainfoPreview(
     val sizeBytes: Long,
     val pieceLength: Long,
     /** Distinct http(s)/udp tracker URLs in `announce` and `announce-list`; 0 = tracker-less. */
-    val trackerCount: Int = 0
+    val trackerCount: Int = 0,
+    /** Lower-case tracker host names only (no paths, passkeys or ports), for rule matching. */
+    val trackerHosts: List<String> = emptyList(),
+    /** The info dictionary's private flag. */
+    val isPrivate: Boolean = false
 )
 
 /**
@@ -91,7 +95,8 @@ object TorrentMetainfoReader {
         val hash = MessageDigest.getInstance("SHA-1")
             .digest(bytes.copyOfRange(reader.infoStart, reader.infoEnd))
             .joinToString("") { "%02x".format(it.toInt() and 255) }
-        return TorrentMetainfoPreview(name, hash, fileCount, total, pieceLength, trackerCount(root))
+        return TorrentMetainfoPreview(name, hash, fileCount, total, pieceLength, trackerCount(root),
+            trackerHosts(root), info["private"] == 1L)
     }
 
     /**
@@ -107,6 +112,17 @@ object TorrentMetainfoReader {
         if (uri.isOpaque || uri.host.isNullOrBlank() || uri.rawUserInfo != null ||
             uri.rawFragment != null || uri.port > 65535 || uri.port == 0) return false
         return scheme != "udp" || uri.port in 1..65535
+    }
+
+    private fun trackerHosts(root: Map<*, *>): List<String> {
+        val hosts = LinkedHashSet<String>()
+        fun add(value: Any?) {
+            val text = (value as? ByteArray)?.toString(Charsets.UTF_8)?.trim() ?: return
+            if (plausibleTrackerUrl(text)) java.net.URI(text).host?.lowercase(java.util.Locale.ROOT)?.trimEnd('.')?.let(hosts::add)
+        }
+        add(root["announce"])
+        (root["announce-list"] as? List<*>)?.forEach { tier -> (tier as? List<*>)?.forEach(::add) }
+        return hosts.toList()
     }
 
     private fun trackerCount(root: Map<*, *>): Int {

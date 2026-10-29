@@ -130,5 +130,14 @@ Evidence: JVM decision tests, plus a desktop-libtorrent loopback swarm showing c
 
 Evidence: JVM controller tests with fakes, plus a desktop-libtorrent loopback test. In that test a downloaded transfer matched a rule by its tracker host, got a verified 24 KiB/s cap, and was really paused after a one-second time limit, never removed.
 
-Not yet: remote rTorrent enforcement, an Add-review preview or per-transfer "Why this rule?", the reviewed "apply to existing transfers" batch, and handset/Doze evidence. Enforcement runs only while the foreground service polls.
+Not yet: remote rTorrent enforcement, the reviewed "apply to existing transfers" batch, and handset/Doze evidence. Enforcement runs only while the foreground service polls.
 
+## Implementation note: phone Add-review preview (2026-10-29)
+
+The phone Add review shows a **Seeding** line for a `.torrent`: the rule (or this phone's default) the controller will snapshot, in plain words, with the first match reason and any flagged conflicts. It is computed offline from the file's tracker hosts and private flag, using saved phone-scoped rules only. Magnet links have no preview; the controller resolves them once metadata arrives. The preview never changes a transfer; the controller still decides on first sight after Add.
+
+Each phone transfer card then shows the stored snapshot, read-only: the policy and its source, whether the rule paused it (and that starting it again is respected), any unconfirmed-action note, and **Why this rule?** with the stored match reasons. Transfers that were there before the controller's first run say they are not managed by rules.
+
+Evidence: JVM tests for the preview helper, metainfo tracker/private parsing and the card summary (Compose). Not yet: the remote Add preview, a manual rule override in Add, full MF31 explanations (considered-but-unmatched rules, observed versus proposed values), and TalkBack/handset review.
+
+**Open owner question: remote tracker identity for private torrents.** Chunks deliberately never reads `t.url` for a private rTorrent transfer, because the announce URL usually carries a passkey (see `readPublicTrackers`). Tracker-domain rules on a server therefore cannot match private torrents unless Chunks reads the URL and keeps only the host in memory, which relaxes that invariant. Until the owner decides, a remote controller may match private server transfers only by the private flag and environment, and must say that domain rules could not be checked. rTorrent also has no per-transfer upload cap (only shared throttle groups that are server-wide configuration), so a remote rule's cap must be reported as not applied rather than emulated.

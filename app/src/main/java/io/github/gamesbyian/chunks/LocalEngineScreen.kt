@@ -36,6 +36,7 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.semantics.Role
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -246,6 +247,7 @@ internal fun LocalEngineScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val finishInOrderStore = remember { FinishInOrderStore(context) }
+    val seedingAssignments = remember { io.github.gamesbyian.chunks.seeding.PreferencesAssignmentStore(context) }
     val moveStore = remember { TransferMoveStore(context) }
     var moveRevision by remember { mutableStateOf(0) }
     val collectionStore = remember(context) { TransferCollectionStore(context) }
@@ -831,12 +833,16 @@ internal fun LocalEngineScreen(
                 onDefault = { on -> if (finishInOrderStore.setDefaultForNewAdds(on)) finishInOrderDefault = on }
             )
         }
+        val seedingPreview = remember(add?.preview?.infoHashV1) {
+            add?.preview?.let { phoneSeedingPreview(context, it) }
+        }
         if (add != null && destination != null) LocalAddReview(
             add.preview, proposedAddDestination ?: destination,
             placeTitle = place?.title,
             busy = busy || inventoryStale || proposedAddDestination == null,
             startAfterAdd = startAfterAdd,
             storagePreflight = addStorage?.takeIf { it.first == add.preview.infoHashV1 }?.second,
+            seeding = seedingPreview,
             onConfirm = {
                 val selectedDraft = addFolderDraft
                 val selectedPlace = place
@@ -1262,6 +1268,7 @@ internal fun LocalEngineScreen(
                 observedGrowth = observedDeltas[transfer.infoHash].takeIf {
                     !inventoryStale && !busy
                 },
+                seeding = seedingAssignments.get(transfer.infoHash),
                 alias = displayedAlias,
                 onSaveAlias = { proposed ->
                     val saved = try {
@@ -1548,6 +1555,8 @@ internal fun LocalAddReview(
     busy: Boolean,
     startAfterAdd: Boolean = false,
     storagePreflight: LocalAddStoragePreflight? = null,
+    /** What Smart Seeding will apply on this phone; null when no rule store is readable. */
+    seeding: io.github.gamesbyian.chunks.seeding.SeedingResolution? = null,
     onConfirm: () -> Unit,
     onCancel: () -> Unit
 ) {
@@ -1561,6 +1570,15 @@ internal fun LocalAddReview(
             Text(if (placeTitle == null)
                 "Saves into: Chunks' folder on phone storage (" + destination.absolutePath + "). Files here are removed if Chunks is uninstalled."
             else "Saves into: " + placeTitle + " (" + destination.absolutePath + ").")
+            seeding?.let { s ->
+                Text("Seeding: " + when (s.source) {
+                    io.github.gamesbyian.chunks.seeding.SeedingResolution.Source.RULE -> "rule"
+                    else -> "default for this phone"
+                } + " · " + s.policy.describe(), style = MaterialTheme.typography.bodyMedium)
+                s.reasons.firstOrNull()?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+                if (s.conflicts.isNotEmpty()) Text("Other matching rules not used: " + s.conflicts.joinToString(),
+                    style = MaterialTheme.typography.bodySmall)
+            }
             Text("Storage preflight (advisory; no automatic blocking or deletion)",
                 style = MaterialTheme.typography.titleSmall)
             val space = storagePreflight
@@ -1652,7 +1670,9 @@ internal fun LocalTransferCard(
     onPrepareRemote: (() -> Unit)? = null,
     move: (@Composable () -> Unit)? = null,
     onRepairTrackers: (() -> Unit)? = null,
-    observedGrowth: LocalProgressHistory.ObservedDelta? = null
+    observedGrowth: LocalProgressHistory.ObservedDelta? = null,
+    /** The Smart Seeding snapshot the phone controller stored; null before it has seen this transfer. */
+    seeding: io.github.gamesbyian.chunks.seeding.SeedingController.Assignment? = null
 ) {
     var confirmRemove by remember(transfer.infoHash) { mutableStateOf(false) }
     var confirmHandoff by remember(transfer.infoHash) { mutableStateOf(false) }
@@ -1696,6 +1716,7 @@ internal fun LocalTransferCard(
                 LocalEngineHolder.dhtPreferred(LocalContext.current))?.let {
                 Text(it, style = MaterialTheme.typography.bodySmall)
             }
+            seeding?.let { SeedingSnapshotSummary(transfer.infoHash, it) }
             ChunkedProgressBar(progress = transfer.progressPpm / 1_000_000f, tone = stateTone(transfer),
                 modifier = Modifier.fillMaxWidth().semantics { stateDescription = "$percent percent complete" })
             // totalWantedDone is hash-verified completed payload; allTimeDownload
@@ -2120,5 +2141,51 @@ internal suspend fun enableFinishInOrderAfterAdd(
         is io.github.gamesbyian.chunks.engine.FinishInOrderRunner.Step.Suspended ->
             "Finish in Order is paused: " + step.record.suspendedReason
         else -> "Finish in Order is saved and will apply once the engine reports this transfer."
+    }
+}
+
+/**
+ * What Smart Seeding will snapshot for this phone Add, resolved from the
+ * reviewed metadata's tracker hosts. Null when the saved rules are unreadable.
+ */
+internal fun phoneSeedingPreview(context: Context, preview: io.github.gamesbyian.chunks.rpc.TorrentMetainfoPreview):
+    io.github.gamesbyian.chunks.seeding.SeedingResolution? {
+    val snapshot = io.github.gamesbyian.chunks.seeding.SeedingRuleStore(context).load()
+    if (snapshot.unreadable) return null
+    val env = io.github.gamesbyian.chunks.seeding.PhoneSeeding.ENVIRONMENT
+    return io.github.gamesbyian.chunks.seeding.SeedingRuleEngine.resolve(
+        io.github.gamesbyian.chunks.seeding.TransferFacts(env, preview.trackerHosts.map { "https://$it/" }, preview.isPrivate),
+        snapshot.rules, snapshot.defaults[env] ?: io.github.gamesbyian.chunks.seeding.SeedingPolicy())
+}
+
+/**
+ * Read-only: the policy snapshot Smart Seeding froze for this phone transfer,
+ * and why. Nothing here changes the transfer.
+ */
+@Composable
+internal fun SeedingSnapshotSummary(hash: String, assignment: io.github.gamesbyian.chunks.seeding.SeedingController.Assignment) {
+    var why by remember(hash) { mutableStateOf(false) }
+    val policy = assignment.policy
+    if (policy == null) {
+        Text("Seeding: not managed by rules (it was here before Smart Seeding started).",
+            style = MaterialTheme.typography.bodySmall)
+        return
+    }
+    Text("Seeding: " + (if (assignment.source == io.github.gamesbyian.chunks.seeding.SeedingResolution.Source.RULE)
+        "rule" else "default for this phone") + " · " + policy.describe(), style = MaterialTheme.typography.bodySmall)
+    assignment.stoppedByRule?.let {
+        Text("Paused by this rule ($it). If you start it again, the rule will not pause it again.",
+            style = MaterialTheme.typography.bodySmall)
+    }
+    assignment.note?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
+    if (assignment.reasons.isNotEmpty()) {
+        TextButton(onClick = { why = !why }, modifier = Modifier.heightIn(min = 48.dp)) {
+            Text(if (why) "Hide why" else "Why this rule?")
+        }
+        if (why) {
+            assignment.reasons.forEach { Text("• " + it, style = MaterialTheme.typography.bodySmall) }
+            Text("Chosen when this transfer was added. Later rule edits do not change it.",
+                style = MaterialTheme.typography.bodySmall)
+        }
     }
 }
