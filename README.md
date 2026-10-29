@@ -1,44 +1,68 @@
 # chunks.
 
-**For agents and maintainers:** Begin at the [documentation index](docs/INDEX.md). The [documentation architecture standard](docs/DOCUMENTATION-STANDARD.md) specifies source-of-truth precedence, feature-contract structure, change protocol, evidence requirements and how to prevent conflicting duplicate guidance. [Unified phone/remote experience](docs/UNIFIED-ENVIRONMENTS.md) is a binding contract; implementation acceptance remains open.
-
-> **Owner correction (2026-10-28):** Cross-engine **Copy Transfer** and **Move Transfer** operate on torrent **jobs only**, never downloaded file bytes. Move adds and verifies the target job, then separately confirms session-only removal of the source job, leaving all source files untouched. Destination downloads independently. Prior text proposing payload transfer, file migration or waiting for target seeding under these names is superseded by [the authoritative transfer-job contract](docs/CROSS-ENGINE-TRANSFER-JOBS.md).
-
 **Your downloads have places to be.**
 
-Chunks is an Android-native BitTorrent client and first-class rTorrent remote. Its Transfers represent torrent jobs; Places represent **actual** server/device destinations and their permissions; Collections are semantic groups. Original torrent names, Chunks-only display aliases, actual backing file paths and independent library copies are distinct so that a cosmetic rename never breaks seeding.
+Chunks is an Android-native BitTorrent client and first-class rTorrent remote control. It aims to make torrent management powerful without making file locations, queue controls, storage integrity or server administration needlessly complicated.
 
-## Status: pre-alpha (October 26, 2026)
+**Development status: pre-alpha.** Merged, tested slices exist, but full physical-device, supported-server, security, release-signing and accessibility acceptance is still incomplete. Do not infer feature readiness from a screenshot, PR title or aspirational specification. See [live coverage](docs/SPEC-COVERAGE.md), [test evidence](docs/QUALITY-LEDGER.md) and the [active work queue](docs/WORK-QUEUE.md).
 
-**Merged, functional engineering slices exist, but release readiness is not established.**
+## One experience, your choice of environments
 
-- **rTorrent remote:** Authenticated HTTPS XML-RPC, Basic/Digest, bounded/paged transfer listing, search/filter/sort and details, per-file priority, verified stopped Add from a v1 magnet or Android .torrent file to a chosen **parent destination**, Start/Stop and exact-hash **session-only** Remove. Development Seedhost rTorrent 0.9.8 with 437 transfers has scoped live adapter Add/read/control evidence. Legacy disposable 0.9.8 and modern Arch 0.16.x real adapter tests pass, but Alpine 0.15.2 SCGI fails (#151). Full real Android handset-to-Seedhost acceptance remains open.
-- **Local client:** Experimental libtorrent4j engine with resume, explicit download/save directory in app-private storage, metadata magnets, real licensed web-seed download, opt-in DHT, file priority, speed limits and Android dataSync foreground service. A completed file can be **copied** to chosen SAF library storage, keeping the original available to seed. #154 improves transient engine-read error handling. Neither direct arbitrary SAF download nor reliable Doze/OEM/background physical phone behavior has been proven.
-- **Organization:** Editable, reversible local display aliases, source-only explained clean-title proposals and limited batch review/conditional Undo. No automated physical backing rename or unsourced episode guest-name inference.
-- **Storage and ZIP:** Advisory storage caps/warnings/cleanup-impact models and a read-only phone-space card. Bounded local ZIP preflight and **manual verified extraction into a newly created SAF folder**, with cancel/journal/recovery and source kept intact, have tested emulator/fixture-provider paths. No real quota enforcement, destructive cleanup wizard, general remote file operations or auto-extract. Physical provider and process-kill acceptance is pending.
+Chunks supports three intended configurations:
 
-## Connecting Chunks to rTorrent
+- **On-phone client only:** the default first-run offer, with no rTorrent connection required.
+- **rTorrent remote only:** control configured seedbox/server profiles without requiring local torrent-engine setup.
+- **Both:** switch among phone and one or more independently configured rTorrent instances while using a consistent Transfers list, details, Add, controls, Collections and settings model.
 
-**Smart Connect** aims to let users paste their seedbox hostname or ruTorrent URL, enter a username and password, and have Chunks automatically discover an authenticated HTTPS rTorrent endpoint. An exact numbered ruTorrent URL must stay within its instance; custom self-hosted XML-RPC URLs remain available. Verified profiles use Android Keystore, with opt-out and Forget controls. The connection handshake reads only server identity/inventory, never mutates transfers.
+Each environment has its own torrent identities, connection/storage capabilities and appropriate settings. Lists and transfer details identify the active phone/server. Switching is UI navigation and does not move files or torrent jobs. [Binding environment contract](docs/UNIFIED-ENVIRONMENTS.md).
 
-**Status:** [#463](https://github.com/gamesbyian/Chunks/pull/463) **merged** the first discovery implementation (source/JVM and emulator-render tier; live provider and handset acceptance pending). Provider catalog, capability-ranked gateways, actionable repair, SSO/custom certificates/VPN and full Android/real-provider tests remain in [issue #464](https://github.com/gamesbyian/Chunks/issues/464). See the [Smart Connect contract](docs/SMART-REMOTE-CONNECTION.md), [coverage matrix](docs/SPEC-COVERAGE.md), and [three-instance SeedHost connection guide](docs/SEEDHOST-REMOTE-TESTING.md). The remote-control HTTPS port is separate from incoming BitTorrent peer ports.
+## Fundamental concepts
 
-## Documentation and engineering
+- **Transfer:** one torrent job managed by a specific phone/server engine, with progress, controls and an exact scoped infohash.
+- **Place:** an actual permitted download or library destination, not a cosmetic label.
+- **Collection:** a user-defined semantic group that does not move files merely by including a transfer.
+- **Display alias:** an optional Chunks-only title, distinct from torrent metadata, downloaded files and actual paths.
+- **Library copy/extracted output:** a separately tracked file object; neither is permission to delete the original seedable bytes.
 
-**Visual design:** The [canonical transparent Chunks app icon](docs/design/approved/chunks-app-icon-master.svg) is the SVG source of truth; the [original PNG](docs/design/approved/chunks-app-icon-master.png) remains reference-only. Android packages a generated native VectorDrawable rather than the PNG (see [BUILD](docs/BUILD.md)). [Six Chunks concept references and implementation notes](docs/design/reference-images/README.md) capture the owner-selected chunky, high-contrast direction. These visual studies do not supersede product capabilities, safety or accessibility contracts.
+**Copy Transfer** and **Move Transfer** hand off torrent *jobs only*, including batches. Neither copies downloaded payload bytes. Move separately verifies the target job and asks before removing only the source job; existing source files remain. File copying, physical relocation, extraction and deletion are different explicitly labelled operations. [Binding job handoff contract](docs/CROSS-ENGINE-TRANSFER-JOBS.md).
 
-Read [AGENTS.md](AGENTS.md), the **only live [WORK-QUEUE](docs/WORK-QUEUE.md)**, [PRODUCT](docs/PRODUCT.md), [SPEC-COVERAGE](docs/SPEC-COVERAGE.md), [ARCHITECTURE](docs/ARCHITECTURE.md), [UX](docs/UX.md), [SECURITY](docs/SECURITY.md) and [STORAGE-AND-EXTRACTION](docs/STORAGE-AND-EXTRACTION.md). [QUALITY-LEDGER](docs/QUALITY-LEDGER.md) is the evidence register, [DECISIONS](docs/DECISIONS.md) the choices register, [rTorrent matrix](docs/RTORRENT-COMPATIBILITY-MATRIX.md) the protocol detail, and [CI-POLICY](docs/CI-POLICY.md) the runner contract. The [historical October 24 critical review](docs/CRITICAL-REVIEW-2026-10-24.md) explains safety corrections, not current implementation status.
+## Local torrent client
 
-Build with JDK 17, Gradle 9.3.1 and a configured Android SDK:
+The libtorrent4j-based local engine has implemented and tested slices for torrent/magnet intake, peer and web-seed transfers, resume, selected file priorities, speed limits, DHT opt-in and foreground-service integration. Android public Downloads/Chunks Downloads support has bounded Android/API acceptance; arbitrary providers, SD cards, uninterrupted long-running mobile background seeding and release-quality physical-handset behavior need independent verification.
+
+On Add, Chunks must show a valid destination and optional Change/recent selections without requiring a picker. Download data and detached copies retain distinct ownership. Physical file management, quotas and cleanup obey [storage and extraction](docs/STORAGE-AND-EXTRACTION.md) safety rules.
+
+## rTorrent remote control
+
+The remote adapter uses authenticated HTTPS XML-RPC and scoped capabilities for connection, transfer inspection, Add, Start/Stop, priorities and safe session-only removal. **Smart Connect** should normally allow a seedbox hostname or exact ruTorrent instance URL and credentials, while retaining an advanced custom endpoint path. Instance identity, TLS, permissions and uncertain RPC mutations must be handled explicitly. A network success alone is not proof that a torrent or file operation succeeded.
+
+Multiple server profiles and provider variants require independent testing; provider catalog entries are hints, not promises of compatibility. See the [Smart Connect contract](docs/SMART-REMOTE-CONNECTION.md), [rTorrent matrix](docs/RTORRENT-COMPATIBILITY-MATRIX.md), and [approved Seedhost testing guide](docs/SEEDHOST-REMOTE-TESTING.md). Incoming BitTorrent peer ports and the HTTPS remote-control port serve different purposes.
+
+## Further planned experience
+
+The canonical [product specification](docs/PRODUCT.md) and [UX contract](docs/UX.md) cover deliberate file-completion ordering, multi-format metadata/artwork across media categories, transparent alias and Collection workflows, accessibility, per-environment privacy lock, safe storage budgets and optional archive extraction. Features have different implementation and acceptance statuses; [SPEC-COVERAGE](docs/SPEC-COVERAGE.md) is the starting point for current scope.
+
+## Build and contribute
+
+Use JDK 17, Android SDK and Gradle 9.3.1, following [BUILD](docs/BUILD.md). For a developer build:
 
 ```sh
 gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug
 ```
 
-See [BUILD](docs/BUILD.md). The binary Gradle wrapper JAR is not committed; CI pins Gradle explicitly. The output is an **unsigned debug APK**, not a signed, independently accepted distribution.
+The result is a debug APK, not a signed independent release. Installer distribution, signing and licensing remain subject to [release issue #10](https://github.com/gamesbyian/Chunks/issues/10).
 
-## Safety and public testing
+Agents and maintainers **start with [AGENTS.md](AGENTS.md)** and the [documentation index](docs/INDEX.md). The [documentation standard](docs/DOCUMENTATION-STANDARD.md) defines which files are authoritative, how to distinguish requirements from evidence, and how to avoid duplicate plans. Check repository-local documentation links without CI fan-out:
 
-The owner specifically permits nonsecret fixtures/screenshots from one [development Seedhost](docs/SEEDHOST-REMOTE-TESTING.md) and reviewed exact-hash destructive **torrent** tests on that host. Credentials, cookies and tracker passkeys remain protected; no other accounts or uncontrolled backing-file deletion are included. Public Add fixtures come from licensed [Internet Archive/Wikimedia test sources](docs/PUBLIC-TORRENT-FIXTURES.md). Never blindly retry an uncertain mutation, equate `d.erase` with deleting payload bytes, or equate a changed remote directory setting with moving physical files. Independent filesystem privileges, journaling, recovery and hash/seeding checks are necessary for backed-file mutations.
+```sh
+python3 tools/check_docs.py
+python3 -m unittest discover -s tests -p 'test_docs_check.py'
+```
 
-This public repository is **not** a grant of third-party redistribution rights; license/SBOM and signed APK distribution remain open [#10](https://github.com/gamesbyian/Chunks/issues/10).
+App development and the independently governed font laboratory have separate source and CI policies. See [CI-POLICY](docs/CI-POLICY.md) and [font-lab operations](docs/design/CHUNKS-FONT-LAB-OPERATIONS.md).
+
+## Privacy and safe testing
+
+Never publish credentials, remote auth cookies, tracker passkeys or sensitive torrents through screenshots, diagnostics or external metadata requests. Test Adds with approved [licensed public fixtures](docs/PUBLIC-TORRENT-FIXTURES.md); the owner's approved development Seedhost test permissions do **not** extend to arbitrary hosts or backing-file deletion. Mutations are exact-target, capability-gated, journaled where necessary and verified by observed postconditions; an uncertain command is reconciled rather than blindly repeated.
+
+The dated prior project overview is [archived for traceability](docs/archive/README-2026-10-29-preconsolidation.md). The archive is not a competing specification.
