@@ -1,8 +1,8 @@
 name: Build experimental Chunks Reference Panel weight studies
 on:
   push:
-    # One controlled source-completeness and full-CFF acceptance run; revert to [main].
-    branches: [main, font/lab]
+    # Local-first font/lab source work is quiet; only integrated main pushes auto-build.
+    branches: [main]
     paths:
       - 'tools/build_reference_panel_weight_studies.py'
       - 'tools/reference_weight_profiles.json'
