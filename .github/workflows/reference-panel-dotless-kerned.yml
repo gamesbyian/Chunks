@@ -1,6 +1,8 @@
 name: Build five Chunks reference-dotless accented OTF variants
 on:
   push:
+    # Feature branches are validated by pull_request; only merged changes trigger push builds.
+    branches: [main]
     paths:
       - 'tools/build_reference_dotless_accents.py'
       - 'tools/build_reference_accent_kerned.py'

@@ -7,6 +7,9 @@ on:
       - 'tests/test_font_shaped_advance_audit.py'
       - '.github/workflows/chunks-font-visual-stress.yml'
   push:
+    # Run once for merged changes, not again for each PR branch push.
+    # Pull requests remain protected by their existing font-specific path filters.
+    branches: [main]
     paths:
       - 'assets/fonts/**'
       - 'tools/render_font_family_stress.py'

@@ -66,6 +66,7 @@ import io.github.gamesbyian.chunks.model.CollectionMembershipRules
 import io.github.gamesbyian.chunks.model.ManualCollectionPager
 import io.github.gamesbyian.chunks.model.TransferFilter
 import io.github.gamesbyian.chunks.model.TransferOrder
+import io.github.gamesbyian.chunks.model.TransferMove
 import io.github.gamesbyian.chunks.model.PublicTrackerHandoff
 import io.github.gamesbyian.chunks.engine.FinishInOrderRunner
 import io.github.gamesbyian.chunks.model.Units
@@ -180,6 +181,8 @@ private fun ChunksApp(
     var snapshotRevision by remember { mutableLongStateOf(0L) }
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var connectDiagnostics by remember { mutableStateOf(ConnectionDiagnostics()) }
+    var connectJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     var stale by remember { mutableStateOf(false) }
     var currentView by remember { mutableStateOf("main") }
     var requestedView by remember { mutableStateOf("main") }
@@ -330,6 +333,15 @@ private fun ChunksApp(
             ConnectionScreen(
                 endpoint = endpoint, username = username, password = password,
                 error = error, loading = loading,
+                diagnostics = connectDiagnostics,
+                onCancelConnect = {
+                    // Discovery is read-only, so abandoning it changes nothing.
+                    connectJob?.cancel()
+                    remoteFence.invalidate()
+                    loading = false
+                    connectDiagnostics = ConnectionDiagnostics()
+                    error = "Connection check cancelled. Nothing was changed on the server."
+                },
                 rememberLogin = rememberLogin, savedLoginPresent = savedLoginPresent,
                 savedProfiles = savedProfiles, credentialNotice = credentialNotice,
                 onSelectProfile = { profile ->
@@ -421,10 +433,15 @@ private fun ChunksApp(
                         // A later edit or lifecycle reset cannot redirect it.
                         val settings = RemoteCredentials(endpoint, username, password)
                         val saveThisLogin = rememberLogin
-                        scope.launch {
+                        connectDiagnostics = ConnectionDiagnostics()
+                        connectJob = scope.launch {
                             try {
                                 val discovered = RemoteSmartConnect.connect(
-                                    settings.endpoint, settings.username, settings.password
+                                    settings.endpoint, settings.username, settings.password,
+                                    onAttempt = { index, total, candidate ->
+                                        if (remoteFence.current(ticket)) connectDiagnostics =
+                                            ConnectionDiagnostics(ConnectionDiagnostics.progress(index, total, candidate))
+                                    }
                                 ) { credentials ->
                                     val connection = RTorrentRemote(credentials)
                                     val verifiedVersion = connection.version()
@@ -486,9 +503,16 @@ private fun ChunksApp(
                                     // Do not retain another copy in the screen field.
                                     password = ""
                                 }
+                            } catch (cancel: kotlinx.coroutines.CancellationException) {
+                                throw cancel
                             } catch (failure: Exception) {
-                                if (remoteFence.current(ticket) && server == null)
+                                if (remoteFence.current(ticket) && server == null) {
                                     error = readableFailure(failure)
+                                    connectDiagnostics = if (failure is RemoteSmartConnect.ConnectionFailed)
+                                        ConnectionDiagnostics(attempts = failure.attempts,
+                                            advice = RemoteSmartConnect.repairAdvice(failure, settings.endpoint))
+                                    else ConnectionDiagnostics()
+                                }
                             } finally {
                                 if (remoteFence.current(ticket) && server == null) loading = false
                                 // On success, the session is no longer in the connection UI,
@@ -516,6 +540,11 @@ private fun ChunksApp(
                         initialMagnet = phoneHandoffMagnet,
                         initialTorrentUri = incomingTorrent,
                         canReviewOnConnectedServer = true,
+                        // Only an unambiguous authenticated account can own a Move.
+                        moveServer = if (remotePrivacyScope == null) null
+                            else LocalMoveServer(aliasScope) { hash ->
+                                TransferMoveObservations.server(connectedRemote, hash)
+                            },
                         onTorrentConsumed = onIncomingTorrentConsumed,
                         onPrefillConsumed = { phoneHandoffMagnet = null },
                         onPrepareRemote = { draft ->
@@ -591,7 +620,11 @@ private fun ChunksApp(
                         selected = section == tab,
                         onClick = { section = tab },
                         label = { Text(tab.label) },
-                        modifier = Modifier.height(48.dp)
+                        // A hard 48dp height clips enlarged Compose labels when
+                        // Android system font scale reaches 200%. Keep the
+                        // minimum touch target while letting text determine
+                        // the natural height on large-font devices.
+                        modifier = Modifier.heightIn(min = 48.dp)
                     )
                 }
             }
@@ -827,6 +860,8 @@ private fun readableFailure(failure: Exception): String = when (failure) {
 @Composable
 private fun ConnectionScreen(
     endpoint: String, username: String, password: String, error: String?, loading: Boolean,
+    diagnostics: ConnectionDiagnostics = ConnectionDiagnostics(),
+    onCancelConnect: () -> Unit = {},
     rememberLogin: Boolean, savedLoginPresent: Boolean,
     savedProfiles: List<RememberedRemoteProfileRoster.Profile>, credentialNotice: String?,
     onRememberLogin: (Boolean) -> Unit, onForgetLogin: () -> Unit,
@@ -958,6 +993,7 @@ private fun ConnectionScreen(
                 modifier = Modifier.fillMaxWidth().height(56.dp)
             ) { Text(if (loading) "Finding secure rTorrent…" else "Connect to rTorrent") }
         }
+        item { ConnectionDiagnosticsPanel(diagnostics, loading, onCancelConnect) }
         if (error != null) item { Notice("Connection unsuccessful", error, Coral) }
         item {
             Text("Protected HTTPS is required for remote servers. Login is encrypted and stored only on this device unless you opt out. No torrents or files are changed by connecting.",
@@ -1295,10 +1331,12 @@ private fun TransfersScreen(
                 onInspect = { onInspect(transfer) },
                 onPreparePhone = { onPreparePhone(transfer) },
                 onCopyToPhone = onCopyToPhone,
+                moveScope = aliasScope,
                 finishInOrderScope = aliasScope
             )
             }
         }
+        item { RemoteCapabilityPanel(remote) }
         item {
             Text("Server snapshot. Start/stop and main-view session removal each require exact-target confirmation and readback. Session removal does not request payload deletion.",
                 style = MaterialTheme.typography.bodySmall)
@@ -1331,6 +1369,8 @@ private fun TransferCard(
     onInspect: () -> Unit,
     onPreparePhone: () -> Unit,
     onCopyToPhone: (String) -> Unit,
+    /** Authenticated endpoint + account scope, or null when ambiguous. */
+    moveScope: String? = null,
     /** Authenticated endpoint + account scope for Finish in Order; null when ambiguous. */
     finishInOrderScope: String? = null
 ) {
@@ -1423,6 +1463,24 @@ private fun TransferCard(
                     }
                 }
             }
+            if (mainView) TransferMoveControl(
+                direction = TransferMove.Direction.SERVER_TO_PHONE,
+                infoHash = transfer.hash, name = transfer.name,
+                serverAliasScope = moveScope?.takeIf {
+                    TorrentIdentityHandoff.prepare(transfer.hash, transfer.name) != null
+                },
+                busy = stale,
+                ports = TransferMovePorts(
+                    observeTarget = { TransferMoveObservations.phone(transfer.hash) },
+                    observeSource = { TransferMoveObservations.server(remote, transfer.hash) },
+                    // Guarded by the current name and Place; session-only d.erase.
+                    removeSource = { remote.eraseFromSession(transfer.hash, transfer.name, transfer.directory) },
+                    targetUnavailableReason = "Open phone transfers once so Chunks can check the phone."
+                ),
+                onStartMove = onPreparePhone,
+                onMutationStarted = onMutationStarted,
+                onMutationSettled = onLifecycleSettled
+            )
             ServerToPhoneCopyControl(remote = remote, transfer = transfer, stale = stale,
                 onReviewPhoneAdd = onCopyToPhone)
             TransferLifecycleControl(
