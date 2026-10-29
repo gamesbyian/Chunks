@@ -20,4 +20,12 @@ This document supersedes earlier local↔remote Copy/Move designs involving down
 - Tests: local→remote and remote→local Copy leave source job/files unchanged; both Move directions delete only source job after verified target Add and separate approval; incomplete source jobs start independent destination downloads; failed metadata, duplicate, timeout and false/uncertain Add never retire source; retirement failure retains source files and displays both jobs; mixed batches report per-item status and survive resume/reconciliation; no payload transport APIs invoked.
 - UI copy: "Downloaded files will not be transferred." Move confirmation: "Remove the original torrent job after adding it to the destination? Existing downloaded files will remain on the source device/server." Expose new downloads and retained storage.
 
-**Implementation status:** Existing reviewed v1 magnet handoff (#320) is a partial precursor, not verified completed Copy or Move. Historical byte-copy proposals must no longer be implemented under these UI labels.
+**Implementation status (2026-10-28):**
+
+| Capability | Status |
+|---|---|
+| Copy Transfer to server (single) | Existing reviewed handoff, now labelled **Copy Transfer to server…**: exact-identity original .torrent (or v1 magnet fallback) opens the server's verified Add review; nothing is removed. Source/emulator tested; real-Seedhost Add evidence is from the separate Add-screen journey. |
+| Copy Transfer to phone (single) | v1 magnet (hash + name) plus the server's **public** tracker URLs (merged #478) into the phone's Add review, labelled **Copy Transfer to phone…**. For private transfers no `t.url` is read (identity only, may find no peers); credential-like tracker URLs are dropped. |
+| Move Transfer (single, both directions) | **Implemented, source-tested:** device-private journal (`TransferMove`), handoff to the destination's Add review, fresh exact-infohash destination check (phone: complete native identity inventory; server: main-view list), separately confirmed source-**job** removal (phone `removeKeepingData`, server guarded `d.erase`), the target re-checked immediately before removal, stage journaled before the request, lost replies → UNCERTAIN resolved only by observation. Server-side removal offered only from the main view and under the remote mutation gate. JVM state-machine tests + API35 Compose flow tests; **no real Seedhost or physical-handset Move yet**. |
+| Batch Copy/Move | Planned, not implemented. |
+| Destination Place/conflict review | Uses the destination's existing Add review (Place defaults, duplicate handling); no Move-specific per-item override UI yet. |

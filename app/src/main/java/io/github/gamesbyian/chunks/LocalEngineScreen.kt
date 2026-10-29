@@ -55,6 +55,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.engine.LocalAddResult
+import io.github.gamesbyian.chunks.model.TransferMove
 import io.github.gamesbyian.chunks.engine.LocalCommandOutcome
 import io.github.gamesbyian.chunks.engine.LocalEpisodeFocusPlanner
 import io.github.gamesbyian.chunks.engine.LocalFileBatchOutcome
@@ -99,6 +100,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** One engine per process. It lives only as long as Android keeps Chunks running. */
+/** The connected rTorrent account as seen by phone-side Move Transfer. */
+internal class LocalMoveServer(
+    val aliasScope: String,
+    val observe: suspend (String) -> TransferMove.Observation
+)
+
 internal object LocalEngineHolder {
     private var engine: LocalTorrentEngine? = null
 
@@ -215,6 +222,8 @@ internal fun LocalEngineScreen(
     initialTorrentUri: Uri? = null,
     /** A connected, independently privacy-gated rTorrent Add screen is available. */
     canReviewOnConnectedServer: Boolean = false,
+    /** The connected rTorrent account, for Move Transfer checks; null when signed out. */
+    moveServer: LocalMoveServer? = null,
     onTorrentConsumed: () -> Unit = {},
     onPrefillConsumed: () -> Unit = {},
     onPrepareRemote: ((String) -> Unit)? = null,
@@ -1070,6 +1079,32 @@ internal fun LocalEngineScreen(
             val displayedAlias = remember(transfer.infoHash, aliasRevision) {
                 aliasStore.get(TransferCollectionStore.LOCAL_ENGINE_SCOPE, transfer.infoHash)
             }
+            val prepareRemoteHandoff: (() -> Unit)? = onPrepareRemote?.let { send ->
+                    {
+                        scope.launch {
+                            // Prefer the complete .torrent (identity + trackers):
+                            // rTorrent cannot find peers for a bare hash unless
+                            // DHT happens to be usable on that server.
+                            val document = onPrepareRemoteTorrent?.let {
+                                withContext(Dispatchers.IO) {
+                                    try {
+                                        LocalEngineHolder.current()?.exportTorrentFile(transfer.infoHash)
+                                            ?.takeIf { bytes ->
+                                                TorrentMetainfoReader.preview(bytes).infoHashV1
+                                                    .equals(transfer.infoHash, ignoreCase = true)
+                                            }
+                                    } catch (_: Exception) { null }
+                                }
+                            }
+                            val prepared = TorrentIdentityHandoff.prepare(transfer.infoHash, transfer.name)
+                            when {
+                                document != null -> onPrepareRemoteTorrent(document)
+                                prepared != null -> send(prepared)
+                                else -> message = "This torrent has no supported v1 identity to hand off."
+                            }
+                        }
+                    }
+                }
             LocalTransferCard(transfer, busy || inventoryStale,
                 onRepairTrackers = if (transfer.stopped && transfer.metadataKnown &&
                     transfer.trackers?.total == 0) ({
@@ -1288,31 +1323,25 @@ internal fun LocalEngineScreen(
                         }
                     }
                 },
-                onPrepareRemote = onPrepareRemote?.let { send ->
-                    {
-                        scope.launch {
-                            // Prefer the complete .torrent (identity + trackers):
-                            // rTorrent cannot find peers for a bare hash unless
-                            // DHT happens to be usable on that server.
-                            val document = onPrepareRemoteTorrent?.let {
+                onPrepareRemote = prepareRemoteHandoff,
+                move = {
+                    TransferMoveControl(
+                        direction = TransferMove.Direction.PHONE_TO_SERVER,
+                        infoHash = transfer.infoHash, name = transfer.name,
+                        serverAliasScope = moveServer?.aliasScope?.takeIf { prepareRemoteHandoff != null },
+                        busy = busy || inventoryStale,
+                        ports = TransferMovePorts(
+                            observeTarget = moveServer?.let { server -> { server.observe(transfer.infoHash) } },
+                            observeSource = { TransferMoveObservations.phone(transfer.infoHash) },
+                            removeSource = {
                                 withContext(Dispatchers.IO) {
-                                    try {
-                                        LocalEngineHolder.current()?.exportTorrentFile(transfer.infoHash)
-                                            ?.takeIf { bytes ->
-                                                TorrentMetainfoReader.preview(bytes).infoHashV1
-                                                    .equals(transfer.infoHash, ignoreCase = true)
-                                            }
-                                    } catch (_: Exception) { null }
+                                    LocalEngineHolder.current()?.removeKeepingData(transfer.infoHash)
                                 }
-                            }
-                            val prepared = TorrentIdentityHandoff.prepare(transfer.infoHash, transfer.name)
-                            when {
-                                document != null -> onPrepareRemoteTorrent(document)
-                                prepared != null -> send(prepared)
-                                else -> message = "This torrent has no supported v1 identity to hand off."
-                            }
-                        }
-                    }
+                            },
+                            targetUnavailableReason = "Connect to the server account to check it."
+                        ),
+                        onStartMove = { prepareRemoteHandoff?.invoke() }
+                    )
                 },
                 onRemove = {
                     performLocalMutation {
@@ -1465,6 +1494,7 @@ internal fun LocalTransferCard(
     alias: String? = null,
     onSaveAlias: ((String?) -> Boolean)? = null,
     onPrepareRemote: (() -> Unit)? = null,
+    move: (@Composable () -> Unit)? = null,
     onRepairTrackers: (() -> Unit)? = null,
     observedGrowth: LocalProgressHistory.ObservedDelta? = null
 ) {
@@ -1561,7 +1591,7 @@ internal fun LocalTransferCard(
                 TorrentIdentityHandoff.prepare(transfer.infoHash, transfer.name) != null) {
                 OutlinedButton(onClick = { confirmHandoff = true }, enabled = !busy,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                    Text("Prepare torrent on rTorrent")
+                    Text("Copy Transfer to server…")
                 }
                 if (confirmHandoff) {
                     Text("Chunks opens your rTorrent server's Add review with this torrent's " +
@@ -1585,6 +1615,7 @@ internal fun LocalTransferCard(
                     }
                 }
             }
+            move?.invoke()
             if (filesShown) LocalFileSelection(
                 files, busy, transferKey = transfer.infoHash,
                 onFileWanted = onFileWanted, onBatchFileWanted = onBatchFileWanted,

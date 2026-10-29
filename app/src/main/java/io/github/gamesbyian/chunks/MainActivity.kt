@@ -66,6 +66,7 @@ import io.github.gamesbyian.chunks.model.CollectionMembershipRules
 import io.github.gamesbyian.chunks.model.ManualCollectionPager
 import io.github.gamesbyian.chunks.model.TransferFilter
 import io.github.gamesbyian.chunks.model.TransferOrder
+import io.github.gamesbyian.chunks.model.TransferMove
 import io.github.gamesbyian.chunks.model.PublicTrackerHandoff
 import io.github.gamesbyian.chunks.model.Units
 import io.github.gamesbyian.chunks.organize.Classifier
@@ -538,6 +539,11 @@ private fun ChunksApp(
                         initialMagnet = phoneHandoffMagnet,
                         initialTorrentUri = incomingTorrent,
                         canReviewOnConnectedServer = true,
+                        // Only an unambiguous authenticated account can own a Move.
+                        moveServer = if (remotePrivacyScope == null) null
+                            else LocalMoveServer(aliasScope) { hash ->
+                                TransferMoveObservations.server(connectedRemote, hash)
+                            },
                         onTorrentConsumed = onIncomingTorrentConsumed,
                         onPrefillConsumed = { phoneHandoffMagnet = null },
                         onPrepareRemote = { draft ->
@@ -1298,7 +1304,8 @@ private fun TransfersScreen(
                 files = files, filesLoading = filesLoading, filesError = filesError,
                 onInspect = { onInspect(transfer) },
                 onPreparePhone = { onPreparePhone(transfer) },
-                onCopyToPhone = onCopyToPhone
+                onCopyToPhone = onCopyToPhone,
+                moveScope = aliasScope
             )
             }
         }
@@ -1334,7 +1341,9 @@ private fun TransferCard(
     files: List<RemoteFile>?, filesLoading: Boolean, filesError: String?,
     onInspect: () -> Unit,
     onPreparePhone: () -> Unit,
-    onCopyToPhone: (String) -> Unit
+    onCopyToPhone: (String) -> Unit,
+    /** Authenticated endpoint + account scope, or null when ambiguous. */
+    moveScope: String? = null
 ) {
     var confirmPhoneHandoff by remember(transfer.hash) { mutableStateOf(false) }
     Card(
@@ -1425,6 +1434,24 @@ private fun TransferCard(
                     }
                 }
             }
+            if (mainView) TransferMoveControl(
+                direction = TransferMove.Direction.SERVER_TO_PHONE,
+                infoHash = transfer.hash, name = transfer.name,
+                serverAliasScope = moveScope?.takeIf {
+                    TorrentIdentityHandoff.prepare(transfer.hash, transfer.name) != null
+                },
+                busy = stale,
+                ports = TransferMovePorts(
+                    observeTarget = { TransferMoveObservations.phone(transfer.hash) },
+                    observeSource = { TransferMoveObservations.server(remote, transfer.hash) },
+                    // Guarded by the current name and Place; session-only d.erase.
+                    removeSource = { remote.eraseFromSession(transfer.hash, transfer.name, transfer.directory) },
+                    targetUnavailableReason = "Open phone transfers once so Chunks can check the phone."
+                ),
+                onStartMove = onPreparePhone,
+                onMutationStarted = onMutationStarted,
+                onMutationSettled = onLifecycleSettled
+            )
             ServerToPhoneCopyControl(remote = remote, transfer = transfer, stale = stale,
                 onReviewPhoneAdd = onCopyToPhone)
             TransferLifecycleControl(
