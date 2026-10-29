@@ -162,7 +162,7 @@ class ReferencePanelWeightTests(unittest.TestCase):
         original={ch:source_polygons(GLYPHS/f'U+{ord(ch):04X}.svg',3)
                   for ch in ('I','l')}
         manifest=json.loads((STUDIES/'reference-panel-weight-study-metrics.json').read_text())
-        self.assertEqual(manifest['overrides_used'],32)
+        self.assertEqual(manifest['overrides_used'],sum(len(list((GLYPHS/'weight-overrides'/str(w)).glob('U+*.svg'))) for w in WEIGHTS))
         for ch in ('I','l'):
             ratios=[]
             native_areas=[]
@@ -320,7 +320,7 @@ class ReferencePanelWeightTests(unittest.TestCase):
     def test_eight_independent_E_F_crossbar_masters_and_cff_provenance(self):
         """Three-level E/two-level F bar silhouettes must stay curved and joined."""
         ledger=json.loads((STUDIES/'reference-panel-weight-study-metrics.json').read_text())
-        self.assertEqual(ledger['overrides_used'],32)
+        self.assertEqual(ledger['overrides_used'],sum(len(list((GLYPHS/'weight-overrides'/str(w)).glob('U+*.svg'))) for w in WEIGHTS))
         for letter in ('E','F'):
             original=source_polygons(GLYPHS/f'U+{ord(letter):04X}.svg',3)
             self.assertEqual(topology(original),(1,0))
@@ -360,6 +360,34 @@ class ReferencePanelWeightTests(unittest.TestCase):
             self.assertEqual(areas,sorted(areas))
             self.assertLess(areas[-1],original.area,
                             f'{letter}: heaviest draft cannot exceed ExtraBold reference')
+
+
+    def test_lab_round_bowls_compile_as_genuine_native_cff_curves(self):
+        """Require source SHA/actual CFF curve receipts after offline rebuild."""
+        ledger=json.loads((STUDIES/'reference-panel-weight-study-metrics.json').read_text())
+        for ch in ('O','o','0','C','c'):
+            reference=source_polygons(GLYPHS/f'U+{ord(ch):04X}.svg',3)
+            areas=[]
+            for weight,style in WEIGHTS.items():
+                with self.subTest(ch=ch,weight=weight):
+                    source=GLYPHS/'weight-overrides'/str(weight)/f'U+{ord(ch):04X}.svg'
+                    candidate=source_polygons(source,3)
+                    self.assertTrue(candidate.is_valid)
+                    self.assertEqual(topology(candidate),topology(reference))
+                    areas.append(candidate.area)
+                    info=ledger['weights'][style]['glyph_geometry'][ch]
+                    self.assertEqual(info['outline_source'],'weight-specific-svg-master')
+                    self.assertEqual(info['outline_encoding'],'native-bezier-curves')
+                    self.assertEqual(info['override_svg_sha256'],
+                                     hashlib.sha256(source.read_bytes()).hexdigest())
+                    font=TTFont(STUDIES/f'ChunksReferencePanel-{style}-Study.otf')
+                    pen=RecordingPen()
+                    font.getGlyphSet()[font.getBestCmap()[ord(ch)]].draw(pen)
+                    self.assertEqual(sum(op=='moveTo' for op,_ in pen.value),
+                                     2 if ch in ('O','o','0') else 1)
+                    self.assertGreaterEqual(sum(op=='curveTo' for op,_ in pen.value),4)
+            self.assertEqual(areas,sorted(areas))
+            self.assertLess(areas[-1],reference.area)
 
     def test_raw_build_is_deterministic_without_touching_accepted_masters(self):
         with tempfile.TemporaryDirectory() as d:
