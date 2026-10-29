@@ -241,6 +241,8 @@ internal fun LocalEngineScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val finishInOrderStore = remember { FinishInOrderStore(context) }
+    val moveStore = remember { TransferMoveStore(context) }
+    var moveRevision by remember { mutableStateOf(0) }
     val collectionStore = remember(context) { TransferCollectionStore(context) }
     val aliasStore = remember(context) { TransferAliasStore(context) }
     var aliasRevision by remember { mutableStateOf(0) }
@@ -994,6 +996,27 @@ internal fun LocalEngineScreen(
             stale = inventoryStale || busy,
             sourceLabel = "phone"
         )
+        moveServer?.let { server ->
+            val digest = TransferMoveStore.scopeDigest(server.aliasScope)
+            val pending = remember(transfers, moveRevision) {
+                moveStore.all(TransferMove.Direction.PHONE_TO_SERVER).filter { record ->
+                    record.stage == TransferMove.Stage.TARGET_VERIFIED && record.serverScopeDigest == digest &&
+                        transfers.any { it.infoHash.equals(record.infoHash, ignoreCase = true) }
+                }
+            }
+            BatchMoveRemovalPanel(
+                pending = pending, serverLabel = TransferMoveStore.hostLabel(server.aliasScope),
+                busy = busy || inventoryStale,
+                observeTarget = { hash -> server.observe(hash) },
+                removeSource = { hash ->
+                    withContext(Dispatchers.IO) { LocalEngineHolder.current()?.removeKeepingData(hash) }
+                },
+                observeSource = { hash -> TransferMoveObservations.phone(hash) },
+                save = { record -> moveStore.save(record) },
+                forget = { record -> moveStore.remove(record.direction, record.infoHash) },
+                onFinished = { text -> message = text; moveRevision++ }
+            )
+        }
         LocalBatchCollectionPanel(
             transfers = transfers,
             shown = displayedTransfers,
@@ -1029,6 +1052,43 @@ internal fun LocalEngineScreen(
                             "The batch copy stopped unexpectedly. Check the server list before " +
                                 "copying again; nothing is retried automatically."
                         }
+                    }
+                }
+            },
+            onBatchMoveToServer = if (serverCopy == null || moveServer == null) null else { ids ->
+                val link = serverCopy
+                val server = moveServer
+                val items = transfers.filter { it.infoHash in ids }
+                    .map { io.github.gamesbyian.chunks.model.BatchServerCopy.Item(it.infoHash, it.name) }
+                performLocalMutation {
+                    val problem = io.github.gamesbyian.chunks.model.BatchServerCopy.validate(items)
+                    message = if (problem != null) problem else try {
+                        val report = io.github.gamesbyian.chunks.model.BatchServerCopy.run(items,
+                            exportTorrent = { hash ->
+                                withContext(Dispatchers.IO) { LocalEngineHolder.current()?.exportTorrentFile(hash) }
+                            },
+                            addStopped = link.addStoppedAtDefault)
+                        // Only destination jobs verified by readback (or already present) start a Move.
+                        val verified = report.results.filter {
+                            it.second == io.github.gamesbyian.chunks.model.BatchServerCopy.Result.ADDED ||
+                                it.second == io.github.gamesbyian.chunks.model.BatchServerCopy.Result.ALREADY_ON_SERVER
+                        }
+                        val journaled = withContext(Dispatchers.IO) {
+                            verified.count { (item, _) ->
+                                moveStore.save(TransferMove.start(TransferMove.Direction.PHONE_TO_SERVER,
+                                    item.infoHash, item.name, TransferMoveStore.scopeDigest(server.aliasScope),
+                                    TransferMoveStore.hostLabel(server.aliasScope))
+                                    .copy(stage = TransferMove.Stage.TARGET_VERIFIED))
+                            }
+                        }
+                        moveRevision++
+                        report.summary() + " $journaled ready to finish moving: review removal of the " +
+                            "original phone jobs below."
+                    } catch (cancel: kotlinx.coroutines.CancellationException) {
+                        throw cancel
+                    } catch (_: Exception) {
+                        "The batch move stopped before removal. Check the server list; nothing was removed " +
+                            "and nothing is retried automatically."
                     }
                 }
             },
@@ -1377,7 +1437,8 @@ internal fun LocalEngineScreen(
                             },
                             targetUnavailableReason = "Connect to the server account to check it."
                         ),
-                        onStartMove = { prepareRemoteHandoff?.invoke() }
+                        onStartMove = { prepareRemoteHandoff?.invoke() },
+                        revision = moveRevision
                     )
                 },
                 onRemove = {
