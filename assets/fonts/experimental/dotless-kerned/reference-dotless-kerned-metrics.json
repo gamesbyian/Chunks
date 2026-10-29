@@ -2,8 +2,8 @@
   "status": "NONSHIPPING dotless-i-j reference glyph and contextual kerning prototype",
   "weights": {
     "Regular": {
-      "input_sha256": "60fbc39125cdeef51f78411b651b897149aacebd3cdeee8faa142918149c0af5",
-      "output_sha256": "ce4067cb91fe15073f5fa6796922e3a6770a7ef32cb9e1356f6b0efc09c7cb67",
+      "input_sha256": "76e603394885b485f3fa20f60f752d7760f2e15738cd02c27be842fff7049801",
+      "output_sha256": "031c7d498fe1aec1cb65c8a891c02ddd43e864465dea452987924363fa73f738",
       "file": "ChunksReferencePanel-Regular-DotlessKerned.otf",
       "reference_accent_glyphs": 258,
       "candidate_pairs": 98556,
@@ -14,7 +14,7 @@
       "clipped_pair_examples": [],
       "mean_abs_correction_units": 75.57,
       "source_scripts_unchanged": true,
-      "base_font_sha256": "422a6ebf9cec430d8a6b1116dfa6d73c5b443c1d436ceaaffdf4af99f14aad2e",
+      "base_font_sha256": "320fa20638c70d4ac86a1b5250d82e1f657d88c3c75239bc30d6cf93c7aa8b3d",
       "dotless_added": 14,
       "dotless_glyphs": [
         {
@@ -305,9 +305,9 @@
             750
           ],
           "source_dot_bounds": [
-            211,
+            298,
             614,
-            348,
+            435,
             742
           ]
         }
@@ -316,8 +316,8 @@
       "unicode_count": 856
     },
     "Medium": {
-      "input_sha256": "55e2b0529b48058afb61ae1464202676b25b00b7029057acf4f7791b64c3c97d",
-      "output_sha256": "611d0c945b218231266856d5cba5ffb4484c46f0227826fba0422d56ff2e2141",
+      "input_sha256": "f656ba5da2ba4f73c906746ee5969787553efd19292b619f8975052bd099e2b2",
+      "output_sha256": "2bf4ba6ec19f65c167c79bc4675db41083f0ad088aba73f8564252e65837e395",
       "file": "ChunksReferencePanel-Medium-DotlessKerned.otf",
       "reference_accent_glyphs": 257,
       "candidate_pairs": 97917,
@@ -328,7 +328,7 @@
       "clipped_pair_examples": [],
       "mean_abs_correction_units": 73.39,
       "source_scripts_unchanged": true,
-      "base_font_sha256": "7422e2def9705d5e4492a02852c687a16137fad069bf869b994c237c73210080",
+      "base_font_sha256": "8accdccc474d19b03ba4a2ff862edf019a29a93912c22708674c546c37791a35",
       "dotless_added": 14,
       "dotless_glyphs": [
         {
@@ -619,9 +619,9 @@
             769
           ],
           "source_dot_bounds": [
-            209,
+            299,
             624,
-            351,
+            442,
             756
           ]
         }
@@ -630,8 +630,8 @@
       "unicode_count": 856
     },
     "Semibold": {
-      "input_sha256": "46196e0dd361aa3f17c0c6b25b25f364806e822f72ce947888c073af7ff8eb03",
-      "output_sha256": "7c5261be83673fae1222682745fd451279a5c13cb69d9316ef9d864a0a04513b",
+      "input_sha256": "bd5da5f0b4404d5c3dd07789102f86c5bdf85b5dd39ee130e6f10a64eed9ff6d",
+      "output_sha256": "cf42f1239a17e71006fa58214f457bcfa89dc72531ec84d6d3600691391f06b4",
       "file": "ChunksReferencePanel-Semibold-DotlessKerned.otf",
       "reference_accent_glyphs": 257,
       "candidate_pairs": 97917,
@@ -649,7 +649,7 @@
       ],
       "mean_abs_correction_units": 71.24,
       "source_scripts_unchanged": true,
-      "base_font_sha256": "d46bbc340ca2631308d92cf58d8cbf78adf14b6b9687de4528f985e8d05b804b",
+      "base_font_sha256": "3898bcd9d2c90e90af03f05acb86be319bb129e4b9ad511165236927e3947248",
       "dotless_added": 14,
       "dotless_glyphs": [
         {
@@ -940,9 +940,9 @@
             789
           ],
           "source_dot_bounds": [
-            207,
+            300,
             634,
-            355,
+            448,
             771
           ]
         }
@@ -951,8 +951,8 @@
       "unicode_count": 856
     },
     "Bold": {
-      "input_sha256": "59f4e68297235c45b985273213ba4ad43e6c71ba4bff7a79e3c8eab82e229f1b",
-      "output_sha256": "4221aa830c8c137f2e8a9ed90aad3e8ebaed26ac37df19376e697e3d1deafe64",
+      "input_sha256": "472350db3fa856a1a5b37c9b2cbcc4da5651cb3b6500a7ea7fd008fd741e7ae6",
+      "output_sha256": "496ec52f3051aa5a55899108ef82e836699d3c4df47e60e22b63eca46f43f847",
       "file": "ChunksReferencePanel-Bold-DotlessKerned.otf",
       "reference_accent_glyphs": 257,
       "candidate_pairs": 97917,
@@ -982,7 +982,7 @@
       ],
       "mean_abs_correction_units": 68.85,
       "source_scripts_unchanged": true,
-      "base_font_sha256": "1d5a6c701fb792d25766241b857f8385bcb2e556f3996bf216efb2ba921f937a",
+      "base_font_sha256": "8b28f24c150d0d7b69d2c9c742b108e6c69c16f590c8376a7ff7ef6cbde1f3ec",
       "dotless_added": 14,
       "dotless_glyphs": [
         {
@@ -1273,9 +1273,9 @@
             810
           ],
           "source_dot_bounds": [
-            205,
+            302,
             642,
-            357,
+            454,
             783
           ]
         }
