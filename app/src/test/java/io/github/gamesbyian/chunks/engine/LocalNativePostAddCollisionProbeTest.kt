@@ -90,7 +90,7 @@ class LocalNativePostAddCollisionProbeTest {
         // Another process/user can create the same filename while Chunks
         // waits for explicit Start. Equal size prevents trivially detecting
         // it by file size alone; contents have a distinct independent hash.
-        assertTrue(foreign.parentFile.mkdirs())
+        assertTrue(foreign.parentFile.isDirectory || foreign.parentFile.mkdirs())
         val unrelated = ByteArray(expected.size).also { Random(9876L).nextBytes(it) }
         foreign.writeBytes(unrelated)
         val before = sha(foreign.readBytes())
