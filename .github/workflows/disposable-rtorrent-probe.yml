@@ -13,6 +13,8 @@ on:
       - "app/src/main/java/io/github/gamesbyian/chunks/model/RemoteBatchLifecycle.kt"
       - "app/src/test/java/io/github/gamesbyian/chunks/rpc/RTorrentDisposableBatchCopyTest.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/model/BatchServerCopy.kt"
+      - "app/src/test/java/io/github/gamesbyian/chunks/rpc/RTorrentDisposableBatchMoveTest.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/model/BatchMoveRemoval.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalTorrentEngine.kt"
 permissions:
   contents: read
@@ -136,6 +138,14 @@ jobs:
           gradle --no-daemon :app:testDebugUnitTest --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableBatchCopyTest'
           grep -q 'tests="1" skipped="0" failures="0" errors="0"' \
             app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.RTorrentDisposableBatchCopyTest.xml
+      - name: Batch Move server-job removal on real rTorrent
+        env:
+          CHUNKS_DISPOSABLE_RT_URL: http://127.0.0.1:18080/RPC2
+          CHUNKS_DISPOSABLE_TARGET_DIR: ${{ runner.temp }}/chunks-data
+        run: |
+          gradle --no-daemon :app:testDebugUnitTest --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableBatchMoveTest'
+          grep -q 'tests="1" skipped="0" failures="0" errors="0"' \
+            app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.RTorrentDisposableBatchMoveTest.xml
       - name: Cross-implementation payload exchange (rTorrent <-> phone engine)
         env:
           CHUNKS_DISPOSABLE_RT_URL: http://127.0.0.1:18080/RPC2
