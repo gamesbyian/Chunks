@@ -390,4 +390,152 @@ class RTorrentRemoteFixtureTest {
             try { remote.lookupName("not-a-hash"); fail("must refuse") } catch (_: IllegalArgumentException) { }
         }
     }
+
+    private fun eraseFixtureRow(hash: String, name: String, directory: String): String =
+        "<value><array><data>" +
+            "<value><string>$hash</string></value>" +
+            "<value><string>$name</string></value>" +
+            "<value><i8>100</i8></value><value><i8>40</i8></value>" +
+            "<value><int>0</int></value>" +
+            "<value><string>$directory</string></value>" +
+            "<value><i8>0</i8></value><value><i8>0</i8></value>" +
+            "<value><i8>0</i8></value></data></array></value>"
+
+    @Test fun eraseNeverTreatsHiddenTransferAsAlreadyAbsent() = runBlocking {
+        val hash = "A".repeat(40)
+        Fixture { request, _ ->
+            when {
+                request.contains("<methodName>d.multicall2</methodName>") ->
+                    Reply(200, result("<array><data></data></array>"))
+                request.contains("<methodName>d.hash</methodName>") ->
+                    Reply(200, result("<string>$hash</string>"))
+                else -> Reply(200, fault(-32601, "Unexpected mutation"))
+            }
+        }.use { fixture ->
+            assertThrows(IllegalStateException::class.java) {
+                runBlocking { RTorrentRemote(RemoteCredentials(fixture.endpoint, "", ""))
+                    .eraseFromSession(hash, "Example", "/data") }
+            }
+            assertEquals(2, fixture.methods.size)
+            assertFalse(fixture.methods.any { it.contains("<methodName>d.erase</methodName>") })
+        }
+    }
+
+    @Test fun eraseReportsAlreadyAbsentOnlyForExactHashNotFound() = runBlocking {
+        val hash = "B".repeat(40)
+        Fixture { request, _ ->
+            when {
+                request.contains("<methodName>d.multicall2</methodName>") ->
+                    Reply(200, result("<array><data></data></array>"))
+                request.contains("<methodName>d.hash</methodName>") ->
+                    Reply(200, fault(-501, "Could not find info-hash."))
+                else -> Reply(200, fault(-32601, "Unexpected mutation"))
+            }
+        }.use { fixture ->
+            val result = RTorrentRemote(RemoteCredentials(fixture.endpoint, "", ""))
+                .eraseFromSession(hash, "Example", "/data")
+            assertTrue(result is SessionEraseOutcome.AlreadyAbsent)
+            assertEquals(2, fixture.methods.size)
+            assertFalse(fixture.methods.any { it.contains("<methodName>d.erase</methodName>") })
+        }
+    }
+
+    @Test fun eraseAcknowledgementDoesNotVerifyRemovalWhenOnlyViewDropsHash() = runBlocking {
+        val hash = "C".repeat(40)
+        var erased = false
+        Fixture { request, _ ->
+            when {
+                request.contains("<methodName>d.multicall2</methodName>") ->
+                    Reply(200, result("<array><data>" +
+                        eraseFixtureRow(hash, "Example", "/data") + "</data></array>"))
+                request.contains("<methodName>d.hash</methodName>") ->
+                    Reply(200, result("<string>$hash</string>"))
+                request.contains("<methodName>d.erase</methodName>") -> {
+                    erased = true
+                    Reply(200, result("<int>0</int>"))
+                }
+                else -> Reply(200, fault(-32601, "Unexpected method"))
+            }
+        }.use { fixture ->
+            val result = RTorrentRemote(RemoteCredentials(fixture.endpoint, "", ""))
+                .eraseFromSession(hash, "Example", "/data")
+            assertTrue(erased)
+            assertTrue(result is SessionEraseOutcome.PendingRemoval)
+            assertEquals(1, fixture.methods.count { it.contains("<methodName>d.erase</methodName>") })
+            assertEquals(2, fixture.methods.count { it.contains("<methodName>d.hash</methodName>") })
+        }
+    }
+
+    @Test fun eraseVerifiesRemovalWithExactHashAbsenceAfterAcknowledgement() = runBlocking {
+        val hash = "D".repeat(40)
+        var erased = false
+        Fixture { request, _ ->
+            when {
+                request.contains("<methodName>d.multicall2</methodName>") ->
+                    Reply(200, result("<array><data>" +
+                        eraseFixtureRow(hash, "Example", "/data") + "</data></array>"))
+                request.contains("<methodName>d.hash</methodName>") ->
+                    if (erased) Reply(200, fault(-501, "Could not find info-hash."))
+                    else Reply(200, result("<string>$hash</string>"))
+                request.contains("<methodName>d.erase</methodName>") -> {
+                    erased = true
+                    Reply(200, result("<int>0</int>"))
+                }
+                else -> Reply(200, fault(-32601, "Unexpected method"))
+            }
+        }.use { fixture ->
+            val result = RTorrentRemote(RemoteCredentials(fixture.endpoint, "", ""))
+                .eraseFromSession(hash, "Example", "/data")
+            assertTrue(erased)
+            assertTrue(result is SessionEraseOutcome.VerifiedRemoved)
+            assertEquals(1, fixture.methods.count { it.contains("<methodName>d.erase</methodName>") })
+        }
+    }
+
+    @Test fun erasePostWriteServerFaultCannotVerifyRemoval() = runBlocking {
+        val hash = "E".repeat(40)
+        var erased = false
+        Fixture { request, _ ->
+            when {
+                request.contains("<methodName>d.multicall2</methodName>") ->
+                    Reply(200, result("<array><data>" +
+                        eraseFixtureRow(hash, "Example", "/data") + "</data></array>"))
+                request.contains("<methodName>d.hash</methodName>") ->
+                    if (erased) Reply(200, fault(-503, "Server busy"))
+                    else Reply(200, result("<string>$hash</string>"))
+                request.contains("<methodName>d.erase</methodName>") -> {
+                    erased = true
+                    Reply(200, result("<int>0</int>"))
+                }
+                else -> Reply(200, fault(-32601, "Unexpected method"))
+            }
+        }.use { fixture ->
+            val result = RTorrentRemote(RemoteCredentials(fixture.endpoint, "", ""))
+                .eraseFromSession(hash, "Example", "/data")
+            assertTrue(result is SessionEraseOutcome.Uncertain)
+            assertEquals(1, fixture.methods.count { it.contains("<methodName>d.erase</methodName>") })
+        }
+    }
+
+    @Test fun mismatchedExactHashReplyBlocksEraseBeforeMutation() = runBlocking {
+        val hash = "F".repeat(40)
+        Fixture { request, _ ->
+            when {
+                request.contains("<methodName>d.multicall2</methodName>") ->
+                    Reply(200, result("<array><data>" +
+                        eraseFixtureRow(hash, "Example", "/data") + "</data></array>"))
+                request.contains("<methodName>d.hash</methodName>") ->
+                    Reply(200, result("<string>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA</string>"))
+                else -> Reply(200, fault(-32601, "Unexpected mutation"))
+            }
+        }.use { fixture ->
+            assertThrows(IllegalStateException::class.java) {
+                runBlocking { RTorrentRemote(RemoteCredentials(fixture.endpoint, "", ""))
+                    .eraseFromSession(hash, "Example", "/data") }
+            }
+            assertFalse(fixture.methods.any { it.contains("<methodName>d.erase</methodName>") })
+        }
+    }
+
+
 }
