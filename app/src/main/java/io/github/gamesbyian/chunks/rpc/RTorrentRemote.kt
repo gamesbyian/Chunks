@@ -134,7 +134,14 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
      */
     suspend fun lookupName(hash: String): String? {
         require(Regex("[0-9a-fA-F]{40}([0-9a-fA-F]{24})?").matches(hash)) { "Invalid torrent identity" }
-        return try { (call("d.name", listOf(hash)) as? String)?.take(2048) } catch (_: RpcFault) { null }
+        return try {
+            (call("d.name", listOf(hash)) as? String)?.take(2048)
+                ?: error("Unexpected exact-hash name reply")
+        } catch (fault: RpcFault) {
+            // Only rTorrent's "unknown info-hash" reply (legacy or modern) proves absence.
+            // Unknown method/server faults must not be mistaken for a missing Add.
+            if (fault.isUnknownInfoHash()) null else throw fault
+        }
     }
 
     /**
@@ -549,28 +556,47 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         val matching = listTransfers("main").filter {
             it.hash.equals(hash, ignoreCase = true)
         }
-        if (matching.isEmpty()) return SessionEraseOutcome.AlreadyAbsent(hash)
+        if (matching.isEmpty()) {
+            // A view may hide a torrent without removing it from the session.
+            // The exact-hash getter is independent of view membership.
+            if (!sessionContainsExactHash(hash)) return SessionEraseOutcome.AlreadyAbsent(hash)
+            error("Torrent still exists outside the main view; refresh before removal")
+        }
         require(matching.size == 1) { "Ambiguous torrent identity" }
         require(matching.single().name == expectedName &&
             matching.single().directory == expectedDirectory) {
             "Torrent name or location changed; refresh before removal"
         }
+        // Guard again outside the view before the irreversible session write.
+        check(sessionContainsExactHash(hash)) { "Torrent disappeared before removal; refresh" }
         try {
             call("d.erase", listOf(hash))
         } catch (_: IOException) {
             return SessionEraseOutcome.Uncertain(hash)
         }
         return try {
-            val stillPresent = listTransfers("main").any {
-                it.hash.equals(hash, ignoreCase = true)
-            }
-            if (stillPresent) SessionEraseOutcome.PendingRemoval(hash)
+            if (sessionContainsExactHash(hash)) SessionEraseOutcome.PendingRemoval(hash)
             else SessionEraseOutcome.VerifiedRemoved(hash)
         } catch (_: IOException) {
             SessionEraseOutcome.Uncertain(hash)
         } catch (_: RpcFault) {
-            SessionEraseOutcome.PendingRemoval(hash)
+            // An unknown-method/server fault does not establish absence.
+            SessionEraseOutcome.Uncertain(hash)
         }
+    }
+
+
+    /** Read-only session identity independent of any visible rTorrent view. */
+    private suspend fun sessionContainsExactHash(hash: String): Boolean = try {
+        val returned = call("d.hash", listOf(hash)) as? String
+        check(returned?.equals(hash, ignoreCase = true) == true) {
+            "Unexpected rTorrent exact-hash identity reply"
+        }
+        true
+    } catch (fault: RpcFault) {
+        // Only rTorrent's "unknown info-hash" reply (legacy -501 or modern -500)
+        // proves absence; other faults must never authorize mutation.
+        if (fault.isUnknownInfoHash()) false else throw fault
     }
 
     /** A per-torrent read-only file inspector; never changes file priorities. */
