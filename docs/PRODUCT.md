@@ -59,6 +59,9 @@ Local-only (the default offer), remote-only, and combined local/one-or-more-rTor
 > **Owner correction (2026-10-28):** Cross-engine **Copy Transfer** and **Move Transfer** operate on torrent **jobs only**, never downloaded file bytes. Move adds and verifies the target job, then separately confirms session-only removal of the source job, leaving all source files untouched. Destination downloads independently. Prior text proposing payload transfer, file migration or waiting for target seeding under these names is superseded by [the authoritative transfer-job contract](CROSS-ENGINE-TRANSFER-JOBS.md).
 
 
+
+**Every sort direction is reversible** for every supported transfer ordering, grouped or ungrouped; the same ascending/descending choice applies consistently to all environment groups.
+
 Combined browsing also supports optional **Group by environment** sections. One common transfer sort and direction governs all groups (name, age, file size, etc.), with no per-environment sub-sort configuration needed. Turning grouping off applies the same transfer sort globally. See [UNIFIED-ENVIRONMENTS](UNIFIED-ENVIRONMENTS.md).
 
 ## Owner-approved integrated discovery and secondary server tools (2026-10-29)
