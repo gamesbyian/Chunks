@@ -134,7 +134,12 @@ internal object FinishInOrderPlanner {
         policy: Policy,
         observed: List<Observed>,
         lastApplied: Map<Int, Int>,
-        pinned: Set<Int>
+        pinned: Set<Int>,
+        /**
+         * Engines with only off/normal/high (rTorrent): everything that is not
+         * High stays Normal, so Low is never requested.
+         */
+        twoBands: Boolean = false
     ): Decision {
         val byIndex = observed.associateBy { it.file.index }
         if (byIndex.size != observed.size) return Decision.Refused("Duplicate file observation")
@@ -179,7 +184,7 @@ internal object FinishInOrderPlanner {
                     lookaheadLeft--
                     desired[index] = NORMAL; roles[index] = FileRole.LOOKAHEAD
                 }
-                else -> { desired[index] = LOW; roles[index] = FileRole.BACKGROUND }
+                else -> { desired[index] = if (twoBands) NORMAL else LOW; roles[index] = FileRole.BACKGROUND }
             }
         }
         val changes = desired.mapNotNull { (index, priority) ->
