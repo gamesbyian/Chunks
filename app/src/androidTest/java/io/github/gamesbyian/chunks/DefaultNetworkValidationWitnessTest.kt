@@ -6,9 +6,10 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /** Pure negative controls: a toggle acknowledgement is not a network outage. */
+private typealias P = DefaultNetworkValidationWitness.Phase
+
 @RunWith(AndroidJUnit4::class)
 class DefaultNetworkValidationWitnessTest {
-    private val P = DefaultNetworkValidationWitness.Phase
 
     @Test fun stableValidatedOutageAndReturnAreRequiredInOrder() {
         val gate = DefaultNetworkValidationWitness()
