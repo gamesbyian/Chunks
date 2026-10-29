@@ -23,6 +23,7 @@ The [documentation architecture and authoring standard](DOCUMENTATION-STANDARD.m
 - [TRANSFER-FILE-RECOVERY](TRANSFER-FILE-RECOVERY.md): find displaced or renamed existing data and safely restore transfer mappings.
 - [SMART-SEEDING-RULES](SMART-SEEDING-RULES.md): ratio, duration and upload-rate groups, tracker matching, Add review and safe unattended assignment.
 - [UNIFIED-ENVIRONMENTS](UNIFIED-ENVIRONMENTS.md): shared phone and rTorrent experience and scoped settings.
+- [CREATE-AND-SHARE](CREATE-AND-SHARE.md): anonymous and authenticated torrent creation, seeding and publishing, service profiles, privacy, and acceptance.
 - [CROSS-ENGINE-TRANSFER-JOBS](CROSS-ENGINE-TRANSFER-JOBS.md): job-only Copy/Move; no payload transfer.
 - [SMART-REMOTE-CONNECTION](SMART-REMOTE-CONNECTION.md): discovery, security and multi-profile onboarding.
 - [TRANSFER-ARTWORK](TRANSFER-ARTWORK.md): enrichment, provider provenance and user overrides.
@@ -39,6 +40,7 @@ The [documentation architecture and authoring standard](DOCUMENTATION-STANDARD.m
 - [PUBLIC-TORRENT-FIXTURES](PUBLIC-TORRENT-FIXTURES.md): lawful test fixtures.
 - [User-supplied test inputs](USER-SUPPLIED-TORRENT-TEST-INPUTS.md): controlled owner-provided fixtures.
 - [RESEARCH](RESEARCH.md) and [REUSE-AUDIT](REUSE-AUDIT.md): upstream references, prior art and reuse boundaries.
+- [BitTorrent user-aversion and friction atlas](BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md): qualitative, multilingual reports of dislike, non-use, abandonment and workflow pain (research, not product requirements).
 - [Agent lanes](AGENT-LANES.md): concurrency/ownership model.
 - [Dated handoffs](HANDOFF-2026-10-28.md), [Claude app handoff](CLAUDE-APP-HANDOFF-2026-10-28.md), [earlier handoff](HANDOFF-2026-10-27.md): historical session context, not current priorities.
 - [Archive guide](archive/README.md): preserved pre-consolidation documents and status interpretation.

@@ -1,4 +1,7 @@
 # Research ledger and upstream references
+
+User-voice qualitative reference: [multilingual BitTorrent aversion and friction atlas](BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md) (2026-10-29). Descriptive research only, not normative scope or implementation evidence.
+
 2026-10-23 exploratory research. References are upstream docs, not proofs of Chunks functionality. Verify licenses, APIs and current versions before incorporating code.
 
 - rTorrent docs and command reference: https://rtorrent-docs.readthedocs.io/en/latest/ and https://kannibalox.github.io/rtorrent-docs/cmd-ref.html
