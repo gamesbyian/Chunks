@@ -68,6 +68,7 @@ import io.github.gamesbyian.chunks.model.TransferFilter
 import io.github.gamesbyian.chunks.model.TransferOrder
 import io.github.gamesbyian.chunks.model.TransferMove
 import io.github.gamesbyian.chunks.model.PublicTrackerHandoff
+import io.github.gamesbyian.chunks.engine.FinishInOrderRunner
 import io.github.gamesbyian.chunks.model.Units
 import io.github.gamesbyian.chunks.organize.Classifier
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
@@ -591,6 +592,31 @@ private fun ChunksApp(
                     mutationGate.settled()
                     stale = true
                     refresh()
+                }
+            }
+            // Finish in Order on rTorrent advances only while connected here:
+            // at most one guarded step per policy every 30 s, under the same
+            // mutation gate as every other server change.
+            LaunchedEffect(connectedRemote, aliasScope) {
+                val store = FinishInOrderStore(context, aliasScope)
+                while (true) {
+                    kotlinx.coroutines.delay(30_000L)
+                    if (remotePrivacyScope == null) continue
+                    for (transfer in transfers.filter { it.started }) {
+                        val record = withContext(Dispatchers.IO) { store.get(transfer.hash) } ?: continue
+                        if (record.suspendedReason != null || (record.finished && record.pending.isEmpty())) continue
+                        if (server !== connectedRemote || loading || stale || !mutationGate.tryStart()) break
+                        var changed = false
+                        try {
+                            val step = try { stepRemoteFinishInOrder(connectedRemote, store, transfer.hash) }
+                                catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
+                                catch (_: Exception) { null }
+                            changed = step !is FinishInOrderRunner.Step.Idle
+                        } finally {
+                            mutationGate.settled()
+                            if (changed && server === connectedRemote) { stale = true; refresh() }
+                        }
+                    }
                 }
             }
             Row(
@@ -1258,6 +1284,11 @@ private fun TransfersScreen(
                         onSettled = onLifecycleSettled,
                         performLifecycle = remote::setStarted
                     )
+                    RemoteBatchPhoneCopyPanel(
+                        selected = list.filter { it.hash in batchHashes },
+                        enabled = !stale && !loading && !batchBusy && batchHashes.isNotEmpty(),
+                        run = { items -> runBatchPhoneCopy(context, remote, items) }
+                    )
                 }
             }
         }
@@ -1314,7 +1345,8 @@ private fun TransfersScreen(
                 onInspect = { onInspect(transfer) },
                 onPreparePhone = { onPreparePhone(transfer) },
                 onCopyToPhone = onCopyToPhone,
-                moveScope = aliasScope
+                moveScope = aliasScope,
+                finishInOrderScope = aliasScope
             )
             }
         }
@@ -1352,7 +1384,9 @@ private fun TransferCard(
     onPreparePhone: () -> Unit,
     onCopyToPhone: (String) -> Unit,
     /** Authenticated endpoint + account scope, or null when ambiguous. */
-    moveScope: String? = null
+    moveScope: String? = null,
+    /** Authenticated endpoint + account scope for Finish in Order; null when ambiguous. */
+    finishInOrderScope: String? = null
 ) {
     var confirmPhoneHandoff by remember(transfer.hash) { mutableStateOf(false) }
     Card(
@@ -1478,6 +1512,10 @@ private fun TransferCard(
                 if (filesLoading) Text("Reading server file list…")
                 if (filesError != null) Text(filesError, color = Color(0xFF9E3930))
                 if (files != null) {
+                    if (mainView && finishInOrderScope != null) RemoteFinishInOrderPanel(
+                        remote = remote, transfer = transfer, scope = finishInOrderScope,
+                        files = files, stale = stale,
+                        onMutationStarted = onMutationStarted, onSettled = onLifecycleSettled)
                     TransferFilePager(
                         remote = remote, hash = transfer.hash, files = files,
                         snapshotStale = stale, mainView = mainView,
