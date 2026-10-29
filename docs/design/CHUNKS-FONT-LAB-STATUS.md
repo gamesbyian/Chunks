@@ -4,7 +4,28 @@
 
 ## Built, reproducible, still nonshipping
 
-## Latest owner-directed C/c/j refinement, verified 2026-10-28
+## Latest owner-directed j/G/g/9 refinement, verified 2026-10-28
+
+**CURRENT NONSHIPPING CANDIDATE:** [one final complete-family acceptance #40822542503](https://github.com/gamesbyian/Chunks/actions/runs/40822542503) **PASSED every step** after a first rejected geometry candidate [#40822338290](https://github.com/gamesbyian/Chunks/actions/runs/40822338290) was corrected to respect the strict reference envelope. Exactly **16 native SVG masters** (four weights 400/500/600/700 × `j/G/g/9`) changed in [source commit `8681f415`](https://github.com/gamesbyian/Chunks/commit/8681f4156cc6c9fb0765decac82f3a804ff813cc); the narrow G bounds/test correction is [`03bfe73c`](https://github.com/gamesbyian/Chunks/commit/03bfe73c20cd31ced8faec8e13384e54c13f331d). Full experimental binaries, all five 20-derivative family specimens and metrics were saved in [build commit `0aaacec0f`](https://github.com/gamesbyian/Chunks/commit/0aaacec0f84c794684447a8a9029210b6435296f).
+
+- `j`: straightened top-left vertical stem, removed the 4.01–4.45 source-unit spur, kept the previously centred separate dot, descender/hook, and existing `C/c` corrections.
+- `G`: softened the upper-right outer shoulder to smooth horizontal Bezier tangency, opened the crossbar/upper-terminal gap by 2.31 source units, kept the source bounds within the approved reference envelope.
+- `g`: increased the white gap beneath the lower bowl, without moving the tail or counter.
+- `9`: mirrored the editable outline and inner counter horizontally so the lower terminal curls left, the correct orientation; `6` and every other glyph unchanged.
+- All **248/248 editable weight masters**, full 856-codepoint CFF/shaping/kerning/metrics, **20 derivative family binaries**, unchanged Hindi shaping and zero raster counter problems for 20 counter-bearing glyphs at 14/24 px across all four lighter weights **passed** in the same one-job frozen workflow.
+- **Original reference and ExtraBold 800 preserved, byte-for-byte.** Previous vs new ExtraBold consolidated CFF SHA-256 is identical: `55ba6f8a114a0da6223023bde4e0b6ad12d469616b2743ac471d8415b1d8813c`. No Android shipping resource, `main`, source reference or other development branch touched. No font PR or routine push CI.
+- New experimental weight-study OTF SHA-256 receipts:
+
+| Weight | Current SHA-256 |
+|---|---|
+| Regular | `9b20a113c812a9ff6f4f9321d06be7cb9c0443cab4ccfec29e5485f109a79ccb` |
+| Medium | `546e37aef073b982dec7a42592f1d8eaa93520e3462d9d8331d7752d72b7ae8a` |
+| Semibold | `6874db06ddfecd6c7108578b65436b08652997679f8cfa05ab9eb9f2867fdeaf` |
+| Bold | `1336893c36093db04757b9b51a3b2dbae46900a3a62ecfdefe28c8886bcbad75` |
+
+The old [C/c/j run #40820307607](https://github.com/gamesbyian/Chunks/actions/runs/40820307607) below is preserved as a **previous candidate**, useful for before-and-after actual-font comparisons. **Outstanding:** the owner has approved the fifth weight but has not yet signed off the *revised* 400–700 glyphs, Android physical device font scaling/TalkBack, or production font promotion. See [specific round-two corrections](CHUNKS-FONT-LAB-OWNER-OPTICAL-REFINEMENTS-ROUND2.md), [editorial gate](CHUNKS-FONT-LAB-EDITORIAL-GATE.md), and [issue #347](https://github.com/gamesbyian/Chunks/issues/347).
+
+## Earlier owner-directed C/c/j refinement, verified 2026-10-28
 
 **Current frozen validated candidate:** [one controlled full-family run #40820307607](https://github.com/gamesbyian/Chunks/actions/runs/40820307607) **PASSED every step**, persisted exact OTF / source-hash receipts to isolated lab commit [`44c419ac4`](https://github.com/gamesbyian/Chunks/commit/44c419ac487c71a79bf70b95e560671a2e26d733), and attached the complete `chunks-font-lab-all-families` optical specimen bundle.
 

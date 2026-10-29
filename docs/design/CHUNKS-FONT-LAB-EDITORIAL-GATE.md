@@ -2,6 +2,12 @@
 
 The core reference-family **engineering build is complete**, but the source artwork is still an editorial proposal. Neither passing OpenType tests nor valid CFF winding proves that it matches the owner's desired original letterform drawings. Keep [issue #347](https://github.com/gamesbyian/Chunks/issues/347) open until the remaining gates are explicitly accepted.
 
+## Latest owner corrections: 400–700 done, ExtraBold 800 approved unchanged
+
+The owner identified four additional glyph issues after the first `C/c/j` refinements: a pointed `j` body spur, pinched upper-right `G`, narrow `G` upper opening, narrow `g` tail gap, and a left-right-reversed `9`. All four glyphs were corrected **only** in 400–700, with `G` upper opening and curve refined within the independent reference-bounds gate. The final [one final complete-family acceptance #40822542503](https://github.com/gamesbyian/Chunks/actions/runs/40822542503) **passed every stage** after one initial source-only failure was corrected. Actual CFF raster specimens and 14/24px counter tests passed. Original source, Android app font, all other glyphs, and **owner-approved fifth ExtraBold 800** are untouched; consolidated 800 SHA is identical before and after.
+
+Treat the owner statement that the fifth weight is perfect as **specific approval of 800 as-is**. Do not redesign it. The new first four weights still require an owner's visual verdict against the actual generated CFF comparison; technical tests, including 14/24px CFF counter visibility, are not artistic or real-device acceptance. See [current nonshipping lab status](CHUNKS-FONT-LAB-STATUS.md) and [source design notes](CHUNKS-FONT-LAB-OWNER-OPTICAL-REFINEMENTS-ROUND2.md).
+
 ## Verifiable automated acceptance already complete
 
 - 62 basic glyphs × four lighter weights (400–700), **248 individual editable, native Bézier source masters**; immutable original reference ExtraBold 800.
