@@ -88,6 +88,21 @@ class CombinedTransfersScreenTest {
         assertTrue(saved.groupByEnvironment)
     }
 
+    @Test fun combinedFilterIsAppliedToUnionAndPersistsForNextOpening() {
+        show()
+        rule.onNodeWithText("Filter transfers").assertExists()
+        rule.onNodeWithText("Stopped").performClick()
+        rule.onNodeWithText("Small Episode").assertExists()
+        rule.onNodeWithText("Big Archive").assertDoesNotExist()
+        rule.onNodeWithText("Showing 1", substring = true).assertExists()
+        assertEquals(io.github.gamesbyian.chunks.model.UnifiedTransferFilter.STOPPED,
+            CombinedViewPreferences(context).load().filter)
+        rule.onNodeWithText("All transfers").performClick()
+        rule.onNodeWithText("Big Archive").assertExists()
+        assertEquals(io.github.gamesbyian.chunks.model.UnifiedTransferFilter.ALL,
+            CombinedViewPreferences(context).load().filter)
+    }
+
     @Test fun staleServerListIsLabelledAsLastKnown() {
         show(stale = true)
         rule.onNodeWithText(serverEnvironmentLabel(aliasScope) + ": Out of date, showing last list · 2 transfers")
