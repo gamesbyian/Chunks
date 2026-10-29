@@ -34,4 +34,10 @@ class ChunksScreenRenderTest {
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/chunks-visual/phone.png")
     }
+
+    @Test fun offlineScreens() {
+        rule.onNodeWithText("Inspect a local ZIP without connecting").performClick()
+        rule.waitForIdle()
+        rule.onRoot().captureRoboImage("build/chunks-visual/zip-review.png")
+    }
 }
