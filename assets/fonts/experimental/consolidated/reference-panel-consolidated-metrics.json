@@ -13,8 +13,8 @@
     "Regular": {
       "font": "ChunksReferencePanel-Regular-Consolidated.otf",
       "weight": 400,
-      "input_sha256": "1beebdbccd1eb9cb9b4b60b1bd7380ec0b8d8f14c313394a8cdc9391c8063c60",
-      "output_sha256": "14507d9eedbae8a87d24fd8512d2fec682fae2fea1984cd31532358f26ef824a",
+      "input_sha256": "ce4067cb91fe15073f5fa6796922e3a6770a7ef32cb9e1356f6b0efc09c7cb67",
+      "output_sha256": "ab2e78f08f6d10d66c0c90a6d53e66404875170d0a00ae2cb0fe1d0455f1bbe3",
       "unicode_count": 856,
       "preserved_source_shaping": true,
       "punctuation": {
@@ -736,7 +736,7 @@
         "bounded_pairpos_subtables": 14,
         "clipped_pair_report": {
           "file": "reference-punctuation-clipped-Regular.json.gz",
-          "sha256": "80a1b46697568a691ff89e0bf9f2afd9e9425e051defb870549784ca0be948c4",
+          "sha256": "5d1ac27bfca3489080d08bbf0f5eb812edddca05b428131fc6c0c5a921d03817",
           "count": 4456,
           "uncompressed_bytes": 1150354
         }
@@ -802,8 +802,8 @@
     "Medium": {
       "font": "ChunksReferencePanel-Medium-Consolidated.otf",
       "weight": 500,
-      "input_sha256": "ccb9a697eb4d83478434dfb5d591b78c796b782cbda0a6c716e952d47fd76d1a",
-      "output_sha256": "c3d13f69db1d719c116cb99ea920f7822bb9e7b3d4b36826ac1e6aab8d976a9a",
+      "input_sha256": "97bde29643cad42dbad3daf745b7e75bc232f45f2fed174cad5ed50021da0274",
+      "output_sha256": "0470a47c702fc517626227bef0f1eabe281c6e10078e85aa1132bb7afa49e8f9",
       "unicode_count": 856,
       "preserved_source_shaping": true,
       "punctuation": {
@@ -1525,7 +1525,7 @@
         "bounded_pairpos_subtables": 14,
         "clipped_pair_report": {
           "file": "reference-punctuation-clipped-Medium.json.gz",
-          "sha256": "7778cc41a4f3764c9ed9ad5cd906d0e5dca47851fa5db0e4bfb3087f7487f9a0",
+          "sha256": "01e83234d519e621552a2b41267133b0d563e1207f75c827707063193ddcd235",
           "count": 4575,
           "uncompressed_bytes": 1185434
         }
@@ -1591,8 +1591,8 @@
     "Semibold": {
       "font": "ChunksReferencePanel-Semibold-Consolidated.otf",
       "weight": 600,
-      "input_sha256": "e18c94005e7bcd9bd8c64b364003ce1a7eabc6cfee29840f3da6a48af4b7a4b9",
-      "output_sha256": "314df8525cf253fb846ada85d63b191aaec7883f9998f47c5c2a3488ca82a66d",
+      "input_sha256": "7c5261be83673fae1222682745fd451279a5c13cb69d9316ef9d864a0a04513b",
+      "output_sha256": "b3befc1ecb82773a037290a7f493b47f48a15ade22b68234e5a822a181d069f8",
       "unicode_count": 856,
       "preserved_source_shaping": true,
       "punctuation": {
@@ -2314,7 +2314,7 @@
         "bounded_pairpos_subtables": 14,
         "clipped_pair_report": {
           "file": "reference-punctuation-clipped-Semibold.json.gz",
-          "sha256": "47c2237b9ff7a63a2d7d5e832e7dcd5bde0ccf7dce4b7af1b55ae9b954eff58f",
+          "sha256": "c7723b83eb77a74334c13831fe68798ce2517d24f58cf032b5a135a1268c3aba",
           "count": 4866,
           "uncompressed_bytes": 1250364
         }
@@ -2380,8 +2380,8 @@
     "Bold": {
       "font": "ChunksReferencePanel-Bold-Consolidated.otf",
       "weight": 700,
-      "input_sha256": "3b7cbf265d7347f27dabaa4f2a11065ce782ccbb73ea7a49542baa1031f56100",
-      "output_sha256": "2dcd43edd21cf539fa0ed3c068e4344a6956295a154628da254d24a99fc9ae4f",
+      "input_sha256": "daa5666c1c2b6549f43225f977d7370c3735b1b41c05063997938694eee8e293",
+      "output_sha256": "9fea3b637033eec9ea17c8deb3f12a81df50afeeec953d3d3ae500c18e760370",
       "unicode_count": 856,
       "preserved_source_shaping": true,
       "punctuation": {
@@ -3103,7 +3103,7 @@
         "bounded_pairpos_subtables": 14,
         "clipped_pair_report": {
           "file": "reference-punctuation-clipped-Bold.json.gz",
-          "sha256": "ec119c71fe4cdf7bedb3c635070ee09f091a4d4ae6370391e645bd41eb5e1858",
+          "sha256": "7611f235f40863681288ac8ac6b72ec7c2aa4c9b4fd85a3acb83485dea6c44a7",
           "count": 5005,
           "uncompressed_bytes": 1296017
         }

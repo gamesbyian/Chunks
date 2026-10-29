@@ -2,8 +2,8 @@
   "status": "NONSHIPPING bounded accent-context kerning inheritance; base family unchanged",
   "weights": {
     "Regular": {
-      "input_sha256": "a1165460c0e4135d83ca6c7c610cfb50e2665ea94ec50c9b73e6ba1416e7d191",
-      "output_sha256": "3d788ef118492a354fa5686ba96627a31200690fade50f7710148615eac119d1",
+      "input_sha256": "422a6ebf9cec430d8a6b1116dfa6d73c5b443c1d436ceaaffdf4af99f14aad2e",
+      "output_sha256": "44b575c0eb23bccc3502cb8fddc21bb26c7897e285b1ce471cbf90cea8e9d44f",
       "file": "ChunksReferencePanel-Regular-AccentKerned.otf",
       "reference_accent_glyphs": 244,
       "candidate_pairs": 89792,
@@ -16,8 +16,8 @@
       "source_scripts_unchanged": true
     },
     "Medium": {
-      "input_sha256": "862d12f0036d8cfa173e079cbdc4dfc9b4318391b0c48eddc9192abab8a0d988",
-      "output_sha256": "c64bde60b5d331a1ac8ccd228a06a6db6a7ca6da5ff4be775cfd1d91f6deb41e",
+      "input_sha256": "7811879c833748eb663d0c6ccb5389e1d21746b700e5299fd35c377919dedcf7",
+      "output_sha256": "f24009d7bb477f2ffef489c247f052b7d66adecaab69693bfadbfaa788158b79",
       "file": "ChunksReferencePanel-Medium-AccentKerned.otf",
       "reference_accent_glyphs": 243,
       "candidate_pairs": 89181,
@@ -30,8 +30,8 @@
       "source_scripts_unchanged": true
     },
     "Semibold": {
-      "input_sha256": "0cc775a3a48cc09d3a2504a9fb02a74fd2499298e45c783605c341b254696abe",
-      "output_sha256": "7f50b4d2c74b5e3584bd9b438cc19d9ae189383a2772d2ce68b3fd81fac29177",
+      "input_sha256": "d46bbc340ca2631308d92cf58d8cbf78adf14b6b9687de4528f985e8d05b804b",
+      "output_sha256": "53173539e091f8409e23ca41eaa88c9b18df0299d726d80634f2e01c13dfd322",
       "file": "ChunksReferencePanel-Semibold-AccentKerned.otf",
       "reference_accent_glyphs": 243,
       "candidate_pairs": 89181,
@@ -44,8 +44,8 @@
       "source_scripts_unchanged": true
     },
     "Bold": {
-      "input_sha256": "1782d3bc82e593d984920e7de982e0fc2b253c84906ae85b1019b70c496cbd0d",
-      "output_sha256": "3e62dd9a32e5f4027d9b6595f74edd3a7d5a55b39433ce6b078ed78b0846f571",
+      "input_sha256": "78c52e82495d3afcdf75310c5492671330e585f955be89cf27573c58a28d20f1",
+      "output_sha256": "36d5c365280e5676e788c819806141573d0a367fa358bf1d59c242c182f12262",
       "file": "ChunksReferencePanel-Bold-AccentKerned.otf",
       "reference_accent_glyphs": 243,
       "candidate_pairs": 89181,

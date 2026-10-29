@@ -2,8 +2,8 @@
   "status": "NONSHIPPING dotless-i-j reference glyph and contextual kerning prototype",
   "weights": {
     "Regular": {
-      "input_sha256": "935be716f82411a03df2431a199231a2f648b23fadee5bbf2149e3bdaac9790e",
-      "output_sha256": "1beebdbccd1eb9cb9b4b60b1bd7380ec0b8d8f14c313394a8cdc9391c8063c60",
+      "input_sha256": "60fbc39125cdeef51f78411b651b897149aacebd3cdeee8faa142918149c0af5",
+      "output_sha256": "ce4067cb91fe15073f5fa6796922e3a6770a7ef32cb9e1356f6b0efc09c7cb67",
       "file": "ChunksReferencePanel-Regular-DotlessKerned.otf",
       "reference_accent_glyphs": 258,
       "candidate_pairs": 98556,
@@ -14,7 +14,7 @@
       "clipped_pair_examples": [],
       "mean_abs_correction_units": 75.57,
       "source_scripts_unchanged": true,
-      "base_font_sha256": "a1165460c0e4135d83ca6c7c610cfb50e2665ea94ec50c9b73e6ba1416e7d191",
+      "base_font_sha256": "422a6ebf9cec430d8a6b1116dfa6d73c5b443c1d436ceaaffdf4af99f14aad2e",
       "dotless_added": 14,
       "dotless_glyphs": [
         {
@@ -316,8 +316,8 @@
       "unicode_count": 856
     },
     "Medium": {
-      "input_sha256": "b02f87ce926bf82bd93207e97b1254d2d39c5cdb24442813cd7c99854a086616",
-      "output_sha256": "ccb9a697eb4d83478434dfb5d591b78c796b782cbda0a6c716e952d47fd76d1a",
+      "input_sha256": "492b6c765718e330ea982048bbdbc53df8f55120c80d150d333c3e9f3583c29c",
+      "output_sha256": "97bde29643cad42dbad3daf745b7e75bc232f45f2fed174cad5ed50021da0274",
       "file": "ChunksReferencePanel-Medium-DotlessKerned.otf",
       "reference_accent_glyphs": 257,
       "candidate_pairs": 97917,
@@ -328,7 +328,7 @@
       "clipped_pair_examples": [],
       "mean_abs_correction_units": 73.39,
       "source_scripts_unchanged": true,
-      "base_font_sha256": "862d12f0036d8cfa173e079cbdc4dfc9b4318391b0c48eddc9192abab8a0d988",
+      "base_font_sha256": "7811879c833748eb663d0c6ccb5389e1d21746b700e5299fd35c377919dedcf7",
       "dotless_added": 14,
       "dotless_glyphs": [
         {
@@ -630,8 +630,8 @@
       "unicode_count": 856
     },
     "Semibold": {
-      "input_sha256": "7203816a8beae8ad95c1f2181b64c2879d6a72cb5528f6f35b9275a3cdff18c7",
-      "output_sha256": "e18c94005e7bcd9bd8c64b364003ce1a7eabc6cfee29840f3da6a48af4b7a4b9",
+      "input_sha256": "46196e0dd361aa3f17c0c6b25b25f364806e822f72ce947888c073af7ff8eb03",
+      "output_sha256": "7c5261be83673fae1222682745fd451279a5c13cb69d9316ef9d864a0a04513b",
       "file": "ChunksReferencePanel-Semibold-DotlessKerned.otf",
       "reference_accent_glyphs": 257,
       "candidate_pairs": 97917,
@@ -649,7 +649,7 @@
       ],
       "mean_abs_correction_units": 71.24,
       "source_scripts_unchanged": true,
-      "base_font_sha256": "0cc775a3a48cc09d3a2504a9fb02a74fd2499298e45c783605c341b254696abe",
+      "base_font_sha256": "d46bbc340ca2631308d92cf58d8cbf78adf14b6b9687de4528f985e8d05b804b",
       "dotless_added": 14,
       "dotless_glyphs": [
         {
@@ -951,8 +951,8 @@
       "unicode_count": 856
     },
     "Bold": {
-      "input_sha256": "1e9e2b38e56fa3d971c97979eaa42cfe8500c549fb3d9f4d3a2a6787b0d26e35",
-      "output_sha256": "3b7cbf265d7347f27dabaa4f2a11065ce782ccbb73ea7a49542baa1031f56100",
+      "input_sha256": "d3ffc3772759a504e250981a0883de7a2d307e89419743c75b839415a21ba127",
+      "output_sha256": "daa5666c1c2b6549f43225f977d7370c3735b1b41c05063997938694eee8e293",
       "file": "ChunksReferencePanel-Bold-DotlessKerned.otf",
       "reference_accent_glyphs": 257,
       "candidate_pairs": 97917,
@@ -982,7 +982,7 @@
       ],
       "mean_abs_correction_units": 68.85,
       "source_scripts_unchanged": true,
-      "base_font_sha256": "1782d3bc82e593d984920e7de982e0fc2b253c84906ae85b1019b70c496cbd0d",
+      "base_font_sha256": "78c52e82495d3afcdf75310c5492671330e585f955be89cf27573c58a28d20f1",
       "dotless_added": 14,
       "dotless_glyphs": [
         {

@@ -2,7 +2,7 @@
   "status": "NONSHIPPING interim weight study: automated offsets; manual masters still required",
   "source_manifest_sha256": "34413dfabd6d1f846b2dd833e21fa2b57e9b03b06330e4e9a479d082150fca83",
   "profile_sha256": "7da88e239d51208e052c8a359ddf04c724b3aa70e6cd7ad686d64b7f27425e46",
-  "overrides_sha256": "0bdd27016e84e19fd596dbd99bda0ce88b453bf432375b627a82e0859abfdedd",
+  "overrides_sha256": "b82a0ac772727f3146582841657969dc19d6617177f9488038d5611bb7acc5a2",
   "overrides_used": 248,
   "source_svg_sha256": "f475ea924418981a766978dde97ebb97ba7b0866110e1b72b17ac026fbad7aba",
   "accepted_extra_bold_remains_separate": "assets/fonts/experimental/ChunksReferencePanel-ExtraBold-Optical.otf",
@@ -10,7 +10,7 @@
     "Regular": {
       "weight": 400,
       "file": "ChunksReferencePanel-Regular-Study.otf",
-      "sha256": "faef08a7b7b8af021fea976b2de526ec772dbe2ff04285ad63bc27942aed8eb3",
+      "sha256": "d6d790f81e037caeb5f8402a485a9db31956d3c5ceb3bb96fa837f91b8819ab1",
       "glyphs_changed": 62,
       "codepoints": 856,
       "kerning_direct_pairs": 13022,
@@ -81,11 +81,11 @@
         "A": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.7257,
+          "ink_area_ratio": 0.6857,
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "02504b8d7e541294877f9bd40793e7a3e26479528ef88e4b750b456b3213f7c9",
+          "override_svg_sha256": "824289efe843747cf2ef4bb14698b22669537586c5726c9bb0cc343338bcd25c",
           "topology_adjustments": []
         },
         "B": {
@@ -641,11 +641,11 @@
         "4": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.7759,
+          "ink_area_ratio": 0.7288,
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "3323976a10975c5491069d41fe3598a4bb1b9290976412199e8149cf3af08acd",
+          "override_svg_sha256": "17764aa8e225e988b9f4cd3f29afdf6d04271efd9aa1141a7f11470850a86ad1",
           "topology_adjustments": []
         },
         "5": {
@@ -703,7 +703,7 @@
     "Medium": {
       "weight": 500,
       "file": "ChunksReferencePanel-Medium-Study.otf",
-      "sha256": "a902baf3d82aeff5edac775399dde1df842c64e58a1603e6abbe8d7d19192386",
+      "sha256": "e2747f2cf0eff1db0ce0d1be0acaaffa887377ad518568494113375822d3e43f",
       "glyphs_changed": 62,
       "codepoints": 856,
       "kerning_direct_pairs": 12978,
@@ -774,11 +774,11 @@
         "A": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.7896,
+          "ink_area_ratio": 0.7406,
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "425be8b1ac7d092660dc017d98f0a156f33641b1e72f39df66d5b4163afb3424",
+          "override_svg_sha256": "5d18a5069522c551114c02a1e0fdc87a1d0a51fc258f467fc18124f13c4b533a",
           "topology_adjustments": []
         },
         "B": {
@@ -1334,11 +1334,11 @@
         "4": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.8351,
+          "ink_area_ratio": 0.7791,
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "4ae4a7d2e3047e5c6815a18bd126e2aaf65f102024e023e63b5d416ba25e8b7e",
+          "override_svg_sha256": "2f7e6f3aff265b0d49942f5a4c7cee767378f1471c861bc8554bdd53e8c3db70",
           "topology_adjustments": []
         },
         "5": {
@@ -1396,7 +1396,7 @@
     "Semibold": {
       "weight": 600,
       "file": "ChunksReferencePanel-Semibold-Study.otf",
-      "sha256": "6f76867d221ffd327018dade75b38af9dc02c8acdb5d6b70dfc31603032d9f76",
+      "sha256": "7509e63ece8e722630a98ba807ff8241287cc24ba437d5c1f22494f4746ed519",
       "glyphs_changed": 62,
       "codepoints": 856,
       "kerning_direct_pairs": 12905,
@@ -1467,11 +1467,11 @@
         "A": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.8578,
+          "ink_area_ratio": 0.8113,
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "4d5d6807a19000faab4ffafc2b5d41965a518c2d0972b2326e5da3e3d528abf1",
+          "override_svg_sha256": "12582384999e42e25c6fe3d5da2158cc5aa8693f04371a5fd2c241fef6e5aca9",
           "topology_adjustments": []
         },
         "B": {
@@ -2027,11 +2027,11 @@
         "4": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.892,
+          "ink_area_ratio": 0.8552,
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "05e29a319a62ed7dd2101e36c966984f925a064660fb27a758bc2c550faa8a98",
+          "override_svg_sha256": "8c7ab74c537ea37fed0b2ea0ad6e3e7925b0367629c38db7d83603a45f24ade1",
           "topology_adjustments": []
         },
         "5": {
@@ -2089,7 +2089,7 @@
     "Bold": {
       "weight": 700,
       "file": "ChunksReferencePanel-Bold-Study.otf",
-      "sha256": "4c82a33bd9516d3ebc8cef6ae125b1b2fdc4ef0f7a3aacabfd4a8d3c9b13b3e8",
+      "sha256": "7a009a620ad0779c21b35657b22c5d03045d20fed2c3f0b957df85d6c91c1c2d",
       "glyphs_changed": 62,
       "codepoints": 856,
       "kerning_direct_pairs": 13151,
@@ -2160,11 +2160,11 @@
         "A": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.9179,
+          "ink_area_ratio": 0.872,
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "2b9b8336336efcb731e451473f9bff06055f33d6b9e389389543bd3544610a1d",
+          "override_svg_sha256": "050683e99d7f9d9b48195dc30f0e5a1ca05b29c3eeef44ab006500aec114c27e",
           "topology_adjustments": []
         },
         "B": {
@@ -2720,11 +2720,11 @@
         "4": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.9392,
+          "ink_area_ratio": 0.9049,
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "2d8609ef25afeccbf29aee5eff0bafc0d38a66f9103483c6e2d85eed5185e9af",
+          "override_svg_sha256": "4667de5da92a96e2a2e175db9ab934e4d4e60e0f90bcc2b79730c1d270cfbd66",
           "topology_adjustments": []
         },
         "5": {
