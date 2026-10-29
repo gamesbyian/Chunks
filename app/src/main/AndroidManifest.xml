@@ -81,6 +81,12 @@
                 <data android:mimeType="*/*" />
             </intent-filter>
         </activity-alias>
+        <!-- Read-only, per-share access to just-created .torrent files only. -->
+        <provider
+            android:name=".create.CreatedTorrentProvider"
+            android:authorities="${applicationId}.created-torrents"
+            android:exported="false"
+            android:grantUriPermissions="true" />
         <service
             android:name=".LocalEngineService"
             android:exported="false"

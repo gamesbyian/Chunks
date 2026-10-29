@@ -231,6 +231,18 @@ internal fun CreateTorrentScreen(
             }
             ActionTile("Save .torrent file", ChunksColors.Blue, { saver.launch(fileName(source?.name)) },
                 Modifier.fillMaxWidth(), icon = R.drawable.chunks_ic_document, stacked = false)
+            ActionTile("Share .torrent file", ChunksColors.Cyan, {
+                val uri = try { CreatedTorrentProvider.publish(context, fileName(source?.name), done.torrent) }
+                    catch (_: Exception) { null }
+                if (uri == null) message = "The .torrent could not be prepared for sharing."
+                else context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
+                    type = "application/x-bittorrent"
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    // ClipData carries the read grant through the chooser.
+                    clipData = ClipData.newRawUri(fileName(source?.name), uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }, "Share .torrent file"))
+            }, Modifier.fillMaxWidth(), icon = R.drawable.chunks_ic_document, stacked = false)
             done.magnet?.let { magnet ->
                 ActionTile("Share magnet link", ChunksColors.Purple, {
                     context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND)

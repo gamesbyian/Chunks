@@ -71,14 +71,14 @@ A **Create** section (tab, plus a Connect-screen tile; it works with or without 
 - optionally add trackers or mark the torrent private;
 - build it on the phone, with progress and Cancel.
 
-The result offers **Save .torrent file** (system save dialog), **Share magnet link** and **Copy magnet link**; private torrents get neither magnet action. A **Not seeding yet** banner states that nobody can download until something seeds.
+The result offers **Save .torrent file** (system save dialog), **Share .torrent file** (through a read-only, non-exported provider that serves only created `.torrent` files from one cache folder, with access granted per share), **Share magnet link** and **Copy magnet link**. Private torrents get neither magnet action. A **Not seeding yet** banner states that nobody can download until something seeds.
 
 Evidence (JVM/Robolectric):
 - fake-provider listing tests (folder, single file, cancellation);
 - Compose tests of review → build → result, the private variant, and a refused credentialed tracker;
 - renders at 100% and 200%.
 
-**Not yet:** seeding (local or remote), `.torrent` share via a content provider, the Android Share-intent entry, publication, and handset/TalkBack acceptance.
+**Not yet:** remote seeding, publication, and handset/TalkBack acceptance.
 
 ## Implementation note: Android Share entry (2026-10-29)
 
