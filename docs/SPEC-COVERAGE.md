@@ -1,5 +1,9 @@
 # Chunks specification coverage and acceptance map
 
+## Unified local/remote experience acceptance (binding owner clarification, 2026-10-28)
+
+**Status: partially specified/shared foundations, full acceptance OPEN.** Canonical contract: [UNIFIED-ENVIRONMENTS.md](UNIFIED-ENVIRONMENTS.md). Required cases: standalone local-only without remote account, standalone remote-only without local engine/service startup, combined mode switching among phone and two rTorrent profiles, independently preserved list states, visible list/detail source, exact scoped settings, capability-conditioned control parity, safe disable/re-enable with no deletion, no silent offline fallback, exact target on all Add/Share/batch/destructive flows, same-hash transfer isolation. Verify automated controller/model tests and native 412×892/320×700, 200%-font, TalkBack and keyboard screenshots. **No full implementation or physical-device evidence claimed.**
+
 > **Owner correction (2026-10-28):** Cross-engine **Copy Transfer** and **Move Transfer** operate on torrent **jobs only**, never downloaded file bytes. Move adds and verifies the target job, then separately confirms session-only removal of the source job, leaving all source files untouched. Destination downloads independently. Prior text proposing payload transfer, file migration or waiting for target seeding under these names is superseded by [the authoritative transfer-job contract](CROSS-ENGINE-TRANSFER-JOBS.md).
 ## Smart Connect: zero-friction rTorrent remote onboarding (#463, #464)
 
@@ -127,7 +131,3 @@ Legend: **Implemented (limited)** = code merged, may have some suitable specific
 ## Transfer-list navigation: Back to top (2026-10-27)
 
 **Status: implemented and merged (#277) at JVM/API35 tiers; physical accessibility still unverified.** Both local and per-server remote transfer lists have a conditional visible **Back to top** control after meaningful scrolling. One tap scrolls current list to beginning without changing its scope, selection, filter, search or ordering. It must be 48dp-class, accessible for TalkBack/keyboard/large text, avoid overlay collisions and bottom insets, and honor reduced motion. Source of truth: [UX](UX.md#transfer-list-return-to-top-control-owner-requirement-2026-10-27); execution lane: [WORK-QUEUE](WORK-QUEUE.md#transfer-list-back-to-top-p1-navigationaccessibility-owner-2026-10-27). Acceptance pending local/remote long-list and paginated Compose tests plus native screenshots and device validation.
-
-## Unified local/remote experience acceptance (binding owner clarification, 2026-10-28)
-
-**Status: partially specified/shared foundations, full acceptance OPEN.** Canonical contract: [UNIFIED-ENVIRONMENTS.md](UNIFIED-ENVIRONMENTS.md). Required cases: standalone local-only without remote account, standalone remote-only without local engine/service startup, combined mode switching among phone and two rTorrent profiles, independently preserved list states, visible list/detail source, exact scoped settings, capability-conditioned control parity, safe disable/re-enable with no deletion, no silent offline fallback, exact target on all Add/Share/batch/destructive flows, same-hash transfer isolation. Verify automated controller/model tests and native 412×892/320×700, 200%-font, TalkBack and keyboard screenshots. **No full implementation or physical-device evidence claimed.**
