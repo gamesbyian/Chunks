@@ -23,6 +23,10 @@ Do not use Secrets in fork/PR builds. Never connect the CI runner to a private r
 - **Triggers:** manual dispatch, plus PRs that touch the service timeout files, the test, the script or the workflow. It is not an app-wide fan-out.
 - **Skipping:** the ordinary native suite skips the class through an instrumentation-argument assumption. The script fails if the test was skipped or did not report one pass.
 - **Scope of evidence:** a pass proves shortened-limit handling on that emulator only. It does not cover the six-hour budget, Doze, OEM killers or handsets.
+- **Sudden process death:** the same job then runs `tools/process_death_repro.sh` (`LocalEngineProcessDeathInstrumentedTest`).
+  - **Phase A** seeds under the service and SIGKILLs its own process.
+  - **Phase B**, in a new process, must find no leftover ongoing notification, the transfer restored stopped, unchanged bytes and a 100% recheck.
+  - **Failure conditions:** the script fails unless phase A armed and actually died, and phase B passed without being skipped.
 
 ## Targeted escalation (manual first)
 
