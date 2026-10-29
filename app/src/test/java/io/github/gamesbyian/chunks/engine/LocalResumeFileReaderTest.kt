@@ -53,7 +53,21 @@ class LocalResumeFileReaderTest {
         try {
             file.writeBytes(byteArrayOf(1))
             assertNull(LocalResumeFileReader.read(file, 4) { ByteArrayInputStream(ByteArray(5)) })
+            // A stream which grows but stays under the absolute cap is still
+            // not the file size recorded before opening it.
+            assertNull(LocalResumeFileReader.read(file, 16) { ByteArrayInputStream(ByteArray(5)) })
             assertArrayEquals(byteArrayOf(1), file.readBytes())
+        } finally { file.delete() }
+    }
+
+    @Test fun truncatedReadIsNotAcceptedAsTheOriginalResumeFile() {
+        val file = File.createTempFile("chunks-resume-short", ".resume")
+        try {
+            file.writeBytes(byteArrayOf(1, 2, 3, 4))
+            assertNull(LocalResumeFileReader.read(file, 16) {
+                ByteArrayInputStream(byteArrayOf(1, 2))
+            })
+            assertArrayEquals(byteArrayOf(1, 2, 3, 4), file.readBytes())
         } finally { file.delete() }
     }
 

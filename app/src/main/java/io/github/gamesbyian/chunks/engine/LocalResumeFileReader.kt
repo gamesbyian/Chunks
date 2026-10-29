@@ -16,7 +16,8 @@ internal object LocalResumeFileReader {
         maxBytes: Long,
         open: (File) -> InputStream = { it.inputStream() }
     ): ByteArray? = try {
-        if (maxBytes <= 0L || !file.isFile || file.length() !in 1L..maxBytes) null
+        val expectedLength = file.length()
+        if (maxBytes <= 0L || !file.isFile || expectedLength !in 1L..maxBytes) null
         else open(file).use { stream ->
             val bytes = ByteArrayOutputStream()
             val buffer = ByteArray(8192)
@@ -26,7 +27,9 @@ internal object LocalResumeFileReader {
                 if (count == 0 || bytes.size().toLong() + count > maxBytes) return null
                 bytes.write(buffer, 0, count)
             }
-            bytes.toByteArray().takeIf { it.isNotEmpty() }
+            bytes.toByteArray().takeIf {
+                it.size.toLong() == expectedLength && file.length() == expectedLength
+            }
         }
     } catch (_: Exception) {
         null
