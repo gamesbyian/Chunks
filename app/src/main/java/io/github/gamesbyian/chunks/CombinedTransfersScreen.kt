@@ -181,7 +181,7 @@ internal fun UnifiedSortKey.orderingKind(): TransferSortOrdering.Kind = when (th
 }
 
 internal fun availabilityText(source: EnvironmentTransferSnapshot): String = when (source.availability) {
-    EnvironmentAvailability.LIVE -> if (source.inventoryComplete) "Live" else "Live, list may be incomplete"
+    EnvironmentAvailability.LIVE -> if (source.canClaimCompleteLiveInventory) "Live" else "Live, list may be incomplete"
     EnvironmentAvailability.STALE -> "Out of date, showing last list"
     EnvironmentAvailability.OFFLINE -> if (source.environment == EnvironmentSnapshots.PHONE)
         "Engine not running, open On this phone" else "Not connected"
@@ -801,4 +801,4 @@ internal fun combinedTotalsText(t: io.github.gamesbyian.chunks.model.UnifiedTran
     "Live total: ↓ " + Units.bytes(t.downloadBytesPerSecond) + "/s · ↑ " + Units.bytes(t.uploadBytesPerSecond) +
         "/s across ${t.liveRows} transfers" +
         (if (t.rowsWithUnknownRate > 0) " · ${t.rowsWithUnknownRate} with rates not reported" else "") +
-        (if (t.excludedEnvironments > 0) " · ${t.excludedEnvironments} environment(s) not included (not live)" else "")
+        (if (t.excludedEnvironments > 0) " · ${t.excludedEnvironments} environment(s) excluded (not fully observed)" else "")
