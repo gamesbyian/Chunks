@@ -1,4 +1,7 @@
 # Deliberate reuse from related repositories
+
+For **external public open-source projects** and specific P0/optional Chunks reuse experiments, see [the 2026-10-29 source-linked reuse audit](research/OPEN-SOURCE-REUSE-2026-10-29.md). This file remains about *other gamesbyian repositories*, and does not duplicate external findings or set independent priorities.
+
 2026-10-23. The point is to inherit working engineering practices, not their historical documentation volume or secrets.
 
 | Origin | Adopt in Chunks | Explicitly do not transplant |
