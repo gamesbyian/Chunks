@@ -49,7 +49,8 @@ adb shell am instrument -w -r -e class "$pkg.AndroidPublicSwarmDozeInstrumentedT
 inst=$!
 ready=0
 for _ in $(seq 1 $(( CHUNKS_PUBLIC_SWARM_SECONDS / 2 + 30 ))); do
-  if adb logcat -d -s ChunksSwarm:I | grep -q "CHUNKS_SWARM_DOZE: ready"; then ready=1; break; fi
+  # Consume all logcat output; grep -q can SIGPIPE a healthy adb producer under pipefail.
+  if adb logcat -d -s ChunksSwarm:I | grep -F "CHUNKS_SWARM_DOZE: ready" >/dev/null; then ready=1; break; fi
   kill -0 "$inst" 2>/dev/null || break
   sleep 2
 done
