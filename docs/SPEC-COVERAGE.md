@@ -14,6 +14,18 @@
 
 **Status rule:** classify each implementation slice individually after exact-head tests in [QUALITY-LEDGER](QUALITY-LEDGER.md), rather than promoting an entire inventory row from a screenshot, a saved setting or an API method. Existing [SMART-SEEDING-RULES](SMART-SEEDING-RULES.md), [STORAGE-AND-EXTRACTION](STORAGE-AND-EXTRACTION.md) and other domain contracts retain their own authority. No new device, peer or server verification was performed by this documentation work.
 
+## Owner-approved Discovery and secondary Seedbox tools acceptance
+
+**Binding design; implementation and real-world acceptance OPEN.** [D-DISCOVERY-20261029](DECISIONS.md#decision-registry) approves full multi-source indexer search, saved filters, RSS/feed subscriptions and conditional discovery into the standard Add review, with independent user consent for Discovery, automatic intake and automatic start. [D-SEEDBOX-TOOLS-20261029](DECISIONS.md#decision-registry) approves limited service health/quota and safe, separately authorized service Start/Stop/Restart strictly within Servers → named remote profile → Server tools. Both extend the original preliminary B-gap research scope; **do not relabel the 58 B items as implemented or assume the entire E inventory was approved**.
+
+| Slice | Required outcome | Acceptance still open |
+|---|---|---|
+| Discovery opt-in and master off | Default no discovery egress; one accessible switch disables every search/feed/watch/subscription/notification/auto-add dispatch even after process death/reconnect; no impact on manual Add, active peers/torrents or Create & Share | Network interception including in-flight races, restart/restore, source persistence, stale subscription backlog |
+| Integrated discover/search | Multi-provider search, reliable source/freshness/uncertainty, filters, saved searches, RSS, credentials and reviewed exact-target Add; separate Auto-add/Start consent | Public/test provider API, redacted private-source fixtures, 320×700/412×892, TalkBack/200%, no undisclosed queries |
+| Secondary Server tools | Profile-specific read-only host/storage/service state and optional safe Start/Stop/Restart with separate verified auth, precise impact preview and postcondition | Local-only absence, zero prime-screen displacement, two-profile tenant isolation, adapter capability/role faults, no arbitrary shell/reboot/user/firewall/install |
+
+**No code/proof is asserted by these rows.** New acceptance evidence goes in [QUALITY-LEDGER](QUALITY-LEDGER.md); precise behaviour and UX in [INTAKE-QUEUE-AND-POLICIES](INTAKE-QUEUE-AND-POLICIES.md) and [REMOTE-INTEGRATIONS-AND-PREFERENCES](REMOTE-INTEGRATIONS-AND-PREFERENCES.md).
+
 ## Smart Seeding Rules: ratio, bandwidth and scoped automatic assignment
 
 **Required; implementation and acceptance OPEN.** [SMART-SEEDING-RULES](SMART-SEEDING-RULES.md) governs named/editable seeding groups, generated default labels, stable ID and explicit phone/per-remote environment scopes, ratio/duration/rate semantics, tracker matches, precedence, Add workflow, unattended intake opt-in, and truthful capability-specific enforcement. Test unit normalization (kbps vs KiB/s), missing/multiple tracker provenance, manual override, new/offline/renamed profiles, future-environment opt-in, shared-versus-per-job caps, auto-start hold/fallback, local/rTorrent readbacks, service disconnection, persisted rules and scoped batch changes. No source, emulator, Seedhost or physical-device implementation evidence is claimed.
