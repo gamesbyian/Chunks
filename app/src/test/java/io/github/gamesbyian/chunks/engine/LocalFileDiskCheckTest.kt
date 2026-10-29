@@ -42,6 +42,21 @@ class LocalFileDiskCheckTest {
         } finally { root.deleteRecursively() }
     }
 
+    @Test fun missingOrNonFolderSaveRootFailsClosedInsteadOfClean() {
+        val base = Files.createTempDirectory("chunks-root").toFile()
+        val notStarted = listOf(file(0, "a.bin", 10, 0), file(1, "b.bin", 10, 0, wanted = false))
+        val regular = File(base, "plain.txt").apply { writeText("x") }
+        for (root in listOf(File(base, "gone"), regular)) {
+            val report = LocalFileDiskCheck.check(root, notStarted)
+            assertTrue(report.results.all { it.status == Status.FOLDER_UNAVAILABLE })
+            assertEquals(2, report.problems.size)
+            assertFalse(report.summary().contains("No problems"))
+        }
+        // Nothing was created while checking.
+        assertFalse(File(base, "gone").exists())
+        assertTrue(regular.isFile)
+    }
+
     @Test fun symlinkEscapingTheSaveFolderIsRefused() {
         val root = Files.createTempDirectory("chunks-diskcheck-root").toFile()
         val elsewhere = Files.createTempDirectory("chunks-diskcheck-out").toFile()

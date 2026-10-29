@@ -8,6 +8,7 @@
   - A path that escapes the save folder (`..` or a symlink) is refused, not followed.
   - It never hashes, creates, renames or deletes anything, and the summary says it checks presence and size only, not contents.
   - Non-file-path folders (for example a SAF tree URI) are explained instead of checked.
+  - A missing save folder, or one that is a regular file, fails closed: every file reads **save folder unavailable**, never a clean report. A result is cleared when the save folder or file layout changes.
 - **Evidence:** JVM `LocalFileDiskCheckTest` (every status, read-only assertion, symlink escape) and Robolectric `LocalFilesOnDiskCheckTest` (runs only on tap, lists the missing file, creates nothing). No device, no remote and no hash verification. Search, match, rebind and recheck stages remain open.
 
 ## 2026-10-29 opt-in device reboot repro (#569)

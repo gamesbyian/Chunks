@@ -34,8 +34,11 @@ internal fun LocalFilesOnDiskCheck(
     files: List<LocalTransferFile>,
     check: (File, List<LocalTransferFile>) -> LocalFileDiskCheck.Report = LocalFileDiskCheck::check
 ) {
-    var report by remember(transferKey) { mutableStateOf<LocalFileDiskCheck.Report?>(null) }
-    var running by remember(transferKey) { mutableStateOf(false) }
+    // A result describes one folder and one file mapping; progress refreshes keep it,
+    // but a different save folder or file layout clears it rather than showing a stale check.
+    val layout = remember(files) { files.map { Triple(it.index, it.path, it.sizeBytes) } }
+    var report by remember(transferKey, savePath, layout) { mutableStateOf<LocalFileDiskCheck.Report?>(null) }
+    var running by remember(transferKey, savePath, layout) { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val folder = File(savePath)
     Column {

@@ -14,6 +14,8 @@ import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import java.io.File
 
 @RunWith(RobolectricTestRunner::class)
@@ -45,6 +47,24 @@ class LocalFilesOnDiskCheckTest {
         rule.onNodeWithText("Show/ep2.mkv", substring = true).assertIsDisplayed()
         // Read-only: nothing was created for the missing file.
         assertTrue(!File(root, "Show/ep2.mkv").exists())
+    }
+
+    @Test fun changingTheSaveFolderClearsTheOldResult() {
+        val first = temp.newFolder("first")
+        val second = temp.newFolder("second")
+        val files = listOf(LocalTransferFile(0, "x.bin", 10, 10, true))
+        var path by androidx.compose.runtime.mutableStateOf(first.path)
+        rule.setContent {
+            ChunksTheme { LocalFilesOnDiskCheck("c".repeat(40), path, files) }
+        }
+        rule.onNodeWithText("Check files on disk (read-only)").performClick()
+        rule.waitUntil(5_000) { rule.onAllNodes(
+            androidx.compose.ui.test.hasText("1 of 1 files need attention", substring = true))
+            .fetchSemanticsNodes().isNotEmpty() }
+        path = second.path
+        rule.waitForIdle()
+        assertTrue(rule.onAllNodes(androidx.compose.ui.test.hasText("need attention", substring = true))
+            .fetchSemanticsNodes().isEmpty())
     }
 
     @Test fun nonFilePathFolderExplainsInsteadOfChecking() {

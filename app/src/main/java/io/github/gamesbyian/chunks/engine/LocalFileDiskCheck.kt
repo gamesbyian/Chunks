@@ -27,6 +27,8 @@ object LocalFileDiskCheck {
         NOT_A_FILE("something other than a file is at its path", true),
         /** The path could not be inspected (permission or storage error). */
         UNREADABLE("could not be inspected (storage access or permission)", true),
+        /** The transfer's save folder is missing, not a folder or cannot be inspected. */
+        FOLDER_UNAVAILABLE("its save folder is missing, not a folder or cannot be inspected", true),
         /** The torrent's path escapes the save folder; refused, never followed. */
         UNSAFE_PATH("path leaves the transfer's folder; not inspected", true)
     }
@@ -71,11 +73,14 @@ object LocalFileDiskCheck {
      * save folder (".." or a symlink escape) is refused and reported, not read.
      */
     fun check(saveDirectory: File, files: List<LocalTransferFile>): Report {
-        val root = try { saveDirectory.canonicalFile } catch (_: Exception) { null }
+        // Fail closed: without an inspectable save folder, "not started" files
+        // would otherwise read as a clean report.
+        val root = try {
+            saveDirectory.canonicalFile.takeIf { it.isDirectory }
+        } catch (_: Exception) { null }
+        if (root == null) return Report(files.map { FileResult(it, Status.FOLDER_UNAVAILABLE, null) })
         return Report(files.map { file ->
-            // An uninspectable save folder is a storage problem, not an unsafe torrent path.
-            val observed = if (root == null) Observation(false, false, 0, error = true)
-                else observe(root, file.path)
+            val observed = observe(root, file.path)
             FileResult(file, classify(file, observed), observed?.takeIf { it.exists && it.isFile }?.length)
         })
     }
