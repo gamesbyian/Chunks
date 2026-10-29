@@ -8,6 +8,10 @@
 - At least one usable environment must be offered. If none is configured, present non-destructive setup. Disconnected, unauthorized, locked, temporarily unreachable and disabled are different states. Offline remote profiles remain configured; Chunks never falls back by silently redirecting a mutation to another engine.
 - Every entry route (main screen, deep link, Android Open With/Share, notification, widget, collection, search) resolves an explicit destination environment before Add or mutation. In single-environment mode, avoid gratuitous engine choosers.
 
+## Task outcomes and explanation scope
+
+Optional [Tasks](TASK-OUTCOMES-AND-CONTINUITY.md) attach each milestone to exact immutable local/remote profile identity; a task can span multiple explicit profiles but never follows the current view filter as an execution target. When reconnecting, reconcile only the named profile; disabling an environment preserves checkpoints without deleting or stopping its jobs. [Effective rule explanations](EFFECTIVE-POLICY-EXPLANATIONS.md) show winner, overrides, global constraints and verified/pending capability **separately per environment**. No bulk cross-profile rule application from a preview.
+
 ## Seeding rule environment scope
 
 Smart Seeding Rules follow the same unified UI on phone and all named remote profiles. Every rule list row and rule editor exposes a visible, selectable **Applies to** summary using stable environment IDs (phone and each server profile), with one/several/all-current options and separate explicit future-environment opt-in. Generated rule names are user-editable and are not identities. A reused definition can have independently validated per-environment enforcement capabilities; a shared template does not implicitly apply to every engine. New profiles never silently inherit rule scope. When Add's destination environment changes, recompute applicable groups and explain any incompatible manually chosen group. Saving scoped settings does not silently mutate active transfers. Canonical behaviors and checks: [SMART-SEEDING-RULES](SMART-SEEDING-RULES.md).
