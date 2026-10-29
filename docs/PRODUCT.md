@@ -43,6 +43,12 @@ Local-only (the default offer), remote-only, and combined local/one-or-more-rTor
 
 > **Owner correction (2026-10-28):** Cross-engine **Copy Transfer** and **Move Transfer** operate on torrent **jobs only**, never downloaded file bytes. Move adds and verifies the target job, then separately confirms session-only removal of the source job, leaving all source files untouched. Destination downloads independently. Prior text proposing payload transfer, file migration or waiting for target seeding under these names is superseded by [the authoritative transfer-job contract](CROSS-ENGINE-TRANSFER-JOBS.md).
 
+## Advanced intake, queue, networking, diagnostics and remote integrations
+
+Chunks MUST make advanced torrent operations understandable without implying that every engine, provider, VPN or media integration supports the same actions. Three narrowly owned contracts define the behavior, defaults, unsupported states and acceptance gates for **58 previously under-specified capabilities** identified in the ecosystem research. [Intake, queue and policies](INTAKE-QUEUE-AND-POLICIES.md) covers URL/feed intake, queue control, liveness, bandwidth/time/network policies, optional source filters and notes. [Files, protocol and diagnostics](FILES-PROTOCOL-AND-DIAGNOSTICS.md) covers cross-file pieces, safe archives/link handling, peer/protocol/privacy controls, health telemetry and seek-driven preview. [Remote integrations and settings portability](REMOTE-INTEGRATIONS-AND-PREFERENCES.md) covers remote profile import, certificate/tunnel boundaries, authorized media/cloud adapters, customizable views, refresh and support.
+
+The default is a functional phone torrent client or rTorrent remote without accounts, extra software, background cloud automation or unsafe privileged administration. Advanced and external integrations are opt-in; session/protocol/OS capability differences must be disclosed and verified before enforcement. Saving a preference is never proof of executing it. The owner-approved seeding-rule behavior remains separately governed by [SMART-SEEDING-RULES](SMART-SEEDING-RULES.md), including rule names, matching and explicitly selected environments. These contracts are product requirements/plans, **not feature-readiness claims**.
+
 ## Non-negotiable user outcomes
 
 ### 1. First-class rTorrent remote, no mandatory Companion
