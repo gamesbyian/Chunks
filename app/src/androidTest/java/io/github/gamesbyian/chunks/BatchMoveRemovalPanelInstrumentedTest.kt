@@ -41,7 +41,7 @@ class BatchMoveRemovalPanelInstrumentedTest {
             }
         }
         rule.onNodeWithText("Remove 2 original phone jobs…").performClick()
-        rule.onNodeWithText("Downloaded files stay on this phone", substring = true).assertExists()
+        rule.onNodeWithText("Downloaded files stay on the phone", substring = true).assertExists()
         assertTrue(removed.isEmpty())
         rule.onNodeWithText("Remove original jobs").performScrollTo().performClick()
         rule.waitUntil(10_000) { finished.isNotEmpty() }
