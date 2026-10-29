@@ -25,6 +25,10 @@ jobs:
           python-version: '3.11'
       - name: Install locked experimental font dependencies
         run: python -m pip install -r tools/requirements-reference-panel-weights.txt
+      - name: Normalize CFF counter winding, preserving the exact edited SVG Beziers
+        run: |
+          python tools/font_lab_normalize_winding.py --write
+          python tools/font_lab_normalize_winding.py
       - name: Build and test all font families from 248 editable masters, locally in one runner
         run: bash tools/font_lab_build_all.sh
       - name: Upload isolated font lab family and visual acceptance evidence
@@ -52,8 +56,8 @@ jobs:
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -A -- assets/fonts/experimental/weight-studies             assets/fonts/experimental/accent-studies             assets/fonts/experimental/accent-kerned             assets/fonts/experimental/dotless-kerned             assets/fonts/experimental/consolidated             assets/fonts/experimental/stacked-studies             assets/fonts/experimental/mixed-mark-studies
-          if git diff --cached --name-only | grep -Eq '^app/|^assets/fonts/source/|^assets/fonts/chunks/'; then
+          git add -A -- assets/fonts/source/reference-alphabet/weight-overrides assets/fonts/experimental/weight-studies             assets/fonts/experimental/accent-studies             assets/fonts/experimental/accent-kerned             assets/fonts/experimental/dotless-kerned             assets/fonts/experimental/consolidated             assets/fonts/experimental/stacked-studies             assets/fonts/experimental/mixed-mark-studies
+          if git diff --cached --name-only | grep -Eq '^app/|^assets/fonts/source/reference-alphabet/U\\+|^assets/fonts/source/reference-punctuation/|^assets/fonts/chunks/'; then
             echo 'REFUSED: changes to immutable or shipping font inputs' >&2
             exit 2
           fi

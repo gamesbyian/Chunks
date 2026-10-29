@@ -8,6 +8,7 @@ export PYTHONHASHSEED=0 TZ=UTC
 
 # Be explicit about source status before consuming expensive build time.
 bash tools/font_lab_gate.sh source
+python tools/font_lab_normalize_winding.py
 python -m unittest discover -s tests -p 'test_font_lab_*.py' -v
 python tools/font_lab_source_ledger.py
 
