@@ -60,7 +60,19 @@ import io.github.gamesbyian.chunks.privacy.RemoteTransferPrivacyScope
 import io.github.gamesbyian.chunks.privacy.TransferPrivacyRuntime
 import io.github.gamesbyian.chunks.privacy.TransferPrivacyVisibility
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
+import io.github.gamesbyian.chunks.model.UnifiedBatchLifecycle
+import io.github.gamesbyian.chunks.model.UnifiedTransferKey
+import io.github.gamesbyian.chunks.model.describe
+import io.github.gamesbyian.chunks.model.toLifecycleReply
+import io.github.gamesbyian.chunks.rpc.LifecycleOutcome
+import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.semantics.contentDescription
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** The connected server's latest accepted list, as the server screen holds it. */
 internal data class CombinedServerSource(
@@ -68,7 +80,16 @@ internal data class CombinedServerSource(
     val transfers: List<RemoteTransfer>,
     val stale: Boolean,
     val fullView: Boolean,
-    val observedAtEpochMillis: Long?
+    val observedAtEpochMillis: Long?,
+    /** Start/Stop through the server screen's own mutation gate; null when not offered. */
+    val lifecycle: CombinedServerLifecycle? = null
+)
+
+/** The connected server's lease, command and settle, exactly as its own list uses them. */
+internal class CombinedServerLifecycle(
+    val begin: () -> Boolean,
+    val settled: () -> Unit,
+    val setStarted: suspend (String, Boolean) -> LifecycleOutcome
 )
 
 /** A saved profile that is not signed in during this session. */
@@ -76,7 +97,8 @@ internal data class CombinedSavedProfile(val id: String, val label: String)
 
 /** A separate single-flight reader so this view never blocks or shares the phone screen's slot. */
 private object CombinedPhoneReader {
-    val pump = LocalScreenObservationPump<List<LocalTransferStatus>?>(
+    /** The list (null if no engine) and the fence revision sampled before the read. */
+    val pump = LocalScreenObservationPump<Pair<List<LocalTransferStatus>?, Long>>(
         java.util.concurrent.Executors.newSingleThreadExecutor { task ->
             Thread(task, "chunks-combined-phone-status").apply { isDaemon = true }
         }
@@ -116,10 +138,11 @@ internal fun availabilityText(source: EnvironmentTransferSnapshot): String = whe
 }
 
 /**
- * Read-only combined Transfers: one globally sorted (or grouped) union of the
- * selected environments. Selection here is a VIEW scope only. Nothing on this
- * screen starts, stops, adds or removes; each row names its environment and
- * the open buttons go to that environment's own list for actions.
+ * Combined Transfers: one globally sorted (or grouped) union of the selected
+ * environments. The environment chips are a VIEW scope only. The one action
+ * offered is reviewed Start/Stop over an explicit row selection, run per
+ * environment through that environment's own gate; Add, remove and every
+ * other change stay in each environment's own list.
  */
 @Composable
 internal fun CombinedTransfersScreen(
@@ -145,13 +168,20 @@ internal fun CombinedTransfersScreen(
     var phoneConfirmed by remember { mutableStateOf(false) }
     var phoneRunning by remember { mutableStateOf(LocalEngineHolder.current() != null) }
     var phoneObservedAt by remember { mutableStateOf<Long?>(null) }
+    // Explicit cross-environment selection; never derived from the view scope.
+    var selecting by remember { mutableStateOf(false) }
+    var selected by remember { mutableStateOf<Set<UnifiedTransferKey>>(emptySet()) }
+    var batchRunning by remember { mutableStateOf(false) }
+    var batchResult by remember { mutableStateOf<List<String>>(emptyList()) }
+    val batchScope = rememberCoroutineScope()
     LaunchedEffect(Unit) {
         while (true) {
             when (val outcome = CombinedPhoneReader.pump.takeCompleted()) {
                 is LocalScreenPollOutcome.Fresh -> {
-                    val list = outcome.value
+                    val (list, sample) = outcome.value
                     phoneRunning = list != null
-                    if (list != null) {
+                    // A read sampled before or during a phone command cannot clear its readback latch.
+                    if (list != null && PhoneMutationFence.revision.acceptObservation(sample, list)) {
                         phoneFrame = LocalInventoryFrame(list, stale = false)
                         phoneConfirmed = true
                         phoneObservedAt = System.currentTimeMillis()
@@ -162,7 +192,8 @@ internal fun CombinedTransfersScreen(
             }
             if ((CombinedPhoneReader.pump.inFlightMillis() ?: 0L) >= 15_000L)
                 phoneFrame = phoneFrame.copy(stale = true)
-            CombinedPhoneReader.pump.tryObserve { LocalEngineHolder.current()?.list() }
+            val sample = PhoneMutationFence.revision.snapshot()
+            CombinedPhoneReader.pump.tryObserve { LocalEngineHolder.current()?.list() to sample }
             delay(1_000)
         }
     }
@@ -188,14 +219,17 @@ internal fun CombinedTransfersScreen(
     }
 
     val sources = buildList {
-        val phone = if (phoneRunning || phoneConfirmed) EnvironmentSnapshots.phone(phoneFrame, phoneConfirmed,
+        val phoneStale = phoneFrame.stale || PhoneMutationFence.revision.blocksMutations() || batchRunning
+        val phone = if (phoneRunning || phoneConfirmed) EnvironmentSnapshots.phone(
+            phoneFrame.copy(stale = phoneStale), phoneConfirmed,
             locked = !phonePrivacy.mayShow, observedAtEpochMillis = phoneObservedAt)
         else EnvironmentTransferSnapshot(EnvironmentSnapshots.PHONE,
             if (phonePrivacy.mayShow) EnvironmentAvailability.OFFLINE else EnvironmentAvailability.LOCKED,
             false, null, emptyList())
         add(phone.withAliases { hash -> aliases.get(TransferCollectionStore.LOCAL_ENGINE_SCOPE, hash) })
         if (server != null && serverId != null) {
-            add(EnvironmentSnapshots.server(serverId, server.transfers, connected = true, stale = server.stale,
+            add(EnvironmentSnapshots.server(serverId, server.transfers, connected = true,
+                stale = server.stale || batchRunning,
                 locked = serverPrivacy?.mayShow != true, fullView = server.fullView,
                 observedAtEpochMillis = server.observedAtEpochMillis)
                 .withAliases { hash -> aliases.get(server.aliasScope, hash) })
@@ -223,8 +257,36 @@ internal fun CombinedTransfersScreen(
                     modifier = Modifier.semantics { heading() })
                 OutlinedButton(onClick = onBack, modifier = Modifier.heightIn(min = 48.dp)) { Text("Back") }
             }
-            Text("A read-only view across environments. To start, stop or change a transfer, open its " +
-                "own environment.", style = MaterialTheme.typography.bodySmall)
+            Text("Browse every environment together. Start and Stop can be applied to a selection " +
+                "here; every other change happens in each environment's own list.",
+                style = MaterialTheme.typography.bodySmall)
+        }
+        item {
+            CombinedBatchSection(
+                selecting = selecting,
+                onSelecting = { selecting = it; if (!it) selected = emptySet(); batchResult = emptyList() },
+                selected = selected,
+                visible = result.transfers.map { it.key }.toSet(),
+                labels = labels,
+                running = batchRunning,
+                result = batchResult,
+                onClear = { selected = emptySet() },
+                onRun = { start ->
+                    batchRunning = true
+                    batchResult = emptyList()
+                    val chosen = selected
+                    val snapshot = sources
+                    batchScope.launch {
+                        try {
+                            batchResult = runCombinedLifecycle(chosen, start, snapshot, server?.lifecycle, serverId)
+                                .describe { labels[it] ?: it.value }
+                        } finally {
+                            selected = emptySet()
+                            batchRunning = false
+                        }
+                    }
+                }
+            )
         }
         item {
             Text("Show", style = MaterialTheme.typography.labelLarge)
@@ -293,12 +355,16 @@ internal fun CombinedTransfersScreen(
                         modifier = Modifier.padding(top = 8.dp).semantics { heading() })
                 }
                 items(group.transfers, key = { "row-" + it.key.environment.value + it.key.infoHash }) { row ->
-                    CombinedTransferRow(row, labels[row.key.environment].orEmpty())
+                    CombinedTransferRow(row, labels[row.key.environment].orEmpty(),
+                        selection = if (selecting) row.key in selected else null,
+                        onSelect = { on -> selected = if (on) selected + row.key else selected - row.key })
                 }
             }
         } else {
             items(result.transfers, key = { "row-" + it.key.environment.value + it.key.infoHash }) { row ->
-                CombinedTransferRow(row, labels[row.key.environment].orEmpty())
+                CombinedTransferRow(row, labels[row.key.environment].orEmpty(),
+                    selection = if (selecting) row.key in selected else null,
+                    onSelect = { on -> selected = if (on) selected + row.key else selected - row.key })
             }
         }
         item {
@@ -335,13 +401,23 @@ internal fun combinedRowFacts(row: UnifiedTransferObservation): String = listOf(
 ).joinToString(" · ")
 
 @Composable
-private fun CombinedTransferRow(row: UnifiedTransferObservation, environmentLabel: String) {
+private fun CombinedTransferRow(
+    row: UnifiedTransferObservation,
+    environmentLabel: String,
+    /** Null when not selecting. */
+    selection: Boolean? = null,
+    onSelect: (Boolean) -> Unit = {}
+) {
     val server = row.key.environment != EnvironmentSnapshots.PHONE
     val accent = if (server) ChunksColors.Blue else ChunksColors.Cyan
     Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).clip(RoundedCornerShape(12.dp))
         .background(ChunksColors.Surface)) {
         // Decorative rail; the environment name below carries the identity.
         Box(Modifier.width(6.dp).fillMaxHeight().background(accent))
+        if (selection != null) Checkbox(checked = selection, onCheckedChange = onSelect,
+            modifier = Modifier.padding(start = 4.dp).align(Alignment.CenterVertically).semantics {
+                contentDescription = "Select ${row.displayName} on $environmentLabel"
+            })
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(environmentLabel, style = MaterialTheme.typography.labelMedium, color = accent,
                 fontWeight = FontWeight.Bold)
@@ -353,4 +429,113 @@ private fun CombinedTransferRow(row: UnifiedTransferObservation, environmentLabe
                 style = MaterialTheme.typography.bodySmall)
         }
     }
+}
+
+/**
+ * Leases each selected environment's own mutation gate, runs the pure batch
+ * on exactly those adapters, then settles every lease it took. An environment
+ * whose gate is busy, awaiting a readback or signed out refuses its items.
+ */
+internal suspend fun runCombinedLifecycle(
+    chosen: Set<UnifiedTransferKey>,
+    start: Boolean,
+    sources: List<EnvironmentTransferSnapshot>,
+    serverLifecycle: CombinedServerLifecycle?,
+    serverId: EnvironmentId?,
+    phoneEngine: () -> io.github.gamesbyian.chunks.engine.LocalTorrentEngine? = { LocalEngineHolder.current() }
+): UnifiedBatchLifecycle.Report {
+    val byKey = sources.flatMap { it.transfers }.associateBy { it.key }
+    val targets = chosen.sortedWith(compareBy({ it.environment.value }, { it.infoHash }))
+        .map { UnifiedBatchLifecycle.Target(it, byKey[it]?.started) }
+    val adapters = HashMap<EnvironmentId, UnifiedBatchLifecycle.Adapter>()
+    val refusals = HashMap<EnvironmentId, String>()
+    var phoneLeased = false
+    var serverLeased = false
+    try {
+        // A source that is not live is refused by the batch itself; never lease its gate.
+        val live = sources.filter { it.availability == EnvironmentAvailability.LIVE }.map { it.environment }.toSet()
+        for (environment in targets.map { it.key.environment }.toSet()) {
+            if (environment !in live) continue
+            if (environment == EnvironmentSnapshots.PHONE) {
+                val engine = phoneEngine()
+                when {
+                    engine == null -> refusals[environment] = "phone engine is not running"
+                    !PhoneMutationFence.revision.beginMutation() ->
+                        refusals[environment] = "waiting for a fresh phone list"
+                    else -> {
+                        phoneLeased = true
+                        adapters[environment] = UnifiedBatchLifecycle.Adapter { hash, on ->
+                            withContext(Dispatchers.IO) {
+                                (if (on) engine.resume(hash) else engine.pause(hash)).outcome.toLifecycleReply()
+                            }
+                        }
+                    }
+                }
+            } else if (environment == serverId && serverLifecycle != null) {
+                if (!serverLifecycle.begin()) refusals[environment] = "server is busy or refreshing"
+                else {
+                    serverLeased = true
+                    adapters[environment] = UnifiedBatchLifecycle.Adapter { hash, on ->
+                        serverLifecycle.setStarted(hash, on).toLifecycleReply(on)
+                    }
+                }
+            } else refusals[environment] = "not connected in this session"
+        }
+        return UnifiedBatchLifecycle.run(targets, start, sources, adapters, refusals)
+    } finally {
+        if (phoneLeased) PhoneMutationFence.revision.settledMutation()
+        if (serverLeased) serverLifecycle?.settled?.invoke()
+    }
+}
+
+@Composable
+private fun CombinedBatchSection(
+    selecting: Boolean,
+    onSelecting: (Boolean) -> Unit,
+    selected: Set<UnifiedTransferKey>,
+    visible: Set<UnifiedTransferKey>,
+    labels: Map<EnvironmentId, String>,
+    running: Boolean,
+    result: List<String>,
+    onClear: () -> Unit,
+    onRun: (Boolean) -> Unit
+) {
+    var confirming by remember { mutableStateOf<Boolean?>(null) }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedButton(onClick = { onSelecting(!selecting); confirming = null }, enabled = !running,
+            modifier = Modifier.heightIn(min = 48.dp)) { Text(if (selecting) "Done selecting" else "Select…") }
+        if (running) Text("Working… each environment's list will refresh afterwards.",
+            style = MaterialTheme.typography.bodySmall)
+        result.forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
+        if (!selecting || selected.isEmpty()) return@Column
+        val hidden = (selected - visible).size
+        Text("${selected.size} selected" + (if (hidden > 0) ", $hidden not shown by the current view" else ""),
+            style = MaterialTheme.typography.titleSmall)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = { confirming = true }, enabled = !running,
+                modifier = Modifier.heightIn(min = 48.dp)) { Text("Start…") }
+            OutlinedButton(onClick = { confirming = false }, enabled = !running,
+                modifier = Modifier.heightIn(min = 48.dp)) { Text("Stop…") }
+            OutlinedButton(onClick = { onClear(); confirming = null }, enabled = !running,
+                modifier = Modifier.heightIn(min = 48.dp)) { Text("Clear") }
+        }
+        val wanted = confirming ?: return@Column
+        Text(combinedBatchPreview(wanted, selected, labels), style = MaterialTheme.typography.bodyMedium)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = { confirming = null; onRun(wanted) }, enabled = !running,
+                modifier = Modifier.heightIn(min = 48.dp)) { Text(if (wanted) "Start selected" else "Stop selected") }
+            OutlinedButton(onClick = { confirming = null }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Cancel") }
+        }
+    }
+}
+
+/** Names every target environment and its count before anything runs. */
+internal fun combinedBatchPreview(start: Boolean, selected: Set<UnifiedTransferKey>,
+                                  labels: Map<EnvironmentId, String>): String {
+    val perEnvironment = selected.groupingBy { it.environment }.eachCount().toList()
+        .sortedBy { labels[it.first] ?: it.first.value }
+        .joinToString("; ") { (id, n) -> (labels[id] ?: id.value) + ": " + n }
+    return (if (start) "Start" else "Stop") + " ${selected.size} selected, one at a time, each only in its own " +
+        "environment: $perEnvironment. Transfers already in that state are skipped. The first uncertain " +
+        "result stops the batch and nothing is retried."
 }

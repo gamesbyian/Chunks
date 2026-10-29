@@ -99,11 +99,17 @@ The server label comes from the authenticated alias scope via the same address f
 - **Privacy:** each environment's own privacy lock is respected, and the window is secured while protected rows are shown.
 - **Rows:** each row has a text environment label and a decorative rail.
 
+**Cross-environment Start/Stop (PARTIAL).** *Select…* enables an explicit row selection, counting selections hidden by the current view.
+- **Before running:** Start…/Stop… shows a preview naming every target environment and its count.
+- **While running:** each environment runs under its own existing mutation gate: the server list's readback gate, or the process-wide `PhoneMutationFence` shared with the phone screen. Results are reported per environment.
+- **Refusals:** a stale, offline, locked, busy or signed-out environment refuses its items, never redirecting them.
+- **Uncertain results:** the first uncertain result halts the batch, with no retry.
+
 Not yet built:
-- actions from this view;
+- other actions from this view;
 - simultaneous connection to several servers;
 - persistent palette colours;
 - an environment settings screen.
 
-A pure `UnifiedBatchLifecycle` model exists for later cross-environment Start/Stop, with per-environment evidence and no redirection, but no UI uses it yet. Evidence: [QUALITY-LEDGER](QUALITY-LEDGER.md).
+Evidence: [QUALITY-LEDGER](QUALITY-LEDGER.md).
 

@@ -368,9 +368,25 @@ private fun ChunksApp(
             }
         } else if (section == Section.COMBINED) {
             CombinedTransfersScreen(
-                server = server?.let {
+                server = server?.let { remote ->
                     CombinedServerSource(aliasScope, transfers, stale = stale || loading,
-                        fullView = currentView == "main", observedAtEpochMillis = transfersObservedAt)
+                        fullView = currentView == "main", observedAtEpochMillis = transfersObservedAt,
+                        // The same lease, readback gate and refresh the server list itself uses.
+                        lifecycle = CombinedServerLifecycle(
+                            begin = {
+                                if (server === remote && !loading && !stale && mutationGate.tryStart()) {
+                                    stale = true
+                                    true
+                                } else false
+                            },
+                            settled = {
+                                if (server === remote) {
+                                    mutationGate.settled()
+                                    stale = true
+                                    refresh()
+                                }
+                            },
+                            setStarted = remote::setStarted))
                 },
                 savedProfiles = savedProfiles.map { CombinedSavedProfile(it.id, it.label + " · " + it.address) },
                 onOpenPhone = { section = Section.LOCAL },

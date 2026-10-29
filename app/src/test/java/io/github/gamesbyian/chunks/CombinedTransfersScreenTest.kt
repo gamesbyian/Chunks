@@ -34,11 +34,16 @@ class CombinedTransfersScreenTest {
         RemoteTransfer("1".repeat(40), "Big Archive", 900, 900, true, "/d", 0, 10),
         RemoteTransfer("2".repeat(40), "Small Episode", 10, 5, false, "/d", null, null))
 
+    private val commands = ArrayList<Pair<String, Boolean>>()
+    private var settles = 0
+    private val gate = CombinedServerLifecycle(begin = { true }, settled = { settles++ },
+        setStarted = { hash, on -> commands += hash to on; io.github.gamesbyian.chunks.rpc.LifecycleOutcome.Verified(on) })
+
     private fun show(stale: Boolean = false) = rule.setContent {
         ChunksTheme { Surface(color = ChunksColors.Background) {
             CombinedTransfersScreen(
                 server = CombinedServerSource(aliasScope, rows, stale = stale, fullView = true,
-                    observedAtEpochMillis = 1L),
+                    observedAtEpochMillis = 1L, lifecycle = gate),
                 savedProfiles = listOf(other), onOpenPhone = {}, onOpenServer = {}, onBack = {})
         } }
     }
@@ -83,5 +88,22 @@ class CombinedTransfersScreenTest {
         show(stale = true)
         rule.onNodeWithText(serverEnvironmentLabel(aliasScope) + ": Out of date, showing last list · 2 transfers")
             .assertExists()
+    }
+
+    @Test fun selectedStopIsPreviewedPerEnvironmentAndRunsOnlyOnThatServer() {
+        show()
+        rule.onNodeWithText("Select…").performClick()
+        rule.onNodeWithContentDescription("Select Big Archive on " + serverEnvironmentLabel(aliasScope))
+            .performScrollTo().performClick()
+        rule.onNodeWithText("1 selected").performScrollTo().assertExists()
+        rule.onNodeWithText("Stop…").performClick()
+        rule.onNodeWithText("Stop 1 selected", substring = true).assertExists()
+        rule.onNodeWithText(serverEnvironmentLabel(aliasScope) + ": 1", substring = true).assertExists()
+        assertTrue("nothing runs before confirmation", commands.isEmpty())
+        rule.onNodeWithText("Stop selected").performClick()
+        rule.waitUntil(5_000) { settles == 1 }
+        rule.onNodeWithText(serverEnvironmentLabel(aliasScope) + ": 1 confirmed stopped.").assertExists()
+        assertEquals(listOf("1".repeat(40) to false), commands)
+        rule.onRoot().captureRoboImage("build/chunks-visual/combined-batch-result.png")
     }
 }

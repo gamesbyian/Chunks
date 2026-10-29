@@ -1,5 +1,17 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-29 cross-environment Start/Stop from the All environments view (#567)
+
+- **Source slice:** row selection, per-environment preview, `runCombinedLifecycle` leasing each live environment's own gate (server `RemoteMutationReadbackGate` via the same begin/settle/refresh as its list; phone via the shared `PhoneMutationFence` now also used by the phone screen), `UnifiedBatchLifecycle` with caller refusals, and per-environment result wording that never reports unconfirmed work as done. The combined phone poll only accepts reads sampled after a settled command.
+- **Evidence tier:** local JVM + Robolectric suite green. Tests cover:
+  - a server command only after confirmation and only on that server, settled exactly once;
+  - a busy gate, a stale source and a signed-out profile each receiving no command;
+  - no lease taken on a non-live source;
+  - preview and result text.
+
+  `CombinedPhoneBatchInstrumentedTest` (API35 native suite) drives the real engine through `runCombinedLifecycle` and checks that the fence refuses a second phone command until a post-command list is accepted.
+- **Not shown:** emulator/handset, real rTorrent mutation, TalkBack or 200%.
+
 ## 2026-10-29 read-only All environments view and shared snapshot adapters (#567)
 
 - **Source slice:**

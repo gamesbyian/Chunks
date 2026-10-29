@@ -217,7 +217,7 @@ private data class LocalScreenReadout(
  * cannot create a second blocked worker or a growing backlog of reads.
  */
 private object LocalScreenReader {
-    val revision = LocalScreenObservationRevision()
+    val revision get() = PhoneMutationFence.revision
     val pump = LocalScreenObservationPump<LocalScreenReadout>(
         java.util.concurrent.Executors.newSingleThreadExecutor { task ->
             Thread(task, "chunks-local-screen-status").apply { isDaemon = true }

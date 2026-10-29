@@ -57,7 +57,9 @@ object UnifiedBatchLifecycle {
         targets: List<Target>,
         start: Boolean,
         sources: List<EnvironmentTransferSnapshot>,
-        adapters: Map<EnvironmentId, Adapter>
+        adapters: Map<EnvironmentId, Adapter>,
+        /** Environments the caller could not lease (busy, awaiting readback, signed out), with why. */
+        refusals: Map<EnvironmentId, String> = emptyMap()
     ): Report {
         require(targets.isNotEmpty() && targets.size <= MAX_ITEMS) { "Select 1 to $MAX_ITEMS transfers" }
         require(targets.map { it.key }.toSet().size == targets.size) { "Batch contains duplicate identities" }
@@ -78,7 +80,7 @@ object UnifiedBatchLifecycle {
                 out += ItemResult(target.key, CommandEvidence.NOT_ATTEMPTED, "Batch halted earlier")
                 continue
             }
-            val refusal = refusal(byEnvironment[environment], adapters[environment], target)
+            val refusal = refusals[environment] ?: refusal(byEnvironment[environment], adapters[environment], target)
             if (refusal != null) {
                 out += ItemResult(target.key, CommandEvidence.REFUSED, refusal)
                 continue
@@ -137,3 +139,24 @@ fun LifecycleOutcome.toLifecycleReply(requestedStart: Boolean): LifecycleReply =
         is LifecycleOutcome.Pending -> LifecycleReply.ACKNOWLEDGED
         is LifecycleOutcome.Uncertain -> LifecycleReply.UNCERTAIN
     }
+
+/** Plain per-environment wording for a finished batch; never "all done" unless every item is verified. */
+fun UnifiedBatchLifecycle.Report.describe(label: (EnvironmentId) -> String): List<String> {
+    val verb = if (start) "started" else "stopped"
+    val lines = environments.map { env ->
+        val parts = buildList {
+            env.count(CommandEvidence.VERIFIED).takeIf { it > 0 }?.let { add("$it confirmed $verb") }
+            env.count(CommandEvidence.ALREADY_SATISFIED).takeIf { it > 0 }?.let { add("$it already $verb") }
+            env.count(CommandEvidence.ACKNOWLEDGED).takeIf { it > 0 }?.let { add("$it accepted, not yet confirmed") }
+            env.count(CommandEvidence.UNCERTAIN).takeIf { it > 0 }?.let { add("$it uncertain") }
+            env.count(CommandEvidence.REFUSED).takeIf { it > 0 }?.let { n ->
+                val why = env.items.firstOrNull { it.evidence == CommandEvidence.REFUSED }?.reason
+                add("$n not attempted" + (why?.let { " ($it)" } ?: ""))
+            }
+            env.count(CommandEvidence.NOT_ATTEMPTED).takeIf { it > 0 }?.let { add("$it skipped after the halt") }
+        }
+        label(env.environment) + ": " + parts.joinToString(", ") + "."
+    }
+    return if (haltedOn != null) lines + ("Stopped early: one result was uncertain. Refresh each list " +
+        "before trying again; nothing was retried.") else lines
+}

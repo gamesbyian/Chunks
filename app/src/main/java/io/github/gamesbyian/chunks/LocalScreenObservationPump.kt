@@ -93,3 +93,13 @@ internal class LocalScreenObservationRevision {
 
     @Synchronized fun blocksMutations(): Boolean = commandPending || awaitingReadback
 }
+
+/**
+ * The one process-wide phone mutation fence. Every surface that can change
+ * phone transfers (the phone screen and the combined view) takes and settles
+ * this same latch, so neither can act on a list read from before the other's
+ * command.
+ */
+internal object PhoneMutationFence {
+    val revision = LocalScreenObservationRevision()
+}
