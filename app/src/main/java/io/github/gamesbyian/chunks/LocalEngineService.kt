@@ -15,6 +15,7 @@ import java.util.concurrent.Executors
 import io.github.gamesbyian.chunks.privacy.TransferPrivacyPolicyStore
 import io.github.gamesbyian.chunks.privacy.TransferLockMode
 import io.github.gamesbyian.chunks.privacy.LocalServicePrivacyPolicy
+import io.github.gamesbyian.chunks.engine.LocalCommandOutcome
 
 /**
  * Keeps the in-process local engine alive while the user has transfers running,
@@ -61,21 +62,29 @@ class LocalEngineService : Service() {
             }
         }
 
-        /** Pause every running transfer and persist state. Safe to call without the service. */
-        fun pauseAll(context: Context) {
-            val engine = LocalEngineHolder.current() ?: return
+        /**
+         * Pause every running transfer and persist state. Safe to call without
+         * the service. Reports how many pauses a readback confirmed.
+         */
+        internal fun pauseAll(context: Context): LocalServiceTimeoutNotice.PauseSummary {
+            val engine = LocalEngineHolder.current()
+                ?: return LocalServiceTimeoutNotice.PauseSummary(listed = 0, confirmed = 0)
             // Attempt each Stop independently. One uncertain native command
             // must not prevent pausing the other active phone transfers.
             val active = try { engine.list().filter { !it.stopped } }
                 catch (_: Exception) { null }
+            var confirmed = 0
             active?.forEach { transfer ->
-                try { engine.pause(transfer.infoHash, readbackTimeoutMs = 2_000) }
-                catch (_: Exception) {
+                try {
+                    if (engine.pause(transfer.infoHash, readbackTimeoutMs = 2_000).outcome ==
+                        LocalCommandOutcome.VERIFIED) confirmed++
+                } catch (_: Exception) {
                     // An uncertain outcome must be observed afresh, not retried.
                 }
             }
             // Always attempt persistence, including after a failed Stop.
             try { engine.saveResumeData() } catch (_: Exception) { }
+            return LocalServiceTimeoutNotice.PauseSummary(active?.size, confirmed)
         }
     }
 
@@ -143,7 +152,7 @@ class LocalEngineService : Service() {
     /** Android 15+ dataSync limit reached: stop honestly instead of being killed. */
     override fun onTimeout(startId: Int, fgsType: Int) {
         stopping = true
-        requestStopAll()
+        requestStopAll(timedOut = true)
     }
 
     /**
@@ -151,9 +160,12 @@ class LocalEngineService : Service() {
      * A separate worker removes that executor-order dependency; it cannot
      * guarantee JNI itself will return or bypass libtorrent's internal locks.
      */
-    private fun requestStopAll() {
+    private fun requestStopAll(timedOut: Boolean = false) {
         if (!workLanes.submitControl {
-                try { pauseAll(this) } finally { handler.post { finish() } }
+                try {
+                    val summary = pauseAll(this)
+                    if (timedOut) postTimeoutNotice(summary)
+                } finally { handler.post { finish() } }
             }) {
             // Only possible once the service is shutting down. Preserve the
             // normal foreground-service stop lifecycle.
@@ -216,6 +228,30 @@ class LocalEngineService : Service() {
         }
         workLanes.shutdown()
         super.onDestroy()
+    }
+
+    /** A dismissible notice that outlives the ongoing notification removed by finish(). */
+    private fun postTimeoutNotice(summary: LocalServiceTimeoutNotice.PauseSummary) {
+        val policy = privacyMode()
+        val open = PendingIntent.getActivity(this, 0,
+            Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        val text = LocalServiceTimeoutNotice.text(summary, policy)
+        try {
+            getSystemService(NotificationManager::class.java).notify(LocalServiceTimeoutNotice.NOTIFICATION_ID,
+                Notification.Builder(this, CHANNEL_ID)
+                    .setSmallIcon(android.R.drawable.stat_sys_download_done)
+                    .setContentTitle(LocalServiceTimeoutNotice.TITLE)
+                    .setContentText(text)
+                    .setStyle(Notification.BigTextStyle().bigText(text))
+                    .setVisibility(if (policy == TransferLockMode.NEVER)
+                        Notification.VISIBILITY_PRIVATE else Notification.VISIBILITY_SECRET)
+                    .setAutoCancel(true)
+                    .setContentIntent(open)
+                    .build())
+        } catch (_: RuntimeException) {
+            // Transfers are already paused; a notification failure must not undo that.
+        }
     }
 
     private fun privacyMode(): TransferLockMode = try {
