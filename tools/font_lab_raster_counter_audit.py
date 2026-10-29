@@ -67,7 +67,7 @@ def audit():
                                   'interior_pixel_areas':areas,
                                   'visible_counters_at_2px':visible}
                 if px in (14,24) and visible<expected:
-                    failures.append(f'{style} {ch!r} @24px: '
+                    failures.append(f'{style} {ch!r} @{px}px: '
                                     f'expected {expected} >=2px holes, got {areas}')
             results[f'{style}-{px}px']=measurements
     return {'status':'nonshipping raster counter audit',
