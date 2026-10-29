@@ -4,6 +4,19 @@
 
 [Agent instructions](../AGENTS.md) · [Documentation index](INDEX.md) · [Product contract](PRODUCT.md) · [Coverage gaps](SPEC-COVERAGE.md) · [Evidence](QUALITY-LEDGER.md) · [Documentation authoring standard](DOCUMENTATION-STANDARD.md)
 
+## Planned recovery slice: relocated or renamed transfer backing files
+
+Develop [TRANSFER-FILE-RECOVERY](TRANSFER-FILE-RECOVERY.md) behind verified local/remote filesystem and engine capabilities: read-only diagnostics → bounded candidate discovery → content verification and unambiguous mapping → preview and user-approved non-destructive rebind/linking → hash recheck and confirmed resumption. Keep ahead of cosmetic organization work when independently executable; do not claim feature support or use unsafe rTorrent RPC shortcuts without actual capability tests.
+
+## Planned organization slice: Plex filename repairs
+
+Under existing organization priority and ownership, implement [PLEX-FILENAME-REPAIR](PLEX-FILENAME-REPAIR.md) in stages: deterministic conservative analyzer/minimal character-span diffs, batch review, alias-vs-physical-vs-published-copy distinction, safe exact-scope execution and recovery. Do not strip codec/release metadata or claim alias changes affect Plex; no backing-file mutation without engine mapping/integrity proof. Defer physical operations until corresponding storage adapter acceptance is available.
+
+## Planned slice: outbound file Open with and remote on-demand file access
+
+Implement incrementally under [EXTERNAL-FILE-ACCESS](EXTERNAL-FILE-ACCESS.md): (1) typed per-Place local/remote read capability and separation from rTorrent RPC, (2) safe Android content-provider Open/Open with on completed local files, (3) bounded remote reader with random byte ranges and secure temporary URI, (4) on-device recipient, seek/cache/expiry and approved server tests. Choose only when higher-priority unclaimed work or its prerequisites permit; do not treat documentation as verified implementation or bypass existing CI/agent-lane ownership.
+
+
 ## How agents select and complete work
 
 1. Inspect current main, open PRs, claimed lanes, relevant issues and exact-head CI. Resolve obvious red integration issues before starting another overlapping change.

@@ -236,8 +236,11 @@ class LocalTorrentEngineTest {
             waitFor { second.status(hash)?.state !in setOf(LocalTransferState.CHECKING, null) }
             val restored = requireNotNull(second.status(hash))
             assertTrue("Restored transfers must not start on their own", restored.stopped)
-            assertTrue("restored ${restored.doneBytes} < interrupted $interruptedAt",
-                restored.doneBytes >= interruptedAt)
+            // doneBytes at pause also counts blocks of partial pieces that may not
+            // have been flushed before the resume data was written; those few
+            // in-flight pieces can be lost, every verified piece must not be.
+            assertTrue("restored ${restored.doneBytes} lost more than in-flight pieces of $interruptedAt",
+                restored.doneBytes >= interruptedAt - 8L * pieceSize)
             // The byte counters are all-time totals carried in the resume file.
             Thread.sleep(1_500)
             val idle = requireNotNull(second.status(hash))
@@ -254,8 +257,8 @@ class LocalTorrentEngineTest {
             // All-time counters lag the stats tick; a later sample can only grow.
             Thread.sleep(3_000)
             val fetchedAgain = requireNotNull(second.status(hash)).payloadDownloadedBytes - idle.payloadDownloadedBytes
-            assertTrue("re-downloaded $fetchedAgain after interruption at $interruptedAt",
-                fetchedAgain <= payload.size - interruptedAt + 8L * pieceSize)
+            assertTrue("re-downloaded $fetchedAgain after restoring ${restored.doneBytes}",
+                fetchedAgain <= payload.size - restored.doneBytes + 8L * pieceSize)
         }
     }
 

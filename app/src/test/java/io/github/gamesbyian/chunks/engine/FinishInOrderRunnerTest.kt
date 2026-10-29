@@ -235,6 +235,59 @@ class FinishInOrderRunnerTest {
             engine.applyFinishInOrder(infoHash, step.record, step.plan.changes))
     }
 
+    /** A runner port over one real engine, saving the record as the encoded store string would. */
+    private fun nativePort(engine: LocalTorrentEngine, saved: (String) -> Unit) = object : FinishInOrderRunner.Port {
+        override suspend fun observe(infoHash: String) = engine.observeFinishInOrder(infoHash)
+        override suspend fun apply(infoHash: String, record: FinishInOrderRecord, changes: List<Change>) =
+            engine.applyFinishInOrder(infoHash, record, changes)
+        override fun save(infoHash: String, record: FinishInOrderRecord): Boolean { saved(record.encode()); return true }
+        override suspend fun persistNativeState() { engine.saveResumeData(2_000L) }
+    }
+
+    @Test fun realNativeEngineRestartKeepsAppliedPrioritiesAndReconcilesAnInterruptedJournal() = kotlinx.coroutines.runBlocking {
+        val source = File(temp.newFolder("restart-source"), "Season 1").apply { mkdirs() }
+        for (episode in 1..3) File(source, "Public S01E0$episode.mkv")
+            .writeBytes(ByteArray(32 * 1024) { (episode * 7 + it).toByte() })
+        val bytes = TorrentBuilder().path(source).pieceSize(16 * 1024)
+            .flags(TorrentBuilder.V1_ONLY).generate().entry().bencode()
+        val state = temp.newFolder("restart-state")
+        val target = temp.newFolder("restart-target")
+        fun open() = LocalTorrentEngine(LocalEngineConfig(listenInterfaces = "127.0.0.1:0", stateDirectory = state))
+            .also { it.start() }
+
+        // 1. Apply the first verified step, persist, then stop the engine (as a process exit would).
+        var stored = ""
+        val first = open()
+        val infoHash: String
+        val priorities: Map<Int, Int>
+        try {
+            infoHash = (first.addStopped(bytes, target) as LocalAddResult.AddedStopped).status.infoHash
+            val files = requireNotNull(first.files(infoHash))
+            val record = FinishInOrderRecord(FinishInOrderPlanner.policyFor(
+                Mode.BALANCED, files, requireNotNull(FinishInOrderPlanner.suggest(files)).order))
+            assertTrue(FinishInOrderRunner(nativePort(first) { stored = it }).step(infoHash, record) is Step.Applied)
+            priorities = requireNotNull(first.files(infoHash)).associate { it.index to it.priority }
+            assertEquals(setOf(7, 4, 1), priorities.values.toSet())
+        } finally { first.close() }
+
+        // 2. A new engine restores the transfer with the same priorities; the saved
+        //    record needs no further write.
+        val second = open().also { engines += it }
+        assertEquals(priorities, requireNotNull(second.files(infoHash)).associate { it.index to it.priority })
+        val restored = requireNotNull(FinishInOrderRecord.decode(stored))
+        val idle = FinishInOrderRunner(nativePort(second) { stored = it }).step(infoHash, restored)
+        assertTrue("$idle", idle is Step.Idle)
+
+        // 3. A journal written just before a crash, whose batch never reached the
+        //    engine, is reconciled from observation only: nothing is replayed.
+        val first0 = priorities.entries.first { it.value == 7 }.key
+        val interrupted = restored.copy(pending = listOf(Change(first0, 7, 1)))
+        val reconciled = FinishInOrderRunner(nativePort(second) { stored = it }).step(infoHash, interrupted)
+        assertTrue("$reconciled", reconciled is Step.Reconciled)
+        assertEquals(7, requireNotNull(second.files(infoHash)).single { it.index == first0 }.priority)
+        assertTrue(requireNotNull(FinishInOrderRecord.decode(stored)).pending.isEmpty())
+    }
+
     @Test fun realNativeEngineSetsAndClearsSequentialDownloadWithReadback() = kotlinx.coroutines.runBlocking {
         val source = File(temp.newFolder("seq-source"), "Season 1").apply { mkdirs() }
         for (episode in 1..3) File(source, "Public S01E0$episode.mkv")

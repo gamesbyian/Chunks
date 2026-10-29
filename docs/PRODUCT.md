@@ -2,6 +2,19 @@
 
 > **Authority:** binding owner product outcomes. Detailed feature rules live in the linked canonical contracts; feature completion and evidence live in [SPEC-COVERAGE](SPEC-COVERAGE.md) and [QUALITY-LEDGER](QUALITY-LEDGER.md). This document does not set implementation priority.
 
+## Find files to restore transfers after external moves or renames
+
+Expose **Find files to restore transfer** for local or remote torrents whose backing content has been moved/renamed outside Chunks. Discover candidates in authorized Places, verify content against torrent hashes, and reconnect existing data to its original transfer without undoing user filenames, silently duplicating bytes or changing infohash. Keep engine-only path changes, immutable torrent metadata, physical files and Chunks display names distinct; distinguish mere candidates from verified, relinked and truly resumed transfers. Exact capability-gated workflow: [TRANSFER-FILE-RECOVERY](TRANSFER-FILE-RECOVERY.md). Planned, not shipped.
+
+## Plex-compatible filename repair
+
+**Fix for Plex** is a conservative analysis/preset for individual and bulk file rename or folder scans. It MUST preserve codec, resolution, source, release group, edition and other meaningful technical/provenance filename tokens unless an identified scanner defect specifically requires a limited edit. Prefer no change for already recognizable filenames; changes are reviewed and minimally scoped, never blanket cosmetic normalization. Display alias, torrent backing filename and independently published Plex-ready library copy remain distinct; an alias does not correct Plex-visible names. Canonical contract: [PLEX-FILENAME-REPAIR](PLEX-FILENAME-REPAIR.md). Implementation/physical acceptance remains open.
+
+## External application access to files
+
+Files in transfer trees and accessible local or remote Places MUST offer capability-grounded Android **Open/Open with**, **Share/Send** and explicit download/export actions. Format-agnostic on-demand reading, including seekable large remote files, is the preferred experience where authorized server access and receiving-app compatibility permit; a full download MUST NOT occur silently. rTorrent RPC control alone does not prove access to file bytes. Canonical rules, limitations and acceptance: [EXTERNAL-FILE-ACCESS](EXTERNAL-FILE-ACCESS.md). This is planned, not verified shipped functionality.
+
+
 ## Product identity
 
 **chunks. Your downloads have places to be.**
