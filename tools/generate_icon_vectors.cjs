@@ -19,6 +19,10 @@ const ICONS = {
   chunks_ic_magnet: "docs/design/svg/icons/transfers/magnet-link.svg",
   chunks_ic_copy: "docs/design/svg/icons/transfers/copy.svg",
   chunks_ic_move: "docs/design/svg/icons/transfers/move.svg",
+  chunks_ic_phone: "docs/design/svg/icons/connectivity/phone.svg",
+  chunks_ic_server: "docs/design/svg/icons/connectivity/server.svg",
+  chunks_ic_archive: "docs/design/svg/icons/files/archive-zip.svg",
+  chunks_ic_document: "docs/design/svg/icons/files/document.svg",
 };
 
 const attrs = s => Object.fromEntries([...s.matchAll(/([:\w-]+)="([^"]*)"/g)].map(m => [m[1], m[2]]));

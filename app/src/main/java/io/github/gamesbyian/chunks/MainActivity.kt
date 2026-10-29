@@ -9,6 +9,8 @@ import androidx.core.view.WindowCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -895,21 +897,20 @@ private fun ConnectionScreen(
             ColoredPanel("Hello, server.", "Paste your seedbox hostname or ruTorrent web address. Chunks checks known secure rTorrent endpoints automatically. Torrent changes require separate confirmation.", Lilac)
         }
         item {
-            OutlinedButton(onClick = onLocalZipReview,
-                modifier = Modifier.fillMaxWidth().height(52.dp)) {
-                Text("Inspect a local ZIP without connecting")
-            }
-        }
-        item {
-            OutlinedButton(onClick = onInspectSnapshot,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
-                Text("Inspect .chunksnap backup (offline)")
-            }
-        }
-        item {
-            OutlinedButton(onClick = onLocalEngine,
-                modifier = Modifier.fillMaxWidth().height(52.dp)) {
-                Text("Download on this phone (experimental)")
+            // Things that work without a server: the phone engine and two offline inspectors.
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                ActionTile("Download on this phone (experimental)", ChunksColors.Cyan,
+                    onClick = onLocalEngine, modifier = Modifier.fillMaxWidth(),
+                    icon = R.drawable.chunks_ic_phone, stacked = false)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+                    ActionTile("Inspect a local ZIP without connecting", ChunksColors.Yellow,
+                        onClick = onLocalZipReview, modifier = Modifier.weight(1f).fillMaxHeight(),
+                        icon = R.drawable.chunks_ic_archive)
+                    ActionTile("Inspect .chunksnap backup (offline)", ChunksColors.Pink,
+                        onClick = onInspectSnapshot, modifier = Modifier.weight(1f).fillMaxHeight(),
+                        icon = R.drawable.chunks_ic_document)
+                }
             }
         }
         if (rememberLogin && savedProfiles.isNotEmpty()) {

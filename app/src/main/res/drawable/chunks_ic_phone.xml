@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- GENERATED from docs/design/svg/icons/connectivity/phone.svg by tools/generate_icon_vectors.cjs (sha256 6a06225145b1cec9); edit the SVG, then regenerate. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp" android:viewportWidth="64" android:viewportHeight="64">
+  <path android:pathData="M23 6 H41 A6 6 0 0 1 47 12 V52 A6 6 0 0 1 41 58 H23 A6 6 0 0 1 17 52 V12 A6 6 0 0 1 23 6 Z" android:fillColor="#FF2E3647" android:strokeColor="#FF0B0F17" android:strokeWidth="5" android:strokeLineCap="round" android:strokeLineJoin="round"/>
+  <path android:pathData="M24 13 H40 A2 2 0 0 1 42 15 V43 A2 2 0 0 1 40 45 H24 A2 2 0 0 1 22 43 V15 A2 2 0 0 1 24 13 Z" android:fillColor="#FFA56BFF"/>
+  <path android:pathData="M28 52 L36 52" android:strokeColor="#FFF8FAFC" android:strokeWidth="5" android:strokeLineCap="round" android:strokeLineJoin="round"/>
+</vector>

@@ -570,12 +570,13 @@ internal fun LocalEngineScreen(
             .padding(start = 18.dp, end = 18.dp, top = 12.dp, bottom = 92.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        if (onBack != null) Button(onClick = onBack, modifier = Modifier.heightIn(min = 48.dp)) { Text("Back") }
+        if (onBack != null) OutlinedButton(onClick = onBack, modifier = Modifier.heightIn(min = 48.dp)) { Text("Back") }
         Text("On this phone (experimental)", style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
         Text("Downloads and seeds with Chunks' own engine. While a transfer runs, an ongoing notification keeps it going in the background, with Stop all; Android may still stop it, and from Android 15 limits this kind of background transfer to about 6 hours a day, after which Chunks pauses everything. Nothing connects to the network until you add a torrent. Transfers are remembered and come back stopped after Chunks restarts. Peers and trackers can see this phone's IP address.")
-        Button(onClick = { picker.launch(arrayOf("*/*")) }, enabled = !busy && !inventoryStale && destination != null,
-            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Choose .torrent file") }
+        ActionTile("Choose .torrent file", ChunksColors.Green, onClick = { picker.launch(arrayOf("*/*")) },
+            enabled = !busy && !inventoryStale && destination != null,
+            modifier = Modifier.fillMaxWidth(), icon = R.drawable.chunks_ic_add_torrent, stacked = false)
         LocalDownloadPlacePicker(
             resolution = placeResolution,
             enabled = !busy && !inventoryStale,
@@ -659,7 +660,8 @@ internal fun LocalEngineScreen(
                 blocked = busy || inventoryStale,
                 onEnable = { requestDhtSetting(true) }
             )
-            OutlinedButton(onClick = {
+            ActionTile(if (startAfterAdd) "Add magnet and start" else "Add magnet (metadata only)",
+                ChunksColors.Purple, icon = R.drawable.chunks_ic_magnet, stacked = false, onClick = {
                 val selectedDraft = addFolderDraft
                 val selectedPlace = place
                 val selectedMagnet = magnet
@@ -703,7 +705,7 @@ internal fun LocalEngineScreen(
                 }
             }, enabled = !busy && !inventoryStale && !dhtSaving &&
                 proposedAddDestination != null,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text(if (startAfterAdd) "Add magnet and start" else "Add magnet (metadata only)") }
+                modifier = Modifier.fillMaxWidth())
         }
         repairReview?.let { prepared ->
             val (hash, source) = prepared
