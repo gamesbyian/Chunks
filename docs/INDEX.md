@@ -19,6 +19,8 @@ The [documentation architecture and authoring standard](DOCUMENTATION-STANDARD.m
 - [SECURITY](SECURITY.md): threat model, auth, storage and destructive safety.
 - [DECISIONS](DECISIONS.md): stable decision record and supersession.
 - [EXTERNAL-FILE-ACCESS](EXTERNAL-FILE-ACCESS.md): Android Open with, remote byte-range reads, streaming bridges, file security and acceptance.
+- [PLEX-FILENAME-REPAIR](PLEX-FILENAME-REPAIR.md): minimal-change Plex compatibility analysis tied to safe filename, alias and library-copy workflows.
+- [TRANSFER-FILE-RECOVERY](TRANSFER-FILE-RECOVERY.md): find displaced or renamed existing data and safely restore transfer mappings.
 - [UNIFIED-ENVIRONMENTS](UNIFIED-ENVIRONMENTS.md): shared phone and rTorrent experience and scoped settings.
 - [CROSS-ENGINE-TRANSFER-JOBS](CROSS-ENGINE-TRANSFER-JOBS.md): job-only Copy/Move; no payload transfer.
 - [SMART-REMOTE-CONNECTION](SMART-REMOTE-CONNECTION.md): discovery, security and multi-profile onboarding.
