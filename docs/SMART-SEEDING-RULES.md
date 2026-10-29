@@ -125,7 +125,7 @@ Evidence: JVM decision tests, plus a desktop-libtorrent loopback swarm showing c
 
 Evidence: JVM controller tests with fakes, plus a desktop-libtorrent loopback test. In that test a downloaded transfer matched a rule by its tracker host, got a verified 24 KiB/s cap, and was really paused after a one-second time limit, never removed.
 
-Not yet: remote rTorrent enforcement, an Add-review preview or per-transfer "Why this rule?", the reviewed "apply to existing transfers" batch, and handset/Doze evidence. Enforcement runs only while the foreground service polls.
+Not yet: remote rTorrent enforcement, the reviewed "apply to existing transfers" batch, and handset/Doze evidence. Enforcement runs only while the foreground service polls.
 
 ## Implementation note: phone Add-review preview (2026-10-29)
 
