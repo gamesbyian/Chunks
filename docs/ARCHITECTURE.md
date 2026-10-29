@@ -2,6 +2,14 @@
 
 > **Authority:** shared domain model, capability and mutation boundaries. Product rules are in [PRODUCT](PRODUCT.md); implementation receipts and current task priority live in [QUALITY-LEDGER](QUALITY-LEDGER.md) and [WORK-QUEUE](WORK-QUEUE.md). Design notes do not imply physical acceptance.
 
+## Recovery of torrent backing files after external filesystem changes
+
+Model verified original torrent file index/path and effective backing-file path separately, with versioned per-profile mapping generation and read-only discovery/hash evidence. Rebinding to existing data must not be conflated with libtorrent rename_file/move_storage or generic rTorrent directory setters, which may mutate data or offer only root-level functionality. Capability-gate each implementation, quiesce/revalidate as required, journal uncertain execution, recheck pieces and confirm actual engine readback/resume. [TRANSFER-FILE-RECOVERY](TRANSFER-FILE-RECOVERY.md).
+
+## Minimal-change Plex filename repair
+
+Implement compatibility analysis as a pure, abstaining minimal-edit proposal stage, separate from alias metadata, engine-backed path mutation and published-library copy execution. Preserve all unrelated filename spans including codec, release group and technical tokens. Execute physical changes only via versioned, exact-scope mapping and storage transaction verification with conditional rollback/reconciliation. No automatic filesystem rename of torrent-seeded bytes by generic SFTP/RPC. Canonical design and tests: [PLEX-FILENAME-REPAIR](PLEX-FILENAME-REPAIR.md).
+
 ## External file access and Android handoff
 
 Separate transfer control/metadata from authorized backing-byte reads. A typed per-profile/Place file access capability chooses local content URIs, safe remote-app protocol handoff, read-only seekable Chunks content-provider proxy backed by bounded ranged reads, or explicit materialization. Model lifecycle, file identity, incomplete verified-piece availability, consumer seek/retry/cancellation and per-reader quotas without leaking credentials. rTorrent XML-RPC access does not grant arbitrary filesystem reads. See the canonical [EXTERNAL-FILE-ACCESS](EXTERNAL-FILE-ACCESS.md) contract for adapter, permission and acceptance requirements.
