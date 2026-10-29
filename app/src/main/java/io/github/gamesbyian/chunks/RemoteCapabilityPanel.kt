@@ -33,11 +33,7 @@ internal fun RemoteCapabilityPanel(remote: RTorrentRemote) {
                     val probe = remote.probe()
                     val graded = RemoteCapabilities.grade(probe)
                     listOf(RemoteCapabilities.summary(probe, graded)) + graded.map { g ->
-                        when (g.status) {
-                            RemoteCapabilities.Status.ADVERTISED -> "✓ ${g.feature.label}"
-                            RemoteCapabilities.Status.MISSING -> "✗ ${g.feature.label} (missing ${g.missing.joinToString()})"
-                            RemoteCapabilities.Status.UNKNOWN -> "? ${g.feature.label}"
-                        }
+                        capabilityEvidenceLabel(g)
                     }
                 } catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
                 catch (_: Exception) { listOf("The server did not answer the read-only capability check.") }
@@ -48,4 +44,14 @@ internal fun RemoteCapabilityPanel(remote: RTorrentRemote) {
         }
         lines?.forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
     }
+}
+
+/** Introspection is read-only evidence, not proof that a command is authorized or works. */
+internal fun capabilityEvidenceLabel(graded: RemoteCapabilities.Graded): String = when (graded.status) {
+    RemoteCapabilities.Status.ADVERTISED ->
+        "Advertised, not yet verified: ${graded.feature.label}"
+    RemoteCapabilities.Status.MISSING ->
+        "Not advertised: ${graded.feature.label} (missing ${graded.missing.joinToString()})"
+    RemoteCapabilities.Status.UNKNOWN ->
+        "Unknown: ${graded.feature.label} (server did not expose a method list)"
 }
