@@ -1,24 +1,15 @@
-# Chunks decisions: one canonical ledger
+# Chunks: canonical decision ledger
 
-## Owner decision: one experience across environments (2026-10-28)
+**Purpose:** retain why binding owner choices, engineering selections and open choices were made. This is a decision registry, not a second product spec or a chronological implementation report. [Documentation authority](DOCUMENTATION-STANDARD.md) · [Product contract](PRODUCT.md) · [Current coverage](SPEC-COVERAGE.md).
 
-**D-UNIFIED-ENV-20261028 | Owner, binding.** Chunks behaves as one torrent manager for local device and any rTorrent profiles, with common controls/navigation/terms and only capability-necessary divergence. Local-only is the default offered mode; remote-only and both are equally supported. The active list and transfer-details source are explicit in combined mode. All settings identify app-global, environment or transfer scope. Switching is non-mutating; disabling cannot silently delete jobs/files or credentials. See [UNIFIED-ENVIRONMENTS.md](UNIFIED-ENVIRONMENTS.md); full product acceptance remains open.
+**Status vocabulary:** **Owner, binding** = explicit product choice; **Adopted/provisional** = engineering decision subject to evidence; **Open** = undecided; **Superseded/amended** = historical choice that no longer governs. The table's last column describes reopening/verification requirements, **not a blanket statement of implementation**.
 
-## Owner directive: ordered multi-file completion (2026-10-27; #415)
-
-**Owner-approved goal:** Chunks should make ordered bundles (TV seasons, sequel packs and other numbered media) progressively usable in logical sequence without manual micromanagement of each file's static priorities. Automatic suggested ordering and a dynamic completion scheduler are in scope. **Engineering choices subject to evidence:** Normal/Balanced/Finish First/capability-gated Sequential Playback modes; rolling bounded priority windows and front-file stall fallback. **Boundaries:** mode choice is opt-in or disclosed as preference; no guaranteed ordering when swarm availability prevents it; respect manual priority and skipped files; remote rTorrent capability is independently validated; no false physical-device acceptance. Tracked in #415 and canonical PRODUCT/UX/ARCHITECTURE/WORK-QUEUE/SPEC-COVERAGE.
-**Owner amendment:** Square is only one of multiple artwork roles; users can separately customize square, poster and banner on any torrent. Provide an aggregated multi-source image gallery plus device upload and explicit image URL input. Allow toggles for applying selected artwork to related episodes/show/season, artist/album, author/books, series/issues or other verified media groups, without overriding narrower manually pinned art. Scope preview and user control required. See [TRANSFER-ARTWORK.md](TRANSFER-ARTWORK.md), #403.
-
-**Owner addition:** Expand decorative artwork/metadata to music, books, magazines, comics, games, apps, porn and other torrent classes. Multiple provider attempts are required after a miss; legal/consented general image search is the last external resort; handsome built-in category art is the terminal fallback. **Provisional implementation** uses provider-specific identity and image scoring, field provenance, independent adult-consent gates, and bounded local cache. This confirms product direction only, not provider licenses or implementation. See [TRANSFER-ARTWORK](TRANSFER-ARTWORK.md), #403.
-
-## 2026-10-27: owner-approved movie/TV transfer artwork
-
-**Owner direction:** Decorate local and rTorrent transfer cards/details with recognizable preferably-square movie/TV artwork reflecting the supplied colorful multi-phone mockup. This is approved desired UI behavior, **not** approval of a particular provider, account/paid API, third-party terms or silent network lookups. **Provisional engineering direction:** native-square Fanart.tv/TheTVDB first, constrained TMDB/crop fallback, opt-in privacy-safe enrichment, confidence threshold and user correction, offline icons/cache. Provider choice and implementation gated by research. [TRANSFER-ARTWORK.md](TRANSFER-ARTWORK.md), [#403](https://github.com/gamesbyian/Chunks/issues/403). **Planned, not shipped.**
-
-Reconciled 2026-10-26 after current implementation/evidence review. **Owner** means explicitly requested; **Adopted (provisional)** is an engineering direction that can change after evidence; **Open** needs validation or decision. Implementing an assumption does not retroactively make it owner-approved.
+## Decision registry
 
 | ID | Status | Decision and boundaries | Reopen condition |
 |---|---|---|---|
+| D-FINISH-ORDER-20261027 | **Owner, binding outcome** | Provide optional completion-order-aware scheduling with manual override and truthful unavailable-piece/remote-capability fallback; Normal/Balanced/Finish First/Sequential Playback are independently capability-gated choices. | [PRODUCT](PRODUCT.md), [#415](https://github.com/gamesbyian/Chunks/issues/415); full physical and network evidence still required. |
+| D-ARTWORK-20261027 | **Owner, binding outcome** | Local and remote torrent cards/details offer multi-format square/poster/banner artwork; provenance-aware multi-provider metadata and manual per-role upload/URL/gallery overrides, consented related-item inheritance and adult-lookup gates. | [TRANSFER-ARTWORK](TRANSFER-ARTWORK.md), [#403](https://github.com/gamesbyian/Chunks/issues/403); source/provider licensing and release acceptance separate. |
 | D-XFER-JOBS-20261028 | **Owner, binding** | Copy Transfer and Move Transfer, including batch, create independently verified destination **torrent jobs**. Move retires the source **job only** after separate approval and never transfers/deletes payload files. Payload copy/physical relocation are distinct separately labelled operations. | Binding [CROSS-ENGINE-TRANSFER-JOBS](CROSS-ENGINE-TRANSFER-JOBS.md); no revision without explicit owner decision. |
 | D-ICON-SVG-20261027 | Owner | The transparent `docs/design/approved/chunks-app-icon-master.svg` is the canonical editable Chunks app icon, without a baked-in launcher bezel. Keep the owner PNG unchanged for comparison only. Android consumes a generator-derived native VectorDrawable from the SVG; no PNG in shipping launcher resources. Regenerate the derivative on SVG changes and check parity in CI/Gradle. | Owner supplies revised source or requests different branding. Physical adaptive-mask acceptance remains separate. |
 | D-LOCK-20261027 | Owner | Optional privacy lock for viewing/controlling local transfers and separate remote profiles. Once enabled, default once per app process session, customizable for security/convenience; use Android device-supported biometrics and device credentials. Remember remote server credentials by default with opt-out; UI unlock remains independent of server login. | Revisit after handset security/UX proof; contract in TRANSFER-PRIVACY-LOCK.md |
@@ -48,6 +39,27 @@ Reconciled 2026-10-26 after current implementation/evidence review. **Owner** me
 | D18 | Open | Minimum target rTorrent version and precise supported proxy auth schemes | Actual deployed environments and tests |
 | D19 | Open | External filesystem adapters for non-installable seedboxes: SFTP/SSH/provider APIs vs companion | Managed-host capability survey |
 | D20 | Adopted | Default is no auto-uploaded logs, private torrent inventory or third-party metadata lookups | Explicit owner choice |
+
+## Decision history and amendment context
+
+The dated notes below preserve original rationale and qualifications. When they restate a registered binding decision, the precise feature contract and most recent **owner correction** take precedence; they are not separate active requirements.
+
+## Owner decision: one experience across environments (2026-10-28)
+
+**D-UNIFIED-ENV-20261028 | Owner, binding.** Chunks behaves as one torrent manager for local device and any rTorrent profiles, with common controls/navigation/terms and only capability-necessary divergence. Local-only is the default offered mode; remote-only and both are equally supported. The active list and transfer-details source are explicit in combined mode. All settings identify app-global, environment or transfer scope. Switching is non-mutating; disabling cannot silently delete jobs/files or credentials. See [UNIFIED-ENVIRONMENTS.md](UNIFIED-ENVIRONMENTS.md); full product acceptance remains open.
+
+## Owner directive: ordered multi-file completion (2026-10-27; #415)
+
+**Owner-approved goal:** Chunks should make ordered bundles (TV seasons, sequel packs and other numbered media) progressively usable in logical sequence without manual micromanagement of each file's static priorities. Automatic suggested ordering and a dynamic completion scheduler are in scope. **Engineering choices subject to evidence:** Normal/Balanced/Finish First/capability-gated Sequential Playback modes; rolling bounded priority windows and front-file stall fallback. **Boundaries:** mode choice is opt-in or disclosed as preference; no guaranteed ordering when swarm availability prevents it; respect manual priority and skipped files; remote rTorrent capability is independently validated; no false physical-device acceptance. Tracked in #415 and canonical PRODUCT/UX/ARCHITECTURE/WORK-QUEUE/SPEC-COVERAGE.
+**Owner amendment:** Square is only one of multiple artwork roles; users can separately customize square, poster and banner on any torrent. Provide an aggregated multi-source image gallery plus device upload and explicit image URL input. Allow toggles for applying selected artwork to related episodes/show/season, artist/album, author/books, series/issues or other verified media groups, without overriding narrower manually pinned art. Scope preview and user control required. See [TRANSFER-ARTWORK.md](TRANSFER-ARTWORK.md), #403.
+
+**Owner addition:** Expand decorative artwork/metadata to music, books, magazines, comics, games, apps, porn and other torrent classes. Multiple provider attempts are required after a miss; legal/consented general image search is the last external resort; handsome built-in category art is the terminal fallback. **Provisional implementation** uses provider-specific identity and image scoring, field provenance, independent adult-consent gates, and bounded local cache. This confirms product direction only, not provider licenses or implementation. See [TRANSFER-ARTWORK](TRANSFER-ARTWORK.md), #403.
+
+## 2026-10-27: owner-approved movie/TV transfer artwork
+
+**Owner direction:** Decorate local and rTorrent transfer cards/details with recognizable preferably-square movie/TV artwork reflecting the supplied colorful multi-phone mockup. This is approved desired UI behavior, **not** approval of a particular provider, account/paid API, third-party terms or silent network lookups. **Provisional engineering direction:** native-square Fanart.tv/TheTVDB first, constrained TMDB/crop fallback, opt-in privacy-safe enrichment, confidence threshold and user correction, offline icons/cache. Provider choice and implementation gated by research. [TRANSFER-ARTWORK.md](TRANSFER-ARTWORK.md), [#403](https://github.com/gamesbyian/Chunks/issues/403). **Planned, not shipped.**
+
+Reconciled 2026-10-26 after current implementation/evidence review. **Owner** means explicitly requested; **Adopted (provisional)** is an engineering direction that can change after evidence; **Open** needs validation or decision. Implementing an assumption does not retroactively make it owner-approved.
 
 Historical alternatives remain in critical review and research, not in competing plan files. Track implementation in WORK-QUEUE and truth in QUALITY-LEDGER.
 
