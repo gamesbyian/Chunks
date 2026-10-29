@@ -799,7 +799,7 @@ A compact map can locate almost any user action in this ecosystem:
 | ID | Situation / goal | Action sequence and desired exit | Feature-family cross-links | Cadence |
 |---|---|---|---|---|
 | **A01.01** | Need a known OS image | Open publisher's torrent listing → compare architecture/version/checksum → obtain its descriptor | F06.01, F06.03, F01.03 | O |
-| **A01.02** | Need an unknown title | Search several indexes → filter by format/size/seeders → choose plausible result | F06.01, F06.03, F06.15 | F |
+| **A01.02** | Need an unknown title | Check/install suitable search plugin if needed → search several indexes → filter by format/size/seeders → choose result | F06.02, F06.01, F06.03, F06.15 | F |
 | **A01.03** | Need specific language or codec | Filter and compare release naming/metadata → inspect file list → accept or reject | F06.14, F09.07, F03.01 | O |
 | **A01.04** | Need one item from an archive | Browse catalogue → read file manifest → choose subset before or after add | F06.03, F03.01, F03.02 | O |
 | **A01.05** | Need newest matching episode | Review RSS rule matches and exclusions → decide automatic or manual grab | F06.04, F06.05, F06.15 | F |
@@ -901,7 +901,7 @@ A compact map can locate almost any user action in this ecosystem:
 | **A06.06** | Several trackers disagree | Compare announce tiers/status → adjust trackers → reannounce and read response | F04.03, F04.04, F08.05 | R |
 | **A06.07** | Need to inspect piece scarcity | View bitfield/availability → decide whether wait, prioritize or find other source | F04.14, F08.02, F04.15 | R |
 | **A06.08** | Want to share with browser peers | Choose WebTorrent-compatible distribution → test WebRTC/native interoperability | F04.18, F01.13 | R |
-| **A06.09** | Experiencing very slow disk IO | Inspect cache, allocation and activity → change performance setting → remeasure | F04.21, F05.09, F08.10 | R |
+| **A06.09** | Experiencing very slow disk IO | Inspect disk activity and peer/connection load → adjust limits/cache/allocation one at a time → remeasure | F04.10, F04.21, F05.09, F08.10 | R |
 | **A06.10** | Want to test encryption settings | Review tracker and peer compatibility → adjust supported transport security → verify connects | F04.09, F13.04, F08.06 | R |
 | **A06.11** | Multi-source downloader has alternate sources | Evaluate peers, web seeds and HTTP/FTP sources → choose safe supported combination | F04.04, F04.17, F15.03 | R |
 | **A06.12** | Want alternate privacy network | Choose appropriate I2P/onion-supported client → check identity and performance limits | F04.20, F13.02, F13.15 | R |
@@ -933,7 +933,7 @@ A compact map can locate almost any user action in this ecosystem:
 |---|---|---|---|---|
 | **A08.01** | First time connecting remote app | Obtain host, scheme, port and RPC path → authenticate → verify server identity | F10.03, F10.15, F14.13 | R |
 | **A08.02** | More than one remote engine exists | Save distinct profiles → choose intended endpoint → inspect its own jobs | F10.04, F10.08, F10.03 | O |
-| **A08.03** | Want unified view of heterogeneous clients | Connect supported protocols → inspect capability differences → perform available action | F10.05, F10.06, F10.02 | O |
+| **A08.03** | Want unified view of heterogeneous clients | Connect supported protocols → compare sessions and capability differences → perform action on intended engine | F02.15, F10.05, F10.06, F10.02 | O |
 | **A08.04** | Phone encounters magnet away from home | Open share target → select remote profile → submit and verify target job | F10.12, F10.11, F01.02 | F |
 | **A08.05** | Want browser-only access on travel laptop | Open saved WebUI address → authenticate → inspect/change remote job | F10.01, F10.18, F10.15 | O |
 | **A08.06** | Switch from local to remote view | Change current environment → confirm identity → avoid touching other session | F10.08, F10.04, F14.04 | F |
@@ -956,7 +956,7 @@ A compact map can locate almost any user action in this ecosystem:
 | **A09.04** | Need access from new device | Find service host/ports/credentials in provider panel → configure secure client | F11.03, F11.09, F10.03 | O |
 | **A09.05** | User lost client password | Use provider-specific reset/change route → update saved remote credential → test | F11.05, F11.03, F13.07 | R |
 | **A09.06** | Need another service like media server | Inspect app catalogue → install/configure → connect required storage path | F11.15, F11.16, F11.13 | O |
-| **A09.07** | Need separate household users | Assign roles/permissions and services → test each person's authorized views | F11.05, F11.17, F13.06 | R |
+| **A09.07** | Need separate household users | Assign role-specific services/permissions → test each person's authorized views and controls | F15.16, F11.05, F11.17, F13.06 | R |
 | **A09.08** | Infrastructure security needs review | Check firewall/reverse proxy/TLS/tunnel rules → test access and rejection | F11.06, F11.07, F11.08 | O |
 | **A09.09** | Service upgrade is available | Back up settings → upgrade known app → verify API compatibility and state | F11.01, F11.12, F10.06 | O |
 | **A09.10** | Need to view remote resource pressure | Open CPU/memory/disk/network charts → correlate load with stalled jobs | F11.10, F08.10, F11.04 | O |
@@ -979,7 +979,7 @@ A compact map can locate almost any user action in this ecosystem:
 | **A10.08** | Need one file over slow link | Select only wanted remote file → download with resume → verify copied bytes | F03.10, F03.23, F11.14 | O |
 | **A10.09** | Want long-running remote-to-local sync | Configure SFTP/rclone/Syncthing paths → monitor sync → check duplicates/conflicts | F11.14, F12.12, F03.23 | C |
 | **A10.10** | Need to clean staging folders | Inspect archives/partial and dependent job refs → move to trash or keep → verify space | F03.19, F03.22, F03.18 | O |
-| **A10.11** | Want to transfer across filesystems | Select destination → copy or move safely → check checksum → update any active mapping | F03.21, F03.24, F03.15 | O |
+| **A10.11** | Want to transfer across filesystems | Choose destination (possibly Android SAF/SD storage) → secure permissions → copy/move and checksum → update mappings | F03.17, F03.21, F03.24, F03.15 | O |
 | **A10.12** | Remote and local paths look different | Reconcile container/host/mount paths → translate location for downstream tool | F03.24, F10.07, F11.13 | R |
 
 ### A11 · Automated intake, scripts and rule maintenance
@@ -1308,6 +1308,255 @@ The feature reference contains 15 families and 240 numbered entries. Activity fa
 To translate the current two research references into a credible conceptual graph, each activity should retain: a **stable A ID**, a **goal and trigger**, one or more **actor/tool roles**, the **object being acted upon**, a **causal sequence** only where meaningful, **start and verified exit states**, **failure paths**, **work character**, **relative cadence**, relevant **F references**, and available **S evidence**. Additionally, every feature should either link to an explicit A activity, to a low-level enabling mechanism, or be marked *not yet explained by the observed activities*. Do not invent user behavior merely to make every feature have an incoming edge.
 
 The A-series entries intentionally function as **candidate graph nodes** rather than hidden requirements, screen wireframes, UX recommendations, or implementation tickets.
+
+### 22.3 Full reverse lookup: each feature linked to at least one activity
+
+This table is the **completeness audit for the two reference documents**: every one of the 240 numbered feature concepts in the other document has a proposed activity node in this document. It does **not** establish that the particular pairing is universally appropriate, a feature is common, or a product provides it. Some items are low-level mechanisms whose link means “enables or explains the activity” rather than “the user deliberately operates this setting.” Every edge is analytical synthesis, open to later correction. Read the full feature description from the independent feature inventory using the ID; descriptions are intentionally not duplicated here.
+
+| Feature ID | Associated activity IDs |
+|---|---|
+| F01.01 | A02.02 |
+| F01.02 | A02.01, A08.04 |
+| F01.03 | A01.01, A02.03 |
+| F01.04 | A02.04 |
+| F01.05 | A02.05, A11.01, A11.03, A11.06 |
+| F01.06 | A01.12, A02.11, A19.03 |
+| F01.07 | A02.02, A02.07, A03.02 |
+| F01.08 | A02.06 |
+| F01.09 | A01.06, A02.08 |
+| F01.10 | A02.09, A07.01 |
+| F01.11 | A02.10, A13.11, A20.10 |
+| F01.12 | A05.11, A13.01, A13.02, A13.11, A19.07 |
+| F01.13 | A06.08, A13.03, A13.04, A13.05, A13.08, A19.01 |
+| F01.14 | A03.11, A13.02, A13.06, A15.11 |
+| F01.15 | A02.10, A08.11, A16.03, A16.08 |
+| F01.16 | A13.01, A19.01 |
+| F01.17 | A01.10, A13.07 |
+| F01.18 | A11.05, A14.05 |
+| F01.19 | A01.07, A02.12, A14.10 |
+| F02.01 | A04.01 |
+| F02.02 | A04.03, A04.04, A04.05, A20.02 |
+| F02.03 | A05.12, A20.04, A20.09 |
+| F02.04 | A02.04, A04.04, A04.08, A07.08, A18.02, A20.02 |
+| F02.05 | A04.05 |
+| F02.06 | A04.06, A17.06 |
+| F02.07 | A04.07 |
+| F02.08 | A04.07, A05.08, A11.11 |
+| F02.09 | A02.06, A05.05 |
+| F02.10 | A04.11, A04.12, A16.10, A20.01 |
+| F02.11 | A04.10, A07.05 |
+| F02.12 | A04.09, A18.05, A19.08 |
+| F02.13 | A15.05 |
+| F02.14 | A05.03, A20.03 |
+| F02.15 | A08.03 |
+| F02.16 | A08.11, A16.04 |
+| F02.17 | A04.11, A05.09, A16.03, A16.04, A16.05, A16.09, A20.08, A20.10 |
+| F02.18 | A04.04, A05.12, A14.11, A16.12, A20.02, A20.04, A20.09, A20.12 |
+| F03.01 | A01.03, A01.04, A03.01, A03.02, A03.06, A12.05 |
+| F03.02 | A01.04, A03.02, A03.06, A03.07 |
+| F03.03 | A03.03 |
+| F03.04 | A03.04, A03.05, A03.09, A12.01 |
+| F03.05 | A07.03, A10.03 |
+| F03.06 | A10.03, A16.01, A16.11 |
+| F03.07 | A02.07, A10.02, A16.02 |
+| F03.08 | A07.02, A10.02 |
+| F03.09 | A07.02 |
+| F03.10 | A10.01, A10.08 |
+| F03.11 | A03.10, A10.04, A19.10 |
+| F03.12 | A10.04, A10.05, A14.10 |
+| F03.13 | A01.07, A03.10, A10.05, A10.07, A13.08, A19.10 |
+| F03.14 | A03.12, A13.02, A19.07 |
+| F03.15 | A02.10, A03.07, A03.08, A05.09, A10.07, A10.11, A15.07, A16.01, A16.02, A16.03, A16.08, A16.10 |
+| F03.16 | A03.06, A10.03, A16.11 |
+| F03.17 | A10.11 |
+| F03.18 | A02.07, A10.05, A10.10, A17.01, A20.05 |
+| F03.19 | A05.08, A10.10, A16.01, A16.02, A16.11, A17.02 |
+| F03.20 | A05.10, A12.12, A16.06, A16.07, A17.02, A20.09 |
+| F03.21 | A10.02, A10.11, A16.05, A19.12 |
+| F03.22 | A10.10, A16.12, A17.01, A20.05 |
+| F03.23 | A08.10, A10.01, A10.06, A10.08, A10.09, A12.07 |
+| F03.24 | A10.11, A10.12, A16.06 |
+| F04.01 | A03.11, A13.06 |
+| F04.02 | A06.04, A06.05, A13.04 |
+| F04.03 | A06.01, A06.06, A13.12, A15.05 |
+| F04.04 | A06.06, A06.11, A13.08 |
+| F04.05 | A06.01, A06.04, A13.04 |
+| F04.06 | A06.04 |
+| F04.07 | A03.01 |
+| F04.08 | A06.02, A15.03 |
+| F04.09 | A06.10, A14.02 |
+| F04.10 | A06.09 |
+| F04.11 | A06.03, A14.08 |
+| F04.12 | A14.08 |
+| F04.13 | A05.06 |
+| F04.14 | A03.09, A03.12, A06.07 |
+| F04.15 | A03.05, A06.07 |
+| F04.16 | A05.01, A05.04, A05.11, A12.10, A13.09, A13.10, A19.02, A19.05, A20.11 |
+| F04.17 | A06.11, A19.03 |
+| F04.18 | A06.08, A13.05 |
+| F04.19 | A05.02, A06.05, A13.03, A14.05 |
+| F04.20 | A06.12 |
+| F04.21 | A06.09, A17.06, A17.11 |
+| F05.01 | A17.04 |
+| F05.02 | A05.05, A17.04 |
+| F05.03 | A17.05 |
+| F05.04 | A04.06, A05.04, A05.06, A17.06 |
+| F05.05 | A17.03, A17.08 |
+| F05.06 | A02.09, A05.01, A05.02, A05.03, A17.09, A20.03 |
+| F05.07 | A15.08, A17.07 |
+| F05.08 | A14.01, A14.09 |
+| F05.09 | A06.09, A15.06, A17.04, A17.11 |
+| F05.10 | A14.09, A17.10 |
+| F05.11 | A04.07 |
+| F05.12 | A03.03, A04.05 |
+| F05.13 | A17.05, A17.10 |
+| F06.01 | A01.01, A01.02, A12.11, A13.07 |
+| F06.02 | A01.02 |
+| F06.03 | A01.01, A01.02, A01.04, A01.08 |
+| F06.04 | A01.05, A01.11, A11.01, A19.06 |
+| F06.05 | A01.05, A02.05, A11.02, A11.09, A20.06 |
+| F06.06 | A11.04 |
+| F06.07 | A11.04 |
+| F06.08 | A11.05 |
+| F06.09 | A11.04 |
+| F06.10 | A11.03 |
+| F06.11 | A05.10, A16.07 |
+| F06.12 | A01.09, A19.04 |
+| F06.13 | A01.06 |
+| F06.14 | A01.03, A01.08, A11.02, A12.04 |
+| F06.15 | A01.02, A01.05, A01.11, A01.12, A11.09 |
+| F07.01 | A02.09, A07.01, A07.09, A07.11, A17.05 |
+| F07.02 | A07.02 |
+| F07.03 | A04.02, A05.07, A07.07, A20.04 |
+| F07.04 | A04.08, A07.01, A07.10 |
+| F07.05 | A04.02, A05.07, A07.10 |
+| F07.06 | A04.02, A07.07 |
+| F07.07 | A07.03, A07.09, A12.06 |
+| F07.08 | A07.04, A13.07, A13.11 |
+| F07.09 | A07.08, A07.11 |
+| F07.10 | A01.11, A04.10, A07.05 |
+| F07.11 | A07.08 |
+| F07.12 | A07.06, A07.12 |
+| F08.01 | A01.06, A01.07, A02.08, A07.09, A15.11 |
+| F08.02 | A03.01, A03.07, A03.08, A06.07 |
+| F08.03 | A04.01, A04.03, A05.01, A05.03, A05.07, A13.10 |
+| F08.04 | A03.03, A03.08, A15.07, A16.08 |
+| F08.05 | A05.08, A06.06, A07.10, A13.10, A15.02, A15.05 |
+| F08.06 | A06.03, A06.10, A13.09, A15.09 |
+| F08.07 | A06.02, A13.12, A15.02, A15.03 |
+| F08.08 | A02.12, A04.11, A07.07, A15.01, A15.04, A15.12, A16.10 |
+| F08.09 | A15.06, A15.09, A17.03 |
+| F08.10 | A06.09, A09.10, A15.06, A15.09, A17.08, A18.03 |
+| F08.11 | A01.08, A05.04, A05.06, A06.01, A06.02, A13.12, A15.02, A17.09 |
+| F08.12 | A15.01, A15.04, A15.10 |
+| F08.13 | A04.10, A07.04, A14.12, A15.07, A15.11, A15.12 |
+| F09.01 | A03.04, A03.09, A12.01, A13.05 |
+| F09.02 | A03.04, A03.05, A12.01 |
+| F09.03 | A12.10 |
+| F09.04 | A12.03 |
+| F09.05 | A12.03, A12.09 |
+| F09.06 | A10.06, A12.07, A19.09 |
+| F09.07 | A01.03, A12.04 |
+| F09.08 | A12.08, A19.09 |
+| F09.09 | A03.10, A10.07, A12.05 |
+| F09.10 | A12.04, A12.05, A12.06 |
+| F09.11 | A12.02, A12.06, A12.12 |
+| F09.12 | A12.02, A12.11 |
+| F10.01 | A04.12, A08.05, A20.01 |
+| F10.02 | A08.03, A15.04, A15.10 |
+| F10.03 | A08.01, A08.02, A09.04, A14.04, A18.11 |
+| F10.04 | A08.02, A08.06, A17.10 |
+| F10.05 | A08.03, A08.11 |
+| F10.06 | A03.11, A08.03, A09.09, A13.06, A15.10, A18.10 |
+| F10.07 | A08.10, A10.01, A10.12 |
+| F10.08 | A02.08, A08.02, A08.06, A16.04, A18.12 |
+| F10.09 | A08.07, A08.08, A18.08 |
+| F10.10 | A08.07, A08.08, A18.08 |
+| F10.11 | A02.03, A08.04 |
+| F10.12 | A02.01, A08.04 |
+| F10.13 | A08.12, A14.06, A16.09, A18.09, A20.08 |
+| F10.14 | A08.09, A14.04 |
+| F10.15 | A08.01, A08.05, A14.03 |
+| F10.16 | A15.01, A18.11 |
+| F10.17 | A09.02, A09.12 |
+| F10.18 | A08.05, A18.04 |
+| F11.01 | A09.01, A09.09, A17.12, A20.07 |
+| F11.02 | A09.02, A09.03 |
+| F11.03 | A09.04, A09.05 |
+| F11.04 | A09.02, A09.03, A09.10 |
+| F11.05 | A09.05, A09.07, A14.07 |
+| F11.06 | A09.03, A09.08 |
+| F11.07 | A09.08, A15.03 |
+| F11.08 | A09.08 |
+| F11.09 | A09.04 |
+| F11.10 | A09.10, A17.02, A17.11 |
+| F11.11 | A05.05, A09.11, A17.01, A17.03, A17.08, A17.09, A17.12, A20.11 |
+| F11.12 | A09.09, A14.11, A16.09, A20.07 |
+| F11.13 | A09.06, A10.12, A19.11 |
+| F11.14 | A05.09, A10.08, A10.09, A16.05, A19.12, A20.07 |
+| F11.15 | A09.06 |
+| F11.16 | A09.01, A09.06, A19.11 |
+| F11.17 | A09.01, A09.07, A09.11, A09.12, A14.07, A17.12 |
+| F12.01 | A11.06 |
+| F12.02 | A02.05, A11.01, A11.02, A11.03, A19.06, A20.06 |
+| F12.03 | A11.07 |
+| F12.04 | A11.08 |
+| F12.05 | A11.08 |
+| F12.06 | A04.09, A11.12, A12.11, A18.05, A20.11 |
+| F12.07 | A11.07 |
+| F12.08 | A11.07, A12.02 |
+| F12.09 | A11.10 |
+| F12.10 | A07.11, A11.08, A11.10 |
+| F12.11 | A11.11 |
+| F12.12 | A10.09 |
+| F12.13 | A11.09, A11.12, A20.12 |
+| F12.14 | A11.11, A20.06 |
+| F13.01 | A14.02 |
+| F13.02 | A06.12, A14.02 |
+| F13.03 | A14.01 |
+| F13.04 | A06.10, A08.09, A14.03 |
+| F13.05 | A01.10, A05.02, A06.05, A11.05, A13.03, A14.05, A20.03 |
+| F13.06 | A08.10, A09.07, A09.12, A14.07 |
+| F13.07 | A08.12, A09.05, A14.06, A20.08 |
+| F13.08 | A08.09, A14.03, A14.04 |
+| F13.09 | A06.03, A14.08 |
+| F13.10 | A14.09 |
+| F13.11 | A05.12, A11.10, A14.11, A20.05, A20.10 |
+| F13.12 | A02.12, A10.04, A14.10 |
+| F13.13 | A08.07, A14.12, A15.12, A18.12, A20.12 |
+| F13.14 | A14.12, A16.12 |
+| F13.15 | A06.12, A14.01 |
+| F14.01 | A18.01 |
+| F14.02 | A04.08, A18.02, A18.07 |
+| F14.03 | A07.06, A18.03 |
+| F14.04 | A04.01, A08.06, A18.03 |
+| F14.05 | A18.01, A18.04 |
+| F14.06 | A02.01, A02.02 |
+| F14.07 | A04.09, A04.12, A11.12, A15.08, A17.07, A18.05, A18.12, A20.01 |
+| F14.08 | A07.12, A18.06 |
+| F14.09 | A18.01, A18.04, A18.06, A18.07 |
+| F14.10 | A08.08, A18.08 |
+| F14.11 | A07.12, A08.12, A18.09 |
+| F14.12 | A18.10 |
+| F14.13 | A08.01, A18.11 |
+| F15.01 | A13.01, A19.01 |
+| F15.02 | A05.11, A13.09, A19.02 |
+| F15.03 | A02.11, A06.11, A19.03 |
+| F15.04 | A01.09, A19.04 |
+| F15.05 | A19.05 |
+| F15.06 | A19.06 |
+| F15.07 | A03.12, A19.07 |
+| F15.08 | A19.08 |
+| F15.09 | A15.08, A17.07 |
+| F15.10 | A12.03, A12.09 |
+| F15.11 | A10.06, A12.08, A19.09 |
+| F15.12 | A19.10 |
+| F15.13 | A19.11 |
+| F15.14 | A19.12 |
+| F15.15 | A05.10, A12.12, A16.06, A16.07 |
+| F15.16 | A09.07 |
+
+**Audit:** 240 of 240 inventory entries have at least one linked A-series activity; no orphan feature identifiers, and no invented F identifiers. This is *structural mapping coverage*, not validation of product support or observed human behavior.
 
 ## 23. Research limitations and next possible evidence
 
