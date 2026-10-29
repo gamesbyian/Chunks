@@ -53,6 +53,15 @@ class RemoteStoppedAddTest {
         return "<value><array><data><value><array><data>" +
             row.joinToString("") + "</data></array></value></data></array></value>"
     }
+    private fun respondAbsentHash(exchange: com.sun.net.httpserver.HttpExchange) {
+        val reply = """<methodResponse><fault><value><struct>
+            <member><name>faultCode</name><value><int>-501</int></value></member>
+            <member><name>faultString</name><value><string>Could not find info-hash.</string></value></member>
+            </struct></value></fault></methodResponse>""".toByteArray(Charsets.UTF_8)
+        exchange.sendResponseHeaders(200, reply.size.toLong())
+        exchange.responseBody.use { it.write(reply) }
+    }
+
     @Test fun ambiguousStoppedAddCanBeReconciledWithoutASecondWrite() = runBlocking {
         var loaded = false
         val methods = mutableListOf<String>()
@@ -69,6 +78,7 @@ class RemoteStoppedAddTest {
                 exchange.sendResponseHeaders(503, -1)
                 exchange.close()
             } else {
+                if (method == "d.name") { respondAbsentHash(exchange); return@createContext }
                 val body = when (method) {
                     "d.multicall2" -> if (loaded) rowXml()
                         else "<value><array><data></data></array></value>"
@@ -89,12 +99,12 @@ class RemoteStoppedAddTest {
                 "http://127.0.0.1:${server.address.port}/RPC2", "", ""))
             val plan = StoppedRemoteAddPlan.fromMagnet(magnet, dir)
             assertEquals(RemoteAddOutcome.Uncertain(hash), remote.loadStopped(plan))
-            assertEquals(listOf("d.multicall2", "load.verbose"), methods)
+            assertEquals(listOf("d.multicall2", "d.name", "load.verbose"), methods)
             assertEquals(RemoteAddOutcome.VerifiedStopped(hash, dir),
                 remote.reconcileStoppedAdd(plan))
             assertEquals("Only ONE Add RPC despite a lost acknowledgement",
                 1, methods.count { it == "load.verbose" })
-            assertEquals(listOf("d.multicall2", "load.verbose", "d.multicall2",
+            assertEquals(listOf("d.multicall2", "d.name", "load.verbose", "d.multicall2",
                 "d.directory", "d.is_multi_file", "d.state"), methods)
         } finally { server.stop(0) }
     }
@@ -108,6 +118,7 @@ class RemoteStoppedAddTest {
             val body = exchange.requestBody.bufferedReader().use { it.readText() }
             val method = Regex("<methodName>([^<]+)</methodName>").find(body)?.groupValues?.get(1).orEmpty()
             requests.add(method + "|" + body)
+            if (method == "d.name") { respondAbsentHash(exchange); return@createContext }
             val responseValue = when (method) {
                 "d.multicall2" -> if (loaded) rowXml()
                                    else "<value><array><data></data></array></value>"
@@ -134,7 +145,7 @@ class RemoteStoppedAddTest {
             val plan = StoppedRemoteAddPlan.fromMagnet(magnet, dir)
             assertEquals(RemoteAddOutcome.VerifiedStopped(hash, dir), remote.loadStopped(plan))
             assertTrue(loaded)
-            assertEquals(listOf("d.multicall2", "load.verbose", "d.multicall2",
+            assertEquals(listOf("d.multicall2", "d.name", "load.verbose", "d.multicall2",
                 "d.directory", "d.is_multi_file", "d.state"),
                 requests.map { it.substringBefore('|') })
             val beforeDuplicate = requests.size
@@ -155,6 +166,7 @@ class RemoteStoppedAddTest {
             val xml = exchange.requestBody.bufferedReader().use { it.readText() }
             val method = Regex("<methodName>([^<]+)</methodName>").find(xml)?.groupValues?.get(1).orEmpty()
             requests.add(method to xml)
+            if (method == "d.name") { respondAbsentHash(exchange); return@createContext }
             val value = when (method) {
                 "d.multicall2" -> if (loaded) rowXml() else "<value><array><data></data></array></value>"
                 "directory.default" -> value(dir)
@@ -180,7 +192,7 @@ class RemoteStoppedAddTest {
             val plan = StoppedRemoteAddPlan.fromMagnetAtServerDefault(magnet, dir)
             assertTrue(plan.useServerDefault)
             assertEquals(RemoteAddOutcome.VerifiedStopped(hash, dir), remote.loadStopped(plan))
-            assertEquals(listOf("d.multicall2", "directory.default", "load.verbose",
+            assertEquals(listOf("d.multicall2", "d.name", "directory.default", "load.verbose",
                 "d.multicall2", "d.directory", "d.is_multi_file", "d.state"),
                 requests.map { it.first })
             assertFalse(requests.first { it.first == "load.verbose" }.second.contains("d.directory.set"))
@@ -195,6 +207,7 @@ class RemoteStoppedAddTest {
             val xml = exchange.requestBody.bufferedReader().use { it.readText() }
             val method = Regex("<methodName>([^<]+)</methodName>").find(xml)?.groupValues?.get(1).orEmpty()
             methods.add(method)
+            if (method == "d.name") { respondAbsentHash(exchange); return@createContext }
             val responseValue = when (method) {
                 "d.multicall2" -> "<value><array><data></data></array></value>"
                 "directory.default" -> value("/other/server/default")
@@ -214,7 +227,7 @@ class RemoteStoppedAddTest {
                 remote.loadStopped(plan)
                 fail("Must refuse a stale server default before load.verbose")
             } catch (_: IllegalStateException) { }
-            assertEquals(listOf("d.multicall2", "directory.default"), methods)
+            assertEquals(listOf("d.multicall2", "d.name", "directory.default"), methods)
         } finally { server.stop(0) }
     }
 
@@ -230,6 +243,7 @@ class RemoteStoppedAddTest {
             val method = Regex("<methodName>([^<]+)</methodName>")
                 .find(xml)?.groupValues?.get(1).orEmpty()
             calls.add(method)
+            if (method == "d.name") { respondAbsentHash(exchange); return@createContext }
             val value = when (method) {
                 "d.multicall2" -> {
                     if (!loaded) "<value><array><data></data></array></value>"
@@ -278,6 +292,7 @@ class RemoteStoppedAddTest {
             val request = exchange.requestBody.bufferedReader().use { it.readText() }
             val method = Regex("<methodName>([^<]+)</methodName>")
                 .find(request)?.groupValues?.get(1).orEmpty()
+            if (method == "d.name") { respondAbsentHash(exchange); return@createContext }
             val value = when (method) {
                 "d.multicall2" -> {
                     inventoryReads++
