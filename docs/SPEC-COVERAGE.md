@@ -2,6 +2,14 @@
 
 > **Interpretation:** each row states a specific requirement, bounded implementation observation and what still needs acceptance. Older run/PR references are historical snapshots, not automatic proof of the latest main branch. Reconcile against live code/PRs and the [QUALITY-LEDGER](QUALITY-LEDGER.md) before changing a status. Product intent belongs in [PRODUCT](PRODUCT.md) and feature contracts; task ordering only in [WORK-QUEUE](WORK-QUEUE.md).
 
+## Transfer file recovery after external rename/move
+
+**Required; implementation and acceptance OPEN.** [TRANSFER-FILE-RECOVERY](TRANSFER-FILE-RECOVERY.md) specifies scoped search for moved/renamed backing data, exact verified mapping to immutable torrent files, non-destructive repair, capability-gated root/per-file rebind, actual hash recheck and resumed engine state. Standard rTorrent directory reset does not establish arbitrary per-file relink support. Validate local/remote adapter capabilities, v1/v2 and incomplete piece hash integrity, interrupted batches, side-by-side same-hash profiles, preserved user filenames and zero accidental overwrites. No physical/seedbox verification claimed.
+
+## Plex filename repair: safe minimal edits
+
+**Planned, unimplemented/unverified.** [PLEX-FILENAME-REPAIR](PLEX-FILENAME-REPAIR.md) specifies optional single-file/bulk/folder analysis, preserving codec, release-group and other technical details, only narrowly justified minimal changes, abstention, scoped preview and safe execution. Existing transfer alias previews do not constitute Plex-visible renaming. Requires pure-parser/minimal-diff tests, local and remote physical backing-path transaction evidence, conditional undo and Plex scanner acceptance when available.
+
 ## External file access / Android outbound Open with / remote on-demand reads
 
 **Required, implementation/handset/server acceptance OPEN.** [EXTERNAL-FILE-ACCESS](EXTERNAL-FILE-ACCESS.md) establishes cross-format external application handoff from transfer file trees and accessible local/remote Places, independent of torrent control; remotely seekable byte-range read when available, secure temporary content URI proxy, no implicit full download, bounded cache, honest unsupported states and partial-content safeguards. Acceptance needs local Android resolver/URI tests, explicit seedbox file-read capability and real-device VLC/document/image/archive handler tests, including 20 GB+ seeking and credential isolation. Existing inbound .torrent/magnet Open with tests do **not** satisfy outbound acceptance.
