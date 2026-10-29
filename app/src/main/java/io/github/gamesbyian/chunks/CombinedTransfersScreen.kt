@@ -529,12 +529,12 @@ internal fun CombinedTransfersScreen(
                 onRestore = { id -> colourStore.restoreAutomatic(id); palette = colourStore.load() })
         }
         item {
-            Row(Modifier.padding(vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = onOpenPhone, modifier = Modifier.heightIn(min = 48.dp)) {
+            ResponsiveActionGroup(Modifier.padding(vertical = 12.dp)) { actionModifier ->
+                OutlinedButton(onClick = onOpenPhone, modifier = actionModifier) {
                     Text("Open On this phone")
                 }
                 if (onOpenServer != null) OutlinedButton(onClick = onOpenServer,
-                    modifier = Modifier.heightIn(min = 48.dp)) { Text("Open server list") }
+                    modifier = actionModifier) { Text("Open server list") }
             }
         }
     }
@@ -692,20 +692,20 @@ private fun CombinedBatchSection(
         val hidden = (selected - visible).size
         Text("${selected.size} selected" + (if (hidden > 0) ", $hidden not shown by the current view" else ""),
             style = MaterialTheme.typography.titleSmall)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        ResponsiveActionGroup { actionModifier ->
             OutlinedButton(onClick = { confirming = true }, enabled = !running,
-                modifier = Modifier.heightIn(min = 48.dp)) { Text("Start…") }
+                modifier = actionModifier) { Text("Start…") }
             OutlinedButton(onClick = { confirming = false }, enabled = !running,
-                modifier = Modifier.heightIn(min = 48.dp)) { Text("Stop…") }
+                modifier = actionModifier) { Text("Stop…") }
             OutlinedButton(onClick = { onClear(); confirming = null }, enabled = !running,
-                modifier = Modifier.heightIn(min = 48.dp)) { Text("Clear") }
+                modifier = actionModifier) { Text("Clear") }
         }
         val wanted = confirming ?: return@Column
         Text(combinedBatchPreview(wanted, selected, labels), style = MaterialTheme.typography.bodyMedium)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        ResponsiveActionGroup { actionModifier ->
             Button(onClick = { confirming = null; onRun(wanted) }, enabled = !running,
-                modifier = Modifier.heightIn(min = 48.dp)) { Text(if (wanted) "Start selected" else "Stop selected") }
-            OutlinedButton(onClick = { confirming = null }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Cancel") }
+                modifier = actionModifier) { Text(if (wanted) "Start selected" else "Stop selected") }
+            OutlinedButton(onClick = { confirming = null }, modifier = actionModifier) { Text("Cancel") }
         }
     }
 }
