@@ -28,3 +28,12 @@ This is a **dated operational snapshot**, subordinate to live GitHub state and [
 ## Handoff finish contract
 
 Report precise merged/open/conflicting PRs, latest main SHA, failing job IDs with root causes, test receipts and environments, concrete implemented features, outstanding device/human/remote gates, updated docs/issues and next runnable tasks. Don't idle on CI; pick another independent app slice. Don't touch font-worker files.
+
+## Close-out (2026-10-29, same app lane)
+
+See the **2026-10-29 app-lane checkpoint** at the top of [WORK-QUEUE](WORK-QUEUE.md) and the 2026-10-29 entry in [QUALITY-LEDGER](QUALITY-LEDGER.md) for merges, SHAs and evidence. Working notes for the next agent:
+
+- **Build locally:** Android SDK platform `android-37.0` + build-tools 36.0.0 via `sdkmanager --channel=3`, Gradle 9.3.1, and a user-level `~/.gradle/gradle.properties` with the agent proxy (`systemProp.https.proxyHost/Port`), because the forked Gradle daemon does not inherit `JAVA_TOOL_OPTIONS`. Maven Central may rate-limit (429); a user-level init script putting `https://maven-central.storage-download.googleapis.com/maven2/` first fixes it. Never commit these.
+- **Real rTorrent locally:** `apt-get install rtorrent nginx`, then the `.rtorrent.rc` + nginx SCGI config from `disposable-rtorrent-probe.yml` (scratch dirs, `127.0.0.1:18080/RPC2`), and run `RTorrentDisposable*Test` with `CHUNKS_DISPOSABLE_RT_URL` / `CHUNKS_DISPOSABLE_TARGET_DIR`. No KVM: emulator tests run only in CI.
+- **Font bot hazard:** merging main into an app branch can make the font accent-study workflow push regenerated OTFs to it (no CI on bot commits). Restore only the bot's output files (`git checkout HEAD~1 -- <files>`; they are outside its push filter) before merging.
+- **Unresolved housekeeping:** branch `repro/service-api29-nofix` (API 29 crash repro, do not merge) could not be deleted from the agent — the git proxy refused branch deletion; delete it from GitHub.
