@@ -47,6 +47,8 @@ The [documentation architecture and authoring standard](DOCUMENTATION-STANDARD.m
 - [PUBLIC-TORRENT-FIXTURES](PUBLIC-TORRENT-FIXTURES.md): lawful test fixtures.
 - [User-supplied test inputs](USER-SUPPLIED-TORRENT-TEST-INPUTS.md): controlled owner-provided fixtures.
 - [RESEARCH](RESEARCH.md) and [REUSE-AUDIT](REUSE-AUDIT.md): upstream references, prior art and reuse boundaries.
+- [BitTorrent user-aversion and friction atlas](BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md): qualitative, multilingual reports of dislike, non-use, abandonment and workflow pain (research, not product requirements).
+- [BitTorrent human-centered concept map](research/BITTORRENT-HUMAN-CONCEPT-MAP-2026-10-29.md) and [missing-feature synthesis](research/BITTORRENT-MISSING-FEATURES-SYNTHESIS-2026-10-29.md): non-normative feature-space analysis, 33 capability families and 30 workflow seams; [evidence audit](research/BITTORRENT-CONCEPT-MAP-EVIDENCE-AUDIT-2026-10-29.md) and [typed graph](research/BITTORRENT-CONCEPT-GRAPH-2026-10-29.json).
 - [Agent lanes](AGENT-LANES.md): concurrency/ownership model.
 - [Dated handoffs](HANDOFF-2026-10-28.md), [Claude app handoff](CLAUDE-APP-HANDOFF-2026-10-28.md), [earlier handoff](HANDOFF-2026-10-27.md): historical session context, not current priorities.
 - [Archive guide](archive/README.md): preserved pre-consolidation documents and status interpretation.
