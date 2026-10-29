@@ -88,4 +88,17 @@ class LocalResumeSaveRequestsTest {
         assertTrue(next.awaitConfirmed(0))
     }
 
+    @Test fun failedNativeInvocationDoesNotPreventAnotherHashFromSaving() {
+        val saves = LocalResumeSaveRequests()
+        val failed = saves.acquire("bad") { throw IllegalStateException("I/O unavailable") }
+        assertFalse(failed.awaitConfirmed(0))
+        val healthy = saves.acquire("good") {}
+        saves.complete("good", true)
+        assertTrue(healthy.awaitConfirmed(0))
+        val retry = saves.acquire("bad") {}
+        assertFalse(retry.awaitConfirmed(0))
+        saves.complete("bad", true)
+        assertTrue(retry.awaitConfirmed(0))
+    }
+
 }
