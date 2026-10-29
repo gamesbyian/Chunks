@@ -2,6 +2,15 @@
 
 > **Authority:** shared domain model, capability and mutation boundaries. Product rules are in [PRODUCT](PRODUCT.md); implementation receipts and current task priority live in [QUALITY-LEDGER](QUALITY-LEDGER.md) and [WORK-QUEUE](WORK-QUEUE.md). Design notes do not imply physical acceptance.
 
+## Cross-feature lifecycle for file identities (binding integration)
+
+The [EXTERNAL-FILE-ACCESS](EXTERNAL-FILE-ACCESS.md), [PLEX-FILENAME-REPAIR](PLEX-FILENAME-REPAIR.md), and [TRANSFER-FILE-RECOVERY](TRANSFER-FILE-RECOVERY.md) contracts share a typed file-reference service: immutable torrent file index/infohash, exact engine/server profile, actual backing-file location, separately optional Chunks display label, independently published copy, file version/generation, and proven read/rename/rebind capabilities. None of these identities may silently substitute for another. 
+
+- **Open and stream:** consume a fresh, verified readable file reference; never assume cached remote path is current after a rename/move. Active readers detect changed backing identity and fail/revalidate safely; no implicit transfer repair or speculative full redownload.
+- **Rename and Plex repair:** produce a minimal reviewed candidate diff; choose alias versus verified engine-backed rename versus separate published library copy, with explicit physical effects. On success invalidate relevant readers/indexes and refresh the mapping generation. Only then expose the new file through Open with.
+- **External move and repair:** diagnose stale backing mapping, search authorized roots, hash-verify data and rebind using independently proven engine and filesystem capabilities. Rebind preserves user-chosen filename, does not silently revert Plex-compatible names or grant new storage permissions, and refreshes the same file mapping consumed by Open with and bulk organization.
+- **Concurrent operations:** lock or version-check by exact engine/profile/file identity; abort or reconcile conflicting rename, open, recovery and delete/cleanup workflows. A display alias can change independently, but may never cause physical-path mutation. Never advertise a successful torrent recheck from a successful filesystem browse or content URI open.
+
 ## Recovery of torrent backing files after external filesystem changes
 
 Model verified original torrent file index/path and effective backing-file path separately, with versioned per-profile mapping generation and read-only discovery/hash evidence. Rebinding to existing data must not be conflated with libtorrent rename_file/move_storage or generic rTorrent directory setters, which may mutate data or offer only root-level functionality. Capability-gate each implementation, quiesce/revalidate as required, journal uncertain execution, recheck pieces and confirm actual engine readback/resume. [TRANSFER-FILE-RECOVERY](TRANSFER-FILE-RECOVERY.md).
