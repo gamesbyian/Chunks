@@ -1,6 +1,7 @@
 name: Build experimental Chunks Reference Panel accent studies
 on:
   push:
+    branches: [main]
     paths:
       - 'tools/build_reference_accent_studies.py'
       - 'tools/render_reference_accent_studies.py'

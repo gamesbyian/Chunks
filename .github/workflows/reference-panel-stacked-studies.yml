@@ -1,6 +1,7 @@
 name: Build safe nonshipping stacked Latin accent CFFs
 on:
   push:
+    branches: [main]
     paths:
       - 'tools/build_reference_stacked_accents.py'
       - 'tools/render_reference_stacked_accents.py'

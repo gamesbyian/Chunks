@@ -1,6 +1,7 @@
 name: Extract and validate Chunks reference alphabet variants
 on:
   push:
+    branches: [main]
     paths:
       - 'tools/trace_reference_alphabet.py'
       - 'tools/render_reference_alphabet.py'
