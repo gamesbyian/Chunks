@@ -8,7 +8,13 @@
   - `TransferPrivacyVisibility` reuses the gate's fail-closed decision.
   - `CombinedViewPreferences` persists scope, sort and grouping, but not search.
   - Pure `UnifiedBatchLifecycle` adds per-environment Start/Stop evidence (VERIFIED, ACKNOWLEDGED, REFUSED, UNCERTAIN, NOT_ATTEMPTED). It never redirects to another engine and halts on the first uncertain item; no UI uses it yet.
-- **Evidence tier:** local JVM + Robolectric `testDebugUnitTest`, 687 tests, 0 failures. Robolectric covers the render at 411×891dp: status lines, unknown-as-unknown row facts, scope/sort/group persistence and the phone engine staying unstarted. Exact-head CI is recorded on the PR. **Not shown:** emulator/handset, 320×700, 200%/TalkBack, multiple simultaneous servers, palette colours, any combined action.
+- **Merged:** [#578](https://github.com/gamesbyian/Chunks/pull/578), squash `28e40edeae1d0c6f6b534401e99856c9304f3d28`, exact head `a6a2f0d78bce6afdf008e477c43bff3425dfd732`: [Android/JVM 40913393798](https://github.com/gamesbyian/Chunks/actions/runs/40913393798), [R8 40913393881](https://github.com/gamesbyian/Chunks/actions/runs/40913393881), [API35 native Add instrumentation 40913393802](https://github.com/gamesbyian/Chunks/actions/runs/40913393802), [API29 Downloads 40913393801](https://github.com/gamesbyian/Chunks/actions/runs/40913393801), [native atlas 40913393804](https://github.com/gamesbyian/Chunks/actions/runs/40913393804).
+- **Evidence tier:** local JVM + Robolectric `testDebugUnitTest`, 687 tests, 0 failures, plus the CI above. Robolectric covers the render at 411×891dp: status lines, unknown-as-unknown row facts, scope/sort/group persistence and the phone engine staying unstarted. Exact-head CI is recorded on the PR. **Not shown:** emulator/handset, 320×700, 200%/TalkBack, multiple simultaneous servers, palette colours, any combined action.
+
+## 2026-10-29 honest dataSync timeout notice and opt-in shortened-limit repro (#569)
+
+- **Source slice:** `LocalEngineService.pauseAll` now reports readback-confirmed pauses. `onTimeout` then posts a dismissible `LocalServiceTimeoutNotice`. It counts only confirmed pauses and shows no counts at all when the phone scope is privacy-locked. Before this, a timeout pause removed the ongoing notification silently.
+- **Evidence:** JVM wording tests. The opt-in API35 job `android-fgs-timeout-repro.yml` runs `LocalEngineServiceTimeoutInstrumentedTest` under Android's documented shortened-limit controls; its result is recorded on the PR. **Not shown:** the real six-hour budget, Doze, OEM killers, reboot or a physical handset.
 
 ## 2026-10-29 reversible sort on phone and server Transfers lists (#567)
 
