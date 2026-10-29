@@ -100,3 +100,13 @@ Evidence: JVM tests, including acceptance case 1. `SeedingRuleStore` persists ru
 
 Environment IDs are `phone` and `remote:` plus the saved-profile ID, so renaming a server never changes rule scope. A yellow **Saved, not applied yet** banner states that this version does not apply rules to transfers. Evidence: Compose tests (create, scope, persistence, refused URL and ambiguous unit, delete confirmation) and renders. Not yet: the enforcement controller, Add-review preview, remote adapters, and TalkBack/handset review.
 
+## Implementation note: phone enforcement primitives (2026-10-29)
+
+`SeedingEnforcement.decide` turns a policy plus engine counters into **keep**, **stop (pause only)** or **cannot judge**:
+- with nothing downloaded on this engine (for example a seeded copy) a ratio goal is never met by itself;
+- the minimum seed time comes first, and ANY/ALL combine as written.
+
+The phone engine gains `setUploadLimit` with exact readback (null removes the cap) and `seedingObservation` (all-time counters and seeding time from one snapshot).
+
+Evidence: JVM decision tests, plus a desktop-libtorrent loopback swarm showing cap readback and real counters. The original seeder reports zero downloaded bytes, so its ratio goal correctly cannot be judged. Not yet: the controller that applies rules from the service loop, the rule editor UI, and remote adapters.
+

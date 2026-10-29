@@ -714,6 +714,37 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     }
 
     /** Fresh read of the transfer's in-order piece picking flag, or null. */
+    /** This transfer's own upload cap in bytes per second; 0 = no per-transfer cap. Null when unknown. */
+    internal fun uploadLimit(infoHash: String): Int? = try {
+        synchronized(this) { handles[normal(infoHash)]?.takeIf { it.isValid }?.uploadLimit?.coerceAtLeast(0) }
+    } catch (_: Exception) { null }
+
+    /**
+     * Smart Seeding per-transfer upload cap: null or 0 removes it. True only
+     * after a readback shows exactly the requested value. Never pauses, removes
+     * or reprioritises anything.
+     */
+    internal fun setUploadLimit(infoHash: String, bytesPerSecond: Long?): Boolean {
+        val wanted = (bytesPerSecond ?: 0L).also { require(it in 0..Int.MAX_VALUE) }.toInt()
+        try {
+            synchronized(this) {
+                val handle = handles[normal(infoHash)]?.takeIf { it.isValid } ?: return false
+                handle.uploadLimit = wanted
+            }
+        } catch (_: Exception) { return false }
+        return uploadLimit(infoHash) == wanted
+    }
+
+    /** Counters for Smart Seeding decisions, read from one status snapshot. */
+    internal fun seedingObservation(infoHash: String): io.github.gamesbyian.chunks.seeding.SeedingObservation? = try {
+        synchronized(this) {
+            val status = handles[normal(infoHash)]?.takeIf { it.isValid }?.status() ?: return null
+            io.github.gamesbyian.chunks.seeding.SeedingObservation(
+                uploadedBytes = status.allTimeUpload(), downloadedBytes = status.allTimeDownload(),
+                seedingSeconds = status.seedingDuration(), seeding = status.isSeeding)
+        }
+    } catch (_: Exception) { null }
+
     internal fun sequentialDownload(infoHash: String): Boolean? = try {
         synchronized(this) {
             handles[normal(infoHash)]?.takeIf { it.isValid }?.status()?.flags()
