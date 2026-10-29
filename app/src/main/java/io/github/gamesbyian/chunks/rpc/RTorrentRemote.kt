@@ -134,7 +134,14 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
      */
     suspend fun lookupName(hash: String): String? {
         require(Regex("[0-9a-fA-F]{40}([0-9a-fA-F]{24})?").matches(hash)) { "Invalid torrent identity" }
-        return try { (call("d.name", listOf(hash)) as? String)?.take(2048) } catch (_: RpcFault) { null }
+        return try {
+            (call("d.name", listOf(hash)) as? String)?.take(2048)
+                ?: error("Unexpected exact-hash name reply")
+        } catch (fault: RpcFault) {
+            // Only the observed rTorrent "unknown info-hash" fault proves absence.
+            // Unknown method/server faults must not be mistaken for a missing Add.
+            if (fault.code == "-501") null else throw fault
+        }
     }
 
     /**
