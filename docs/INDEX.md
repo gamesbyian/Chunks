@@ -35,6 +35,10 @@ The [documentation architecture and authoring standard](DOCUMENTATION-STANDARD.m
 - [Design references](design/reference-images/README.md): visual inspiration, not implementation proof.
 - [Historical critical review](CRITICAL-REVIEW-2026-10-24.md): dated findings; do not treat as latest release status.
 
+## Documentation verification
+
+- [Offline link checker](../tools/check_docs.py) and [unit tests](../tests/test_docs_check.py): run locally before modifying or merging docs. Commands in the [standard](DOCUMENTATION-STANDARD.md#automated-local-validation).
+
 ## Where to put new information
 
 A user-facing promise goes in PRODUCT or its linked feature contract; screen behavior in UX; implementation details in ARCHITECTURE; a binding choice in DECISIONS; proof in QUALITY-LEDGER; missing test coverage in SPEC-COVERAGE; prioritized work in WORK-QUEUE. Use concise cross-references rather than distributing whole requirements across all seven files.
