@@ -11,16 +11,19 @@ import java.util.Locale
  * server has not finished downloading (and DHT may be off).
  *
  * Only for transfers the server reports as non-private. Defence in depth:
- * only tracker URLs without any query, fragment, URL-encoded path or
- * userinfo are eligible. Credentials can hide under arbitrary query keys,
- * so a denylist of familiar passkey names is not sufficient. Long opaque
- * path tokens are also rejected. This is conservative, not a guarantee
- * that every unusual plain-text path is free of provider-specific secrets.
+ * only generic public announce paths without queries, fragments, encoding
+ * or userinfo are eligible. A credential can hide under an arbitrary query key
+ * or a short path component; a passkey denylist/length threshold is insufficient.
+ * Unknown tracker URL shapes are dropped rather than copied automatically.
+ * Provider-specific secrets in a hostname are not inferable from URL syntax.
  */
 internal object PublicTrackerHandoff {
     const val MAX_TRACKERS = 20
     private val schemes = setOf("http", "https", "udp")
-    private val opaqueToken = Regex("[A-Za-z0-9]{16,}")
+    // Generic public endpoints; unknown paths might embed short passkeys.
+    private val publicAnnouncePaths = setOf(
+        "", "/announce", "/announce.php", "/tracker/announce", "/tracker/announce.php"
+    )
 
     fun usable(url: String): Boolean {
         if (url.length !in 8..512 || url.any { it.isISOControl() || it.isWhitespace() }) return false
@@ -32,8 +35,9 @@ internal object PublicTrackerHandoff {
         if (uri.rawQuery != null || uri.rawFragment != null) return false
         val path = uri.rawPath.orEmpty()
         if ('%' in path) return false
-        // "/announce" is fine; "/a1b2c3…/announce" may contain a token.
-        return path.split('/', '.', '-', '_').none { opaqueToken.matches(it) }
+        // Path components can hold passkeys of *any* length. Only common
+        // public endpoints are safe to add without manual review.
+        return path.lowercase(Locale.ROOT).trimEnd('/') in publicAnnouncePaths
     }
 
     /** [magnet] must already be a validated identity magnet. */
