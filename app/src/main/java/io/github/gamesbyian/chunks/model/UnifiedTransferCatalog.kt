@@ -230,9 +230,9 @@ object UnifiedTransferCatalog {
 }
 
 /**
- * Totals over the shown rows that come from LIVE sources only. Rows from
- * out-of-date, offline or locked sources are excluded and counted, and a
- * row whose rate was not reported is counted as unknown, never as 0 B/s.
+ * Totals over shown rows from complete, freshly observed LIVE sources only.
+ * Out-of-date, offline, incomplete, locked and timestamp-less sources are
+ * excluded and counted. Unreported rates are unknown, never measured zero.
  */
 data class UnifiedTransferTotals(
     val liveRows: Int,
@@ -243,15 +243,15 @@ data class UnifiedTransferTotals(
 ) {
     companion object {
         fun of(result: UnifiedTransferQueryResult): UnifiedTransferTotals {
-            val live = result.sources.filter { it.availability == EnvironmentAvailability.LIVE }
+            val eligible = result.sources.filter { it.canClaimCompleteLiveInventory }
                 .map { it.environment }.toSet()
-            val rows = result.transfers.filter { it.key.environment in live }
+            val rows = result.transfers.filter { it.key.environment in eligible }
             return UnifiedTransferTotals(
                 liveRows = rows.size,
                 downloadBytesPerSecond = rows.sumOf { it.downloadBytesPerSecond ?: 0L },
                 uploadBytesPerSecond = rows.sumOf { it.uploadBytesPerSecond ?: 0L },
                 rowsWithUnknownRate = rows.count { it.downloadBytesPerSecond == null || it.uploadBytesPerSecond == null },
-                excludedEnvironments = result.sources.size - live.size + result.missingSelectedEnvironments.size)
+                excludedEnvironments = result.sources.size - eligible.size + result.missingSelectedEnvironments.size)
         }
     }
 }

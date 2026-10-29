@@ -398,7 +398,8 @@ private fun ChunksApp(
                                     refresh()
                                 }
                             },
-                            setStarted = remote::setStarted))
+                            setStarted = remote::setStarted,
+                            probe = remote::probe))
                 },
                 savedProfiles = savedProfiles.map { profile ->
                     CombinedSavedProfile(profile.id, profile.label + " · " + profile.address,

@@ -1861,6 +1861,7 @@ internal fun LocalTransferCard(
                 onFocusEpisodes = onFocusEpisodes,
                 finishInOrder = finishInOrder
             )
+            if (filesShown && files != null) LocalFilesOnDiskCheck(transfer.infoHash, transfer.savePath, files)
             if (confirmRemove) {
                 Text("Remove from the phone engine only. Downloaded files stay in Chunks' folder; sharing of this torrent stops.")
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
