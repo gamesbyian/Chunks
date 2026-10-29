@@ -80,8 +80,8 @@ class OwnersOpticalImprovements(unittest.TestCase):
                 with self.subTest(ch=ch,weight=weight):
                     ops = commands(ch, weight)
                     self.assertEqual(sum(op=='moveTo' for op,_ in ops), 1)
-                    self.assertEqual(sum(op=='curveTo' for op,_ in ops), 6)
-                    # Outer four cubic legs, followed by two deliberate inner
+                    self.assertEqual(sum(op=='curveTo' for op,_ in ops), 5)
+                    # Outer three cubic sweeps, followed by two deliberate inner
                     # cubic sweeps. They share a vertical tangent at the left
                     # apex; terminal joins match existing quadratic tangents.
                     cubic = [args for op,args in ops if op=='curveTo']
