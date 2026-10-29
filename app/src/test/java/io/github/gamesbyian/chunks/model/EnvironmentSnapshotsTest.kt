@@ -28,6 +28,16 @@ class EnvironmentSnapshotsTest {
         val live = EnvironmentSnapshots.phone(frame, confirmed = true, locked = false, observedAtEpochMillis = 5)
         assertTrue(live.canClaimCompleteLiveInventory)
         assertEquals(1, live.transfers.size)
+        val withoutTimestamp = EnvironmentSnapshots.phone(frame, confirmed = true,
+            locked = false, observedAtEpochMillis = null)
+        assertFalse("A confirmed flag cannot replace the last successful observation",
+            withoutTimestamp.inventoryComplete)
+        assertFalse(withoutTimestamp.canClaimCompleteLiveInventory)
+        val constructed = EnvironmentTransferSnapshot(EnvironmentSnapshots.PHONE,
+            EnvironmentAvailability.LIVE, inventoryComplete = true, observedAtEpochMillis = null,
+            transfers = live.transfers)
+        assertFalse("A manually constructed partial snapshot cannot claim complete live coverage",
+            constructed.canClaimCompleteLiveInventory)
         val stale = EnvironmentSnapshots.phone(frame.copy(stale = true), true, false, 5)
         assertEquals(EnvironmentAvailability.STALE, stale.availability)
         assertFalse(stale.canClaimCompleteLiveInventory)
