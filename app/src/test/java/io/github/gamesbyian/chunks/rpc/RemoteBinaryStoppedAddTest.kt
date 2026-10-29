@@ -25,6 +25,15 @@ class RemoteBinaryStoppedAddTest {
             values.joinToString("") + "</data></array></value></data></array></value>"
     }
 
+    private fun respondAbsentHash(exchange: com.sun.net.httpserver.HttpExchange) {
+        val reply = """<methodResponse><fault><value><struct>
+            <member><name>faultCode</name><value><int>-501</int></value></member>
+            <member><name>faultString</name><value><string>Could not find info-hash.</string></value></member>
+            </struct></value></fault></methodResponse>""".toByteArray(Charsets.UTF_8)
+        exchange.sendResponseHeaders(200, reply.size.toLong())
+        exchange.responseBody.use { it.write(reply) }
+    }
+
     @Test fun binaryTorrentLoadIsStoppedAndExactHashVerified() = runBlocking {
         val expected = TorrentMetainfoReader.preview(bytes).infoHashV1
         val methods = mutableListOf<String>()
@@ -36,6 +45,7 @@ class RemoteBinaryStoppedAddTest {
             val xml = exchange.requestBody.bufferedReader(Charsets.UTF_8).use { it.readText() }
             val method = Regex("<methodName>([^<]+)</methodName>").find(xml)?.groupValues?.get(1).orEmpty()
             methods.add(method)
+            if (method == "d.name") { respondAbsentHash(exchange); return@createContext }
             val reply = when (method) {
                 "d.multicall2" ->
                     if (loaded) rows(expected) else "<value><array><data></data></array></value>"
@@ -62,7 +72,7 @@ class RemoteBinaryStoppedAddTest {
             assertEquals(RemoteAddOutcome.VerifiedStopped(expected, destination),
                 remote.loadStoppedTorrentBytes(bytes, destination))
             assertArrayEquals(bytes, returnedBytes)
-            assertEquals(listOf("d.multicall2", "load.raw_verbose", "d.multicall2",
+            assertEquals(listOf("d.multicall2", "d.name", "load.raw_verbose", "d.multicall2",
                 "d.directory", "d.is_multi_file", "d.state"), methods)
             assertEquals(RemoteAddOutcome.AlreadyPresent(expected),
                 remote.loadStoppedTorrentBytes(bytes, destination))
@@ -91,6 +101,7 @@ class RemoteBinaryStoppedAddTest {
             val xml = exchange.requestBody.bufferedReader(Charsets.UTF_8).use { it.readText() }
             val method = Regex("<methodName>([^<]+)</methodName>").find(xml)?.groupValues?.get(1).orEmpty()
             commands.add(method)
+            if (method == "d.name") { respondAbsentHash(exchange); return@createContext }
             val reply = when (method) {
                 "d.multicall2" ->
                     if (loaded) rows(expected) else "<value><array><data></data></array></value>"
@@ -119,7 +130,7 @@ class RemoteBinaryStoppedAddTest {
             assertEquals(RemoteAddOutcome.VerifiedStopped(expected, destination),
                 remote.loadStoppedTorrentBytes(bytes, destination, useServerDefault = true))
             assertArrayEquals(bytes, inspectedBinary)
-            assertEquals(listOf("d.multicall2", "directory.default", "load.raw_verbose",
+            assertEquals(listOf("d.multicall2", "d.name", "directory.default", "load.raw_verbose",
                 "d.multicall2", "d.directory", "d.is_multi_file", "d.state"), commands)
         } finally { server.stop(0) }
     }
