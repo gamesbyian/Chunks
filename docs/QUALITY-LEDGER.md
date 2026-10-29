@@ -1,9 +1,20 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-29 read-only All environments view and shared snapshot adapters (#567)
+
+- **Source slice:**
+  - `EnvironmentSnapshots` turns the phone frame and server list into catalog sources keyed by `phone` or the saved profile ID; `RememberedRemoteProfileRoster.identityOf` now delegates to it. Invalid or duplicate hashes are dropped and the source is marked incomplete; locked or not-connected sources expose no rows.
+  - `CombinedTransfersScreen` is read-only and never starts the phone engine.
+  - `TransferPrivacyVisibility` reuses the gate's fail-closed decision.
+  - `CombinedViewPreferences` persists scope, sort and grouping, but not search.
+  - Pure `UnifiedBatchLifecycle` adds per-environment Start/Stop evidence (VERIFIED, ACKNOWLEDGED, REFUSED, UNCERTAIN, NOT_ATTEMPTED). It never redirects to another engine and halts on the first uncertain item; no UI uses it yet.
+- **Evidence tier:** local JVM + Robolectric `testDebugUnitTest`, 687 tests, 0 failures. Robolectric covers the render at 411×891dp: status lines, unknown-as-unknown row facts, scope/sort/group persistence and the phone engine staying unstarted. Exact-head CI is recorded on the PR. **Not shown:** emulator/handset, 320×700, 200%/TalkBack, multiple simultaneous servers, palette colours, any combined action.
+
 ## 2026-10-29 reversible sort on phone and server Transfers lists (#567)
 
 - **Source slice:** `LocalQueueCatalog` and `TransferCatalog` take a shared `UnifiedSortDirection`; ordering rules live in `TransferSortOrdering` (also used by `UnifiedTransferCatalog`). Metadata-less size/progress, negative peer counts and unreported server rates are UNKNOWN and stay last in both directions; ties use display name A–Z then exact hash and do not flip with direction. Both screens gain one worded direction button ("Largest first", "Z–A") with a spoken sort summary; `TransferListSortStore` keeps key + direction per `phone` / server profile ID across restart. Default directions are unchanged.
-- **Evidence tier:** local JVM `testDebugUnitTest` (669 tests, 0 failures) on the PR branch; exact-head CI is recorded on the PR. New tests cover every offered key in both directions, unknown-last and fixed ties, and preference decode fallback. **Not shown:** emulator/handset rendering, 200%/TalkBack, combined-scope lists, grouping or environment colours.
+- **Merged:** [#577](https://github.com/gamesbyian/Chunks/pull/577), squash `2be502ec9daaeb8335ea787d4874dba7cce67c58`, exact head `8e429fe8b075b8a2c511655e91d02b559c66b82d`: [Android/JVM 40910839483](https://github.com/gamesbyian/Chunks/actions/runs/40910839483), [R8 40910839627](https://github.com/gamesbyian/Chunks/actions/runs/40910839627), [API35 native Add instrumentation 40910839513](https://github.com/gamesbyian/Chunks/actions/runs/40910839513), [API29 Downloads 40910839511](https://github.com/gamesbyian/Chunks/actions/runs/40910839511), [native atlas 40910839495](https://github.com/gamesbyian/Chunks/actions/runs/40910839495).
+- **Evidence tier:** local JVM `testDebugUnitTest` (669 tests, 0 failures) plus the CI above. New tests cover every offered key in both directions, unknown-last and fixed ties, and preference decode fallback. **Not shown:** emulator/handset rendering, 200%/TalkBack, combined-scope lists, grouping or environment colours.
 
 ## 2026-10-29 built-in POSIX libtorrent disk backend compatibility probe (#573)
 

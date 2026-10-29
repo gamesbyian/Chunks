@@ -232,6 +232,8 @@ internal fun LocalEngineScreen(
     onBack: (() -> Unit)? = null,
     /** Opens Smart Seeding Rules; null hides the entry. */
     onSeedingRules: (() -> Unit)? = null,
+    /** Opens the read-only All environments view; null hides the entry. */
+    onCombined: (() -> Unit)? = null,
     initialMagnet: String? = null,
     initialTorrentUri: Uri? = null,
     /** A connected, independently privacy-gated rTorrent Add screen is available. */
@@ -596,6 +598,9 @@ internal fun LocalEngineScreen(
         Text("On this phone (experimental)", style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
         EnvironmentBadge(PHONE_ENVIRONMENT_LABEL, server = false)
+        if (onCombined != null) OutlinedButton(onClick = onCombined, modifier = Modifier.heightIn(min = 48.dp)) {
+            Text("All environments…")
+        }
         if (onSeedingRules != null) OutlinedButton(onClick = onSeedingRules, modifier = Modifier.heightIn(min = 48.dp)) {
             Text("Seeding rules…")
         }

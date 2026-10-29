@@ -164,7 +164,7 @@ class MainActivity : ComponentActivity() {
 }
 
 private enum class Section(val label: String) {
-    TRANSFERS("Transfers"), PLACES("Places"), ORGANIZE("Organize"), SERVER("Server"), ARCHIVES("ZIP review"), CREATE("Create"), SEEDING("Seeding rules"), LOCAL("On this phone"), ADD("Add"), NAMES("Names"), SNAPSHOT("Inventory backup"), SNAPSHOT_INSPECT("Inspect backup")
+    TRANSFERS("Transfers"), COMBINED("All environments"), PLACES("Places"), ORGANIZE("Organize"), SERVER("Server"), ARCHIVES("ZIP review"), CREATE("Create"), SEEDING("Seeding rules"), LOCAL("On this phone"), ADD("Add"), NAMES("Names"), SNAPSHOT("Inventory backup"), SNAPSHOT_INSPECT("Inspect backup")
 }
 
 @Composable
@@ -199,6 +199,8 @@ private fun ChunksApp(
     var server by remember { mutableStateOf<RTorrentRemote?>(null) }
     var version by remember { mutableStateOf("") }
     var transfers by remember { mutableStateOf<List<RemoteTransfer>>(emptyList()) }
+    // Wall-clock time of the last accepted server list, for honest freshness in combined views.
+    var transfersObservedAt by remember { mutableStateOf<Long?>(null) }
     // Advances ONLY when the server has delivered a fresh, accepted queue read.
     // The operation UI can then allow another separately confirmed lifecycle command.
     var snapshotRevision by remember { mutableLongStateOf(0L) }
@@ -313,6 +315,7 @@ private fun ChunksApp(
                             if (server === remote && remoteFence.current(ticket) &&
                                 mutationGate.acceptFreshRead(readbackTicket)) {
                                 transfers = snapshot
+                                transfersObservedAt = System.currentTimeMillis()
                                 snapshotRevision++
                                 currentView = ticket.view
                                 stale = false
@@ -363,6 +366,17 @@ private fun ChunksApp(
             ) {
                 SnapshotDocumentInspectScreen(onBack = { section = Section.TRANSFERS })
             }
+        } else if (section == Section.COMBINED) {
+            CombinedTransfersScreen(
+                server = server?.let {
+                    CombinedServerSource(aliasScope, transfers, stale = stale || loading,
+                        fullView = currentView == "main", observedAtEpochMillis = transfersObservedAt)
+                },
+                savedProfiles = savedProfiles.map { CombinedSavedProfile(it.id, it.label + " · " + it.address) },
+                onOpenPhone = { section = Section.LOCAL },
+                onOpenServer = if (server != null) ({ section = Section.TRANSFERS }) else null,
+                onBack = { section = Section.TRANSFERS }
+            )
         } else if (section == Section.SEEDING) {
             SeedingRulesScreen(seedingEnvironments, onBack = { section = Section.TRANSFERS })
         } else if (section == Section.CREATE && server == null) {
@@ -376,6 +390,7 @@ private fun ChunksApp(
                 LocalEngineScreen(
                     onBack = { section = Section.TRANSFERS },
                     onSeedingRules = { section = Section.SEEDING },
+                    onCombined = { section = Section.COMBINED },
                     initialMagnet = phoneHandoffMagnet,
                     initialTorrentUri = incomingTorrent,
                     onTorrentConsumed = onIncomingTorrentConsumed,
@@ -531,6 +546,7 @@ private fun ChunksApp(
                                     inspectionFence.invalidate()
                                     mutationGate.reset()
                                     transfers = list
+                                    transfersObservedAt = System.currentTimeMillis()
                                     snapshotRevision++
                                     version = v
                                     aliasScope = verifiedSettings.endpoint.trim() + "\u0000" + username.trim()
@@ -611,6 +627,7 @@ private fun ChunksApp(
                     LocalEngineScreen(
                         onBack = { section = Section.TRANSFERS },
                         onSeedingRules = { section = Section.SEEDING },
+                        onCombined = { section = Section.COMBINED },
                         initialMagnet = phoneHandoffMagnet,
                         initialTorrentUri = incomingTorrent,
                         canReviewOnConnectedServer = true,
@@ -698,7 +715,7 @@ private fun ChunksApp(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 for (tab in Section.entries.filter { it != Section.ADD && it != Section.NAMES && it != Section.SNAPSHOT && it != Section.SEEDING &&
-                    it != Section.SNAPSHOT_INSPECT }) {
+                    it != Section.SNAPSHOT_INSPECT && it != Section.COMBINED }) {
                     FilterChip(
                         selected = section == tab,
                         onClick = { section = tab },
@@ -731,6 +748,7 @@ private fun ChunksApp(
                         orderDirection = direction
                         sortEnvironment?.let { sortStore.set(it, key, direction) }
                     },
+                    onCombined = { section = Section.COMBINED },
                     onRefresh = refresh, onAdd = { section = Section.ADD },
                     onReviewNames = { section = Section.NAMES },
                     onExportSnapshot = { section = Section.SNAPSHOT },
@@ -838,6 +856,7 @@ private fun ChunksApp(
                 }
                 Section.LOCAL -> Unit // Composed by the independent local gate above.
                 Section.SEEDING -> Unit // Composed by the top-level route above.
+                Section.COMBINED -> Unit // Composed by the top-level route above.
                 Section.CREATE -> io.github.gamesbyian.chunks.create.CreateTorrentScreen(
                     onBack = { section = Section.TRANSFERS },
                     shared = createRequest, onSharedConsumed = { createRequest = null })
@@ -887,6 +906,7 @@ private fun ChunksApp(
                         aliasSessions.clear()
                         version = ""
                         transfers = emptyList()
+                        transfersObservedAt = null
                         expandedHash = null
                         files = null
                         filesError = null
@@ -1146,6 +1166,7 @@ private fun TransfersScreen(
     list: List<RemoteTransfer>, view: String, loading: Boolean, stale: Boolean,
     snapshotRevision: Long,
     query: String, onQuery: (String) -> Unit, filter: TransferFilter,
+    onCombined: () -> Unit,
     onFilter: (TransferFilter) -> Unit, order: TransferOrder,
     direction: UnifiedSortDirection,
     onSort: (TransferOrder, UnifiedSortDirection) -> Unit, onRefresh: () -> Unit, onAdd: () -> Unit,
@@ -1212,6 +1233,9 @@ private fun TransfersScreen(
                     Lime
                 )
                 EnvironmentBadge(serverEnvironmentLabel(aliasScope), server = true)
+                OutlinedButton(onClick = onCombined, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text("All environments…")
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = onAdd, enabled = !loading && !stale,
                         modifier = Modifier.weight(1f).height(52.dp)) {
