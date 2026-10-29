@@ -138,7 +138,17 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     private val session = SessionManager(false)
     // Guarded by its own monitor so the alert thread never needs the engine lock.
     private val handles: MutableMap<String, TorrentHandle> = Collections.synchronizedMap(LinkedHashMap())
-    private val pendingSaves = ConcurrentHashMap<String, CountDownLatch>()
+    private class PendingSave {
+        val latch = CountDownLatch(1)
+        @Volatile var confirmed = false
+        fun complete(success: Boolean) {
+            confirmed = success
+            latch.countDown()
+        }
+    }
+    // Keep timed-out requests pending until their real alert arrives: a late
+    // alert must not confirm a different save generation.
+    private val pendingSaves = ConcurrentHashMap<String, PendingSave>()
 
     private class PendingFlush {
         val latch = CountDownLatch(1)
@@ -183,6 +193,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                 }
                 return
             }
+            var persisted = false
             try {
                 // A magnet without metadata has nothing restorable yet; never persist it half-known.
                 if (alert is SaveResumeDataAlert && alert.params().torrentInfo?.isValid == true) {
@@ -192,10 +203,11 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                     // same lock before deleting the saved resume file.
                     LocalResumeWriteFence.writeIfCurrent(handles, key, handle) {
                         writeResume(key, bytes)
+                        persisted = true
                     }
                 }
             } finally {
-                pendingSaves.remove(key)?.countDown()
+                pendingSaves.remove(key)?.complete(persisted)
             }
         }
     }
@@ -942,7 +954,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         awaitingMetadata.remove(key)
         startWhenMetadataArrives.remove(key)
         pendingFlushes.remove(key)?.refused()
-        pendingSaves.remove(key)?.countDown()
+        pendingSaves.remove(key)?.complete(false)
         val saved = config.stateDirectory?.let { File(it, "$key.resume") } ?: return true
         // A removed session with an undeletable .resume file can reappear on
         // restart. Do not report that as a fully confirmed removal.
@@ -1020,11 +1032,28 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     fun saveResumeData(timeoutMs: Long = 5_000): Int {
         if (config.stateDirectory == null || !started) return 0
         val targets = synchronized(handles) { handles.toList() }
-        val latches = targets.map { (key, handle) ->
-            CountDownLatch(1).also { pendingSaves[key] = it; handle.saveResumeData(TorrentHandle.SAVE_INFO_DICT) }
+        val requests = targets.map { (key, handle) ->
+            val candidate = PendingSave()
+            val existing = pendingSaves.putIfAbsent(key, candidate)
+            val request = existing ?: candidate
+            if (existing == null) {
+                try { handle.saveResumeData(TorrentHandle.SAVE_INFO_DICT) }
+                catch (_: Exception) {
+                    if (pendingSaves.remove(key, candidate)) candidate.complete(false)
+                }
+            }
+            request
         }
-        val deadline = System.nanoTime() + timeoutMs * 1_000_000
-        return latches.count { it.await(maxOf(0, deadline - System.nanoTime()), TimeUnit.NANOSECONDS) }
+        val deadline = System.nanoTime() + timeoutMs.coerceAtLeast(0L) * 1_000_000
+        return requests.count {
+            try {
+                it.latch.await(maxOf(0, deadline - System.nanoTime()), TimeUnit.NANOSECONDS) &&
+                    it.confirmed
+            } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
+                false
+            }
+        }
     }
 
     @Synchronized
