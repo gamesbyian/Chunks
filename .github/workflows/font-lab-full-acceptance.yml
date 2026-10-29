@@ -1,0 +1,74 @@
+name: Chunks font lab frozen full-family acceptance
+on:
+  push:
+    branches: [font/lab]
+    # Only explicit freeze markers activate this heavyweight, isolated build.
+    paths:
+      - 'docs/design/CHUNKS-FONT-LAB-FREEZE.md'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: chunks-font-lab-full-acceptance
+  cancel-in-progress: false
+jobs:
+  build-full-family:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install locked experimental font dependencies
+        run: python -m pip install -r tools/requirements-reference-panel-weights.txt
+      - name: Build and test all font families from 248 editable masters, locally in one runner
+        run: bash tools/font_lab_build_all.sh
+      - name: Upload isolated font lab family and visual acceptance evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-font-lab-all-families
+          if-no-files-found: warn
+          retention-days: 21
+          path: |
+            assets/fonts/experimental/weight-studies/*
+            assets/fonts/experimental/accent-studies/*
+            assets/fonts/experimental/accent-kerned/*
+            assets/fonts/experimental/dotless-kerned/*
+            assets/fonts/experimental/consolidated/*
+            assets/fonts/experimental/stacked-studies/*
+            assets/fonts/experimental/mixed-mark-studies/*
+            reference-panel-*.png
+            reference-panel-*.json
+            font-stress-artifacts/*
+            chunks-font-cross-family-audit.json
+      - name: Commit only reproducible nonshipping experimental font-family artifacts
+        if: github.event_name == 'push' && github.ref == 'refs/heads/font/lab'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A -- assets/fonts/experimental/weight-studies             assets/fonts/experimental/accent-studies             assets/fonts/experimental/accent-kerned             assets/fonts/experimental/dotless-kerned             assets/fonts/experimental/consolidated             assets/fonts/experimental/stacked-studies             assets/fonts/experimental/mixed-mark-studies
+          if git diff --cached --name-only | grep -Eq '^app/|^assets/fonts/source/|^assets/fonts/chunks/'; then
+            echo 'REFUSED: changes to immutable or shipping font inputs' >&2
+            exit 2
+          fi
+          if git diff --cached --quiet; then
+            echo 'All derived CFFs and metadata already match source.'
+            exit 0
+          fi
+          git commit -m 'build(font-lab): persist complete experimental CFF family and metrics'
+          for attempt in 1 2 3; do
+            git fetch origin font/lab
+            git rebase origin/font/lab
+            if git push origin HEAD:font/lab; then
+              echo 'Stored validated nonshipping family on isolated font/lab.'
+              exit 0
+            fi
+          done
+          echo 'Could not save derived font artifacts without races' >&2
+          exit 1
