@@ -38,6 +38,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -49,6 +50,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -172,6 +174,8 @@ private fun ChunksApp(
         mutableStateOf(if (vault.rememberingEnabled()) profileRoster.list() else emptyList())
     }
     var endpoint by remember { mutableStateOf(remembered?.endpoint.orEmpty()) }
+    // Advanced manual endpoint path; joined with a hostname-only address.
+    var rpcPath by remember { mutableStateOf("") }
     var username by remember { mutableStateOf(remembered?.username.orEmpty()) }
     var password by remember { mutableStateOf(remembered?.password.orEmpty()) }
     // Remembering is the default. Every user can opt out before Connect.
@@ -339,6 +343,7 @@ private fun ChunksApp(
         } else if (server == null) {
             ConnectionScreen(
                 endpoint = endpoint, username = username, password = password,
+                rpcPath = rpcPath, onRpcPath = { rpcPath = it },
                 error = error, loading = loading,
                 diagnostics = connectDiagnostics,
                 onCancelConnect = {
@@ -353,6 +358,7 @@ private fun ChunksApp(
                 savedProfiles = savedProfiles, credentialNotice = credentialNotice,
                 onSelectProfile = { profile ->
                     endpoint = profile.credentials.endpoint
+                    rpcPath = ""
                     username = profile.credentials.username
                     password = profile.credentials.password
                     error = null
@@ -432,13 +438,20 @@ private fun ChunksApp(
                 onEndpoint = { endpoint = it }, onUsername = { username = it },
                 onPassword = { password = it },
                 onConnect = {
-                    if (!loading) {
+                    // An advanced RPC path makes this one exact address: no discovery.
+                    val target = try { RemoteSmartConnect.withExactPath(endpoint, rpcPath) }
+                        catch (invalid: IllegalArgumentException) {
+                            error = invalid.message
+                            connectDiagnostics = ConnectionDiagnostics()
+                            null
+                        }
+                    if (!loading && target != null) {
                         loading = true
                         error = null
                         val ticket = remoteFence.begin("main")
                         // Freeze credentials for this one connection attempt.
                         // A later edit or lifecycle reset cannot redirect it.
-                        val settings = RemoteCredentials(endpoint, username, password)
+                        val settings = RemoteCredentials(target, username, password)
                         val saveThisLogin = rememberLogin
                         connectDiagnostics = ConnectionDiagnostics()
                         connectJob = scope.launch {
@@ -471,6 +484,8 @@ private fun ChunksApp(
                                     version = v
                                     aliasScope = verifiedSettings.endpoint.trim() + "\u0000" + username.trim()
                                     endpoint = verifiedSettings.endpoint
+                                    // The full address now carries the path.
+                                    rpcPath = ""
                                     // Never carry another server/account's custom destination
                                     // into this Add draft. Blank selects the new server default.
                                     draftPath = ""
@@ -876,6 +891,7 @@ private fun readableFailure(failure: Exception): String = when (failure) {
 @Composable
 private fun ConnectionScreen(
     endpoint: String, username: String, password: String, error: String?, loading: Boolean,
+    rpcPath: String = "", onRpcPath: (String) -> Unit = {},
     diagnostics: ConnectionDiagnostics = ConnectionDiagnostics(),
     onCancelConnect: () -> Unit = {},
     rememberLogin: Boolean, savedLoginPresent: Boolean,
@@ -977,6 +993,24 @@ private fun ConnectionScreen(
             val providerHint = remember(endpoint) { RemoteProviderCatalog.hint(endpoint) }
             if (providerHint != null) Text(providerHint, style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(top = 4.dp).semantics { liveRegion = LiveRegionMode.Polite })
+        }
+        item {
+            var advancedOpen by rememberSaveable { mutableStateOf(rpcPath.isNotBlank()) }
+            TextButton(onClick = { advancedOpen = !advancedOpen },
+                modifier = Modifier.heightIn(min = 48.dp)) {
+                Text(if (advancedOpen) "Hide advanced connection settings" else "Advanced connection settings")
+            }
+            if (advancedOpen) Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                OutlinedTextField(
+                    value = rpcPath, onValueChange = onRpcPath,
+                    label = { Text("Exact RPC path (optional)") },
+                    placeholder = { Text("/RPC2") },
+                    singleLine = true, enabled = !loading, modifier = Modifier.fillMaxWidth()
+                )
+                Text("For a server your provider documents with a specific XML-RPC path. Enter only the " +
+                    "hostname above; Chunks then tests just this one address, read-only, instead of " +
+                    "checking known paths.", style = MaterialTheme.typography.bodySmall)
+            }
         }
         item {
             OutlinedTextField(
