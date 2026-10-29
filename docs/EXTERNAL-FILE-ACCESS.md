@@ -2,6 +2,10 @@
 
 **Status:** normative product/UX/technical feature contract; implementation and physical interoperability **not yet accepted**. **Authority:** [PRODUCT](PRODUCT.md), [UX](UX.md), [ARCHITECTURE](ARCHITECTURE.md), [SECURITY](SECURITY.md), and [UNIFIED-ENVIRONMENTS](UNIFIED-ENVIRONMENTS.md). Coverage and priority are recorded separately in [SPEC-COVERAGE](SPEC-COVERAGE.md) and [WORK-QUEUE](WORK-QUEUE.md).
 
+## Read-only inspection consumer
+
+The optional [MEDIA-INSPECTION](MEDIA-INSPECTION.md) workflow may request bounded file ranges and seek capability through the same permissioned byte-reader interface as Open with. It does not get broader filesystem, rTorrent RPC, transcoding or external cloud rights and must disclose remote data cost before reading. Container/codec facts and thumbnails are observed, privacy-scoped derived data, never proof of file integrity. This file retains exclusive ownership of byte-reader, URI and outbound app handoff safety; media parsing lives in its own feature contract.
+
 ## Intent and scope
 
 Every readable file surfaced within a transfer's file tree, a local filesystem Place, or an independently accessible remote filesystem Place should be usable with other Android apps, without making a complete phone-side download the default prerequisite. Video-to-VLC is **one example**, not the definition of the feature. This includes documents, images, audio, archives, subtitles, ebooks, text, arbitrary binary files and future MIME handlers. Chunks delegates format-specific interpretation to the chosen app, subject to its own compatibility. Provide consistent **Open**, **Open with…**, **Share/Send**, **Save to device**, **Copy link** (only when an authorized, appropriate link exists), and **Properties** affordances wherever supported, with availability grounded in verified capabilities. An app may need local materialization or may reject a stream: do not promise universal compatibility.
