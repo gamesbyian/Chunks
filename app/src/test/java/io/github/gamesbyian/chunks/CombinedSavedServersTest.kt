@@ -52,6 +52,7 @@ class CombinedSavedServersTest {
         rule.onNodeWithText("Refresh other saved servers").assertExists()
         // Listed-only rows have no live list to open.
         rule.onNodeWithText("Open in its list").assertDoesNotExist()
+        rule.onNodeWithText("Listed only. Sign in to this server to open or change it.").assertExists()
     }
 
     @Test fun profileWithoutVerifiableScopeStaysLockedAndIsNeverFetched() {

@@ -588,6 +588,10 @@ private fun CombinedTransferRow(
                 .semantics { contentDescription = "Open ${row.displayName} in $environmentLabel" }) {
                 Text("Open in its list")
             }
+            // Say why no action is offered rather than leaving the user to hunt for one.
+            else if (row.key.environment != EnvironmentSnapshots.PHONE) Text(
+                "Listed only. Sign in to this server to open or change it.",
+                style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary)
         }
     }
 }
