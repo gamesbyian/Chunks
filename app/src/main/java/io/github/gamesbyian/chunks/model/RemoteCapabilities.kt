@@ -16,11 +16,17 @@ internal object RemoteCapabilities {
 
     val features = listOf(
         Feature("Transfer list", listOf("d.multicall2", "d.hash", "d.name")),
-        Feature("Add torrents", listOf("load.raw_verbose", "load.verbose", "directory.default")),
+        // These are separate protocol routes, not an all-or-nothing Add bundle.
+        // The ruTorrent HTTP upload form cannot be inferred from XML-RPC introspection.
+        Feature("Add magnet via XML-RPC", listOf("d.multicall2", "d.name", "load.verbose")),
+        Feature("Add .torrent via XML-RPC", listOf("d.multicall2", "d.name", "load.raw_verbose")),
+        Feature("Use server default Add folder", listOf("directory.default")),
         Feature("Start and stop", listOf("d.open", "d.start", "d.resume", "d.stop", "d.close", "d.state")),
         Feature("File list and priorities", listOf("f.multicall", "f.priority.set", "d.update_priorities")),
         Feature("Tracker health", listOf("d.tracker_size", "t.multicall")),
-        Feature("Remove from server session", listOf("d.erase")),
+        // Erase requires main-view preflight and exact d.hash readback,
+        // not merely an advertised d.erase setter.
+        Feature("Remove from server session", listOf("d.multicall2", "d.hash", "d.erase")),
         Feature("Copy files to this phone", listOf("network.listen.port", "network.bind_address", "d.is_private", "d.is_active")),
         Feature("Finish in Order", listOf("f.multicall", "f.priority.set", "d.update_priorities", "d.bitfield", "d.size_chunks"))
     )
