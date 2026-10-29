@@ -2,6 +2,11 @@
 
 > **Authority:** binding owner product outcomes. Detailed feature rules live in the linked canonical contracts; feature completion and evidence live in [SPEC-COVERAGE](SPEC-COVERAGE.md) and [QUALITY-LEDGER](QUALITY-LEDGER.md). This document does not set implementation priority.
 
+## Find files to restore transfers after external moves or renames
+
+Expose **Find files to restore transfer** for local or remote torrents whose backing content has been moved/renamed outside Chunks. Discover candidates in authorized Places, verify content against torrent hashes, and reconnect existing data to its original transfer without undoing user filenames, silently duplicating bytes or changing infohash. Keep engine-only path changes, immutable torrent metadata, physical files and Chunks display names distinct; distinguish mere candidates from verified, relinked and truly resumed transfers. Exact capability-gated workflow: [TRANSFER-FILE-RECOVERY](TRANSFER-FILE-RECOVERY.md). Planned, not shipped.
+
+
 ## Product identity
 
 **chunks. Your downloads have places to be.**
