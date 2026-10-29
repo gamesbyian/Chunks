@@ -28,6 +28,10 @@ case "${1:-}" in
   logcat)
     if [[ "${2:-}" == "-d" && "${MOCK_READY:-1}" == 1 ]]; then
       printf 'CHUNKS_SWARM_DOZE: ready verified=4194304\n'
+      if [[ "${MOCK_LARGE_LOGCAT:-0}" == 1 ]]; then
+        sleep 0.02
+        for ((i=0; i<20000; i++)); do printf 'irrelevant log line %d\n' "$i"; done
+      fi
     fi
     ;;
   shell)
@@ -78,6 +82,13 @@ env -u ADB_SERIAL -u ANDROID_SERIAL MOCK_READY=1 bash "$repo/android_public_swar
 [[ "$(cat "$MOCK_DIR/battery")" == normal && "$(cat "$MOCK_DIR/deep")" == ACTIVE ]]
 [[ "$(cat "$MOCK_DIR/actions")" == $'unplug\nforce-idle\nflag\nunforce\nreset' ]]
 grep -q 'deep_state=IDLE' "$temp/ok.log"
+
+# A large logcat dump may contain ready near the start. Do not SIGPIPE adb.
+reset
+env -u ADB_SERIAL -u ANDROID_SERIAL MOCK_LARGE_LOGCAT=1 bash "$repo/android_public_swarm_doze.sh" > "$temp/large.log"
+[[ "$(cat "$MOCK_DIR/battery")" == normal && "$(cat "$MOCK_DIR/deep")" == ACTIVE ]]
+[[ "$(cat "$MOCK_DIR/actions")" == $'unplug\nforce-idle\nflag\nunforce\nreset' ]]
+grep -q 'deep_state=IDLE' "$temp/large.log"
 
 # When peer warmup never reaches ready, no synthetic battery/idle mutation.
 reset
