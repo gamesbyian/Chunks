@@ -64,6 +64,24 @@ class RemoteCapabilitiesTest {
         assertEquals(listOf("d.is_active"), graded.getValue("Start and stop").missing)
     }
 
+    @Test fun trackerHealthAndFinishInOrderRequireExactIdentityMethod() {
+        val missingHash = RemoteCapabilities.grade(RemoteProbe("0.16", all - "d.hash"))
+            .associateBy { it.feature.label }
+        assertEquals(listOf("d.hash"), missingHash.getValue("Tracker health").missing)
+        assertEquals(listOf("d.hash"), missingHash.getValue("Finish in Order").missing)
+    }
+
+    @Test fun optionalBoundAddressDoesNotBlockPhoneCopy() {
+        val graded = RemoteCapabilities.grade(RemoteProbe("0.16",
+            all - "network.bind_address")).associateBy { it.feature.label }
+        assertEquals(RemoteCapabilities.Status.ADVERTISED,
+            graded.getValue("Copy files to this phone").status)
+        val missingListener = RemoteCapabilities.grade(RemoteProbe("0.16",
+            all - "network.listen.port")).associateBy { it.feature.label }
+        assertEquals(RemoteCapabilities.Status.MISSING,
+            missingListener.getValue("Copy files to this phone").status)
+    }
+
     @Test fun noIntrospectionMeansUnknownNotMissing() {
         val probe = RemoteProbe("0.9.6", null)
         val graded = RemoteCapabilities.grade(probe)
