@@ -756,6 +756,10 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             // The gateway may lose its reply after rTorrent applied the mutation.
             // Conservatively report uncertainty, and never retry automatically.
             return LifecycleOutcome.Uncertain(desiredStarted)
+        } catch (_: RpcFault) {
+            // A previous step in a multi-command Start/Stop sequence may already
+            // have applied. Even a fault from one step cannot undo earlier ACKs.
+            return LifecycleOutcome.Uncertain(desiredStarted)
         }
         return try {
             val observed = number(call("d.state", listOf(hash))) != 0L
@@ -772,6 +776,9 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                 else LifecycleOutcome.Pending(true, true)
             } else LifecycleOutcome.Verified(false)
         } catch (_: java.io.IOException) {
+            LifecycleOutcome.Uncertain(desiredStarted)
+        } catch (_: RpcFault) {
+            // After accepted writes, inability to read state is inconclusive.
             LifecycleOutcome.Uncertain(desiredStarted)
         }
     }
