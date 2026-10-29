@@ -1,6 +1,6 @@
 # Open-source reuse candidates for Chunks: dependency-first audit
 
-**Researched 2026-10-29.** Non-normative implementation research, **not** another work queue. Source baseline: `main` `2202baa26ede143157a68de28dfb790ac3d49c01`; open shared-observation PR [#571](https://github.com/gamesbyian/Chunks/pull/571) must be reconciled live before model work. Priorities and release gates remain in [WORK-QUEUE](../WORK-QUEUE.md); owner requirements remain in PRODUCT and their canonical feature contracts. The goal is to **borrow proven mechanisms, tests and failure cases instead of reimplementing them**, without treating a README feature claim as Chunks acceptance.
+**Researched 2026-10-29.** Non-normative implementation research, **not** another work queue. Source baseline: `main` `2202baa26ede143157a68de28dfb790ac3d49c01`; shared-observation PR [#571](https://github.com/gamesbyian/Chunks/pull/571) subsequently merged as `40d01124`, with pure catalog/DTO but no UI integration; inspect current main before additional model work. Priorities and release gates remain in [WORK-QUEUE](../WORK-QUEUE.md); owner requirements remain in PRODUCT and their canonical feature contracts. The goal is to **borrow proven mechanisms, tests and failure cases instead of reimplementing them**, without treating a README feature claim as Chunks acceptance.
 
 ## Existing Chunks public-Downloads proof found after initial research (correction, 2026-10-29)
 
