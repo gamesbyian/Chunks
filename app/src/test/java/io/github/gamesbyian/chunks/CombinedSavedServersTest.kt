@@ -54,6 +54,25 @@ class CombinedSavedServersTest {
         rule.onNodeWithText("Open in its list").assertDoesNotExist()
     }
 
+    @Test fun failedRefreshImmediatelyInvalidatesOldLiveSnapshotWithoutDeletingRows() {
+        val row = RemoteTransfer("a".repeat(40), "Cached Linux", 100, 80, true, "/d")
+        val good = SavedServerListing(listOf(row), observedAtEpochMillis = 10_000)
+        assertFalse(savedListingIsStale(good, now = 10_010))
+        assertTrue(savedListingIsStale(good.copy(loading = true), now = 10_010))
+        val failed = good.copy(error = "connection refused")
+        assertTrue("A failed fresh retry cannot leave a cached server marked Live",
+            savedListingIsStale(failed, now = 10_010))
+        val source = io.github.gamesbyian.chunks.model.EnvironmentSnapshots.server(
+            io.github.gamesbyian.chunks.model.EnvironmentId(id(scopeA)),
+            failed.transfers, connected = true,
+            stale = savedListingIsStale(failed, now = 10_010),
+            locked = false, fullView = true, observedAtEpochMillis = failed.observedAtEpochMillis)
+        assertEquals(io.github.gamesbyian.chunks.model.EnvironmentAvailability.STALE,
+            source.availability)
+        assertEquals("Cached Linux", source.transfers.single().displayName)
+        assertFalse(source.canClaimCompleteLiveInventory)
+    }
+
     @Test fun profileWithoutVerifiableScopeStaysLockedAndIsNeverFetched() {
         show(listOf(CombinedSavedProfile(id(scopeA), "ann @ a.example/RPC2", aliasScope = null) {
             calls++; emptyList()
