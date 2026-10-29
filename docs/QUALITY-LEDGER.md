@@ -44,7 +44,15 @@
 ## 2026-10-29 honest dataSync timeout notice and opt-in shortened-limit repro (#569)
 
 - **Source slice:** `LocalEngineService.pauseAll` now reports readback-confirmed pauses. `onTimeout` then posts a dismissible `LocalServiceTimeoutNotice`. It counts only confirmed pauses and shows no counts at all when the phone scope is privacy-locked. Before this, a timeout pause removed the ongoing notification silently.
-- **Evidence:** JVM wording tests. The opt-in API35 job `android-fgs-timeout-repro.yml` runs `LocalEngineServiceTimeoutInstrumentedTest` under Android's documented shortened-limit controls; its result is recorded on the PR. **Not shown:** the real six-hour budget, Doze, OEM killers, reboot or a physical handset.
+- **Merged:** [#579](https://github.com/gamesbyian/Chunks/pull/579), squash `e1a876cf97aa9d0c20763434b18e28898e101fa5`, exact head `1632ef65dc338fe0e2160e41d5705505fbb7fbb5`: [Android/JVM 40915398108](https://github.com/gamesbyian/Chunks/actions/runs/40915398108), [R8 40915397837](https://github.com/gamesbyian/Chunks/actions/runs/40915397837), [API35 native Add instrumentation 40915397810](https://github.com/gamesbyian/Chunks/actions/runs/40915397810), [API29 Downloads 40915397999](https://github.com/gamesbyian/Chunks/actions/runs/40915397999).
+- **Observed on a disposable API35 emulator** ([run 40915397833](https://github.com/gamesbyian/Chunks/actions/runs/40915397833), shortened limit 15000 ms):
+  - `ActivityManager: FGS (dataSync) timed out` for `LocalEngineService`;
+  - the seeding transfer was readback-paused 15,234 ms after the service started, with no user action;
+  - the notice read "Android's background time limit was reached. Chunks paused 1 transfer on this phone. Open Chunks to resume.";
+  - the ongoing notification was removed and payload SHA-256 was unchanged.
+
+  Teardown `device_config delete` reported failure; this does not matter on a disposable emulator but would on a reused device.
+- **Evidence tier:** JVM wording tests plus the emulator run above. **Not shown:** the real six-hour budget, Doze, OEM killers, reboot or a physical handset.
 
 ## 2026-10-29 reversible sort on phone and server Transfers lists (#567)
 
