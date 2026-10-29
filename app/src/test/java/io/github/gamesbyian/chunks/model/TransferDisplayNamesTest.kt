@@ -56,11 +56,11 @@ class TransferDisplayNamesTest {
         val names = mapOf("A" to "A friendly episode", "B" to "Z renamed episode")
         val resolver: (RemoteTransfer) -> String = { names[it.hash] ?: it.name }
         assertEquals("A", TransferCatalog.visible(originals, "friendly",
-            TransferFilter.ALL, TransferOrder.NAME, resolver).single().hash)
+            TransferFilter.ALL, TransferOrder.NAME, displayName = resolver).single().hash)
         assertEquals("A", TransferCatalog.visible(originals, "HEVC",
-            TransferFilter.ALL, TransferOrder.NAME, resolver).single().hash)
+            TransferFilter.ALL, TransferOrder.NAME, displayName = resolver).single().hash)
         assertEquals(listOf("A", "B"), TransferCatalog.visible(originals, "",
-            TransferFilter.ALL, TransferOrder.NAME, resolver).map { it.hash })
+            TransferFilter.ALL, TransferOrder.NAME, displayName = resolver).map { it.hash })
         assertEquals(original, originals[0].name)
         assertEquals("/videos", originals[0].directory)
     }

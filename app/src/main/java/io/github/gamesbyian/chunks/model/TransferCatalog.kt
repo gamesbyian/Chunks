@@ -9,8 +9,15 @@ enum class TransferFilter(val label: String) {
     NEEDS_SORTING("Needs sorting")
 }
 
-enum class TransferOrder(val label: String) {
-    NAME("Name"), PROGRESS("Progress"), SIZE("Size"), SPEED("Speed")
+enum class TransferOrder(val label: String, internal val kind: TransferSortOrdering.Kind) {
+    NAME("Name", TransferSortOrdering.Kind.NAME),
+    PROGRESS("Progress", TransferSortOrdering.Kind.PROGRESS),
+    SIZE("Size", TransferSortOrdering.Kind.SIZE),
+    /** Observed download rate. */
+    SPEED("Speed", TransferSortOrdering.Kind.SPEED);
+
+    val naturalDirection: UnifiedSortDirection get() = TransferSortOrdering.naturalDirection(kind)
+    fun directionLabel(direction: UnifiedSortDirection): String = TransferSortOrdering.label(kind, direction)
 }
 
 object TransferCatalog {
@@ -19,6 +26,7 @@ object TransferCatalog {
         query: String,
         filter: TransferFilter,
         order: TransferOrder,
+        direction: UnifiedSortDirection = order.naturalDirection,
         displayName: (RemoteTransfer) -> String = { it.name }
     ): List<RemoteTransfer> {
         val needle = query.trim()
@@ -50,19 +58,24 @@ object TransferCatalog {
                 item.directory.contains(needle, ignoreCase = true)
         }.toList()
 
-        val ordered = when (order) {
-            TransferOrder.NAME -> subset.sortedWith(
-                compareBy(String.CASE_INSENSITIVE_ORDER) { it.second })
-            TransferOrder.PROGRESS -> subset.sortedWith(
-                compareByDescending<Pair<RemoteTransfer, String>> { it.first.fractionComplete }
-                    .thenBy(String.CASE_INSENSITIVE_ORDER) { it.second })
-            TransferOrder.SIZE -> subset.sortedWith(
-                compareByDescending<Pair<RemoteTransfer, String>> { it.first.sizeBytes }
-                    .thenBy(String.CASE_INSENSITIVE_ORDER) { it.second })
-            TransferOrder.SPEED -> subset.sortedWith(
-                compareByDescending<Pair<RemoteTransfer, String>> { it.first.downBytesPerSecond ?: 0 }
-                    .thenBy(String.CASE_INSENSITIVE_ORDER) { it.second })
+        // A zero-size (metadata-less) job has UNKNOWN size/progress and an
+        // unreported rate is UNKNOWN, not 0 B/s: both stay last in either direction.
+        fun known(item: RemoteTransfer): Long? = when (order) {
+            TransferOrder.NAME -> null
+            TransferOrder.PROGRESS -> item.completedBytes.coerceIn(0, item.sizeBytes)
+                .takeIf { item.sizeBytes > 0 }?.let { it * 1_000_000 / item.sizeBytes }
+            TransferOrder.SIZE -> item.sizeBytes.takeIf { it > 0 }
+            TransferOrder.SPEED -> item.downBytesPerSecond?.takeIf { it >= 0 }
         }
+        val ordered = subset.sortedWith(Comparator { x, y ->
+            val primary = if (order == TransferOrder.NAME)
+                TransferSortOrdering.compareNames(x.second, y.second, direction)
+            else TransferSortOrdering.compareKnown(known(x.first), known(y.first), direction)
+            if (primary != 0) primary
+            // Fixed A–Z then exact hash: ties never flip with the direction toggle.
+            else String.CASE_INSENSITIVE_ORDER.compare(x.second, y.second).takeIf { it != 0 }
+                ?: x.first.hash.compareTo(y.first.hash)
+        })
         return ordered.map { it.first }
     }
 

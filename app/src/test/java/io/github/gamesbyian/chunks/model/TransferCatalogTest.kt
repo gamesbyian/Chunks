@@ -56,4 +56,29 @@ class TransferCatalogTest {
         assertTrue(AddDraft("magnet:?xt=urn%3Abtih%3A" + "C".repeat(32), "/downloads").canPreview)
         assertFalse(AddDraft("magnet:?xt=urn:btih:" + "a".repeat(40), "/downloads/../etc").canPreview)
     }
+
+    @Test fun everyServerOrderReversesWithUnknownsLastAndFixedTies() {
+        val big = RemoteTransfer("1", "Big", 900, 810, true, "/x", 300, 0)
+        val small = RemoteTransfer("2", "small", 10, 1, true, "/x", 5, 0)
+        val tieA = RemoteTransfer("3", "Tie", 50, 25, true, "/x", 20, 0)
+        val tieB = RemoteTransfer("4", "tie", 50, 25, true, "/x", 20, 0)
+        // Metadata-less magnet with no reported rate: size, progress and speed are unknown.
+        val magnet = RemoteTransfer("5", "Magnet", 0, 0, true, "/x", null, null)
+        val rows = listOf(magnet, tieB, small, big, tieA)
+        fun hashes(order: TransferOrder, direction: UnifiedSortDirection) =
+            TransferCatalog.visible(rows, "", TransferFilter.ALL, order, direction).map { it.hash }
+        for (order in listOf(TransferOrder.SIZE, TransferOrder.PROGRESS, TransferOrder.SPEED)) {
+            assertEquals(order.name, listOf("1", "3", "4", "2", "5"),
+                hashes(order, UnifiedSortDirection.DESCENDING))
+            assertEquals(order.name, listOf("2", "3", "4", "1", "5"),
+                hashes(order, UnifiedSortDirection.ASCENDING))
+        }
+        assertEquals(listOf("1", "5", "2", "3", "4"), hashes(TransferOrder.NAME, UnifiedSortDirection.ASCENDING))
+        assertEquals(listOf("3", "4", "2", "5", "1"), hashes(TransferOrder.NAME, UnifiedSortDirection.DESCENDING))
+        // Default arguments keep the established natural directions.
+        assertEquals(hashes(TransferOrder.SIZE, UnifiedSortDirection.DESCENDING),
+            TransferCatalog.visible(rows, "", TransferFilter.ALL, TransferOrder.SIZE).map { it.hash })
+        assertEquals("Largest first", TransferOrder.SIZE.directionLabel(UnifiedSortDirection.DESCENDING))
+        assertEquals("Slowest first", TransferOrder.SPEED.directionLabel(UnifiedSortDirection.ASCENDING))
+    }
 }

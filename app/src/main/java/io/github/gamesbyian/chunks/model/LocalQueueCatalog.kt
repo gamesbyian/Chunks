@@ -9,8 +9,14 @@ internal enum class LocalQueueFilter(val label: String) {
     COMPLETE("Complete"), NEEDS_ATTENTION("Attention")
 }
 
-internal enum class LocalQueueOrder(val label: String) {
-    NAME("Name"), PROGRESS("Progress"), SIZE("Size"), PEERS("Peers")
+internal enum class LocalQueueOrder(val label: String, val kind: TransferSortOrdering.Kind) {
+    NAME("Name", TransferSortOrdering.Kind.NAME),
+    PROGRESS("Progress", TransferSortOrdering.Kind.PROGRESS),
+    SIZE("Size", TransferSortOrdering.Kind.SIZE),
+    PEERS("Peers", TransferSortOrdering.Kind.PEERS);
+
+    val naturalDirection: UnifiedSortDirection get() = TransferSortOrdering.naturalDirection(kind)
+    fun directionLabel(direction: UnifiedSortDirection): String = TransferSortOrdering.label(kind, direction)
 }
 
 internal object LocalQueueCatalog {
@@ -19,6 +25,7 @@ internal object LocalQueueCatalog {
         search: String,
         filter: LocalQueueFilter,
         order: LocalQueueOrder,
+        direction: UnifiedSortDirection = order.naturalDirection,
         displayName: (LocalTransferStatus) -> String = { it.name }
     ): List<LocalTransferStatus> {
         val needle = search.trim()
@@ -45,26 +52,25 @@ internal object LocalQueueCatalog {
         }.toList()
 
         // Cached display labels are resolved once per candidate, never in a
-        // comparator's O(N log N) calls or via a native engine read.
-        val stable: Comparator<Pair<LocalTransferStatus, String>> =
-            compareBy(String.CASE_INSENSITIVE_ORDER) {
-                pair: Pair<LocalTransferStatus, String> -> pair.second
-            }.thenBy { it.first.infoHash }
-        val ordered = when (order) {
-            LocalQueueOrder.NAME -> filtered.sortedWith(stable)
-            LocalQueueOrder.PROGRESS -> filtered.sortedWith(
-                compareByDescending<Pair<LocalTransferStatus, String>> {
-                    it.first.progressPpm
-                }.then(stable))
-            LocalQueueOrder.SIZE -> filtered.sortedWith(
-                compareByDescending<Pair<LocalTransferStatus, String>> {
-                    it.first.wantedBytes
-                }.then(stable))
-            LocalQueueOrder.PEERS -> filtered.sortedWith(
-                compareByDescending<Pair<LocalTransferStatus, String>> {
-                    it.first.peers
-                }.then(stable))
+        // comparator's O(N log N) calls or via a native engine read. A
+        // metadata-less magnet has UNKNOWN size/progress, not zero: it stays
+        // last in both directions instead of jumping to the top when reversed.
+        fun known(item: LocalTransferStatus): Long? = when (order) {
+            LocalQueueOrder.NAME -> null
+            LocalQueueOrder.PROGRESS -> item.progressPpm.toLong().takeIf { item.metadataKnown }
+            LocalQueueOrder.SIZE -> item.wantedBytes.takeIf { item.metadataKnown && it >= 0 }
+            LocalQueueOrder.PEERS -> item.peers.toLong().takeIf { it >= 0 }
         }
+        val ordered = filtered.sortedWith(Comparator { x, y ->
+            val primary = if (order == LocalQueueOrder.NAME)
+                TransferSortOrdering.compareNames(x.second, y.second, direction)
+            else TransferSortOrdering.compareKnown(known(x.first), known(y.first), direction)
+            if (primary != 0) primary
+            // Fixed A–Z then infohash tie-break: equal values never reshuffle
+            // between refreshes or flip order with the direction toggle.
+            else String.CASE_INSENSITIVE_ORDER.compare(x.second, y.second).takeIf { it != 0 }
+                ?: x.first.infoHash.compareTo(y.first.infoHash)
+        })
         return ordered.map { it.first }
     }
 }
