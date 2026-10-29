@@ -18,10 +18,20 @@ Smart Seeding Rules follow the same unified UI on phone and all named remote pro
 - Switching environments is immediate UI navigation, never an implicit migration, pause/resume, network mutation, credential switch, or file movement. Preserve independently per environment the list scroll position, sort, filter, search, selection (subject to identity/freshness and privacy lock), view density and relevant screen state; never accidentally act on stale selection from a previous scope. Distinguish active environment from default Add destination.
 - A combined/all-environments view may be added later only if every row has explicit origin, filters and batch actions are scope-aware and cross-environment operations use separate review. It is not required by this contract.
 
+## Advanced control and integration scope
+
+Use the same advanced Add, queue, network, diagnostics and settings flows in phone-only, remote-only and combined modes. [Intake and queue policies](INTAKE-QUEUE-AND-POLICIES.md) must distinguish server-native schedules from phone-connected automation; [protocol and privacy controls](FILES-PROTOCOL-AND-DIAGNOSTICS.md) must distinguish local interface/VPN from remote peer ports; [remote integrations and preferences](REMOTE-INTEGRATIONS-AND-PREFERENCES.md) must distinguish rTorrent RPC from separately authorized file/privileged services. Per-profile capabilities, readback status, selected environment and offline limits are explicit in every advanced action; no silent fan-out or accidental inheritance by newly added remote profiles.
+
 ## Settings and scope
 - Classify each setting before implementation as **app-global**, **environment-specific** (phone or exact server profile), or **transfer-specific**. Show scope beside the setting or under an unambiguous scope header. Never imply a profile-scoped rate limit, download destination, privacy lock, queue behavior, or credentials applies across engines.
 - A shared setting may optionally offer **Apply to all supported environments** only as explicit opt-in with preview of each target and unsupported/failed results. A partial failure cannot be reported as universal success. Persist independent overrides and distinguish Chunks-side presentation preferences from settings actually enforced by a torrent engine.
 - Defaults and recent Places belong to their exact environment; per-transfer changes do not silently update defaults. All destructive and irreversible actions include current target identities and refreshed capability/authority checks.
+
+## Discovery and secondary infrastructure navigation
+
+The integrated [Discover experience](INTAKE-QUEUE-AND-POLICIES.md) is a **Chunks-wide opt-in interface** with an immediate global off switch; any discovery-based Add still requires choosing an exact phone/remote environment, with per-environment limits, Places and seeding rules previewed. Disabled Discovery stops **discovery-source** polling and discovery-triggered unattended Add independently of which environments are connected, but never stops existing torrents or manual Add. On/Off is not silently overridden by a newly added remote profile or an imported settings file.
+
+[Server tools](REMOTE-INTEGRATIONS-AND-PREFERENCES.md) are **remote-profile-specific and secondary** under Servers → selected remote → Server tools. No privileged admin actions or dashboard tiles become first-class Transfers/Add/Details controls; remote-only mode still emphasizes torrent use. Local-only mode has no Server tools screen. Multiple remote profiles never inherit one another's admin credentials/permissions, and a disconnected/unverified profile cannot present an optimistic management action.
 
 ## Capability differences
 - Capabilities are negotiated per engine, server profile, authenticated principal, version/build, storage permission and snapshot freshness, not hardcoded 'remote vs local' assumptions.

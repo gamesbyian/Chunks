@@ -11,6 +11,13 @@ The [documentation architecture and authoring standard](DOCUMENTATION-STANDARD.m
 - [SPEC-COVERAGE](SPEC-COVERAGE.md): required versus implemented capability and acceptance gaps.
 - [CI-POLICY](CI-POLICY.md): runner costs, test gates and workflows.
 
+## Advanced operations (normative feature contracts)
+
+- [Intake, queue and policies](INTAKE-QUEUE-AND-POLICIES.md): 21 catalogue gap items plus **owner-approved optional integrated Discovery**, explicit master off switch, and source/auto-add consent, alongside queue, schedules and traffic rules.
+- [Files, protocol and diagnostics](FILES-PROTOCOL-AND-DIAGNOSTICS.md): 27 archive/link, piece/peer/network privacy, diagnostics and partial-preview requirements.
+- [Remote integrations and settings portability](REMOTE-INTEGRATIONS-AND-PREFERENCES.md): 10 gap items plus **owner-approved secondary Server tools**, service-health/quota visibility and limited capability-gated service actions; opt-in adapters and preferences.
+- [Smart Seeding Rules](SMART-SEEDING-RULES.md): owner-approved policy, generated editable rule names and explicit named-environment applicability.
+
 ## Normative foundations
 
 - [PRODUCT](PRODUCT.md): feature scope and user promises.
@@ -40,7 +47,6 @@ The [documentation architecture and authoring standard](DOCUMENTATION-STANDARD.m
 - [PUBLIC-TORRENT-FIXTURES](PUBLIC-TORRENT-FIXTURES.md): lawful test fixtures.
 - [User-supplied test inputs](USER-SUPPLIED-TORRENT-TEST-INPUTS.md): controlled owner-provided fixtures.
 - [RESEARCH](RESEARCH.md) and [REUSE-AUDIT](REUSE-AUDIT.md): upstream references, prior art and reuse boundaries.
-- [BitTorrent user-aversion and friction atlas](BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md): qualitative, multilingual reports of dislike, non-use, abandonment and workflow pain (research, not product requirements).
 - [Agent lanes](AGENT-LANES.md): concurrency/ownership model.
 - [Dated handoffs](HANDOFF-2026-10-28.md), [Claude app handoff](CLAUDE-APP-HANDOFF-2026-10-28.md), [earlier handoff](HANDOFF-2026-10-27.md): historical session context, not current priorities.
 - [Archive guide](archive/README.md): preserved pre-consolidation documents and status interpretation.
