@@ -4,6 +4,28 @@
 
 [Agent instructions](../AGENTS.md) · [Documentation index](INDEX.md) · [Product contract](PRODUCT.md) · [Coverage gaps](SPEC-COVERAGE.md) · [Evidence](QUALITY-LEDGER.md) · [Documentation authoring standard](DOCUMENTATION-STANDARD.md)
 
+## Newly specified advanced-operations backlog (lower than current P0/P1)
+
+The 58 previously under-specified ecosystem items are assigned to canonical contracts: [intake/queue/policies](INTAKE-QUEUE-AND-POLICIES.md) (21), [files/protocol/diagnostics](FILES-PROTOCOL-AND-DIAGNOSTICS.md) (27) and [remote/integrations/preferences](REMOTE-INTEGRATIONS-AND-PREFERENCES.md) (10). **Specification does not imply shipped feature parity.** The following independently executable slices do not replace higher-priority real-phone/Seedhost/release acceptance and do not duplicate the separate Smart Seeding Rules lane.
+
+1. **Pure policy/intake model:** bounded URL metainfo and optional source normalization, queue priorities and stalls, timezone/DST calendars, quota counters, VPN-required fail-closed states. Test secrets, conflicting policy, counter resets and uncertainty before native integration.
+2. **Read-only diagnostics/inspection:** piece, peer, tracker/NAT and sampled traffic with source/timestamp; checksum/sidecar inspection and archive/path/link preflights. Test untrusted data, filesystem permissions, idempotency and unsupported servers without arbitrary remote write probes.
+3. **Portable settings and expert UX:** versioned redacted server/profile export, import preview and identity mapping, responsive expert columns, adaptive remote read-only polling and help/report redact-by-default. Prove no secret disclosure or remote auto-mutation after restore, then validate 320×700, 412×892, 200% font and TalkBack.
+4. **Opt-in external adapters:** feed/indexer sources, verified media completion handoff, independent cloud backup and advanced peer/protocol settings only once source/service-specific safety and capability evidence exist. No **broad or first-class privileged** seedbox admin panel is authorized; limited secondary Server tools are separately approved under D-SEEDBOX-TOOLS-20261029.
+
+**Owner scope is now decided:** integrated discovery with a master disable switch, and secondary limited server tools, are binding under D-DISCOVERY-20261029 and D-SEEDBOX-TOOLS-20261029. The implementation slices and acceptance are below; unrestricted privileged host management remains out of scope. Record completed code slices in SPEC-COVERAGE/QUALITY-LEDGER, not another running plan.
+
+## Approved Discovery and secondary Server tools: implementation slices
+
+These are requirements under [DISCOVERY (intake contract)](INTAKE-QUEUE-AND-POLICIES.md#integrated-torrent-discovery-and-its-master-off-switch-owner-binding) and [SERVER TOOLS (remote contract)](REMOTE-INTEGRATIONS-AND-PREFERENCES.md#secondary-seedbox-tools-owner-binding), **not** evidence or a mandate to displace current P0/P1 work. No new app-level cloud infrastructure is authorized.
+
+1. **Discovery state and off switch (independently executable, before network connector):** persistent default-off state, accessible Settings → Discovery master control, source-level consent, race-safe dispatch gate, cancellation of scheduled jobs and auto-intake on disable, preservation of existing transfers and manual Add. Gate at every **discovery-triggered** worker, network action and exact target Add submission, while preserving separately authorized direct automatic local-file intake and ordinary manual Add. Verify zero disabled egress, process death/restore/reenable, cancellation race and redaction.
+2. **Integrated discovery UI and adapters:** native search screen and in-Add Find torrents entry, normalized public/private provider adapter results with origin, filters, dedupe, saved searches and RSS/Atom subscriptions. Use authenticated provider fixtures; independently opt-in auto-add and auto-start, source limits and safe stale-backlog handling. Verify existing Add scope, provider privacy and no mandatory account; test 320×700, 412×892, 200% type/TalkBack. Do not bypass CAPTCHA or deploy a central search backend.
+3. **Read-only server tools:** Servers → named remote → Server tools, with provider capability model, separately authenticated nonprivileged service/health/quota endpoints, source/freshness labels, local-only absence and strict screen real-estate regression checks.
+4. **Optional limited service controls:** enable per-profile only with separately verified provider permission, fixed allowlist, impact warning for live torrents, confirmation and postcondition/reconciliation. Test unsupported managed hosts, independent tenants, disconnect mid-restart and prohibitions on generic shell/reboot/firewall/user/package operations. Keep server administration out of default notification/background monitoring.
+
+Do not let these slices create admin-focused primary navigation or silently reenable discovery through import/auto-start. The existing seeding rules, remote Smart Connect and unified local/remote acceptance remain separate prerequisites.
+
 ## Planned slice: Smart Seeding Rules
 
 Implement [SMART-SEEDING-RULES](SMART-SEEDING-RULES.md) in independently testable stages once conflicting active PRs and ownership have been checked: pure policy model and deterministic tracker matching; stable rule identities, generated/editable names and explicit multi-environment selection; per-profile capability/readback adapters; Add-route preview and guarded start; opt-in unattended import hold/fallback; scoped batch application and accessibility/host acceptance. Tests must distinguish intended rule selection from runtime-enforced policy. This is planned work, not a new P0 or an implementation claim.
@@ -28,10 +50,6 @@ Implement incrementally under [EXTERNAL-FILE-ACCESS](EXTERNAL-FILE-ACCESS.md): (
 3. Read its canonical contract **before** changing code; preserve engine/profile identities, explicit target, privacy and no-data-loss invariants. An unknown capability fails closed.
 4. Implement on a focused app branch, test locally first and use the [lean CI policy](CI-POLICY.md). Font changes remain exclusively on `font/lab`, with no per-glyph PRs or Actions fan-out.
 5. Merge only if exact-head required tests and independent review/reconciliation are qualified. Record commit, environment, observable result and remaining tier gaps in [QUALITY-LEDGER](QUALITY-LEDGER.md), update [SPEC-COVERAGE](SPEC-COVERAGE.md) if scope changed, then update this queue. Do not turn successful tests into claims of handset or live-server acceptance.
-
-## Create & Share development lane (new, unclaimed scope)
-
-The required [Create & Share contract](CREATE-AND-SHARE.md) is **partly implemented**. Done: a pure-JVM metadata builder (#542) and the Create screen with file/folder input, review, Save/Share/Copy (#545). In review: the Share → Create entry, seed a verified copy on the phone (loopback peer download byte-exact) and sharing the .torrent file. Next: remote seed target with actual-byte verification; then consented public tracker/DHT health; then credential-vault-backed service adapters and controlled authenticated index publishing. Each slice must update [SPEC-COVERAGE](SPEC-COVERAGE.md) and [QUALITY-LEDGER](QUALITY-LEDGER.md) with actual evidence and pass existing safety gates. Do not displace active P0 recovery/reliability tasks or spawn broad CI for documentation. Registry/service integrations are bounded by provider APIs and approved test identities.
 
 ## Execution priorities
 
