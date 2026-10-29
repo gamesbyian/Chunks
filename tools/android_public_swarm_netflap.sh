@@ -24,8 +24,11 @@ fi
 export ANDROID_SERIAL="$serial"
 [[ "$(adb get-state | tr -d '\r\n')" == device ]] || { echo "Selected adb device unavailable" >&2; exit 2; }
 
-radio_changed=0
 CHUNKS_WIFI_BASELINE= CHUNKS_DATA_BASELINE=
+# Reject unsupported OEM settings *before* installing APKs or launching
+# instrumentation; refresh the baseline again immediately before toggling.
+chunks_read_radio_baseline || { echo "Radio baseline unavailable: no test started" >&2; exit 1; }
+radio_changed=0
 log="$(mktemp)"
 restore() {
   local rc=$?
