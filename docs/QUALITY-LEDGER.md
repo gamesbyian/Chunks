@@ -6,7 +6,12 @@
   - During a foreground-service download, Wi-Fi and mobile data go off for 30 s and then back on, with the test signalled at each edge.
   - **Required:** the job is not silently stopped, verified growth of ≥2 MiB resumes on the same engine, and the service survives.
   - **Recorded:** bytes during the outage and time to recovery. Connectivity is always restored on exit.
-- **Evidence:** pending a manual dispatch after merge. Emulator networking only; this does not cover a real Wi-Fi↔cellular handover, a VPN or captive portals.
+- **Merged:** [#605](https://github.com/gamesbyian/Chunks/pull/605), squash `a2b1e23b063f495b184887754a677732b0ea6aba`.
+- **Observed** ([run 40957785862](https://github.com/gamesbyian/Chunks/actions/runs/40957785862), API35 emulator, from main at `a2b1e23`):
+  - verified bytes stood at 8,650,752 at loss and 8,912,896 at return;
+  - the job was **still started** (`stopped=false`) with no error;
+  - verified growth resumed **20 s** after the radios returned and reached 12,845,056 bytes, on the same engine, with the service still running.
+  - Emulator networking only. This does not cover a real Wi-Fi↔cellular handover, a VPN or captive portals.
 
 ## 2026-10-29 opt-in Doze observation with real peers (#569)
 
@@ -15,7 +20,12 @@
   - Once ≥4 MiB of verified bytes have arrived, the script unplugs the virtual battery, runs `dumpsys deviceidle force-idle`, confirms deep `IDLE` and signals the test.
   - Over 90 s the test records `GROWTH` or `STALLED` in verified bytes while idle. It requires only that the service and engine stay alive and answering.
   - The idle and battery state is restored on exit, and whether the app was on the system allowlist is logged.
-- **Evidence:** pending a manual dispatch after merge. Emulator only; it does not cover OEM power managers or natural idle entry on a handset.
+- **Merged:** [#605](https://github.com/gamesbyian/Chunks/pull/605).
+- **Observed** ([run 40957780248](https://github.com/gamesbyian/Chunks/actions/runs/40957780248), API35 emulator, from main at `a2b1e23`):
+  - Chunks was **not** on the deep-idle allowlist, and deep idle was confirmed (`deep_state=IDLE`, `isDeviceIdleMode=true`).
+  - The foreground-service download kept going: **GROWTH 186,384,384 verified bytes in 90 s** (6,815,744 → 193,200,128) from 192 peers.
+  - This is consistent with foreground-service processes being exempt from Doze network restrictions.
+  - It used forced idle on an emulator; OEM power managers, natural idle entry and the 6-hour `dataSync` budget can differ on a handset.
 ## 2026-10-29 solo-agent batch safety and G2 plan reconciliation
 
 - **Merged #586 (P0 combined-batch safety):** [PR #586](https://github.com/gamesbyian/Chunks/pull/586), squash `d88d03a11c7f59ef199151fc302944c42a896686`, exact head `989077fe60f02d3717cfe3a0376f9e2cf357d44e`. [Android foundation/JVM 40944402686](https://github.com/gamesbyian/Chunks/actions/runs/40944402686), [R8 40944402821](https://github.com/gamesbyian/Chunks/actions/runs/40944402821) and [API35 native Add instrumentation 40944402760](https://github.com/gamesbyian/Chunks/actions/runs/40944402760) all passed. The shared batch controller now refuses incomplete live inventories, missing verified observation timestamps, and targets whose observed Start/Stop state differs from the reviewed state. Pure tests assert no command dispatch on these invalid sources, while healthy independent sources continue. Does **not** add command capability to saved-but-not-signed-in remotes or prove handset/network behavior.
