@@ -79,6 +79,35 @@ class UnifiedTransferCatalogTest {
         assertEquals(listOf(b, a, d, c), reverse.transfers)
     }
 
+    @Test fun groupingManySourcesRetainsEmptyGroupsAndCommonReversibleOrdering() {
+        val sources = (0 until 40).map { i ->
+            val id = EnvironmentId("profile-$i")
+            snapshot(id,
+                item(id, 'a', "Episode z", 30L).copy(started = false),
+                item(id, 'b', "Episode a", 10L),
+                item(id, 'c', "Unrelated", 50L))
+        }
+        val onlyStopped = UnifiedTransferCatalog.query(sources, UnifiedTransferQuery(
+            filter = UnifiedTransferFilter.STOPPED, groupByEnvironment = true,
+            sortKey = UnifiedSortKey.SIZE, direction = UnifiedSortDirection.DESCENDING))
+        assertEquals(40, onlyStopped.groups.size)
+        assertTrue(onlyStopped.groups.all { it.transfers.size == 1 })
+        val matching = UnifiedTransferCatalog.query(sources, UnifiedTransferQuery(
+            search = "Episode", groupByEnvironment = true,
+            sortKey = UnifiedSortKey.SIZE, direction = UnifiedSortDirection.ASCENDING))
+        assertEquals(40, matching.groups.size)
+        assertEquals(80, matching.transfers.size)
+        assertTrue(matching.groups.all { it.transfers.map { row -> row.sizeBytes } == listOf(10L, 30L) })
+        val reversed = UnifiedTransferCatalog.query(sources, UnifiedTransferQuery(
+            search = "Episode", groupByEnvironment = true,
+            sortKey = UnifiedSortKey.SIZE, direction = UnifiedSortDirection.DESCENDING))
+        assertTrue(reversed.groups.all { it.transfers.map { row -> row.sizeBytes } == listOf(30L, 10L) })
+        val noMatches = UnifiedTransferCatalog.query(sources, UnifiedTransferQuery(
+            search = "no torrent by this name", groupByEnvironment = true))
+        assertEquals(40, noMatches.groups.size)
+        assertTrue(noMatches.groups.all { it.transfers.isEmpty() })
+    }
+
     @Test fun selectedSubsetDoesNotSilentlyRetargetMissingOrLockedSource() {
         val stale = snapshot(server1, item(server1, 'a', "Stale"),
             availability = EnvironmentAvailability.OFFLINE)
