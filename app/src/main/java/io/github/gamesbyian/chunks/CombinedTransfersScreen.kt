@@ -60,7 +60,28 @@ import io.github.gamesbyian.chunks.privacy.RemoteTransferPrivacyScope
 import io.github.gamesbyian.chunks.privacy.TransferPrivacyRuntime
 import io.github.gamesbyian.chunks.privacy.TransferPrivacyVisibility
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
+import io.github.gamesbyian.chunks.model.UnifiedBatchLifecycle
+import io.github.gamesbyian.chunks.model.UnifiedTransferKey
+import io.github.gamesbyian.chunks.model.describe
+import io.github.gamesbyian.chunks.model.toLifecycleReply
+import io.github.gamesbyian.chunks.rpc.LifecycleOutcome
+import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.selected
+import io.github.gamesbyian.chunks.model.EnvironmentHue
+import io.github.gamesbyian.chunks.model.EnvironmentPalette
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** The connected server's latest accepted list, as the server screen holds it. */
 internal data class CombinedServerSource(
@@ -68,7 +89,16 @@ internal data class CombinedServerSource(
     val transfers: List<RemoteTransfer>,
     val stale: Boolean,
     val fullView: Boolean,
-    val observedAtEpochMillis: Long?
+    val observedAtEpochMillis: Long?,
+    /** Start/Stop through the server screen's own mutation gate; null when not offered. */
+    val lifecycle: CombinedServerLifecycle? = null
+)
+
+/** The connected server's lease, command and settle, exactly as its own list uses them. */
+internal class CombinedServerLifecycle(
+    val begin: () -> Boolean,
+    val settled: () -> Unit,
+    val setStarted: suspend (String, Boolean) -> LifecycleOutcome
 )
 
 /** A saved profile that is not signed in during this session. */
@@ -76,7 +106,8 @@ internal data class CombinedSavedProfile(val id: String, val label: String)
 
 /** A separate single-flight reader so this view never blocks or shares the phone screen's slot. */
 private object CombinedPhoneReader {
-    val pump = LocalScreenObservationPump<List<LocalTransferStatus>?>(
+    /** The list (null if no engine) and the fence revision sampled before the read. */
+    val pump = LocalScreenObservationPump<Pair<List<LocalTransferStatus>?, Long>>(
         java.util.concurrent.Executors.newSingleThreadExecutor { task ->
             Thread(task, "chunks-combined-phone-status").apply { isDaemon = true }
         }
@@ -116,10 +147,11 @@ internal fun availabilityText(source: EnvironmentTransferSnapshot): String = whe
 }
 
 /**
- * Read-only combined Transfers: one globally sorted (or grouped) union of the
- * selected environments. Selection here is a VIEW scope only. Nothing on this
- * screen starts, stops, adds or removes; each row names its environment and
- * the open buttons go to that environment's own list for actions.
+ * Combined Transfers: one globally sorted (or grouped) union of the selected
+ * environments. The environment chips are a VIEW scope only. The one action
+ * offered is reviewed Start/Stop over an explicit row selection, run per
+ * environment through that environment's own gate; Add, remove and every
+ * other change stay in each environment's own list.
  */
 @Composable
 internal fun CombinedTransfersScreen(
@@ -145,13 +177,20 @@ internal fun CombinedTransfersScreen(
     var phoneConfirmed by remember { mutableStateOf(false) }
     var phoneRunning by remember { mutableStateOf(LocalEngineHolder.current() != null) }
     var phoneObservedAt by remember { mutableStateOf<Long?>(null) }
+    // Explicit cross-environment selection; never derived from the view scope.
+    var selecting by remember { mutableStateOf(false) }
+    var selected by remember { mutableStateOf<Set<UnifiedTransferKey>>(emptySet()) }
+    var batchRunning by remember { mutableStateOf(false) }
+    var batchResult by remember { mutableStateOf<List<String>>(emptyList()) }
+    val batchScope = rememberCoroutineScope()
     LaunchedEffect(Unit) {
         while (true) {
             when (val outcome = CombinedPhoneReader.pump.takeCompleted()) {
                 is LocalScreenPollOutcome.Fresh -> {
-                    val list = outcome.value
+                    val (list, sample) = outcome.value
                     phoneRunning = list != null
-                    if (list != null) {
+                    // A read sampled before or during a phone command cannot clear its readback latch.
+                    if (list != null && PhoneMutationFence.revision.acceptObservation(sample, list)) {
                         phoneFrame = LocalInventoryFrame(list, stale = false)
                         phoneConfirmed = true
                         phoneObservedAt = System.currentTimeMillis()
@@ -162,7 +201,8 @@ internal fun CombinedTransfersScreen(
             }
             if ((CombinedPhoneReader.pump.inFlightMillis() ?: 0L) >= 15_000L)
                 phoneFrame = phoneFrame.copy(stale = true)
-            CombinedPhoneReader.pump.tryObserve { LocalEngineHolder.current()?.list() }
+            val sample = PhoneMutationFence.revision.snapshot()
+            CombinedPhoneReader.pump.tryObserve { LocalEngineHolder.current()?.list() to sample }
             delay(1_000)
         }
     }
@@ -186,16 +226,23 @@ internal fun CombinedTransfersScreen(
         if (server != null && serverId != null) put(serverId, serverEnvironmentLabel(server.aliasScope))
         savedProfiles.forEach { profile -> putIfAbsent(EnvironmentId(profile.id), "Server · " + profile.label) }
     }
+    // Colours follow stable IDs: assigned once, then kept through rename/reorder/reconnect.
+    val colourStore = remember(context) { EnvironmentColourStore(context) }
+    var palette by remember(labels.keys.toList()) { mutableStateOf(colourStore.ensure(labels.keys.toList())) }
+    var choosingColours by remember { mutableStateOf(false) }
 
     val sources = buildList {
-        val phone = if (phoneRunning || phoneConfirmed) EnvironmentSnapshots.phone(phoneFrame, phoneConfirmed,
+        val phoneStale = phoneFrame.stale || PhoneMutationFence.revision.blocksMutations() || batchRunning
+        val phone = if (phoneRunning || phoneConfirmed) EnvironmentSnapshots.phone(
+            phoneFrame.copy(stale = phoneStale), phoneConfirmed,
             locked = !phonePrivacy.mayShow, observedAtEpochMillis = phoneObservedAt)
         else EnvironmentTransferSnapshot(EnvironmentSnapshots.PHONE,
             if (phonePrivacy.mayShow) EnvironmentAvailability.OFFLINE else EnvironmentAvailability.LOCKED,
             false, null, emptyList())
         add(phone.withAliases { hash -> aliases.get(TransferCollectionStore.LOCAL_ENGINE_SCOPE, hash) })
         if (server != null && serverId != null) {
-            add(EnvironmentSnapshots.server(serverId, server.transfers, connected = true, stale = server.stale,
+            add(EnvironmentSnapshots.server(serverId, server.transfers, connected = true,
+                stale = server.stale || batchRunning,
                 locked = serverPrivacy?.mayShow != true, fullView = server.fullView,
                 observedAtEpochMillis = server.observedAtEpochMillis)
                 .withAliases { hash -> aliases.get(server.aliasScope, hash) })
@@ -223,8 +270,36 @@ internal fun CombinedTransfersScreen(
                     modifier = Modifier.semantics { heading() })
                 OutlinedButton(onClick = onBack, modifier = Modifier.heightIn(min = 48.dp)) { Text("Back") }
             }
-            Text("A read-only view across environments. To start, stop or change a transfer, open its " +
-                "own environment.", style = MaterialTheme.typography.bodySmall)
+            Text("Browse every environment together. Start and Stop can be applied to a selection " +
+                "here; every other change happens in each environment's own list.",
+                style = MaterialTheme.typography.bodySmall)
+        }
+        item {
+            CombinedBatchSection(
+                selecting = selecting,
+                onSelecting = { selecting = it; if (!it) selected = emptySet(); batchResult = emptyList() },
+                selected = selected,
+                visible = result.transfers.map { it.key }.toSet(),
+                labels = labels,
+                running = batchRunning,
+                result = batchResult,
+                onClear = { selected = emptySet() },
+                onRun = { start ->
+                    batchRunning = true
+                    batchResult = emptyList()
+                    val chosen = selected
+                    val snapshot = sources
+                    batchScope.launch {
+                        try {
+                            batchResult = runCombinedLifecycle(chosen, start, snapshot, server?.lifecycle, serverId)
+                                .describe { labels[it] ?: it.value }
+                        } finally {
+                            selected = emptySet()
+                            batchRunning = false
+                        }
+                    }
+                }
+            )
         }
         item {
             Text("Show", style = MaterialTheme.typography.labelLarge)
@@ -238,7 +313,8 @@ internal fun CombinedTransfersScreen(
                     val selected = scope is EnvironmentViewScope.Only && id in scope.ids
                     FilterChip(selected = selected, onClick = {
                         update(query.copy(scope = toggleScope(scope, id)))
-                    }, label = { Text(label) }, modifier = Modifier.heightIn(min = 48.dp))
+                    }, label = { Text(label) }, leadingIcon = { EnvironmentDot(palette.hueOf(id)) },
+                        modifier = Modifier.heightIn(min = 48.dp))
                 }
             }
         }
@@ -288,18 +364,35 @@ internal fun CombinedTransfersScreen(
         if (query.groupByEnvironment) {
             result.groups.forEach { group ->
                 item(key = "header-" + group.source.environment.value) {
-                    Text(labels[group.source.environment].orEmpty() + " · " + group.transfers.size +
-                        " shown", style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(top = 8.dp).semantics { heading() })
+                    Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        EnvironmentDot(palette.hueOf(group.source.environment))
+                        Text(labels[group.source.environment].orEmpty() + " · " + group.transfers.size +
+                            " shown", style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.semantics { heading() })
+                    }
                 }
                 items(group.transfers, key = { "row-" + it.key.environment.value + it.key.infoHash }) { row ->
-                    CombinedTransferRow(row, labels[row.key.environment].orEmpty())
+                    CombinedTransferRow(row, labels[row.key.environment].orEmpty(), palette.hueOf(row.key.environment),
+                        selection = if (selecting) row.key in selected else null,
+                        onSelect = { on -> selected = if (on) selected + row.key else selected - row.key })
                 }
             }
         } else {
             items(result.transfers, key = { "row-" + it.key.environment.value + it.key.infoHash }) { row ->
-                CombinedTransferRow(row, labels[row.key.environment].orEmpty())
+                CombinedTransferRow(row, labels[row.key.environment].orEmpty(), palette.hueOf(row.key.environment),
+                    selection = if (selecting) row.key in selected else null,
+                    onSelect = { on -> selected = if (on) selected + row.key else selected - row.key })
             }
+        }
+        item {
+            OutlinedButton(onClick = { choosingColours = !choosingColours },
+                modifier = Modifier.padding(top = 8.dp).heightIn(min = 48.dp)) {
+                Text(if (choosingColours) "Done with colours" else "Environment colours…")
+            }
+            if (choosingColours) EnvironmentColourChooser(labels, palette,
+                onChoose = { id, hue -> colourStore.choose(id, hue); palette = colourStore.load() },
+                onRestore = { id -> colourStore.restoreAutomatic(id); palette = colourStore.load() })
         }
         item {
             Row(Modifier.padding(vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -335,15 +428,28 @@ internal fun combinedRowFacts(row: UnifiedTransferObservation): String = listOf(
 ).joinToString(" · ")
 
 @Composable
-private fun CombinedTransferRow(row: UnifiedTransferObservation, environmentLabel: String) {
-    val server = row.key.environment != EnvironmentSnapshots.PHONE
-    val accent = if (server) ChunksColors.Blue else ChunksColors.Cyan
+private fun CombinedTransferRow(
+    row: UnifiedTransferObservation,
+    environmentLabel: String,
+    hue: EnvironmentHue?,
+    /** Null when not selecting. */
+    selection: Boolean? = null,
+    onSelect: (Boolean) -> Unit = {}
+) {
+    val accent = hue?.let { Color(it.argb) } ?: ChunksColors.Outline
+    // The hue is used for the label only where it meets AA on this surface.
+    val labelColour = if (hue != null && EnvironmentPalette.labelIsReadable(hue, ChunksColors.Surface.toArgbLong()))
+        accent else ChunksColors.Text
     Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).clip(RoundedCornerShape(12.dp))
         .background(ChunksColors.Surface)) {
         // Decorative rail; the environment name below carries the identity.
         Box(Modifier.width(6.dp).fillMaxHeight().background(accent))
+        if (selection != null) Checkbox(checked = selection, onCheckedChange = onSelect,
+            modifier = Modifier.padding(start = 4.dp).align(Alignment.CenterVertically).semantics {
+                contentDescription = "Select ${row.displayName} on $environmentLabel"
+            })
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(environmentLabel, style = MaterialTheme.typography.labelMedium, color = accent,
+            Text(environmentLabel, style = MaterialTheme.typography.labelMedium, color = labelColour,
                 fontWeight = FontWeight.Bold)
             Text(row.displayName, style = MaterialTheme.typography.titleSmall)
             if (row.displayName != row.originalName) Text("Torrent name: " + row.originalName,
@@ -351,6 +457,165 @@ private fun CombinedTransferRow(row: UnifiedTransferObservation, environmentLabe
             Text(combinedRowFacts(row), style = MaterialTheme.typography.bodySmall)
             if (row.hasError) Text("Needs attention in its own list", color = ChunksColors.Red,
                 style = MaterialTheme.typography.bodySmall)
+        }
+    }
+}
+
+/**
+ * Leases each selected environment's own mutation gate, runs the pure batch
+ * on exactly those adapters, then settles every lease it took. An environment
+ * whose gate is busy, awaiting a readback or signed out refuses its items.
+ */
+internal suspend fun runCombinedLifecycle(
+    chosen: Set<UnifiedTransferKey>,
+    start: Boolean,
+    sources: List<EnvironmentTransferSnapshot>,
+    serverLifecycle: CombinedServerLifecycle?,
+    serverId: EnvironmentId?,
+    phoneEngine: () -> io.github.gamesbyian.chunks.engine.LocalTorrentEngine? = { LocalEngineHolder.current() }
+): UnifiedBatchLifecycle.Report {
+    val byKey = sources.flatMap { it.transfers }.associateBy { it.key }
+    val targets = chosen.sortedWith(compareBy({ it.environment.value }, { it.infoHash }))
+        .map { UnifiedBatchLifecycle.Target(it, byKey[it]?.started) }
+    val adapters = HashMap<EnvironmentId, UnifiedBatchLifecycle.Adapter>()
+    val refusals = HashMap<EnvironmentId, String>()
+    var phoneLeased = false
+    var serverLeased = false
+    try {
+        // A source that is not live is refused by the batch itself; never lease its gate.
+        val live = sources.filter { it.availability == EnvironmentAvailability.LIVE }.map { it.environment }.toSet()
+        for (environment in targets.map { it.key.environment }.toSet()) {
+            if (environment !in live) continue
+            if (environment == EnvironmentSnapshots.PHONE) {
+                val engine = phoneEngine()
+                when {
+                    engine == null -> refusals[environment] = "phone engine is not running"
+                    !PhoneMutationFence.revision.beginMutation() ->
+                        refusals[environment] = "waiting for a fresh phone list"
+                    else -> {
+                        phoneLeased = true
+                        adapters[environment] = UnifiedBatchLifecycle.Adapter { hash, on ->
+                            withContext(Dispatchers.IO) {
+                                (if (on) engine.resume(hash) else engine.pause(hash)).outcome.toLifecycleReply()
+                            }
+                        }
+                    }
+                }
+            } else if (environment == serverId && serverLifecycle != null) {
+                if (!serverLifecycle.begin()) refusals[environment] = "server is busy or refreshing"
+                else {
+                    serverLeased = true
+                    adapters[environment] = UnifiedBatchLifecycle.Adapter { hash, on ->
+                        serverLifecycle.setStarted(hash, on).toLifecycleReply(on)
+                    }
+                }
+            } else refusals[environment] = "not connected in this session"
+        }
+        return UnifiedBatchLifecycle.run(targets, start, sources, adapters, refusals)
+    } finally {
+        if (phoneLeased) PhoneMutationFence.revision.settledMutation()
+        if (serverLeased) serverLifecycle?.settled?.invoke()
+    }
+}
+
+@Composable
+private fun CombinedBatchSection(
+    selecting: Boolean,
+    onSelecting: (Boolean) -> Unit,
+    selected: Set<UnifiedTransferKey>,
+    visible: Set<UnifiedTransferKey>,
+    labels: Map<EnvironmentId, String>,
+    running: Boolean,
+    result: List<String>,
+    onClear: () -> Unit,
+    onRun: (Boolean) -> Unit
+) {
+    var confirming by remember { mutableStateOf<Boolean?>(null) }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedButton(onClick = { onSelecting(!selecting); confirming = null }, enabled = !running,
+            modifier = Modifier.heightIn(min = 48.dp)) { Text(if (selecting) "Done selecting" else "Select…") }
+        if (running) Text("Working… each environment's list will refresh afterwards.",
+            style = MaterialTheme.typography.bodySmall)
+        result.forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
+        if (!selecting || selected.isEmpty()) return@Column
+        val hidden = (selected - visible).size
+        Text("${selected.size} selected" + (if (hidden > 0) ", $hidden not shown by the current view" else ""),
+            style = MaterialTheme.typography.titleSmall)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = { confirming = true }, enabled = !running,
+                modifier = Modifier.heightIn(min = 48.dp)) { Text("Start…") }
+            OutlinedButton(onClick = { confirming = false }, enabled = !running,
+                modifier = Modifier.heightIn(min = 48.dp)) { Text("Stop…") }
+            OutlinedButton(onClick = { onClear(); confirming = null }, enabled = !running,
+                modifier = Modifier.heightIn(min = 48.dp)) { Text("Clear") }
+        }
+        val wanted = confirming ?: return@Column
+        Text(combinedBatchPreview(wanted, selected, labels), style = MaterialTheme.typography.bodyMedium)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = { confirming = null; onRun(wanted) }, enabled = !running,
+                modifier = Modifier.heightIn(min = 48.dp)) { Text(if (wanted) "Start selected" else "Stop selected") }
+            OutlinedButton(onClick = { confirming = null }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Cancel") }
+        }
+    }
+}
+
+/** Names every target environment and its count before anything runs. */
+internal fun combinedBatchPreview(start: Boolean, selected: Set<UnifiedTransferKey>,
+                                  labels: Map<EnvironmentId, String>): String {
+    val perEnvironment = selected.groupingBy { it.environment }.eachCount().toList()
+        .sortedBy { labels[it.first] ?: it.first.value }
+        .joinToString("; ") { (id, n) -> (labels[id] ?: id.value) + ": " + n }
+    return (if (start) "Start" else "Stop") + " ${selected.size} selected, one at a time, each only in its own " +
+        "environment: $perEnvironment. Transfers already in that state are skipped. The first uncertain " +
+        "result stops the batch and nothing is retried."
+}
+
+private fun Color.toArgbLong(): Long =
+    (((alpha * 255).toInt() shl 24) or ((red * 255).toInt() shl 16) or
+        ((green * 255).toInt() shl 8) or (blue * 255).toInt()).toLong() and 0xFFFFFFFFL
+
+/** Decorative identity dot; the environment's name always accompanies it. */
+@Composable
+internal fun EnvironmentDot(hue: EnvironmentHue?, size: Int = 12) {
+    Box(Modifier.size(size.dp).clip(CircleShape)
+        .background(hue?.let { Color(it.argb) } ?: ChunksColors.Outline))
+}
+
+/**
+ * Per-environment palette choice. Repeating a colour is allowed; Restore
+ * automatic returns to the colour first assigned to that environment.
+ */
+@Composable
+private fun EnvironmentColourChooser(
+    labels: Map<EnvironmentId, String>,
+    palette: EnvironmentPalette.State,
+    onChoose: (EnvironmentId, EnvironmentHue) -> Unit,
+    onRestore: (EnvironmentId) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        labels.forEach { (id, label) ->
+            val current = palette.hueOf(id)
+            Text(label + " · " + (current?.label ?: "no colour") +
+                if (id in palette.chosen) " (chosen)" else " (automatic)",
+                style = MaterialTheme.typography.titleSmall)
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                EnvironmentHue.entries.forEach { hue ->
+                    val isCurrent = hue == current
+                    Box(Modifier.size(48.dp).clip(CircleShape)
+                        .clickable(role = Role.RadioButton) { onChoose(id, hue) }
+                        .semantics {
+                            contentDescription = "$label colour ${hue.label}"
+                            selected = isCurrent
+                        }, contentAlignment = Alignment.Center) {
+                        Box(Modifier.size(if (isCurrent) 36.dp else 28.dp).clip(CircleShape)
+                            .background(Color(hue.argb))
+                            .then(if (isCurrent) Modifier.border(3.dp, ChunksColors.Text, CircleShape) else Modifier))
+                    }
+                }
+            }
+            if (id in palette.chosen) OutlinedButton(onClick = { onRestore(id) },
+                modifier = Modifier.heightIn(min = 48.dp)) { Text("Restore automatic colour") }
         }
     }
 }

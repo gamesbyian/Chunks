@@ -1,5 +1,35 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-29 persistent environment identity colours (#567)
+
+- **Source slice:**
+  - pure `EnvironmentPalette`: automatic least-used assignment keyed by stable ID, user override, and a WCAG contrast check;
+  - `EnvironmentColourStore`;
+  - the combined-view chooser;
+  - coloured rails, labels, dots and headers;
+  - `EnvironmentBadge` reading the saved hue.
+- **Evidence tier:** local JVM + Robolectric suite green. Tests cover:
+  - no repeats among nine environments and no black or white;
+  - stability across reorder and re-enable;
+  - a user repeat allowed, with Restore returning the automatic hue;
+  - contrast;
+  - a persisted choice through the Compose chooser.
+
+  In Robolectric, swatch selection is exercised by its semantic click action; a touch tap after scrolling inside the tall lazy item did not register in Robolectric, so **real touch selection on a device is unverified**.
+- **Not shown:** emulator/handset, colour-vision review, TalkBack.
+
+## 2026-10-29 cross-environment Start/Stop from the All environments view (#567)
+
+- **Source slice:** row selection, per-environment preview, `runCombinedLifecycle` leasing each live environment's own gate (server `RemoteMutationReadbackGate` via the same begin/settle/refresh as its list; phone via the shared `PhoneMutationFence` now also used by the phone screen), `UnifiedBatchLifecycle` with caller refusals, and per-environment result wording that never reports unconfirmed work as done. The combined phone poll only accepts reads sampled after a settled command.
+- **Evidence tier:** local JVM + Robolectric suite green. Tests cover:
+  - a server command only after confirmation and only on that server, settled exactly once;
+  - a busy gate, a stale source and a signed-out profile each receiving no command;
+  - no lease taken on a non-live source;
+  - preview and result text.
+
+  `CombinedPhoneBatchInstrumentedTest` (API35 native suite) drives the real engine through `runCombinedLifecycle` and checks that the fence refuses a second phone command until a post-command list is accepted.
+- **Not shown:** emulator/handset, real rTorrent mutation, TalkBack or 200%.
+
 ## 2026-10-29 read-only All environments view and shared snapshot adapters (#567)
 
 - **Source slice:**
@@ -14,7 +44,15 @@
 ## 2026-10-29 honest dataSync timeout notice and opt-in shortened-limit repro (#569)
 
 - **Source slice:** `LocalEngineService.pauseAll` now reports readback-confirmed pauses. `onTimeout` then posts a dismissible `LocalServiceTimeoutNotice`. It counts only confirmed pauses and shows no counts at all when the phone scope is privacy-locked. Before this, a timeout pause removed the ongoing notification silently.
-- **Evidence:** JVM wording tests. The opt-in API35 job `android-fgs-timeout-repro.yml` runs `LocalEngineServiceTimeoutInstrumentedTest` under Android's documented shortened-limit controls; its result is recorded on the PR. **Not shown:** the real six-hour budget, Doze, OEM killers, reboot or a physical handset.
+- **Merged:** [#579](https://github.com/gamesbyian/Chunks/pull/579), squash `e1a876cf97aa9d0c20763434b18e28898e101fa5`, exact head `1632ef65dc338fe0e2160e41d5705505fbb7fbb5`: [Android/JVM 40915398108](https://github.com/gamesbyian/Chunks/actions/runs/40915398108), [R8 40915397837](https://github.com/gamesbyian/Chunks/actions/runs/40915397837), [API35 native Add instrumentation 40915397810](https://github.com/gamesbyian/Chunks/actions/runs/40915397810), [API29 Downloads 40915397999](https://github.com/gamesbyian/Chunks/actions/runs/40915397999).
+- **Observed on a disposable API35 emulator** ([run 40915397833](https://github.com/gamesbyian/Chunks/actions/runs/40915397833), shortened limit 15000 ms):
+  - `ActivityManager: FGS (dataSync) timed out` for `LocalEngineService`;
+  - the seeding transfer was readback-paused 15,234 ms after the service started, with no user action;
+  - the notice read "Android's background time limit was reached. Chunks paused 1 transfer on this phone. Open Chunks to resume.";
+  - the ongoing notification was removed and payload SHA-256 was unchanged.
+
+  Teardown `device_config delete` reported failure; this does not matter on a disposable emulator but would on a reused device.
+- **Evidence tier:** JVM wording tests plus the emulator run above. **Not shown:** the real six-hour budget, Doze, OEM killers, reboot or a physical handset.
 
 ## 2026-10-29 reversible sort on phone and server Transfers lists (#567)
 

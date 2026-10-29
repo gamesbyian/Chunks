@@ -217,7 +217,7 @@ private data class LocalScreenReadout(
  * cannot create a second blocked worker or a growing backlog of reads.
  */
 private object LocalScreenReader {
-    val revision = LocalScreenObservationRevision()
+    val revision get() = PhoneMutationFence.revision
     val pump = LocalScreenObservationPump<LocalScreenReadout>(
         java.util.concurrent.Executors.newSingleThreadExecutor { task ->
             Thread(task, "chunks-local-screen-status").apply { isDaemon = true }
@@ -597,7 +597,8 @@ internal fun LocalEngineScreen(
         if (onBack != null) OutlinedButton(onClick = onBack, modifier = Modifier.heightIn(min = 48.dp)) { Text("Back") }
         Text("On this phone (experimental)", style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
-        EnvironmentBadge(PHONE_ENVIRONMENT_LABEL, server = false)
+        EnvironmentBadge(PHONE_ENVIRONMENT_LABEL, server = false,
+            environment = io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE)
         if (onCombined != null) OutlinedButton(onClick = onCombined, modifier = Modifier.heightIn(min = 48.dp)) {
             Text("All environments…")
         }

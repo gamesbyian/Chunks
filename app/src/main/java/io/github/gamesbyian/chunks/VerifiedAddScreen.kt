@@ -368,7 +368,12 @@ fun VerifiedAddScreen(
                     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)) {
                         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text("Confirm one server operation", fontWeight = FontWeight.Bold)
-                            environmentLabel?.let { EnvironmentBadge("Adding to: $it", server = true) }
+                            environmentLabel?.let { EnvironmentBadge("Adding to: $it", server = true,
+                                // finishInOrderScope is the authenticated endpoint + NUL + username.
+                                environment = finishInOrderScope?.takeIf { s -> '\u0000' in s }?.let { s ->
+                                    io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverId(
+                                        s.substringBefore('\u0000'), s.substringAfter('\u0000'))
+                                }) }
                             Text("Source: " + if (useFile) "Selected .torrent file" else "Magnet link")
                             Text("Infohash: " + plan.expectedInfoHash)
                             Text("Destination: " + plan.destination + if (plan.useServerDefault)

@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -187,15 +188,26 @@ internal fun AccentOutlineCard(accent: Color, modifier: Modifier = Modifier, con
  * identity; the icon is decorative.
  */
 @Composable
-internal fun EnvironmentBadge(label: String, server: Boolean, modifier: Modifier = Modifier) {
+internal fun EnvironmentBadge(
+    label: String,
+    server: Boolean,
+    modifier: Modifier = Modifier,
+    /** Stable environment ID; its saved identity colour replaces the default accent. */
+    environment: io.github.gamesbyian.chunks.model.EnvironmentId? = null
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val hue = remember(environment) {
+        environment?.let { runCatching { EnvironmentColourStore(context).load().hueOf(it) }.getOrNull() }
+    }
+    val accent = hue?.let { Color(it.argb) } ?: if (server) ChunksColors.Blue else ChunksColors.Cyan
     Row(modifier.clip(RoundedCornerShape(12.dp)).background(ChunksColors.SurfaceRaised)
-            .border(1.dp, if (server) ChunksColors.Blue else ChunksColors.Cyan, RoundedCornerShape(12.dp))
+            .border(2.dp, accent, RoundedCornerShape(12.dp))
             .padding(horizontal = 10.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         // Library icons are drawn for light fills; tint to the badge accent on this dark chip.
         Image(painterResource(if (server) R.drawable.chunks_ic_server else R.drawable.chunks_ic_phone),
             contentDescription = null, modifier = Modifier.size(20.dp),
-            colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(if (server) ChunksColors.Blue else ChunksColors.Cyan))
+            colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(accent))
         Text(label, style = MaterialTheme.typography.labelLarge, color = ChunksColors.Text)
     }
 }
