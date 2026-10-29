@@ -120,4 +120,60 @@ class LocalNativePostAddCollisionProbeTest {
         assertTrue("The untouched source seeding file must remain intact",
             File(sourceRoot, "payload.bin").readBytes().contentEquals(expected))
     }
+    @Test fun deferredMagnetAutoStartCanCollideWithFileIntroducedBeforeMetadata() {
+        val sourceRoot = File(temp.newFolder("magnet-source"), "Magnet timing fixture").apply {
+            assertTrue(mkdirs())
+        }
+        val expected = ByteArray(768 * 1024).also { Random(569L).nextBytes(it) }
+        File(sourceRoot, "payload.bin").writeBytes(expected)
+        val metainfo = TorrentBuilder().path(sourceRoot).pieceSize(32 * 1024)
+            .generate().entry().bencode()
+        val seed = engine()
+        val seedAdded = seed.addStopped(metainfo, sourceRoot.parentFile)
+        assertTrue(seedAdded.toString(), seedAdded is LocalAddResult.AddedStopped)
+        val hash = (seedAdded as LocalAddResult.AddedStopped).status.infoHash
+        assertTrue(seed.resume(hash).outcome == LocalCommandOutcome.VERIFIED)
+        await("magnet native seeder") {
+            seed.status(hash)?.state == LocalTransferState.SEEDING
+        }
+
+        val destination = temp.newFolder("magnet-empty-at-add")
+        val receiver = engine()
+        // No initial peer or DHT: metadata cannot arrive until the test
+        // deliberately connects the seeder, *after* creating a foreign file.
+        val magnet = "magnet:?xt=urn:btih:$hash"
+        val added = receiver.addMagnet(magnet, destination, autoStartAfterMetadata = true)
+        assertTrue(added.toString(), added is LocalAddResult.FetchingMetadata)
+        assertFalse(requireNotNull(receiver.status(hash)).metadataKnown)
+        val foreign = File(destination, "Magnet timing fixture/payload.bin")
+        assertFalse(foreign.exists())
+        assertTrue(foreign.parentFile.isDirectory || foreign.parentFile.mkdirs())
+        val unrelated = ByteArray(expected.size).also { Random(9877L).nextBytes(it) }
+        foreign.writeBytes(unrelated)
+        val before = sha(foreign.readBytes())
+        assertFalse(before == sha(expected))
+
+        assertTrue(receiver.connectPeer(hash,
+            InetSocketAddress("127.0.0.1", seed.listenPort())))
+        await("magnet metadata fetched and auto-start requested") {
+            val status = receiver.status(hash)
+            status != null && status.metadataKnown && !status.stopped && !status.uploadOnly
+        }
+        await("magnet native peer transfer completion") {
+            receiver.status(hash)?.progressPpm == 1_000_000
+        }
+        assertTrue("Flush before independent backing-file readback",
+            receiver.flushCompletedForLibraryRead(hash, 30_000L))
+
+        val actual = foreign.readBytes()
+        val replaced = !actual.contentEquals(unrelated)
+        val expectedPresent = actual.contentEquals(expected)
+        println("CHUNKS_MAGNET_COLLISION before_sha256=$before expected_sha256=${sha(expected)} after_sha256=${sha(actual)}")
+        println("CHUNKS_MAGNET_COLLISION foreign_file_replaced=$replaced")
+        println("CHUNKS_MAGNET_COLLISION expected_torrent_data_present=$expectedPresent")
+        // Diagnostic only. A future safe engine may preserve foreign bytes.
+        assertTrue("Only original foreign or synthetic torrent bytes may remain",
+            actual.contentEquals(unrelated) || expectedPresent)
+        assertArrayEquals(expected, File(sourceRoot, "payload.bin").readBytes())
+    }
 }
