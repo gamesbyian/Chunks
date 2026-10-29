@@ -65,6 +65,7 @@ import io.github.gamesbyian.chunks.engine.LocalEpisodeFocusPlanner
 import io.github.gamesbyian.chunks.engine.LocalFileBatchOutcome
 import io.github.gamesbyian.chunks.engine.LocalEngineConfig
 import io.github.gamesbyian.chunks.engine.LocalRateLimits
+import io.github.gamesbyian.chunks.engine.LocalRestoreDiscovery
 import io.github.gamesbyian.chunks.engine.LocalTrackerRepairOutcome
 import io.github.gamesbyian.chunks.engine.LocalTorrentEngine
 import io.github.gamesbyian.chunks.engine.LocalTransferState
@@ -194,7 +195,7 @@ internal object LocalEngineHolder {
     /** Start only if an earlier session left transfers to restore. */
     @Synchronized
     fun restoreIfSaved(context: Context): LocalTorrentEngine? = engine
-        ?: if (stateDirectory(context).listFiles().orEmpty().any { it.name.endsWith(".resume") }) get(context) else null
+        ?: if (LocalRestoreDiscovery.shouldAttemptRestore(stateDirectory(context))) get(context) else null
 
     private fun stateDirectory(context: Context) = File(context.filesDir, "local-engine")
 
