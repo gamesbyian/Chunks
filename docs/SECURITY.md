@@ -21,6 +21,12 @@ The [TRANSFER-FILE-RECOVERY](TRANSFER-FILE-RECOVERY.md) wizard searches only use
 Android Open with/Share grants one-file, short-lived read-only access, not remote filesystem credentials or a server-wide access token. Keep remote authentication inside Chunks and restrict temporary URIs/streaming bridges to the exact verified profile, file and recipient; enforce TLS/SSH validation, privacy lock, bounded cache and revocation. Never publish a remote link or automatically download an entire file as a handoff side effect. Follow [EXTERNAL-FILE-ACCESS](EXTERNAL-FILE-ACCESS.md) for the authoritative security and lifecycle matrix.
 
 
+## Advanced network, profile backup and integration attack surfaces
+
+The requirements in [FILES-PROTOCOL-AND-DIAGNOSTICS](FILES-PROTOCOL-AND-DIAGNOSTICS.md), [INTAKE-QUEUE-AND-POLICIES](INTAKE-QUEUE-AND-POLICIES.md) and [REMOTE-INTEGRATIONS-AND-PREFERENCES](REMOTE-INTEGRATIONS-AND-PREFERENCES.md) extend the existing trust model. In particular, separate peer/tracker/indexer/metainfo/artwork/RPC traffic classes, bind phone-only VPN and proxy requirements to verified routes, and fail closed rather than silently falling back to direct public traffic. Never call protocol encryption anonymity or a VPN required toggle enforced without runtime evidence.
+
+Credentialed feeds, private torrents, QR/URLs, imported settings, certificate bundles, nested archives, remote path maps, peer filters and cloud/media webhook destinations are untrusted inputs. Enforce destination allowlists or explicit approval, size/CPU/depth/redirect/SSRF bounds, per-profile secret isolation, provenance, revocation, idempotent operation receipts and redacted audit/report export. A remote account's rTorrent RPC privileges do not authorize file, shell, service or host administration. Settings portability must not serialize Keystore credentials as plaintext; a separate secret-bearing encrypted backup requires an independently reviewed cryptographic recovery design before activation. Audit records must not replay destructive mutations.
+
 ## Trust boundaries and threats
 
 1. Android UI/import boundary: an untrusted magnet link, torrent metainfo, file name or tracker URL can carry malicious paths, giant strings, Unicode, private tracker passkeys or URLs. Never use torrent-provided paths for raw file writes without engine + filesystem containment checks.
