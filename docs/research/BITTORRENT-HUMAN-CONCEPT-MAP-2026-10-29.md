@@ -2,7 +2,7 @@
 
 **Research snapshot:** 2026-10-29 (aversion-evidence bridge added same date). **Status:** external descriptive research, **not normative requirements**. **Purpose:** explore conceptual sparsity and plausible missing capabilities in the *union* of the 240 existing feature concepts already compiled, by examining the functional, cognitive and possible emotional relationships among the human activities those features support.
 
-**Inputs:** [Multilingual aversion and abandonment research](https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md), [External 240-feature inventory](https://github.com/gamesbyian/Chunks/blob/26fec615e8241504011f319929c40d22cc35bd9f/docs/BITTORRENT-ECOSYSTEM-FEATURE-INVENTORY-2026-10-29.md) and [36-journey / 240-micro-workflow atlas](https://github.com/gamesbyian/Chunks/blob/7631199f79b6763a961da5a2a3782886eb6964d7/docs/BITTORRENT-USER-GOALS-AND-WORKFLOWS-2026-10-29.md). The machine-readable, inspectable counterpart is [the typed JSON graph](BITTORRENT-CONCEPT-GRAPH-2026-10-29.json).
+**Inputs:** [Multilingual aversion and abandonment research](https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md), [External 240-feature inventory](https://github.com/gamesbyian/Chunks/blob/26fec615e8241504011f319929c40d22cc35bd9f/docs/BITTORRENT-ECOSYSTEM-FEATURE-INVENTORY-2026-10-29.md) and [36-journey / 240-micro-workflow atlas](https://github.com/gamesbyian/Chunks/blob/7631199f79b6763a961da5a2a3665886eb6964d7/docs/BITTORRENT-USER-GOALS-AND-WORKFLOWS-2026-10-29.md). The machine-readable, inspectable counterpart is [the typed JSON graph](BITTORRENT-CONCEPT-GRAPH-2026-10-29.json).
 
 **Important epistemic boundary:** “Missing” here means **not explicitly represented as a complete capability in the 240-item inventory**, or **a relationship between existing capabilities is not covered there**. It emphatically does *not* mean no BitTorrent software anywhere implements it. Components, plugins, new releases and external services may already provide parts or even all of a candidate. All 66 H-series entries are hypotheses to investigate, not verified unmet market needs, commitments or requests to change a product.
 
@@ -76,9 +76,10 @@ Existing tools have many of the boxes on the main line, and some tools bridge se
 | Friction domains | 6 | Why people avoid, quit or reluctantly participate |
 | Possible exit or alternate paths | 18 | Conditional non-use, interruption, repair abandonment or switching routes |
 | Additional evidence sources | 10 | Historical academic findings, individual user accounts and primary software guidance |
-| **Total** | **782** | Typed nodes available for query, visualization and revision |
+| Individual aversion source records | 57 | Original links from PR #539; some share the same underlying discussion |
+| **Total** | **839** | Typed nodes available for query, visualization and revision |
 
-The JSON contains **3456 typed edges**, including 695 prior activity→feature links, 547 *co-support* relationships between feature concepts, 149 journey→activity memberships, 113 potential activity transitions and explicit relationships from the H hypotheses to the activities/features/cognitive demands/affective stakes they could affect.
+The JSON contains **3,658 typed edges**, including 695 prior activity→feature links, 547 *co-support* relationships between feature concepts, 149 journey→activity memberships, 113 potential activity transitions and explicit relationships from the H hypotheses to the activities/features/cognitive demands/affective stakes they could affect.
 
 **Caution about interpretation:** Co-support means that two features were linked to the *same described activity*. It proves neither that the features implement one another nor that they must both be present. The cognitive/affective mappings are analyst-supplied hypotheses, not interviews or psychological measurements. The graph retains the relationship type and evidence/interpretation level so those distinctions can be preserved.
 
@@ -394,7 +395,7 @@ The 240-activity atlas is largely a map of **things people manage to do**. [The 
 
 The evidence adds **55 source-coded friction nodes** (`AV-A01` to `AV-F08`), **six friction families**, and **18 possible negative or alternative paths** (`N01`–`N18`) to the graph. The `AV-` prefix is intentional: `AV-A01` is a friction factor from the other document; `A01.01` is a user activity in the existing atlas. Do not confuse them.
 
-An `AV` node stores its original code, qualitative evidence classification, original source codes, source-language synopsis and related work. Original codes **R/D/M** distinguish repeated evidence within a purposive sample, distinctive evidence and mixed/possibly inaccurate perceptions. They are **not user prevalence percentages**. The graph provides *possible* interrupted activity and abandonment/alternative links. These are analyst-supplied hypotheses, not observed trajectories of every complainant.
+An `AV` node stores its original code, qualitative evidence classification, original source codes, reported complaint and related work. Each AV factor now links to one or more individual `AVS-S01`–`AVS-S57` evidence-source nodes (147 citation edges overall) and to a specific H candidate for investigation; **57 catalogue entries are not 57 independent users**. Three entries share URLs with another catalogue entry, and some others describe the same case in different contexts. Original codes **R/D/M** distinguish repeated evidence within a purposive sample, distinctive evidence and mixed/possibly inaccurate perceptions. They are **not user prevalence percentages**. The graph provides *possible* interrupted activity and abandonment/alternative links. These are analyst-supplied hypotheses, not observed trajectories of every complainant.
 
 ### 10.1 The revised human decision graph
 
