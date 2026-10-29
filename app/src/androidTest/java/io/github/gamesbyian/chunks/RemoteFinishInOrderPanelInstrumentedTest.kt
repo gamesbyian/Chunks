@@ -22,10 +22,12 @@ import java.io.InputStreamReader
 import java.net.InetAddress
 import java.net.ServerSocket
 import java.util.Collections
+import java.util.concurrent.atomic.AtomicInteger
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -103,11 +105,12 @@ class RemoteFinishInOrderPanelInstrumentedTest {
         val remote = RTorrentRemote(RemoteCredentials(startLoopback(), "", ""))
         val files = paths.mapIndexed { i, p -> RemoteFile(p, 4096, priorities[i]) }
         var started = 0
+        val settled = AtomicInteger(0)
         rule.setContent {
             MaterialTheme {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
                     RemoteFinishInOrderPanel(remote, RemoteTransfer(hash, "Show", 12288, 0, true, "/srv"),
-                        scope, files, stale = false, onMutationStarted = { started++; true }, onSettled = {})
+                        scope, files, stale = false, onMutationStarted = { started++; true }, onSettled = { settled.incrementAndGet() })
                 }
             }
         }
@@ -115,9 +118,12 @@ class RemoteFinishInOrderPanelInstrumentedTest {
         rule.onNodeWithText("1. Show S01E01.mkv").assertExists()
         assertEquals(0, writes.size)
         rule.onNodeWithText("Start Finish in Order").performScrollTo().performClick()
-        rule.waitUntil(10_000) {
-            rule.onAllNodesWithText("confirmed by the server", substring = true).fetchSemanticsNodes().isNotEmpty()
-        }
+        // The RPC write can be visible before the Compose coroutine finishes
+        // its journal readback and screen update. Do not destroy the activity
+        // while that coroutine is still mutating Compose state.
+        rule.waitUntil(30_000) { settled.get() == 1 }
+        rule.waitForIdle()
+        rule.onNodeWithText("confirmed by the server", substring = true).assertExists()
         assertEquals(1, started)
         assertEquals(listOf("f1=2"), writes.toList())
     }
@@ -133,11 +139,12 @@ class RemoteFinishInOrderPanelInstrumentedTest {
             io.github.gamesbyian.chunks.engine.FinishInOrderPlanner.policyFor(
                 io.github.gamesbyian.chunks.engine.FinishInOrderPlanner.Mode.BALANCED, asLocal, listOf(1, 0, 2))))
         var started = 0
+        val settled = AtomicInteger(0)
         rule.setContent {
             MaterialTheme {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
                     RemoteFinishInOrderPanel(remote, RemoteTransfer(hash, "Show", 12288, 0, true, "/srv"),
-                        scope, files, stale = false, onMutationStarted = { started++; true }, onSettled = {})
+                        scope, files, stale = false, onMutationStarted = { started++; true }, onSettled = { settled.incrementAndGet() })
                 }
             }
         }
@@ -145,7 +152,11 @@ class RemoteFinishInOrderPanelInstrumentedTest {
             rule.onAllNodesWithContentDescription("Finish Show S01E03.mkv next").fetchSemanticsNodes().isNotEmpty()
         }
         rule.onNodeWithContentDescription("Finish Show S01E03.mkv next").performScrollTo().performClick()
-        rule.waitUntil(10_000) { writes.contains("f2=2") }
+        // Wait for the full panel mutation, not merely the first network write.
+        // Otherwise activity disposal can race a pending Compose state update.
+        rule.waitUntil(30_000) { settled.get() == 1 }
+        rule.waitForIdle()
+        assertTrue(writes.contains("f2=2"))
         assertEquals(1, started)
         assertEquals(listOf(2, 1, 0), FinishInOrderStore(context, scope).get(hash)!!.policy.order.map { it.index })
         assertEquals(listOf(1, 1, 2), priorities.toList())

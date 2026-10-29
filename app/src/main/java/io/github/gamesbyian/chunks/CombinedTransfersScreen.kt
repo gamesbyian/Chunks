@@ -52,6 +52,7 @@ import io.github.gamesbyian.chunks.model.EnvironmentViewScope
 import io.github.gamesbyian.chunks.model.LocalInventoryFrame
 import io.github.gamesbyian.chunks.model.TransferSortOrdering
 import io.github.gamesbyian.chunks.model.UnifiedSortKey
+import io.github.gamesbyian.chunks.model.UnifiedTransferFilter
 import io.github.gamesbyian.chunks.model.UnifiedTransferCatalog
 import io.github.gamesbyian.chunks.model.UnifiedTransferObservation
 import io.github.gamesbyian.chunks.model.UnifiedTransferQuery
@@ -385,6 +386,24 @@ internal fun CombinedTransfersScreen(
         item {
             OutlinedTextField(value = query.search, onValueChange = { query = query.copy(search = it) },
                 label = { Text("Search all selected") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        }
+        item {
+            Text("Filter transfers", style = MaterialTheme.typography.labelLarge)
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(
+                    UnifiedTransferFilter.ALL to "All transfers",
+                    UnifiedTransferFilter.STARTED to "Started",
+                    UnifiedTransferFilter.STOPPED to "Stopped",
+                    UnifiedTransferFilter.COMPLETE to "Complete",
+                    UnifiedTransferFilter.TRANSFERRING to "Transferring",
+                    UnifiedTransferFilter.ATTENTION to "Attention"
+                ).forEach { (filter, label) ->
+                    FilterChip(selected = query.filter == filter,
+                        onClick = { if (query.filter != filter) update(query.copy(filter = filter)) },
+                        label = { Text(label) }, modifier = Modifier.heightIn(min = 48.dp))
+                }
+            }
         }
         item {
             Text("Sort by", style = MaterialTheme.typography.labelLarge)
