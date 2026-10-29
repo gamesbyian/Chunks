@@ -169,7 +169,7 @@ Users should ordinarily connect rTorrent by pasting their hostname or ruTorrent 
 
 ## Deferred, not forgotten
 
-Cross-machine migration, Plex/Sonarr/Radarr integration, large-scale background automation, advanced bulk naming, streaming-related interactions, automatic external metadata services, additional remote engine adapters and premium multi-server dashboards are exploratory until they preserve the core safety and usability proposition.
+Cross-machine payload migration, privileged seedbox administration, large-scale always-on automation, additional remote engine adapters and premium multi-server dashboards remain exploratory and require separate owner/product approval. Optional Plex/Sonarr/Radarr handoff, cloud independent-copy backup, feed intake, streaming preview and advanced naming have now been given **bounded opt-in contracts**, but no implementation or independent compatibility is implied; activation stays subject to their explicit safety and acceptance gates in [REMOTE-INTEGRATIONS-AND-PREFERENCES](REMOTE-INTEGRATIONS-AND-PREFERENCES.md), [FILES-PROTOCOL-AND-DIAGNOSTICS](FILES-PROTOCOL-AND-DIAGNOSTICS.md), [PLEX-FILENAME-REPAIR](PLEX-FILENAME-REPAIR.md) and [EXTERNAL-FILE-ACCESS](EXTERNAL-FILE-ACCESS.md).
 
 ## Explicit exclusions
 
