@@ -7,7 +7,6 @@ import android.util.Base64
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
 import java.net.URI
 import java.security.KeyStore
-import java.security.MessageDigest
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
@@ -30,9 +29,7 @@ internal class RememberedRemoteProfileRoster(context: Context) {
 
         /** Stable profile ID: SHA-256 of endpoint + NUL + username. Also the seeding environment key. */
         internal fun identityOf(endpoint: String, username: String): String =
-            MessageDigest.getInstance("SHA-256")
-                .digest((endpoint.trim() + "\u0000" + username.trim()).toByteArray(Charsets.UTF_8))
-                .joinToString("") { "%02x".format(it.toInt() and 255) }
+            io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverId(endpoint, username).value
 
         internal fun addressOf(endpoint: String): String = try {
             val uri = URI(endpoint.trim())

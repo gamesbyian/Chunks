@@ -90,3 +90,20 @@ A shared `EnvironmentBadge` (decorative phone/server icon plus text) names the e
 
 The server label comes from the authenticated alias scope via the same address formatting as saved profiles. Two instances of one account on one host (`/rutorrent/` vs `/rutorrent2/`) therefore read differently, and no password is ever shown. Evidence: a JVM label test and Robolectric renders. Not yet: badges on every details card, an environment switcher, or combined-mode lists.
 
+## Implementation note: read-only All environments view (2026-10-29)
+
+**PARTIAL.** An **All environments…** button on the phone list and the server list opens one read-only combined list (`CombinedTransfersScreen`), built on the shared catalog:
+- **Sources:** the phone engine, but only if it is already running in this process (the view never starts it); the signed-in server's latest accepted list; and every other saved profile, shown as *Not connected* with no rows. Identity is `phone` or the saved profile ID.
+- **List behavior:** multi-select view scope (All, one or several), search, six reversible sort keys with unknowns last, and *Group by environment* with one shared sort. Scope, sort, direction and grouping persist across restart; search text is not saved.
+- **Status:** each source shows Live, Out of date, Not connected or Locked.
+- **Privacy:** each environment's own privacy lock is respected, and the window is secured while protected rows are shown.
+- **Rows:** each row has a text environment label and a decorative rail.
+
+Not yet built:
+- actions from this view;
+- simultaneous connection to several servers;
+- persistent palette colours;
+- an environment settings screen.
+
+A pure `UnifiedBatchLifecycle` model exists for later cross-environment Start/Stop, with per-environment evidence and no redirection, but no UI uses it yet. Evidence: [QUALITY-LEDGER](QUALITY-LEDGER.md).
+
