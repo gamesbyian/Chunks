@@ -1,5 +1,10 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-29 first pure shared cross-engine observation and query (#571)
+
+- **Merged:** [#571](https://github.com/gamesbyian/Chunks/pull/571), squash `40d01124aeb18edef6b31569e4a5c14a708bd02d`, reviewed exact head `ccf964d6c3512d4b3232b0d822fa88ae46c7aa48`. Source-head workflows passed: [Android foundation 40868022939](https://github.com/gamesbyian/Chunks/actions/runs/40868022939), [R8 minified 40868022783](https://github.com/gamesbyian/Chunks/actions/runs/40868022783) and [native Add instrumentation 40868022967](https://github.com/gamesbyian/Chunks/actions/runs/40868022967).
+- **Narrow source proof:** new pure `UnifiedTransferCatalog` observes local and rTorrent DTOs, keys transfers by environment plus normalized v1/v2 infohash, distinguishes missing values, source freshness and incomplete inventories; pure JVM tests cover same-hash different profiles, all numeric ascending/descending sort keys, unknown-last, optional common-secondary environment grouping, subsets and invalid source identity. Existing phone and server screens are **not wired to this catalog**. Saved profile IDs, actual combined lists, cross-engine action scopes, palette colours and physical 200%/TalkBack are still open. No host mutations or real device acceptance in this PR.
+
 ## 2026-10-29 foundation-first workboard audit (documentation-only; no CI/phone proof)
 
 - Inspected repository \`main\` at \`3a4fc69d932d2b883dcd49787b577610483bfbdb\`: no open PRs at inspection, 17 open issues; inspected source \`MainActivity.kt\`, \`LocalEngineScreen.kt\`, \`TransferCatalog.kt\`, \`LocalQueueCatalog.kt\`, \`LocalEngineService.kt\`, Android manifest and Gradle target configuration. This is **source observation**, not successful execution. No new app build, physical handset, protected host test or branch-protection change was performed by this documentation-only work.
