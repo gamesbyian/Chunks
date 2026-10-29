@@ -84,6 +84,7 @@ class CombinedTransfersScreenTest {
         rule.onNodeWithText("On this phone: Engine not running, open On this phone · 0 transfers").assertDoesNotExist()
         rule.onNodeWithText("Showing 2").assertExists()
         rule.onNodeWithText("Group by environment").performScrollTo()
+        rule.onNodeWithContentDescription("Group by environment").assertExists()
         rule.onNode(androidx.compose.ui.test.isToggleable()).performClick()
         rule.onNodeWithText(serverEnvironmentLabel(aliasScope) + " · 2 shown").assertExists()
         val saved = CombinedViewPreferences(context).load()
