@@ -788,6 +788,18 @@ internal fun LocalEngineScreen(
                 }
             )
         }
+        var finishInOrderAfterAdd by remember(add?.preview?.infoHashV1) { mutableStateOf(false) }
+        if (add != null && destination != null && add.preview.fileCount >= 2) {
+            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                .toggleable(value = finishInOrderAfterAdd, enabled = !busy && !inventoryStale,
+                    role = Role.Checkbox, onValueChange = { finishInOrderAfterAdd = it }),
+                verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(checked = finishInOrderAfterAdd, enabled = !busy && !inventoryStale, onCheckedChange = null)
+                Text("Finish in Order: prioritise the first episode or numbered file, then the next " +
+                    "(set up before downloading starts; change or turn off from Files)",
+                    modifier = Modifier.padding(start = 8.dp))
+            }
+        }
         if (add != null && destination != null) LocalAddReview(
             add.preview, proposedAddDestination ?: destination,
             placeTitle = place?.title,
@@ -798,6 +810,8 @@ internal fun LocalEngineScreen(
                 val selectedDraft = addFolderDraft
                 val selectedPlace = place
                 val autoStart = startAfterAdd
+                val orderAfterAdd = finishInOrderAfterAdd
+                var orderNote: String? = null
                 performLocalMutation {
                     try {
                         val result = withContext(Dispatchers.IO) {
@@ -809,6 +823,11 @@ internal fun LocalEngineScreen(
                             else {
                                 val engine = LocalEngineHolder.get(context)
                                 val added = engine.addStopped(add.bytes, chosen)
+                                // While still stopped: set up the policy and apply its first verified
+                                // step, so the very first piece requests already follow the order.
+                                if (orderAfterAdd && added is LocalAddResult.AddedStopped) {
+                                    orderNote = enableFinishInOrderAfterAdd(context, engine, added.status.infoHash)
+                                }
                                 if (autoStart && added is LocalAddResult.AddedStopped)
                                     added to engine.resume(added.status.infoHash)
                                 else added to null
@@ -836,6 +855,7 @@ internal fun LocalEngineScreen(
                                 null -> "Added stopped. Start manually from its transfer card."
                             }
                         }
+                        orderNote?.let { note -> message = listOfNotNull(message, note).joinToString(" ") }
                         if (added !is LocalAddResult.Refused) {
                             pending = null
                             addFolderDraft = ""
@@ -1922,4 +1942,34 @@ internal fun LocalSpeedLimits() {
         Text(if (saving) "Checking speed limits…" else "Save speed limits")
     }
     result?.let { Text(it, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }) }
+}
+
+/**
+ * Create a Finish in Order policy from the suggested order of a just-added,
+ * still-stopped phone transfer and apply its first verified step. Returns a
+ * user-facing note; never starts the transfer or changes skipped files.
+ */
+internal suspend fun enableFinishInOrderAfterAdd(
+    context: Context, engine: io.github.gamesbyian.chunks.engine.LocalTorrentEngine, infoHash: String
+): String {
+    val files = engine.files(infoHash) ?: return "Finish in Order was not set up: the file list is not readable yet."
+    val suggestion = io.github.gamesbyian.chunks.engine.FinishInOrderPlanner.suggest(files)
+        ?: return "Finish in Order was not set up: no episode or numbered order was found. You can arrange one from Files."
+    val store = FinishInOrderStore(context)
+    val policy = io.github.gamesbyian.chunks.engine.FinishInOrderPlanner.policyFor(
+        io.github.gamesbyian.chunks.engine.FinishInOrderPlanner.Mode.BALANCED, files, suggestion.order)
+    if (!FinishInOrderController.exclusive {
+            store.save(infoHash, io.github.gamesbyian.chunks.engine.FinishInOrderRecord(policy))
+        }) return "Finish in Order could not be saved; priorities are unchanged."
+    val step = FinishInOrderController.exclusive {
+        store.get(infoHash)?.let { FinishInOrderController.runner(engine, store).step(infoHash, it) }
+    }
+    return when (step) {
+        is io.github.gamesbyian.chunks.engine.FinishInOrderRunner.Step.Applied,
+        is io.github.gamesbyian.chunks.engine.FinishInOrderRunner.Step.Idle ->
+            "Finish in Order is on for ${suggestion.order.size} files (Balanced)."
+        is io.github.gamesbyian.chunks.engine.FinishInOrderRunner.Step.Suspended ->
+            "Finish in Order is paused: " + step.record.suspendedReason
+        else -> "Finish in Order is saved and will apply once the engine reports this transfer."
+    }
 }
