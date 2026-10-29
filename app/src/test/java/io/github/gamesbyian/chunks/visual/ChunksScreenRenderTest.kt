@@ -4,6 +4,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.gamesbyian.chunks.MainActivity
 import org.junit.Rule
@@ -47,5 +48,11 @@ class ChunksScreenRenderTest {
         rule.onNodeWithText("Privacy & authentication").performClick()
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/chunks-visual/privacy.png")
+    }
+
+    @Test fun createScreen() {
+        rule.onNodeWithText("Create a torrent from phone files").performScrollTo().performClick()
+        rule.waitForIdle()
+        rule.onRoot().captureRoboImage("build/chunks-visual/create.png")
     }
 }

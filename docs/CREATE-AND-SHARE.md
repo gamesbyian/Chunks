@@ -62,3 +62,21 @@ Evidence (JVM, desktop libtorrent):
 - the real engine verifies the existing payload as 100% complete.
 
 **Not yet:** SAF/file-picker input, UI, v2/hybrid metadata, seeding, independent-peer download, or any publication.
+
+## Implementation note: first Create journey (2026-10-29)
+
+A **Create** section (tab, plus a Connect-screen tile; it works with or without a server) lets the user:
+- choose one file (`OpenDocument`) or a folder (`OpenDocumentTree`), listed read-only through Android document providers in a stable name-sorted order, with no storage permission;
+- review the name, file count, size and the first paths, under a **What recipients will see** warning (names and sizes are visible, sharing is irreversible, seeding exposes the IP address);
+- optionally add trackers or mark the torrent private;
+- build it on the phone, with progress and Cancel.
+
+The result offers **Save .torrent file** (system save dialog), **Share magnet link** and **Copy magnet link**; private torrents get neither magnet action. A **Not seeding yet** banner states that nobody can download until something seeds; Chunks does not seed created torrents yet.
+
+Evidence (JVM/Robolectric):
+- fake-provider listing tests (folder, single file, cancellation);
+- Compose tests of review → build → result, the private variant, and a refused credentialed tracker;
+- renders at 100% and 200%.
+
+**Not yet:** seeding (local or remote), `.torrent` share via a content provider, the Android Share-intent entry, publication, and handset/TalkBack acceptance.
+

@@ -1,6 +1,9 @@
 package io.github.gamesbyian.chunks
 
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -49,6 +52,8 @@ class MinifiedBuildSmokeInstrumentedTest {
     }
 
     @Test fun nativeEngineMovesExactBytesAndComposeRenders() {
+        // The Connect list composes lazily; at large text the field starts below the fold.
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Seedbox hostname, ruTorrent URL or RPC address"))
         rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").assertExists()
 
         val source = File(work, "seed/Smoke").apply { mkdirs() }

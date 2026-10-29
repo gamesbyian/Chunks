@@ -250,6 +250,8 @@ class ChunksMainActivityAtlasTest {
             assertEquals(85, rpc.listFiles("ab".repeat(20)).size)
         }
         receivedMethods.clear() // Record the real installed-app calls separately.
+        // The Connect list composes lazily; at large text the field starts below the fold.
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Seedbox hostname, ruTorrent URL or RPC address"))
         rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").performTextInput(endpoint)
         // Close the still-focused Android keyboard first. Otherwise the IME can
         // asynchronously re-scroll the input back into view and recycle the

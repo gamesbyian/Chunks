@@ -91,6 +91,8 @@ class SeedhostAndroidReadOnlyInstrumentedTest {
                 target.userInfo == null && target.rawQuery == null && target.rawFragment == null)
 
         // All interaction uses the REAL installed application's Compose fields.
+        // The Connect list composes lazily; at large text the field starts below the fold.
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Seedbox hostname, ruTorrent URL or RPC address"))
         rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").performTextReplacement(url)
         rule.onNodeWithText("Username, if required").performTextReplacement(user!!)
         rule.onNodeWithText("Password").performTextReplacement(password!!)

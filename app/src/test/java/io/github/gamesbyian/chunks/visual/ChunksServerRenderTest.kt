@@ -94,6 +94,8 @@ open class ChunksServerRenderTest {
         val listening = ServerSocket(0, 16, InetAddress.getByName("127.0.0.1")).also { server = it }
         Thread { while (!listening.isClosed) try { serve(listening.accept()) } catch (_: Exception) {} }
             .apply { isDaemon = true; start() }
+        // The Connect list composes lazily; at large text the field starts below the fold.
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Seedbox hostname, ruTorrent URL or RPC address"))
         rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address")
             .performTextInput("http://127.0.0.1:${listening.localPort}/RPC2")
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Connect to rTorrent"))
