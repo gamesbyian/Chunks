@@ -74,7 +74,9 @@ fun VerifiedAddScreen(
     initialTorrent: ByteArray? = null,
     onInitialTorrentConsumed: () -> Unit = {},
     /** Authenticated endpoint + account scope; null hides the Finish in Order option. */
-    finishInOrderScope: String? = null
+    finishInOrderScope: String? = null,
+    /** Exact server account and address this Add goes to, shown in the confirmation. */
+    environmentLabel: String? = null
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -366,6 +368,7 @@ fun VerifiedAddScreen(
                     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)) {
                         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text("Confirm one server operation", fontWeight = FontWeight.Bold)
+                            environmentLabel?.let { EnvironmentBadge("Adding to: $it", server = true) }
                             Text("Source: " + if (useFile) "Selected .torrent file" else "Magnet link")
                             Text("Infohash: " + plan.expectedInfoHash)
                             Text("Destination: " + plan.destination + if (plan.useServerDefault)

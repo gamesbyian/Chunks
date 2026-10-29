@@ -49,3 +49,13 @@ The integrated [Discover experience](INTAKE-QUEUE-AND-POLICIES.md) is a **Chunks
 8. Instrumentation/domain tests demonstrate shared reusable presentation/controller flows with adapter-specific capability decisions; no separate duplicated local-versus-remote feature implementations without documented justification.
 
 **Status:** This is a binding specification and acceptance target, not a claim that all UI/lifecycle behaviors are implemented. Refer to PRODUCT, UX, ARCHITECTURE, SPEC-COVERAGE, DECISIONS and WORK-QUEUE for integration and evidence.
+
+## Implementation note: environment identity badges (2026-10-29)
+
+A shared `EnvironmentBadge` (decorative phone/server icon plus text) names the environment on:
+- the phone screen header ("On this phone");
+- the server Transfers list header ("Server · account @ host/path");
+- the server Add confirmation ("Adding to: Server · …").
+
+The server label comes from the authenticated alias scope via the same address formatting as saved profiles. Two instances of one account on one host (`/rutorrent/` vs `/rutorrent2/`) therefore read differently, and no password is ever shown. Evidence: a JVM label test and Robolectric renders. Not yet: badges on every details card, an environment switcher, or combined-mode lists.
+

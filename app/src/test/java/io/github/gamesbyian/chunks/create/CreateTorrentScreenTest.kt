@@ -79,4 +79,16 @@ class CreateTorrentScreenTest {
         rule.waitUntil(10_000) { rule.onAllNodesWithText("Invalid tracker URL").fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithText("Torrent created").assertDoesNotExist()
     }
+
+    @Test fun seedingACopyIsReviewedFirstAndWarnsWhenPeersCannotFindThePhone() {
+        screen(source("Trackerless"))
+        createAndWait()
+        rule.onNodeWithText("Seed a copy on this phone").performScrollTo().performClick()
+        rule.waitUntil(10_000) { rule.onAllNodesWithText("Not now").fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithText("Your original files are not moved or changed", substring = true).assertExists()
+        rule.onNodeWithText("Peers may not find this phone").performScrollTo().assertIsDisplayed()
+        rule.onRoot().captureRoboImage("build/chunks-visual/create-seed-review.png")
+        rule.onNodeWithText("Not now").performScrollTo().performClick()
+        rule.onNodeWithText("Seed a copy on this phone").assertExists()
+    }
 }
