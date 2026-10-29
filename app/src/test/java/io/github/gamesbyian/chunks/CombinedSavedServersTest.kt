@@ -58,6 +58,8 @@ class CombinedSavedServersTest {
         val row = RemoteTransfer("a".repeat(40), "Cached Linux", 100, 80, true, "/d")
         val good = SavedServerListing(listOf(row), observedAtEpochMillis = 10_000)
         assertFalse(savedListingIsStale(good, now = 10_010))
+        assertTrue("A backwards device clock must not leave a listing live indefinitely",
+            savedListingIsStale(good, now = 9_999))
         assertTrue(savedListingIsStale(good.copy(loading = true), now = 10_010))
         val failed = good.copy(error = "connection refused")
         assertTrue("A failed fresh retry cannot leave a cached server marked Live",
