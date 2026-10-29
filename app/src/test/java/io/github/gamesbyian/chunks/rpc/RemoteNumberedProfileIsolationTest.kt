@@ -26,8 +26,8 @@ class RemoteNumberedProfileIsolationTest {
         val authorized3: MutableList<String> = Collections.synchronizedList(mutableListOf())
         val unauthorized2: MutableList<String?> = Collections.synchronizedList(mutableListOf())
         val unauthorized3: MutableList<String?> = Collections.synchronizedList(mutableListOf())
-        var started2 = false
-        var started3 = false
+        @Volatile var started2 = false
+        @Volatile var started3 = false
         val root get() = "http://127.0.0.1:${server.address.port}/"
 
         init {
@@ -76,7 +76,7 @@ class RemoteNumberedProfileIsolationTest {
         override fun close() = server.stop(0)
     }
 
-    @Test fun sameInfohashRemainsIsolatedAcrossNumberedHttpsStyleRpcMounts() = runBlocking {
+    @Test fun sameInfohashRemainsIsolatedAcrossNumberedRpcMounts() = runBlocking {
         Fixture().use { fixture ->
             val two = RTorrentRemote(RemoteCredentials(
                 fixture.root + "rutorrent2/", "tenant2", "secret2"))
