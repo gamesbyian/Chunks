@@ -59,9 +59,9 @@ class OwnerOpticalSecondPass(unittest.TestCase):
                 # Upper terminal tip is at least 3 units above the bar.
                 # First line whose endpoint is G right-bar start at x = M.x.
                 mx=ops[0][1][0][0]
-                crossbar_y=next(args[0][1] for op,args in ops
-                    if op=='lineTo' and abs(args[0][0]-mx)<0.05
-                    and 14<args[0][1]<19)
+                crossbar_y=next(args[-1][1] for op,args in ops
+                    if op=='qCurveTo' and abs(args[-1][0]-mx)<0.05
+                    and 14<args[-1][1]<19)
                 upper_arcs=[args for op,args in ops if op=='qCurveTo'][-4:-1]
                 self.assertEqual(len(upper_arcs),3)
                 upper_tip_y=upper_arcs[1][-1][1]
