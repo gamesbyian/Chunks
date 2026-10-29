@@ -867,6 +867,12 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             require(row.size == 2) { "Unsupported tracker field layout" }
             (row[0] as? String)?.takeIf { number(row[1]) == 1L }
         }
+        // Privacy can change while tracker URLs are being read. Do not return
+        // any URLs until a fresh server-side privacy check still says public.
+        // An RPC fault here fails closed rather than exposing a passkey.
+        if (number(call("d.is_private", listOf(hash))) != 0L) {
+            return PublicTrackers.Private
+        }
         guardIdentity()
         return PublicTrackers.Urls(urls)
     }
