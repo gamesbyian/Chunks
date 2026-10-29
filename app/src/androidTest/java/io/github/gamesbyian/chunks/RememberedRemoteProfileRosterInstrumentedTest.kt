@@ -57,6 +57,37 @@ class RememberedRemoteProfileRosterInstrumentedTest {
         } finally { vault.clearAll() }
     }
 
+    @Test fun twoInstancesOfOneAccountShowDistinctAddressesAndVerifiedTimes() {
+        val vault = RememberedRemoteProfileRoster(context)
+        vault.clearAll()
+        try {
+            val first = RemoteCredentials("https://box.invalid/rutorrent/plugins/httprpc/action.php", "ian", "a")
+            val second = RemoteCredentials("https://box.invalid:8443/rutorrent2/plugins/httprpc/action.php", "ian", "b")
+            assertTrue(vault.saveVerified(first, verifiedAt = 1_000L))
+            assertTrue(vault.saveVerified(second, verifiedAt = 2_000L))
+            val loaded = RememberedRemoteProfileRoster(context).list()
+            assertEquals(loaded[0].label, loaded[1].label)
+            assertEquals("box.invalid:8443/rutorrent2/plugins/httprpc/action.php", loaded[0].address)
+            assertEquals("box.invalid/rutorrent/plugins/httprpc/action.php", loaded[1].address)
+            assertEquals(listOf(2_000L, 1_000L), loaded.map { it.lastVerifiedAt })
+        } finally { vault.clearAll() }
+    }
+
+    @Test fun recordsSavedBeforeVerifiedTimesStillLoad() {
+        val vault = RememberedRemoteProfileRoster(context)
+        vault.clearAll()
+        try {
+            val id = java.security.MessageDigest.getInstance("SHA-256")
+                .digest((alice.endpoint + "\u0000" + alice.username).toByteArray())
+                .joinToString("") { "%02x".format(it.toInt() and 255) }
+            assertTrue(vault.writeRows(org.json.JSONArray().put(org.json.JSONArray()
+                .put(id).put("Alice @ seedbox.invalid").put(alice.endpoint).put(alice.username).put(alice.password))))
+            val loaded = RememberedRemoteProfileRoster(context).list().single()
+            assertEquals(alice.password, loaded.credentials.password)
+            assertNull(loaded.lastVerifiedAt)
+        } finally { vault.clearAll() }
+    }
+
     @Test fun corruptedCiphertextFailsClosedAndNeverFallsBackToPlaintext() {
         val vault = RememberedRemoteProfileRoster(context)
         vault.clearAll()

@@ -27,13 +27,28 @@ internal class RememberedRemoteProfileRoster(context: Context) {
     companion object {
         const val MAX_PROFILES = 12
         private const val MAX_ENCODED = 196_608
+
+        internal fun addressOf(endpoint: String): String = try {
+            val uri = URI(endpoint.trim())
+            val port = if (uri.port == -1) "" else ":" + uri.port
+            (uri.host.orEmpty() + port + uri.rawPath.orEmpty()).take(160)
+        } catch (_: Exception) { "rTorrent server" }
     }
 
     internal data class Profile(
         val id: String,
         val label: String,
-        val credentials: RemoteCredentials
-    )
+        val credentials: RemoteCredentials,
+        /** Wall-clock ms of the last authenticated connection; null for older records. */
+        val lastVerifiedAt: Long? = null
+    ) {
+        /**
+         * Which exact server address this profile uses, without scheme or
+         * credentials: two profiles for one account on one host (for example
+         * /rutorrent/ and /rutorrent2/) must never look identical.
+         */
+        val address: String get() = addressOf(credentials.endpoint)
+    }
 
     private val prefs = context.applicationContext.getSharedPreferences(
         "chunks_remote_profiles_encrypted_v1", Context.MODE_PRIVATE
@@ -102,16 +117,18 @@ internal class RememberedRemoteProfileRoster(context: Context) {
             val seen = HashSet<String>()
             for (i in 0 until rows.length()) {
                 val entry = rows.getJSONArray(i)
-                require(entry.length() == 5)
+                // Five fields before last-verified times were recorded.
+                require(entry.length() == 5 || entry.length() == 6)
                 val id = entry.getString(0)
                 val label = entry.getString(1)
                 val credentials = RemoteCredentials(entry.getString(2),
                     entry.getString(3), entry.getString(4))
+                val verifiedAt = if (entry.length() == 6) entry.getLong(5).takeIf { it > 0 } else null
                 require(validId.matches(id) && valid(credentials) &&
                     identity(credentials) == id &&
                     label.length in 1..100 && label.none { it.code < 32 || it.code == 127 } &&
                     seen.add(id))
-                output += Profile(id, label, credentials)
+                output += Profile(id, label, credentials, verifiedAt)
             }
             output
         } catch (_: Exception) {
@@ -122,7 +139,10 @@ internal class RememberedRemoteProfileRoster(context: Context) {
 
     /** Never call until remote authentication has succeeded and opt-out is off. */
     @Synchronized
-    fun saveVerified(credentials: RemoteCredentials, preferredLabel: String? = null): Boolean {
+    fun saveVerified(
+        credentials: RemoteCredentials, preferredLabel: String? = null,
+        verifiedAt: Long = System.currentTimeMillis()
+    ): Boolean {
         if (!legacy.rememberingEnabled() || !valid(credentials)) return false
         val name = preferredLabel?.trim()?.takeIf {
             it.length in 1..100 && it.none { c -> c.code < 32 || c.code == 127 }
@@ -132,7 +152,7 @@ internal class RememberedRemoteProfileRoster(context: Context) {
         val existing = current.indexOfFirst { it.id == id }
         if (existing >= 0) current.removeAt(existing)
         else if (current.size >= MAX_PROFILES) return false
-        current.add(0, Profile(id, name, credentials))
+        current.add(0, Profile(id, name, credentials, verifiedAt))
         return persist(current)
     }
 
@@ -161,7 +181,15 @@ internal class RememberedRemoteProfileRoster(context: Context) {
             for (item in profiles) rows.put(JSONArray()
                 .put(item.id).put(item.label)
                 .put(item.credentials.endpoint).put(item.credentials.username)
-                .put(item.credentials.password))
+                .put(item.credentials.password).put(item.lastVerifiedAt ?: 0L))
+            writeRows(rows)
+        } catch (_: Exception) { false }
+    }
+
+    /** Encrypts and stores [rows] as-is; tests use it to write older record shapes. */
+    @androidx.annotation.VisibleForTesting
+    internal fun writeRows(rows: JSONArray): Boolean {
+        return try {
             val raw = rows.toString().toByteArray(Charsets.UTF_8)
             require(raw.size <= 100_000)
             val cipher = Cipher.getInstance("AES/GCM/NoPadding")
