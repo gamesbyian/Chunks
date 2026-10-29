@@ -1,4 +1,4 @@
-# Font laboratory full-family freeze, candidate 5 (Bold 8 14px upper-counter correction)
+# Font laboratory full-family freeze, candidate 6: owner C/c/j optical changes (weights 400–700 only)
 
 - Branch: `font/lab`
 - Scope: 62 basic reference source glyphs × 4 independently editable lighter-weight masters, plus immutable reference ExtraBold and compatible derived accents, punctuation and marks.
@@ -23,3 +23,7 @@ The third full run [#40816749998](https://github.com/gamesbyian/Chunks/actions/r
 ## Fifth strict-small-pixel gate
 
 The fourth run #40817339389 failed solely on Bold 8's 14px upper counter, proving the new strict audit works. The fifth candidate shifts only that edited upper counter by -0.4 SVG source pixels. Require **all** 14px and 24px expected CFF counter islands ≥2 pixels, full 248-master topology/ink tests, complete five-weight derived CFF family and 20-binary audit, and deterministic experimental OTF commit. Do not promote to main or Android; owner visual and device acceptance remain separate.
+
+## Sixth frozen batch: owner-requested design refinement
+
+The owner is happy with fifth-weight ExtraBold 800 and explicitly requested two adjustments **only** to 400/500/600/700: align the dot above the actual vertical shaft of `j`, and smoothly round the inner paths of `C` and `c`. The exact twelve SVG source changes and a source-level optical regression test are on the isolated lab branch at commit `9eb2e5c6c8e74906c6879d5389ed4ce3d562d73e` (after typography commit `ed91751806f2288b837004b93a3ee0503da0ca12`). No original source, approved 800, app, other glyphs, or workflows touched. Use a single freeze-triggered full-family acceptance; require all 248 masters, native tangency/source-geometry tests, 14/24px counter raster, GPOS/GSUB shaping, stacked/mark/derivative family builds and 20 binary audit. On success commit only nonshipping derived OTF assets and document exact checksums; do not automatically promote to shipping Android.
