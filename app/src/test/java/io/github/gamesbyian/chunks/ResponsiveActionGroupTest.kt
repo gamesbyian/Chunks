@@ -8,7 +8,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -60,7 +59,7 @@ class ResponsiveActionGroupTest {
         assertTrue("buttons must stack instead of competing for horizontal pixels",
             bounds[0].bottom < bounds[1].top && bounds[1].bottom < bounds[2].top)
         bounds.forEach { b ->
-            assertTrue("each target is at least 48dp high", b.height >= 48.dp)
+            assertTrue("each target is at least 48dp high", b.bottom - b.top >= 48.dp)
             assertTrue("action clipped left", b.left >= container.left)
             assertTrue("action clipped right", b.right <= container.right)
         }
