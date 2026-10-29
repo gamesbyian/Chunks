@@ -50,7 +50,9 @@ internal fun LocalBatchCollectionPanel(
     onBatchLifecycle: ((List<String>, Boolean) -> Unit)? = null,
     /** Signed-in server host for batch Copy Transfer to server; null hides it. */
     copyServerLabel: String? = null,
-    onBatchCopyToServer: ((List<String>) -> Unit)? = null
+    onBatchCopyToServer: ((List<String>) -> Unit)? = null,
+    /** Batch Move step 1 (verified destination Adds + journal); null hides it. */
+    onBatchMoveToServer: ((List<String>) -> Unit)? = null
 ) {
     val scope = rememberCoroutineScope()
     var expanded by remember { mutableStateOf(false) }
@@ -61,6 +63,7 @@ internal fun LocalBatchCollectionPanel(
     var message by remember { mutableStateOf<String?>(null) }
     var lifecycleConfirm by remember { mutableStateOf<Boolean?>(null) }
     var copyConfirm by remember { mutableStateOf(false) }
+    var moveConfirm by remember { mutableStateOf(false) }
     // A fresh list can reorder or remove items behind a card. Reset every
     // outstanding batch when the exact observed identities or stale gate change.
     val keys = remember(transfers) { transfers.map { it.infoHash }.sorted() }
@@ -69,6 +72,7 @@ internal fun LocalBatchCollectionPanel(
         confirming = false
         lifecycleConfirm = null
         copyConfirm = false
+        moveConfirm = false
         if (inventoryStale) expanded = false
     }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -209,6 +213,30 @@ internal fun LocalBatchCollectionPanel(
                         }, enabled = !saving && !inventoryStale,
                             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                             Text("Confirm copy to server")
+                        }
+                    }
+                }
+                if (onBatchMoveToServer != null && copyServerLabel != null) {
+                    OutlinedButton(onClick = { moveConfirm = !moveConfirm },
+                        enabled = !saving && !inventoryStale && selected.isNotEmpty() &&
+                            selected.size <= io.github.gamesbyian.chunks.model.BatchServerCopy.MAX_ITEMS,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                        Text("Move Transfer to server (${selected.size})…")
+                    }
+                    if (moveConfirm) {
+                        Text("Moves the torrent jobs, not their files, in two steps. First Chunks adds each " +
+                            "selected torrent to $copyServerLabel as a stopped job and confirms it there. " +
+                            "Then you review and separately confirm removing the original phone jobs. " +
+                            "Downloaded files stay on this phone and keep using its storage; the server " +
+                            "may download everything again.", style = MaterialTheme.typography.bodySmall)
+                        Button(onClick = {
+                            moveConfirm = false
+                            val ids = transfers.filter { it.infoHash in selected }.map { it.infoHash }
+                            selected = emptySet()
+                            onBatchMoveToServer(ids)
+                        }, enabled = !saving && !inventoryStale,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                            Text("Add to server, then review removal")
                         }
                     }
                 }
