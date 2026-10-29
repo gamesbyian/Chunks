@@ -183,6 +183,10 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                     handle.unsetFlags(org.libtorrent4j.TorrentFlags.UPLOAD_MODE)
                     if (startAfterMetadata) handle.resume()
                 }
+                // A resolved magnet is now restorable. Do not wait for a UI
+                // poll or graceful shutdown before asking libtorrent to
+                // persist its exact native metadata and piece state.
+                requestMetadataResumeSave(key, handle)
                 return
             }
             var persisted = false
@@ -204,6 +208,22 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                 // dispatcher or overwrite the previous verified resume file.
             } finally {
                 pendingSaves.complete(key, handle, persisted)
+            }
+        }
+    }
+
+    /**
+     * Request a non-blocking resume snapshot as soon as magnet metadata exists.
+     * The initial Add/metadata callback ordering is asynchronous; both entry
+     * points call this, and pendingSaves coalesces duplicates for this handle.
+     * Serialize registration against Remove/Close but NEVER await an alert here.
+     */
+    private fun requestMetadataResumeSave(key: String, handle: TorrentHandle) {
+        if (config.stateDirectory == null) return
+        synchronized(this) {
+            if (!started || handles[key] != handle) return
+            pendingSaves.acquire(key, handle) {
+                handle.saveResumeData(TorrentHandle.SAVE_INFO_DICT)
             }
         }
     }
@@ -369,11 +389,16 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         val handle = TorrentHandle(raw)
         handles[hash] = handle
         // Metadata may already have arrived before we registered interest.
-        if (handle.status().hasMetadata() && awaitingMetadata.remove(hash)) {
-            val autoStart = startWhenMetadataArrives.remove(hash)
-            if (!autoStart) handle.pause()
-            handle.unsetFlags(org.libtorrent4j.TorrentFlags.UPLOAD_MODE)
-            if (autoStart) handle.resume()
+        // In that case an early callback may not have found the registered
+        // handle, so persist through the same native coalesced request path.
+        if (handle.status().hasMetadata()) {
+            if (awaitingMetadata.remove(hash)) {
+                val autoStart = startWhenMetadataArrives.remove(hash)
+                if (!autoStart) handle.pause()
+                handle.unsetFlags(org.libtorrent4j.TorrentFlags.UPLOAD_MODE)
+                if (autoStart) handle.resume()
+            }
+            requestMetadataResumeSave(hash, handle)
         }
         val status = snapshot(hash, handle) ?: return LocalAddResult.Refused("Added magnet could not be read back")
         return LocalAddResult.FetchingMetadata(status)

@@ -355,6 +355,38 @@ class LocalTorrentEngineTest {
             File(destination, "Chunks public fixture/episode.bin").readBytes())
     }
 
+    @Test fun resolvedMagnetIsPersistedImmediatelyAndRestoresStopped() {
+        val fixture = fixture()
+        val seeder = engine()
+        val seed = added(seeder.addStopped(fixture.torrent, fixture.root.parentFile))
+        assertEquals(LocalCommandOutcome.VERIFIED, seeder.resume(seed.infoHash).outcome)
+        waitFor { seeder.status(seed.infoHash)?.state == LocalTransferState.SEEDING }
+
+        val state = temp.newFolder("magnet immediate resume state")
+        val destination = temp.newFolder("magnet immediate resume destination")
+        val first = persistentEngine(state)
+        val magnet = "magnet:?xt=urn:btih:${seed.infoHash}"
+        assertTrue(first.addMagnet(magnet, destination,
+            listOf(InetSocketAddress("127.0.0.1", seeder.listenPort()))) is LocalAddResult.FetchingMetadata)
+        waitFor {
+            val current = first.status(seed.infoHash)
+            current != null && current.metadataKnown && current.stopped
+        }
+        // Do not call saveResumeData(), wait for a periodic UI poll or close:
+        // the metadata callback itself must independently persist a usable
+        // resume witness before the engine is shut down.
+        waitFor(15_000L) {
+            File(state, seed.infoHash + ".resume").let { it.isFile && it.length() > 0L }
+        }
+        first.close()
+        val second = persistentEngine(state)
+        assertTrue(second.restoreProblems.isEmpty())
+        val restored = requireNotNull(second.status(seed.infoHash))
+        assertTrue("Metadata-ready magnet must restore stopped", restored.stopped)
+        assertTrue(restored.metadataKnown)
+        assertEquals(destination.absolutePath, restored.savePath)
+    }
+
     @Test fun manualStartBeforeMagnetMetadataPersistsThroughDiscoveryAndDownloadsBytes() {
         val fixture = fixture()
         val seeder = engine()
