@@ -1,5 +1,13 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-29 read-only listing of other saved servers in All environments (#567)
+
+- **Source slice:** each saved profile can be listed read-only (`RTorrentRemote(profile.credentials).listTransfers("main")`, 45 s timeout), but only on an explicit button press.
+  - Each profile keeps its own privacy gate. A locked profile, or one with no verifiable scope, fails closed and is not fetched.
+  - Failure wording is mapped and earlier listings are kept, aging to out of date after two minutes.
+  - Batch Start/Stop refuses rows from these servers.
+- **Evidence tier:** Robolectric tests with fake loaders cover: nothing fetched before the press, a success row appearing, failure text, and a locked profile not fetched. **No live multi-server network test.**
+
 ## 2026-10-29 persistent environment identity colours (#567)
 
 - **Source slice:**

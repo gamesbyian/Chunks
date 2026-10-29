@@ -399,7 +399,12 @@ private fun ChunksApp(
                             },
                             setStarted = remote::setStarted))
                 },
-                savedProfiles = savedProfiles.map { CombinedSavedProfile(it.id, it.label + " · " + it.address) },
+                savedProfiles = savedProfiles.map { profile ->
+                    CombinedSavedProfile(profile.id, profile.label + " · " + profile.address,
+                        aliasScope = profile.credentials.endpoint.trim() + "\u0000" + profile.credentials.username.trim(),
+                        // Read-only "main" list with this profile's own saved credentials (HTTPS enforced).
+                        listOnly = { RTorrentRemote(profile.credentials).listTransfers("main") })
+                },
                 onOpenPhone = { section = Section.LOCAL },
                 onOpenServer = if (server != null) ({ section = Section.TRANSFERS }) else null,
                 onBack = { section = Section.TRANSFERS }

@@ -102,7 +102,34 @@ internal class CombinedServerLifecycle(
 )
 
 /** A saved profile that is not signed in during this session. */
-internal data class CombinedSavedProfile(val id: String, val label: String)
+internal data class CombinedSavedProfile(
+    val id: String,
+    val label: String,
+    /** Authenticated endpoint + NUL + username, for its own privacy gate and aliases. */
+    val aliasScope: String? = null,
+    /** Read-only list of its "main" view with its own saved credentials; null when unavailable. */
+    val listOnly: (suspend () -> List<RemoteTransfer>)? = null
+)
+
+/** One read-only fetch of another saved server: never a command, never a sign-in switch. */
+internal data class SavedServerListing(
+    val transfers: List<RemoteTransfer> = emptyList(),
+    val observedAtEpochMillis: Long? = null,
+    val loading: Boolean = false,
+    val error: String? = null
+)
+
+internal fun listingFailure(failure: Throwable): String = when (failure) {
+    is kotlinx.coroutines.TimeoutCancellationException -> "did not answer in time"
+    is java.net.UnknownHostException -> "host name not found"
+    is java.net.ConnectException -> "connection refused"
+    is javax.net.ssl.SSLException -> "secure connection failed"
+    is java.io.IOException -> "network error"
+    else -> "unexpected reply"
+}
+
+/** A listing older than this is shown as out of date; it is never refreshed silently. */
+internal const val SAVED_LISTING_FRESH_MS = 120_000L
 
 /** A separate single-flight reader so this view never blocks or shares the phone screen's slot. */
 private object CombinedPhoneReader {
@@ -183,6 +210,9 @@ internal fun CombinedTransfersScreen(
     var batchRunning by remember { mutableStateOf(false) }
     var batchResult by remember { mutableStateOf<List<String>>(emptyList()) }
     val batchScope = rememberCoroutineScope()
+    var listings by remember { mutableStateOf<Map<EnvironmentId, SavedServerListing>>(emptyMap()) }
+    var now by remember { mutableStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) { while (true) { delay(10_000); now = System.currentTimeMillis() } }
     LaunchedEffect(Unit) {
         while (true) {
             when (val outcome = CombinedPhoneReader.pump.takeCompleted()) {
@@ -218,6 +248,14 @@ internal fun CombinedTransfersScreen(
             ?.let { TransferPrivacyVisibility.current(context, activity, it) }
     }
 
+    val savedPrivacy = remember(privacyRevision, savedProfiles) {
+        savedProfiles.associate { profile ->
+            EnvironmentId(profile.id) to (profile.aliasScope
+                ?.let { RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(it) }
+                ?.let { TransferPrivacyVisibility.current(context, activity, it) }
+                ?: TransferPrivacyVisibility.Decision(mayShow = false, needsSecureWindow = true))
+        }
+    }
     val serverId = server?.let {
         EnvironmentSnapshots.serverId(it.aliasScope.substringBefore('\u0000'), it.aliasScope.substringAfter('\u0000', ""))
     }
@@ -248,15 +286,22 @@ internal fun CombinedTransfersScreen(
                 .withAliases { hash -> aliases.get(server.aliasScope, hash) })
         }
         savedProfiles.filter { EnvironmentId(it.id) != serverId }.forEach { profile ->
-            add(EnvironmentSnapshots.server(EnvironmentId(profile.id), emptyList(), connected = false,
-                stale = false, locked = false, fullView = false, observedAtEpochMillis = null))
+            val id = EnvironmentId(profile.id)
+            val listing = listings[id]
+            val observed = listing?.observedAtEpochMillis
+            val locked = savedPrivacy[id]?.mayShow == false
+            add(EnvironmentSnapshots.server(id, listing?.transfers.orEmpty(), connected = observed != null,
+                stale = listing?.loading == true || (observed != null && now - observed > SAVED_LISTING_FRESH_MS),
+                locked = locked, fullView = true, observedAtEpochMillis = observed)
+                .withAliases { hash -> profile.aliasScope?.let { aliases.get(it, hash) } })
         }
     }
     val result = remember(sources, query) { UnifiedTransferCatalog.query(sources, query) }
 
     // Hide this window from screenshots/recents whenever a protected scope is shown.
     val secure = (phonePrivacy.needsSecureWindow && phonePrivacy.mayShow) ||
-        (serverPrivacy?.needsSecureWindow == true && serverPrivacy.mayShow)
+        (serverPrivacy?.needsSecureWindow == true && serverPrivacy.mayShow) ||
+        savedPrivacy.any { (id, d) -> d.needsSecureWindow && d.mayShow && listings[id]?.observedAtEpochMillis != null }
     DisposableEffect(activity, secure) {
         if (secure) activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         onDispose { if (secure) activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_SECURE) }
@@ -349,8 +394,46 @@ internal fun CombinedTransfersScreen(
         item {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 result.sources.forEach { source ->
-                    Text(labels[source.environment].orEmpty() + ": " + availabilityText(source) + " · " +
+                    val listing = listings[source.environment]
+                    val status = when {
+                        listing?.loading == true -> "Loading list…"
+                        listing?.error != null && listing.observedAtEpochMillis == null ->
+                            "Could not load (" + listing.error + ")"
+                        else -> availabilityText(source)
+                    }
+                    Text(labels[source.environment].orEmpty() + ": " + status + " · " +
                         source.transfers.size + " transfers", style = MaterialTheme.typography.bodySmall)
+                }
+                val loadable = savedProfiles.filter { EnvironmentId(it.id) != serverId && it.listOnly != null &&
+                    savedPrivacy[EnvironmentId(it.id)]?.mayShow == true }
+                if (loadable.isNotEmpty()) OutlinedButton(enabled = listings.values.none { it.loading },
+                    onClick = {
+                        loadable.forEach { profile ->
+                            val id = EnvironmentId(profile.id)
+                            val load = profile.listOnly ?: return@forEach
+                            listings = listings + (id to (listings[id] ?: SavedServerListing()).copy(loading = true))
+                            batchScope.launch {
+                                val next = try {
+                                    val list = withContext(Dispatchers.IO) {
+                                        kotlinx.coroutines.withTimeout(45_000) { load() }
+                                    }
+                                    SavedServerListing(list, System.currentTimeMillis())
+                                } catch (cancel: kotlinx.coroutines.CancellationException) {
+                                    if (cancel is kotlinx.coroutines.TimeoutCancellationException)
+                                        (listings[id] ?: SavedServerListing()).copy(loading = false,
+                                            error = listingFailure(cancel))
+                                    else throw cancel
+                                } catch (failure: Exception) {
+                                    // Keep a previous listing, now aging toward out of date.
+                                    (listings[id] ?: SavedServerListing()).copy(loading = false,
+                                        error = listingFailure(failure))
+                                }
+                                listings = listings + (id to next)
+                                now = System.currentTimeMillis()
+                            }
+                        }
+                    }, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text(if (listings.isEmpty()) "Load other saved servers (read-only)" else "Refresh other saved servers")
                 }
                 if (result.missingSelectedEnvironments.isNotEmpty()) Text(
                     "${result.missingSelectedEnvironments.size} selected environment(s) are no longer set up. " +
@@ -509,7 +592,7 @@ internal suspend fun runCombinedLifecycle(
                         serverLifecycle.setStarted(hash, on).toLifecycleReply(on)
                     }
                 }
-            } else refusals[environment] = "not connected in this session"
+            } else refusals[environment] = "only listed here; sign in to this server to change it"
         }
         return UnifiedBatchLifecycle.run(targets, start, sources, adapters, refusals)
     } finally {

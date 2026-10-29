@@ -70,7 +70,7 @@ class CombinedBatchLifecycleTest {
         val offline = runCombinedLifecycle(setOf(row(other, true).key), false,
             listOf(source(other, row(other, true))), gate.lifecycle, server, phoneEngine = { null })
         assertTrue(gate.calls.isEmpty())
-        assertEquals("not connected in this session", offline.items.single().reason)
+        assertEquals("only listed here; sign in to this server to change it", offline.items.single().reason)
     }
 
     @Test fun previewAndResultsNameEveryEnvironment() = runBlocking {
