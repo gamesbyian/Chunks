@@ -36,29 +36,38 @@ internal fun BatchMoveRemovalPanel(
     observeSource: suspend (String) -> TransferMove.Observation,
     save: (TransferMove.Record) -> Boolean,
     forget: (TransferMove.Record) -> Unit,
-    onFinished: (String) -> Unit
+    onFinished: (String) -> Unit,
+    /** Where the original jobs live, for the confirmation text. */
+    sourceLabel: String = "phone",
+    /** Remote mutation gate for server-side removals; false means try later. */
+    onStarted: () -> Boolean = { true },
+    onSettled: () -> Unit = {}
 ) {
     if (pending.size < 2) return   // a single move is finished from its own card
     val scope = rememberCoroutineScope()
     var confirming by remember { mutableStateOf(false) }
     var working by remember { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("${pending.size} transfers are now on $serverLabel. Their original phone jobs are still here.",
+        Text("${pending.size} transfers are now on $serverLabel. Their original $sourceLabel jobs are still here.",
             style = MaterialTheme.typography.bodyMedium)
         if (!confirming) {
             Button(onClick = { confirming = true }, enabled = !busy && !working,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                Text("Remove ${pending.size} original phone jobs…")
+                Text("Remove ${pending.size} original $sourceLabel jobs…")
             }
         } else {
-            Text("Remove these ${pending.size} original torrent jobs from the phone? Downloaded files stay on " +
-                "this phone and still use its storage; the phone stops sharing them. Each new server job is " +
-                "checked again first, and Chunks stops at the first removal it cannot confirm.",
+            Text("Remove these ${pending.size} original torrent jobs from the $sourceLabel? Downloaded files stay " +
+                "on the $sourceLabel and still use its storage; it stops sharing them. Each new job on " +
+                "$serverLabel is checked again first, and Chunks stops at the first removal it cannot confirm.",
                 style = MaterialTheme.typography.bodySmall)
             pending.take(10).forEach { Text("• " + it.name.take(80), style = MaterialTheme.typography.bodySmall) }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = {
                     confirming = false
+                    if (!onStarted()) {
+                        onFinished("Another change is still settling. Nothing was removed; try again shortly.")
+                        return@Button
+                    }
                     working = true
                     scope.launch {
                         val report = try {
@@ -66,9 +75,10 @@ internal fun BatchMoveRemovalPanel(
                         } catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
                         catch (_: Exception) { null }
                         working = false
+                        onSettled()
                         onFinished(if (report == null) "The batch removal stopped unexpectedly. Check each " +
                             "transfer's Move status; nothing is retried automatically."
-                        else "${report.count(BatchMoveRemoval.Result.REMOVED)} original phone jobs removed " +
+                        else "${report.count(BatchMoveRemoval.Result.REMOVED)} original $sourceLabel jobs removed " +
                             "(files kept)." + report.results.filter { it.second != BatchMoveRemoval.Result.REMOVED }
                                 .take(10).joinToString("") { "\n• " + it.first.name.take(80) + ": " + it.second.label })
                     }
