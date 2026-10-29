@@ -4,6 +4,7 @@ import io.github.gamesbyian.chunks.model.EnvironmentId
 import io.github.gamesbyian.chunks.model.EnvironmentViewScope
 import io.github.gamesbyian.chunks.model.UnifiedSortDirection
 import io.github.gamesbyian.chunks.model.UnifiedSortKey
+import io.github.gamesbyian.chunks.model.UnifiedTransferFilter
 import io.github.gamesbyian.chunks.model.UnifiedTransferKey
 import io.github.gamesbyian.chunks.model.UnifiedTransferObservation
 import io.github.gamesbyian.chunks.model.UnifiedTransferQuery
@@ -29,6 +30,27 @@ class CombinedViewModelTest {
             "not-an-id;SIZE;ASCENDING;0", "phone,not-an-id;SIZE;ASCENDING;0", "*;SIZE;ASCENDING")) {
             assertEquals(bad.toString(), UnifiedTransferQuery(), CombinedViewPreferences.decode(bad))
         }
+    }
+
+    @Test fun filterRoundTripsAndOldFourPartPreferencesRemainCompatible() {
+        val filtered = UnifiedTransferQuery(
+            scope = EnvironmentViewScope.Only(setOf(phone)),
+            filter = UnifiedTransferFilter.ATTENTION,
+            sortKey = UnifiedSortKey.PROGRESS,
+            direction = UnifiedSortDirection.DESCENDING,
+            groupByEnvironment = true,
+            search = "private torrent"
+        )
+        val saved = CombinedViewPreferences.encode(filtered)
+        assertFalse(saved.contains("private torrent"))
+        assertEquals(filtered.copy(search = ""), CombinedViewPreferences.decode(saved))
+        val legacy = CombinedViewPreferences.decode("phone;SIZE;ASCENDING;1")
+        assertEquals(UnifiedTransferFilter.ALL, legacy.filter)
+        assertEquals(UnifiedSortKey.SIZE, legacy.sortKey)
+        assertEquals(EnvironmentViewScope.Only(setOf(phone)), legacy.scope)
+        assertEquals(true, legacy.groupByEnvironment)
+        assertEquals(UnifiedTransferQuery(), CombinedViewPreferences.decode("*;SIZE;ASCENDING;0;UNKNOWN"))
+        assertEquals(UnifiedTransferQuery(), CombinedViewPreferences.decode("*;SIZE;ASCENDING;0;"))
     }
 
     @Test fun scopeChipsSelectOneThenToggleAndNeverProduceAnEmptySubset() {
