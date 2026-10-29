@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
@@ -20,6 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FilterChip
@@ -339,7 +341,17 @@ internal fun CombinedTransfersScreen(
         onDispose { if (secure) activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_SECURE) }
     }
 
-    LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    val listState = rememberLazyListState()
+    val showReturnToTop = ReturnToTopPolicy.remote(
+        firstVisibleIndex = listState.firstVisibleItemIndex,
+        firstVisibleOffsetPx = listState.firstVisibleItemScrollOffset,
+        viewportHeightPx = listState.layoutInfo.viewportSize.height,
+        hasTransfers = result.transfers.isNotEmpty()
+    )
+    Box(Modifier.fillMaxSize()) {
+        LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp),
+            state = listState, contentPadding = PaddingValues(bottom = 88.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item {
             Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween) {
@@ -542,6 +554,13 @@ internal fun CombinedTransfersScreen(
                     modifier = Modifier.heightIn(min = 48.dp)) { Text("Open server list") }
             }
         }
+        }
+        ReturnToTopControl(visible = showReturnToTop, onClick = {
+            batchScope.launch {
+                if (ReturnToTopPolicy.animationsEnabled(context)) listState.animateScrollToItem(0)
+                else listState.scrollToItem(0)
+            }
+        }, modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 16.dp))
     }
 }
 
