@@ -75,6 +75,19 @@ class EnvironmentCapabilitiesTest {
             RemoteProbe("0.16", null), 9).of(EnvironmentOperation.START_STOP))
     }
 
+    @Test fun optionalPeerAddressFallbackAndMandatoryIdentityGettersAreGradedIndependently() {
+        val optionalAbsent = EnvironmentCapabilities.fromProbe(serverA,
+            RemoteProbe("0.16", all - "network.bind_address" - "network.local_address"), 10)
+        assertEquals(CapabilityEvidence.ADVERTISED,
+            optionalAbsent.of(EnvironmentOperation.COPY_TO_PHONE))
+        val missingHash = EnvironmentCapabilities.fromProbe(serverB,
+            RemoteProbe("0.16", all - "d.hash"), 11)
+        assertEquals(CapabilityEvidence.MISSING,
+            missingHash.of(EnvironmentOperation.TRACKER_HEALTH))
+        assertEquals(CapabilityEvidence.MISSING,
+            missingHash.of(EnvironmentOperation.FINISH_IN_ORDER))
+    }
+
     @Test fun unknownIsNeverMissingAndUnavailableEnvironmentsRefuse() {
         val noList = EnvironmentCapabilities.fromProbe(serverA, RemoteProbe("0.9.6", null), 1)
         val unprobed = EnvironmentCapabilities.unprobed(serverA)
