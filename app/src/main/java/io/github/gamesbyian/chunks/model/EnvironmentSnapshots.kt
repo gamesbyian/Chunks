@@ -43,7 +43,8 @@ object EnvironmentSnapshots {
         }
         return EnvironmentTransferSnapshot(PHONE,
             if (frame.stale) EnvironmentAvailability.STALE else EnvironmentAvailability.LIVE,
-            inventoryComplete = confirmed && clean, observedAtEpochMillis = observedAtEpochMillis,
+            inventoryComplete = confirmed && clean && observedAtEpochMillis != null,
+            observedAtEpochMillis = observedAtEpochMillis,
             transfers = rows)
     }
 
