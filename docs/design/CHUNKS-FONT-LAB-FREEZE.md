@@ -1,4 +1,4 @@
-# Font laboratory full-family freeze, candidate 4 (strict 14px and 24px optical gate)
+# Font laboratory full-family freeze, candidate 5 (Bold 8 14px upper-counter correction)
 
 - Branch: `font/lab`
 - Scope: 62 basic reference source glyphs × 4 independently editable lighter-weight masters, plus immutable reference ExtraBold and compatible derived accents, punctuation and marks.
@@ -19,3 +19,7 @@ This frozen batch changes only the four lighter-weight SVG inner counters in A a
 ## Fourth and final small-size source acceptance
 
 The third full run [#40816749998](https://github.com/gamesbyian/Chunks/actions/runs/40816749998) passed all source, CFF, accents, kerning, marks and cross-family tests; its real raster counter gate reported zero 24px failures and the remaining 14px warnings Medium 4, Bold g/p/8. Apply only four inner-counter fixes, then demand **zero 14px and 24px counter visibility failures** in all four lighter weights. Rebuild all derived families sequentially in one freeze-triggered workflow; preserve the original source, ExtraBold, Android shipping font and app branches. This is source/raster engineering completion only, not owner artwork signoff.
+
+## Fifth strict-small-pixel gate
+
+The fourth run #40817339389 failed solely on Bold 8's 14px upper counter, proving the new strict audit works. The fifth candidate shifts only that edited upper counter by -0.4 SVG source pixels. Require **all** 14px and 24px expected CFF counter islands ≥2 pixels, full 248-master topology/ink tests, complete five-weight derived CFF family and 20-binary audit, and deterministic experimental OTF commit. Do not promote to main or Android; owner visual and device acceptance remain separate.
