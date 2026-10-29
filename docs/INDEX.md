@@ -22,6 +22,7 @@ The [documentation architecture and authoring standard](DOCUMENTATION-STANDARD.m
 - [PLEX-FILENAME-REPAIR](PLEX-FILENAME-REPAIR.md): minimal-change Plex compatibility analysis tied to safe filename, alias and library-copy workflows.
 - [TRANSFER-FILE-RECOVERY](TRANSFER-FILE-RECOVERY.md): find displaced or renamed existing data and safely restore transfer mappings.
 - [UNIFIED-ENVIRONMENTS](UNIFIED-ENVIRONMENTS.md): shared phone and rTorrent experience and scoped settings.
+- [CREATE-AND-SHARE](CREATE-AND-SHARE.md): anonymous and authenticated torrent creation, seeding and publishing, service profiles, privacy, and acceptance.
 - [CROSS-ENGINE-TRANSFER-JOBS](CROSS-ENGINE-TRANSFER-JOBS.md): job-only Copy/Move; no payload transfer.
 - [SMART-REMOTE-CONNECTION](SMART-REMOTE-CONNECTION.md): discovery, security and multi-profile onboarding.
 - [TRANSFER-ARTWORK](TRANSFER-ARTWORK.md): enrichment, provider provenance and user overrides.

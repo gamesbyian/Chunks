@@ -25,6 +25,10 @@ Implement incrementally under [EXTERNAL-FILE-ACCESS](EXTERNAL-FILE-ACCESS.md): (
 4. Implement on a focused app branch, test locally first and use the [lean CI policy](CI-POLICY.md). Font changes remain exclusively on `font/lab`, with no per-glyph PRs or Actions fan-out.
 5. Merge only if exact-head required tests and independent review/reconciliation are qualified. Record commit, environment, observable result and remaining tier gaps in [QUALITY-LEDGER](QUALITY-LEDGER.md), update [SPEC-COVERAGE](SPEC-COVERAGE.md) if scope changed, then update this queue. Do not turn successful tests into claims of handset or live-server acceptance.
 
+## Create & Share development lane (new, unclaimed scope)
+
+The required [Create & Share contract](CREATE-AND-SHARE.md) is currently a planned feature, **not a completed or tested capability**. Start with an independent pure-JVM torrent metadata builder and file/SAF input validation with round-trip parse/hash fixtures, keeping public/private metadata and passkeys isolated. Follow with local seed and independent peer download; remote seed target with actual-byte verification; then consented public tracker/DHT health; then credential-vault-backed service adapters and controlled authenticated index publishing. Each slice must update [SPEC-COVERAGE](SPEC-COVERAGE.md) and [QUALITY-LEDGER](QUALITY-LEDGER.md) with actual evidence and pass existing safety gates. Do not displace active P0 recovery/reliability tasks or spawn broad CI for documentation. Registry/service integrations are bounded by provider APIs and approved test identities.
+
 ## Execution priorities
 
 | Priority | Outcome / next executable slice | Authority and issue | Acceptance / stop rule |

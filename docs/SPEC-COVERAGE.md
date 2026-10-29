@@ -2,6 +2,10 @@
 
 > **Interpretation:** each row states a specific requirement, bounded implementation observation and what still needs acceptance. Older run/PR references are historical snapshots, not automatic proof of the latest main branch. Reconcile against live code/PRs and the [QUALITY-LEDGER](QUALITY-LEDGER.md) before changing a status. Product intent belongs in [PRODUCT](PRODUCT.md) and feature contracts; task ordering only in [WORK-QUEUE](WORK-QUEUE.md).
 
+## Create & Share publication coverage (required, unimplemented)
+
+**Canonical owner contract:** [CREATE-AND-SHARE](CREATE-AND-SHARE.md). **Status:** requested/specification only; no established implementation, unit/integration results, live-service posting, handset proof, or indexer acceptance. Required slices: (1) local/SAF file and folder selection plus valid metadata generation; (2) public no-account .torrent/magnet sharing and real independent download verification; (3) explicit seed-environment selection and remote payload proof; (4) tracker/DHT health separate from index listing; (5) optional authenticated publishing adapters with per-service status, permissions and retry recovery; (6) private/public torrent credential isolation; (7) Android accessibility, lifecycle, multi-environment and security tests. See acceptance gates in the feature contract. Do not mark as complete from a generated magnet, HTTP response or an unreviewed submission attempt.
+
 ## Transfer file recovery after external rename/move
 
 **Required; implementation and acceptance OPEN.** [TRANSFER-FILE-RECOVERY](TRANSFER-FILE-RECOVERY.md) specifies scoped search for moved/renamed backing data, exact verified mapping to immutable torrent files, non-destructive repair, capability-gated root/per-file rebind, actual hash recheck and resumed engine state. Standard rTorrent directory reset does not establish arbitrary per-file relink support. Validate local/remote adapter capabilities, v1/v2 and incomplete piece hash integrity, interrupted batches, side-by-side same-hash profiles, preserved user filenames and zero accidental overwrites. No physical/seedbox verification claimed.
