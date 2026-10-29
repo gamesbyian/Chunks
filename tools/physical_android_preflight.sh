@@ -80,7 +80,16 @@ model="$("${adb_command[@]}" shell getprop ro.product.model | tr -d '\r\n')"
     exit 1
 }
 
-"${adb_command[@]}" install -r "$apk" >/dev/null
+install_output="$("${adb_command[@]}" install -r "$apk" 2>&1)" || {
+    echo "adb install failed; installation was not verified" >&2
+    exit 1
+}
+# Older adb versions may return zero even when the package manager reports
+# Failure. Require an actual Success line rather than trusting exit status.
+if ! printf '%s\n' "$install_output" | tr -d '\r' | grep -qx 'Success'; then
+    echo "adb did not report a successful installation: refusing acceptance" >&2
+    exit 1
+fi
 installed_version="$("${adb_command[@]}" shell dumpsys package io.github.gamesbyian.chunks |
     grep -m 1 -o 'versionName=[^[:space:]]*' | cut -d = -f 2)"
 expected_version="0.1.0-dev+${built_commit:0:12}"
@@ -88,7 +97,25 @@ expected_version="0.1.0-dev+${built_commit:0:12}"
     echo "Installed Chunks version does not match the built checkout: refusing to record success" >&2
     exit 1
 }
-"${adb_command[@]}" shell am start -W -n io.github.gamesbyian.chunks/.MainActivity >/dev/null
+launch_output="$("${adb_command[@]}" shell am start -W -n io.github.gamesbyian.chunks/.MainActivity 2>&1)" || {
+    echo "Android activity launch command failed" >&2
+    exit 1
+}
+# `am start -W` can print an Error while returning zero. Check both the
+# observed status and exact Chunks activity, not merely the process exit code.
+launch_output="$(printf '%s' "$launch_output" | tr -d '\r')"
+if ! grep -qx 'Status: ok' <<< "$launch_output" ||
+   ! grep -Eq '^Activity: io\.github\.gamesbyian\.chunks/(\.MainActivity|io\.github\.gamesbyian\.chunks\.MainActivity)
+
+printf 'CHUNKS_PHYSICAL_PREFLIGHT device_model=%s android=%s api=%s\n' "$model" "$release" "$sdk"
+printf 'CHUNKS_PHYSICAL_PREFLIGHT source_checkout=%s apk_sha256=%s version=%s\n' \
+    "$built_commit" "$actual_hash" "$installed_version"
+echo "CHUNKS_PHYSICAL_PREFLIGHT installation and initial launch verified."
+echo "NOT VERIFIED: protected Seedhost login, torrent data, DHT, seeding, Doze, FGS, SAF, accessibility or sustained lifecycle."
+ <<< "$launch_output"; then
+    echo "Android did not confirm Chunks MainActivity launch: refusing acceptance" >&2
+    exit 1
+fi
 
 printf 'CHUNKS_PHYSICAL_PREFLIGHT device_model=%s android=%s api=%s\n' "$model" "$release" "$sdk"
 printf 'CHUNKS_PHYSICAL_PREFLIGHT source_checkout=%s apk_sha256=%s version=%s\n' \

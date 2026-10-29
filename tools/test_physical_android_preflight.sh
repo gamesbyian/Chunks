@@ -22,7 +22,14 @@ case "${1:-}" in
         if [[ "${MOCK_MULTIPLE:-0}" == 1 ]]; then printf 'SECOND\tdevice\n'; fi
         ;;
     get-state) printf 'device\n' ;;
-    install) : > "${MOCK_INSTALL_FILE:?}" ;;
+    install)
+        if [[ "${MOCK_INSTALL_FAILURE_TEXT:-0}" == 1 ]]; then
+            printf 'Failure [INSTALL_FAILED_INVALID_APK]\n'
+        else
+            : > "${MOCK_INSTALL_FILE:?}"
+            printf 'Performing Streamed Install\nSuccess\n'
+        fi
+        ;;
     shell)
         shift
         case "${1:-}" in
@@ -39,7 +46,15 @@ case "${1:-}" in
                 printf 'Package [io.github.gamesbyian.chunks]\nversionName=%s\n' \
                     "${MOCK_VERSION:-0.1.0-dev+0123456789ab}"
                 ;;
-            am) [[ "${2:-}" == "start" ]] ;;
+            am)
+                [[ "${2:-}" == "start" ]] || exit 1
+                case "${MOCK_LAUNCH_RESULT:-ok}" in
+                    ok) printf 'Starting: Intent { cmp=io.github.gamesbyian.chunks/.MainActivity }\nStatus: ok\nActivity: io.github.gamesbyian.chunks/.MainActivity\nComplete\n' ;;
+                    error) printf 'Error: Activity class does not exist\n' ;;
+                    other) printf 'Status: ok\nActivity: another.package/.MainActivity\nComplete\n' ;;
+                    *) exit 1 ;;
+                esac
+                ;;
             *) exit 1 ;;
         esac
         ;;
@@ -69,10 +84,35 @@ if MOCK_MULTIPLE=1 bash "$repo/tools/physical_android_preflight.sh" "$apk" >/dev
 fi
 [[ ! -e "$MOCK_INSTALL_FILE" ]]
 
+# adb may return exit code zero while reporting installation failure.
+if MOCK_INSTALL_FAILURE_TEXT=1 bash "$repo/tools/physical_android_preflight.sh" "$apk" >/dev/null 2>&1; then
+    echo "False-positive adb install was accepted" >&2
+    exit 1
+fi
+[[ ! -e "$MOCK_INSTALL_FILE" ]]
+
+# An installed package version mismatch must not become launch acceptance.
+if MOCK_VERSION=0.1.0-dev+ffffffffffff bash "$repo/tools/physical_android_preflight.sh" "$apk" >/dev/null 2>&1; then
+    echo "Mismatched installed APK version was accepted" >&2
+    exit 1
+fi
+[[ -e "$MOCK_INSTALL_FILE" ]]
+rm "$MOCK_INSTALL_FILE"
+
+# `am start -W` may report an error with a successful shell exit status.
+# An unrelated activity with Status: ok is also insufficient.
+for outcome in error other; do
+    if MOCK_LAUNCH_RESULT="$outcome" bash "$repo/tools/physical_android_preflight.sh" "$apk" >/dev/null 2>&1; then
+        echo "False-positive activity launch was accepted: $outcome" >&2
+        exit 1
+    fi
+    [[ -e "$MOCK_INSTALL_FILE" ]]
+    rm "$MOCK_INSTALL_FILE"
+done
 printf 'tampered APK' >> "$apk"
 if bash "$repo/tools/physical_android_preflight.sh" "$apk" >/dev/null 2>&1; then
     echo "Modified APK was installed" >&2
     exit 1
 fi
 [[ ! -e "$MOCK_INSTALL_FILE" ]]
-echo "CHUNKS_PHYSICAL_PREFLIGHT_TEST: verified success and fail-closed emulator, multi-device and tampered APK"
+echo "CHUNKS_PHYSICAL_PREFLIGHT_TEST: verified success and fail-closed install output, launch output, version, emulator, multi-device and tampered APK"
