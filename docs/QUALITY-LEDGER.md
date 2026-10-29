@@ -1,5 +1,12 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-29 maintenance reconciliation: Smart Seeding Add preview
+
+- **Merged:** PR [#566](https://github.com/gamesbyian/Chunks/pull/566), squash commit `730509bd5a61048004a95634219c3605221b9278`, from exact reviewed head `dbf3ec2955c821f7f2eec581b6ba252238d9ef9a`. All five head workflows passed: Android foundation [40862634196](https://github.com/gamesbyian/Chunks/actions/runs/40862634196), documentation [40862634073](https://github.com/gamesbyian/Chunks/actions/runs/40862634073), Android 10 shared Downloads [40862634187](https://github.com/gamesbyian/Chunks/actions/runs/40862634187), R8 smoke [40862634770](https://github.com/gamesbyian/Chunks/actions/runs/40862634770), and native Add instrumentation [40862634106](https://github.com/gamesbyian/Chunks/actions/runs/40862634106).
+- **Narrow implementation:** phone `.torrent` Add review now previews the resolved Smart Seeding rule/default using sanitized tracker hostnames and private metadata; phone transfer cards expose a read-only assignment summary and expandable match reasons. The preview does not apply to magnets before metadata, and this is not a user-selectable Add override or remote Add rule preview. The summary reports a stored snapshot, not an independently verified ongoing policy guarantee.
+- **Outstanding:** remote rTorrent tracker-domain matching for private torrents remains constrained by passkey-bearing `t.url` (deliberately unread), and per-transfer rTorrent upload caps are unsupported. Full MF31 explanations, manual rule assignment, unattended intake safety, physical handset, TalkBack and external provider acceptance remain open. No CI failure was identified among the five workflows inspected for this head. This reconciliation did not run additional tests or confer device acceptance.
+
+
 ## 2026-10-29 Smart Seeding on the phone and server Add Finish in Order (app lane)
 
 - **Merged (squash, exact-head CI green):**
