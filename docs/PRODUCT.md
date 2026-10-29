@@ -2,6 +2,10 @@
 
 > **Authority:** binding owner product outcomes. Detailed feature rules live in the linked canonical contracts; feature completion and evidence live in [SPEC-COVERAGE](SPEC-COVERAGE.md) and [QUALITY-LEDGER](QUALITY-LEDGER.md). This document does not set implementation priority.
 
+## Smart Seeding Rules and Seeding Groups
+
+Provide simple named seeding groups with independently configured ratio stop, seeding duration and upload speed limits, deterministic tracker-based auto-detection and plain-language summaries. Show group/automatic matching alongside environment, destination and start-on-add on **every** Add route, and offer optional verified rule application for unattended auto-add/auto-start. Support identical user semantics across phone/rTorrent instances with honest per-engine enforcement and explicit scopes. No automatic deletion, invented tracker identity or silent retroactive changes. Binding contract: [SMART-SEEDING-RULES](SMART-SEEDING-RULES.md). Planned, not shipped.
+
 ## Find files to restore transfers after external moves or renames
 
 Expose **Find files to restore transfer** for local or remote torrents whose backing content has been moved/renamed outside Chunks. Discover candidates in authorized Places, verify content against torrent hashes, and reconnect existing data to its original transfer without undoing user filenames, silently duplicating bytes or changing infohash. Keep engine-only path changes, immutable torrent metadata, physical files and Chunks display names distinct; distinguish mere candidates from verified, relinked and truly resumed transfers. Exact capability-gated workflow: [TRANSFER-FILE-RECOVERY](TRANSFER-FILE-RECOVERY.md). Planned, not shipped.
