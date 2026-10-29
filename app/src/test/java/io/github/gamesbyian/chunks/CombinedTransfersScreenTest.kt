@@ -55,14 +55,20 @@ class CombinedTransfersScreenTest {
     @Test fun showsEveryEnvironmentHonestlyWithoutStartingThePhoneEngine() {
         show()
         rule.onNodeWithText("All environments").assertExists()
-        rule.onNodeWithText("Big Archive").assertExists()
-        rule.onNodeWithText("Small Episode").assertExists()
-        rule.onNodeWithText("On this phone: Engine not running, open On this phone · 0 transfers").assertExists()
-        rule.onNodeWithText("Server · seed @ other.example/RPC2: Not connected · 0 transfers").assertExists()
-        rule.onNodeWithText(serverEnvironmentLabel(aliasScope) + ": Live · 2 transfers").assertExists()
-        rule.onNodeWithText("Started · 100% · 900 B · ↓ 0 B/s · ↑ 10 B/s").assertExists()
-        rule.onNodeWithText("Stopped · 50% · 10 B · ↓ not reported · ↑ not reported").assertExists()
-        rule.onNodeWithText("Showing 2 · some environments are missing or out of date").assertExists()
+        // Lazy rows below the fold are composed only after scrolling to them.
+        fun seen(text: String) {
+            rule.onNode(androidx.compose.ui.test.hasScrollToIndexAction())
+                .performScrollToNode(androidx.compose.ui.test.hasText(text))
+            rule.onNodeWithText(text).assertExists()
+        }
+        seen("On this phone: Engine not running, open On this phone · 0 transfers")
+        seen("Server · seed @ other.example/RPC2: Not connected · 0 transfers")
+        seen(serverEnvironmentLabel(aliasScope) + ": Live · 2 transfers")
+        seen("Showing 2 · some environments are missing or out of date")
+        seen("Big Archive")
+        seen("Started · 100% · 900 B · ↓ 0 B/s · ↑ 10 B/s")
+        seen("Small Episode")
+        seen("Stopped · 50% · 10 B · ↓ not reported · ↑ not reported")
         rule.onRoot().captureRoboImage("build/chunks-visual/combined-all.png")
         // A read-only view must not bring up the phone engine for a remote-only user.
         assertNull(LocalEngineHolder.current())

@@ -1,5 +1,31 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-29 opt-in network loss and return with real peers (#569)
+
+- **Source slice:** `netflap=true` on the manual `android-public-swarm.yml` runs `tools/android_public_swarm_netflap.sh` (`AndroidPublicSwarmNetworkFlapInstrumentedTest`).
+  - During a foreground-service download, Wi-Fi and mobile data go off for 30 s and then back on, with the test signalled at each edge.
+  - **Required:** the job is not silently stopped, verified growth of ≥2 MiB resumes on the same engine, and the service survives.
+  - **Recorded:** bytes during the outage and time to recovery. Connectivity is always restored on exit.
+- **Merged:** [#605](https://github.com/gamesbyian/Chunks/pull/605), squash `a2b1e23b063f495b184887754a677732b0ea6aba`.
+- **Observed** ([run 40957785862](https://github.com/gamesbyian/Chunks/actions/runs/40957785862), API35 emulator, from main at `a2b1e23`):
+  - verified bytes stood at 8,650,752 at loss and 8,912,896 at return;
+  - the job was **still started** (`stopped=false`) with no error;
+  - verified growth resumed **20 s** after the radios returned and reached 12,845,056 bytes, on the same engine, with the service still running.
+  - Emulator networking only. This does not cover a real Wi-Fi↔cellular handover, a VPN or captive portals.
+
+## 2026-10-29 opt-in Doze observation with real peers (#569)
+
+- **Source slice:** the manual `android-public-swarm.yml` gains `doze=true`, which runs `tools/android_public_swarm_doze.sh` (`AndroidPublicSwarmDozeInstrumentedTest`).
+  - A Debian netinst download runs under the foreground service.
+  - Once ≥4 MiB of verified bytes have arrived, the script unplugs the virtual battery, runs `dumpsys deviceidle force-idle`, confirms deep `IDLE` and signals the test.
+  - Over 90 s the test records `GROWTH` or `STALLED` in verified bytes while idle. It requires only that the service and engine stay alive and answering.
+  - The idle and battery state is restored on exit, and whether the app was on the system allowlist is logged.
+- **Merged:** [#605](https://github.com/gamesbyian/Chunks/pull/605).
+- **Observed** ([run 40957780248](https://github.com/gamesbyian/Chunks/actions/runs/40957780248), API35 emulator, from main at `a2b1e23`):
+  - Chunks was **not** on the deep-idle allowlist, and deep idle was confirmed (`deep_state=IDLE`, `isDeviceIdleMode=true`).
+  - The foreground-service download kept going: **GROWTH 186,384,384 verified bytes in 90 s** (6,815,744 → 193,200,128) from 192 peers.
+  - This is consistent with foreground-service processes being exempt from Doze network restrictions.
+  - It used forced idle on an emulator; OEM power managers, natural idle entry and the 6-hour `dataSync` budget can differ on a handset.
 ## 2026-10-29 combined filters and verified-source truth (#587, #589)
 
 - **Merged #587:** [PR #587](https://github.com/gamesbyian/Chunks/pull/587) squash `b5c7931c65eb96d7b07d046daa1ce6be4c68081c`, exact head `ef4815cf98356a63aabf868ae536b830817444ab`. [Android foundation/JVM 40947804775](https://github.com/gamesbyian/Chunks/actions/runs/40947804775), [R8 40947804786](https://github.com/gamesbyian/Chunks/actions/runs/40947804786), [API35 native Add 40947804783](https://github.com/gamesbyian/Chunks/actions/runs/40947804783) all passed. The All environments view exposes six existing read-only filter options and persists the filter with old four-field preference backward compatibility; search text remains unpersisted. Tests cover filtering visible rows, preference migration and malformed input. **Not** entire cross-engine screen parity or physical handset acceptance.
@@ -23,7 +49,7 @@ A code review of everything merged this session (`a8cb13f..2103fc7`) found these
 - **Per-frame recomputation:** combined privacy decisions and sources were rebuilt on every recomposition, because profile and server objects carry fresh lambdas. They are now keyed on data.
 - **Duplicated parsing:** environment-ID parsing from an alias scope existed in four copies; it is now one `EnvironmentSnapshots.serverIdOfAliasScope`. A dead `compareKnown` wrapper was also removed.
 
-**Evidence:** new JVM tests for scope parsing, overflow ordering, malformed subsets and the non-v1 refusal; full local suite green. Not changed: badge colours are read once per composition, so a colour change shows on the next screen entry.
+**Merged:** [#585](https://github.com/gamesbyian/Chunks/pull/585), squash `4b9b839fceeab1c4c040b1096385085547d3dd37`, exact head `f64ca5af5294e370c7a106eed570bf37dd38b095`: [Android/JVM 40937046942](https://github.com/gamesbyian/Chunks/actions/runs/40937046942), [R8 40937046588](https://github.com/gamesbyian/Chunks/actions/runs/40937046588), [API35 native instrumentation 40937046886](https://github.com/gamesbyian/Chunks/actions/runs/40937046886), [atlas 40937046865](https://github.com/gamesbyian/Chunks/actions/runs/40937046865). **Evidence:** new JVM tests for scope parsing, overflow ordering, malformed subsets and the non-v1 refusal; full local suite green. Not changed: badge colours are read once per composition, so a colour change shows on the next screen entry.
 
 ## 2026-10-29 opt-in interrupted real-swarm download (#568, #5)
 

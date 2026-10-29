@@ -27,7 +27,10 @@ class CombinedViewModelTest {
         assertEquals(EnvironmentViewScope.All, CombinedViewPreferences.decode(
             CombinedViewPreferences.encode(UnifiedTransferQuery())).scope)
         for (bad in listOf(null, "", "*;SIZE;UP;0", "*;HEIGHT;ASCENDING;0", "*;SIZE;ASCENDING;2",
-            "not-an-id;SIZE;ASCENDING;0", "phone,not-an-id;SIZE;ASCENDING;0", "*;SIZE;ASCENDING")) {
+            "not-an-id;SIZE;ASCENDING;0", "phone,not-an-id;SIZE;ASCENDING;0",
+            "phone,phone;SIZE;ASCENDING;0",
+            "${"a".repeat(64)},${"a".repeat(64)};SIZE;ASCENDING;0",
+            "*;SIZE;ASCENDING")) {
             assertEquals(bad.toString(), UnifiedTransferQuery(), CombinedViewPreferences.decode(bad))
         }
     }
