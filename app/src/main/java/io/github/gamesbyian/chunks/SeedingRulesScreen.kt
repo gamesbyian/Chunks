@@ -134,7 +134,9 @@ internal fun SeedingRulesScreen(environments: List<SeedingEnvironment>, onBack: 
                 Text("Defaults", style = MaterialTheme.typography.titleMedium)
                 environments.forEach { env ->
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        EnvironmentBadge(env.label, env.server)
+                        EnvironmentBadge(env.label, env.server, environment = env.id.removePrefix("remote:")
+                            .takeIf { TransferListSortStore.validEnvironment(it) }
+                            ?.let { io.github.gamesbyian.chunks.model.EnvironmentId(it) })
                         Text((snapshot.defaults[env.id] ?: SeedingPolicy()).describe(), style = MaterialTheme.typography.bodySmall)
                         OutlinedButton(onClick = { editingDefault = env; message = null },
                             modifier = Modifier.heightIn(min = 48.dp)) { Text("Edit default") }

@@ -597,7 +597,8 @@ internal fun LocalEngineScreen(
         if (onBack != null) OutlinedButton(onClick = onBack, modifier = Modifier.heightIn(min = 48.dp)) { Text("Back") }
         Text("On this phone (experimental)", style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
-        EnvironmentBadge(PHONE_ENVIRONMENT_LABEL, server = false)
+        EnvironmentBadge(PHONE_ENVIRONMENT_LABEL, server = false,
+            environment = io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE)
         if (onCombined != null) OutlinedButton(onClick = onCombined, modifier = Modifier.heightIn(min = 48.dp)) {
             Text("All environments…")
         }

@@ -8,6 +8,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.test.core.app.ApplicationProvider
 import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.gamesbyian.chunks.model.EnvironmentViewScope
@@ -105,5 +106,24 @@ class CombinedTransfersScreenTest {
         rule.onNodeWithText(serverEnvironmentLabel(aliasScope) + ": 1 confirmed stopped.").assertExists()
         assertEquals(listOf("1".repeat(40) to false), commands)
         rule.onRoot().captureRoboImage("build/chunks-visual/combined-batch-result.png")
+    }
+
+    @Test fun environmentColourChoicePersistsAndRestores() {
+        show()
+        rule.onNodeWithText("Environment colours…").performScrollTo().performClick()
+        val serverId = io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverId(
+            aliasScope.substringBefore('\u0000'), "ian")
+        val automatic = EnvironmentColourStore(context).load().hueOf(serverId)
+        assertNotNull(automatic)
+        assertNotEquals("phone and server differ automatically", automatic,
+            EnvironmentColourStore(context).load().hueOf(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE))
+        rule.onNodeWithContentDescription(serverEnvironmentLabel(aliasScope) + " colour Pink")
+            .performScrollTo().performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+        rule.waitForIdle()
+        assertEquals(io.github.gamesbyian.chunks.model.EnvironmentHue.PINK,
+            EnvironmentColourStore(context).load().hueOf(serverId))
+        rule.onRoot().captureRoboImage("build/chunks-visual/combined-colours.png")
+        rule.onNodeWithText("Restore automatic colour").performScrollTo().performClick()
+        assertEquals(automatic, EnvironmentColourStore(context).load().hueOf(serverId))
     }
 }

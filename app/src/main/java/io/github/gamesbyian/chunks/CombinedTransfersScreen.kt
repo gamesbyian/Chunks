@@ -69,6 +69,15 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.selected
+import io.github.gamesbyian.chunks.model.EnvironmentHue
+import io.github.gamesbyian.chunks.model.EnvironmentPalette
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -217,6 +226,10 @@ internal fun CombinedTransfersScreen(
         if (server != null && serverId != null) put(serverId, serverEnvironmentLabel(server.aliasScope))
         savedProfiles.forEach { profile -> putIfAbsent(EnvironmentId(profile.id), "Server · " + profile.label) }
     }
+    // Colours follow stable IDs: assigned once, then kept through rename/reorder/reconnect.
+    val colourStore = remember(context) { EnvironmentColourStore(context) }
+    var palette by remember(labels.keys.toList()) { mutableStateOf(colourStore.ensure(labels.keys.toList())) }
+    var choosingColours by remember { mutableStateOf(false) }
 
     val sources = buildList {
         val phoneStale = phoneFrame.stale || PhoneMutationFence.revision.blocksMutations() || batchRunning
@@ -300,7 +313,8 @@ internal fun CombinedTransfersScreen(
                     val selected = scope is EnvironmentViewScope.Only && id in scope.ids
                     FilterChip(selected = selected, onClick = {
                         update(query.copy(scope = toggleScope(scope, id)))
-                    }, label = { Text(label) }, modifier = Modifier.heightIn(min = 48.dp))
+                    }, label = { Text(label) }, leadingIcon = { EnvironmentDot(palette.hueOf(id)) },
+                        modifier = Modifier.heightIn(min = 48.dp))
                 }
             }
         }
@@ -350,22 +364,35 @@ internal fun CombinedTransfersScreen(
         if (query.groupByEnvironment) {
             result.groups.forEach { group ->
                 item(key = "header-" + group.source.environment.value) {
-                    Text(labels[group.source.environment].orEmpty() + " · " + group.transfers.size +
-                        " shown", style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(top = 8.dp).semantics { heading() })
+                    Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        EnvironmentDot(palette.hueOf(group.source.environment))
+                        Text(labels[group.source.environment].orEmpty() + " · " + group.transfers.size +
+                            " shown", style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.semantics { heading() })
+                    }
                 }
                 items(group.transfers, key = { "row-" + it.key.environment.value + it.key.infoHash }) { row ->
-                    CombinedTransferRow(row, labels[row.key.environment].orEmpty(),
+                    CombinedTransferRow(row, labels[row.key.environment].orEmpty(), palette.hueOf(row.key.environment),
                         selection = if (selecting) row.key in selected else null,
                         onSelect = { on -> selected = if (on) selected + row.key else selected - row.key })
                 }
             }
         } else {
             items(result.transfers, key = { "row-" + it.key.environment.value + it.key.infoHash }) { row ->
-                CombinedTransferRow(row, labels[row.key.environment].orEmpty(),
+                CombinedTransferRow(row, labels[row.key.environment].orEmpty(), palette.hueOf(row.key.environment),
                     selection = if (selecting) row.key in selected else null,
                     onSelect = { on -> selected = if (on) selected + row.key else selected - row.key })
             }
+        }
+        item {
+            OutlinedButton(onClick = { choosingColours = !choosingColours },
+                modifier = Modifier.padding(top = 8.dp).heightIn(min = 48.dp)) {
+                Text(if (choosingColours) "Done with colours" else "Environment colours…")
+            }
+            if (choosingColours) EnvironmentColourChooser(labels, palette,
+                onChoose = { id, hue -> colourStore.choose(id, hue); palette = colourStore.load() },
+                onRestore = { id -> colourStore.restoreAutomatic(id); palette = colourStore.load() })
         }
         item {
             Row(Modifier.padding(vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -404,12 +431,15 @@ internal fun combinedRowFacts(row: UnifiedTransferObservation): String = listOf(
 private fun CombinedTransferRow(
     row: UnifiedTransferObservation,
     environmentLabel: String,
+    hue: EnvironmentHue?,
     /** Null when not selecting. */
     selection: Boolean? = null,
     onSelect: (Boolean) -> Unit = {}
 ) {
-    val server = row.key.environment != EnvironmentSnapshots.PHONE
-    val accent = if (server) ChunksColors.Blue else ChunksColors.Cyan
+    val accent = hue?.let { Color(it.argb) } ?: ChunksColors.Outline
+    // The hue is used for the label only where it meets AA on this surface.
+    val labelColour = if (hue != null && EnvironmentPalette.labelIsReadable(hue, ChunksColors.Surface.toArgbLong()))
+        accent else ChunksColors.Text
     Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).clip(RoundedCornerShape(12.dp))
         .background(ChunksColors.Surface)) {
         // Decorative rail; the environment name below carries the identity.
@@ -419,7 +449,7 @@ private fun CombinedTransferRow(
                 contentDescription = "Select ${row.displayName} on $environmentLabel"
             })
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(environmentLabel, style = MaterialTheme.typography.labelMedium, color = accent,
+            Text(environmentLabel, style = MaterialTheme.typography.labelMedium, color = labelColour,
                 fontWeight = FontWeight.Bold)
             Text(row.displayName, style = MaterialTheme.typography.titleSmall)
             if (row.displayName != row.originalName) Text("Torrent name: " + row.originalName,
@@ -538,4 +568,54 @@ internal fun combinedBatchPreview(start: Boolean, selected: Set<UnifiedTransferK
     return (if (start) "Start" else "Stop") + " ${selected.size} selected, one at a time, each only in its own " +
         "environment: $perEnvironment. Transfers already in that state are skipped. The first uncertain " +
         "result stops the batch and nothing is retried."
+}
+
+private fun Color.toArgbLong(): Long =
+    (((alpha * 255).toInt() shl 24) or ((red * 255).toInt() shl 16) or
+        ((green * 255).toInt() shl 8) or (blue * 255).toInt()).toLong() and 0xFFFFFFFFL
+
+/** Decorative identity dot; the environment's name always accompanies it. */
+@Composable
+internal fun EnvironmentDot(hue: EnvironmentHue?, size: Int = 12) {
+    Box(Modifier.size(size.dp).clip(CircleShape)
+        .background(hue?.let { Color(it.argb) } ?: ChunksColors.Outline))
+}
+
+/**
+ * Per-environment palette choice. Repeating a colour is allowed; Restore
+ * automatic returns to the colour first assigned to that environment.
+ */
+@Composable
+private fun EnvironmentColourChooser(
+    labels: Map<EnvironmentId, String>,
+    palette: EnvironmentPalette.State,
+    onChoose: (EnvironmentId, EnvironmentHue) -> Unit,
+    onRestore: (EnvironmentId) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        labels.forEach { (id, label) ->
+            val current = palette.hueOf(id)
+            Text(label + " · " + (current?.label ?: "no colour") +
+                if (id in palette.chosen) " (chosen)" else " (automatic)",
+                style = MaterialTheme.typography.titleSmall)
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                EnvironmentHue.entries.forEach { hue ->
+                    val isCurrent = hue == current
+                    Box(Modifier.size(48.dp).clip(CircleShape)
+                        .clickable(role = Role.RadioButton) { onChoose(id, hue) }
+                        .semantics {
+                            contentDescription = "$label colour ${hue.label}"
+                            selected = isCurrent
+                        }, contentAlignment = Alignment.Center) {
+                        Box(Modifier.size(if (isCurrent) 36.dp else 28.dp).clip(CircleShape)
+                            .background(Color(hue.argb))
+                            .then(if (isCurrent) Modifier.border(3.dp, ChunksColors.Text, CircleShape) else Modifier))
+                    }
+                }
+            }
+            if (id in palette.chosen) OutlinedButton(onClick = { onRestore(id) },
+                modifier = Modifier.heightIn(min = 48.dp)) { Text("Restore automatic colour") }
+        }
+    }
 }

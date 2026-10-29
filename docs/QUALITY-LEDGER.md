@@ -1,5 +1,23 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-29 persistent environment identity colours (#567)
+
+- **Source slice:**
+  - pure `EnvironmentPalette`: automatic least-used assignment keyed by stable ID, user override, and a WCAG contrast check;
+  - `EnvironmentColourStore`;
+  - the combined-view chooser;
+  - coloured rails, labels, dots and headers;
+  - `EnvironmentBadge` reading the saved hue.
+- **Evidence tier:** local JVM + Robolectric suite green. Tests cover:
+  - no repeats among nine environments and no black or white;
+  - stability across reorder and re-enable;
+  - a user repeat allowed, with Restore returning the automatic hue;
+  - contrast;
+  - a persisted choice through the Compose chooser.
+
+  In Robolectric, swatch selection is exercised by its semantic click action; a touch tap after scrolling inside the tall lazy item did not register in Robolectric, so **real touch selection on a device is unverified**.
+- **Not shown:** emulator/handset, colour-vision review, TalkBack.
+
 ## 2026-10-29 cross-environment Start/Stop from the All environments view (#567)
 
 - **Source slice:** row selection, per-environment preview, `runCombinedLifecycle` leasing each live environment's own gate (server `RemoteMutationReadbackGate` via the same begin/settle/refresh as its list; phone via the shared `PhoneMutationFence` now also used by the phone screen), `UnifiedBatchLifecycle` with caller refusals, and per-environment result wording that never reports unconfirmed work as done. The combined phone poll only accepts reads sampled after a settled command.

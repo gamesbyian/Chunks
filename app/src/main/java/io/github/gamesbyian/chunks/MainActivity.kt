@@ -235,6 +235,17 @@ private fun ChunksApp(
     val aliasSessions = remember { mutableMapOf<String, TransferAliasEditSession>() }
     var aliasScope by remember { mutableStateOf("") }
     var aliasRevision by remember { mutableStateOf(0) }
+    // Give every known environment its lasting identity colour before any screen shows it.
+    remember(savedProfiles, aliasScope) {
+        runCatching {
+            EnvironmentColourStore(context).ensure(buildList {
+                add(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE)
+                if (aliasScope.isNotBlank()) add(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverId(
+                    aliasScope.substringBefore('\u0000'), aliasScope.substringAfter('\u0000', "")))
+                savedProfiles.forEach { add(io.github.gamesbyian.chunks.model.EnvironmentId(it.id)) }
+            }.distinct())
+        }
+    }
     val sortStore = remember(context) { TransferListSortStore(context) }
     var orderDirection by remember { mutableStateOf(order.naturalDirection) }
     // Each authenticated server profile keeps its own list order; a profile
@@ -1248,7 +1259,11 @@ private fun TransfersScreen(
                         if (stale) " · last known snapshot" else " · refreshed on demand",
                     Lime
                 )
-                EnvironmentBadge(serverEnvironmentLabel(aliasScope), server = true)
+                EnvironmentBadge(serverEnvironmentLabel(aliasScope), server = true,
+                    environment = aliasScope.takeIf { it.isNotBlank() }?.let {
+                        io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverId(
+                            it.substringBefore('\u0000'), it.substringAfter('\u0000', ""))
+                    })
                 OutlinedButton(onClick = onCombined, modifier = Modifier.heightIn(min = 48.dp)) {
                     Text("All environments…")
                 }

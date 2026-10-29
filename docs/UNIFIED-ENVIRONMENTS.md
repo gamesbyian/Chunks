@@ -105,10 +105,19 @@ The server label comes from the authenticated alias scope via the same address f
 - **Refusals:** a stale, offline, locked, busy or signed-out environment refuses its items, never redirecting them.
 - **Uncertain results:** the first uncertain result halts the batch, with no retry.
 
+**Environment colours (PARTIAL).** Each stable environment ID receives an automatic hue from Chunks' accent palette, never black or white.
+- **Automatic assignment:** a hue is assigned once and persisted, avoiding hues already used until all nine are taken. Error red and warning yellow come last.
+- **User choice:** *Environment colours…* in the combined view lets the user choose any hue, including a repeat, and *Restore automatic colour* returns to the assigned one.
+- **Where colours appear:**
+  - combined row rails and environment labels; label text uses the hue only when it reaches WCAG AA on the card surface, otherwise it uses normal text;
+  - scope-chip dots;
+  - group headers;
+  - the phone, server and Seeding-rule environment badges.
+- **Still uncoloured:** the Add-review badge and notifications.
+
 Not yet built:
 - other actions from this view;
 - simultaneous connection to several servers;
-- persistent palette colours;
 - an environment settings screen.
 
 Evidence: [QUALITY-LEDGER](QUALITY-LEDGER.md).
