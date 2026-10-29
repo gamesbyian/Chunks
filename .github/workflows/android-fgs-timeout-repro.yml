@@ -1,0 +1,57 @@
+name: Android dataSync timeout repro (opt-in)
+
+# Isolated: shortens Android's dataSync FGS limit on a disposable API35
+# emulator (official test controls) to check onTimeout handling. Path-scoped
+# to the service timeout code only; not part of the ordinary native suite.
+on:
+  pull_request:
+    paths:
+      - "app/src/main/java/io/github/gamesbyian/chunks/LocalEngineService.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/LocalServiceTimeoutNotice.kt"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalEngineServiceTimeoutInstrumentedTest.kt"
+      - "tools/fgs_timeout_repro.sh"
+      - ".github/workflows/android-fgs-timeout-repro.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chunks-fgs-timeout-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  api35-fgs-timeout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+      - name: Install pinned Android compile toolchain
+        run: |
+          printf 'y\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
+          if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          fi
+      - name: Compile app and instrumented tests
+        run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
+      - name: Enable Android emulator KVM
+        run: |
+          test -c /dev/kvm
+          sudo chmod 0666 /dev/kvm
+      - name: Shortened dataSync limit pauses honestly
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          emulator-boot-timeout: 600
+          disable-animations: true
+          script: bash tools/fgs_timeout_repro.sh

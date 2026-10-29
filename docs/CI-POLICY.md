@@ -16,6 +16,14 @@ Do not use Secrets in fork/PR builds. Never connect the CI runner to a private r
 
 **API35 instrumentation trigger (2026-10-28):** `native-add-instrumentation.yml` now also runs for `app/src/main/**` changes. Two production-only PRs the same day (#460 added a read-only RPC call; #463 renamed the Connect field) left the instrumented suite red on main because it only triggered on `app/src/androidTest/**`. The ~8-minute emulator run on app PRs is cheaper than diagnosing red main afterwards. Docs, font and design changes still do not trigger it.
 
+## Opt-in dataSync timeout repro (#569, 2026-10-29)
+
+`android-fgs-timeout-repro.yml` runs one class, `LocalEngineServiceTimeoutInstrumentedTest`, through `tools/fgs_timeout_repro.sh` on a disposable API35 emulator.
+- **Setup:** it applies Android's documented test controls (`am compat enable FGS_INTRODUCE_TIME_LIMITS`, `device_config … data_sync_fgs_timeout_duration 15000`) and restores both on exit.
+- **Triggers:** manual dispatch, plus PRs that touch the service timeout files, the test, the script or the workflow. It is not an app-wide fan-out.
+- **Skipping:** the ordinary native suite skips the class through an instrumentation-argument assumption. The script fails if the test was skipped or did not report one pass.
+- **Scope of evidence:** a pass proves shortened-limit handling on that emulator only. It does not cover the six-hour budget, Doze, OEM killers or handsets.
+
 ## Targeted escalation (manual first)
 
 - XML-RPC parser and transport changes: deterministic fixture and fuzz/size/error cases, plus a bounded integration matrix when justified.
