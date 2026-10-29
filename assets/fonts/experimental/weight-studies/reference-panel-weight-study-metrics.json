@@ -2,35 +2,35 @@
   "status": "NONSHIPPING interim weight study: automated offsets; manual masters still required",
   "source_manifest_sha256": "34413dfabd6d1f846b2dd833e21fa2b57e9b03b06330e4e9a479d082150fca83",
   "profile_sha256": "7da88e239d51208e052c8a359ddf04c724b3aa70e6cd7ad686d64b7f27425e46",
-  "overrides_sha256": "551f8aca3f6494eed19b45d4b893462f48610ba7aad1af1e52dd10e67675b9bb",
-  "overrides_used": 52,
+  "overrides_sha256": "60ce1c9fbb827532263049112080dde354293e189f473e74164b1bee381ddde4",
+  "overrides_used": 116,
   "source_svg_sha256": "f475ea924418981a766978dde97ebb97ba7b0866110e1b72b17ac026fbad7aba",
   "accepted_extra_bold_remains_separate": "assets/fonts/experimental/ChunksReferencePanel-ExtraBold-Optical.otf",
   "weights": {
     "Regular": {
       "weight": 400,
       "file": "ChunksReferencePanel-Regular-Study.otf",
-      "sha256": "8e01d4338755afae384677aebb52ba5d673148b4f2fdebdf12dc3cd75d8e0fad",
+      "sha256": "7d06cabb902a76e3dbae609fe388b645f6b4e0d900bd587ec241cc5659de19c8",
       "glyphs_changed": 62,
       "codepoints": 856,
-      "kerning_direct_pairs": 13850,
+      "kerning_direct_pairs": 13217,
       "kerning_probe": {
         "measured_glyphs": 151,
         "examined_pairs": 22801,
-        "adjusted_pairs": 14532,
-        "median_absolute_adjustment": 60.0,
-        "residual_90pct": 40.93
+        "adjusted_pairs": 13899,
+        "median_absolute_adjustment": 51.0,
+        "residual_90pct": 34.85
       },
       "min_sampled_gap_px": {
         "14": 0.828,
-        "24": 1.797,
-        "48": 5.047
+        "24": 1.922,
+        "48": 4.906
       },
       "tracking_em": {
         "display": -0.022,
         "heading": -0.015,
-        "body": 0.0068,
-        "small_labels": 0.0228
+        "body": 0.0072,
+        "small_labels": 0.023
       },
       "leading_em": {
         "display_latin": 1.14,
@@ -43,28 +43,28 @@
       "tracking_details": {
         "ink_gap_measurements": {
           "display": {
-            "observed_20pct_ink_gap_em": 0.1152,
+            "observed_20pct_ink_gap_em": 0.1151,
             "target_ink_gap_em": 0.078,
             "sampled_pairs": 21,
             "lower_limit_em": -0.022,
             "upper_limit_em": 0.01
           },
           "heading": {
-            "observed_20pct_ink_gap_em": 0.1183,
+            "observed_20pct_ink_gap_em": 0.1152,
             "target_ink_gap_em": 0.1,
             "sampled_pairs": 44,
             "lower_limit_em": -0.015,
             "upper_limit_em": 0.014
           },
           "body": {
-            "observed_20pct_ink_gap_em": 0.1152,
+            "observed_20pct_ink_gap_em": 0.1148,
             "target_ink_gap_em": 0.122,
             "sampled_pairs": 45,
             "lower_limit_em": -0.004,
             "upper_limit_em": 0.018
           },
           "small_labels": {
-            "observed_20pct_ink_gap_em": 0.1152,
+            "observed_20pct_ink_gap_em": 0.115,
             "target_ink_gap_em": 0.138,
             "sampled_pairs": 28,
             "lower_limit_em": 0,
@@ -91,11 +91,11 @@
         "B": {
           "components": 1,
           "counters": 2,
-          "ink_area_ratio": 0.7465,
-          "stroke_offset_px": 1.6,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.8668,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "8e464640ace2849c60a7e70ded6f3ca68520db7807f771d92ee7166abed51e02",
           "topology_adjustments": []
         },
         "C": {
@@ -111,11 +111,11 @@
         "D": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.7691,
-          "stroke_offset_px": 1.6,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.823,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "99b0b20983411d353e2f1cd1e085a038489e79b57d861cba3acbce168c652112",
           "topology_adjustments": []
         },
         "E": {
@@ -231,21 +231,21 @@
         "P": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.7457,
-          "stroke_offset_px": 1.6,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.8676,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "7aa8a80d29a212cae0cecac5c7992d0492bbee95483ff39e6e18ce9bfc4ba133",
           "topology_adjustments": []
         },
         "Q": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.7822,
-          "stroke_offset_px": 1.6,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.7817,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "1934249aeae78d5fd265b0e7ae7baed472b6f87ad94cd2b3d6fc58a11b8a0a64",
           "topology_adjustments": []
         },
         "R": {
@@ -281,21 +281,21 @@
         "U": {
           "components": 1,
           "counters": 0,
-          "ink_area_ratio": 0.7439,
-          "stroke_offset_px": 1.6,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.793,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "1e2113051cda5728cd4a296e924c8ca9cf6c404b84cd662cf7da0528a932c12f",
           "topology_adjustments": []
         },
         "V": {
           "components": 1,
           "counters": 0,
-          "ink_area_ratio": 0.756,
-          "stroke_offset_px": 1.6,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.7528,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "accdccbc17970645e51a4735d70404006b7920eb53bd79edbc212392b818136c",
           "topology_adjustments": []
         },
         "W": {
@@ -341,21 +341,21 @@
         "a": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.7245,
-          "stroke_offset_px": 1.6,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.7839,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "a21fbaf07d70cca95e02c795821a7741320126f401ae9c862724157fefe25fe0",
           "topology_adjustments": []
         },
         "b": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.7266,
-          "stroke_offset_px": 1.6,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.8492,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "f8df075bb4b787bb13919e8559156b3f896bbc6dcdb1111662d8acb677750305",
           "topology_adjustments": []
         },
         "c": {
@@ -371,11 +371,11 @@
         "d": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.7378,
-          "stroke_offset_px": 1.6,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.8897,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "f7b22c1920575aa89f5ae30fdd76d52ddf834aa81530d1fe482fb5a7f5e29732",
           "topology_adjustments": []
         },
         "e": {
@@ -491,21 +491,21 @@
         "p": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.7357,
-          "stroke_offset_px": 1.6,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.8401,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "37c99745a9eab40fc965e655bd9fef4b3b9ad8bfb708bde1bb2b2a1187bf3b4a",
           "topology_adjustments": []
         },
         "q": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.738,
-          "stroke_offset_px": 1.6,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.8355,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "137ea3564f910041239fc02d880ae4d5dcd44814fe68e9bf29402d8818bacf7f",
           "topology_adjustments": []
         },
         "r": {
@@ -541,21 +541,21 @@
         "u": {
           "components": 1,
           "counters": 0,
-          "ink_area_ratio": 0.6998,
-          "stroke_offset_px": 1.6,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.747,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "c9e5fdd8c4089c1fc516b8912b6a126fe9950da2a1acd4fb16eaf02fadedd639",
           "topology_adjustments": []
         },
         "v": {
           "components": 1,
           "counters": 0,
-          "ink_area_ratio": 0.7072,
-          "stroke_offset_px": 1.6,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.712,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "8c8754fc276e3ddd49cdee9037176a473579678a1d449c86c91e0a7c1ec7627c",
           "topology_adjustments": []
         },
         "w": {
@@ -661,11 +661,11 @@
         "6": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.7172,
-          "stroke_offset_px": 1.44,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.8641,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "02b38557ddbb713eef8cb11127ef8acfa2ca0b8cf33d143f57a446fd0006a4fe",
           "topology_adjustments": []
         },
         "7": {
@@ -681,21 +681,21 @@
         "8": {
           "components": 1,
           "counters": 2,
-          "ink_area_ratio": 0.749,
-          "stroke_offset_px": 1.36,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.8064,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "69543443613db7f460d511f0e561e6d9827adc2a5bb9cb3f011bde4c7f6c91fe",
           "topology_adjustments": []
         },
         "9": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.7148,
-          "stroke_offset_px": 1.44,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.8867,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "7b8024108f6245903d18c1ee8aeb353a59871e53618b4248037ccaa13d5787ce",
           "topology_adjustments": []
         }
       }
@@ -703,25 +703,25 @@
     "Medium": {
       "weight": 500,
       "file": "ChunksReferencePanel-Medium-Study.otf",
-      "sha256": "1f817fb270772ec162586e49763dafd21ae19352ee7db76fc6197b4d7995c7a1",
+      "sha256": "a2b1643f7aa1f748b9f344fbd4e620fcb36daea03d2986ccfcb423ac273a0d57",
       "glyphs_changed": 62,
       "codepoints": 856,
-      "kerning_direct_pairs": 13998,
+      "kerning_direct_pairs": 13270,
       "kerning_probe": {
         "measured_glyphs": 151,
         "examined_pairs": 22801,
-        "adjusted_pairs": 14480,
-        "median_absolute_adjustment": 57.0,
-        "residual_90pct": 32.93
+        "adjusted_pairs": 13752,
+        "median_absolute_adjustment": 50.0,
+        "residual_90pct": 28.44
       },
       "min_sampled_gap_px": {
         "14": 0.594,
-        "24": 1.875,
+        "24": 1.891,
         "48": 4.328
       },
       "tracking_em": {
         "display": -0.022,
-        "heading": -0.0079,
+        "heading": -0.0076,
         "body": 0.0145,
         "small_labels": 0.024
       },
@@ -736,14 +736,14 @@
       "tracking_details": {
         "ink_gap_measurements": {
           "display": {
-            "observed_20pct_ink_gap_em": 0.1075,
+            "observed_20pct_ink_gap_em": 0.1073,
             "target_ink_gap_em": 0.078,
             "sampled_pairs": 21,
             "lower_limit_em": -0.022,
             "upper_limit_em": 0.01
           },
           "heading": {
-            "observed_20pct_ink_gap_em": 0.1079,
+            "observed_20pct_ink_gap_em": 0.1076,
             "target_ink_gap_em": 0.1,
             "sampled_pairs": 44,
             "lower_limit_em": -0.015,
@@ -784,11 +784,11 @@
         "B": {
           "components": 1,
           "counters": 2,
-          "ink_area_ratio": 0.8026,
-          "stroke_offset_px": 1.25,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.9183,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "dce2f84cec58836e3da6f1ca307a37260a1f4b87e4790698ce0411104e3b003a",
           "topology_adjustments": []
         },
         "C": {
@@ -804,11 +804,11 @@
         "D": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.8183,
-          "stroke_offset_px": 1.25,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.8787,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "2ae8a6fb9f69143a3b129d3e52d6f9b9a16b7e709b3ac29c448f089a1190085f",
           "topology_adjustments": []
         },
         "E": {
@@ -924,21 +924,21 @@
         "P": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.8016,
-          "stroke_offset_px": 1.25,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.9119,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "e8ad42d0cbe028051cccab936e8e24023c9c4789cd0f5c23da333a1e85b1b968",
           "topology_adjustments": []
         },
         "Q": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.8291,
-          "stroke_offset_px": 1.25,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.8483,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "38e3d676681fa1b373ee9e976c6fa19923278670e7574ffc8307d36d6086ca68",
           "topology_adjustments": []
         },
         "R": {
@@ -974,21 +974,21 @@
         "U": {
           "components": 1,
           "counters": 0,
-          "ink_area_ratio": 0.7986,
-          "stroke_offset_px": 1.25,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.8858,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "9f467c636fbf2c8572198149faf829d3db46fd088d6476cbedf8429c7dac3399",
           "topology_adjustments": []
         },
         "V": {
           "components": 1,
           "counters": 0,
-          "ink_area_ratio": 0.8073,
-          "stroke_offset_px": 1.25,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.8055,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "1d341437821d8bf351b0b37cf8f43015c2bc175077ecf50a159bfe69f093a0b1",
           "topology_adjustments": []
         },
         "W": {
@@ -1034,21 +1034,21 @@
         "a": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.7837,
-          "stroke_offset_px": 1.25,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.8478,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "bdc3d66820e8f2ea446b55fd6b3deb0accc51ba464e307e0f7bba1c0ff846f07",
           "topology_adjustments": []
         },
         "b": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.7851,
-          "stroke_offset_px": 1.25,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.8987,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "aa5d51b4881218db038387e7d7f2a8aa5dcc52f59bf5d58855da0aa70e6858b8",
           "topology_adjustments": []
         },
         "c": {
@@ -1064,11 +1064,11 @@
         "d": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.7939,
-          "stroke_offset_px": 1.25,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.9351,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "972d8e8e5776767ff4681c9ee1d8dfc01cf85891b7eeac221f3fe7158abef0e6",
           "topology_adjustments": []
         },
         "e": {
@@ -1184,21 +1184,21 @@
         "p": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.7926,
-          "stroke_offset_px": 1.25,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.8875,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "be0a5c93591f917ad664d1c62d9372a221ab685fb32e6dabed405ea45b7aaee6",
           "topology_adjustments": []
         },
         "q": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.7936,
-          "stroke_offset_px": 1.25,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.8867,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "fbc4fb46a589f25fa7fa1ef1cfe7aa357ce5befdc651406738a4efba171c676f",
           "topology_adjustments": []
         },
         "r": {
@@ -1234,21 +1234,21 @@
         "u": {
           "components": 1,
           "counters": 0,
-          "ink_area_ratio": 0.7644,
-          "stroke_offset_px": 1.25,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.8343,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "41c7986f7d81764b70cfa16af10149ce00d78ebd4d4433754de05378593ef9af",
           "topology_adjustments": []
         },
         "v": {
           "components": 1,
           "counters": 0,
-          "ink_area_ratio": 0.7669,
-          "stroke_offset_px": 1.25,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.7619,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "57ffdab9b6d30396b4361f3001f6ec699b0269c8d9e1d8d2f9d46032194832ee",
           "topology_adjustments": []
         },
         "w": {
@@ -1354,11 +1354,11 @@
         "6": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.7808,
-          "stroke_offset_px": 1.125,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.9106,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "3f08f0865617717fba2ccd92ebab0de67c86dc624b4955367241a86e09e55d14",
           "topology_adjustments": []
         },
         "7": {
@@ -1374,21 +1374,21 @@
         "8": {
           "components": 1,
           "counters": 2,
-          "ink_area_ratio": 0.8046,
-          "stroke_offset_px": 1.062,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.8709,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "c69069ff0cf6b06cc230a71b75dcfc6f5f319295c213167dc5d270211e40afff",
           "topology_adjustments": []
         },
         "9": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.778,
-          "stroke_offset_px": 1.125,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.9323,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "b97c380caf6d6f462bd3a9b9c44b7d80ab2097149953441a71109b136e9188ee",
           "topology_adjustments": []
         }
       }
@@ -1396,25 +1396,25 @@
     "Semibold": {
       "weight": 600,
       "file": "ChunksReferencePanel-Semibold-Study.otf",
-      "sha256": "f4b681f439034fec2bc14299cab4d9963a9c9f932410bca812db059a57bbc0f4",
+      "sha256": "5c227e777b4604e1e6dae41c7d10a6ccf72bba49ccdced5088372a63556a6a83",
       "glyphs_changed": 62,
       "codepoints": 856,
-      "kerning_direct_pairs": 13670,
+      "kerning_direct_pairs": 13254,
       "kerning_probe": {
         "measured_glyphs": 151,
         "examined_pairs": 22801,
-        "adjusted_pairs": 14015,
-        "median_absolute_adjustment": 56.0,
-        "residual_90pct": 29.26
+        "adjusted_pairs": 13599,
+        "median_absolute_adjustment": 51.0,
+        "residual_90pct": 26.43
       },
       "min_sampled_gap_px": {
-        "14": 0.609,
-        "24": 1.797,
+        "14": 0.516,
+        "24": 1.828,
         "48": 3.993
       },
       "tracking_em": {
         "display": -0.022,
-        "heading": -0.0002,
+        "heading": 0.0001,
         "body": 0.018,
         "small_labels": 0.024
       },
@@ -1429,28 +1429,28 @@
       "tracking_details": {
         "ink_gap_measurements": {
           "display": {
-            "observed_20pct_ink_gap_em": 0.1,
+            "observed_20pct_ink_gap_em": 0.1001,
             "target_ink_gap_em": 0.078,
             "sampled_pairs": 21,
             "lower_limit_em": -0.022,
             "upper_limit_em": 0.01
           },
           "heading": {
-            "observed_20pct_ink_gap_em": 0.1002,
+            "observed_20pct_ink_gap_em": 0.0999,
             "target_ink_gap_em": 0.1,
             "sampled_pairs": 44,
             "lower_limit_em": -0.015,
             "upper_limit_em": 0.014
           },
           "body": {
-            "observed_20pct_ink_gap_em": 0.1001,
+            "observed_20pct_ink_gap_em": 0.0998,
             "target_ink_gap_em": 0.122,
             "sampled_pairs": 49,
             "lower_limit_em": -0.004,
             "upper_limit_em": 0.018
           },
           "small_labels": {
-            "observed_20pct_ink_gap_em": 0.1,
+            "observed_20pct_ink_gap_em": 0.1001,
             "target_ink_gap_em": 0.138,
             "sampled_pairs": 28,
             "lower_limit_em": 0,
@@ -1477,11 +1477,11 @@
         "B": {
           "components": 1,
           "counters": 2,
-          "ink_area_ratio": 0.8643,
-          "stroke_offset_px": 0.85,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.967,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "062319c7dd6d1176b4a820853cd1ad7351a3bb32828d3292e3ee00288a140ad2",
           "topology_adjustments": []
         },
         "C": {
@@ -1497,11 +1497,11 @@
         "D": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.8744,
-          "stroke_offset_px": 0.85,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.9274,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "5b788484eb976af4bd0db8afcbb1d7d8e603dddaebd59efb769241a59f382672",
           "topology_adjustments": []
         },
         "E": {
@@ -1617,21 +1617,21 @@
         "P": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.8652,
-          "stroke_offset_px": 0.85,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.9536,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "f0bcc5cad6d0948f8a01cbf65655d783ad4247658b12b2c03c8137d08c12b012",
           "topology_adjustments": []
         },
         "Q": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.8829,
-          "stroke_offset_px": 0.85,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.9086,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "f8e8b0a2da3984b75b04cfa511ab61c743ae8d04d8d0fafa67d4cdd898e00f5b",
           "topology_adjustments": []
         },
         "R": {
@@ -1667,21 +1667,21 @@
         "U": {
           "components": 1,
           "counters": 0,
-          "ink_area_ratio": 0.8594,
-          "stroke_offset_px": 0.85,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.9415,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "2023494bc2667769c36efe301174de895fdf6087c69596ce3e6c7b30036c65b7",
           "topology_adjustments": []
         },
         "V": {
           "components": 1,
           "counters": 0,
-          "ink_area_ratio": 0.8663,
-          "stroke_offset_px": 0.85,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.8514,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "ff40dcc753a5f73a890eaaea2a7a74b0ace36f1d17dc7e1fd0adc0f4b0422ea3",
           "topology_adjustments": []
         },
         "W": {
@@ -1727,21 +1727,21 @@
         "a": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.851,
-          "stroke_offset_px": 0.85,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.9025,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "b2339602a6a03441e1f3531130580973f90f695761e55d2039e813f1fe904826",
           "topology_adjustments": []
         },
         "b": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.8534,
-          "stroke_offset_px": 0.85,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.9441,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "b927a25d5a998d455ee62a4027d812f1378c0d86415b5858757c09005cc6e680",
           "topology_adjustments": []
         },
         "c": {
@@ -1757,11 +1757,11 @@
         "d": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.8582,
-          "stroke_offset_px": 0.85,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.9765,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "13a075d36c477e3c32c4dc22049cb02e4034522d9150d366f2cc1252beb12702",
           "topology_adjustments": []
         },
         "e": {
@@ -1877,21 +1877,21 @@
         "p": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.8592,
-          "stroke_offset_px": 0.85,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.9321,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "0005fc030f54ed90888aeb7c33b542bc0d3c89c3df43f504f3e817adec1ece07",
           "topology_adjustments": []
         },
         "q": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.8583,
-          "stroke_offset_px": 0.85,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.9287,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "7930c359a268158df1c7e5d5fd9b3cab7e2ffdeec5c84d53a96c7d26509a9ad2",
           "topology_adjustments": []
         },
         "r": {
@@ -1927,21 +1927,21 @@
         "u": {
           "components": 1,
           "counters": 0,
-          "ink_area_ratio": 0.8353,
-          "stroke_offset_px": 0.85,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.9012,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "21b8ad3584e03caec90d1b623ad1cbaf621d0397528bdef366679c9f0fedac32",
           "topology_adjustments": []
         },
         "v": {
           "components": 1,
           "counters": 0,
-          "ink_area_ratio": 0.8376,
-          "stroke_offset_px": 0.85,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.8053,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "13b683dc9b7185734300f822073d6479fbbe01357966cbe9d76135fc0fd92304",
           "topology_adjustments": []
         },
         "w": {
@@ -2047,11 +2047,11 @@
         "6": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.8499,
-          "stroke_offset_px": 0.765,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.9468,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "3b209aad531c96a30a5c1f2d8716f57a8fd4eb75989dc2f3e9a4ae8926a4e995",
           "topology_adjustments": []
         },
         "7": {
@@ -2067,21 +2067,21 @@
         "8": {
           "components": 1,
           "counters": 2,
-          "ink_area_ratio": 0.868,
-          "stroke_offset_px": 0.722,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.9276,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "a0fe4f2d081d1a560ceafcff8e269f17bc5878178a10a58abf41544160d7e1f3",
           "topology_adjustments": []
         },
         "9": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.8466,
-          "stroke_offset_px": 0.765,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.9644,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "520a1e31f9600cddfd4129584e871d77d59b42af7ac69a12a1d34be27f71c12a",
           "topology_adjustments": []
         }
       }
@@ -2089,25 +2089,25 @@
     "Bold": {
       "weight": 700,
       "file": "ChunksReferencePanel-Bold-Study.otf",
-      "sha256": "4f3bd4da63365b85a08e4dabec3f68a74204ea7bb6d8eb466ce6314bf3ec19e7",
+      "sha256": "bda7018642f9d9c5f4edf0e927eda3044e5dbc2271ed8b8151445972965df694",
       "glyphs_changed": 62,
       "codepoints": 856,
-      "kerning_direct_pairs": 13756,
+      "kerning_direct_pairs": 13558,
       "kerning_probe": {
         "measured_glyphs": 151,
         "examined_pairs": 22801,
-        "adjusted_pairs": 13916,
-        "median_absolute_adjustment": 56.0,
-        "residual_90pct": 27.71
+        "adjusted_pairs": 13718,
+        "median_absolute_adjustment": 52.0,
+        "residual_90pct": 26.1
       },
       "min_sampled_gap_px": {
-        "14": 0.705,
-        "24": 1.438,
-        "48": 3.906
+        "14": 0.516,
+        "24": 1.594,
+        "48": 3.875
       },
       "tracking_em": {
         "display": -0.0143,
-        "heading": 0.0072,
+        "heading": 0.0074,
         "body": 0.018,
         "small_labels": 0.024
       },
@@ -2129,21 +2129,21 @@
             "upper_limit_em": 0.01
           },
           "heading": {
-            "observed_20pct_ink_gap_em": 0.0928,
+            "observed_20pct_ink_gap_em": 0.0926,
             "target_ink_gap_em": 0.1,
             "sampled_pairs": 44,
             "lower_limit_em": -0.015,
             "upper_limit_em": 0.014
           },
           "body": {
-            "observed_20pct_ink_gap_em": 0.0926,
+            "observed_20pct_ink_gap_em": 0.0925,
             "target_ink_gap_em": 0.122,
             "sampled_pairs": 51,
             "lower_limit_em": -0.004,
             "upper_limit_em": 0.018
           },
           "small_labels": {
-            "observed_20pct_ink_gap_em": 0.0928,
+            "observed_20pct_ink_gap_em": 0.0927,
             "target_ink_gap_em": 0.138,
             "sampled_pairs": 28,
             "lower_limit_em": 0,
@@ -2170,11 +2170,11 @@
         "B": {
           "components": 1,
           "counters": 2,
-          "ink_area_ratio": 0.9327,
-          "stroke_offset_px": 0.43,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.9909,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "2321c805c16d2a59cac4502567da859033c9f08ecbd255ee0ee512b135ca9bf0",
           "topology_adjustments": []
         },
         "C": {
@@ -2190,11 +2190,11 @@
         "D": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.9369,
-          "stroke_offset_px": 0.43,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.9684,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "1a7458dbf96126040e6d2b9c8f4b7f0e8df0fe98d15348e5807295eac0127350",
           "topology_adjustments": []
         },
         "E": {
@@ -2310,21 +2310,21 @@
         "P": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.9306,
-          "stroke_offset_px": 0.43,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.9871,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "a39fd9fc7d970d0e395f18cbec264ccf9898cb1102e2a9e1f1cc18f4a7fb3411",
           "topology_adjustments": []
         },
         "Q": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.9401,
-          "stroke_offset_px": 0.43,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.9495,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "c297d1c1b0e579363034271d22392692df1955ebea7fdd8890bb4f2c25bd2519",
           "topology_adjustments": []
         },
         "R": {
@@ -2360,21 +2360,21 @@
         "U": {
           "components": 1,
           "counters": 0,
-          "ink_area_ratio": 0.9272,
-          "stroke_offset_px": 0.43,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.9773,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "d27d75a8da6293afea09be2ed44a90eea3b42e1b4717ed08e77d674fab5accc8",
           "topology_adjustments": []
         },
         "V": {
           "components": 1,
           "counters": 0,
-          "ink_area_ratio": 0.9313,
-          "stroke_offset_px": 0.43,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.8892,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "905562f77836fa28be75d846157dbdfa452342fdbe323765d03f4d725703eac4",
           "topology_adjustments": []
         },
         "W": {
@@ -2420,21 +2420,21 @@
         "a": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.9225,
-          "stroke_offset_px": 0.43,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.9434,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "92691abab4de7e792a1cc025608bfad6fa36c4b9c6f19ffe9dd30444890e3dfa",
           "topology_adjustments": []
         },
         "b": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.9255,
-          "stroke_offset_px": 0.43,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.9798,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "ea21f4621588942baeceb7a1ab78c16cc79e87d435b34744cdeb3e0ce576a724",
           "topology_adjustments": []
         },
         "c": {
@@ -2450,11 +2450,11 @@
         "d": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.928,
-          "stroke_offset_px": 0.43,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.9956,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "501412bc13a8c4647303d8c75b8f48af726ddad4a8484768faa2ae97288275bd",
           "topology_adjustments": []
         },
         "e": {
@@ -2570,21 +2570,21 @@
         "p": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.9273,
-          "stroke_offset_px": 0.43,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.9635,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "9b2c232804c5ec94faa7fe55ea059c0eed6ede6aed01c5dd2e019e43855afde2",
           "topology_adjustments": []
         },
         "q": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.9276,
-          "stroke_offset_px": 0.43,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.9612,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "68f7b52df65cbeca4f21bc046ff0aa6cb9b68f2a13508d9e3c793e90fe8d5cc9",
           "topology_adjustments": []
         },
         "r": {
@@ -2620,21 +2620,21 @@
         "u": {
           "components": 1,
           "counters": 0,
-          "ink_area_ratio": 0.9147,
-          "stroke_offset_px": 0.43,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.9631,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "7655601b56c5659a13cbc623656ab070dad069266c149578e5e610659cd9e0a6",
           "topology_adjustments": []
         },
         "v": {
           "components": 1,
           "counters": 0,
-          "ink_area_ratio": 0.9162,
-          "stroke_offset_px": 0.43,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.841,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "89c4a648d7dc6ae7e0bbaae49fe99ff3f93540feae2f0638e3cdd5926255f57d",
           "topology_adjustments": []
         },
         "w": {
@@ -2740,11 +2740,11 @@
         "6": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.9231,
-          "stroke_offset_px": 0.387,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.9827,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "9ed003c93652fe73c4a65962339c9b394b1cd00a2775d1b2baa06088f0034360",
           "topology_adjustments": []
         },
         "7": {
@@ -2760,21 +2760,21 @@
         "8": {
           "components": 1,
           "counters": 2,
-          "ink_area_ratio": 0.932,
-          "stroke_offset_px": 0.365,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.976,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "af8e23633f4016befdbd82c888f53b91d758d01a0bb209fb6724a7244dac9f4e",
           "topology_adjustments": []
         },
         "9": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.9211,
-          "stroke_offset_px": 0.387,
-          "outline_source": "contour-aware-derivation",
-          "outline_encoding": "sampled-offset-polygons",
-          "override_svg_sha256": null,
+          "ink_area_ratio": 0.9964,
+          "stroke_offset_px": null,
+          "outline_source": "weight-specific-svg-master",
+          "outline_encoding": "native-bezier-curves",
+          "override_svg_sha256": "e08000c567df58601c669481e1990c6c198ff7b1fe28bb3c3c86e905bbb26ae7",
           "topology_adjustments": []
         }
       }
