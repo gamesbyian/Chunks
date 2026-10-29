@@ -43,7 +43,8 @@ internal class CombinedViewPreferences(context: Context) {
             val scope = if (parts[0] == "*") EnvironmentViewScope.All else {
                 val raw = parts[0].split(',')
                 // One unreadable ID means the saved subset is not what was chosen: use the default.
-                if (raw.isEmpty() || raw.any { !TransferListSortStore.validEnvironment(it) } ||\n                    raw.toSet().size != raw.size) return UnifiedTransferQuery()
+                if (raw.isEmpty() || raw.any { !TransferListSortStore.validEnvironment(it) } ||
+                    raw.toSet().size != raw.size) return UnifiedTransferQuery()
                 val ids = raw.map(::EnvironmentId).toSet()
                 EnvironmentViewScope.Only(ids)
             }
