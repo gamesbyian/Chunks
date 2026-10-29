@@ -191,11 +191,14 @@ object UnifiedTransferCatalog {
             return UnifiedTransferQueryResult(filtered.sortedWith(comparator), selected, emptyList(), missing)
         }
 
+        // Index once instead of scanning the full combined list for every server.
+        // Many saved environments and large rTorrent queues otherwise multiply work.
+        val byEnvironment = filtered.groupBy { it.key.environment }
         val groups = selected.sortedWith(compareBy<EnvironmentTransferSnapshot> {
             val position = query.environmentOrder.indexOf(it.environment)
             if (position < 0) Int.MAX_VALUE else position
         }.thenBy { it.environment.value }).map { source ->
-            UnifiedTransferGroup(source, filtered.filter { it.key.environment == source.environment }
+            UnifiedTransferGroup(source, byEnvironment[source.environment].orEmpty()
                 .sortedWith(comparator))
         }
         return UnifiedTransferQueryResult(groups.flatMap { it.transfers }, selected, groups, missing)
