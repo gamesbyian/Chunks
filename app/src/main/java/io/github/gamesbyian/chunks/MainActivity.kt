@@ -57,6 +57,7 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -902,14 +903,20 @@ private fun ConnectionScreen(
                 ActionTile("Download on this phone (experimental)", ChunksColors.Cyan,
                     onClick = onLocalEngine, modifier = Modifier.fillMaxWidth(),
                     icon = R.drawable.chunks_ic_phone, stacked = false)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+                // Half-width tiles split long words at 200% text; stack them instead.
+                val wideText = LocalDensity.current.fontScale >= 1.5f
+                val offline: @Composable (Modifier) -> Unit = { each ->
                     ActionTile("Inspect a local ZIP without connecting", ChunksColors.Yellow,
-                        onClick = onLocalZipReview, modifier = Modifier.weight(1f).fillMaxHeight(),
-                        icon = R.drawable.chunks_ic_archive)
+                        onClick = onLocalZipReview, modifier = each,
+                        icon = R.drawable.chunks_ic_archive, stacked = !wideText)
                     ActionTile("Inspect .chunksnap backup (offline)", ChunksColors.Pink,
-                        onClick = onInspectSnapshot, modifier = Modifier.weight(1f).fillMaxHeight(),
-                        icon = R.drawable.chunks_ic_document)
+                        onClick = onInspectSnapshot, modifier = each,
+                        icon = R.drawable.chunks_ic_document, stacked = !wideText)
+                }
+                if (wideText) offline(Modifier.fillMaxWidth())
+                else Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+                    offline(Modifier.weight(1f).fillMaxHeight())
                 }
             }
         }
