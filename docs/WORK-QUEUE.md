@@ -1,6 +1,6 @@
 # Chunks active engineering work queue
 
-**Status:** dependency-order reset, 2026-10-29 UTC, based on checked `main` at `3a4fc69d`, 17 then-open feature issues, zero then-open PRs and observed app/engine source. This is the **only live execution queue**. Recheck current main, PRs, issues, claims and CI before starting; historical timestamps are snapshots, not live evidence. The superseded queue is archived [verbatim](archive/WORK-QUEUE-2026-10-29-pre-dependency-reset.md). Product requirements are **retained**, not cancelled, by changed scheduling.
+**Status:** dependency-order reset, 2026-10-29 UTC, based on checked `main` at `3a4fc69d`, 17 then-open feature issues, zero then-open PRs and observed app/engine source. This is the **only live execution queue**. Recheck current main, PRs, issues, claims and CI before starting; historical timestamps are snapshots, not live evidence. The superseded queue is archived [verbatim](archive/WORK-QUEUE-2026-10-29-pre-dependency-reset.txt). Product requirements are **retained**, not cancelled, by changed scheduling.
 
 [Permanent instructions](../AGENTS.md) · [Product](PRODUCT.md) · [Architecture](ARCHITECTURE.md) · [Unified environments](UNIFIED-ENVIRONMENTS.md) · [Coverage](SPEC-COVERAGE.md) · [Evidence](QUALITY-LEDGER.md) · [CI](CI-POLICY.md) · [Documentation standard](DOCUMENTATION-STANDARD.md)
 
@@ -76,4 +76,4 @@ The issue's historic title/label is not authority to leapfrog its currently depe
 4. Merge only after required exact-head checks and proper review; use [CI-POLICY](CI-POLICY.md). A docs-only change must not fan out Android or font CI. Maintain a truthful unverified-gates section.
 5. Report merged/open PRs, observed tier-specific behavior, SHA/runs, failures/recovery, issue/queue/coverage updates and **one next executable task**. External/human testing is a recorded dependency, not permission to start filigree work.
 
-**Historical context:** the queue preceding this dependency reset is [archived unchanged](archive/WORK-QUEUE-2026-10-29-pre-dependency-reset.md). Earlier preconsolidation execution records are [also archived](archive/WORK-QUEUE-2026-10-29-preconsolidation.md). Approved feature contracts continue to own their requirements; the workboard only controls *when* to implement them.
+**Historical context:** the queue preceding this dependency reset is [archived unchanged](archive/WORK-QUEUE-2026-10-29-pre-dependency-reset.txt). Earlier preconsolidation execution records are [also archived](archive/WORK-QUEUE-2026-10-29-preconsolidation.md). Approved feature contracts continue to own their requirements; the workboard only controls *when* to implement them.
