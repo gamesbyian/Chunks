@@ -862,6 +862,7 @@ private fun ChunksApp(
                         remote = connectedRemote, magnet = magnet, destination = draftPath,
                         initialTorrent = serverHandoffTorrent,
                         onInitialTorrentConsumed = { serverHandoffTorrent = null },
+                        environmentLabel = serverEnvironmentLabel(aliasScope),
                         onMagnet = { magnet = it }, onDestination = { draftPath = it },
                         onBack = { draftPath = ""; section = Section.TRANSFERS },
                         onComplete = refresh,
@@ -1151,6 +1152,7 @@ private fun TransfersScreen(
                         if (stale) " · last known snapshot" else " · refreshed on demand",
                     Lime
                 )
+                EnvironmentBadge(serverEnvironmentLabel(aliasScope), server = true)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = onAdd, enabled = !loading && !stale,
                         modifier = Modifier.weight(1f).height(52.dp)) {

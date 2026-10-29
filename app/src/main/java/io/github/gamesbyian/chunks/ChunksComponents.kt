@@ -178,3 +178,33 @@ internal fun AccentOutlineCard(accent: Color, modifier: Modifier = Modifier, con
         border = androidx.compose.foundation.BorderStroke(2.dp, accent)
     ) { content() }
 }
+
+/**
+ * Which environment a list, review or confirmation belongs to (UNIFIED-ENVIRONMENTS):
+ * "On this phone" or the exact server account and address. Text carries the
+ * identity; the icon is decorative.
+ */
+@Composable
+internal fun EnvironmentBadge(label: String, server: Boolean, modifier: Modifier = Modifier) {
+    Row(modifier.clip(RoundedCornerShape(12.dp)).background(ChunksColors.SurfaceRaised)
+            .border(1.dp, if (server) ChunksColors.Blue else ChunksColors.Cyan, RoundedCornerShape(12.dp))
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        // Library icons are drawn for light fills; tint to the badge accent on this dark chip.
+        Image(painterResource(if (server) R.drawable.chunks_ic_server else R.drawable.chunks_ic_phone),
+            contentDescription = null, modifier = Modifier.size(20.dp),
+            colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(if (server) ChunksColors.Blue else ChunksColors.Cyan))
+        Text(label, style = MaterialTheme.typography.labelLarge, color = ChunksColors.Text)
+    }
+}
+
+/** "Server · user @ host/path" from an authenticated alias scope (endpoint + NUL + username); never a password. */
+internal fun serverEnvironmentLabel(aliasScope: String): String {
+    val endpoint = aliasScope.substringBefore('\u0000')
+    val user = aliasScope.substringAfter('\u0000', "").trim()
+    val address = RememberedRemoteProfileRoster.addressOf(endpoint)
+    return "Server · " + (if (user.isEmpty()) address else "$user @ $address")
+}
+
+internal const val PHONE_ENVIRONMENT_LABEL = "On this phone"
+
