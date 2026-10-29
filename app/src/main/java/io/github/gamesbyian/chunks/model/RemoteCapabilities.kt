@@ -21,7 +21,9 @@ internal object RemoteCapabilities {
         Feature("Add magnet via XML-RPC", listOf("d.multicall2", "d.name", "load.verbose"), EnvironmentOperation.ADD_MAGNET),
         Feature("Add .torrent via XML-RPC", listOf("d.multicall2", "d.name", "load.raw_verbose"), EnvironmentOperation.ADD_TORRENT_FILE),
         Feature("Use server default Add folder", listOf("directory.default"), EnvironmentOperation.SERVER_DEFAULT_ADD_FOLDER),
-        Feature("Start and stop", listOf("d.open", "d.start", "d.resume", "d.stop", "d.close", "d.state"), EnvironmentOperation.START_STOP),
+        // Acknowledged d.state alone cannot verify either lifecycle direction:
+        // both Start and Stop inspect the independent engine-active getter.
+        Feature("Start and stop", listOf("d.open", "d.start", "d.resume", "d.stop", "d.close", "d.state", "d.is_active"), EnvironmentOperation.START_STOP),
         Feature("File list and priorities", listOf("f.multicall", "f.priority.set", "d.update_priorities"), EnvironmentOperation.FILE_PRIORITIES),
         Feature("Tracker health", listOf("d.tracker_size", "t.multicall"), EnvironmentOperation.TRACKER_HEALTH),
         // Erase requires main-view preflight and exact d.hash readback,
