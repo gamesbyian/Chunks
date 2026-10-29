@@ -44,6 +44,39 @@ internal suspend fun stepRemoteFinishInOrder(
     }
 }
 
+/** Server files in the planner's terms: index = rTorrent file index, priority mapped to bands. */
+internal fun remoteFilesAsLocal(files: List<RemoteFile>): List<LocalTransferFile> =
+    files.mapIndexed { index, file ->
+        LocalTransferFile(index, file.path, file.sizeBytes, 0L, file.priority != 0,
+            RemoteFinishInOrderPort.toPlanner(file.priority))
+    }
+
+/**
+ * Server Add review option: after a verified stopped Add (and before any
+ * Start), create a Balanced policy from the detected order and apply its
+ * first verified step. Best effort with a plain result; it never retries the
+ * Add or Start, and nothing is set up when no order is detected.
+ */
+internal suspend fun enableRemoteFinishInOrderAfterAdd(
+    context: android.content.Context, remote: RTorrentRemote, scope: String, hash: String
+): String {
+    val files = try { withContext(Dispatchers.IO) { remote.listFiles(hash) } }
+        catch (_: Exception) { return "Finish in Order was not set up: the server's file list could not be read." }
+    val asLocal = remoteFilesAsLocal(files)
+    val suggestion = FinishInOrderPlanner.suggest(asLocal)
+        ?: return "Finish in Order was not set up: no episode or numbered order was found. You can arrange one from the transfer."
+    val store = FinishInOrderStore(context, scope)
+    val policy = FinishInOrderPlanner.policyFor(FinishInOrderPlanner.Mode.BALANCED, asLocal, suggestion.order)
+    if (!FinishInOrderController.exclusive { withContext(Dispatchers.IO) { store.save(hash, FinishInOrderRecord(policy)) } })
+        return "Finish in Order could not be saved; priorities are unchanged."
+    return when (val step = try { stepRemoteFinishInOrder(remote, store, hash) } catch (_: Exception) { null }) {
+        is FinishInOrderRunner.Step.Applied, is FinishInOrderRunner.Step.Idle ->
+            "Finish in Order is on for ${suggestion.order.size} files."
+        is FinishInOrderRunner.Step.Suspended -> "Finish in Order is paused: " + step.record.suspendedReason
+        else -> "Finish in Order is saved; the server did not confirm its first change. Check the transfer before relying on it."
+    }
+}
+
 /**
  * Finish in Order for one rTorrent transfer. rTorrent offers only off/normal/
  * high, so the current file is High and the rest stay Normal; it advances
@@ -67,12 +100,7 @@ internal fun RemoteFinishInOrderPanel(
     var reviewing by remember(transfer.hash) { mutableStateOf(false) }
     var working by remember(transfer.hash) { mutableStateOf(false) }
     var message by remember(transfer.hash) { mutableStateOf<String?>(null) }
-    val asLocal = remember(files) {
-        files.mapIndexed { index, file ->
-            LocalTransferFile(index, file.path, file.sizeBytes, 0L, file.priority != 0,
-                RemoteFinishInOrderPort.toPlanner(file.priority))
-        }
-    }
+    val asLocal = remember(files) { remoteFilesAsLocal(files) }
     val names = remember(files) { files.mapIndexed { i, f -> i to f.path.substringAfterLast('/') }.toMap() }
     LaunchedEffect(transfer.hash, scope, files) {
         record = withContext(Dispatchers.IO) { store.get(transfer.hash) }

@@ -862,6 +862,7 @@ private fun ChunksApp(
                         remote = connectedRemote, magnet = magnet, destination = draftPath,
                         initialTorrent = serverHandoffTorrent,
                         onInitialTorrentConsumed = { serverHandoffTorrent = null },
+                        finishInOrderScope = aliasScope.takeIf { it.isNotBlank() },
                         onMagnet = { magnet = it }, onDestination = { draftPath = it },
                         onBack = { draftPath = ""; section = Section.TRANSFERS },
                         onComplete = refresh,

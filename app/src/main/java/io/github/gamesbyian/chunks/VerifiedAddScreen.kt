@@ -72,7 +72,9 @@ fun VerifiedAddScreen(
     onCustomPlaceVerified: (String) -> Boolean = { true },
     /** A phone-prepared .torrent draft (transfer export or Android file); never auto-submitted. */
     initialTorrent: ByteArray? = null,
-    onInitialTorrentConsumed: () -> Unit = {}
+    onInitialTorrentConsumed: () -> Unit = {},
+    /** Authenticated endpoint + account scope; null hides the Finish in Order option. */
+    finishInOrderScope: String? = null
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -86,6 +88,9 @@ fun VerifiedAddScreen(
     var uncertain by remember { mutableStateOf(false) }
     var alreadyAttempted by remember { mutableStateOf(false) }
     var startAfterAdd by remember { mutableStateOf(true) }
+    val finishInOrderStore = remember(finishInOrderScope) { finishInOrderScope?.let { FinishInOrderStore(context, it) } }
+    var finishInOrderDefault by remember(finishInOrderScope) { mutableStateOf(finishInOrderStore?.defaultForNewAdds() == true) }
+    var finishInOrderAfterAdd by remember(selectedTorrent?.infoHashV1) { mutableStateOf(finishInOrderDefault) }
     var rechecking by remember { mutableStateOf(false) }
     var fileError by remember { mutableStateOf<String?>(null) }
     var configuredDefault by remember(remote) { mutableStateOf<String?>(null) }
@@ -337,6 +342,17 @@ fun VerifiedAddScreen(
                         modifier = Modifier.padding(start = 8.dp))
                 }
             }
+            // Only a .torrent shows its file list before Add; magnets are excluded.
+            val fioStore = finishInOrderStore
+            if (fioStore != null && useFile && (selectedTorrent?.fileCount ?: 0) >= 2) item {
+                FinishInOrderAddChoice(
+                    "Finish in Order: the first episode or numbered file gets High, then the next " +
+                        "(set before downloading starts; advances while Chunks is open and connected)",
+                    checked = finishInOrderAfterAdd, enabled = !submitting,
+                    onChecked = { finishInOrderAfterAdd = it; awaitingConfirmation = false },
+                    defaultOn = finishInOrderDefault,
+                    onDefault = { on -> if (fioStore.setDefaultForNewAdds(on)) finishInOrderDefault = on })
+            }
             if (!awaitingConfirmation) {
                 item {
                     Button(
@@ -374,14 +390,22 @@ fun VerifiedAddScreen(
                             submitting = true
                             alreadyAttempted = true
                             val bytes = if (useFile) selectedBytes?.copyOf() else null
+                            val orderScope = finishInOrderScope?.takeIf {
+                                bytes != null && finishInOrderAfterAdd && (selectedTorrent?.fileCount ?: 0) >= 2 }
+                            var orderNote: String? = null
                             scope.launch {
                                 try {
                                     val result = RemoteAddStarter.run(
                                         startAfterVerifiedAdd = startAfterAdd,
                                         add = {
-                                            if (bytes != null) remote.loadStoppedTorrentBytes(
+                                            val added = if (bytes != null) remote.loadStoppedTorrentBytes(
                                                 bytes, plan.destination, plan.useServerDefault)
                                             else remote.loadStopped(plan)
+                                            // Priorities before any Start, only for a verified stopped Add.
+                                            if (orderScope != null && added is RemoteAddOutcome.VerifiedStopped)
+                                                orderNote = enableRemoteFinishInOrderAfterAdd(
+                                                    context, remote, orderScope, added.hash)
+                                            added
                                         },
                                         start = { hash -> remote.setStarted(hash, true) }
                                     )
@@ -405,6 +429,7 @@ fun VerifiedAddScreen(
                                                 "Add uncertain; no Start was sent. Check the server before another operation."
                                         }
                                     }
+                                    orderNote?.let { outcome = outcome.orEmpty() + " " + it }
                                     if (!plan.useServerDefault &&
                                         (result is RemoteAddAndStart.Started ||
                                          result is RemoteAddAndStart.StartNotVerified ||
