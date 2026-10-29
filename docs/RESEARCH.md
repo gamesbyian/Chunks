@@ -1,6 +1,12 @@
 # Research ledger and upstream references
 
-User-voice qualitative reference: [multilingual BitTorrent aversion and friction atlas](BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md) (2026-10-29). Descriptive research only, not normative scope or implementation evidence.
+## Human-centered BitTorrent ecosystem research (2026-10-29)
+
+The exploratory [240-feature catalogue](BITTORRENT-ECOSYSTEM-FEATURE-INVENTORY-2026-10-29.md), [36-journey/240-activity atlas](BITTORRENT-USER-GOALS-AND-WORKFLOWS-2026-10-29.md) and [multilingual aversion study](BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md) are source references, not normative requirements.
+
+The [conceptual map](research/BITTORRENT-HUMAN-CONCEPT-MAP-2026-10-29.md) and [typed graph](research/BITTORRENT-CONCEPT-GRAPH-2026-10-29.json) connect human goals, cognitive/emotional hypotheses, applications, actions and evidenced constraints. The [missing-feature synthesis](research/BITTORRENT-MISSING-FEATURES-SYNTHESIS-2026-10-29.md) consolidates 72 hypotheses into 33 distinct capability families and identifies seven **not explicitly integrated** in the inventory; [the source-by-source audit](research/BITTORRENT-CONCEPT-MAP-EVIDENCE-AUDIT-2026-10-29.md) identifies existing partial implementations. No direct user study was undertaken; absence from a research list is not proof of absence in real software.
+
+---
 
 2026-10-23 exploratory research. References are upstream docs, not proofs of Chunks functionality. Verify licenses, APIs and current versions before incorporating code.
 
