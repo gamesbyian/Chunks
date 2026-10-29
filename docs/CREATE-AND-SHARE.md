@@ -43,3 +43,22 @@ Seed availability depends on Android background execution, power/network policie
 9. Each backend/service is integration-tested against permitted fixtures or documented test accounts; no live publication to arbitrary real services during CI.
 
 **Implementation/evidence:** none established by this contract; update SPEC-COVERAGE, WORK-QUEUE and QUALITY-LEDGER as work lands.
+
+## Implementation note: metadata builder (2026-10-29, slice 1 partial)
+
+`create/TorrentMetainfoBuilder` builds BitTorrent v1 `.torrent` metadata from caller-supplied file streams, with no engine, network or Android dependency. It provides:
+
+- automatic piece sizing (16 KiB–16 MiB, targeting about 1,000–2,000 pieces);
+- optional tracker tiers, the private flag and a comment;
+- deterministic output unless a creation date is given;
+- progress reporting and cancellation;
+- a magnet link for public torrents only. Private torrents get no magnet, so private trackers are never shared through one.
+
+It refuses unsafe or empty names, `..`/backslash segments, duplicate or file-versus-folder path conflicts, empty payloads, tracker URLs with embedded credentials or non-tracker schemes, and invalid piece sizes. A file that delivers fewer or more bytes than declared fails the build instead of producing mismatched metadata.
+
+Evidence (JVM, desktop libtorrent):
+- the info hash equals libtorrent's own `TorrentBuilder` for the same multi-file payload, including an empty file and pieces that straddle file boundaries;
+- `TorrentMetainfoReader` round-trips it;
+- the real engine verifies the existing payload as 100% complete.
+
+**Not yet:** SAF/file-picker input, UI, v2/hybrid metadata, seeding, independent-peer download, or any publication.
