@@ -316,8 +316,8 @@
       "unicode_count": 856
     },
     "Medium": {
-      "input_sha256": "492b6c765718e330ea982048bbdbc53df8f55120c80d150d333c3e9f3583c29c",
-      "output_sha256": "97bde29643cad42dbad3daf745b7e75bc232f45f2fed174cad5ed50021da0274",
+      "input_sha256": "55e2b0529b48058afb61ae1464202676b25b00b7029057acf4f7791b64c3c97d",
+      "output_sha256": "611d0c945b218231266856d5cba5ffb4484c46f0227826fba0422d56ff2e2141",
       "file": "ChunksReferencePanel-Medium-DotlessKerned.otf",
       "reference_accent_glyphs": 257,
       "candidate_pairs": 97917,
@@ -328,7 +328,7 @@
       "clipped_pair_examples": [],
       "mean_abs_correction_units": 73.39,
       "source_scripts_unchanged": true,
-      "base_font_sha256": "7811879c833748eb663d0c6ccb5389e1d21746b700e5299fd35c377919dedcf7",
+      "base_font_sha256": "7422e2def9705d5e4492a02852c687a16137fad069bf869b994c237c73210080",
       "dotless_added": 14,
       "dotless_glyphs": [
         {
@@ -951,8 +951,8 @@
       "unicode_count": 856
     },
     "Bold": {
-      "input_sha256": "d3ffc3772759a504e250981a0883de7a2d307e89419743c75b839415a21ba127",
-      "output_sha256": "daa5666c1c2b6549f43225f977d7370c3735b1b41c05063997938694eee8e293",
+      "input_sha256": "59f4e68297235c45b985273213ba4ad43e6c71ba4bff7a79e3c8eab82e229f1b",
+      "output_sha256": "4221aa830c8c137f2e8a9ed90aad3e8ebaed26ac37df19376e697e3d1deafe64",
       "file": "ChunksReferencePanel-Bold-DotlessKerned.otf",
       "reference_accent_glyphs": 257,
       "candidate_pairs": 97917,
@@ -982,7 +982,7 @@
       ],
       "mean_abs_correction_units": 68.85,
       "source_scripts_unchanged": true,
-      "base_font_sha256": "78c52e82495d3afcdf75310c5492671330e585f955be89cf27573c58a28d20f1",
+      "base_font_sha256": "1d5a6c701fb792d25766241b857f8385bcb2e556f3996bf216efb2ba921f937a",
       "dotless_added": 14,
       "dotless_glyphs": [
         {

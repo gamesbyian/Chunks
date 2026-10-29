@@ -2800,10 +2800,10 @@
       "weight": 500,
       "file": "ChunksReferencePanel-Medium-Stacked.otf",
       "source_sha256": "50b68167346fa4dc5f8c6c8326c0668cfaa0e0c1dacb927b04acd2b31834d529",
-      "input_consolidated_sha256": "0470a47c702fc517626227bef0f1eabe281c6e10078e85aa1132bb7afa49e8f9",
-      "output_sha256": "ced034b3101f253e944d30928badd659fc76875d73190ce9f4da3f754d004eff",
+      "input_consolidated_sha256": "9505fdbeb34d43d19f43362b25ae81c521e4ed0ce00aae519141fba77ce0fa5b",
+      "output_sha256": "79f58c35c3700fa7b633adabf8d0b931375142bffb64fa42d3fd9247e4634293",
       "kerning": {
-        "input_sha256": "e8f9c478a6910135e3fd9655036ba6d94e6f0f266357f1514e9cd546e666d9cb",
+        "input_sha256": "7fe5a65944f6377a5ae8b4a57287102919bed9eb97165a1004aa9ade1f5460d4",
         "file": "ChunksReferencePanel-Medium-Stacked.otf",
         "reference_accent_glyphs": 68,
         "candidate_pairs": 13056,
@@ -2935,8 +2935,8 @@
         ],
         "mean_abs_correction_units": 70.23,
         "source_scripts_unchanged": true,
-        "pre_final_name_sha256": "a6eff8acada46a542aabdcfe9aeb5f05b867c0b82126907aa7436814b52ce90a",
-        "output_sha256": "ced034b3101f253e944d30928badd659fc76875d73190ce9f4da3f754d004eff"
+        "pre_final_name_sha256": "a7669efabbac0595c95893c8a4c5c259e9ad4657a516546ae4da2a7c7855d734",
+        "output_sha256": "79f58c35c3700fa7b633adabf8d0b931375142bffb64fa42d3fd9247e4634293"
       }
     },
     "Semibold": {
@@ -5490,10 +5490,10 @@
       "weight": 700,
       "file": "ChunksReferencePanel-Bold-Stacked.otf",
       "source_sha256": "4c4d514999eae9192313499e31b5e69b84a348e7fac2b1554a7728c6a14aa5ae",
-      "input_consolidated_sha256": "9fea3b637033eec9ea17c8deb3f12a81df50afeeec953d3d3ae500c18e760370",
-      "output_sha256": "b4cba93950068495ae6c39cc1ef20a0b6850ee8485b5e18a86d721456939172e",
+      "input_consolidated_sha256": "6291c1f4a7714268bad81af15b3a08e2214dbfb03dfd9d5089de3eec765e1a4b",
+      "output_sha256": "867a7696270407478c3506e8115ed108e08b134b53fe6e654f8383c0ca28264e",
       "kerning": {
-        "input_sha256": "700270751fdec6eb38b72f9a830d292524a5bf456d9af7c6f9933a15fb328799",
+        "input_sha256": "25a63b51519d7bbebcf84d8e677f0f24535702985b0e0262c5e7fcd1541d4e81",
         "file": "ChunksReferencePanel-Bold-Stacked.otf",
         "reference_accent_glyphs": 52,
         "candidate_pairs": 9152,
@@ -5625,8 +5625,8 @@
         ],
         "mean_abs_correction_units": 70.87,
         "source_scripts_unchanged": true,
-        "pre_final_name_sha256": "e75831118b544fc46138c5e39f68d7d493630103a9ff957db1c1e401269cd779",
-        "output_sha256": "b4cba93950068495ae6c39cc1ef20a0b6850ee8485b5e18a86d721456939172e"
+        "pre_final_name_sha256": "d690a84e78f561cb087658f86dcf5e5f9d5b38a65df672595486b6717e7f5cb7",
+        "output_sha256": "867a7696270407478c3506e8115ed108e08b134b53fe6e654f8383c0ca28264e"
       }
     },
     "ExtraBold": {

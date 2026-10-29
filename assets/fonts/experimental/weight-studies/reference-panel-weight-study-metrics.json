@@ -2,7 +2,7 @@
   "status": "NONSHIPPING interim weight study: automated offsets; manual masters still required",
   "source_manifest_sha256": "34413dfabd6d1f846b2dd833e21fa2b57e9b03b06330e4e9a479d082150fca83",
   "profile_sha256": "7da88e239d51208e052c8a359ddf04c724b3aa70e6cd7ad686d64b7f27425e46",
-  "overrides_sha256": "b82a0ac772727f3146582841657969dc19d6617177f9488038d5611bb7acc5a2",
+  "overrides_sha256": "60dad3dd6fc20e13a9c61aca70a979407adddabdf2bcdfa178954035561ec56c",
   "overrides_used": 248,
   "source_svg_sha256": "f475ea924418981a766978dde97ebb97ba7b0866110e1b72b17ac026fbad7aba",
   "accepted_extra_bold_remains_separate": "assets/fonts/experimental/ChunksReferencePanel-ExtraBold-Optical.otf",
@@ -703,7 +703,7 @@
     "Medium": {
       "weight": 500,
       "file": "ChunksReferencePanel-Medium-Study.otf",
-      "sha256": "e2747f2cf0eff1db0ce0d1be0acaaffa887377ad518568494113375822d3e43f",
+      "sha256": "59d54773ae88482cf012e07061f455097466faaa9ee9bbc1b4e0abbda4d76599",
       "glyphs_changed": 62,
       "codepoints": 856,
       "kerning_direct_pairs": 12978,
@@ -1338,7 +1338,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "2f7e6f3aff265b0d49942f5a4c7cee767378f1471c861bc8554bdd53e8c3db70",
+          "override_svg_sha256": "c20a78f657c90eb771041e41e5efa74b923d3f136028d0ff26fa24a9bc3d4482",
           "topology_adjustments": []
         },
         "5": {
@@ -2089,7 +2089,7 @@
     "Bold": {
       "weight": 700,
       "file": "ChunksReferencePanel-Bold-Study.otf",
-      "sha256": "7a009a620ad0779c21b35657b22c5d03045d20fed2c3f0b957df85d6c91c1c2d",
+      "sha256": "4a97ba57e97c7b4ca1da8f87fad82e84f330a9a8336059185253378eabb9c6c5",
       "glyphs_changed": 62,
       "codepoints": 856,
       "kerning_direct_pairs": 13151,
@@ -2480,11 +2480,11 @@
         "g": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.8996,
+          "ink_area_ratio": 0.8885,
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "07344d9715973616616556bfb70f162ecb5c64ecc0fc6a188b4755cd74feb45a",
+          "override_svg_sha256": "d6b7da25bce08563d949662657f4550c96a2f5707cf9f8085bf0f21cfcc5e942",
           "topology_adjustments": []
         },
         "h": {
@@ -2570,11 +2570,11 @@
         "p": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.9635,
+          "ink_area_ratio": 0.9489,
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "50efcc653cbad3f8ded7b17da27c7d6eca37f421ad332e8e84ab3837bca82595",
+          "override_svg_sha256": "095add5c4a1554b0fb2d8db82b68930ad3431846315b39f736b9579de5451ebd",
           "topology_adjustments": []
         },
         "q": {
@@ -2760,11 +2760,11 @@
         "8": {
           "components": 1,
           "counters": 2,
-          "ink_area_ratio": 0.976,
+          "ink_area_ratio": 0.9493,
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "3b74a88698ebd4d3cf0fd614b434156795e25eb8f06118c1c156ad759aaeb595",
+          "override_svg_sha256": "f7f716999a63f82ef884450b94164353451778927bfe562abe2c38145e3de7ad",
           "topology_adjustments": []
         },
         "9": {

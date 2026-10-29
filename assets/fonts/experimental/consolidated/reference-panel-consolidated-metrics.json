@@ -802,8 +802,8 @@
     "Medium": {
       "font": "ChunksReferencePanel-Medium-Consolidated.otf",
       "weight": 500,
-      "input_sha256": "97bde29643cad42dbad3daf745b7e75bc232f45f2fed174cad5ed50021da0274",
-      "output_sha256": "0470a47c702fc517626227bef0f1eabe281c6e10078e85aa1132bb7afa49e8f9",
+      "input_sha256": "611d0c945b218231266856d5cba5ffb4484c46f0227826fba0422d56ff2e2141",
+      "output_sha256": "9505fdbeb34d43d19f43362b25ae81c521e4ed0ce00aae519141fba77ce0fa5b",
       "unicode_count": 856,
       "preserved_source_shaping": true,
       "punctuation": {
@@ -1525,7 +1525,7 @@
         "bounded_pairpos_subtables": 14,
         "clipped_pair_report": {
           "file": "reference-punctuation-clipped-Medium.json.gz",
-          "sha256": "01e83234d519e621552a2b41267133b0d563e1207f75c827707063193ddcd235",
+          "sha256": "66439c90a137381a6208b8b1c79e4f09f3edfaa024178b7b8caf7e34a2ae4889",
           "count": 4575,
           "uncompressed_bytes": 1185434
         }
@@ -2380,8 +2380,8 @@
     "Bold": {
       "font": "ChunksReferencePanel-Bold-Consolidated.otf",
       "weight": 700,
-      "input_sha256": "daa5666c1c2b6549f43225f977d7370c3735b1b41c05063997938694eee8e293",
-      "output_sha256": "9fea3b637033eec9ea17c8deb3f12a81df50afeeec953d3d3ae500c18e760370",
+      "input_sha256": "4221aa830c8c137f2e8a9ed90aad3e8ebaed26ac37df19376e697e3d1deafe64",
+      "output_sha256": "6291c1f4a7714268bad81af15b3a08e2214dbfb03dfd9d5089de3eec765e1a4b",
       "unicode_count": 856,
       "preserved_source_shaping": true,
       "punctuation": {
@@ -3103,7 +3103,7 @@
         "bounded_pairpos_subtables": 14,
         "clipped_pair_report": {
           "file": "reference-punctuation-clipped-Bold.json.gz",
-          "sha256": "7611f235f40863681288ac8ac6b72ec7c2aa4c9b4fd85a3acb83485dea6c44a7",
+          "sha256": "22824ea94a77bb6609b043b69ad1cc9bba884f23bf02c23079f52c4e395b4a54",
           "count": 5005,
           "uncompressed_bytes": 1296017
         }

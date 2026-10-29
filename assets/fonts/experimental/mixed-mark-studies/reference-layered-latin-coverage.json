@@ -3,9 +3,9 @@
   "mapped_unicode": 856,
   "mapped_latin_letters": 495,
   "baseline_source_status": "Consolidated original + reference reconstructed characters",
-  "baseline_manifest_sha256": "ccbf5be19d0f31a4c59365700561e549eb4937f55abea76b5b02ddc5220a3cb8",
-  "stacked_manifest_sha256": "96c4a157076e64699a905e05888eb0969d42b97bd36657d434c4fe7ea98f258a",
-  "mixed_manifest_sha256": "9b154b94ec8ec53b6c1f6dcb8a4f0949fe418857443354c67dc0d1ebf264bb7f",
+  "baseline_manifest_sha256": "51d2883e9a8780d7d3e8ba37cf9375153135e9f4e6a3a68757f6919240f5aab2",
+  "stacked_manifest_sha256": "43bc820f506181b16e06afe59b027c59b265f696d8c9b2655e74415697f9c0cb",
+  "mixed_manifest_sha256": "42ba79895506f30db1c135c4dc79f9ce2527210e9123e8f29a277a337dfdb92b",
   "weights": {
     "Regular": {
       "mapped_latin_letters": 495,
@@ -28,8 +28,8 @@
       "remaining_simple_mark": 25,
       "remaining_stacked_marks": 26,
       "remaining_other_latin": 53,
-      "stacked_font_sha256": "ced034b3101f253e944d30928badd659fc76875d73190ce9f4da3f754d004eff",
-      "mixed_font_sha256": "0897ba5fdf6f0e06d806a9b3935e420b06467374806b24868c61c39310233f05"
+      "stacked_font_sha256": "79f58c35c3700fa7b633adabf8d0b931375142bffb64fa42d3fd9247e4634293",
+      "mixed_font_sha256": "68892436faafdbdaa6476b5a7e4cec5c8766019a1ec3a354745ab8be0ff732ae"
     },
     "Semibold": {
       "mapped_latin_letters": 495,
@@ -52,8 +52,8 @@
       "remaining_simple_mark": 25,
       "remaining_stacked_marks": 42,
       "remaining_other_latin": 53,
-      "stacked_font_sha256": "b4cba93950068495ae6c39cc1ef20a0b6850ee8485b5e18a86d721456939172e",
-      "mixed_font_sha256": "3dc4ff8061a08a9d1a5b7dc6b5fc0b52cff57af445023d1a47c91fffd759de25"
+      "stacked_font_sha256": "867a7696270407478c3506e8115ed108e08b134b53fe6e654f8383c0ca28264e",
+      "mixed_font_sha256": "7c97a90b8f25fca517d2392b58897ff50b76a4ca7df8a02397e56bbd9d19d589"
     },
     "ExtraBold": {
       "mapped_latin_letters": 495,

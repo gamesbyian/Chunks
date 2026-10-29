@@ -1,6 +1,6 @@
 {
   "status": "NONSHIPPING conservative mixed above/below accent CFF study",
-  "stacked_source_metrics_sha256": "96c4a157076e64699a905e05888eb0969d42b97bd36657d434c4fe7ea98f258a",
+  "stacked_source_metrics_sha256": "43bc820f506181b16e06afe59b027c59b265f696d8c9b2655e74415697f9c0cb",
   "policy": "NFD class 230 above, 202/220 below, source-only detached contours, ±font bbox",
   "weights": {
     "Regular": {
@@ -943,11 +943,11 @@
       },
       "weight": 500,
       "input_original_sha256": "50b68167346fa4dc5f8c6c8326c0668cfaa0e0c1dacb927b04acd2b31834d529",
-      "input_stacked_sha256": "ced034b3101f253e944d30928badd659fc76875d73190ce9f4da3f754d004eff",
-      "output_sha256": "0897ba5fdf6f0e06d806a9b3935e420b06467374806b24868c61c39310233f05",
+      "input_stacked_sha256": "79f58c35c3700fa7b633adabf8d0b931375142bffb64fa42d3fd9247e4634293",
+      "output_sha256": "68892436faafdbdaa6476b5a7e4cec5c8766019a1ec3a354745ab8be0ff732ae",
       "file": "ChunksReferenceMixedMarks-Medium.otf",
       "kerning": {
-        "input_sha256": "b2df43b906b00be7ab5ea089b85344747934b4061a646c7570d24a75d3170238",
+        "input_sha256": "9a34ae860b2f87b4d1fce477b6c6aceb8ff18ee3c4f4ff351dd3e58491784c54",
         "file": "ChunksReferenceMixedMarks-Medium.otf",
         "reference_accent_glyphs": 14,
         "candidate_pairs": 1932,
@@ -1079,8 +1079,8 @@
         ],
         "mean_abs_correction_units": 75.67,
         "source_scripts_unchanged": true,
-        "pre_family_name_sha256": "1f65d58c4d4a97a4935eeb935a1c427c03e841e5ceec2bf176f1017922e5441a",
-        "output_sha256": "0897ba5fdf6f0e06d806a9b3935e420b06467374806b24868c61c39310233f05"
+        "pre_family_name_sha256": "5ee4da03f04560bf9ad2c3678f870497ddbef982580de85f26c929e4f3da2aaa",
+        "output_sha256": "68892436faafdbdaa6476b5a7e4cec5c8766019a1ec3a354745ab8be0ff732ae"
       }
     },
     "Semibold": {
@@ -2099,11 +2099,11 @@
       },
       "weight": 700,
       "input_original_sha256": "4c4d514999eae9192313499e31b5e69b84a348e7fac2b1554a7728c6a14aa5ae",
-      "input_stacked_sha256": "b4cba93950068495ae6c39cc1ef20a0b6850ee8485b5e18a86d721456939172e",
-      "output_sha256": "3dc4ff8061a08a9d1a5b7dc6b5fc0b52cff57af445023d1a47c91fffd759de25",
+      "input_stacked_sha256": "867a7696270407478c3506e8115ed108e08b134b53fe6e654f8383c0ca28264e",
+      "output_sha256": "7c97a90b8f25fca517d2392b58897ff50b76a4ca7df8a02397e56bbd9d19d589",
       "file": "ChunksReferenceMixedMarks-Bold.otf",
       "kerning": {
-        "input_sha256": "a1f05333207e35caa8de9f018a5a69a199fe023fe89e18562bb7279ae2f71367",
+        "input_sha256": "45667480cf375639b6e3c3fc8e69591b507a6c746593dc652cfec029475faee8",
         "file": "ChunksReferenceMixedMarks-Bold.otf",
         "reference_accent_glyphs": 14,
         "candidate_pairs": 1932,
@@ -2235,8 +2235,8 @@
         ],
         "mean_abs_correction_units": 71.8,
         "source_scripts_unchanged": true,
-        "pre_family_name_sha256": "44f0aa68070e9924602c31de2019660915fbf2c7be02338a0b4fb4307d151bf6",
-        "output_sha256": "3dc4ff8061a08a9d1a5b7dc6b5fc0b52cff57af445023d1a47c91fffd759de25"
+        "pre_family_name_sha256": "154ef215bc6cd8968b644c48fbb3853a1e8b6d2e924dfbb1b7b72ee988a826ce",
+        "output_sha256": "7c97a90b8f25fca517d2392b58897ff50b76a4ca7df8a02397e56bbd9d19d589"
       }
     },
     "ExtraBold": {

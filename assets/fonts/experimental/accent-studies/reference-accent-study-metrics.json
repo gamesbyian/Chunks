@@ -3677,8 +3677,8 @@
       "built": 243,
       "skipped_undetected": 25,
       "source_sha256": "50b68167346fa4dc5f8c6c8326c0668cfaa0e0c1dacb927b04acd2b31834d529",
-      "reference_sha256": "e2747f2cf0eff1db0ce0d1be0acaaffa887377ad518568494113375822d3e43f",
-      "output_sha256": "7811879c833748eb663d0c6ccb5389e1d21746b700e5299fd35c377919dedcf7",
+      "reference_sha256": "59d54773ae88482cf012e07061f455097466faaa9ee9bbc1b4e0abbda4d76599",
+      "output_sha256": "7422e2def9705d5e4492a02852c687a16137fad069bf869b994c237c73210080",
       "glyphs": [
         {
           "glyph": "À",
@@ -10989,8 +10989,8 @@
       "built": 243,
       "skipped_undetected": 25,
       "source_sha256": "4c4d514999eae9192313499e31b5e69b84a348e7fac2b1554a7728c6a14aa5ae",
-      "reference_sha256": "7a009a620ad0779c21b35657b22c5d03045d20fed2c3f0b957df85d6c91c1c2d",
-      "output_sha256": "78c52e82495d3afcdf75310c5492671330e585f955be89cf27573c58a28d20f1",
+      "reference_sha256": "4a97ba57e97c7b4ca1da8f87fad82e84f330a9a8336059185253378eabb9c6c5",
+      "output_sha256": "1d5a6c701fb792d25766241b857f8385bcb2e556f3996bf216efb2ba921f937a",
       "glyphs": [
         {
           "glyph": "À",
