@@ -526,12 +526,10 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         }
         if (saved != handles.size) return LocalTrackerRepairOutcome.UNCERTAIN
         val onDisk = try {
-            val file = File(state, "$key.resume")
-            if (!file.isFile || file.length() !in 1..MAX_RESUME_BYTES) null
-            else {
+            val bytes = LocalResumeFileReader.read(File(state, "$key.resume"), MAX_RESUME_BYTES)
+            bytes?.let {
                 val error = error_code()
-                val params = libtorrent.read_resume_data_ex(
-                    Vectors.bytes2byte_vector(file.readBytes()), error)
+                val params = libtorrent.read_resume_data_ex(Vectors.bytes2byte_vector(it), error)
                 if (error.value() != 0 || params == null) null
                 else AddTorrentParams(params)
             }
@@ -1069,19 +1067,31 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         for (file in directory.listFiles().orEmpty().sortedBy { it.name }) {
             val key = file.name.removeSuffix(".resume")
             if (!file.name.endsWith(".resume") || !identityPattern.matches(key)) continue
-            val bytes = if (file.isFile && file.length() in 1..MAX_RESUME_BYTES) file.readBytes() else null
-            val error = error_code()
-            val raw = bytes?.let { libtorrent.read_resume_data_ex(Vectors.bytes2byte_vector(it), error) }
-            if (raw == null || error.value() != 0) { problems += file.name; continue }
-            val params = AddTorrentParams(raw)
-            val info = params.torrentInfo
-            if (info == null || !info.isValid || identity(info) != key) { problems += file.name; continue }
-            params.setFlags(params.flags.or_(org.libtorrent4j.TorrentFlags.PAUSED)
-                .and_(org.libtorrent4j.TorrentFlags.AUTO_MANAGED.inv()))
-            val addError = error_code()
-            val handle = session.swig().add_torrent(params.swig(), addError)
-            if (addError.value() != 0 || !handle.is_valid) { problems += file.name; continue }
-            handles[key] = TorrentHandle(handle)
+            val bytes = LocalResumeFileReader.read(file, MAX_RESUME_BYTES)
+            val params = try {
+                bytes?.let {
+                    val error = error_code()
+                    val raw = libtorrent.read_resume_data_ex(Vectors.bytes2byte_vector(it), error)
+                    if (raw == null || error.value() != 0) null else AddTorrentParams(raw)
+                }
+            } catch (_: Exception) { null }
+            if (params == null) { problems += file.name; continue }
+            // A single invalid native record must not abort restoration of
+            // unrelated, valid transfers. Preserve every failed input on disk.
+            val restored = try {
+                val info = params.torrentInfo
+                if (info == null || !info.isValid || identity(info) != key) null
+                else {
+                    params.setFlags(params.flags.or_(org.libtorrent4j.TorrentFlags.PAUSED)
+                        .and_(org.libtorrent4j.TorrentFlags.AUTO_MANAGED.inv()))
+                    val addError = error_code()
+                    val handle = session.swig().add_torrent(params.swig(), addError)
+                    if (addError.value() != 0 || !handle.is_valid) null
+                    else TorrentHandle(handle)
+                }
+            } catch (_: Exception) { null }
+            if (restored == null) { problems += file.name; continue }
+            handles[key] = restored
         }
         restoreProblems = problems
     }
