@@ -277,6 +277,37 @@ internal fun FinishInOrderPanel(
                     Text((if (role == FileRole.ACTIVE) "High: " else "High (fallback): ") +
                         (names[index] ?: "file $index"), style = MaterialTheme.typography.bodySmall)
                 }
+            // One-tap "Finish this next" for the files the order reaches soonest;
+            // any other file can be moved first from the order review.
+            val upNext = plan?.let { p ->
+                current.policy.order.map { it.index }.filter { index ->
+                    index != p.active && p.roles[index] != FileRole.DONE && p.roles[index] != FileRole.SKIPPED
+                }.take(4)
+            }.orEmpty()
+            if (!reviewing && current.pending.isEmpty() && upNext.isNotEmpty()) {
+                Text("Up next", style = MaterialTheme.typography.labelLarge)
+                upNext.forEach { index ->
+                    val name = names[index] ?: "file $index"
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(name, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                        OutlinedButton(onClick = {
+                            act {
+                                withContext(Dispatchers.IO) {
+                                    val saved = FinishInOrderController.exclusive {
+                                        val next = store.get(infoHash)?.finishNext(index)
+                                        next != null && store.save(infoHash, next)
+                                    }
+                                    if (!saved) "This file could not be moved first now (an earlier change " +
+                                        "is still unresolved, or saving failed). Nothing changed."
+                                    else describe(FinishInOrderController.stepNow(context, infoHash))
+                                        ?: "$name is next. Priorities follow from the next check."
+                                }
+                            }
+                        }, enabled = !busy && !working, modifier = Modifier.heightIn(min = 48.dp)
+                            .semantics { contentDescription = "Finish $name next" }) { Text("Finish this next") }
+                    }
+                }
+            }
             if (!reviewing && current.pending.isEmpty()) {
                 OutlinedButton(onClick = { reviewing = true }, enabled = !busy && !working,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
