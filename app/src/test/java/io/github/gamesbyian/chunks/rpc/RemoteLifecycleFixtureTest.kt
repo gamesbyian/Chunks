@@ -91,6 +91,47 @@ class RemoteLifecycleFixtureTest {
         } finally { server.stop(0) }
     }
 
+
+    @Test fun rpcFaultDuringMultiStepLifecycleOrReadbackIsUncertain() = runBlocking {
+        val scenarios = listOf(
+            Triple(true, "d.open", listOf("d.open")),
+            Triple(true, "d.start", listOf("d.open", "d.start")),
+            Triple(false, "d.close", listOf("d.stop", "d.close")),
+            Triple(true, "d.state", listOf("d.open", "d.start", "d.resume", "d.state"))
+        )
+        for ((desiredStarted, faultMethod, expectedCalls) in scenarios) {
+            val calls = mutableListOf<String>()
+            val server = HttpServer.create(
+                InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0)
+            server.createContext("/RPC2") { exchange ->
+                val request = exchange.requestBody.bufferedReader().use { it.readText() }
+                val method = Regex("<methodName>([^<]+)</methodName>")
+                    .find(request)?.groupValues?.get(1).orEmpty()
+                calls.add(method)
+                val reply = if (method == faultMethod) {
+                    """<methodResponse><fault><value><struct>
+                    <member><name>faultCode</name><value><int>-503</int></value></member>
+                    <member><name>faultString</name><value><string>Fixture lifecycle fault</string></value></member>
+                    </struct></value></fault></methodResponse>"""
+                } else {
+                    "<methodResponse><params><param><value><int>0</int></value>" +
+                        "</param></params></methodResponse>"
+                }.toByteArray(Charsets.UTF_8)
+                exchange.sendResponseHeaders(200, reply.size.toLong())
+                exchange.responseBody.use { it.write(reply) }
+            }
+            server.start()
+            try {
+                val client = RTorrentRemote(RemoteCredentials(
+                    "http://127.0.0.1:${server.address.port}/RPC2", "", ""))
+                assertEquals("Fault during $faultMethod must not imply refusal or success",
+                    LifecycleOutcome.Uncertain(desiredStarted),
+                    client.setStarted(hash, desiredStarted))
+                assertEquals("No blind replay after $faultMethod", expectedCalls, calls)
+            } finally { server.stop(0) }
+        }
+    }
+
     @Test fun invalidHashCannotIssueCommands() = runBlocking {
         try {
             RTorrentRemote(RemoteCredentials("http://127.0.0.1:1/RPC2", "", ""))
