@@ -2,6 +2,10 @@
 
 > **Authority:** user-visible behavior, interaction state and accessibility requirements. Dated implementation notes describe bounded evidence only; the live [coverage map](SPEC-COVERAGE.md), [quality ledger](QUALITY-LEDGER.md) and [work queue](WORK-QUEUE.md) determine present status and next work.
 
+## Seeding groups in Add, transfer details and automatic imports
+
+On every Add route, show destination environment, file location, **Seeding group (Auto-detect / choose / customize)** and Start on Add together. Show effective ratio, time and upload rate conditions in plain language, including explicit units and whether policy is verified, pending or unsupported. Auto-add/auto-start offers an independent opt-in to apply matching rules, with safe hold/notify when rules cannot be established or enforced. Expose group/override and "Why this group?" in transfer details, plus a visual rule editor and preview. Keep phone and rTorrent UX consistent and exact scope visible. [Full interaction and safety contract](SMART-SEEDING-RULES.md). Planned, not yet implemented.
+
 ## Restore transfer from relocated/renamed files
 
 Broken/missing-file transfer details and eligible multi-select lists expose **Find files to restore transfer**. Open with expected source paths and precise phone/server scope, let the user choose an authorized search root, preview likely and hash-verified matches, show a zero-mutation path mapping plan and required engine/filesystem capabilities, and request separate approval for any link/copy operation. Preserve chosen names and distinguish found, verified, relinked and resumed. Unknown remote file access or insufficient per-file mapping yields an honest limitation, never simulated success. [TRANSFER-FILE-RECOVERY](TRANSFER-FILE-RECOVERY.md).
