@@ -33,7 +33,7 @@ case "${1:-}" in
       if [[ "${MOCK_ARM_MISSING:-0}" != 1 && ! -e "$MOCK_DIR/b" ]]; then
         printf 'CHUNKS_SWARM_INTERRUPT: armed verified_before_kill=8388608\n'
         if [[ "${MOCK_LONG_LOG:-0}" == 1 ]]; then
-          sleep 0.02
+          /bin/sleep 0.02
           for ((i=0; i<20000; i++)); do printf 'irrelevant fake log %d\n' "$i"; done
         fi
       else
