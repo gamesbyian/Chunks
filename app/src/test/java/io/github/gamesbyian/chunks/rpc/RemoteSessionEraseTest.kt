@@ -22,6 +22,11 @@ class RemoteSessionEraseTest {
             columns.joinToString("") + "</data></array></value></data></array></value>"
     }
 
+    private fun unknownHashFault() = """<methodResponse><fault><value><struct>
+        <member><name>faultCode</name><value><int>-501</int></value></member>
+        <member><name>faultString</name><value><string>Could not find info-hash.</string></value></member>
+        </struct></value></fault></methodResponse>"""
+
     private suspend fun withServer(
         initialName: String = name,
         applyErase: Boolean = true,
@@ -36,13 +41,16 @@ class RemoteSessionEraseTest {
                 .find(payload)?.groupValues?.get(1).orEmpty()
             methods.add(method)
             if (method == "d.erase" && applyErase) present = false
-            val xmlValue = when (method) {
+            val xmlBody = when (method) {
                 "d.multicall2" -> rows(present, initialName)
+                "d.hash" -> value(hash)
                 "d.erase" -> number(0)
                 else -> number(0)
             }
-            val xml = ("<methodResponse><params><param>" + xmlValue +
-                "</param></params></methodResponse>").toByteArray(Charsets.UTF_8)
+            val reply = if (method == "d.hash" && !present) unknownHashFault()
+                else "<methodResponse><params><param>" + xmlBody +
+                    "</param></params></methodResponse>"
+            val xml = reply.toByteArray(Charsets.UTF_8)
             exchange.sendResponseHeaders(200, xml.size.toLong())
             exchange.responseBody.use { it.write(xml) }
         }
@@ -58,7 +66,7 @@ class RemoteSessionEraseTest {
         withServer { remote, methods ->
             assertEquals(SessionEraseOutcome.VerifiedRemoved(hash),
                 remote.eraseFromSession(hash, name, directory))
-            assertEquals(listOf("d.multicall2", "d.erase", "d.multicall2"), methods)
+            assertEquals(listOf("d.multicall2", "d.hash", "d.erase", "d.hash"), methods)
             assertEquals(SessionEraseOutcome.AlreadyAbsent(hash),
                 remote.eraseFromSession(hash, name, directory))
             assertEquals(1, methods.count { it == "d.erase" })
@@ -79,7 +87,7 @@ class RemoteSessionEraseTest {
         withServer(applyErase = false) { remote, methods ->
             assertEquals(SessionEraseOutcome.PendingRemoval(hash),
                 remote.eraseFromSession(hash, name, directory))
-            assertEquals(listOf("d.multicall2", "d.erase", "d.multicall2"), methods)
+            assertEquals(listOf("d.multicall2", "d.hash", "d.erase", "d.hash"), methods)
         }
     }
 
@@ -102,8 +110,10 @@ class RemoteSessionEraseTest {
                 exchange.sendResponseHeaders(503, -1)
                 exchange.close()
             } else {
-                val reply = "<methodResponse><params><param>" +
-                    rows(present, name) + "</param></params></methodResponse>"
+                val reply = if (method == "d.hash" && !present) unknownHashFault()
+                    else "<methodResponse><params><param>" +
+                        (if (method == "d.hash") value(hash) else rows(present, name)) +
+                        "</param></params></methodResponse>"
                 val encoded = reply.toByteArray(Charsets.UTF_8)
                 exchange.sendResponseHeaders(200, encoded.size.toLong())
                 exchange.responseBody.use { it.write(encoded) }
@@ -116,12 +126,12 @@ class RemoteSessionEraseTest {
             assertEquals(SessionEraseOutcome.Uncertain(hash),
                 client.eraseFromSession(hash, name, directory))
             assertEquals(1, eraseCalls)
-            assertEquals(listOf("d.multicall2", "d.erase"), methods)
+            assertEquals(listOf("d.multicall2", "d.hash", "d.erase"), methods)
             // Only a separately initiated read-only reconciliation is safe.
             assertEquals(SessionEraseOutcome.AlreadyAbsent(hash),
                 client.eraseFromSession(hash, name, directory))
             assertEquals(1, eraseCalls)
-            assertEquals(listOf("d.multicall2", "d.erase", "d.multicall2"), methods)
+            assertEquals(listOf("d.multicall2", "d.hash", "d.erase", "d.multicall2", "d.hash"), methods)
         } finally { server.stop(0) }
     }
 
