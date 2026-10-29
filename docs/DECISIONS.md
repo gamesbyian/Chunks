@@ -4,6 +4,10 @@
 
 **Status vocabulary:** **Owner, binding** = explicit product choice; **Adopted/provisional** = engineering decision subject to evidence; **Open** = undecided; **Superseded/amended** = historical choice that no longer governs. The table's last column describes reopening/verification requirements, **not a blanket statement of implementation**.
 
+## Create & Share binding owner decision (2026-10-29)
+
+**D-CREATE-SHARE-20261029 | Owner, binding:** One Create & Share workflow supports no-account .torrent/magnet creation, optional public discovery, and optional authenticated tracker/indexer publication through managed service profiles. Publishing requires destination-specific consent, verified status and credential/private-torrent isolation. Account-free sharing may not be made dependent on third-party accounts. Detailed authority: [CREATE-AND-SHARE](CREATE-AND-SHARE.md). Implementation and service compatibility remain unverified.
+
 ## Advanced-operations specification decision (2026-10-29)
 
 **D-ADVANCED-OPS-20261029 | Adopted/provisional design; discovery and seedbox boundaries now resolved by owner.** The initial 58 B-classified inventory items remain documented in three canonical contracts, rather than wholesale adoption of the 240-item research union. Full integrated discovery, with a master switch to disable all discovery activity, is now **binding under D-DISCOVERY-20261029**. Secondary, limited, separately permissioned server health/service tools are now **binding under D-SEEDBOX-TOOLS-20261029**. Both supersede the earlier tentative exclusion of these scopes. Other external media/cloud adapters remain opt-in/provisional and broadened privileged administration stays excluded. See [intake/queue](INTAKE-QUEUE-AND-POLICIES.md), [files/protocol/diagnostics](FILES-PROTOCOL-AND-DIAGNOSTICS.md), [remote integrations/settings](REMOTE-INTEGRATIONS-AND-PREFERENCES.md), [coverage](SPEC-COVERAGE.md).
