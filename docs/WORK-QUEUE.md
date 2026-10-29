@@ -4,6 +4,10 @@
 
 [Agent instructions](../AGENTS.md) · [Documentation index](INDEX.md) · [Product contract](PRODUCT.md) · [Coverage gaps](SPEC-COVERAGE.md) · [Evidence](QUALITY-LEDGER.md) · [Documentation authoring standard](DOCUMENTATION-STANDARD.md)
 
+## Planned slice: Smart Seeding Rules
+
+Implement [SMART-SEEDING-RULES](SMART-SEEDING-RULES.md) in independently testable stages once conflicting active PRs and ownership have been checked: pure policy model and deterministic tracker matching; stable rule identities, generated/editable names and explicit multi-environment selection; per-profile capability/readback adapters; Add-route preview and guarded start; opt-in unattended import hold/fallback; scoped batch application and accessibility/host acceptance. Tests must distinguish intended rule selection from runtime-enforced policy. This is planned work, not a new P0 or an implementation claim.
+
 ## Planned recovery slice: relocated or renamed transfer backing files
 
 Develop [TRANSFER-FILE-RECOVERY](TRANSFER-FILE-RECOVERY.md) behind verified local/remote filesystem and engine capabilities: read-only diagnostics → bounded candidate discovery → content verification and unambiguous mapping → preview and user-approved non-destructive rebind/linking → hash recheck and confirmed resumption. Keep ahead of cosmetic organization work when independently executable; do not claim feature support or use unsafe rTorrent RPC shortcuts without actual capability tests.
