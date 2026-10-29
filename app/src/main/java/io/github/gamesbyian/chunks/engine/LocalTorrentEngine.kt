@@ -162,8 +162,9 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     /** Explicit Add-and-start consent while magnet metadata is still unresolved. */
     private val startWhenMetadataArrives: MutableSet<String> = ConcurrentHashMap.newKeySet()
     private val magnetCollisionProblems = ConcurrentHashMap<String, String>()
-    // Unknown metadata paths must never yield durable payload state until reviewed.
-    private val magnetNeedsPathReview: MutableSet<String> = ConcurrentHashMap.newKeySet()
+    // Metadata-ready upload-only magnets are intentionally persisted paused;
+    // native UPLOAD_MODE remains their durable don't-write-payload marker.
+    // The next explicit Start rechecks paths, including after process restart.
 
     private val engineListener = object : AlertListener {
         override fun types() = intArrayOf(AlertType.SAVE_RESUME_DATA.swig(),
@@ -186,8 +187,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             var persisted = false
             try {
                 // A magnet without metadata has nothing restorable yet; never persist it half-known.
-                if (alert is SaveResumeDataAlert && alert.params().torrentInfo?.isValid == true &&
-                    !magnetNeedsPathReview.contains(key)) {
+                if (alert is SaveResumeDataAlert && alert.params().torrentInfo?.isValid == true) {
                     val bytes = AddTorrentParams.writeResumeDataBuf(alert.params())
                     // The handle may have been removed while the alert was being decoded.
                     // Lock across both identity recheck and disk commit; Remove uses this
@@ -217,16 +217,17 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             if (!started || handles[key] != handle || !awaitingMetadata.remove(key)) return
             val autoStart = startWhenMetadataArrives.remove(key)
             val problem = inspectMagnetCollision(handle)
-            if (problem != null) {
-                magnetCollisionProblems[key] = problem
+            if (problem != null) magnetCollisionProblems[key] = problem
+            else magnetCollisionProblems.remove(key)
+            if (problem != null || !autoStart) {
+                // Don't clear UPLOAD_MODE while the native pause is still
+                // asynchronous. A paused magnet can persist and be revived
+                // only by a *fresh* path survey on explicit Start.
                 handle.pause()
-                return // Remain upload-only: no payload pieces may be requested.
+            } else {
+                handle.unsetFlags(org.libtorrent4j.TorrentFlags.UPLOAD_MODE)
+                handle.resume()
             }
-            magnetCollisionProblems.remove(key)
-            magnetNeedsPathReview.remove(key)
-            if (!autoStart) handle.pause()
-            handle.unsetFlags(org.libtorrent4j.TorrentFlags.UPLOAD_MODE)
-            if (autoStart) handle.resume()
             requestMetadataResumeSave(key, handle)
         }
     }
@@ -423,7 +424,6 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             return LocalAddResult.Refused("The local engine refused this magnet: " + error.message())
         if (autoStartAfterMetadata) startWhenMetadataArrives += hash
         awaitingMetadata += hash
-        magnetNeedsPathReview += hash
         val handle = TorrentHandle(raw)
         handles[hash] = handle
         // Metadata may already have arrived before we registered interest.
@@ -451,16 +451,20 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     fun resume(infoHash: String, readbackTimeoutMs: Long = 5_000): LocalCommandResult {
         val key = normal(infoHash)
         synchronized(this) {
-            if (magnetCollisionProblems.containsKey(key)) {
-                val handle = handles[key]
-                    ?: return LocalCommandResult(LocalCommandOutcome.NOT_FOUND, null)
+            val handle = handles[key]
+                ?: return LocalCommandResult(LocalCommandOutcome.NOT_FOUND, null)
+            // Upload-only is also preserved in the native resume file. That
+            // makes the collision gate survive process death without relying
+            // on this object's in-memory collision map.
+            val flags = handle.getFlags()
+            if (handle.status().hasMetadata() &&
+                flags.and_(org.libtorrent4j.TorrentFlags.UPLOAD_MODE).non_zero()) {
                 val problem = inspectMagnetCollision(handle)
                 if (problem != null) {
                     magnetCollisionProblems[key] = problem
                     return LocalCommandResult(LocalCommandOutcome.UNCERTAIN, snapshot(key, handle))
                 }
                 magnetCollisionProblems.remove(key)
-                magnetNeedsPathReview.remove(key)
                 handle.unsetFlags(org.libtorrent4j.TorrentFlags.UPLOAD_MODE)
                 requestMetadataResumeSave(key, handle)
             }
@@ -1020,7 +1024,6 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         awaitingMetadata.remove(key)
         startWhenMetadataArrives.remove(key)
         magnetCollisionProblems.remove(key)
-        magnetNeedsPathReview.remove(key)
         pendingFlushes.remove(key)?.refused()
         pendingSaves.cancel(key, handle)
         val saved = config.stateDirectory?.let { File(it, "$key.resume") } ?: return true
@@ -1103,9 +1106,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         // Release the monitor before awaiting native alerts.
         val requests = synchronized(this) {
             if (config.stateDirectory == null || !started) return 0
-            val targets = synchronized(handles) {
-                handles.toList().filterNot { (key, _) -> magnetNeedsPathReview.contains(key) }
-            }
+            val targets = synchronized(handles) { handles.toList() }
             targets.map { (key, handle) ->
                 pendingSaves.acquire(key, handle) {
                     handle.saveResumeData(TorrentHandle.SAVE_INFO_DICT)
@@ -1134,7 +1135,6 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         awaitingMetadata.clear()
         startWhenMetadataArrives.clear()
         magnetCollisionProblems.clear()
-        magnetNeedsPathReview.clear()
         session.stop()
         started = false
     }
