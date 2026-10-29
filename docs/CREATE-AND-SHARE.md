@@ -71,12 +71,32 @@ A **Create** section (tab, plus a Connect-screen tile; it works with or without 
 - optionally add trackers or mark the torrent private;
 - build it on the phone, with progress and Cancel.
 
-The result offers **Save .torrent file** (system save dialog), **Share magnet link** and **Copy magnet link**; private torrents get neither magnet action. A **Not seeding yet** banner states that nobody can download until something seeds; Chunks does not seed created torrents yet.
+The result offers **Save .torrent file** (system save dialog), **Share .torrent file** (through a read-only, non-exported provider that serves only created `.torrent` files from one cache folder, with access granted per share), **Share magnet link** and **Copy magnet link**. Private torrents get neither magnet action. A **Not seeding yet** banner states that nobody can download until something seeds.
 
 Evidence (JVM/Robolectric):
 - fake-provider listing tests (folder, single file, cancellation);
 - Compose tests of review → build → result, the private variant, and a refused credentialed tracker;
 - renders at 100% and 200%.
 
-**Not yet:** seeding (local or remote), `.torrent` share via a content provider, the Android Share-intent entry, publication, and handset/TalkBack acceptance.
+**Not yet:** remote seeding, publication, and handset/TalkBack acceptance.
+
+## Implementation note: Android Share entry (2026-10-29)
+
+Sharing one file from any app to the separately labelled **Create torrent** target (an `activity-alias` of the main activity) opens the Create review with that file listed. Nothing is hashed until the user taps **Create torrent**. Shares addressed to Chunks itself are never routed here, so a shared `.torrent` or magnet keeps its existing Add review. Text, several files, conflicting stream/clip URIs and non-`content://` URIs are explained, not read. Evidence: JVM intent-routing tests and a Compose test of a shared file opening the review. The real Android share sheet on a handset is not yet verified.
+
+## Implementation note: seed a copy on the phone (2026-10-29, slice 2 partial)
+
+The phone engine can only seed real files, and picked files are provider documents. So **Seed a copy on this phone** first shows a review: the copy size, the verified default Place and its free space, a statement that the originals are not moved or changed, and a red warning when peers cannot find the phone (no tracker with DHT off, or a private torrent with no tracker).
+
+On confirmation `CreateSeedCopy`:
+1. copies into a **new** folder named after the torrent, refusing if anything with that name exists and keeping 64 MiB free beyond the copy;
+2. writes `.chunks-part` files, syncs them, then renames them;
+3. rebuilds the metadata from the copied bytes and requires the **same info hash**, refusing files that changed after creation;
+4. adds the torrent stopped, starts it, and reports **Seeding** only after the engine verifies every piece, then keeps the foreground service running.
+
+Cancel or failure removes only the partial copy that attempt created. A mismatch or engine refusal keeps the copy and says where it is.
+
+Evidence (JVM, desktop libtorrent): a verified seeded copy was downloaded **byte-exact by an independent loopback peer** (acceptance gate 2 at JVM/loopback tier). Also tested: no overwrite, files changed after creation refused, cancellation keeps unrelated files. A Compose test covers the review and warning.
+
+**Not yet:** a handset or a real swarm (NAT, Doze), remote seed targets, publication.
 

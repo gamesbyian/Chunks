@@ -148,12 +148,14 @@ internal fun FileProgressLine(fraction: Float, wanted: Boolean, modifier: Modifi
 internal fun ChunksBanner(title: String, message: String, tone: ChunksTone, modifier: Modifier = Modifier) {
     val (icon, accent) = when (tone) {
         ChunksTone.ERROR -> R.drawable.chunks_ic_error to ChunksColors.Red
+        // A good outcome must not wear the warning icon; the title carries it.
+        ChunksTone.COMPLETE -> null to ChunksColors.Green
         else -> R.drawable.chunks_ic_warning to ChunksColors.Yellow
     }
     Row(modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(ChunksColors.Surface)
             .border(2.dp, accent, RoundedCornerShape(16.dp)).padding(14.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Image(painterResource(icon), contentDescription = null, modifier = Modifier.size(32.dp))
+        if (icon != null) Image(painterResource(icon), contentDescription = null, modifier = Modifier.size(32.dp))
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(title, color = accent, fontWeight = FontWeight.ExtraBold,
                 style = MaterialTheme.typography.titleSmall)
