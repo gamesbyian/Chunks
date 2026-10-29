@@ -9,6 +9,7 @@ import androidx.core.view.WindowCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Arrangement
@@ -59,6 +60,7 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -658,7 +660,7 @@ private fun ChunksApp(
                 }
             }
             if (error != null) {
-                Notice("Refresh problem", error.orEmpty(), Coral)
+                Notice("Refresh problem", error.orEmpty())
             }
             when (section) {
                 Section.TRANSFERS -> TransfersScreen(
@@ -918,14 +920,20 @@ private fun ConnectionScreen(
                 ActionTile("Download on this phone (experimental)", ChunksColors.Cyan,
                     onClick = onLocalEngine, modifier = Modifier.fillMaxWidth(),
                     icon = R.drawable.chunks_ic_phone, stacked = false)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+                // Half-width tiles split long words at 200% text; stack them instead.
+                val wideText = LocalDensity.current.fontScale >= 1.5f
+                val offline: @Composable (Modifier) -> Unit = { each ->
                     ActionTile("Inspect a local ZIP without connecting", ChunksColors.Yellow,
-                        onClick = onLocalZipReview, modifier = Modifier.weight(1f).fillMaxHeight(),
-                        icon = R.drawable.chunks_ic_archive)
+                        onClick = onLocalZipReview, modifier = each,
+                        icon = R.drawable.chunks_ic_archive, stacked = !wideText)
                     ActionTile("Inspect .chunksnap backup (offline)", ChunksColors.Pink,
-                        onClick = onInspectSnapshot, modifier = Modifier.weight(1f).fillMaxHeight(),
-                        icon = R.drawable.chunks_ic_document)
+                        onClick = onInspectSnapshot, modifier = each,
+                        icon = R.drawable.chunks_ic_document, stacked = !wideText)
+                }
+                if (wideText) offline(Modifier.fillMaxWidth())
+                else Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+                    offline(Modifier.weight(1f).fillMaxHeight())
                 }
             }
         }
@@ -1044,7 +1052,7 @@ private fun ConnectionScreen(
             ) { Text(if (loading) "Finding secure rTorrent…" else "Connect to rTorrent") }
         }
         item { ConnectionDiagnosticsPanel(diagnostics, loading, onCancelConnect) }
-        if (error != null) item { Notice("Connection unsuccessful", error, Coral) }
+        if (error != null) item { Notice("Connection unsuccessful", error) }
         item {
             Text("Protected HTTPS is required for remote servers. Login is encrypted and stored only on this device unless you opt out. No torrents or files are changed by connecting.",
                 style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary)
@@ -1136,7 +1144,9 @@ private fun TransfersScreen(
                         Text(if (loading) "Refreshing…" else "Refresh")
                     }
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                val wideText = LocalDensity.current.fontScale >= 1.5f
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(
                         onClick = {
                             selecting = !selecting
@@ -1145,7 +1155,7 @@ private fun TransfersScreen(
                             batchMessage = null
                         },
                         enabled = !loading && !stale && !batchBusy && list.isNotEmpty(),
-                        modifier = Modifier.weight(1f).heightIn(min = 52.dp)
+                        modifier = (if (wideText) Modifier.fillMaxWidth() else Modifier.weight(1f)).heightIn(min = 52.dp)
                     ) {
                         Text(if (selecting) "Exit batch selection" else "Select transfers for a batch")
                     }
@@ -1239,10 +1249,7 @@ private fun TransfersScreen(
             }
         }
         if (selecting) item {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = Lilac),
-                shape = RoundedCornerShape(20.dp)
-            ) {
+            AccentOutlineCard(ChunksColors.Purple) {
                 Column(
                     Modifier.fillMaxWidth().padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -1499,8 +1506,9 @@ private fun TransferCard(
                     else -> ChunksTone.ACTIVE
                 }
             )
-            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically) {
+            // Wraps the pill onto its own line when the text is large.
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(6.dp), itemVerticalAlignment = Alignment.CenterVertically) {
                 Text((transfer.fractionComplete * 100).toInt().toString() + "% · " +
                     Units.bytes(transfer.completedBytes) + " of " + Units.bytes(transfer.sizeBytes),
                     style = MaterialTheme.typography.bodySmall)
@@ -1903,20 +1911,14 @@ private fun StatTile(label: String, value: String, color: Color, modifier: Modif
         colors = CardDefaults.cardColors(containerColor = color)) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(label, style = MaterialTheme.typography.labelMedium, color = Ink)
+            // Two lines at most: at 200% text a single line dropped the unit ("50.4").
             Text(value, style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold, color = Ink, maxLines = 1)
+                fontWeight = FontWeight.Bold, color = Ink, maxLines = 2)
         }
     }
 }
 
 @Composable
-private fun Notice(title: String, message: String, color: Color) {
-    Card(shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = color),
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp)) {
-        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(title, fontWeight = FontWeight.Bold, color = Ink)
-            Text(message, style = MaterialTheme.typography.bodySmall, color = Ink)
-        }
-    }
-}
+/** A failure the user should read before retrying. */
+private fun Notice(title: String, message: String) =
+    ChunksBanner(title, message, ChunksTone.ERROR, Modifier.padding(horizontal = 2.dp))

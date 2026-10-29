@@ -14,6 +14,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.gamesbyian.chunks.ChunkedProgressBar
+import io.github.gamesbyian.chunks.ChunksBanner
 import io.github.gamesbyian.chunks.ChunksColors
 import io.github.gamesbyian.chunks.ChunksTheme
 import io.github.gamesbyian.chunks.ChunksTone
@@ -70,6 +71,8 @@ class ChunksComponentRenderTest {
                         busy = false, onToggle = {}, onRemove = {})
                     LocalTransferCard(status("Sci Fi Pack (2024)", LocalTransferState.DOWNLOADING, true, 580_000, 0),
                         busy = false, onToggle = {}, onRemove = {})
+                    ChunksBanner("Connection unsuccessful", "Login rejected. Check the username/password for this rTorrent instance.", ChunksTone.ERROR)
+                    ChunksBanner("Large download", "This torrent is larger than the free space reported for this folder.", ChunksTone.PAUSED)
                     Text("End of sheet")
                 }
             } }
