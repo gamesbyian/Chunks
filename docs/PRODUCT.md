@@ -20,6 +20,10 @@ A torrent client is a data-integrity tool: none of its charm is worth lost bytes
 
 Tags, category, collection membership, destination suggestion and filesystem mutation authorization are distinct states. A Transfer may belong to multiple collections; a file can be represented in several collections without duplicating data.
 
+## Create & Share: account-free and connected publication (binding)
+
+Chunks MUST let users create torrent metadata from accessible phone files/folders, generate and share .torrent/magnet outputs, and seed through a verified capable phone or remote environment. **Share by link** requires no indexer or account; **Publish for discovery** is a separate, explicitly approved action, with optional authenticated tracker/indexer publisher profiles and per-service status. Creation, announce, network availability and searchable listing are distinct claims. Never leak tracker passkeys or private metadata into public exports, and never imply remote seeding without remote payload bytes. The complete feature authority and acceptance gates are in [CREATE-AND-SHARE](CREATE-AND-SHARE.md). This is required product scope, **not current implementation**.
+
 ## Unified environment experience (binding owner direction, 2026-10-28)
 
 Local-only (the default offer), remote-only, and combined local/one-or-more-rTorrent-profile configurations MUST all be first-class. The on-phone manager and every remote profile use one consistent navigation, Transfers list/detail, Add, controls and semantics, with divergences only where independently verified capabilities require them. A multi-environment Transfers view clearly identifies the selected phone/server list; transfer details, destructive dialogs and settings show their affected environment. Environment switching is navigation only, and disabling a mode cannot silently remove jobs/files or forget credentials. Settings distinguish application-wide, exact environment and per-transfer scope, with explicit preview for any multi-environment operation. [Binding detailed contract and acceptance](UNIFIED-ENVIRONMENTS.md). Existing implementation evidence does not establish complete parity.
