@@ -2,6 +2,11 @@
 
 > **Interpretation:** each row states a specific requirement, bounded implementation observation and what still needs acceptance. Older run/PR references are historical snapshots, not automatic proof of the latest main branch. Reconcile against live code/PRs and the [QUALITY-LEDGER](QUALITY-LEDGER.md) before changing a status. Product intent belongs in [PRODUCT](PRODUCT.md) and feature contracts; task ordering only in [WORK-QUEUE](WORK-QUEUE.md).
 
+## Transfer file recovery after external rename/move
+
+**Required; implementation and acceptance OPEN.** [TRANSFER-FILE-RECOVERY](TRANSFER-FILE-RECOVERY.md) specifies scoped search for moved/renamed backing data, exact verified mapping to immutable torrent files, non-destructive repair, capability-gated root/per-file rebind, actual hash recheck and resumed engine state. Standard rTorrent directory reset does not establish arbitrary per-file relink support. Validate local/remote adapter capabilities, v1/v2 and incomplete piece hash integrity, interrupted batches, side-by-side same-hash profiles, preserved user filenames and zero accidental overwrites. No physical/seedbox verification claimed.
+
+
 ## Unified local/remote experience acceptance (binding owner clarification, 2026-10-28)
 
 **Status: partially specified/shared foundations, full acceptance OPEN.** Canonical contract: [UNIFIED-ENVIRONMENTS.md](UNIFIED-ENVIRONMENTS.md). Required cases: standalone local-only without remote account, standalone remote-only without local engine/service startup, combined mode switching among phone and two rTorrent profiles, independently preserved list states, visible list/detail source, exact scoped settings, capability-conditioned control parity, safe disable/re-enable with no deletion, no silent offline fallback, exact target on all Add/Share/batch/destructive flows, same-hash transfer isolation. Verify automated controller/model tests and native 412×892/320×700, 200%-font, TalkBack and keyboard screenshots. **No full implementation or physical-device evidence claimed.**
