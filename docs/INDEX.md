@@ -13,9 +13,9 @@ The [documentation architecture and authoring standard](DOCUMENTATION-STANDARD.m
 
 ## Advanced operations (normative feature contracts)
 
-- [Intake, queue and policies](INTAKE-QUEUE-AND-POLICIES.md): 21 URL/feed, queue, schedule, traffic and source-filter requirements.
+- [Intake, queue and policies](INTAKE-QUEUE-AND-POLICIES.md): 21 catalogue gap items plus **owner-approved optional integrated Discovery**, explicit master off switch, and source/auto-add consent, alongside queue, schedules and traffic rules.
 - [Files, protocol and diagnostics](FILES-PROTOCOL-AND-DIAGNOSTICS.md): 27 archive/link, piece/peer/network privacy, diagnostics and partial-preview requirements.
-- [Remote integrations and settings portability](REMOTE-INTEGRATIONS-AND-PREFERENCES.md): 10 remote auth/profile, consented integration, responsive expert UI and preferences requirements.
+- [Remote integrations and settings portability](REMOTE-INTEGRATIONS-AND-PREFERENCES.md): 10 gap items plus **owner-approved secondary Server tools**, service-health/quota visibility and limited capability-gated service actions; opt-in adapters and preferences.
 - [Smart Seeding Rules](SMART-SEEDING-RULES.md): owner-approved policy, generated editable rule names and explicit named-environment applicability.
 
 ## Normative foundations
