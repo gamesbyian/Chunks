@@ -68,6 +68,35 @@ class RemoteSmartConnectTest {
             ).map { it.endpoint })
     }
 
+    @Test fun advancedExactPathTestsOnlyThatAddressOnTheSameOrigin() {
+        val joined = RemoteSmartConnect.withExactPath("mybox.example:9443", " /user/RPC1 ")
+        assertEquals("https://mybox.example:9443/user/RPC1", joined)
+        assertEquals(listOf(joined), RemoteSmartConnect.candidates(joined, "user").map { it.endpoint })
+        assertEquals("https://host.example/RPC2", RemoteSmartConnect.withExactPath("https://host.example/", "/RPC2"))
+        // Blank keeps ordinary discovery.
+        assertEquals("host.example", RemoteSmartConnect.withExactPath("host.example", "  "))
+        val refused = listOf(
+            "host.example" to "RPC2",
+            "host.example" to "/a/../RPC2",
+            "host.example" to "/a/%2E%2E/RPC2",
+            "host.example" to "/RPC2?x=1",
+            "host.example" to "/RPC2#x",
+            "host.example" to "//other.example/RPC2",
+            "host.example" to "/RPC 2",
+            // Both fields naming a path could disagree about the instance.
+            "https://host.example/rutorrent2/" to "/RPC2"
+        )
+        for ((host, path) in refused) try {
+            RemoteSmartConnect.withExactPath(host, path)
+            fail("Should refuse $host + $path")
+        } catch (_: IllegalArgumentException) { }
+        // Scheme and embedded-credential checks still apply to the joined address.
+        for (host in listOf("http://host.example", "user:pass@host.example")) try {
+            RemoteSmartConnect.candidates(RemoteSmartConnect.withExactPath(host, "/RPC2"), "user")
+            fail("Should refuse $host")
+        } catch (_: IllegalArgumentException) { }
+    }
+
     @Test fun refusesCredentialsQueriesAndInsecureOrInvalidSchemes() {
         val invalid = listOf(
             "http://wood.seedhost.eu/rutorrent/",

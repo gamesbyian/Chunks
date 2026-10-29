@@ -41,7 +41,7 @@ object RemoteSmartConnect {
             Category.AUTH -> "Login rejected. Check the username/password for this rTorrent instance."
             Category.TLS -> "Secure connection failed. Check the HTTPS hostname/certificate. Chunks will not bypass TLS."
             Category.NETWORK -> "The server is unreachable or did not respond. Check its address and network."
-            Category.ENDPOINT -> "No compatible rTorrent XML-RPC endpoint was verified. Paste the complete ruTorrent URL or enter the RPC path in Advanced settings."
+            Category.ENDPOINT -> "No compatible rTorrent XML-RPC endpoint was verified. Paste the complete ruTorrent URL, or enter your provider's exact RPC path under Advanced connection settings."
         }
     )
 
@@ -87,6 +87,31 @@ object RemoteSmartConnect {
             failure is RpcReplyTooLarge -> "Answered with an unexpectedly large reply"
             else -> "Answered, but not with an rTorrent XML-RPC reply"
         }
+    }
+
+    /**
+     * Advanced manual endpoint: joins a hostname (or bare origin) with an
+     * exact RPC path such as `/RPC2`, so [candidates] tests only that one
+     * address. A blank path returns [input] unchanged. Refuses an input that
+     * already names a path, so the two fields can never disagree about which
+     * instance is meant.
+     */
+    fun withExactPath(input: String, rpcPath: String): String {
+        val path = rpcPath.trim()
+        if (path.isEmpty()) return input
+        require(path.length <= 512 && path.startsWith("/") && "//" !in path &&
+            Regex("[A-Za-z0-9._~%/-]+").matches(path) &&
+            path.split('/').none { it == "." || it == ".." || it.equals("%2e", true) ||
+                it.equals("%2e%2e", true) || it.equals(".%2e", true) || it.equals("%2e.", true) }) {
+            "Enter an RPC path that starts with / (for example /RPC2), without spaces, ? or #"
+        }
+        val raw = input.trim()
+        val uri = try { URI(if ("://" in raw) raw else "https://$raw") }
+            catch (_: Exception) { throw IllegalArgumentException("Enter a valid seedbox address") }
+        require(uri.rawPath.orEmpty().trim('/').isEmpty() && uri.rawQuery == null && uri.rawFragment == null) {
+            "The address already includes a path. Clear the advanced RPC path, or enter only the hostname."
+        }
+        return "${uri.scheme}://${uri.rawAuthority}$path"
     }
 
     /** No network access, no login attempts, at most six HTTPS candidates. */
