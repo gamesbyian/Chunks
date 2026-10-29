@@ -98,4 +98,31 @@ class LocalQueueCatalogTest {
         assertEquals(before.toSet(), sort(LocalQueueOrder.SIZE).toSet())
         assertEquals(before, data)
     }
+
+    @Test fun everyOrderReversesWithUnknownsLastAndFixedTiesInBothDirections() {
+        val big = transfer("Big", "1".repeat(40), wanted = 900, progress = 900_000, peers = 9)
+        val small = transfer("small", "2".repeat(40), wanted = 10, progress = 100_000, peers = 1)
+        val tieA = transfer("Tie", "3".repeat(40), wanted = 50, progress = 500_000, peers = 4)
+        val tieB = transfer("tie", "4".repeat(40), wanted = 50, progress = 500_000, peers = 4)
+        val magnet = transfer("Magnet", "5".repeat(40), wanted = 0, progress = 0,
+            peers = -1, metadataKnown = false)
+        val rows = listOf(magnet, tieB, small, big, tieA)
+        fun names(order: LocalQueueOrder, direction: UnifiedSortDirection) =
+            LocalQueueCatalog.visible(rows, "", LocalQueueFilter.ALL, order, direction).map { it.infoHash }
+        for (order in listOf(LocalQueueOrder.SIZE, LocalQueueOrder.PROGRESS, LocalQueueOrder.PEERS)) {
+            assertEquals(order.name, listOf(big, tieA, tieB, small, magnet).map { it.infoHash },
+                names(order, UnifiedSortDirection.DESCENDING))
+            // Unknown stays last and equal values keep A–Z/hash order when reversed.
+            assertEquals(order.name, listOf(small, tieA, tieB, big, magnet).map { it.infoHash },
+                names(order, UnifiedSortDirection.ASCENDING))
+            assertEquals(UnifiedSortDirection.DESCENDING, order.naturalDirection)
+        }
+        assertEquals(listOf(big, magnet, small, tieA, tieB).map { it.infoHash },
+            names(LocalQueueOrder.NAME, UnifiedSortDirection.ASCENDING))
+        assertEquals(listOf(tieA, tieB, small, magnet, big).map { it.infoHash },
+            names(LocalQueueOrder.NAME, UnifiedSortDirection.DESCENDING))
+        assertEquals(UnifiedSortDirection.ASCENDING, LocalQueueOrder.NAME.naturalDirection)
+        assertEquals("Z–A", LocalQueueOrder.NAME.directionLabel(UnifiedSortDirection.DESCENDING))
+        assertEquals("Fewest peers first", LocalQueueOrder.PEERS.directionLabel(UnifiedSortDirection.ASCENDING))
+    }
 }

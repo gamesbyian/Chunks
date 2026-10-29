@@ -222,10 +222,6 @@ object UnifiedTransferCatalog {
     }
 
     private fun <T : Comparable<T>> compareKnown(a: T?, b: T?,
-                                                    direction: UnifiedSortDirection): Int {
-        if (a == null) return if (b == null) 0 else 1
-        if (b == null) return -1
-        val result = a.compareTo(b)
-        return if (direction == UnifiedSortDirection.ASCENDING) result else -result
-    }
+                                                    direction: UnifiedSortDirection): Int =
+        TransferSortOrdering.compareKnown(a, b, direction)
 }

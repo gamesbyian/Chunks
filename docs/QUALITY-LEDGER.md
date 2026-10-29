@@ -1,5 +1,10 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-29 reversible sort on phone and server Transfers lists (#567)
+
+- **Source slice:** `LocalQueueCatalog` and `TransferCatalog` take a shared `UnifiedSortDirection`; ordering rules live in `TransferSortOrdering` (also used by `UnifiedTransferCatalog`). Metadata-less size/progress, negative peer counts and unreported server rates are UNKNOWN and stay last in both directions; ties use display name A–Z then exact hash and do not flip with direction. Both screens gain one worded direction button ("Largest first", "Z–A") with a spoken sort summary; `TransferListSortStore` keeps key + direction per `phone` / server profile ID across restart. Default directions are unchanged.
+- **Evidence tier:** local JVM `testDebugUnitTest` (669 tests, 0 failures) on the PR branch; exact-head CI is recorded on the PR. New tests cover every offered key in both directions, unknown-last and fixed ties, and preference decode fallback. **Not shown:** emulator/handset rendering, 200%/TalkBack, combined-scope lists, grouping or environment colours.
+
 ## 2026-10-29 built-in POSIX libtorrent disk backend compatibility probe (#573)
 
 - **Merged:** [#573](https://github.com/gamesbyian/Chunks/pull/573), squash `061f6ec23aa08fc1284edc6730a7e9d2f107750b`, reviewed exact head `9da7fb1c2b1914b69d6db812665cf0f291a4f955`. Passed [Android foundation/JVM 40870815960](https://github.com/gamesbyian/Chunks/actions/runs/40870815960), [R8 40870815902](https://github.com/gamesbyian/Chunks/actions/runs/40870815902), [native Add instrumentation 40870816021](https://github.com/gamesbyian/Chunks/actions/runs/40870816021), [disposable rTorrent 40870815972](https://github.com/gamesbyian/Chunks/actions/runs/40870815972).

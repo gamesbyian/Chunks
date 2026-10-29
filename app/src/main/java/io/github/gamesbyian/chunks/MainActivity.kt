@@ -75,6 +75,8 @@ import io.github.gamesbyian.chunks.model.CollectionMembershipRules
 import io.github.gamesbyian.chunks.model.ManualCollectionPager
 import io.github.gamesbyian.chunks.model.TransferFilter
 import io.github.gamesbyian.chunks.model.TransferOrder
+import io.github.gamesbyian.chunks.model.TransferSortOrdering
+import io.github.gamesbyian.chunks.model.UnifiedSortDirection
 import io.github.gamesbyian.chunks.model.TransferMove
 import io.github.gamesbyian.chunks.model.PublicTrackerHandoff
 import io.github.gamesbyian.chunks.engine.FinishInOrderRunner
@@ -231,6 +233,21 @@ private fun ChunksApp(
     val aliasSessions = remember { mutableMapOf<String, TransferAliasEditSession>() }
     var aliasScope by remember { mutableStateOf("") }
     var aliasRevision by remember { mutableStateOf(0) }
+    val sortStore = remember(context) { TransferListSortStore(context) }
+    var orderDirection by remember { mutableStateOf(order.naturalDirection) }
+    // Each authenticated server profile keeps its own list order; a profile
+    // without a saved order starts at Name A–Z rather than inheriting another's.
+    val sortEnvironment = remember(aliasScope) {
+        aliasScope.takeIf { it.isNotBlank() }?.let {
+            RememberedRemoteProfileRoster.identityOf(it.substringBefore('\u0000'),
+                it.substringAfter('\u0000', ""))
+        }
+    }
+    LaunchedEffect(sortEnvironment) {
+        val saved = sortEnvironment?.let { sortStore.get(it, TransferOrder.entries.toTypedArray()) }
+        order = saved?.first ?: TransferOrder.NAME
+        orderDirection = saved?.second ?: order.naturalDirection
+    }
     val remoteFence = remember { RemoteUiRequestFence() }
     val inspectionFence = remember { RemoteUiRequestFence() }
     val mutationGate = remember { RemoteMutationReadbackGate() }
@@ -708,7 +725,12 @@ private fun ChunksApp(
                     snapshotRevision = snapshotRevision,
                     query = query, onQuery = { query = it },
                     filter = filter, onFilter = { filter = it },
-                    order = order, onOrder = { order = it },
+                    order = order, direction = orderDirection,
+                    onSort = { key, direction ->
+                        order = key
+                        orderDirection = direction
+                        sortEnvironment?.let { sortStore.set(it, key, direction) }
+                    },
                     onRefresh = refresh, onAdd = { section = Section.ADD },
                     onReviewNames = { section = Section.NAMES },
                     onExportSnapshot = { section = Section.SNAPSHOT },
@@ -1125,7 +1147,8 @@ private fun TransfersScreen(
     snapshotRevision: Long,
     query: String, onQuery: (String) -> Unit, filter: TransferFilter,
     onFilter: (TransferFilter) -> Unit, order: TransferOrder,
-    onOrder: (TransferOrder) -> Unit, onRefresh: () -> Unit, onAdd: () -> Unit,
+    direction: UnifiedSortDirection,
+    onSort: (TransferOrder, UnifiedSortDirection) -> Unit, onRefresh: () -> Unit, onAdd: () -> Unit,
     onReviewNames: () -> Unit, onExportSnapshot: () -> Unit,
     onInspectSnapshot: () -> Unit,
     onPreparePhone: (RemoteTransfer) -> Unit,
@@ -1136,8 +1159,8 @@ private fun TransfersScreen(
     val knownDownloadingHashes = remember(list) {
         RemoteQueueActivityContext.hashesReportingDownloadTraffic(list)
     }
-    val visible = remember(list, query, filter, order, aliasRevision, aliasScope) {
-        TransferCatalog.visible(list, query, filter, order) { transfer ->
+    val visible = remember(list, query, filter, order, direction, aliasRevision, aliasScope) {
+        TransferCatalog.visible(list, query, filter, order, direction) { transfer ->
             aliasStore.get(aliasScope, transfer.hash) ?: transfer.name
         }
     }
@@ -1297,11 +1320,19 @@ private fun TransfersScreen(
                 Text(visible.size.toString() + " shown", style = MaterialTheme.typography.titleMedium)
                 OutlinedButton(onClick = {
                     val choices = TransferOrder.entries
-                    onOrder(choices[(choices.indexOf(order) + 1) % choices.size])
+                    val next = choices[(choices.indexOf(order) + 1) % choices.size]
+                    onSort(next, next.naturalDirection)
                 }, modifier = Modifier.height(48.dp)) {
                     Text("Sort: " + order.label)
                 }
             }
+        }
+        item {
+            TransferSortDirectionButton(
+                sortName = order.label,
+                directionLabel = order.directionLabel(direction),
+                onReverse = { onSort(order, TransferSortOrdering.reversed(direction)) }
+            )
         }
         if (selecting) item {
             AccentOutlineCard(ChunksColors.Purple) {

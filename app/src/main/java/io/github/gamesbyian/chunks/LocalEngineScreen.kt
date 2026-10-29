@@ -84,6 +84,8 @@ import io.github.gamesbyian.chunks.model.ManualCollectionPager
 import io.github.gamesbyian.chunks.model.LocalQueueCatalog
 import io.github.gamesbyian.chunks.model.LocalQueueFilter
 import io.github.gamesbyian.chunks.model.LocalQueueOrder
+import io.github.gamesbyian.chunks.model.TransferSortOrdering
+import io.github.gamesbyian.chunks.model.UnifiedSortDirection
 import io.github.gamesbyian.chunks.snapshots.LocalSnapshotRestorePreviewPanel
 import io.github.gamesbyian.chunks.snapshots.LocalSnapshotStoppedRestoreDraft
 import io.github.gamesbyian.chunks.snapshots.LocalSnapshotStoppedRestoreReview
@@ -269,17 +271,30 @@ internal fun LocalEngineScreen(
     var transferPage by remember { mutableStateOf(0) }
     var transferSearch by remember { mutableStateOf("") }
     var transferFilter by remember { mutableStateOf(LocalQueueFilter.ALL) }
-    var transferOrder by remember { mutableStateOf(LocalQueueOrder.NAME) }
+    val sortStore = remember(context) { TransferListSortStore(context) }
+    val savedSort = remember(sortStore) {
+        sortStore.get(TransferListSortStore.PHONE, LocalQueueOrder.entries.toTypedArray())
+    }
+    var transferOrder by remember { mutableStateOf(savedSort?.first ?: LocalQueueOrder.NAME) }
+    var transferDirection by remember {
+        mutableStateOf(savedSort?.second ?: transferOrder.naturalDirection)
+    }
+    fun chooseTransferSort(order: LocalQueueOrder, direction: UnifiedSortDirection) {
+        transferOrder = order
+        transferDirection = direction
+        sortStore.set(TransferListSortStore.PHONE, order, direction)
+    }
     val displayedTransfers = remember(transfers, transferSearch, transferFilter,
-        transferOrder, aliasRevision) {
-        LocalQueueCatalog.visible(transfers, transferSearch, transferFilter, transferOrder) {
+        transferOrder, transferDirection, aliasRevision) {
+        LocalQueueCatalog.visible(transfers, transferSearch, transferFilter, transferOrder,
+            transferDirection) {
             transfer -> aliasStore.get(TransferCollectionStore.LOCAL_ENGINE_SCOPE,
                 transfer.infoHash) ?: transfer.name
         }
     }
     // Changing the result set or its order always returns to page one. A new
     // engine observation does not change filter/search or silently select items.
-    LaunchedEffect(transferSearch, transferFilter, transferOrder) { transferPage = 0 }
+    LaunchedEffect(transferSearch, transferFilter, transferOrder, transferDirection) { transferPage = 0 }
     val transferSlice = remember(displayedTransfers, transferPage) {
         ManualCollectionPager.slice(displayedTransfers, transferPage, size = 20)
     }
@@ -1205,12 +1220,20 @@ internal fun LocalEngineScreen(
             LocalQueueOrder.entries.forEach { choice ->
                 FilterChip(
                     selected = transferOrder == choice,
-                    onClick = { transferOrder = choice },
+                    // A new key starts in its natural direction; reselecting keeps the current one.
+                    onClick = { if (transferOrder != choice)
+                        chooseTransferSort(choice, choice.naturalDirection) },
                     label = { Text(choice.label) },
                     modifier = Modifier.heightIn(min = 48.dp)
                 )
             }
         }
+        TransferSortDirectionButton(
+            sortName = transferOrder.label,
+            directionLabel = transferOrder.directionLabel(transferDirection),
+            onReverse = { chooseTransferSort(transferOrder,
+                TransferSortOrdering.reversed(transferDirection)) }
+        )
         Text("Showing ${displayedTransfers.size} of ${transfers.size} local transfers",
             style = MaterialTheme.typography.bodySmall)
         if (transfers.isEmpty()) {
