@@ -1,6 +1,6 @@
 # Create & Share: torrent creation and publication contract
 
-**Status:** Binding product design, not implemented or verified. Applies to local-only, remote-only, and combined Chunks configurations. See [PRODUCT](PRODUCT.md), [UNIFIED-ENVIRONMENTS](UNIFIED-ENVIRONMENTS.md), [SECURITY](SECURITY.md), and [SPEC-COVERAGE](SPEC-COVERAGE.md).
+**Status:** Binding product design. Some basic creation/build/Android UI slices have separate partial test evidence in implementation notes below; **advanced tracker/browser/feed sharing and complete end-to-end acceptance remain planned and unverified**. Applies to local-only, remote-only, and combined Chunks configurations. See [PRODUCT](PRODUCT.md), [UNIFIED-ENVIRONMENTS](UNIFIED-ENVIRONMENTS.md), [SECURITY](SECURITY.md), and [SPEC-COVERAGE](SPEC-COVERAGE.md).
 
 ## Goal and modes
 A user selects an Android file/folder and can publish a shareable torrent without knowing trackers, DHT or indexers. No account or external service is mandatory for the basic workflow. The same guided experience supports optional authenticated tracker and indexer connections, with progressive disclosure of expert controls.
@@ -88,7 +88,7 @@ Seed availability depends on Android background execution, power/network policie
 8. Android accessibility, landscape/portrait, TalkBack, offline interruption and 320×700/412×892 layouts; tests demonstrate explicit environment and publishing-destination scope.
 9. Each backend/service is integration-tested against permitted fixtures or documented test accounts; no live publication to arbitrary real services during CI.
 
-**Implementation/evidence:** none established by this contract; update SPEC-COVERAGE, WORK-QUEUE and QUALITY-LEDGER as work lands.
+**Implementation/evidence:** the narrower base-flow implementation notes below retain their own recorded proof; those tests do **not** establish independent peer sharing, indexed publication, WebRTC browser connectivity, embedded tracker reachability or subscription-feed hosting. Update SPEC-COVERAGE, WORK-QUEUE and QUALITY-LEDGER as verified stages land.
 
 ## Implementation note: metadata builder (2026-10-29, slice 1 partial)
 
