@@ -306,6 +306,30 @@ class LocalTorrentEngineTest {
         }
     }
 
+    @Test fun inaccessibleStatePathCannotStartNativeSessionAndMayBeRetriedSafely() {
+        val state = File(temp.root, "state-path-is-a-file").apply {
+            writeText("existing state sentinel")
+        }
+        val instance = LocalTorrentEngine(LocalEngineConfig(
+            listenInterfaces = "127.0.0.1:0", stateDirectory = state
+        ))
+        engines += instance
+        try {
+            instance.start()
+            fail("An invalid state directory must refuse startup")
+        } catch (expected: IllegalStateException) {
+            assertTrue(expected.message.orEmpty().contains("unavailable"))
+        }
+        assertEquals("existing state sentinel", state.readText())
+        assertTrue(state.delete())
+        assertTrue(state.mkdirs())
+        // The failed attempt must not have started JNI or marked the engine
+        // active. A retry on the SAME instance must now start normally.
+        instance.start()
+        assertTrue(instance.list().isEmpty())
+        assertTrue(instance.restoreProblems.isEmpty())
+    }
+
     @Test fun unusableResumeFilesAreReportedAndLeftUntouched() {
         val fixture = fixture()
         val state = temp.newFolder("engine-state")
