@@ -77,6 +77,10 @@ internal fun CreateTorrentScreen(
     var private by remember { mutableStateOf(false) }
     var progress by remember { mutableStateOf<Long?>(null) }
     var result by remember { mutableStateOf<TorrentMetainfoBuilder.Result?>(null) }
+    var builtWith by remember { mutableStateOf<TorrentMetainfoBuilder.Request?>(null) }
+    var seedReview by remember { mutableStateOf<SeedReview?>(null) }
+    var seeding by remember { mutableStateOf<CreateSeedCopy.Outcome.Seeding?>(null) }
+    var copying by remember { mutableStateOf<Long?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
     val cancel = remember { AtomicBoolean(false) }
 
@@ -155,15 +159,17 @@ internal fun CreateTorrentScreen(
                 }
             } else if (result == null) ActionTile("Create torrent", ChunksColors.Green, {
                 val tiers = trackers.lines().map { it.trim() }.filter { it.isNotEmpty() }.map { listOf(it) }
-                cancel.set(false); message = null; progress = 0L
+                cancel.set(false); message = null; progress = 0L; seeding = null; seedReview = null
+                val request = TorrentMetainfoBuilder.Request(picked.name, picked.entries, tiers, private)
                 scope.launch {
                     try {
                         result = withContext(Dispatchers.IO) {
                             TorrentMetainfoBuilder.build(
-                                TorrentMetainfoBuilder.Request(picked.name, picked.entries, tiers, private),
+                                request,
                                 onProgress = { done -> scope.launch { progress = done } },
                                 isCancelled = { cancel.get() })
                         }
+                        builtWith = request
                     } catch (_: TorrentMetainfoBuilder.Cancelled) { message = "Cancelled. Nothing was created."
                     } catch (e: Exception) { message = e.message ?: "The torrent could not be created."
                     } finally { progress = null }
@@ -175,9 +181,54 @@ internal fun CreateTorrentScreen(
             Text("Torrent created", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Text("${done.pieceCount} pieces of ${Units.bytes(done.pieceLength.toLong())} · info hash ${done.infoHashV1}",
                 style = MaterialTheme.typography.bodySmall)
-            ChunksBanner("Not seeding yet",
-                "Nobody can download these files until a BitTorrent app that has them is running and reachable. " +
-                    "Chunks does not seed created torrents yet.", ChunksTone.PAUSED)
+            val seeded = seeding
+            if (seeded != null) ChunksBanner("Seeding a copy on this phone",
+                "Every piece of the copy at ${seeded.copy.path} was verified. Peers can download it while Chunks " +
+                    "runs and this phone is reachable; manage it from On this phone.", ChunksTone.COMPLETE)
+            else {
+                ChunksBanner("Not seeding yet",
+                    "Nobody can download these files until a BitTorrent app that has them is running and reachable.",
+                    ChunksTone.PAUSED)
+                val copied = copying
+                val review = seedReview
+                when {
+                    copied != null -> {
+                        Text("Copying and checking: ${Units.bytes(copied)} of ${Units.bytes(done.totalBytes)}",
+                            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+                        ChunkedProgressBar(copied.toFloat() / done.totalBytes.coerceAtLeast(1), Modifier.fillMaxWidth(),
+                            tone = ChunksTone.COMPLETE)
+                        OutlinedButton(onClick = { cancel.set(true) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                            Text("Cancel")
+                        }
+                    }
+                    review != null -> {
+                        Text(review.summary, style = MaterialTheme.typography.bodyMedium)
+                        review.warning?.let { ChunksBanner("Peers may not find this phone", it, ChunksTone.ERROR) }
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            ActionTile("Copy and seed", ChunksColors.Green, {
+                                val request = builtWith ?: return@ActionTile
+                                seedReview = null; cancel.set(false); copying = 0L; message = null
+                                scope.launch {
+                                    val outcome = withContext(Dispatchers.IO) {
+                                        seedCopyOnPhone(context, request, done,
+                                            onProgress = { n -> scope.launch { copying = n } }) { cancel.get() }
+                                    }
+                                    copying = null
+                                    when (outcome) {
+                                        is CreateSeedCopy.Outcome.Seeding -> seeding = outcome
+                                        is CreateSeedCopy.Outcome.Refused -> message = outcome.reason
+                                    }
+                                }
+                            }, Modifier.weight(1f), stacked = false)
+                            OutlinedButton(onClick = { seedReview = null },
+                                modifier = Modifier.weight(1f).heightIn(min = 56.dp)) { Text("Not now") }
+                        }
+                    }
+                    else -> ActionTile("Seed a copy on this phone", ChunksColors.Green, {
+                        scope.launch { seedReview = withContext(Dispatchers.IO) { reviewSeedCopy(context, done, builtWith) } }
+                    }, Modifier.fillMaxWidth(), icon = R.drawable.chunks_ic_phone, stacked = false)
+                }
+            }
             ActionTile("Save .torrent file", ChunksColors.Blue, { saver.launch(fileName(source?.name)) },
                 Modifier.fillMaxWidth(), icon = R.drawable.chunks_ic_document, stacked = false)
             done.magnet?.let { magnet ->
@@ -210,6 +261,46 @@ private fun CreateReview(source: CreateTorrentSource) {
     ChunksBanner("What recipients will see",
         "Anyone with this torrent sees the name, every file and folder name, and their sizes. Once shared, " +
             "a torrent cannot be taken back. Seeding later will show your IP address to peers.", ChunksTone.PAUSED)
+}
+
+/** What "Seed a copy on this phone" will do, shown before anything is copied. */
+internal class SeedReview(val summary: String, val warning: String?)
+
+internal fun reviewSeedCopy(
+    context: Context, result: TorrentMetainfoBuilder.Result, request: TorrentMetainfoBuilder.Request?
+): SeedReview {
+    val place = io.github.gamesbyian.chunks.LocalDownloadPlaces.resolve(context).selected
+        ?: return SeedReview("No verified download folder is available on this phone, so Chunks cannot seed a copy.", null)
+    val free = place.root.let { if (it.exists()) it else it.parentFile }?.usableSpace ?: 0L
+    val trackerless = request?.trackerTiers.isNullOrEmpty()
+    val dhtOff = !io.github.gamesbyian.chunks.LocalEngineHolder.dhtPreferred(context)
+    return SeedReview(
+        "Chunks copies ${Units.bytes(result.totalBytes)} into a new folder in ${place.title} and seeds that copy. " +
+            "Your original files are not moved or changed. ${Units.bytes(free)} is free there.",
+        when {
+            request?.private == true && trackerless -> "This private torrent has no tracker, so no peer can find it."
+            trackerless && dhtOff -> "This torrent has no tracker and DHT is off in phone settings, so other apps " +
+                "cannot find this phone. Add a tracker, or turn on DHT under On this phone."
+            else -> null
+        })
+}
+
+/** Android side of [CreateSeedCopy]: verified Place, the shared engine, and its foreground service. */
+internal fun seedCopyOnPhone(
+    context: Context, request: TorrentMetainfoBuilder.Request, result: TorrentMetainfoBuilder.Result,
+    onProgress: (Long) -> Unit, isCancelled: () -> Boolean
+): CreateSeedCopy.Outcome {
+    val place = io.github.gamesbyian.chunks.LocalDownloadPlaces.resolve(context).selected
+        ?: return CreateSeedCopy.Outcome.Refused("No verified download folder is available on this phone.")
+    val root = io.github.gamesbyian.chunks.LocalDownloadPlaces.materialize(place)
+        ?: return CreateSeedCopy.Outcome.Refused("${place.title} could not be prepared for writing. Nothing was copied.")
+    val engine = try { io.github.gamesbyian.chunks.LocalEngineHolder.get(context) }
+        catch (_: Exception) { return CreateSeedCopy.Outcome.Refused("The phone engine could not start. Nothing was copied.") }
+    val outcome = CreateSeedCopy.copyVerifyAndSeed(request, result, root, engine, onProgress, isCancelled)
+    if (outcome is CreateSeedCopy.Outcome.Seeding) {
+        try { io.github.gamesbyian.chunks.LocalEngineService.start(context) } catch (_: Exception) { }
+    }
+    return outcome
 }
 
 internal fun fileName(name: String?): String =
