@@ -2,7 +2,13 @@
 
 **Updated 2026-10-28 (Calgary time).** This is the current typeface engineering handoff for [`font/lab`](https://github.com/gamesbyian/Chunks/tree/font/lab). Earlier glyph-specific design documents are **dated snapshots**; their old "current" master counts are not the present project inventory.
 
-## Built, reproducible, still nonshipping
+## Built, reproducible; ExtraBold now shipping, 400–700 still nonshipping
+
+## Production promotion: approved ExtraBold 800 ONLY
+
+**Merged to `main`:** [PR #528](https://github.com/gamesbyian/Chunks/pull/528) (commit [`e2b6f61`](https://github.com/gamesbyian/Chunks/commit/e2b6f61c3ac8430dcb6c4fdf36c2525ab68a3acd)) explicitly promotes the owner-approved **reference-panel ExtraBold 800** to `app/src/main/res/font/chunks_extrabold.otf`. The packaged file and the checked-in `assets/fonts/experimental/consolidated/ChunksReferencePanel-ExtraBold-Consolidated.otf` have **identical Git blob SHA `25caa12768178db59a843779225f5c9602e73591`**, and Gradle preBuild checks byte-for-byte identity. Existing Compose brand header and title/headline display slots consume that font; system text handles body and dense metadata.
+
+**This supersedes earlier statements below that ExtraBold was nonshipping.** The current five-weight experiments are not a shipping family: **only 800 is now approved and packaged**, and 400/500/600/700 remain intentionally isolated on this lab branch for a future **structural type-design redesign** to inherit ExtraBold's distinct geometry, irregularities and visual DNA, rather than further isolated cosmetic repair. Keep 800 immutable. No Android publication/device installation is claimed from merging repository code. PR #528 passed font audit, font build, stress, Android build, R8, native atlas, and emulator Add review checks before merge. Physical handset TalkBack/200%-scale visual acceptance remains separate.
 
 ## Latest owner-directed j/G/g/9 refinement, verified 2026-10-28
 
