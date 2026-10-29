@@ -4,6 +4,11 @@
 
 [Agent instructions](../AGENTS.md) · [Documentation index](INDEX.md) · [Product contract](PRODUCT.md) · [Coverage gaps](SPEC-COVERAGE.md) · [Evidence](QUALITY-LEDGER.md) · [Documentation authoring standard](DOCUMENTATION-STANDARD.md)
 
+## Planned slice: outbound file Open with and remote on-demand file access
+
+Implement incrementally under [EXTERNAL-FILE-ACCESS](EXTERNAL-FILE-ACCESS.md): (1) typed per-Place local/remote read capability and separation from rTorrent RPC, (2) safe Android content-provider Open/Open with on completed local files, (3) bounded remote reader with random byte ranges and secure temporary URI, (4) on-device recipient, seek/cache/expiry and approved server tests. Choose only when higher-priority unclaimed work or its prerequisites permit; do not treat documentation as verified implementation or bypass existing CI/agent-lane ownership.
+
+
 ## How agents select and complete work
 
 1. Inspect current main, open PRs, claimed lanes, relevant issues and exact-head CI. Resolve obvious red integration issues before starting another overlapping change.
