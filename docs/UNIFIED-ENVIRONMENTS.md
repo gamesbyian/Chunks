@@ -63,3 +63,25 @@ A shared `EnvironmentBadge` (decorative phone/server icon plus text) names the e
 
 The server label comes from the authenticated alias scope via the same address formatting as saved profiles. Two instances of one account on one host (`/rutorrent/` vs `/rutorrent2/`) therefore read differently, and no password is ever shown. Evidence: a JVM label test and Robolectric renders. Not yet: badges on every details card, an environment switcher, or combined-mode lists.
 
+
+## Implementation note: environment colours (2026-10-29)
+
+Each environment ID (`phone`, or `remote:` plus the saved-profile ID) owns a persistent colour from the Chunks palette: cyan, blue, purple, pink, yellow, green, orange or red, never black or white.
+- **Assignment.** It is assigned automatically on first display, choosing the least-used hue. Orange and red come last because they also signal warnings. It is saved immediately, so renaming, reconnecting or restarting never shifts it.
+- **Badges.** Each badge draws its border, icon and name in that colour. A name is lightened toward white only as much as needed for 4.5:1 contrast, so the words stay the identity.
+- **Picker.** Tapping the phone or server header badge opens a palette dialog. Repeats are allowed, and **Restore automatic colour** returns to the automatic choice.
+- **Where colours appear.** The server Add confirmation and Seeding rules use the same colours: each name in **Applies to**, the default sections and the editor's environment checkboxes.
+
+Evidence: JVM tests covering:
+- no repeats until the palette is used up;
+- stability;
+- manual repeat and restore;
+- contrast on every surface;
+- ID parity with Smart Seeding;
+- a Compose picker round trip.
+
+Not yet:
+- colour on transfer rows and details;
+- the combined multi-environment Transfers view, grouping and reversible sorts;
+- an environment settings screen;
+- TalkBack and handset review.

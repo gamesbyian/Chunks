@@ -25,6 +25,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.clickable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -184,20 +194,80 @@ internal fun AccentOutlineCard(accent: Color, modifier: Modifier = Modifier, con
 /**
  * Which environment a list, review or confirmation belongs to (UNIFIED-ENVIRONMENTS):
  * "On this phone" or the exact server account and address. Text carries the
- * identity; the icon is decorative.
+ * identity; the environment's persistent colour (name, border and icon) is a
+ * second cue. With [editable], tapping it offers the palette and
+ * "Restore automatic colour".
  */
 @Composable
-internal fun EnvironmentBadge(label: String, server: Boolean, modifier: Modifier = Modifier) {
-    Row(modifier.clip(RoundedCornerShape(12.dp)).background(ChunksColors.SurfaceRaised)
-            .border(1.dp, if (server) ChunksColors.Blue else ChunksColors.Cyan, RoundedCornerShape(12.dp))
+internal fun EnvironmentBadge(
+    label: String, server: Boolean, modifier: Modifier = Modifier,
+    environmentId: String? = null, editable: Boolean = false
+) {
+    val accent = environmentAccent(environmentId) ?: if (server) ChunksColors.Blue else ChunksColors.Cyan
+    var picking by remember { mutableStateOf(false) }
+    val clickable = if (editable && environmentId != null) Modifier.heightIn(min = 48.dp)
+        .clickable(onClickLabel = "Change colour") { picking = true } else Modifier
+    Row(modifier.clip(RoundedCornerShape(12.dp)).then(clickable).background(ChunksColors.SurfaceRaised)
+            .border(2.dp, accent, RoundedCornerShape(12.dp))
             .padding(horizontal = 10.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         // Library icons are drawn for light fills; tint to the badge accent on this dark chip.
         Image(painterResource(if (server) R.drawable.chunks_ic_server else R.drawable.chunks_ic_phone),
             contentDescription = null, modifier = Modifier.size(20.dp),
-            colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(if (server) ChunksColors.Blue else ChunksColors.Cyan))
-        Text(label, style = MaterialTheme.typography.labelLarge, color = ChunksColors.Text)
+            colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(accent))
+        Text(label, style = MaterialTheme.typography.labelLarge, color = textSafe(accent, ChunksColors.SurfaceRaised))
     }
+    if (picking && environmentId != null) EnvironmentColorPicker(label, environmentId) { picking = false }
+}
+
+/** The environment's saved (or newly auto-assigned) colour; null without an ID. */
+@Composable
+internal fun environmentAccent(environmentId: String?): Color? {
+    if (environmentId == null) return null
+    val context = LocalContext.current
+    val revision = EnvironmentColorStore.revision
+    return remember(environmentId, revision) {
+        try { EnvironmentColorStore.of(context).colorFor(environmentId).color } catch (_: RuntimeException) { null }
+    }
+}
+
+@Composable
+internal fun EnvironmentColorPicker(label: String, environmentId: String, onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    val store = remember { EnvironmentColorStore.of(context) }
+    val current = remember(EnvironmentColorStore.revision) { store.saved(environmentId) }
+    var problem by remember { mutableStateOf<String?>(null) }
+    fun apply(ok: Boolean) {
+        if (ok) { EnvironmentColorStore.revision++; onDismiss() } else problem = "The colour could not be saved."
+    }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Colour for $label") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("Shown wherever this environment is named. The name always stays visible.",
+                    style = MaterialTheme.typography.bodySmall)
+                EnvironmentColor.entries.forEach { option ->
+                    val selected = current?.color == option
+                    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                            .clickable { apply(store.choose(environmentId, option)) }
+                            .semantics { this.selected = selected; role = Role.RadioButton },
+                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        androidx.compose.foundation.layout.Box(Modifier.size(24.dp).clip(RoundedCornerShape(6.dp))
+                            .background(option.color))
+                        Text(option.label + if (selected) " (current)" else "",
+                            color = textSafe(option.color, MaterialTheme.colorScheme.surfaceContainerHigh))
+                    }
+                }
+                problem?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            }
+        },
+        confirmButton = {
+            androidx.compose.material3.TextButton(onClick = { apply(store.restoreAutomatic(environmentId)) },
+                enabled = current?.manual == true) { Text("Restore automatic colour") }
+        },
+        dismissButton = { androidx.compose.material3.TextButton(onClick = onDismiss) { Text("Close") } }
+    )
 }
 
 /** "Server · user @ host/path" from an authenticated alias scope (endpoint + NUL + username); never a password. */

@@ -20,6 +20,8 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.withStyle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -61,7 +63,6 @@ internal fun SeedingRulesScreen(environments: List<SeedingEnvironment>, onBack: 
     var editingDefault by remember { mutableStateOf<SeedingEnvironment?>(null) }
     var pendingDelete by remember { mutableStateOf<String?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
-    val labels = environments.associate { it.id to it.label }
 
     fun persist(next: SeedingRuleStore.Snapshot, replaceUnreadable: Boolean = false): Boolean {
         val ok = store.save(next, replaceUnreadable)
@@ -107,7 +108,7 @@ internal fun SeedingRulesScreen(environments: List<SeedingEnvironment>, onBack: 
                             Text("Trackers: " + r.trackerDomains.sorted().joinToString(", ") +
                                 when (r.privateOnly) { true -> " · private torrents only"; false -> " · public torrents only"; null -> "" },
                                 style = MaterialTheme.typography.bodySmall)
-                            Text(appliesTo(r, labels), style = MaterialTheme.typography.bodySmall)
+                            Text(appliesToColored(r, environments), style = MaterialTheme.typography.bodySmall)
                             Text(r.policy.describe(), style = MaterialTheme.typography.bodySmall)
                             if (pendingDelete == r.id) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 OutlinedButton(onClick = { pendingDelete = null; persist(snapshot.copy(rules = snapshot.rules - r)) },
@@ -132,7 +133,7 @@ internal fun SeedingRulesScreen(environments: List<SeedingEnvironment>, onBack: 
                 Text("Defaults", style = MaterialTheme.typography.titleMedium)
                 environments.forEach { env ->
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        EnvironmentBadge(env.label, env.server)
+                        EnvironmentBadge(env.label, env.server, environmentId = env.id)
                         Text((snapshot.defaults[env.id] ?: SeedingPolicy()).describe(), style = MaterialTheme.typography.bodySmall)
                         OutlinedButton(onClick = { editingDefault = env; message = null },
                             modifier = Modifier.heightIn(min = 48.dp)) { Text("Edit default") }
@@ -142,6 +143,27 @@ internal fun SeedingRulesScreen(environments: List<SeedingEnvironment>, onBack: 
         }
         message?.let { Text(it) }
         OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Back") }
+    }
+}
+
+/** [appliesTo] with each environment name in its own colour; the words are identical. */
+@Composable
+internal fun appliesToColored(rule: SeedingRule, environments: List<SeedingEnvironment>): androidx.compose.ui.text.AnnotatedString {
+    val background = androidx.compose.material3.CardDefaults.cardColors().containerColor
+    val known = environments.associateBy { it.id }
+    val named = rule.environments.map { id -> (known[id]?.label ?: "a server not saved on this phone") to known[id]?.id }
+        .sortedBy { it.first }
+    val colors = named.map { (_, id) -> environmentAccent(id)?.let { textSafe(it, background) } }
+    return androidx.compose.ui.text.buildAnnotatedString {
+        append("Applies to: ")
+        if (named.isEmpty()) append("no environment")
+        named.forEachIndexed { i, (label, _) ->
+            if (i > 0) append(", ")
+            val color = colors[i]
+            if (color == null) append(label)
+            else withStyle(androidx.compose.ui.text.SpanStyle(color = color, fontWeight = FontWeight.Bold)) { append(label) }
+        }
+        if (rule.includeFutureEnvironments) append(", and servers added later")
     }
 }
 
@@ -185,7 +207,9 @@ private fun SeedingRuleEditor(
     environments.forEach { env ->
         Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(env.id in selected, role = Role.Checkbox) {
             selected = if (it) selected + env.id else selected - env.id }, verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(env.id in selected, null); Text(env.label, Modifier.padding(start = 8.dp))
+            Checkbox(env.id in selected, null)
+            Text(env.label, Modifier.padding(start = 8.dp),
+                color = environmentAccent(env.id)?.let { textSafe(it, MaterialTheme.colorScheme.background) } ?: Color.Unspecified)
         }
     }
     Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(future, role = Role.Checkbox) { future = it },
