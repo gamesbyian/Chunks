@@ -49,6 +49,8 @@ Changes to rules default to future transfers only. An explicit "Apply to existin
 - Persist a stable rule ID independent of the editable display name. Environment membership is keyed by immutable environment/profile IDs, never by user-editable profile names. Renaming a rule or server never changes rule precedence, past assignment, matching or existing transfer identity.
 - In Add, display the effective rule and group only for the currently selected destination environment, recomputing the matching preview if the user changes environment. If the manually selected rule does not apply to the newly selected environment, visibly request a compatible selection or auto-detection rather than carrying forward an invalid policy.
 
+**Policy boundary:** Seeding-group ratio, duration and upload cap meaning/precedence belong to this contract. Optional **download** scheduling, network/battery prerequisites, queue slots, stall/watchdog behavior, quotas and source retrieval belong to [INTAKE-QUEUE-AND-POLICIES](INTAKE-QUEUE-AND-POLICIES.md). The shared Add review combines both summaries for the exact selected environment without silently applying either to unrelated profiles.
+
 ## Transfer details and control surfaces
 
 Show a compact group name and effective stop/rate summary in transfer details with "Why this rule?", quick override, reassign, pause, and detailed metrics. Transfer lists can filter by seeding group, source tracker, ratio goal, paused-by-rule status and compliance/enforcement state. Batch assignment follows exact-hash and environment scope safety. Settings use a single visual rule builder (When / Then / Exceptions) with examples, a natural-language summary and a nontechnical mode; experts may inspect full criteria and order.
