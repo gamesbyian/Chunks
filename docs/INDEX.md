@@ -6,8 +6,9 @@ The [documentation architecture and authoring standard](DOCUMENTATION-STANDARD.m
 
 - [AGENTS](../AGENTS.md): required operating instructions and safety rules.
 - [WORK-QUEUE](WORK-QUEUE.md): concise active priority/order authority; reconcile with live PRs/issues.
-- [Historical queue archive](archive/WORK-QUEUE-2026-10-29-preconsolidation.md): preserved earlier milestone narratives; not a live plan.
-- [QUALITY-LEDGER](QUALITY-LEDGER.md): append-only dated test evidence and limitations; not a current task queue.
+- [Dependency-reset queue snapshot](archive/WORK-QUEUE-2026-10-29-pre-dependency-reset.md): verbatim prior active board; historical, never executable.
+- [Older queue archive](archive/WORK-QUEUE-2026-10-29-preconsolidation.md): preserved earlier milestone narratives; not a live plan.
+- [QUALITY-LEDGER](QUALITY-LEDGER.md): dated test evidence and limitations; not a current task queue.
 - [SPEC-COVERAGE](SPEC-COVERAGE.md): required versus implemented capability and acceptance gaps.
 - [CI-POLICY](CI-POLICY.md): runner costs, test gates and workflows.
 
