@@ -1657,8 +1657,9 @@ internal fun LocalTransferCard(
     var confirmRemove by remember(transfer.infoHash) { mutableStateOf(false) }
     var confirmHandoff by remember(transfer.infoHash) { mutableStateOf(false) }
     val percent = transfer.progressPpm / 10_000
+    val rail = environmentAccent(EnvironmentIds.PHONE)
     Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.environmentRail(rail).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(alias ?: transfer.name, style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold)
             if (alias != null) {

@@ -1493,7 +1493,8 @@ private fun TransfersScreen(
                 onPreparePhone = { onPreparePhone(transfer) },
                 onCopyToPhone = onCopyToPhone,
                 moveScope = aliasScope,
-                finishInOrderScope = aliasScope
+                finishInOrderScope = aliasScope,
+                environmentId = aliasScope.takeIf { it.isNotBlank() }?.let(EnvironmentIds::server)
             )
             }
         }
@@ -1533,8 +1534,11 @@ private fun TransferCard(
     /** Authenticated endpoint + account scope, or null when ambiguous. */
     moveScope: String? = null,
     /** Authenticated endpoint + account scope for Finish in Order; null when ambiguous. */
-    finishInOrderScope: String? = null
+    finishInOrderScope: String? = null,
+    /** Stable environment ID for the colour rail. */
+    environmentId: String? = null
 ) {
+    val rail = environmentAccent(environmentId)
     var confirmPhoneHandoff by remember(transfer.hash) { mutableStateOf(false) }
     Card(
         colors = CardDefaults.cardColors(containerColor = ChunksColors.Surface),
@@ -1542,7 +1546,7 @@ private fun TransferCard(
         border = androidx.compose.foundation.BorderStroke(2.dp, ChunksColors.Muted),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+        Column(Modifier.environmentRail(rail).padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
             Text(alias ?: transfer.name, style = MaterialTheme.typography.titleMedium,
                 maxLines = 2, overflow = TextOverflow.Ellipsis)
             if (alias != null) {

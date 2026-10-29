@@ -71,6 +71,7 @@ Each environment ID (`phone`, or `remote:` plus the saved-profile ID) owns a per
 - **Badges.** Each badge draws its border, icon and name in that colour. A name is lightened toward white only as much as needed for 4.5:1 contrast, so the words stay the identity.
 - **Picker.** Tapping the phone or server header badge opens a palette dialog. Repeats are allowed, and **Restore automatic colour** returns to the automatic choice.
 - **Where colours appear.** The server Add confirmation and Seeding rules use the same colours: each name in **Applies to**, the default sections and the editor's environment checkboxes.
+- **Transfer cards.** Phone and server transfer cards carry a slim leading rail in their environment's colour. It is decorative, and status keeps its own colours.
 
 Evidence: JVM tests covering:
 - no repeats until the palette is used up;
@@ -81,7 +82,7 @@ Evidence: JVM tests covering:
 - a Compose picker round trip.
 
 Not yet:
-- colour on transfer rows and details;
+- colour in details screens, confirmations and notifications;
 - the combined multi-environment Transfers view, grouping and reversible sorts;
 - an environment settings screen;
 - TalkBack and handset review.

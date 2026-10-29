@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.painterResource
@@ -280,3 +281,11 @@ internal fun serverEnvironmentLabel(aliasScope: String): String {
 
 internal const val PHONE_ENVIRONMENT_LABEL = "On this phone"
 
+/**
+ * A slim leading rail in the environment's colour on a transfer card
+ * (UNIFIED-ENVIRONMENTS). Decorative: the environment is always also named in
+ * text nearby, and status keeps its own colours.
+ */
+internal fun Modifier.environmentRail(color: Color?): Modifier = if (color == null) this else drawBehind {
+    drawRect(color, size = androidx.compose.ui.geometry.Size(6.dp.toPx(), size.height))
+}
