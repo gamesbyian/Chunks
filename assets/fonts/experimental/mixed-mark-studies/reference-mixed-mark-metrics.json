@@ -1,6 +1,6 @@
 {
   "status": "NONSHIPPING conservative mixed above/below accent CFF study",
-  "stacked_source_metrics_sha256": "f9501e06e0a515bfcd5b350b767d8eca2c03cbbe82b35d6fbf957de84c57bd32",
+  "stacked_source_metrics_sha256": "ad51c2369c4b202a7a952bb2f77a25bb20a3ce88195017384f9e72459710b729",
   "policy": "NFD class 230 above, 202/220 below, source-only detached contours, ±font bbox",
   "weights": {
     "Regular": {
@@ -401,11 +401,11 @@
       },
       "weight": 400,
       "input_original_sha256": "a31b5c8726a640beada2113e11002eaac75a79b575f6855fdd60e9dc5ecbf63e",
-      "input_stacked_sha256": "92fc78190f699fc8ac5379dcb2f47ad30bd55074e10b24aece8b940469d7c734",
-      "output_sha256": "16efb1f6ad5ca5b3bb60530306cd09a8424321275105fd29cfac581c4e7d756d",
+      "input_stacked_sha256": "83aa8665223b4559a3c9e35756cc4c7c5d12299c7afcda31ac1922f80f6539d5",
+      "output_sha256": "177df3c94482e1cd833ce91f0ce45b4598344c623bf7b4ef33aae4f58a331aff",
       "file": "ChunksReferenceMixedMarks-Regular.otf",
       "kerning": {
-        "input_sha256": "c6a434f46c032328148c7bcb24d1acd6d49d8adaad63b218a7de381fb217254c",
+        "input_sha256": "b9073e5568fb5e636662c0c613988b4c36cd2703c24db7284e643ae314085727",
         "file": "ChunksReferenceMixedMarks-Regular.otf",
         "reference_accent_glyphs": 14,
         "candidate_pairs": 1932,
@@ -535,10 +535,10 @@
             "applied_units": -120
           }
         ],
-        "mean_abs_correction_units": 77.34,
+        "mean_abs_correction_units": 77.37,
         "source_scripts_unchanged": true,
-        "pre_family_name_sha256": "d38f79c049bc22c80ed69acd14c3c8851f87e48ea9b9769e74f2245e2616f1ee",
-        "output_sha256": "16efb1f6ad5ca5b3bb60530306cd09a8424321275105fd29cfac581c4e7d756d"
+        "pre_family_name_sha256": "1e621dc9920a1866ff7a49b71885e748859dd4c0ec56e70aeadb01e4c8274622",
+        "output_sha256": "177df3c94482e1cd833ce91f0ce45b4598344c623bf7b4ef33aae4f58a331aff"
       }
     },
     "Medium": {
@@ -943,11 +943,11 @@
       },
       "weight": 500,
       "input_original_sha256": "50b68167346fa4dc5f8c6c8326c0668cfaa0e0c1dacb927b04acd2b31834d529",
-      "input_stacked_sha256": "921df23ef5e86c571af5c4befcd00e9245455fa7408391f9f50067fcd7022369",
-      "output_sha256": "74b289480d2c50c89ec3b89abca1c4f7819422c83602a4377bb83c84f63654ce",
+      "input_stacked_sha256": "557c0de439c2fac1a33f21b4de3c13d4a104d5895c6560520fa618a3adfab2bc",
+      "output_sha256": "b8a63ba4af8da8173259350d4acb88455c2954d0c83f87b4d32ff7889bce19f3",
       "file": "ChunksReferenceMixedMarks-Medium.otf",
       "kerning": {
-        "input_sha256": "778e4dabddeb21d115a76c053c698305a30c9e1b7db8a3e20aa9a44e1f2ffba3",
+        "input_sha256": "9894652656a6e734f77f4d1fb4e027d7eada758ba7196eb907a5e17cbdf39d7d",
         "file": "ChunksReferenceMixedMarks-Medium.otf",
         "reference_accent_glyphs": 14,
         "candidate_pairs": 1932,
@@ -1077,10 +1077,10 @@
             "applied_units": -120
           }
         ],
-        "mean_abs_correction_units": 75.67,
+        "mean_abs_correction_units": 75.69,
         "source_scripts_unchanged": true,
-        "pre_family_name_sha256": "c02764f25dc16189bfb554d271521a94efb43aa6c2501035b759d370fb69efaa",
-        "output_sha256": "74b289480d2c50c89ec3b89abca1c4f7819422c83602a4377bb83c84f63654ce"
+        "pre_family_name_sha256": "2a0ee3108a24d013bc60b2d122630b7d0244c4720ddff45aec5692fc4510eafd",
+        "output_sha256": "b8a63ba4af8da8173259350d4acb88455c2954d0c83f87b4d32ff7889bce19f3"
       }
     },
     "Semibold": {
@@ -1493,11 +1493,11 @@
       },
       "weight": 600,
       "input_original_sha256": "8261803c2870f91db32f3c0506475a31189c5f16a2dfba35a5c0371faee890ef",
-      "input_stacked_sha256": "f7c0cc0132be2b5a61840cd72e0d7b03bfd9ac9f947b8e12f9d7d9bb1f0e17a2",
-      "output_sha256": "92ca04f7f47aa7519ada2b21c6ea987a615a409ed239f33171f98621fa8a29c3",
+      "input_stacked_sha256": "963c4d5183c95ac5453304c3146098f7f236a02c6c0d630439d6aa271dadef9a",
+      "output_sha256": "6f4aaaa134f548938de268c82c39fee870ad08b6c526f81543d12222d0a2ef0a",
       "file": "ChunksReferenceMixedMarks-Semibold.otf",
       "kerning": {
-        "input_sha256": "0488c1008500887713c38a6cefa07c3419bdf48a11eaf6fdb4d9b00f83c6feca",
+        "input_sha256": "7402938a78063c34bba97587f0eb480e8552d7ecb5fdd1213c3c3262fc62d8cb",
         "file": "ChunksReferenceMixedMarks-Semibold.otf",
         "reference_accent_glyphs": 14,
         "candidate_pairs": 1932,
@@ -1627,10 +1627,10 @@
             "applied_units": -120
           }
         ],
-        "mean_abs_correction_units": 74.2,
+        "mean_abs_correction_units": 74.23,
         "source_scripts_unchanged": true,
-        "pre_family_name_sha256": "01558ca699f6ce22196183c3d1b5bb3c51fb83f5066b8e696ddd73b03741d94b",
-        "output_sha256": "92ca04f7f47aa7519ada2b21c6ea987a615a409ed239f33171f98621fa8a29c3"
+        "pre_family_name_sha256": "0d171c04bcbb386b675343fd66cd38b1c101c2c98dd827c94afcb560b09b31ad",
+        "output_sha256": "6f4aaaa134f548938de268c82c39fee870ad08b6c526f81543d12222d0a2ef0a"
       }
     },
     "Bold": {
@@ -2099,11 +2099,11 @@
       },
       "weight": 700,
       "input_original_sha256": "4c4d514999eae9192313499e31b5e69b84a348e7fac2b1554a7728c6a14aa5ae",
-      "input_stacked_sha256": "cc20731502ba4180b5bbd380edfaf0a79d69ce77aff44d1f6050b46cc503ba18",
-      "output_sha256": "2ad394cc1ce8c189cd7bbb09cae36465b94c0cc1c1a27576b59ffa6386d91c86",
+      "input_stacked_sha256": "94d59f65b91b212dea1bda5326c9f20171a9707bdd9e4cf10efb5c1750cd8ff9",
+      "output_sha256": "b89678e270397acb98f35f6dee1c286982b0c36632c3e2a70cbb2a06a4376065",
       "file": "ChunksReferenceMixedMarks-Bold.otf",
       "kerning": {
-        "input_sha256": "cb0061959d84ed211517d7bf3ab01fa5d7371ecb29e273d7d660bde3b2192d72",
+        "input_sha256": "797291b838ba0900faa2525762ebd7824d99330974918db8347b2c65bccba61d",
         "file": "ChunksReferenceMixedMarks-Bold.otf",
         "reference_accent_glyphs": 14,
         "candidate_pairs": 1932,
@@ -2233,10 +2233,10 @@
             "applied_units": -120
           }
         ],
-        "mean_abs_correction_units": 71.8,
+        "mean_abs_correction_units": 71.82,
         "source_scripts_unchanged": true,
-        "pre_family_name_sha256": "514d89cf7873b0fc94cded7b9c896890bbaedced7c7a82fa892e1509c80877c9",
-        "output_sha256": "2ad394cc1ce8c189cd7bbb09cae36465b94c0cc1c1a27576b59ffa6386d91c86"
+        "pre_family_name_sha256": "36d8c1a31eba647ba5ffe4db4d6b6447222fa4faee6bd96f9377c4b4fe9b96b7",
+        "output_sha256": "b89678e270397acb98f35f6dee1c286982b0c36632c3e2a70cbb2a06a4376065"
       }
     },
     "ExtraBold": {

@@ -6,8 +6,8 @@
       "built": 244,
       "skipped_undetected": 24,
       "source_sha256": "a31b5c8726a640beada2113e11002eaac75a79b575f6855fdd60e9dc5ecbf63e",
-      "reference_sha256": "82d3d3995175cd3b763734d983512e7549040c04830c0cf712fb4a86133e59c2",
-      "output_sha256": "320fa20638c70d4ac86a1b5250d82e1f657d88c3c75239bc30d6cf93c7aa8b3d",
+      "reference_sha256": "9b20a113c812a9ff6f4f9321d06be7cb9c0443cab4ccfec29e5485f109a79ccb",
+      "output_sha256": "3306afd1a2ebd3598b86154c139d0364eb2b2cc115c149187080a5322d75b452",
       "glyphs": [
         {
           "glyph": "À",
@@ -1036,12 +1036,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 88,
-          "y_adjust": 35,
+          "y_adjust": 25,
           "bounds": [
             98.69,
             70.18,
             701,
-            849
+            839
           ]
         },
         {
@@ -1066,12 +1066,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 88,
-          "y_adjust": 26,
+          "y_adjust": 16,
           "bounds": [
             98.69,
             70.18,
             701,
-            820
+            810
           ]
         },
         {
@@ -1096,12 +1096,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 88,
-          "y_adjust": 13,
+          "y_adjust": 3,
           "bounds": [
             98.69,
             70.18,
             701,
-            793
+            783
           ]
         },
         {
@@ -1131,7 +1131,7 @@
             98.69,
             -219,
             701,
-            666.22
+            656.0
           ]
         },
         {
@@ -2146,12 +2146,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 88,
-          "y_adjust": 34,
+          "y_adjust": 24,
           "bounds": [
             98.69,
             70.18,
             701,
-            848
+            838
           ]
         },
         {
@@ -2656,12 +2656,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 88,
-          "y_adjust": 4,
+          "y_adjust": 0,
           "bounds": [
             98.69,
             70.18,
             701,
-            759
+            755
           ]
         },
         {
@@ -3677,8 +3677,8 @@
       "built": 243,
       "skipped_undetected": 25,
       "source_sha256": "50b68167346fa4dc5f8c6c8326c0668cfaa0e0c1dacb927b04acd2b31834d529",
-      "reference_sha256": "cfc89524a6af0c983f8acb87ed0a43d16d78b718ce31b31d53a844e4d3005d4a",
-      "output_sha256": "8accdccc474d19b03ba4a2ff862edf019a29a93912c22708674c546c37791a35",
+      "reference_sha256": "546e37aef073b982dec7a42592f1d8eaa93520e3462d9d8331d7752d72b7ae8a",
+      "output_sha256": "c070e6073270318bc10e41c94854bfe5fab836e80cfd5160dd3572be45eb8736",
       "glyphs": [
         {
           "glyph": "À",
@@ -4707,12 +4707,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 84,
-          "y_adjust": 49,
+          "y_adjust": 30,
           "bounds": [
             86.81,
             58.19,
             712,
-            871
+            852
           ]
         },
         {
@@ -4737,12 +4737,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 84,
-          "y_adjust": 37,
+          "y_adjust": 18,
           "bounds": [
             86.81,
             58.19,
             712,
-            845
+            826
           ]
         },
         {
@@ -4767,12 +4767,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 84,
-          "y_adjust": 27,
+          "y_adjust": 8,
           "bounds": [
             86.81,
             58.19,
             712,
-            824
+            805
           ]
         },
         {
@@ -4802,7 +4802,7 @@
             86.81,
             -228,
             712,
-            677.85
+            659.29
           ]
         },
         {
@@ -5802,12 +5802,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 84,
-          "y_adjust": 48,
+          "y_adjust": 29,
           "bounds": [
             86.81,
             58.19,
             712,
-            870
+            851
           ]
         },
         {
@@ -6312,12 +6312,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 84,
-          "y_adjust": 15,
+          "y_adjust": 0,
           "bounds": [
             86.81,
             58.19,
             712,
-            787
+            772
           ]
         },
         {
@@ -7333,8 +7333,8 @@
       "built": 243,
       "skipped_undetected": 25,
       "source_sha256": "8261803c2870f91db32f3c0506475a31189c5f16a2dfba35a5c0371faee890ef",
-      "reference_sha256": "8a7ac1f4dc0f72d9519d631edad693df5401991d94f8c41333c0889f7efa85d5",
-      "output_sha256": "3898bcd9d2c90e90af03f05acb86be319bb129e4b9ad511165236927e3947248",
+      "reference_sha256": "6874db06ddfecd6c7108578b65436b08652997679f8cfa05ab9eb9f2867fdeaf",
+      "output_sha256": "5d9fb22bf293be5ab4ebb49cabb72dc8fd8f0c3bb72392b1b1d46d622a832672",
       "glyphs": [
         {
           "glyph": "À",
@@ -8363,12 +8363,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 82,
-          "y_adjust": 63,
+          "y_adjust": 37,
           "bounds": [
             75.31,
             47.05,
             724,
-            893
+            867
           ]
         },
         {
@@ -8393,12 +8393,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 82,
-          "y_adjust": 48,
+          "y_adjust": 22,
           "bounds": [
             75.31,
             47.05,
             724,
-            868
+            842
           ]
         },
         {
@@ -8423,12 +8423,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 82,
-          "y_adjust": 40,
+          "y_adjust": 14,
           "bounds": [
             75.31,
             47.05,
             724,
-            852
+            826
           ]
         },
         {
@@ -8458,7 +8458,7 @@
             75.31,
             -237,
             724,
-            689.09
+            663.46
           ]
         },
         {
@@ -9458,12 +9458,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 82,
-          "y_adjust": 62,
+          "y_adjust": 36,
           "bounds": [
             75.31,
             47.05,
             724,
-            892
+            866
           ]
         },
         {
@@ -9968,12 +9968,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 82,
-          "y_adjust": 26,
+          "y_adjust": 0,
           "bounds": [
             75.31,
             47.05,
             724,
-            813
+            787
           ]
         },
         {
@@ -10989,8 +10989,8 @@
       "built": 243,
       "skipped_undetected": 25,
       "source_sha256": "4c4d514999eae9192313499e31b5e69b84a348e7fac2b1554a7728c6a14aa5ae",
-      "reference_sha256": "705b2d69a8b9f22e5e955eec3b02d92fa748b56401d5f60ce5089c1b85de7f51",
-      "output_sha256": "8b28f24c150d0d7b69d2c9c742b108e6c69c16f590c8376a7ff7ef6cbde1f3ec",
+      "reference_sha256": "1336893c36093db04757b9b51a3b2dbae46900a3a62ecfdefe28c8886bcbad75",
+      "output_sha256": "197a4c6bc418fbd8e73f6bb2c320e03e9d204694d87e33a474d82c18400f192e",
       "glyphs": [
         {
           "glyph": "À",
@@ -12019,12 +12019,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 78,
-          "y_adjust": 75,
+          "y_adjust": 43,
           "bounds": [
             64.95,
             36.05,
             734,
-            914
+            882
           ]
         },
         {
@@ -12049,12 +12049,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 78,
-          "y_adjust": 56,
+          "y_adjust": 24,
           "bounds": [
             64.95,
             36.05,
             734,
-            892
+            860
           ]
         },
         {
@@ -12079,12 +12079,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 78,
-          "y_adjust": 51,
+          "y_adjust": 19,
           "bounds": [
             64.95,
             36.05,
             734,
-            882
+            850
           ]
         },
         {
@@ -12114,7 +12114,7 @@
             64.95,
             -247,
             734,
-            698.23
+            666.19
           ]
         },
         {
@@ -13114,12 +13114,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 78,
-          "y_adjust": 74,
+          "y_adjust": 42,
           "bounds": [
             64.95,
             36.05,
             734,
-            913
+            881
           ]
         },
         {
@@ -13624,12 +13624,12 @@
           "direction": "above",
           "parts": 1,
           "x_adjust": 78,
-          "y_adjust": 34,
+          "y_adjust": 2,
           "bounds": [
             64.95,
             36.05,
             734,
-            839
+            807
           ]
         },
         {

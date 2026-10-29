@@ -2,7 +2,7 @@
   "status": "NONSHIPPING interim weight study: automated offsets; manual masters still required",
   "source_manifest_sha256": "34413dfabd6d1f846b2dd833e21fa2b57e9b03b06330e4e9a479d082150fca83",
   "profile_sha256": "7da88e239d51208e052c8a359ddf04c724b3aa70e6cd7ad686d64b7f27425e46",
-  "overrides_sha256": "8240ec83ef67ddae3f6323b259c06c0d2476c23086d51005b17740e0ea6eb285",
+  "overrides_sha256": "315de4fce0905541e3e84c02680e6e6063842361e6d5cc9f6f0e1c059e30c3e4",
   "overrides_used": 248,
   "source_svg_sha256": "f475ea924418981a766978dde97ebb97ba7b0866110e1b72b17ac026fbad7aba",
   "accepted_extra_bold_remains_separate": "assets/fonts/experimental/ChunksReferencePanel-ExtraBold-Optical.otf",
@@ -10,16 +10,16 @@
     "Regular": {
       "weight": 400,
       "file": "ChunksReferencePanel-Regular-Study.otf",
-      "sha256": "82d3d3995175cd3b763734d983512e7549040c04830c0cf712fb4a86133e59c2",
+      "sha256": "9b20a113c812a9ff6f4f9321d06be7cb9c0443cab4ccfec29e5485f109a79ccb",
       "glyphs_changed": 62,
       "codepoints": 856,
-      "kerning_direct_pairs": 13022,
+      "kerning_direct_pairs": 13066,
       "kerning_probe": {
         "measured_glyphs": 151,
         "examined_pairs": 22801,
-        "adjusted_pairs": 13704,
-        "median_absolute_adjustment": 51.0,
-        "residual_90pct": 41.36
+        "adjusted_pairs": 13748,
+        "median_absolute_adjustment": 50.0,
+        "residual_90pct": 41.42
       },
       "min_sampled_gap_px": {
         "14": 0.828,
@@ -141,11 +141,11 @@
         "G": {
           "components": 1,
           "counters": 0,
-          "ink_area_ratio": 0.7533,
+          "ink_area_ratio": 0.7173,
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "3b9a5b2cb422f6bf61ba7c16ca72cb764a399cb90ff4131fadf3b08d13b6098b",
+          "override_svg_sha256": "1286b7fd195147196e213722b0d29f70d282f2f0f9d6e688009c841383be1ed4",
           "topology_adjustments": []
         },
         "H": {
@@ -401,11 +401,11 @@
         "g": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.682,
+          "ink_area_ratio": 0.6612,
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "cded5e2219491742c5f2cf9e6bd9592a87811163fcf2ea84ba4d8d30dc900b6a",
+          "override_svg_sha256": "17a15e925b03834b33a94c33316fb8106a633820ca6079fece038b712fa5dc82",
           "topology_adjustments": []
         },
         "h": {
@@ -431,11 +431,11 @@
         "j": {
           "components": 2,
           "counters": 0,
-          "ink_area_ratio": 0.5307,
+          "ink_area_ratio": 0.5261,
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "e756b2540b5242c0f9d51d74231a5c794d6e5a9fddd609f1b7fdce2d7f49a47d",
+          "override_svg_sha256": "7fe43692d3021bcd531d2727d96dd647bffaf5965c09567635485f90e42a822e",
           "topology_adjustments": []
         },
         "k": {
@@ -695,7 +695,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "1a4cf06fff081216f3a6b5325cdaaeee662550f8b461cd34bf4a41d6f9d9849b",
+          "override_svg_sha256": "4a391c79a6b6c1c7495e8dc2ec754bc6575488eb7f3ec798a384736cfd6f6e71",
           "topology_adjustments": []
         }
       }
@@ -703,14 +703,14 @@
     "Medium": {
       "weight": 500,
       "file": "ChunksReferencePanel-Medium-Study.otf",
-      "sha256": "cfc89524a6af0c983f8acb87ed0a43d16d78b718ce31b31d53a844e4d3005d4a",
+      "sha256": "546e37aef073b982dec7a42592f1d8eaa93520e3462d9d8331d7752d72b7ae8a",
       "glyphs_changed": 62,
       "codepoints": 856,
-      "kerning_direct_pairs": 12978,
+      "kerning_direct_pairs": 13012,
       "kerning_probe": {
         "measured_glyphs": 151,
         "examined_pairs": 22801,
-        "adjusted_pairs": 13460,
+        "adjusted_pairs": 13494,
         "median_absolute_adjustment": 49.0,
         "residual_90pct": 31.95
       },
@@ -834,11 +834,11 @@
         "G": {
           "components": 1,
           "counters": 0,
-          "ink_area_ratio": 0.8133,
+          "ink_area_ratio": 0.7692,
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "190769b4a425a466ea2a066059961a9debb981ff281018cd4c3d3aad4bfbd768",
+          "override_svg_sha256": "17fcf977379d3017a97efcec93a768f5b3d4b94ced9f94ae02f179906742abf8",
           "topology_adjustments": []
         },
         "H": {
@@ -1094,11 +1094,11 @@
         "g": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.7552,
+          "ink_area_ratio": 0.7336,
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "023fad29861f02973a18f8286d2cbff90391c50757f201032c118ae6a6d7fc3b",
+          "override_svg_sha256": "884d4d4db0868d2f0768600008a4f3d0f4d50be40ad330dd216133f6f8775282",
           "topology_adjustments": []
         },
         "h": {
@@ -1124,11 +1124,11 @@
         "j": {
           "components": 2,
           "counters": 0,
-          "ink_area_ratio": 0.5728,
+          "ink_area_ratio": 0.5679,
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "77e0c3658bbc295f529c9dfe77ef5e53df4b06c3e632fa1180815f1736fe0845",
+          "override_svg_sha256": "0d760f1f9e82e9c083c39353ae99b99da74c5e902d0aa310a5c5c8ab627463a7",
           "topology_adjustments": []
         },
         "k": {
@@ -1388,7 +1388,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "86d814acc7e65e4516b0fd40c5dcfd359e75dcfe42b959ae8657a7c59ef3adcb",
+          "override_svg_sha256": "a8575936b401b0970a39b9514c791060fadccf4bc645b8c3c01800f649a26d9b",
           "topology_adjustments": []
         }
       }
@@ -1396,16 +1396,16 @@
     "Semibold": {
       "weight": 600,
       "file": "ChunksReferencePanel-Semibold-Study.otf",
-      "sha256": "8a7ac1f4dc0f72d9519d631edad693df5401991d94f8c41333c0889f7efa85d5",
+      "sha256": "6874db06ddfecd6c7108578b65436b08652997679f8cfa05ab9eb9f2867fdeaf",
       "glyphs_changed": 62,
       "codepoints": 856,
-      "kerning_direct_pairs": 12905,
+      "kerning_direct_pairs": 12929,
       "kerning_probe": {
         "measured_glyphs": 151,
         "examined_pairs": 22801,
-        "adjusted_pairs": 13250,
+        "adjusted_pairs": 13274,
         "median_absolute_adjustment": 49.0,
-        "residual_90pct": 28.92
+        "residual_90pct": 28.94
       },
       "min_sampled_gap_px": {
         "14": 0.516,
@@ -1527,11 +1527,11 @@
         "G": {
           "components": 1,
           "counters": 0,
-          "ink_area_ratio": 0.8753,
+          "ink_area_ratio": 0.8233,
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "d9d554eb25255cccb227b78151845a70cd8215bfaf03e5a8cee212eb80239882",
+          "override_svg_sha256": "c92ce1e6fb77dcc445d32ceec65112d9304afce7bfc9f816ac8cc53a05269a65",
           "topology_adjustments": []
         },
         "H": {
@@ -1787,11 +1787,11 @@
         "g": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.8309,
+          "ink_area_ratio": 0.8085,
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "f20454c863be0c10d8038dbc92a5e536a9f5fda38b8fa0c31fdf27438f993114",
+          "override_svg_sha256": "fab23cf300d7dcff9c755dcc848f010aa00ed5a3815d9af488b29bb165d7184b",
           "topology_adjustments": []
         },
         "h": {
@@ -1817,11 +1817,11 @@
         "j": {
           "components": 2,
           "counters": 0,
-          "ink_area_ratio": 0.6166,
+          "ink_area_ratio": 0.6113,
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "d29688bfad880d5d7e528d2631f26e12aabdb7cb75f928446abb14405d563585",
+          "override_svg_sha256": "655e6feda31f7479c9167eeae6627e3289210e6590d423d30051bc6bdd83bd68",
           "topology_adjustments": []
         },
         "k": {
@@ -2081,7 +2081,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "bc0854740e12c46da7ffb9d19ab23a8b1f2f860a130d1ba46a94b69732a588d2",
+          "override_svg_sha256": "3fb4b04472135f62df889f6591b2e2648be3b80872fa3d8b8e0ea3a0d462ebf4",
           "topology_adjustments": []
         }
       }
@@ -2089,14 +2089,14 @@
     "Bold": {
       "weight": 700,
       "file": "ChunksReferencePanel-Bold-Study.otf",
-      "sha256": "705b2d69a8b9f22e5e955eec3b02d92fa748b56401d5f60ce5089c1b85de7f51",
+      "sha256": "1336893c36093db04757b9b51a3b2dbae46900a3a62ecfdefe28c8886bcbad75",
       "glyphs_changed": 62,
       "codepoints": 856,
-      "kerning_direct_pairs": 13151,
+      "kerning_direct_pairs": 13170,
       "kerning_probe": {
         "measured_glyphs": 151,
         "examined_pairs": 22801,
-        "adjusted_pairs": 13311,
+        "adjusted_pairs": 13330,
         "median_absolute_adjustment": 50.0,
         "residual_90pct": 27.09
       },
@@ -2220,11 +2220,11 @@
         "G": {
           "components": 1,
           "counters": 0,
-          "ink_area_ratio": 0.9301,
+          "ink_area_ratio": 0.8702,
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "d5837db36e2899c028b1cb823463cf26388fff2663e5ae409251a1cdbc6ae5d7",
+          "override_svg_sha256": "aa4aebc3318d292699132a8f82e44d1ea351e2dba11e472c2fcbb7d71b281658",
           "topology_adjustments": []
         },
         "H": {
@@ -2480,11 +2480,11 @@
         "g": {
           "components": 1,
           "counters": 1,
-          "ink_area_ratio": 0.8885,
+          "ink_area_ratio": 0.8654,
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "d6b7da25bce08563d949662657f4550c96a2f5707cf9f8085bf0f21cfcc5e942",
+          "override_svg_sha256": "1c7823f3c8fdc880f30bd4c5c946e67645c4f064b04f159cbeae36e5535fdb9b",
           "topology_adjustments": []
         },
         "h": {
@@ -2510,11 +2510,11 @@
         "j": {
           "components": 2,
           "counters": 0,
-          "ink_area_ratio": 0.6555,
+          "ink_area_ratio": 0.6499,
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "aaa6e65336673e50f06498b818af62a672041982d19c4181983576c3d7b5c587",
+          "override_svg_sha256": "bced9ff7bb5cd90a547646192fcf60f815304380d1bd70a93665a026bdb8b7f7",
           "topology_adjustments": []
         },
         "k": {
@@ -2774,7 +2774,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "7982b2b07bf4aeeced0e6fc67d1636b586d854a60cff7d9ea1a62f795b8dc014",
+          "override_svg_sha256": "8ec34c8106356b27a26148ebd652e65b6f617acd9145f1d82f1e799c7a798c42",
           "topology_adjustments": []
         }
       }
