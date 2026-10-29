@@ -97,14 +97,19 @@ class AndroidPublicSwarmInterruptInstrumentedTest {
                 Thread.sleep(500)
                 status = requireNotNull(engine.status(hash))
             }
+            if (status.state == LocalTransferState.CHECKING) {
+                log("INCONCLUSIVE recheck_did_not_settle verified=${status.doneBytes}")
+                fail("INCONCLUSIVE: disk recheck never settled after restart")
+            }
             val recovered = status.doneBytes
             // Observation, not a pass condition: whether pieces written before the kill
             // were recognised on disk (RECOVERED) or must be fetched again (REDOWNLOAD).
             log((if (recovered > 0) "RECOVERED" else "REDOWNLOAD") +
                 " recheck_recovered=$recovered verified_before_kill=$before state=${status.state}")
-            // An exact completion before the kill or a corrupt marker cannot
-            // satisfy a zero-growth recovery proof. Demand additional bytes.
-            val goal = requireNotNull(InterruptedSwarmEvidence.continuationGoal(before, wanted)) {
+            // Rechecking existing disk pieces is not new peer transfer.
+            // Require additional verified bytes beyond BOTH the pre-kill count
+            // and the settled recovery count; otherwise fail inconclusive.
+            val goal = requireNotNull(InterruptedSwarmEvidence.continuationGoal(maxOf(before, recovered), wanted)) {
                 "INCONCLUSIVE: interruption marker did not record a partial download"
             }
             val started = System.nanoTime()

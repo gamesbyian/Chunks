@@ -29,6 +29,17 @@ class InterruptedSwarmEvidenceTest {
         assertNull(InterruptedSwarmEvidence.continuationGoal(wanted + 1, wanted))
     }
 
+    @Test fun recoveredPiecesCannotMasqueradeAsFreshPeerContinuation() {
+        val wanted = 64L shl 20
+        val beforeKill = 8L shl 20
+        val recovered = 20L shl 20
+        val goal = requireNotNull(
+            InterruptedSwarmEvidence.continuationGoal(maxOf(beforeKill, recovered), wanted))
+        assertEquals(recovered + (4L shl 20), goal)
+        assertTrue(goal > recovered)
+        assertNull(InterruptedSwarmEvidence.continuationGoal(wanted, wanted))
+    }
+
     @Test fun invalidOrEmptyProofMarkerIsRefused() {
         assertNull(InterruptedSwarmEvidence.continuationGoal(0, 100))
         assertNull(InterruptedSwarmEvidence.continuationGoal(-1, 100))
