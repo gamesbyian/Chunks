@@ -1,8 +1,8 @@
 name: Build experimental Chunks Reference Panel weight studies
 on:
   push:
-    # Temporary isolated font/lab single-batch validation. Restore [main] after evidence.
-    branches: [main, font/lab]
+    # Routine lab work runs locally. Push builds are limited to integrated main changes.
+    branches: [main]
     paths:
       - 'tools/build_reference_panel_weight_studies.py'
       - 'tools/reference_weight_profiles.json'
