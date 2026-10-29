@@ -19,19 +19,16 @@ Suggested first-time setup:
 python -m pip install -r tools/requirements-reference-panel-weights.txt
 ```
 
-During a batch, edit the SVG masters and run the targeted rebuild/test only when the work warrants it:
+Before each checkpoint, run the **cheap local scope/source preflight**. It refuses to run outside `font/lab`, rejects changes to protected shipping/reference artwork, and checks editable SVG syntax:
 ```sh
-python tools/build_reference_panel_weight_studies.py --weights 400
-python -m unittest discover -s tests -p test_reference_panel_weights.py -v
+bash tools/font_lab_gate.sh source
 ```
-A partial build is diagnostic only. **Before freezing a batch**, perform the complete four-weight build and generate real specimens:
+A single-weight build (`python tools/build_reference_panel_weight_studies.py --weights 400`) can be used diagnostically, but its partial state is **not** eligible for the whole-family acceptance tests. **Before freezing a batch**, perform the complete four-weight build, source/CFF tests, specimen rendering and cross-family audit locally:
 ```sh
-python tools/build_reference_panel_weight_studies.py
-python -m unittest discover -s tests -p test_reference_panel_weights.py -v
-python tools/render_reference_panel_weights.py
-python tools/render_reference_glyph_grid.py
-python tools/audit_font_families.py --output chunks-font-cross-family-audit.json
+bash tools/font_lab_gate.sh full
 ```
+The helper never pushes, opens a PR, dispatches Actions or edits the shipping Android font.
+
 If an audit expects already-rebuilt downstream experimental faces, rebuild those locally too or record the dependency honestly; never claim a partial run proves full cross-family acceptance. Keep generated image output/artifact noise out of unrelated application commits.
 
 **No routine workflow dispatches.** When local compute is insufficient, deliberately run **one narrow manual workflow** on the `font/lab` ref and retain its SHA/run receipt. Do not create scheduled Actions or fan out all font jobs. Workflows that previously auto-committed generated fonts from arbitrary feature-branch pushes must not be assumed to do so now: their current push filters are `main`-only. Local generation and committing matching provenance is the lab's responsibility.
