@@ -323,8 +323,16 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             return LocalAddResult.Refused("The local engine refused this torrent: " + error.message())
         val handle = TorrentHandle(raw)
         handles[hash] = handle
-        // Persist the explicit Add immediately; later saves refresh piece state.
-        if (config.stateDirectory != null) writeResume(hash, AddTorrentParams.writeResumeDataBuf(params))
+        // The asynchronous SAVE_RESUME_DATA callback writes the same
+        // "$hash.resume.tmp". Serialize the initial Add commit with that
+        // callback and Remove using the already established handle fence.
+        // Never let two writers concurrently truncate the same temp file.
+        if (config.stateDirectory != null) {
+            val resumeBytes = AddTorrentParams.writeResumeDataBuf(params)
+            check(LocalResumeWriteFence.writeIfCurrent(handles, hash, handle) {
+                writeResume(hash, resumeBytes)
+            }) { "Initial resume write lost its native handle" }
+        }
         val status = snapshot(hash, handle)
             ?: return LocalAddResult.Refused("Added torrent could not be read back")
         if (!status.stopped) {
