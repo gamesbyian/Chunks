@@ -40,4 +40,12 @@ class ChunksScreenRenderTest {
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/chunks-visual/zip-review.png")
     }
+
+    @Test fun privacyScreen() {
+        rule.onNodeWithText("Download on this phone", substring = true).performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText("Privacy & authentication").performClick()
+        rule.waitForIdle()
+        rule.onRoot().captureRoboImage("build/chunks-visual/privacy.png")
+    }
 }
