@@ -17,6 +17,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.assertIsEnabled
@@ -333,6 +334,34 @@ class LocalEngineScreenInstrumentedTest {
         assertEquals(20, received?.firstEpisode?.index)
         assertEquals(listOf(20, 30, 10), received?.orderedEpisodes?.map { it.index })
         assertEquals(true, season[3].wanted == false)
+    }
+
+    @Test fun finishInOrderReviewReordersAndOnlyStartsOnExplicitConfirm() {
+        var confirmed: Pair<io.github.gamesbyian.chunks.engine.FinishInOrderPlanner.Mode, List<Int>>? = null
+        val season = listOf(
+            LocalTransferFile(10, "Season/Series S01E03.mkv", 8192, 0, true, 4),
+            LocalTransferFile(20, "Season/Series S01E01.mkv", 8192, 0, true, 4),
+            LocalTransferFile(30, "Season/Series S01E02.mkv", 8192, 0, true, 4))
+        val suggestion = requireNotNull(
+            io.github.gamesbyian.chunks.engine.FinishInOrderPlanner.suggest(season))
+        rule.setContent {
+            MaterialTheme {
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+                    .padding(16.dp)) {
+                    FinishInOrderReview(season, suggestion.order, suggestion.source, busy = false,
+                        onConfirm = { mode, order -> confirmed = mode to order }, onCancel = {})
+                }
+            }
+        }
+        rule.onNodeWithText("1. Series S01E01.mkv").assertExists()
+        rule.onNodeWithText("Finish first", substring = true).performScrollTo().performClick()
+        rule.onNodeWithContentDescription("Move Series S01E03.mkv earlier")
+            .performScrollTo().performClick()
+        assertEquals(null, confirmed)
+        rule.onNodeWithText("Start Finish in Order").performScrollTo().performClick()
+        assertEquals(io.github.gamesbyian.chunks.engine.FinishInOrderPlanner.Mode.FINISH_FIRST,
+            confirmed?.first)
+        assertEquals(listOf(20, 10, 30), confirmed?.second)
     }
 
     @Test fun selectionPagesReachEveryFileWithoutRenderingHugeLists() {

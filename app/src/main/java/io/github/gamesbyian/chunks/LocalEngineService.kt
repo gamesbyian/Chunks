@@ -169,6 +169,12 @@ class LocalEngineService : Service() {
         val observed = try {
             LocalEngineHolder.current()?.list().orEmpty()
         } catch (_: Exception) { null }
+        // Finish in Order advances on this same single poll lane, throttled
+        // per transfer; it never starts an engine or blocks the stop lane.
+        if (observed != null) {
+            try { FinishInOrderController.tick(this, observed.map { it.infoHash }) }
+            catch (_: Exception) {}
+        }
         val poll = LocalServicePoll.classify(observed)
         handler.post {
             if (stopping) return@post
@@ -229,7 +235,10 @@ class LocalEngineService : Service() {
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setContentIntent(open)
-            .setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)
+        // API 31+ only. minSdk is 29: calling it on Android 10/11 throws
+        // NoSuchMethodError and takes the download service down with it.
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S)
+            builder.setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_IMMEDIATE)
         if (LocalServicePrivacyPolicy.allowStopAllNotificationAction(policy)) {
             val stopAll = PendingIntent.getForegroundService(this, 1,
                 Intent(this, LocalEngineService::class.java).setAction(ACTION_STOP_ALL),

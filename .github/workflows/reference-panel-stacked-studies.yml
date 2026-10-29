@@ -1,6 +1,8 @@
 name: Build safe nonshipping stacked Latin accent CFFs
 on:
   push:
+    # Feature branches are validated by pull_request; only merged changes trigger push builds.
+    branches: [main]
     paths:
       - 'tools/build_reference_stacked_accents.py'
       - 'tools/render_reference_stacked_accents.py'

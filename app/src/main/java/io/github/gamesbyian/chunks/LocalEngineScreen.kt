@@ -55,6 +55,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.engine.LocalAddResult
+import io.github.gamesbyian.chunks.model.TransferMove
 import io.github.gamesbyian.chunks.engine.LocalCommandOutcome
 import io.github.gamesbyian.chunks.engine.LocalEpisodeFocusPlanner
 import io.github.gamesbyian.chunks.engine.LocalFileBatchOutcome
@@ -103,6 +104,12 @@ import kotlinx.coroutines.withContext
 internal class LocalServerCopyLink(
     val hostLabel: String,
     val addStoppedAtDefault: suspend (ByteArray) -> io.github.gamesbyian.chunks.rpc.RemoteAddOutcome
+)
+
+/** The connected rTorrent account as seen by phone-side Move Transfer. */
+internal class LocalMoveServer(
+    val aliasScope: String,
+    val observe: suspend (String) -> TransferMove.Observation
 )
 
 internal object LocalEngineHolder {
@@ -223,6 +230,8 @@ internal fun LocalEngineScreen(
     canReviewOnConnectedServer: Boolean = false,
     /** The signed-in rTorrent account for batch Copy Transfer to server; null when signed out. */
     serverCopy: LocalServerCopyLink? = null,
+    /** The connected rTorrent account, for Move Transfer checks; null when signed out. */
+    moveServer: LocalMoveServer? = null,
     onTorrentConsumed: () -> Unit = {},
     onPrefillConsumed: () -> Unit = {},
     onPrepareRemote: ((String) -> Unit)? = null,
@@ -231,6 +240,7 @@ internal fun LocalEngineScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val finishInOrderStore = remember { FinishInOrderStore(context) }
     val collectionStore = remember(context) { TransferCollectionStore(context) }
     val aliasStore = remember(context) { TransferAliasStore(context) }
     var aliasRevision by remember { mutableStateOf(0) }
@@ -1106,6 +1116,32 @@ internal fun LocalEngineScreen(
             val displayedAlias = remember(transfer.infoHash, aliasRevision) {
                 aliasStore.get(TransferCollectionStore.LOCAL_ENGINE_SCOPE, transfer.infoHash)
             }
+            val prepareRemoteHandoff: (() -> Unit)? = onPrepareRemote?.let { send ->
+                    {
+                        scope.launch {
+                            // Prefer the complete .torrent (identity + trackers):
+                            // rTorrent cannot find peers for a bare hash unless
+                            // DHT happens to be usable on that server.
+                            val document = onPrepareRemoteTorrent?.let {
+                                withContext(Dispatchers.IO) {
+                                    try {
+                                        LocalEngineHolder.current()?.exportTorrentFile(transfer.infoHash)
+                                            ?.takeIf { bytes ->
+                                                TorrentMetainfoReader.preview(bytes).infoHashV1
+                                                    .equals(transfer.infoHash, ignoreCase = true)
+                                            }
+                                    } catch (_: Exception) { null }
+                                }
+                            }
+                            val prepared = TorrentIdentityHandoff.prepare(transfer.infoHash, transfer.name)
+                            when {
+                                document != null -> onPrepareRemoteTorrent(document)
+                                prepared != null -> send(prepared)
+                                else -> message = "This torrent has no supported v1 identity to hand off."
+                            }
+                        }
+                    }
+                }
             LocalTransferCard(transfer, busy || inventoryStale,
                 onRepairTrackers = if (transfer.stopped && transfer.metadataKnown &&
                     transfer.trackers?.total == 0) ({
@@ -1193,7 +1229,24 @@ internal fun LocalEngineScreen(
                         }
                     }
                 },
-                onFocusEpisodes = { reviewedPlan ->
+                finishInOrder = { shownFiles ->
+                    FinishInOrderPanel(transfer.infoHash, shownFiles, busy || inventoryStale,
+                        onPrioritiesChanged = {
+                            scope.launch {
+                                files = try {
+                                    withContext(Dispatchers.IO) {
+                                        LocalEngineHolder.current()?.files(transfer.infoHash)
+                                    }
+                                } catch (cancel: kotlinx.coroutines.CancellationException) {
+                                    throw cancel
+                                } catch (_: Exception) { null }
+                            }
+                        })
+                },
+                // The one-time focus would fight a rolling policy, so it is
+                // only offered while Finish in Order is off for this transfer.
+                onFocusEpisodes = if (finishInOrderStore.get(transfer.infoHash) != null) null
+                    else { reviewedPlan ->
                     performLocalMutation {
                         try {
                             val result = withContext(Dispatchers.IO) {
@@ -1307,31 +1360,25 @@ internal fun LocalEngineScreen(
                         }
                     }
                 },
-                onPrepareRemote = onPrepareRemote?.let { send ->
-                    {
-                        scope.launch {
-                            // Prefer the complete .torrent (identity + trackers):
-                            // rTorrent cannot find peers for a bare hash unless
-                            // DHT happens to be usable on that server.
-                            val document = onPrepareRemoteTorrent?.let {
+                onPrepareRemote = prepareRemoteHandoff,
+                move = {
+                    TransferMoveControl(
+                        direction = TransferMove.Direction.PHONE_TO_SERVER,
+                        infoHash = transfer.infoHash, name = transfer.name,
+                        serverAliasScope = moveServer?.aliasScope?.takeIf { prepareRemoteHandoff != null },
+                        busy = busy || inventoryStale,
+                        ports = TransferMovePorts(
+                            observeTarget = moveServer?.let { server -> { server.observe(transfer.infoHash) } },
+                            observeSource = { TransferMoveObservations.phone(transfer.infoHash) },
+                            removeSource = {
                                 withContext(Dispatchers.IO) {
-                                    try {
-                                        LocalEngineHolder.current()?.exportTorrentFile(transfer.infoHash)
-                                            ?.takeIf { bytes ->
-                                                TorrentMetainfoReader.preview(bytes).infoHashV1
-                                                    .equals(transfer.infoHash, ignoreCase = true)
-                                            }
-                                    } catch (_: Exception) { null }
+                                    LocalEngineHolder.current()?.removeKeepingData(transfer.infoHash)
                                 }
-                            }
-                            val prepared = TorrentIdentityHandoff.prepare(transfer.infoHash, transfer.name)
-                            when {
-                                document != null -> onPrepareRemoteTorrent(document)
-                                prepared != null -> send(prepared)
-                                else -> message = "This torrent has no supported v1 identity to hand off."
-                            }
-                        }
-                    }
+                            },
+                            targetUnavailableReason = "Connect to the server account to check it."
+                        ),
+                        onStartMove = { prepareRemoteHandoff?.invoke() }
+                    )
                 },
                 onRemove = {
                     performLocalMutation {
@@ -1480,9 +1527,11 @@ internal fun LocalTransferCard(
     onBatchFileWanted: ((List<LocalTransferFile>, Boolean) -> Unit)? = null,
     onFilePriority: ((LocalTransferFile, Int) -> Unit)? = null,
     onFocusEpisodes: ((LocalEpisodeFocusPlanner.Plan) -> Unit)? = null,
+    finishInOrder: (@Composable (List<LocalTransferFile>) -> Unit)? = null,
     alias: String? = null,
     onSaveAlias: ((String?) -> Boolean)? = null,
     onPrepareRemote: (() -> Unit)? = null,
+    move: (@Composable () -> Unit)? = null,
     onRepairTrackers: (() -> Unit)? = null,
     observedGrowth: LocalProgressHistory.ObservedDelta? = null
 ) {
@@ -1579,7 +1628,7 @@ internal fun LocalTransferCard(
                 TorrentIdentityHandoff.prepare(transfer.infoHash, transfer.name) != null) {
                 OutlinedButton(onClick = { confirmHandoff = true }, enabled = !busy,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                    Text("Prepare torrent on rTorrent")
+                    Text("Copy Transfer to server…")
                 }
                 if (confirmHandoff) {
                     Text("Chunks opens your rTorrent server's Add review with this torrent's " +
@@ -1603,11 +1652,13 @@ internal fun LocalTransferCard(
                     }
                 }
             }
+            move?.invoke()
             if (filesShown) LocalFileSelection(
                 files, busy, transferKey = transfer.infoHash,
                 onFileWanted = onFileWanted, onBatchFileWanted = onBatchFileWanted,
                 onFilePriority = onFilePriority,
-                onFocusEpisodes = onFocusEpisodes
+                onFocusEpisodes = onFocusEpisodes,
+                finishInOrder = finishInOrder
             )
             if (confirmRemove) {
                 Text("Remove from the phone engine only. Downloaded files stay in Chunks' folder; sharing of this torrent stops.")
@@ -1635,6 +1686,7 @@ internal fun LocalFileSelection(
     onBatchFileWanted: ((List<LocalTransferFile>, Boolean) -> Unit)? = null,
     onFilePriority: ((LocalTransferFile, Int) -> Unit)? = null,
     onFocusEpisodes: ((LocalEpisodeFocusPlanner.Plan) -> Unit)? = null,
+    finishInOrder: (@Composable (List<LocalTransferFile>) -> Unit)? = null,
     onFileWanted: (Int, Boolean) -> Unit
 ) {
     if (files == null) {
@@ -1671,6 +1723,7 @@ internal fun LocalFileSelection(
 
     Text("Untick a file to skip downloading it. Already downloaded parts are kept.",
         style = MaterialTheme.typography.bodySmall)
+    finishInOrder?.invoke(files)
     if (onFocusEpisodes != null && focusPlan != null) {
         OutlinedButton(onClick = { pendingEpisodeFocus = !pendingEpisodeFocus },
             enabled = !busy,

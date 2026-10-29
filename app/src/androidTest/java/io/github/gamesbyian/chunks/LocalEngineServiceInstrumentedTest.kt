@@ -33,7 +33,9 @@ class LocalEngineServiceInstrumentedTest {
     private var secondHash: String? = null
 
     @Before fun setUp() {
-        instrumentation.uiAutomation.grantRuntimePermission(context.packageName, Manifest.permission.POST_NOTIFICATIONS)
+        // POST_NOTIFICATIONS exists from API 33; earlier releases show it unprompted.
+        if (android.os.Build.VERSION.SDK_INT >= 33)
+            instrumentation.uiAutomation.grantRuntimePermission(context.packageName, Manifest.permission.POST_NOTIFICATIONS)
         work = File(context.filesDir, "service-test").apply { deleteRecursively(); mkdirs() }
     }
 
