@@ -35,6 +35,8 @@ Entry points: storage dashboard, low-space warning, transfer file details and Pl
 
 No automatic recommendation executes a destructive mutation. Never follow symlinks, delete outside approved scoped roots, assume exclusive ownership, or delete while torrent mapping/write operations are uncertain. A shared physical file may block deletion even if one Transfer appears stopped. Native Android SAF deletion and remote assisted FS mutation have different permission/recovery gates.
 
+**Specialized extension:** nested archive budgets, encrypted inputs, independent SFV/SHA inspection, hardlink/reflink awareness, remote namespace path mapping and verified cross-seed reuse are detailed in [FILES-PROTOCOL-AND-DIAGNOSTICS](FILES-PROTOCOL-AND-DIAGNOSTICS.md). This cross-reference does not expand initial ZIP implementation, change extraction's default-off policy or relax deletion requirements.
+
 ## Archive extraction experience
 
 - Per-completed-archive action **Extract now** and simple **Auto-extract when ready** switch in transfer details. Future-rule settings may apply to an explicitly approved Place/category, disabled by default, independent of organization classifier confidence. The per-transfer toggle may optionally apply to *this transfer only*. An obvious settings screen can inspect/revoke approved auto rules.
