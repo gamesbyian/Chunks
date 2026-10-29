@@ -120,6 +120,13 @@ open class ChunksServerRenderTest {
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Sci Fi Pack (2024)"))
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/chunks-visual/$prefix-scrolled.png")
+        for (tab in listOf("Places", "Organize", "Server")) {
+            rule.onNodeWithText(tab).performClick()
+            rule.waitForIdle()
+            rule.onRoot().captureRoboImage("build/chunks-visual/$prefix-tab-${tab.lowercase()}.png")
+        }
+        rule.waitForIdle()
+        rule.onRoot().captureRoboImage("build/chunks-visual/$prefix-scrolled.png")
     }
 }
 
