@@ -1,5 +1,11 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-29 independent QA: physical preflight and reboot evidence integrity (#9, #10, #569)
+
+- **Open [#610](https://github.com/gamesbyian/Chunks/pull/610), physical APK preflight:** `dumpsys package` version extraction previously stopped its pipe with `grep -m1`, which can SIGPIPE a still-writing `adb` producer under `pipefail`. A controlled delayed-large-output reproduction returned exit **141** before the correction and **0** after full consumption. The fixed script drains the dump and rejects missing, conflicting or failed version witnesses. The existing mock-adb suite now tests those conditions. **Exact-head receipt:** PR head `2bc58e070303be8cdd1d459c350b5570afe1aa50`, [Android foundation run 40965915542](https://github.com/gamesbyian/Chunks/actions/runs/40965915542) **SUCCESS**, including JVM/assembly and debug artifact checksum. This is **not** an actual physical handset installation or publisher signing.
+- **Open [#614](https://github.com/gamesbyian/Chunks/pull/614), emulator reboot acceptance:** `reboot_repro.sh` previously trusted `sys.boot_completed=1`, which could already be true on the original boot. The script now requires a syntactically valid kernel boot ID before phase A and a **different** ID alongside Android boot-complete after `adb reboot`, before phase B. Offline fake-adb tests reject unchanged/invalid identity without running phase B. **Exact-head receipt:** PR head `2f9b50f2ea45bbeb4eb481d7eeea19770ee5c5ac`, [opt-in API35 lifecycle run 40966289115](https://github.com/gamesbyian/Chunks/actions/runs/40966289115) **SUCCESS**, covering the mock guard plus emulator timeout, process-death and reboot stages. Still no physical handset or OEM-lifecycle proof.
+- Both source PRs were awaiting independent lead-agent merge review at the time of this evidence entry. A passing PR run is not a tested final `main` after later merges.
+
 ## 2026-10-29 opt-in device reboot repro (#569)
 
 - **Source slice:** `LocalEngineRebootInstrumentedTest` + `tools/reboot_repro.sh` are added to the path-scoped opt-in lifecycle job.

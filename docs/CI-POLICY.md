@@ -30,6 +30,7 @@ Do not use Secrets in fork/PR builds. Never connect the CI runner to a private r
 - **Device reboot:** `tools/reboot_repro.sh` (`LocalEngineRebootInstrumentedTest`) seeds under the service, then runs `adb reboot`.
   - After boot it requires that no Chunks process started by itself, and that there is no engine and no ongoing notification.
   - On opening the saved state, the transfer must restore **stopped** with unchanged bytes.
+  - **Boot witness:** the script refuses to arm phase A without a valid `/proc/sys/kernel/random/boot_id`, and accepts post-reboot recovery only after Android boot completion **and a different kernel boot ID**; `sys.boot_completed=1` alone proves nothing about a new boot. An offline mock-adb negative test exercises unchanged/invalid identities before the expensive emulator phase.
 
 ## Manual real-peer lifecycle modes (#568/#569)
 
@@ -48,6 +49,10 @@ A peer shortfall is reported as INCONCLUSIVE, never as engine acceptance. Each r
 - Filesystem changes: independent fault injection using disposable datasets, multiple volumes and process kills at each journal checkpoint. Fail closed if recovery cannot be proved.
 - Android UI changes: occasional targeted emulator screenshot/hierarchy atlas and real handset walkthrough, not a permanent broad screenshot job.
 - Local engine background: device tests across Android background/service types and network conditions; do not use one green assembly to infer reliability.
+
+## Physical APK install preflight: fail-closed provenance checks
+
+`tools/physical_android_preflight.sh` accepts only `chunks-debug.apk` paired with its matching checksum/source receipt, pins the selected ADB serial and rejects an emulator. Its expected Android version is checked against **fully consumed** `dumpsys package` output: an early `grep -m1` can SIGPIPE an otherwise healthy producer, while missing or conflicting versions must refuse acceptance. `adb install` must report explicit `Success`; `am start -W` must report `Status: ok` for the exact Chunks MainActivity. `tools/test_physical_android_preflight.sh` exercises synthetic success and fail-closed mock conditions within the path-scoped Android foundation workflow. All such CI evidence is offline/mock-tier, **not** physical device acceptance or signed-release proof.
 
 ## Receipts and stopping rules
 
