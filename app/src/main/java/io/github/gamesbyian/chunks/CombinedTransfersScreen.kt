@@ -593,10 +593,13 @@ internal suspend fun runCombinedLifecycle(
     var phoneLeased = false
     var serverLeased = false
     try {
-        // A source that is not live is refused by the batch itself; never lease its gate.
-        val live = sources.filter { it.availability == EnvironmentAvailability.LIVE }.map { it.environment }.toSet()
+        // An unavailable, incomplete or unobserved inventory cannot authorize
+        // a batch, so never even acquire its engine's mutation gate. The pure
+        // batch still returns an explicit per-transfer refusal.
+        val actionable = sources.filter { it.canClaimCompleteLiveInventory }
+            .map { it.environment }.toSet()
         for (environment in targets.map { it.key.environment }.toSet()) {
-            if (environment !in live) continue
+            if (environment !in actionable) continue
             if (environment == EnvironmentSnapshots.PHONE) {
                 val engine = phoneEngine()
                 when {
