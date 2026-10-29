@@ -1,17 +1,18 @@
 {
-  "schema": "bittorrent-human-concept-graph/v3",
+  "schema": "bittorrent-human-concept-graph/v4",
   "asOf": "2026-10-29",
   "scope": "external research, descriptive, non-normative",
-  "epistemicWarning": "Activity-feature links and candidate gap links are analytical syntheses, not measured usage, all-product support, or proven absence elsewhere. Friction code recurrence is not population prevalence, negative paths are possibilities, historical studies do not describe 2026 population. Audit evidence describes specified tools and contexts. Cross-domain discontinuance framework does not estimate BitTorrent churn.",
+  "epistemicWarning": "Activity-feature links and candidate gap links are analytical syntheses, not measured usage, all-product support, or proven absence elsewhere. Friction code recurrence is not population prevalence, negative paths are possibilities, historical studies do not describe 2026 population. Audit evidence describes specified tools and contexts. Cross-domain discontinuance framework does not estimate BitTorrent churn. Consolidated MF capability families are desk-research groupings. 'Not explicitly integrated in the inventory' does not imply world-first invention. SM seams are plausible transitions, not observed task traces.",
   "inputs": {
     "featureInventory": "https://github.com/gamesbyian/Chunks/blob/26fec615e8241504011f319929c40d22cc35bd9f/docs/BITTORRENT-ECOSYSTEM-FEATURE-INVENTORY-2026-10-29.md",
     "activityAtlas": "https://github.com/gamesbyian/Chunks/blob/7631199f79b6763a961da5a2a3665886eb6964d7/docs/BITTORRENT-USER-GOALS-AND-WORKFLOWS-2026-10-29.md",
     "aversionAtlas": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
-    "evidenceAudit": "BITTORRENT-CONCEPT-MAP-EVIDENCE-AUDIT-2026-10-29.md"
+    "evidenceAudit": "BITTORRENT-CONCEPT-MAP-EVIDENCE-AUDIT-2026-10-29.md",
+    "missingFeatureReport": "BITTORRENT-MISSING-FEATURES-SYNTHESIS-2026-10-29.md"
   },
   "statistics": {
-    "nodes": 877,
-    "edges": 3832,
+    "nodes": 943,
+    "edges": 4118,
     "nodeTypes": {
       "activity": 240,
       "existing_inventory_feature": 240,
@@ -22,27 +23,29 @@
       "cognitive_demand": 21,
       "possible_affective_stake": 21,
       "gap_domain": 11,
-      "missing_capability_hypothesis": 69,
+      "missing_capability_hypothesis": 72,
       "friction_domain": 6,
       "reported_friction_factor": 55,
       "possible_exit_or_alternative": 21,
       "evidence_source": 10,
       "aversion_evidence_source": 57,
       "implementation_or_context_evidence": 25,
-      "discontinuance_theory_class": 7
+      "discontinuance_theory_class": 7,
+      "consolidated_capability_family": 33,
+      "human_workflow_seam": 30
     },
     "edgeTypes": {
       "classified_as": 240,
       "enabled_or_explained_by": 695,
-      "belongs_to": 309,
+      "belongs_to": 312,
       "serves_goal": 240,
       "involves_cognitive_demand": 240,
       "may_involve_affective_stake": 240,
-      "would_support_activity": 183,
-      "extends_or_bridges_existing": 126,
-      "could_reduce_cognitive_burden": 69,
-      "responds_to_possible_affect": 69,
-      "could_support_affective_shift": 69,
+      "would_support_activity": 192,
+      "extends_or_bridges_existing": 132,
+      "could_reduce_cognitive_burden": 72,
+      "responds_to_possible_affect": 72,
+      "could_support_affective_shift": 72,
       "illustratively_contains": 149,
       "may_precede_in_example": 113,
       "co_supports_activity": 547,
@@ -60,7 +63,12 @@
       "preserves_autonomy": 2,
       "preserves_constraints": 1,
       "may_classify_exit_as": 14,
-      "supports_exit_taxonomy": 3
+      "supports_exit_taxonomy": 3,
+      "consolidates_hypothesis": 72,
+      "addresses_human_activity": 97,
+      "from_activity": 30,
+      "to_activity": 30,
+      "could_be_bridged_by": 30
     },
     "baseAtlas": {
       "activityCount": 240,
@@ -102,7 +110,7 @@
       "featuresWithOneLink": 54,
       "featuresWithTwoOrFewerLinks": 120
     },
-    "hypothesisCount": 69,
+    "hypothesisCount": 72,
     "aversionBridge": {
       "factors": 55,
       "exitRoutes": 18,
@@ -119,6 +127,19 @@
       "theoryCategories": 7,
       "assessedHypotheses": 16,
       "linksToHypotheses": 64
+    },
+    "refinementSynthesis": {
+      "distinctConsolidatedCapabilityFamilies": 33,
+      "distinctHumanWorkflowSeams": 30,
+      "addedHypotheses": 3,
+      "allHypothesesClassifiedOnce": 72,
+      "inventoryCoverageDistribution": {
+        "component_present": 16,
+        "not_explicitly_integrated": 7,
+        "documented_partial_implementation": 8,
+        "platform_bounded": 2
+      },
+      "unverifiedOriginalHypotheses": 56
     }
   },
   "nodes": [
@@ -7056,6 +7077,1024 @@
       "description": "Goal achieved; ending use is success",
       "source": "https://www.tandfonline.com/doi/full/10.1080/0960085X.2025.2516427",
       "epistemic": "Cross-domain theory, not a BitTorrent population estimate"
+    },
+    {
+      "id": "H70",
+      "type": "missing_capability_hypothesis",
+      "label": "Conflicting policy preflight and effective-rule explanation",
+      "missingLink": "Two legitimate automated or manually assigned seeding, queue, network and environment rules can apply at once without an intelligible explanation of the winner or how to resolve the conflict.",
+      "domain": "B05",
+      "interpretation": "derived desk-research bridge hypothesis; not proof of market absence"
+    },
+    {
+      "id": "H71",
+      "type": "missing_capability_hypothesis",
+      "label": "Freshness and source-of-truth markers for transfer status",
+      "missingLink": "A cached remote status, command acknowledgement and current observed server state can look identical despite different certainty, source and age.",
+      "domain": "B03",
+      "interpretation": "derived desk-research bridge hypothesis; not proof of market absence"
+    },
+    {
+      "id": "H72",
+      "type": "missing_capability_hypothesis",
+      "label": "Effective capability map across app, server, Android and storage",
+      "missingLink": "A feature can exist in one engine but be unusable in the selected environment because of backend version, Android permissions, provider limits or missing filesystem channel.",
+      "domain": "B06",
+      "interpretation": "derived desk-research bridge hypothesis; not proof of market absence"
+    },
+    {
+      "id": "MF01",
+      "type": "consolidated_capability_family",
+      "label": "Intent-level task guidance",
+      "hypothesisIds": [
+        "H01",
+        "H51",
+        "H54",
+        "H62"
+      ],
+      "inventoryCoverage": "component_present",
+      "novelty": "not_established",
+      "humanProblem": "Human plans a useful result, not a configuration menu.",
+      "candidateExperience": "Explain choices with minimal setup, preserve an advanced manual route.",
+      "knownOverlap": "Cross-cutting help/onboarding controls exist; no verified universal intent-to-outcome route.",
+      "anchorActivities": [
+        "A01.12",
+        "A02.02",
+        "A13.01"
+      ],
+      "epistemic": "Consolidation of hypotheses, not a feature entitlement, specification or implementation claim"
+    },
+    {
+      "id": "MF02",
+      "type": "consolidated_capability_family",
+      "label": "Goal-level completion receipt",
+      "hypothesisIds": [
+        "H02",
+        "H16",
+        "H17",
+        "H44"
+      ],
+      "inventoryCoverage": "not_explicitly_integrated",
+      "novelty": "not_established",
+      "humanProblem": "Transfer completion is not equivalent to content arrival, import or usefulness.",
+      "candidateExperience": "Show stages from submission to final verified user goal with appropriately uncertain readback.",
+      "knownOverlap": "Existing RPC success and downstream import mechanisms cover pieces of the chain.",
+      "anchorActivities": [
+        "A08.04",
+        "A10.01",
+        "A12.02"
+      ],
+      "epistemic": "Consolidation of hypotheses, not a feature entitlement, specification or implementation claim"
+    },
+    {
+      "id": "MF03",
+      "type": "consolidated_capability_family",
+      "label": "Resumable remote payload handoff",
+      "hypothesisIds": [
+        "H03",
+        "H04",
+        "H05"
+      ],
+      "inventoryCoverage": "component_present",
+      "novelty": "not_established",
+      "humanProblem": "Remote transfer job and local payload have different identities and locations.",
+      "candidateExperience": "Provide an explicit, resumable data-retrieval handoff separate from torrent registration.",
+      "knownOverlap": "Remote file transfer, path mapping and server copy tools are inventory features.",
+      "anchorActivities": [
+        "A10.01",
+        "A10.08",
+        "A10.12"
+      ],
+      "epistemic": "Consolidation of hypotheses, not a feature entitlement, specification or implementation claim"
+    },
+    {
+      "id": "MF04",
+      "type": "consolidated_capability_family",
+      "label": "Human-task resume after interruptions",
+      "hypothesisIds": [
+        "H06",
+        "H27",
+        "H53"
+      ],
+      "inventoryCoverage": "not_explicitly_integrated",
+      "novelty": "not_established",
+      "humanProblem": "Restoring the torrent session does not restore the person's unfinished intention.",
+      "candidateExperience": "Offer a checkpoint of last decision, unresolved steps and verified state after reconnection.",
+      "knownOverlap": "History/recent activity is present but context of the human goal is not explicit.",
+      "anchorActivities": [
+        "A07.05",
+        "A04.10",
+        "A15.12"
+      ],
+      "epistemic": "Consolidation of hypotheses, not a feature entitlement, specification or implementation claim"
+    },
+    {
+      "id": "MF05",
+      "type": "consolidated_capability_family",
+      "label": "Verified payload/reference identity",
+      "hypothesisIds": [
+        "H07",
+        "H08",
+        "H11",
+        "H12"
+      ],
+      "inventoryCoverage": "documented_partial_implementation",
+      "novelty": "not_established",
+      "humanProblem": "Job, file path, actual disk blocks, linked media and duplicate descriptor differ.",
+      "candidateExperience": "Show safe reference ownership and real reclaimable storage, with explicit confidence limits.",
+      "knownOverlap": "qui/cross-seed have documented dependency-aware cleanup and data reuse.",
+      "anchorActivities": [
+        "A16.07",
+        "A17.02",
+        "A12.12"
+      ],
+      "epistemic": "Consolidation of hypotheses, not a feature entitlement, specification or implementation claim"
+    },
+    {
+      "id": "MF06",
+      "type": "consolidated_capability_family",
+      "label": "Identity-preserving move/rename repair",
+      "hypothesisIds": [
+        "H09",
+        "H22",
+        "H45"
+      ],
+      "inventoryCoverage": "component_present",
+      "novelty": "not_established",
+      "humanProblem": "Ordinary file curation can sever file-to-job mappings without invalidating bytes.",
+      "candidateExperience": "Reconcile renamed/moved paths, verify hashes and explain consequences before/after changes.",
+      "knownOverlap": "Inventory already has rename, move, missing-file detection and recheck primitives.",
+      "anchorActivities": [
+        "A10.03",
+        "A16.01",
+        "A16.02"
+      ],
+      "epistemic": "Consolidation of hypotheses, not a feature entitlement, specification or implementation claim"
+    },
+    {
+      "id": "MF07",
+      "type": "consolidated_capability_family",
+      "label": "Portable migration and restore proof",
+      "hypothesisIds": [
+        "H10",
+        "H23",
+        "H61"
+      ],
+      "inventoryCoverage": "documented_partial_implementation",
+      "novelty": "not_established",
+      "humanProblem": "Backup success is not proof a new engine can resume valid data.",
+      "candidateExperience": "Export portable job metadata and test real paths/bytes/config on destination.",
+      "knownOverlap": "qui has documented previews and per-job backups; data movement remains separate.",
+      "anchorActivities": [
+        "A16.09",
+        "A16.05",
+        "A20.07"
+      ],
+      "epistemic": "Consolidation of hypotheses, not a feature entitlement, specification or implementation claim"
+    },
+    {
+      "id": "MF08",
+      "type": "consolidated_capability_family",
+      "label": "Cause-to-action failure explanation",
+      "hypothesisIds": [
+        "H13",
+        "H18",
+        "H63"
+      ],
+      "inventoryCoverage": "component_present",
+      "novelty": "not_established",
+      "humanProblem": "Stalled, slow, metadata-unavailable and disk-write errors demand different responses.",
+      "candidateExperience": "Rank supported causes and recovery choices, including honestly stopping a futile attempt.",
+      "knownOverlap": "Tracker diagnostics, logs and failure handling already appear in inventory.",
+      "anchorActivities": [
+        "A15.02",
+        "A15.05",
+        "A15.07"
+      ],
+      "epistemic": "Consolidation of hypotheses, not a feature entitlement, specification or implementation claim"
+    },
+    {
+      "id": "MF09",
+      "type": "consolidated_capability_family",
+      "label": "Scarce-piece and availability judgment",
+      "hypothesisIds": [
+        "H14",
+        "H25",
+        "H39"
+      ],
+      "inventoryCoverage": "component_present",
+      "novelty": "not_established",
+      "humanProblem": "Website seeder counts do not guarantee wanted pieces can finish.",
+      "candidateExperience": "Separate observed peer availability from inferred likelihood and provide honest uncertainty.",
+      "knownOverlap": "Piece maps, peer health and cross-seed lookup are established partial tools.",
+      "anchorActivities": [
+        "A06.07",
+        "A15.02",
+        "A01.08"
+      ],
+      "epistemic": "Consolidation of hypotheses, not a feature entitlement, specification or implementation claim"
+    },
+    {
+      "id": "MF10",
+      "type": "consolidated_capability_family",
+      "label": "Use-ready file and target verification",
+      "hypothesisIds": [
+        "H15",
+        "H43",
+        "H56"
+      ],
+      "inventoryCoverage": "component_present",
+      "novelty": "not_established",
+      "humanProblem": "Wanted-file completion, extractability, codec compatibility and playback are not identical.",
+      "candidateExperience": "Report readiness for a chosen file/target before claiming usable completion.",
+      "knownOverlap": "Preview, codec analysis and casting exist but not necessarily one verified path.",
+      "anchorActivities": [
+        "A03.08",
+        "A12.01",
+        "A12.03"
+      ],
+      "epistemic": "Consolidation of hypotheses, not a feature entitlement, specification or implementation claim"
+    },
+    {
+      "id": "MF11",
+      "type": "consolidated_capability_family",
+      "label": "Dry-run consequence preview",
+      "hypothesisIds": [
+        "H19",
+        "H50"
+      ],
+      "inventoryCoverage": "documented_partial_implementation",
+      "novelty": "not_established",
+      "humanProblem": "Settings or bulk changes can affect more objects than visible selection implies.",
+      "candidateExperience": "Preview exact affected jobs, paths, policies and target before mutation.",
+      "knownOverlap": "qui has documented dry-run automation and backup/cleanup previews.",
+      "anchorActivities": [
+        "A14.11",
+        "A04.08",
+        "A11.10"
+      ],
+      "epistemic": "Consolidation of hypotheses, not a feature entitlement, specification or implementation claim"
+    },
+    {
+      "id": "MF12",
+      "type": "consolidated_capability_family",
+      "label": "Dependency-safe cleanup and recovery",
+      "hypothesisIds": [
+        "H20",
+        "H21"
+      ],
+      "inventoryCoverage": "documented_partial_implementation",
+      "novelty": "not_established",
+      "humanProblem": "Deleting registration and deleting unique content require different proofs.",
+      "candidateExperience": "Identify dependent seeds/libraries, protect bytes and define bounded undo.",
+      "knownOverlap": "qui provides cross-seed-aware/orphan safeguards; universal undelete not established.",
+      "anchorActivities": [
+        "A17.02",
+        "A20.05",
+        "A20.09"
+      ],
+      "epistemic": "Consolidation of hypotheses, not a feature entitlement, specification or implementation claim"
+    },
+    {
+      "id": "MF13",
+      "type": "consolidated_capability_family",
+      "label": "Partial-operation compensating actions",
+      "hypothesisIds": [
+        "H24",
+        "H35"
+      ],
+      "inventoryCoverage": "documented_partial_implementation",
+      "novelty": "not_established",
+      "humanProblem": "An RPC or automation chain can partly succeed before a timeout.",
+      "candidateExperience": "Reconcile per-step effects and safely undo or resume only verified changes.",
+      "knownOverlap": "qui verifies certain export registrations and reverts unhealthy target state.",
+      "anchorActivities": [
+        "A11.07",
+        "A08.07",
+        "A15.12"
+      ],
+      "epistemic": "Consolidation of hypotheses, not a feature entitlement, specification or implementation claim"
+    },
+    {
+      "id": "MF14",
+      "type": "consolidated_capability_family",
+      "label": "Actual-resource-aware plans",
+      "hypothesisIds": [
+        "H26",
+        "H57",
+        "H65"
+      ],
+      "inventoryCoverage": "component_present",
+      "novelty": "not_established",
+      "humanProblem": "Data caps, host renewal, battery, real household load and time are connected constraints.",
+      "candidateExperience": "Explain sustainable transfer and seeding choices with budget and deadline assumptions.",
+      "knownOverlap": "Caps, rate schedules and provider quotas exist; demand/cost are external.",
+      "anchorActivities": [
+        "A17.03",
+        "A17.04",
+        "A09.11"
+      ],
+      "epistemic": "Consolidation of hypotheses, not a feature entitlement, specification or implementation claim"
+    },
+    {
+      "id": "MF15",
+      "type": "consolidated_capability_family",
+      "label": "Actionable exception and rule explanation",
+      "hypothesisIds": [
+        "H28",
+        "H52"
+      ],
+      "inventoryCoverage": "component_present",
+      "novelty": "not_established",
+      "humanProblem": "Repeated alerts and untraceable automation choices create attention load.",
+      "candidateExperience": "Summarize actionable exceptions and state why a rule matched or acted.",
+      "knownOverlap": "Notifications, history and rule logs are existing primitives.",
+      "anchorActivities": [
+        "A04.10",
+        "A11.09",
+        "A14.12"
+      ],
+      "epistemic": "Consolidation of hypotheses, not a feature entitlement, specification or implementation claim"
+    },
+    {
+      "id": "MF16",
+      "type": "consolidated_capability_family",
+      "label": "Temporary policy and multi-stage retention",
+      "hypothesisIds": [
+        "H29",
+        "H30"
+      ],
+      "inventoryCoverage": "component_present",
+      "novelty": "not_established",
+      "humanProblem": "Human plans are often conditional and eventually expire.",
+      "candidateExperience": "Describe temporary speed, upload, retention and archive intents with explicit expiry.",
+      "knownOverlap": "Per-category policies, time windows and seeding stop rules already exist.",
+      "anchorActivities": [
+        "A17.04",
+        "A05.03",
+        "A20.03"
+      ],
+      "epistemic": "Consolidation of hypotheses, not a feature entitlement, specification or implementation claim"
+    },
+    {
+      "id": "MF17",
+      "type": "consolidated_capability_family",
+      "label": "Remote connection and authority explanation",
+      "hypothesisIds": [
+        "H31",
+        "H34"
+      ],
+      "inventoryCoverage": "documented_partial_implementation",
+      "novelty": "not_established",
+      "humanProblem": "An accessible RPC endpoint doesn't imply file privileges or supported commands.",
+      "candidateExperience": "Test connection, capabilities, separate service permissions and actual execution scope.",
+      "knownOverlap": "qui and client panels expose partial multi-instance setup/testing.",
+      "anchorActivities": [
+        "A08.01",
+        "A08.10",
+        "A09.07"
+      ],
+      "epistemic": "Consolidation of hypotheses, not a feature entitlement, specification or implementation claim"
+    },
+    {
+      "id": "MF18",
+      "type": "consolidated_capability_family",
+      "label": "Evidence-based traffic route verification",
+      "hypothesisIds": [
+        "H32",
+        "H60"
+      ],
+      "inventoryCoverage": "not_explicitly_integrated",
+      "novelty": "not_established",
+      "humanProblem": "VPN/proxy configuration does not prove every peer/tracker request took intended route.",
+      "candidateExperience": "Show scope of tested network routes with limits and truthful uncertainty.",
+      "knownOverlap": "VPN binding and proxy controls exist; full path proof is not implied.",
+      "anchorActivities": [
+        "A14.01",
+        "A14.02",
+        "A15.03"
+      ],
+      "epistemic": "Consolidation of hypotheses, not a feature entitlement, specification or implementation claim"
+    },
+    {
+      "id": "MF19",
+      "type": "consolidated_capability_family",
+      "label": "Destructive target and credential identity guard",
+      "hypothesisIds": [
+        "H33",
+        "H36"
+      ],
+      "inventoryCoverage": "component_present",
+      "novelty": "not_established",
+      "humanProblem": "Same-named jobs on different engines/tenants create target and authority confusion.",
+      "candidateExperience": "Bind potentially destructive changes to a clearly verified server/tenant and privilege.",
+      "knownOverlap": "Profile identity, TLS certificates and deletion confirmation are inventory features.",
+      "anchorActivities": [
+        "A08.02",
+        "A14.11",
+        "A09.05"
+      ],
+      "epistemic": "Consolidation of hypotheses, not a feature entitlement, specification or implementation claim"
+    },
+    {
+      "id": "MF20",
+      "type": "consolidated_capability_family",
+      "label": "Creator-to-recipient availability proof",
+      "hypothesisIds": [
+        "H37",
+        "H38"
+      ],
+      "inventoryCoverage": "not_explicitly_integrated",
+      "novelty": "not_established",
+      "humanProblem": "Creating and publishing metainfo does not prove recipients can retrieve bytes.",
+      "candidateExperience": "Test seed reachability and support consensual confirmation of recipient delivery.",
+      "knownOverlap": "Embedded trackers and torrent creation exist, but recipient outcome is separate.",
+      "anchorActivities": [
+        "A13.01",
+        "A13.10",
+        "A13.12"
+      ],
+      "epistemic": "Consolidation of hypotheses, not a feature entitlement, specification or implementation claim"
+    },
+    {
+      "id": "MF21",
+      "type": "consolidated_capability_family",
+      "label": "Honest contribution and demand accounting",
+      "hypothesisIds": [
+        "H40",
+        "H58"
+      ],
+      "inventoryCoverage": "component_present",
+      "novelty": "not_established",
+      "humanProblem": "Upload credit, time online and actual availability are different outcomes.",
+      "candidateExperience": "Explain low-demand seeding, obligations and contribution without blame.",
+      "knownOverlap": "Ratio/time stats and swarm health partially support this already.",
+      "anchorActivities": [
+        "A05.06",
+        "A05.02",
+        "A05.09"
+      ],
+      "epistemic": "Consolidation of hypotheses, not a feature entitlement, specification or implementation claim"
+    },
+    {
+      "id": "MF22",
+      "type": "consolidated_capability_family",
+      "label": "Tracker-specific obligation preflight",
+      "hypothesisIds": [
+        "H41",
+        "H59"
+      ],
+      "inventoryCoverage": "component_present",
+      "novelty": "not_established",
+      "humanProblem": "Chosen-file completion can differ from private tracker obligation.",
+      "candidateExperience": "Describe known tracker constraints before acquisition, with user-controlled correction.",
+      "knownOverlap": "Credential/rule support exists, actual site policies are external and vary.",
+      "anchorActivities": [
+        "A05.02",
+        "A03.02",
+        "A05.03"
+      ],
+      "epistemic": "Consolidation of hypotheses, not a feature entitlement, specification or implementation claim"
+    },
+    {
+      "id": "MF23",
+      "type": "consolidated_capability_family",
+      "label": "Publisher authenticity and research provenance",
+      "hypothesisIds": [
+        "H42",
+        "H46"
+      ],
+      "inventoryCoverage": "component_present",
+      "novelty": "not_established",
+      "humanProblem": "Piece hashes prove agreement with a descriptor, not identity or dataset subset reproducibility.",
+      "candidateExperience": "Preserve provenance, publisher signatures and selected-file manifest.",
+      "knownOverlap": "Academic Torrents/versioning and checksum tools provide partial support.",
+      "anchorActivities": [
+        "A01.07",
+        "A10.07",
+        "A13.08"
+      ],
+      "epistemic": "Consolidation of hypotheses, not a feature entitlement, specification or implementation claim"
+    },
+    {
+      "id": "MF24",
+      "type": "consolidated_capability_family",
+      "label": "Version-family publishing continuity",
+      "hypothesisIds": [
+        "H47"
+      ],
+      "inventoryCoverage": "not_explicitly_integrated",
+      "novelty": "not_established",
+      "humanProblem": "Publishing version two has implications for discovery, old swarms and existing recipients.",
+      "candidateExperience": "Link related releases, recipient migration and initial-seed continuity.",
+      "knownOverlap": "Creation and metadata tags are present; relationship over successive releases is not explicit.",
+      "anchorActivities": [
+        "A13.11",
+        "A13.07"
+      ],
+      "epistemic": "Consolidation of hypotheses, not a feature entitlement, specification or implementation claim"
+    },
+    {
+      "id": "MF25",
+      "type": "consolidated_capability_family",
+      "label": "Non-media purpose-aware processing",
+      "hypothesisIds": [
+        "H48"
+      ],
+      "inventoryCoverage": "component_present",
+      "novelty": "not_established",
+      "humanProblem": "Datasets, games, archives and documents need different postprocess from TV imports.",
+      "candidateExperience": "Offer explicit goal-relevant transforms and verification beyond media workflows.",
+      "knownOverlap": "Generic postprocessing, archives, checksum and scripts exist.",
+      "anchorActivities": [
+        "A10.04",
+        "A01.04",
+        "A19.10"
+      ],
+      "epistemic": "Consolidation of hypotheses, not a feature entitlement, specification or implementation claim"
+    },
+    {
+      "id": "MF26",
+      "type": "consolidated_capability_family",
+      "label": "Meaningful consent and alternative-route choice",
+      "hypothesisIds": [
+        "H49",
+        "H55",
+        "H66"
+      ],
+      "inventoryCoverage": "component_present",
+      "novelty": "not_established",
+      "humanProblem": "Not using BitTorrent or stopping after success can be correct; technical labels can obscure choice.",
+      "candidateExperience": "Explain statuses, permission and alternatives without moral pressure.",
+      "knownOverlap": "Help and multi-protocol fetching are already represented, broader human choice is a model.",
+      "anchorActivities": [
+        "A01.12",
+        "A05.01",
+        "A20.01"
+      ],
+      "epistemic": "Consolidation of hypotheses, not a feature entitlement, specification or implementation claim"
+    },
+    {
+      "id": "MF27",
+      "type": "consolidated_capability_family",
+      "label": "Repair after version or UI regression",
+      "hypothesisIds": [
+        "H64"
+      ],
+      "inventoryCoverage": "documented_partial_implementation",
+      "novelty": "not_established",
+      "humanProblem": "Application updates can invalidate habits, permission or display assumptions.",
+      "candidateExperience": "Explain changed behavior and preserve/recover task-specific workflow preferences.",
+      "knownOverlap": "Release notes/setting import and targeted accessibility updates exist.",
+      "anchorActivities": [
+        "A18.10",
+        "A04.10"
+      ],
+      "epistemic": "Consolidation of hypotheses, not a feature entitlement, specification or implementation claim"
+    },
+    {
+      "id": "MF28",
+      "type": "consolidated_capability_family",
+      "label": "Android background continuity disclosure",
+      "hypothesisIds": [
+        "H67"
+      ],
+      "inventoryCoverage": "platform_bounded",
+      "novelty": "not_established",
+      "humanProblem": "Long-running seeding intentions may conflict with OS service limits.",
+      "candidateExperience": "Expose task-specific running/paused/retry semantics rather than promise perpetual background execution.",
+      "knownOverlap": "Android UIDT/FGS/WorkManager approaches exist with conditional limits.",
+      "anchorActivities": [
+        "A17.07",
+        "A20.11",
+        "A04.12"
+      ],
+      "epistemic": "Consolidation of hypotheses, not a feature entitlement, specification or implementation claim"
+    },
+    {
+      "id": "MF29",
+      "type": "consolidated_capability_family",
+      "label": "Android destination capability and reauthorization",
+      "hypothesisIds": [
+        "H68"
+      ],
+      "inventoryCoverage": "platform_bounded",
+      "novelty": "not_established",
+      "humanProblem": "Save-path ability varies by OS version, permission grant and app distribution build.",
+      "candidateExperience": "Show available storage scopes, fix lost grants and prevent impossible destinations.",
+      "knownOverlap": "SAF and variant-specific filesystem restrictions are platform facts.",
+      "anchorActivities": [
+        "A10.11",
+        "A02.07",
+        "A16.11"
+      ],
+      "epistemic": "Consolidation of hypotheses, not a feature entitlement, specification or implementation claim"
+    },
+    {
+      "id": "MF30",
+      "type": "consolidated_capability_family",
+      "label": "Task-semantic accessibility parity",
+      "hypothesisIds": [
+        "H69"
+      ],
+      "inventoryCoverage": "documented_partial_implementation",
+      "novelty": "not_established",
+      "humanProblem": "A focusable button doesn't make transfer status, ratio or destructive context understandable.",
+      "candidateExperience": "Offer unambiguous status text and full assistive access to numerical data/actions.",
+      "knownOverlap": "Specific accessibility defects have been reported; other apps show fixes.",
+      "anchorActivities": [
+        "A18.07",
+        "A04.01",
+        "A05.02"
+      ],
+      "epistemic": "Consolidation of hypotheses, not a feature entitlement, specification or implementation claim"
+    },
+    {
+      "id": "MF31",
+      "type": "consolidated_capability_family",
+      "label": "Effective policy conflict explanation",
+      "hypothesisIds": [
+        "H70"
+      ],
+      "inventoryCoverage": "not_explicitly_integrated",
+      "novelty": "not_established",
+      "humanProblem": "Overlapping ratio, speed, queue, source and environment rules may disagree.",
+      "candidateExperience": "Show effective rule, why it won, and side effects of changing precedence.",
+      "knownOverlap": "Generic policy inheritance and rule engines exist, but this compound explanation is not explicit.",
+      "anchorActivities": [
+        "A17.05",
+        "A11.10",
+        "A07.11"
+      ],
+      "epistemic": "Consolidation of hypotheses, not a feature entitlement, specification or implementation claim"
+    },
+    {
+      "id": "MF32",
+      "type": "consolidated_capability_family",
+      "label": "Status freshness and confidence provenance",
+      "hypothesisIds": [
+        "H71"
+      ],
+      "inventoryCoverage": "not_explicitly_integrated",
+      "novelty": "not_established",
+      "humanProblem": "Cached, acknowledged and observed remote states can be confused.",
+      "candidateExperience": "Label status age, source and certainty at the point of decision or command retry.",
+      "knownOverlap": "Offline cache, readback and status state are existing primitives.",
+      "anchorActivities": [
+        "A08.08",
+        "A04.01",
+        "A15.12"
+      ],
+      "epistemic": "Consolidation of hypotheses, not a feature entitlement, specification or implementation claim"
+    },
+    {
+      "id": "MF33",
+      "type": "consolidated_capability_family",
+      "label": "Effective cross-layer capability explanation",
+      "hypothesisIds": [
+        "H72"
+      ],
+      "inventoryCoverage": "component_present",
+      "novelty": "not_established",
+      "humanProblem": "Engine RPC support, Android storage grants and provider filesystem reachability jointly determine executability.",
+      "candidateExperience": "Explain not merely whether a feature exists but why it works for the selected engine/storage/provider.",
+      "knownOverlap": "Capability probing and connection setup exist; combined scope may require cross-tool integration.",
+      "anchorActivities": [
+        "A08.03",
+        "A10.11",
+        "A09.04"
+      ],
+      "epistemic": "Consolidation of hypotheses, not a feature entitlement, specification or implementation claim"
+    },
+    {
+      "id": "SM01",
+      "type": "human_workflow_seam",
+      "label": "Discovery to intake",
+      "fromActivity": "A01.02",
+      "toActivity": "A02.01",
+      "tension": "A result can be findable without being trustworthy or available",
+      "capability": "MF26",
+      "hypothesisConfidence": "analytical_reconstruction",
+      "notNecessarilySequential": true
+    },
+    {
+      "id": "SM02",
+      "type": "human_workflow_seam",
+      "label": "Magnet to inspectable metadata",
+      "fromActivity": "A02.01",
+      "toActivity": "A03.01",
+      "tension": "A job exists but file selection cannot yet happen",
+      "capability": "MF09",
+      "hypothesisConfidence": "analytical_reconstruction",
+      "notNecessarilySequential": true
+    },
+    {
+      "id": "SM03",
+      "type": "human_workflow_seam",
+      "label": "Partial file selection to tracker obligations",
+      "fromActivity": "A03.02",
+      "toActivity": "A05.02",
+      "tension": "Selected media complete while site still expects full file or seed duration",
+      "capability": "MF22",
+      "hypothesisConfidence": "analytical_reconstruction",
+      "notNecessarilySequential": true
+    },
+    {
+      "id": "SM04",
+      "type": "human_workflow_seam",
+      "label": "Submission on phone to bytes on remote",
+      "fromActivity": "A08.04",
+      "toActivity": "A10.01",
+      "tension": "Remote Add does not put bytes on controller phone",
+      "capability": "MF02",
+      "hypothesisConfidence": "analytical_reconstruction",
+      "notNecessarilySequential": true
+    },
+    {
+      "id": "SM05",
+      "type": "human_workflow_seam",
+      "label": "Remote file to local handoff",
+      "fromActivity": "A10.01",
+      "toActivity": "A10.08",
+      "tension": "SFTP/sync job and torrent progress are independent",
+      "capability": "MF03",
+      "hypothesisConfidence": "analytical_reconstruction",
+      "notNecessarilySequential": true
+    },
+    {
+      "id": "SM06",
+      "type": "human_workflow_seam",
+      "label": "Torrent completed to library import",
+      "fromActivity": "A04.09",
+      "toActivity": "A12.02",
+      "tension": "Finished data is not yet matched and playable in library",
+      "capability": "MF02",
+      "hypothesisConfidence": "analytical_reconstruction",
+      "notNecessarilySequential": true
+    },
+    {
+      "id": "SM07",
+      "type": "human_workflow_seam",
+      "label": "Swarm scarcity to diagnosis",
+      "fromActivity": "A06.07",
+      "toActivity": "A15.02",
+      "tension": "High seed count can hide missing rare pieces",
+      "capability": "MF09",
+      "hypothesisConfidence": "analytical_reconstruction",
+      "notNecessarilySequential": true
+    },
+    {
+      "id": "SM08",
+      "type": "human_workflow_seam",
+      "label": "Seeding clock to obligation reached",
+      "fromActivity": "A05.01",
+      "toActivity": "A20.03",
+      "tension": "Elapsed time need not earn bytes or tracker credit",
+      "capability": "MF21",
+      "hypothesisConfidence": "analytical_reconstruction",
+      "notNecessarilySequential": true
+    },
+    {
+      "id": "SM09",
+      "type": "human_workflow_seam",
+      "label": "Library link to cleanup",
+      "fromActivity": "A12.12",
+      "toActivity": "A20.05",
+      "tension": "Deleting a path may or may not free blocks; another consumer may need it",
+      "capability": "MF05",
+      "hypothesisConfidence": "analytical_reconstruction",
+      "notNecessarilySequential": true
+    },
+    {
+      "id": "SM10",
+      "type": "human_workflow_seam",
+      "label": "Backing rename to missing-file recovery",
+      "fromActivity": "A10.03",
+      "toActivity": "A16.01",
+      "tension": "File identity and job mapping diverge after external move",
+      "capability": "MF06",
+      "hypothesisConfidence": "analytical_reconstruction",
+      "notNecessarilySequential": true
+    },
+    {
+      "id": "SM11",
+      "type": "human_workflow_seam",
+      "label": "Disconnected remote command to readback",
+      "fromActivity": "A08.07",
+      "toActivity": "A15.12",
+      "tension": "Uncertain command result can cause dangerous blind retry",
+      "capability": "MF13",
+      "hypothesisConfidence": "analytical_reconstruction",
+      "notNecessarilySequential": true
+    },
+    {
+      "id": "SM12",
+      "type": "human_workflow_seam",
+      "label": "Automation hook to downstream failure",
+      "fromActivity": "A11.07",
+      "toActivity": "A15.12",
+      "tension": "One action succeeds while later step fails",
+      "capability": "MF13",
+      "hypothesisConfidence": "analytical_reconstruction",
+      "notNecessarilySequential": true
+    },
+    {
+      "id": "SM13",
+      "type": "human_workflow_seam",
+      "label": "Quota pressure to deletion",
+      "fromActivity": "A17.01",
+      "toActivity": "A20.05",
+      "tension": "Reclaim decision must consider hardlinks and protected seeds",
+      "capability": "MF12",
+      "hypothesisConfidence": "analytical_reconstruction",
+      "notNecessarilySequential": true
+    },
+    {
+      "id": "SM14",
+      "type": "human_workflow_seam",
+      "label": "Published metadata to actually reachable seed",
+      "fromActivity": "A13.02",
+      "toActivity": "A13.10",
+      "tension": "Torrent published but no recipient can receive data",
+      "capability": "MF20",
+      "hypothesisConfidence": "analytical_reconstruction",
+      "notNecessarilySequential": true
+    },
+    {
+      "id": "SM15",
+      "type": "human_workflow_seam",
+      "label": "Privacy binding to remote network action",
+      "fromActivity": "A14.01",
+      "toActivity": "A08.01",
+      "tension": "Configured route can differ from effective traffic path",
+      "capability": "MF18",
+      "hypothesisConfidence": "analytical_reconstruction",
+      "notNecessarilySequential": true
+    },
+    {
+      "id": "SM16",
+      "type": "human_workflow_seam",
+      "label": "Close phone UI to background seed",
+      "fromActivity": "A04.12",
+      "toActivity": "A20.11",
+      "tension": "Human intent persists but Android scheduling may stop daemon",
+      "capability": "MF28",
+      "hypothesisConfidence": "analytical_reconstruction",
+      "notNecessarilySequential": true
+    },
+    {
+      "id": "SM17",
+      "type": "human_workflow_seam",
+      "label": "Android file move to ability to recheck",
+      "fromActivity": "A10.11",
+      "toActivity": "A16.11",
+      "tension": "SAF permission and filename semantics may block repair",
+      "capability": "MF29",
+      "hypothesisConfidence": "analytical_reconstruction",
+      "notNecessarilySequential": true
+    },
+    {
+      "id": "SM18",
+      "type": "human_workflow_seam",
+      "label": "Assistive navigation to meaningful status",
+      "fromActivity": "A18.07",
+      "toActivity": "A04.01",
+      "tension": "Focusable controls do not expose data and context reliably",
+      "capability": "MF30",
+      "hypothesisConfidence": "analytical_reconstruction",
+      "notNecessarilySequential": true
+    },
+    {
+      "id": "SM19",
+      "type": "human_workflow_seam",
+      "label": "Client update to resumed established routine",
+      "fromActivity": "A18.10",
+      "toActivity": "A04.10",
+      "tension": "Version or theme regression destroys familiar task flow",
+      "capability": "MF27",
+      "hypothesisConfidence": "analytical_reconstruction",
+      "notNecessarilySequential": true
+    },
+    {
+      "id": "SM20",
+      "type": "human_workflow_seam",
+      "label": "Channel comparison to actual acquisition",
+      "fromActivity": "A01.12",
+      "toActivity": "A02.01",
+      "tension": "Best result may be not opening torrent client",
+      "capability": "MF26",
+      "hypothesisConfidence": "analytical_reconstruction",
+      "notNecessarilySequential": true
+    },
+    {
+      "id": "SM21",
+      "type": "human_workflow_seam",
+      "label": "Provider cancellation to restored collection",
+      "fromActivity": "A09.11",
+      "toActivity": "A20.07",
+      "tension": "Cancel can strand data, profile and torrent metadata",
+      "capability": "MF07",
+      "hypothesisConfidence": "analytical_reconstruction",
+      "notNecessarilySequential": true
+    },
+    {
+      "id": "SM22",
+      "type": "human_workflow_seam",
+      "label": "New rule classification to rule repair",
+      "fromActivity": "A07.09",
+      "toActivity": "A11.09",
+      "tension": "Overlapping conditions lead to unexplained effective policy",
+      "capability": "MF31",
+      "hypothesisConfidence": "analytical_reconstruction",
+      "notNecessarilySequential": true
+    },
+    {
+      "id": "SM23",
+      "type": "human_workflow_seam",
+      "label": "Offline cached list to live transfer status",
+      "fromActivity": "A08.08",
+      "toActivity": "A04.01",
+      "tension": "Stale cache looks like current server truth",
+      "capability": "MF32",
+      "hypothesisConfidence": "analytical_reconstruction",
+      "notNecessarilySequential": true
+    },
+    {
+      "id": "SM24",
+      "type": "human_workflow_seam",
+      "label": "Server provisioning to available remote action",
+      "fromActivity": "A09.06",
+      "toActivity": "A08.03",
+      "tension": "Presence of app not equal to all RPC/file capabilities",
+      "capability": "MF33",
+      "hypothesisConfidence": "analytical_reconstruction",
+      "notNecessarilySequential": true
+    },
+    {
+      "id": "SM25",
+      "type": "human_workflow_seam",
+      "label": "New published version to continued sharing",
+      "fromActivity": "A13.11",
+      "toActivity": "A13.07",
+      "tension": "Metadata for release family not connected to old seed/recipient",
+      "capability": "MF24",
+      "hypothesisConfidence": "analytical_reconstruction",
+      "notNecessarilySequential": true
+    },
+    {
+      "id": "SM26",
+      "type": "human_workflow_seam",
+      "label": "Backup restore to migrated running data",
+      "fromActivity": "A16.09",
+      "toActivity": "A16.05",
+      "tension": "Restored registration doesn't guarantee new host bytes",
+      "capability": "MF07",
+      "hypothesisConfidence": "analytical_reconstruction",
+      "notNecessarilySequential": true
+    },
+    {
+      "id": "SM27",
+      "type": "human_workflow_seam",
+      "label": "Early playback to casting target",
+      "fromActivity": "A03.04",
+      "toActivity": "A12.03",
+      "tension": "Playable locally does not imply playable on selected TV",
+      "capability": "MF10",
+      "hypothesisConfidence": "analytical_reconstruction",
+      "notNecessarilySequential": true
+    },
+    {
+      "id": "SM28",
+      "type": "human_workflow_seam",
+      "label": "Automation cleanup to actual data deletion",
+      "fromActivity": "A11.10",
+      "toActivity": "A20.05",
+      "tension": "Rule outcome may violate hidden storage references",
+      "capability": "MF11",
+      "hypothesisConfidence": "analytical_reconstruction",
+      "notNecessarilySequential": true
+    },
+    {
+      "id": "SM29",
+      "type": "human_workflow_seam",
+      "label": "Trust judgement to archive contents",
+      "fromActivity": "A01.07",
+      "toActivity": "A14.10",
+      "tension": "Good piece hashes are not malware or publisher authenticity checks",
+      "capability": "MF23",
+      "hypothesisConfidence": "analytical_reconstruction",
+      "notNecessarilySequential": true
+    },
+    {
+      "id": "SM30",
+      "type": "human_workflow_seam",
+      "label": "Temporary speed mode to stable rule precedence",
+      "fromActivity": "A17.04",
+      "toActivity": "A17.05",
+      "tension": "Session switch or timer may not reverse group limits as intended",
+      "capability": "MF31",
+      "hypothesisConfidence": "analytical_reconstruction",
+      "notNecessarilySequential": true
     }
   ],
   "edges": [
@@ -30710,6 +31749,1722 @@
       "to": "TD03",
       "type": "supports_exit_taxonomy",
       "confidence": "general_peer_reviewed_theory"
+    },
+    {
+      "from": "H70",
+      "to": "B05",
+      "type": "belongs_to",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "H70",
+      "to": "A17.05",
+      "type": "would_support_activity",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H70",
+      "to": "A11.10",
+      "type": "would_support_activity",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H70",
+      "to": "A07.11",
+      "type": "would_support_activity",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H70",
+      "to": "F05.13",
+      "type": "extends_or_bridges_existing",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H70",
+      "to": "F12.10",
+      "type": "extends_or_bridges_existing",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H70",
+      "to": "C14",
+      "type": "could_reduce_cognitive_burden",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H70",
+      "to": "E02",
+      "type": "responds_to_possible_affect",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H70",
+      "to": "E03",
+      "type": "could_support_affective_shift",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H71",
+      "to": "B03",
+      "type": "belongs_to",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "H71",
+      "to": "A08.08",
+      "type": "would_support_activity",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H71",
+      "to": "A04.01",
+      "type": "would_support_activity",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H71",
+      "to": "A15.12",
+      "type": "would_support_activity",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H71",
+      "to": "F10.10",
+      "type": "extends_or_bridges_existing",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H71",
+      "to": "F13.13",
+      "type": "extends_or_bridges_existing",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H71",
+      "to": "C09",
+      "type": "could_reduce_cognitive_burden",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H71",
+      "to": "E02",
+      "type": "responds_to_possible_affect",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H71",
+      "to": "E03",
+      "type": "could_support_affective_shift",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H72",
+      "to": "B06",
+      "type": "belongs_to",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "H72",
+      "to": "A08.03",
+      "type": "would_support_activity",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H72",
+      "to": "A10.11",
+      "type": "would_support_activity",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H72",
+      "to": "A09.04",
+      "type": "would_support_activity",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H72",
+      "to": "F10.06",
+      "type": "extends_or_bridges_existing",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H72",
+      "to": "F03.17",
+      "type": "extends_or_bridges_existing",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H72",
+      "to": "C10",
+      "type": "could_reduce_cognitive_burden",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H72",
+      "to": "E04",
+      "type": "responds_to_possible_affect",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H72",
+      "to": "E03",
+      "type": "could_support_affective_shift",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "MF01",
+      "to": "H01",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF01",
+      "to": "H51",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF01",
+      "to": "H54",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF01",
+      "to": "H62",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF01",
+      "to": "A01.12",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF01",
+      "to": "A02.02",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF01",
+      "to": "A13.01",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF02",
+      "to": "H02",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF02",
+      "to": "H16",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF02",
+      "to": "H17",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF02",
+      "to": "H44",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF02",
+      "to": "A08.04",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF02",
+      "to": "A10.01",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF02",
+      "to": "A12.02",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF03",
+      "to": "H03",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF03",
+      "to": "H04",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF03",
+      "to": "H05",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF03",
+      "to": "A10.01",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF03",
+      "to": "A10.08",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF03",
+      "to": "A10.12",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF04",
+      "to": "H06",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF04",
+      "to": "H27",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF04",
+      "to": "H53",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF04",
+      "to": "A07.05",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF04",
+      "to": "A04.10",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF04",
+      "to": "A15.12",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF05",
+      "to": "H07",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF05",
+      "to": "H08",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF05",
+      "to": "H11",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF05",
+      "to": "H12",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF05",
+      "to": "A16.07",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF05",
+      "to": "A17.02",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF05",
+      "to": "A12.12",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF06",
+      "to": "H09",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF06",
+      "to": "H22",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF06",
+      "to": "H45",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF06",
+      "to": "A10.03",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF06",
+      "to": "A16.01",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF06",
+      "to": "A16.02",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF07",
+      "to": "H10",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF07",
+      "to": "H23",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF07",
+      "to": "H61",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF07",
+      "to": "A16.09",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF07",
+      "to": "A16.05",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF07",
+      "to": "A20.07",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF08",
+      "to": "H13",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF08",
+      "to": "H18",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF08",
+      "to": "H63",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF08",
+      "to": "A15.02",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF08",
+      "to": "A15.05",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF08",
+      "to": "A15.07",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF09",
+      "to": "H14",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF09",
+      "to": "H25",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF09",
+      "to": "H39",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF09",
+      "to": "A06.07",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF09",
+      "to": "A15.02",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF09",
+      "to": "A01.08",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF10",
+      "to": "H15",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF10",
+      "to": "H43",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF10",
+      "to": "H56",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF10",
+      "to": "A03.08",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF10",
+      "to": "A12.01",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF10",
+      "to": "A12.03",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF11",
+      "to": "H19",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF11",
+      "to": "H50",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF11",
+      "to": "A14.11",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF11",
+      "to": "A04.08",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF11",
+      "to": "A11.10",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF12",
+      "to": "H20",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF12",
+      "to": "H21",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF12",
+      "to": "A17.02",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF12",
+      "to": "A20.05",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF12",
+      "to": "A20.09",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF13",
+      "to": "H24",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF13",
+      "to": "H35",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF13",
+      "to": "A11.07",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF13",
+      "to": "A08.07",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF13",
+      "to": "A15.12",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF14",
+      "to": "H26",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF14",
+      "to": "H57",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF14",
+      "to": "H65",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF14",
+      "to": "A17.03",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF14",
+      "to": "A17.04",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF14",
+      "to": "A09.11",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF15",
+      "to": "H28",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF15",
+      "to": "H52",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF15",
+      "to": "A04.10",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF15",
+      "to": "A11.09",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF15",
+      "to": "A14.12",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF16",
+      "to": "H29",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF16",
+      "to": "H30",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF16",
+      "to": "A17.04",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF16",
+      "to": "A05.03",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF16",
+      "to": "A20.03",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF17",
+      "to": "H31",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF17",
+      "to": "H34",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF17",
+      "to": "A08.01",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF17",
+      "to": "A08.10",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF17",
+      "to": "A09.07",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF18",
+      "to": "H32",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF18",
+      "to": "H60",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF18",
+      "to": "A14.01",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF18",
+      "to": "A14.02",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF18",
+      "to": "A15.03",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF19",
+      "to": "H33",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF19",
+      "to": "H36",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF19",
+      "to": "A08.02",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF19",
+      "to": "A14.11",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF19",
+      "to": "A09.05",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF20",
+      "to": "H37",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF20",
+      "to": "H38",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF20",
+      "to": "A13.01",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF20",
+      "to": "A13.10",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF20",
+      "to": "A13.12",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF21",
+      "to": "H40",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF21",
+      "to": "H58",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF21",
+      "to": "A05.06",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF21",
+      "to": "A05.02",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF21",
+      "to": "A05.09",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF22",
+      "to": "H41",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF22",
+      "to": "H59",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF22",
+      "to": "A05.02",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF22",
+      "to": "A03.02",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF22",
+      "to": "A05.03",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF23",
+      "to": "H42",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF23",
+      "to": "H46",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF23",
+      "to": "A01.07",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF23",
+      "to": "A10.07",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF23",
+      "to": "A13.08",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF24",
+      "to": "H47",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF24",
+      "to": "A13.11",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF24",
+      "to": "A13.07",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF25",
+      "to": "H48",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF25",
+      "to": "A10.04",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF25",
+      "to": "A01.04",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF25",
+      "to": "A19.10",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF26",
+      "to": "H49",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF26",
+      "to": "H55",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF26",
+      "to": "H66",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF26",
+      "to": "A01.12",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF26",
+      "to": "A05.01",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF26",
+      "to": "A20.01",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF27",
+      "to": "H64",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF27",
+      "to": "A18.10",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF27",
+      "to": "A04.10",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF28",
+      "to": "H67",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF28",
+      "to": "A17.07",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF28",
+      "to": "A20.11",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF28",
+      "to": "A04.12",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF29",
+      "to": "H68",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF29",
+      "to": "A10.11",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF29",
+      "to": "A02.07",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF29",
+      "to": "A16.11",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF30",
+      "to": "H69",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF30",
+      "to": "A18.07",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF30",
+      "to": "A04.01",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF30",
+      "to": "A05.02",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF31",
+      "to": "H70",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF31",
+      "to": "A17.05",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF31",
+      "to": "A11.10",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF31",
+      "to": "A07.11",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF32",
+      "to": "H71",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF32",
+      "to": "A08.08",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF32",
+      "to": "A04.01",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF32",
+      "to": "A15.12",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF33",
+      "to": "H72",
+      "type": "consolidates_hypothesis",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF33",
+      "to": "A08.03",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF33",
+      "to": "A10.11",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "MF33",
+      "to": "A09.04",
+      "type": "addresses_human_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM01",
+      "to": "A01.02",
+      "type": "from_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM01",
+      "to": "A02.01",
+      "type": "to_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM01",
+      "to": "MF26",
+      "type": "could_be_bridged_by",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "SM02",
+      "to": "A02.01",
+      "type": "from_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM02",
+      "to": "A03.01",
+      "type": "to_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM02",
+      "to": "MF09",
+      "type": "could_be_bridged_by",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "SM03",
+      "to": "A03.02",
+      "type": "from_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM03",
+      "to": "A05.02",
+      "type": "to_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM03",
+      "to": "MF22",
+      "type": "could_be_bridged_by",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "SM04",
+      "to": "A08.04",
+      "type": "from_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM04",
+      "to": "A10.01",
+      "type": "to_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM04",
+      "to": "MF02",
+      "type": "could_be_bridged_by",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "SM05",
+      "to": "A10.01",
+      "type": "from_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM05",
+      "to": "A10.08",
+      "type": "to_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM05",
+      "to": "MF03",
+      "type": "could_be_bridged_by",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "SM06",
+      "to": "A04.09",
+      "type": "from_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM06",
+      "to": "A12.02",
+      "type": "to_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM06",
+      "to": "MF02",
+      "type": "could_be_bridged_by",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "SM07",
+      "to": "A06.07",
+      "type": "from_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM07",
+      "to": "A15.02",
+      "type": "to_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM07",
+      "to": "MF09",
+      "type": "could_be_bridged_by",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "SM08",
+      "to": "A05.01",
+      "type": "from_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM08",
+      "to": "A20.03",
+      "type": "to_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM08",
+      "to": "MF21",
+      "type": "could_be_bridged_by",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "SM09",
+      "to": "A12.12",
+      "type": "from_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM09",
+      "to": "A20.05",
+      "type": "to_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM09",
+      "to": "MF05",
+      "type": "could_be_bridged_by",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "SM10",
+      "to": "A10.03",
+      "type": "from_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM10",
+      "to": "A16.01",
+      "type": "to_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM10",
+      "to": "MF06",
+      "type": "could_be_bridged_by",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "SM11",
+      "to": "A08.07",
+      "type": "from_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM11",
+      "to": "A15.12",
+      "type": "to_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM11",
+      "to": "MF13",
+      "type": "could_be_bridged_by",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "SM12",
+      "to": "A11.07",
+      "type": "from_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM12",
+      "to": "A15.12",
+      "type": "to_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM12",
+      "to": "MF13",
+      "type": "could_be_bridged_by",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "SM13",
+      "to": "A17.01",
+      "type": "from_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM13",
+      "to": "A20.05",
+      "type": "to_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM13",
+      "to": "MF12",
+      "type": "could_be_bridged_by",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "SM14",
+      "to": "A13.02",
+      "type": "from_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM14",
+      "to": "A13.10",
+      "type": "to_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM14",
+      "to": "MF20",
+      "type": "could_be_bridged_by",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "SM15",
+      "to": "A14.01",
+      "type": "from_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM15",
+      "to": "A08.01",
+      "type": "to_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM15",
+      "to": "MF18",
+      "type": "could_be_bridged_by",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "SM16",
+      "to": "A04.12",
+      "type": "from_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM16",
+      "to": "A20.11",
+      "type": "to_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM16",
+      "to": "MF28",
+      "type": "could_be_bridged_by",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "SM17",
+      "to": "A10.11",
+      "type": "from_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM17",
+      "to": "A16.11",
+      "type": "to_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM17",
+      "to": "MF29",
+      "type": "could_be_bridged_by",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "SM18",
+      "to": "A18.07",
+      "type": "from_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM18",
+      "to": "A04.01",
+      "type": "to_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM18",
+      "to": "MF30",
+      "type": "could_be_bridged_by",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "SM19",
+      "to": "A18.10",
+      "type": "from_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM19",
+      "to": "A04.10",
+      "type": "to_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM19",
+      "to": "MF27",
+      "type": "could_be_bridged_by",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "SM20",
+      "to": "A01.12",
+      "type": "from_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM20",
+      "to": "A02.01",
+      "type": "to_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM20",
+      "to": "MF26",
+      "type": "could_be_bridged_by",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "SM21",
+      "to": "A09.11",
+      "type": "from_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM21",
+      "to": "A20.07",
+      "type": "to_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM21",
+      "to": "MF07",
+      "type": "could_be_bridged_by",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "SM22",
+      "to": "A07.09",
+      "type": "from_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM22",
+      "to": "A11.09",
+      "type": "to_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM22",
+      "to": "MF31",
+      "type": "could_be_bridged_by",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "SM23",
+      "to": "A08.08",
+      "type": "from_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM23",
+      "to": "A04.01",
+      "type": "to_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM23",
+      "to": "MF32",
+      "type": "could_be_bridged_by",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "SM24",
+      "to": "A09.06",
+      "type": "from_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM24",
+      "to": "A08.03",
+      "type": "to_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM24",
+      "to": "MF33",
+      "type": "could_be_bridged_by",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "SM25",
+      "to": "A13.11",
+      "type": "from_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM25",
+      "to": "A13.07",
+      "type": "to_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM25",
+      "to": "MF24",
+      "type": "could_be_bridged_by",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "SM26",
+      "to": "A16.09",
+      "type": "from_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM26",
+      "to": "A16.05",
+      "type": "to_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM26",
+      "to": "MF07",
+      "type": "could_be_bridged_by",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "SM27",
+      "to": "A03.04",
+      "type": "from_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM27",
+      "to": "A12.03",
+      "type": "to_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM27",
+      "to": "MF10",
+      "type": "could_be_bridged_by",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "SM28",
+      "to": "A11.10",
+      "type": "from_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM28",
+      "to": "A20.05",
+      "type": "to_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM28",
+      "to": "MF11",
+      "type": "could_be_bridged_by",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "SM29",
+      "to": "A01.07",
+      "type": "from_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM29",
+      "to": "A14.10",
+      "type": "to_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM29",
+      "to": "MF23",
+      "type": "could_be_bridged_by",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "SM30",
+      "to": "A17.04",
+      "type": "from_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM30",
+      "to": "A17.05",
+      "type": "to_activity",
+      "confidence": "desk_synthesis"
+    },
+    {
+      "from": "SM30",
+      "to": "MF31",
+      "type": "could_be_bridged_by",
+      "confidence": "hypothesis"
     }
   ]
 }
