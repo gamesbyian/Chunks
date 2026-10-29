@@ -1,16 +1,17 @@
 {
-  "schema": "bittorrent-human-concept-graph/v2",
+  "schema": "bittorrent-human-concept-graph/v3",
   "asOf": "2026-10-29",
   "scope": "external research, descriptive, non-normative",
-  "epistemicWarning": "Activity-feature links and candidate gap links are analytical syntheses, not measured usage, all-product support, or proven absence elsewhere. Friction code recurrence is not population prevalence, negative paths are possibilities, historical studies do not describe 2026 population.",
+  "epistemicWarning": "Activity-feature links and candidate gap links are analytical syntheses, not measured usage, all-product support, or proven absence elsewhere. Friction code recurrence is not population prevalence, negative paths are possibilities, historical studies do not describe 2026 population. Audit evidence describes specified tools and contexts. Cross-domain discontinuance framework does not estimate BitTorrent churn.",
   "inputs": {
     "featureInventory": "https://github.com/gamesbyian/Chunks/blob/26fec615e8241504011f319929c40d22cc35bd9f/docs/BITTORRENT-ECOSYSTEM-FEATURE-INVENTORY-2026-10-29.md",
     "activityAtlas": "https://github.com/gamesbyian/Chunks/blob/7631199f79b6763a961da5a2a3665886eb6964d7/docs/BITTORRENT-USER-GOALS-AND-WORKFLOWS-2026-10-29.md",
-    "aversionAtlas": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md"
+    "aversionAtlas": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+    "evidenceAudit": "BITTORRENT-CONCEPT-MAP-EVIDENCE-AUDIT-2026-10-29.md"
   },
   "statistics": {
-    "nodes": 839,
-    "edges": 3658,
+    "nodes": 877,
+    "edges": 3832,
     "nodeTypes": {
       "activity": 240,
       "existing_inventory_feature": 240,
@@ -21,25 +22,27 @@
       "cognitive_demand": 21,
       "possible_affective_stake": 21,
       "gap_domain": 11,
-      "missing_capability_hypothesis": 66,
+      "missing_capability_hypothesis": 69,
       "friction_domain": 6,
       "reported_friction_factor": 55,
-      "possible_exit_or_alternative": 18,
+      "possible_exit_or_alternative": 21,
       "evidence_source": 10,
-      "aversion_evidence_source": 57
+      "aversion_evidence_source": 57,
+      "implementation_or_context_evidence": 25,
+      "discontinuance_theory_class": 7
     },
     "edgeTypes": {
       "classified_as": 240,
       "enabled_or_explained_by": 695,
-      "belongs_to": 306,
+      "belongs_to": 309,
       "serves_goal": 240,
       "involves_cognitive_demand": 240,
       "may_involve_affective_stake": 240,
-      "would_support_activity": 174,
-      "extends_or_bridges_existing": 120,
-      "could_reduce_cognitive_burden": 66,
-      "responds_to_possible_affect": 66,
-      "could_support_affective_shift": 66,
+      "would_support_activity": 183,
+      "extends_or_bridges_existing": 126,
+      "could_reduce_cognitive_burden": 69,
+      "responds_to_possible_affect": 69,
+      "could_support_affective_shift": 69,
       "illustratively_contains": 149,
       "may_precede_in_example": 113,
       "co_supports_activity": 547,
@@ -49,7 +52,15 @@
       "relates_to_choice_or_retained_goal": 18,
       "offers_context_for": 11,
       "motivates_gap_investigation": 55,
-      "cites_source_entry": 147
+      "cites_source_entry": 147,
+      "documents_feature_context": 59,
+      "tests_hypothesis": 64,
+      "may_follow_achieved_goal": 1,
+      "may_follow_activity": 3,
+      "preserves_autonomy": 2,
+      "preserves_constraints": 1,
+      "may_classify_exit_as": 14,
+      "supports_exit_taxonomy": 3
     },
     "baseAtlas": {
       "activityCount": 240,
@@ -91,7 +102,7 @@
       "featuresWithOneLink": 54,
       "featuresWithTwoOrFewerLinks": 120
     },
-    "hypothesisCount": 66,
+    "hypothesisCount": 69,
     "aversionBridge": {
       "factors": 55,
       "exitRoutes": 18,
@@ -100,6 +111,14 @@
       "sourceCatalogueRecords": 57,
       "newFactorToHypothesisEdges": 55,
       "allFactorToSourceLinks": 147
+    },
+    "validationAudit": {
+      "evidenceRecords": 25,
+      "newHypotheses": 3,
+      "newExitRoutes": 3,
+      "theoryCategories": 7,
+      "assessedHypotheses": 16,
+      "linksToHypotheses": 64
     }
   },
   "nodes": [
@@ -4252,7 +4271,12 @@
       "label": "Content identity across different torrent descriptors",
       "domain": "B02",
       "missingLink": "Equivalent files may be spread across hashes, release names, seed jobs and shared storage.",
-      "interpretation": "candidate capability not explicitly represented as a complete interaction in the 240-feature inventory; may exist elsewhere"
+      "interpretation": "candidate capability not explicitly represented as a complete interaction in the 240-feature inventory; may exist elsewhere",
+      "validationStatus": "documented_existing_partial",
+      "validationEvidence": [
+        "V01"
+      ],
+      "validationDate": "2026-10-29"
     },
     {
       "id": "H08",
@@ -4260,7 +4284,13 @@
       "label": "Job-to-byte-to-library dependency graph",
       "domain": "B02",
       "missingLink": "Users lack an explicit, verified view of which jobs, files and library entries depend on each other.",
-      "interpretation": "candidate capability not explicitly represented as a complete interaction in the 240-feature inventory; may exist elsewhere"
+      "interpretation": "candidate capability not explicitly represented as a complete interaction in the 240-feature inventory; may exist elsewhere",
+      "validationStatus": "documented_existing_partial",
+      "validationEvidence": [
+        "V01",
+        "V03"
+      ],
+      "validationDate": "2026-10-29"
     },
     {
       "id": "H09",
@@ -4276,7 +4306,13 @@
       "label": "Portable per-job migration manifest",
       "domain": "B02",
       "missingLink": "A backup may omit divergent per-torrent paths or settings even when it restores job registration.",
-      "interpretation": "candidate capability not explicitly represented as a complete interaction in the 240-feature inventory; may exist elsewhere"
+      "interpretation": "candidate capability not explicitly represented as a complete interaction in the 240-feature inventory; may exist elsewhere",
+      "validationStatus": "documented_existing_partial",
+      "validationEvidence": [
+        "V04",
+        "V05"
+      ],
+      "validationDate": "2026-10-29"
     },
     {
       "id": "H11",
@@ -4348,7 +4384,13 @@
       "label": "Cross-object mutation preview",
       "domain": "B04",
       "missingLink": "Bulk actions can affect shared files, paths and automations outside the selected torrent rows.",
-      "interpretation": "candidate capability not explicitly represented as a complete interaction in the 240-feature inventory; may exist elsewhere"
+      "interpretation": "candidate capability not explicitly represented as a complete interaction in the 240-feature inventory; may exist elsewhere",
+      "validationStatus": "documented_existing_partial",
+      "validationEvidence": [
+        "V02",
+        "V04"
+      ],
+      "validationDate": "2026-10-29"
     },
     {
       "id": "H20",
@@ -4356,7 +4398,13 @@
       "label": "Dependency-safe deletion decision aid",
       "domain": "B04",
       "missingLink": "A cleanup command needs to know whether another seed or media library still relies on a path.",
-      "interpretation": "candidate capability not explicitly represented as a complete interaction in the 240-feature inventory; may exist elsewhere"
+      "interpretation": "candidate capability not explicitly represented as a complete interaction in the 240-feature inventory; may exist elsewhere",
+      "validationStatus": "documented_existing_partial",
+      "validationEvidence": [
+        "V02",
+        "V03"
+      ],
+      "validationDate": "2026-10-29"
     },
     {
       "id": "H21",
@@ -4364,7 +4412,13 @@
       "label": "Recovery window and reversible quarantine",
       "domain": "B04",
       "missingLink": "Simple delete/trash settings do not inherently offer an end-to-end undo across torrent and file layers.",
-      "interpretation": "candidate capability not explicitly represented as a complete interaction in the 240-feature inventory; may exist elsewhere"
+      "interpretation": "candidate capability not explicitly represented as a complete interaction in the 240-feature inventory; may exist elsewhere",
+      "validationStatus": "documented_existing_partial",
+      "validationEvidence": [
+        "V03",
+        "V04"
+      ],
+      "validationDate": "2026-10-29"
     },
     {
       "id": "H22",
@@ -4388,7 +4442,12 @@
       "label": "Compensating actions for partial automation",
       "domain": "B04",
       "missingLink": "An automation chain can succeed at one step and fail after moving or renaming data.",
-      "interpretation": "candidate capability not explicitly represented as a complete interaction in the 240-feature inventory; may exist elsewhere"
+      "interpretation": "candidate capability not explicitly represented as a complete interaction in the 240-feature inventory; may exist elsewhere",
+      "validationStatus": "documented_existing_partial",
+      "validationEvidence": [
+        "V02"
+      ],
+      "validationDate": "2026-10-29"
     },
     {
       "id": "H25",
@@ -4444,7 +4503,12 @@
       "label": "Verified remote endpoint setup and capabilities",
       "domain": "B06",
       "missingLink": "Provider hints and a successful login may not prove that intended RPC features work on the selected engine.",
-      "interpretation": "candidate capability not explicitly represented as a complete interaction in the 240-feature inventory; may exist elsewhere"
+      "interpretation": "candidate capability not explicitly represented as a complete interaction in the 240-feature inventory; may exist elsewhere",
+      "validationStatus": "documented_existing_partial",
+      "validationEvidence": [
+        "V06"
+      ],
+      "validationDate": "2026-10-29"
     },
     {
       "id": "H32",
@@ -4476,7 +4540,12 @@
       "label": "Safe recovery from uncertain remote commands",
       "domain": "B06",
       "missingLink": "Automatic reconnection may mask uncertainty about whether a prior mutation actually happened.",
-      "interpretation": "candidate capability not explicitly represented as a complete interaction in the 240-feature inventory; may exist elsewhere"
+      "interpretation": "candidate capability not explicitly represented as a complete interaction in the 240-feature inventory; may exist elsewhere",
+      "validationStatus": "documented_existing_partial",
+      "validationEvidence": [
+        "V05"
+      ],
+      "validationDate": "2026-10-29"
     },
     {
       "id": "H36",
@@ -4508,7 +4577,13 @@
       "label": "Rare-piece scarcity and alternative-source assistant",
       "domain": "B07",
       "missingLink": "Nearly complete swarms can be missing the same rare piece while nominal seed counts look promising.",
-      "interpretation": "candidate capability not explicitly represented as a complete interaction in the 240-feature inventory; may exist elsewhere"
+      "interpretation": "candidate capability not explicitly represented as a complete interaction in the 240-feature inventory; may exist elsewhere",
+      "validationStatus": "documented_existing_partial",
+      "validationEvidence": [
+        "V01",
+        "V07"
+      ],
+      "validationDate": "2026-10-29"
     },
     {
       "id": "H40",
@@ -4564,7 +4639,13 @@
       "label": "Research dataset provenance and subset manifest",
       "domain": "B08",
       "missingLink": "Selective research acquisition needs a reproducible record of data version, chosen files and verification.",
-      "interpretation": "candidate capability not explicitly represented as a complete interaction in the 240-feature inventory; may exist elsewhere"
+      "interpretation": "candidate capability not explicitly represented as a complete interaction in the 240-feature inventory; may exist elsewhere",
+      "validationStatus": "documented_existing_partial",
+      "validationEvidence": [
+        "V19",
+        "V20"
+      ],
+      "validationDate": "2026-10-29"
     },
     {
       "id": "H47",
@@ -5738,7 +5819,10 @@
       "label": "Feasible sharing budget planning",
       "domain": "B11",
       "missingLink": "Someone may want to seed while lacking uplink, storage, electricity or time",
-      "interpretation": "research hypothesis, not proven worldwide absence"
+      "interpretation": "research hypothesis, not proven worldwide absence",
+      "validationStatus": "documented_existing_partial",
+      "validationEvidence": [],
+      "validationDate": "2026-10-29"
     },
     {
       "id": "H58",
@@ -5770,7 +5854,15 @@
       "label": "Graceful exit with portable data and state",
       "domain": "B10",
       "missingLink": "Provider/client abandonment need not mean losing valid bytes and resume metadata",
-      "interpretation": "research hypothesis, not proven worldwide absence"
+      "interpretation": "research hypothesis, not proven worldwide absence",
+      "validationStatus": "documented_existing_partial",
+      "validationEvidence": [
+        "V04",
+        "V05",
+        "V22",
+        "V23"
+      ],
+      "validationDate": "2026-10-29"
     },
     {
       "id": "H62",
@@ -5794,7 +5886,14 @@
       "label": "Repair established workflow after version changes",
       "domain": "B10",
       "missingLink": "A changed UI, rename behavior or integration can destroy learned routine",
-      "interpretation": "research hypothesis, not proven worldwide absence"
+      "interpretation": "research hypothesis, not proven worldwide absence",
+      "validationStatus": "documented_existing_partial",
+      "validationEvidence": [
+        "V14",
+        "V22",
+        "V23"
+      ],
+      "validationDate": "2026-10-29"
     },
     {
       "id": "H65",
@@ -6394,6 +6493,569 @@
       "label": "Chinese open-source project describes ads/bloat, steep learning, unclear errors",
       "url": "https://github.com/koi-apps/koi-bt",
       "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "V01",
+      "type": "implementation_or_context_evidence",
+      "label": "qui: cross-seed overview",
+      "url": "https://getqui.com/docs/features/cross-seed/overview/",
+      "evidenceClass": "primary_implementation_docs",
+      "linkedFeatures": [
+        "F03.20",
+        "F06.11",
+        "F15.15"
+      ],
+      "linkedHypotheses": [
+        "H07",
+        "H08",
+        "H39",
+        "H45"
+      ],
+      "findingClass": "documented_partial",
+      "auditDoc": "BITTORRENT-CONCEPT-MAP-EVIDENCE-AUDIT-2026-10-29.md"
+    },
+    {
+      "id": "V02",
+      "type": "implementation_or_context_evidence",
+      "label": "qui: automation rule engine",
+      "url": "https://getqui.com/docs/features/automations/",
+      "evidenceClass": "primary_implementation_docs",
+      "linkedFeatures": [
+        "F12.09",
+        "F12.10",
+        "F13.11"
+      ],
+      "linkedHypotheses": [
+        "H19",
+        "H20",
+        "H24",
+        "H50",
+        "H52"
+      ],
+      "findingClass": "documented_partial",
+      "auditDoc": "BITTORRENT-CONCEPT-MAP-EVIDENCE-AUDIT-2026-10-29.md"
+    },
+    {
+      "id": "V03",
+      "type": "implementation_or_context_evidence",
+      "label": "qui: orphan scan",
+      "url": "https://getqui.com/docs/features/orphan-scan/",
+      "evidenceClass": "primary_implementation_docs",
+      "linkedFeatures": [
+        "F03.19",
+        "F03.20",
+        "F03.22"
+      ],
+      "linkedHypotheses": [
+        "H08",
+        "H11",
+        "H20",
+        "H21"
+      ],
+      "findingClass": "documented_partial",
+      "auditDoc": "BITTORRENT-CONCEPT-MAP-EVIDENCE-AUDIT-2026-10-29.md"
+    },
+    {
+      "id": "V04",
+      "type": "implementation_or_context_evidence",
+      "label": "qui: backup and restoration modes",
+      "url": "https://getqui.com/docs/features/backups/",
+      "evidenceClass": "primary_implementation_docs",
+      "linkedFeatures": [
+        "F02.17",
+        "F11.12"
+      ],
+      "linkedHypotheses": [
+        "H10",
+        "H19",
+        "H21",
+        "H23",
+        "H61"
+      ],
+      "findingClass": "documented_partial",
+      "auditDoc": "BITTORRENT-CONCEPT-MAP-EVIDENCE-AUDIT-2026-10-29.md"
+    },
+    {
+      "id": "V05",
+      "type": "implementation_or_context_evidence",
+      "label": "qui: export torrent registration to instance",
+      "url": "https://getqui.com/docs/features/automations/",
+      "evidenceClass": "primary_implementation_docs",
+      "linkedFeatures": [
+        "F02.16",
+        "F10.08"
+      ],
+      "linkedHypotheses": [
+        "H02",
+        "H10",
+        "H17",
+        "H35",
+        "H61"
+      ],
+      "findingClass": "documented_partial",
+      "auditDoc": "BITTORRENT-CONCEPT-MAP-EVIDENCE-AUDIT-2026-10-29.md"
+    },
+    {
+      "id": "V06",
+      "type": "implementation_or_context_evidence",
+      "label": "qui: multi-instance remote WebUI",
+      "url": "https://getqui.com/docs/intro/",
+      "evidenceClass": "primary_implementation_docs",
+      "linkedFeatures": [
+        "F10.04",
+        "F10.05",
+        "F10.06"
+      ],
+      "linkedHypotheses": [
+        "H31",
+        "H33",
+        "H34"
+      ],
+      "findingClass": "documented_partial",
+      "auditDoc": "BITTORRENT-CONCEPT-MAP-EVIDENCE-AUDIT-2026-10-29.md"
+    },
+    {
+      "id": "V07",
+      "type": "implementation_or_context_evidence",
+      "label": "cross-seed: FAQ and data matching",
+      "url": "https://www.cross-seed.org/docs/basics/faq-troubleshooting",
+      "evidenceClass": "maintainer_documentation",
+      "linkedFeatures": [
+        "F03.24",
+        "F06.11",
+        "F15.15"
+      ],
+      "linkedHypotheses": [
+        "H05",
+        "H09",
+        "H22",
+        "H39"
+      ],
+      "findingClass": "documented_partial",
+      "auditDoc": "BITTORRENT-CONCEPT-MAP-EVIDENCE-AUDIT-2026-10-29.md"
+    },
+    {
+      "id": "V08",
+      "type": "implementation_or_context_evidence",
+      "label": "Android: foreground service timeout",
+      "url": "https://developer.android.com/develop/background-work/services/fgs/timeout",
+      "evidenceClass": "authoritative_platform",
+      "linkedFeatures": [
+        "F14.07",
+        "F05.07"
+      ],
+      "linkedHypotheses": [
+        "H67"
+      ],
+      "findingClass": "new_external_constraint",
+      "auditDoc": "BITTORRENT-CONCEPT-MAP-EVIDENCE-AUDIT-2026-10-29.md"
+    },
+    {
+      "id": "V09",
+      "type": "implementation_or_context_evidence",
+      "label": "Android: user-initiated data transfer job",
+      "url": "https://developer.android.com/develop/background-work/background-tasks/uidt",
+      "evidenceClass": "authoritative_platform",
+      "linkedFeatures": [
+        "F14.07",
+        "F05.07"
+      ],
+      "linkedHypotheses": [
+        "H67"
+      ],
+      "findingClass": "existing_platform_mechanism",
+      "auditDoc": "BITTORRENT-CONCEPT-MAP-EVIDENCE-AUDIT-2026-10-29.md"
+    },
+    {
+      "id": "V10",
+      "type": "implementation_or_context_evidence",
+      "label": "Android: background transfer alternatives",
+      "url": "https://developer.android.com/develop/background-work/background-tasks/data-transfer-options",
+      "evidenceClass": "authoritative_platform",
+      "linkedFeatures": [
+        "F14.07",
+        "F05.07"
+      ],
+      "linkedHypotheses": [
+        "H67"
+      ],
+      "findingClass": "existing_platform_mechanism",
+      "auditDoc": "BITTORRENT-CONCEPT-MAP-EVIDENCE-AUDIT-2026-10-29.md"
+    },
+    {
+      "id": "V11",
+      "type": "implementation_or_context_evidence",
+      "label": "Android: SAF directory restrictions",
+      "url": "https://developer.android.com/training/data-storage/shared/documents-files",
+      "evidenceClass": "authoritative_platform",
+      "linkedFeatures": [
+        "F03.17",
+        "F14.06"
+      ],
+      "linkedHypotheses": [
+        "H68"
+      ],
+      "findingClass": "new_external_constraint",
+      "auditDoc": "BITTORRENT-CONCEPT-MAP-EVIDENCE-AUDIT-2026-10-29.md"
+    },
+    {
+      "id": "V12",
+      "type": "implementation_or_context_evidence",
+      "label": "Android: manage all files and Play policy",
+      "url": "https://developer.android.com/training/data-storage/manage-all-files",
+      "evidenceClass": "authoritative_platform",
+      "linkedFeatures": [
+        "F03.17",
+        "F14.06"
+      ],
+      "linkedHypotheses": [
+        "H68"
+      ],
+      "findingClass": "new_external_constraint",
+      "auditDoc": "BITTORRENT-CONCEPT-MAP-EVIDENCE-AUDIT-2026-10-29.md"
+    },
+    {
+      "id": "V13",
+      "type": "implementation_or_context_evidence",
+      "label": "LibreTorrent README and Android variants",
+      "url": "https://github.com/proninyaroslav/libretorrent/blob/master/README.md",
+      "evidenceClass": "primary_implementation_docs",
+      "linkedFeatures": [
+        "F03.17",
+        "F14.05",
+        "F05.07"
+      ],
+      "linkedHypotheses": [
+        "H67",
+        "H68"
+      ],
+      "findingClass": "existing_partial",
+      "auditDoc": "BITTORRENT-CONCEPT-MAP-EVIDENCE-AUDIT-2026-10-29.md"
+    },
+    {
+      "id": "V14",
+      "type": "implementation_or_context_evidence",
+      "label": "LibreTorrent release notes 2026",
+      "url": "https://github.com/proninyaroslav/libretorrent/blob/master/NEWS.md",
+      "evidenceClass": "primary_release_notes",
+      "linkedFeatures": [
+        "F14.08",
+        "F14.09",
+        "F13.03"
+      ],
+      "linkedHypotheses": [
+        "H68",
+        "H69",
+        "H64"
+      ],
+      "findingClass": "existing_partial",
+      "auditDoc": "BITTORRENT-CONCEPT-MAP-EVIDENCE-AUDIT-2026-10-29.md"
+    },
+    {
+      "id": "V15",
+      "type": "implementation_or_context_evidence",
+      "label": "Blind Transmission user: unreadable torrent details",
+      "url": "https://github.com/transmission/transmission/issues/6512",
+      "evidenceClass": "first_person_accessibility_report",
+      "linkedFeatures": [
+        "F14.09",
+        "F08.03"
+      ],
+      "linkedHypotheses": [
+        "H69"
+      ],
+      "findingClass": "reported_accessibility_gap",
+      "auditDoc": "BITTORRENT-CONCEPT-MAP-EVIDENCE-AUDIT-2026-10-29.md"
+    },
+    {
+      "id": "V16",
+      "type": "implementation_or_context_evidence",
+      "label": "Blind qBittorrent user: NVDA interface",
+      "url": "https://github.com/qbittorrent/qBittorrent/issues/11031",
+      "evidenceClass": "first_person_accessibility_report",
+      "linkedFeatures": [
+        "F14.09",
+        "F14.01"
+      ],
+      "linkedHypotheses": [
+        "H69"
+      ],
+      "findingClass": "historical_report",
+      "auditDoc": "BITTORRENT-CONCEPT-MAP-EVIDENCE-AUDIT-2026-10-29.md"
+    },
+    {
+      "id": "V17",
+      "type": "implementation_or_context_evidence",
+      "label": "UNIT3D tracker inaccessible statistics and icons",
+      "url": "https://github.com/HDInnovations/UNIT3D/issues/5492",
+      "evidenceClass": "accessibility_issue_report",
+      "linkedFeatures": [
+        "F14.09",
+        "F13.05"
+      ],
+      "linkedHypotheses": [
+        "H69",
+        "H59"
+      ],
+      "findingClass": "reported_accessibility_gap",
+      "auditDoc": "BITTORRENT-CONCEPT-MAP-EVIDENCE-AUDIT-2026-10-29.md"
+    },
+    {
+      "id": "V18",
+      "type": "implementation_or_context_evidence",
+      "label": "Transmission September 2026 progress color report",
+      "url": "https://github.com/transmission/transmission/issues/9104",
+      "evidenceClass": "first_person_accessibility_report",
+      "linkedFeatures": [
+        "F14.08",
+        "F14.09"
+      ],
+      "linkedHypotheses": [
+        "H69"
+      ],
+      "findingClass": "reported_accessibility_gap",
+      "auditDoc": "BITTORRENT-CONCEPT-MAP-EVIDENCE-AUDIT-2026-10-29.md"
+    },
+    {
+      "id": "V19",
+      "type": "implementation_or_context_evidence",
+      "label": "Academic Torrents: first steps",
+      "url": "https://academictorrents.com/docs/getting-started.html",
+      "evidenceClass": "publisher_operations_manual",
+      "linkedFeatures": [
+        "F01.12",
+        "F01.17",
+        "F03.13"
+      ],
+      "linkedHypotheses": [
+        "H37",
+        "H46",
+        "H47",
+        "H66"
+      ],
+      "findingClass": "documented_partial",
+      "auditDoc": "BITTORRENT-CONCEPT-MAP-EVIDENCE-AUDIT-2026-10-29.md"
+    },
+    {
+      "id": "V20",
+      "type": "implementation_or_context_evidence",
+      "label": "Academic Torrents: upload data",
+      "url": "https://academictorrents.com/docs/uploading.html",
+      "evidenceClass": "publisher_operations_manual",
+      "linkedFeatures": [
+        "F01.12",
+        "F01.13",
+        "F01.17"
+      ],
+      "linkedHypotheses": [
+        "H37",
+        "H46",
+        "H47"
+      ],
+      "findingClass": "documented_partial",
+      "auditDoc": "BITTORRENT-CONCEPT-MAP-EVIDENCE-AUDIT-2026-10-29.md"
+    },
+    {
+      "id": "V21",
+      "type": "implementation_or_context_evidence",
+      "label": "Tribler research and P2P social model",
+      "url": "https://github.com/Tribler/tribler/wiki/",
+      "evidenceClass": "primary_project_research_archive",
+      "linkedFeatures": [
+        "F06.12",
+        "F15.04",
+        "F04.20"
+      ],
+      "linkedHypotheses": [
+        "H40",
+        "H42",
+        "H60"
+      ],
+      "findingClass": "existing_related",
+      "auditDoc": "BITTORRENT-CONCEPT-MAP-EVIDENCE-AUDIT-2026-10-29.md"
+    },
+    {
+      "id": "V22",
+      "type": "implementation_or_context_evidence",
+      "label": "Technology discontinuance seven types (2025)",
+      "url": "https://www.tandfonline.com/doi/full/10.1080/0960085X.2025.2516427",
+      "evidenceClass": "peer_reviewed_cross_domain",
+      "linkedFeatures": [
+        "F14.12"
+      ],
+      "linkedHypotheses": [
+        "H55",
+        "H61",
+        "H64"
+      ],
+      "findingClass": "theory_not_product",
+      "auditDoc": "BITTORRENT-CONCEPT-MAP-EVIDENCE-AUDIT-2026-10-29.md"
+    },
+    {
+      "id": "V23",
+      "type": "implementation_or_context_evidence",
+      "label": "Critical digital breakdown incidents",
+      "url": "https://link.springer.com/article/10.1007/s00779-018-1184-8",
+      "evidenceClass": "peer_reviewed_cross_domain",
+      "linkedFeatures": [
+        "F08.08",
+        "F14.12"
+      ],
+      "linkedHypotheses": [
+        "H53",
+        "H61",
+        "H64"
+      ],
+      "findingClass": "theory_not_product",
+      "auditDoc": "BITTORRENT-CONCEPT-MAP-EVIDENCE-AUDIT-2026-10-29.md"
+    },
+    {
+      "id": "V24",
+      "type": "implementation_or_context_evidence",
+      "label": "qBittorrent missing-file recovery guide",
+      "url": "https://github.com/qbittorrent/qBittorrent/wiki/Status-of-Missing-files-at-start-up-or-after-restart",
+      "evidenceClass": "primary_support_guide",
+      "linkedFeatures": [
+        "F03.19",
+        "F03.15"
+      ],
+      "linkedHypotheses": [
+        "H09",
+        "H22"
+      ],
+      "findingClass": "documented_partial",
+      "auditDoc": "BITTORRENT-CONCEPT-MAP-EVIDENCE-AUDIT-2026-10-29.md"
+    },
+    {
+      "id": "V25",
+      "type": "implementation_or_context_evidence",
+      "label": "Android foreground service types and boot rules",
+      "url": "https://developer.android.com/develop/background-work/services/fgs/service-types",
+      "evidenceClass": "authoritative_platform",
+      "linkedFeatures": [
+        "F14.07",
+        "F05.07"
+      ],
+      "linkedHypotheses": [
+        "H67"
+      ],
+      "findingClass": "new_external_constraint",
+      "auditDoc": "BITTORRENT-CONCEPT-MAP-EVIDENCE-AUDIT-2026-10-29.md"
+    },
+    {
+      "id": "H67",
+      "type": "missing_capability_hypothesis",
+      "label": "OS-aware background continuance and interruption explanation",
+      "missingLink": "An intended long-running transfer may be prevented by Android lifecycle limits without a torrent protocol failure",
+      "domain": "B05",
+      "interpretation": "provisional, not absent-everywhere"
+    },
+    {
+      "id": "H68",
+      "type": "missing_capability_hypothesis",
+      "label": "Android destination and distribution-variant capability explanation",
+      "missingLink": "File access and allowed save paths vary by Android version, SAF permission and Play/F-Droid/direct packaging",
+      "domain": "B02",
+      "interpretation": "provisional, not absent-everywhere",
+      "validationStatus": "externally_constrained_partially_implemented",
+      "validationEvidence": [
+        "V11",
+        "V12",
+        "V13",
+        "V14"
+      ],
+      "validationDate": "2026-10-29"
+    },
+    {
+      "id": "H69",
+      "type": "missing_capability_hypothesis",
+      "label": "Assistive semantic parity for torrent states and controls",
+      "missingLink": "Accessible navigation alone does not guarantee readable speed, quota, peer, tracker, status and destructive-action meanings",
+      "domain": "B09",
+      "interpretation": "provisional, not absent-everywhere",
+      "validationStatus": "reported_gap_with_partial_remediation",
+      "validationEvidence": [
+        "V14",
+        "V15",
+        "V16",
+        "V17",
+        "V18"
+      ],
+      "validationDate": "2026-10-29"
+    },
+    {
+      "id": "N19",
+      "type": "possible_exit_or_alternative",
+      "label": "Intentional completion and cessation after satisfying a one-off goal",
+      "epistemic": "Possible route, not population percentage"
+    },
+    {
+      "id": "N20",
+      "type": "possible_exit_or_alternative",
+      "label": "Switch torrent client while continuing to use BitTorrent",
+      "epistemic": "Possible route, not population percentage"
+    },
+    {
+      "id": "N21",
+      "type": "possible_exit_or_alternative",
+      "label": "Temporarily suspend torrenting because circumstances changed",
+      "epistemic": "Possible route, not population percentage"
+    },
+    {
+      "id": "TD01",
+      "type": "discontinuance_theory_class",
+      "label": "Overuse discontinuance",
+      "description": "Excess use or burden; not inferred from frequent checking",
+      "source": "https://www.tandfonline.com/doi/full/10.1080/0960085X.2025.2516427",
+      "epistemic": "Cross-domain theory, not a BitTorrent population estimate"
+    },
+    {
+      "id": "TD02",
+      "type": "discontinuance_theory_class",
+      "label": "Overload discontinuance",
+      "description": "Excess complexity, maintenance or attention",
+      "source": "https://www.tandfonline.com/doi/full/10.1080/0960085X.2025.2516427",
+      "epistemic": "Cross-domain theory, not a BitTorrent population estimate"
+    },
+    {
+      "id": "TD03",
+      "type": "discontinuance_theory_class",
+      "label": "Proficiency discontinuance",
+      "description": "Perceived lack of skills or accessibility to complete task",
+      "source": "https://www.tandfonline.com/doi/full/10.1080/0960085X.2025.2516427",
+      "epistemic": "Cross-domain theory, not a BitTorrent population estimate"
+    },
+    {
+      "id": "TD04",
+      "type": "discontinuance_theory_class",
+      "label": "Disenchantment discontinuance",
+      "description": "Disappointed value relative to effort or cost",
+      "source": "https://www.tandfonline.com/doi/full/10.1080/0960085X.2025.2516427",
+      "epistemic": "Cross-domain theory, not a BitTorrent population estimate"
+    },
+    {
+      "id": "TD05",
+      "type": "discontinuance_theory_class",
+      "label": "Social discontinuance",
+      "description": "Tracker/community exclusion or conflicts",
+      "source": "https://www.tandfonline.com/doi/full/10.1080/0960085X.2025.2516427",
+      "epistemic": "Cross-domain theory, not a BitTorrent population estimate"
+    },
+    {
+      "id": "TD06",
+      "type": "discontinuance_theory_class",
+      "label": "Circumstantial discontinuance",
+      "description": "Change in device, money, network or living constraints",
+      "source": "https://www.tandfonline.com/doi/full/10.1080/0960085X.2025.2516427",
+      "epistemic": "Cross-domain theory, not a BitTorrent population estimate"
+    },
+    {
+      "id": "TD07",
+      "type": "discontinuance_theory_class",
+      "label": "Solution discontinuance",
+      "description": "Goal achieved; ending use is success",
+      "source": "https://www.tandfonline.com/doi/full/10.1080/0960085X.2025.2516427",
+      "epistemic": "Cross-domain theory, not a BitTorrent population estimate"
     }
   ],
   "edges": [
@@ -29004,6 +29666,1050 @@
       "to": "AVS-S57",
       "type": "cites_source_entry",
       "confidence": "source_coded"
+    },
+    {
+      "from": "V01",
+      "to": "F03.20",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V01",
+      "to": "F06.11",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V01",
+      "to": "F15.15",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V01",
+      "to": "H07",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V01",
+      "to": "H08",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V01",
+      "to": "H39",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V01",
+      "to": "H45",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V02",
+      "to": "F12.09",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V02",
+      "to": "F12.10",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V02",
+      "to": "F13.11",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V02",
+      "to": "H19",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V02",
+      "to": "H20",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V02",
+      "to": "H24",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V02",
+      "to": "H50",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V02",
+      "to": "H52",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V03",
+      "to": "F03.19",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V03",
+      "to": "F03.20",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V03",
+      "to": "F03.22",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V03",
+      "to": "H08",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V03",
+      "to": "H11",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V03",
+      "to": "H20",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V03",
+      "to": "H21",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V04",
+      "to": "F02.17",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V04",
+      "to": "F11.12",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V04",
+      "to": "H10",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V04",
+      "to": "H19",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V04",
+      "to": "H21",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V04",
+      "to": "H23",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V04",
+      "to": "H61",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V05",
+      "to": "F02.16",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V05",
+      "to": "F10.08",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V05",
+      "to": "H02",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V05",
+      "to": "H10",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V05",
+      "to": "H17",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V05",
+      "to": "H35",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V05",
+      "to": "H61",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V06",
+      "to": "F10.04",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V06",
+      "to": "F10.05",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V06",
+      "to": "F10.06",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V06",
+      "to": "H31",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V06",
+      "to": "H33",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V06",
+      "to": "H34",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V07",
+      "to": "F03.24",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V07",
+      "to": "F06.11",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V07",
+      "to": "F15.15",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V07",
+      "to": "H05",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V07",
+      "to": "H09",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V07",
+      "to": "H22",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V07",
+      "to": "H39",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V08",
+      "to": "F14.07",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V08",
+      "to": "F05.07",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V08",
+      "to": "H67",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V09",
+      "to": "F14.07",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V09",
+      "to": "F05.07",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V09",
+      "to": "H67",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V10",
+      "to": "F14.07",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V10",
+      "to": "F05.07",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V10",
+      "to": "H67",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V11",
+      "to": "F03.17",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V11",
+      "to": "F14.06",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V11",
+      "to": "H68",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V12",
+      "to": "F03.17",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V12",
+      "to": "F14.06",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V12",
+      "to": "H68",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V13",
+      "to": "F03.17",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V13",
+      "to": "F14.05",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V13",
+      "to": "F05.07",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V13",
+      "to": "H67",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V13",
+      "to": "H68",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V14",
+      "to": "F14.08",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V14",
+      "to": "F14.09",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V14",
+      "to": "F13.03",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V14",
+      "to": "H68",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V14",
+      "to": "H69",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V14",
+      "to": "H64",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V15",
+      "to": "F14.09",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V15",
+      "to": "F08.03",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V15",
+      "to": "H69",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V16",
+      "to": "F14.09",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V16",
+      "to": "F14.01",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V16",
+      "to": "H69",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V17",
+      "to": "F14.09",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V17",
+      "to": "F13.05",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V17",
+      "to": "H69",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V17",
+      "to": "H59",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V18",
+      "to": "F14.08",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V18",
+      "to": "F14.09",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V18",
+      "to": "H69",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V19",
+      "to": "F01.12",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V19",
+      "to": "F01.17",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V19",
+      "to": "F03.13",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V19",
+      "to": "H37",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V19",
+      "to": "H46",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V19",
+      "to": "H47",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V19",
+      "to": "H66",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V20",
+      "to": "F01.12",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V20",
+      "to": "F01.13",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V20",
+      "to": "F01.17",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V20",
+      "to": "H37",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V20",
+      "to": "H46",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V20",
+      "to": "H47",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V21",
+      "to": "F06.12",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V21",
+      "to": "F15.04",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V21",
+      "to": "F04.20",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V21",
+      "to": "H40",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V21",
+      "to": "H42",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V21",
+      "to": "H60",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V22",
+      "to": "F14.12",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V22",
+      "to": "H55",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V22",
+      "to": "H61",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V22",
+      "to": "H64",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V23",
+      "to": "F08.08",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V23",
+      "to": "F14.12",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V23",
+      "to": "H53",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V23",
+      "to": "H61",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V23",
+      "to": "H64",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V24",
+      "to": "F03.19",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V24",
+      "to": "F03.15",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V24",
+      "to": "H09",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V24",
+      "to": "H22",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "V25",
+      "to": "F14.07",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V25",
+      "to": "F05.07",
+      "type": "documents_feature_context",
+      "confidence": "documented_or_reported"
+    },
+    {
+      "from": "V25",
+      "to": "H67",
+      "type": "tests_hypothesis",
+      "confidence": "scope_limited"
+    },
+    {
+      "from": "H67",
+      "to": "B05",
+      "type": "belongs_to",
+      "confidence": "document_derived"
+    },
+    {
+      "from": "H67",
+      "to": "A20.11",
+      "type": "would_support_activity",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H67",
+      "to": "A17.07",
+      "type": "would_support_activity",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H67",
+      "to": "A04.12",
+      "type": "would_support_activity",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H67",
+      "to": "F14.07",
+      "type": "extends_or_bridges_existing",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H67",
+      "to": "F05.07",
+      "type": "extends_or_bridges_existing",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H67",
+      "to": "C03",
+      "type": "could_reduce_cognitive_burden",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H67",
+      "to": "E02",
+      "type": "responds_to_possible_affect",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H67",
+      "to": "E03",
+      "type": "could_support_affective_shift",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H68",
+      "to": "B02",
+      "type": "belongs_to",
+      "confidence": "document_derived"
+    },
+    {
+      "from": "H68",
+      "to": "A10.11",
+      "type": "would_support_activity",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H68",
+      "to": "A02.07",
+      "type": "would_support_activity",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H68",
+      "to": "A16.11",
+      "type": "would_support_activity",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H68",
+      "to": "F03.17",
+      "type": "extends_or_bridges_existing",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H68",
+      "to": "F14.13",
+      "type": "extends_or_bridges_existing",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H68",
+      "to": "C10",
+      "type": "could_reduce_cognitive_burden",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H68",
+      "to": "E04",
+      "type": "responds_to_possible_affect",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H68",
+      "to": "E03",
+      "type": "could_support_affective_shift",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H69",
+      "to": "B09",
+      "type": "belongs_to",
+      "confidence": "document_derived"
+    },
+    {
+      "from": "H69",
+      "to": "A18.07",
+      "type": "would_support_activity",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H69",
+      "to": "A04.01",
+      "type": "would_support_activity",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H69",
+      "to": "A05.02",
+      "type": "would_support_activity",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H69",
+      "to": "F14.09",
+      "type": "extends_or_bridges_existing",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H69",
+      "to": "F08.03",
+      "type": "extends_or_bridges_existing",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H69",
+      "to": "C09",
+      "type": "could_reduce_cognitive_burden",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H69",
+      "to": "E09",
+      "type": "responds_to_possible_affect",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H69",
+      "to": "E03",
+      "type": "could_support_affective_shift",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "N19",
+      "to": "J01",
+      "type": "may_follow_achieved_goal",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "N19",
+      "to": "A20.01",
+      "type": "may_follow_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "N20",
+      "to": "A16.05",
+      "type": "may_follow_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "N21",
+      "to": "A20.02",
+      "type": "may_follow_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "N19",
+      "to": "G20",
+      "type": "preserves_autonomy",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "N20",
+      "to": "G20",
+      "type": "preserves_autonomy",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "N21",
+      "to": "G23",
+      "type": "preserves_constraints",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "TD01",
+      "to": "N15",
+      "type": "may_classify_exit_as",
+      "confidence": "general_theory_not_bt_specific"
+    },
+    {
+      "from": "TD02",
+      "to": "N02",
+      "type": "may_classify_exit_as",
+      "confidence": "general_theory_not_bt_specific"
+    },
+    {
+      "from": "TD02",
+      "to": "N10",
+      "type": "may_classify_exit_as",
+      "confidence": "general_theory_not_bt_specific"
+    },
+    {
+      "from": "TD03",
+      "to": "N02",
+      "type": "may_classify_exit_as",
+      "confidence": "general_theory_not_bt_specific"
+    },
+    {
+      "from": "TD03",
+      "to": "N13",
+      "type": "may_classify_exit_as",
+      "confidence": "general_theory_not_bt_specific"
+    },
+    {
+      "from": "TD04",
+      "to": "N05",
+      "type": "may_classify_exit_as",
+      "confidence": "general_theory_not_bt_specific"
+    },
+    {
+      "from": "TD04",
+      "to": "N11",
+      "type": "may_classify_exit_as",
+      "confidence": "general_theory_not_bt_specific"
+    },
+    {
+      "from": "TD04",
+      "to": "N10",
+      "type": "may_classify_exit_as",
+      "confidence": "general_theory_not_bt_specific"
+    },
+    {
+      "from": "TD05",
+      "to": "N07",
+      "type": "may_classify_exit_as",
+      "confidence": "general_theory_not_bt_specific"
+    },
+    {
+      "from": "TD05",
+      "to": "N14",
+      "type": "may_classify_exit_as",
+      "confidence": "general_theory_not_bt_specific"
+    },
+    {
+      "from": "TD06",
+      "to": "N06",
+      "type": "may_classify_exit_as",
+      "confidence": "general_theory_not_bt_specific"
+    },
+    {
+      "from": "TD06",
+      "to": "N15",
+      "type": "may_classify_exit_as",
+      "confidence": "general_theory_not_bt_specific"
+    },
+    {
+      "from": "TD06",
+      "to": "N21",
+      "type": "may_classify_exit_as",
+      "confidence": "general_theory_not_bt_specific"
+    },
+    {
+      "from": "TD07",
+      "to": "N19",
+      "type": "may_classify_exit_as",
+      "confidence": "general_theory_not_bt_specific"
+    },
+    {
+      "from": "V22",
+      "to": "TD07",
+      "type": "supports_exit_taxonomy",
+      "confidence": "general_peer_reviewed_theory"
+    },
+    {
+      "from": "V22",
+      "to": "TD02",
+      "type": "supports_exit_taxonomy",
+      "confidence": "general_peer_reviewed_theory"
+    },
+    {
+      "from": "V22",
+      "to": "TD03",
+      "type": "supports_exit_taxonomy",
+      "confidence": "general_peer_reviewed_theory"
     }
   ]
 }
