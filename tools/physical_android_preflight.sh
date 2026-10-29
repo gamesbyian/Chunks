@@ -52,11 +52,15 @@ adb_command=(adb)
 if [[ -n "${ADB_SERIAL:-}" ]]; then
     adb_command+=(-s "$ADB_SERIAL")
 else
-    attached_count="$(adb devices | awk 'NR > 1 && $2 == "device" { count++ } END { print count+0 }')"
-    [[ "$attached_count" == 1 ]] || {
+    # Count and select in the same snapshot, then pin every subsequent command
+    # to that serial. An unscoped adb install could target another handset if
+    # attachments change after enumeration.
+    mapfile -t attached_serials < <(adb devices | awk 'NR > 1 && $2 == "device" { print $1 }')
+    [[ "${#attached_serials[@]}" -eq 1 ]] || {
         echo "Connect exactly one authorized physical Android device, or set ADB_SERIAL" >&2
         exit 2
     }
+    adb_command+=(-s "${attached_serials[0]}")
 fi
 [[ "$("${adb_command[@]}" get-state | tr -d '\r\n')" == "device" ]] || {
     echo "The selected device is not authorized for adb" >&2

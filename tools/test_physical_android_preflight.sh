@@ -15,7 +15,13 @@ printf '# built_commit=%s\n# workflow_run=test\n' "$commit" >> "$receipt"
 cat > "$temp/bin/adb" <<'MOCK_ADB'
 #!/usr/bin/env bash
 set -euo pipefail
-if [[ "${1:-}" == "-s" ]]; then shift 2; fi
+if [[ "${1:-}" == "-s" ]]; then
+    [[ "${2:-}" == "TEST" ]] || { echo "Wrong ADB serial" >&2; exit 1; }
+    shift 2
+elif [[ "${1:-}" != "devices" && "${MOCK_REQUIRE_SERIAL:-0}" == 1 ]]; then
+    echo "Unscoped ADB call" >&2
+    exit 1
+fi
 case "${1:-}" in
     devices)
         printf 'List of devices attached\nTEST\tdevice\n'
@@ -67,11 +73,21 @@ export PATH="$temp/bin:$PATH" MOCK_INSTALL_FILE="$temp/installed"
 bash -n "$repo/tools/physical_android_preflight.sh"
 bash -n "$repo/tools/test_physical_android_preflight.sh"
 
-output="$(bash "$repo/tools/physical_android_preflight.sh" "$apk")"
+output="$(MOCK_REQUIRE_SERIAL=1 bash "$repo/tools/physical_android_preflight.sh" "$apk")"
 [[ -e "$MOCK_INSTALL_FILE" && "$output" == *"installation and initial launch verified"* ]]
 [[ "$output" == *"NOT VERIFIED:"* ]]
 rm "$MOCK_INSTALL_FILE"
 
+# An explicitly selected serial must be honored; an invalid one must fail
+# before installation even if another authorized device exists.
+output="$(ADB_SERIAL=TEST MOCK_REQUIRE_SERIAL=1 bash "$repo/tools/physical_android_preflight.sh" "$apk")"
+[[ -e "$MOCK_INSTALL_FILE" && "$output" == *"installation and initial launch verified"* ]]
+rm "$MOCK_INSTALL_FILE"
+if ADB_SERIAL=SECOND bash "$repo/tools/physical_android_preflight.sh" "$apk" >/dev/null 2>&1; then
+    echo "Unknown explicit ADB serial was accepted" >&2
+    exit 1
+fi
+[[ ! -e "$MOCK_INSTALL_FILE" ]]
 if MOCK_QEMU=1 bash "$repo/tools/physical_android_preflight.sh" "$apk" >/dev/null 2>&1; then
     echo "Emulated device was accepted" >&2
     exit 1
@@ -115,4 +131,4 @@ if bash "$repo/tools/physical_android_preflight.sh" "$apk" >/dev/null 2>&1; then
     exit 1
 fi
 [[ ! -e "$MOCK_INSTALL_FILE" ]]
-echo "CHUNKS_PHYSICAL_PREFLIGHT_TEST: verified success and fail-closed install output, launch output, version, emulator, multi-device and tampered APK"
+echo "CHUNKS_PHYSICAL_PREFLIGHT_TEST: verified success and fail-closed serial selection, install output, launch output, version, emulator, multi-device and tampered APK"
