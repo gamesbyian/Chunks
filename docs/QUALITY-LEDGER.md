@@ -1,5 +1,11 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-29 foundation-first workboard audit (documentation-only; no CI/phone proof)
+
+- Inspected repository \`main\` at \`3a4fc69d932d2b883dcd49787b577610483bfbdb\`: no open PRs at inspection, 17 open issues; inspected source \`MainActivity.kt\`, \`LocalEngineScreen.kt\`, \`TransferCatalog.kt\`, \`LocalQueueCatalog.kt\`, \`LocalEngineService.kt\`, Android manifest and Gradle target configuration. This is **source observation**, not successful execution. No new app build, physical handset, protected host test or branch-protection change was performed by this documentation-only work.
+- Structural risk: separate phone/remote transfer queries and screens with different enum semantics and fixed sort directions, no combined any-subset union and one shared secondary group sort; tracked in #567. Android file backing is app-private with independent completed-file export rather than a proved torrent-managed user-visible Downloads storage adapter (#568). Android target 37 and \`dataSync\` timeout handler constrain unattended activity (#569).
+- The previous workboard was archived byte-for-byte; the active workboard was reorganized by dependencies G0–G5 without removing owner-approved feature contracts or treating optional work as rejected. Check [SPEC-COVERAGE](SPEC-COVERAGE.md) for explicit unverified scope and [WORK-QUEUE](WORK-QUEUE.md) for executable order.
+
 ## 2026-10-29 maintenance reconciliation: Smart Seeding Add preview
 
 - **Merged:** PR [#566](https://github.com/gamesbyian/Chunks/pull/566), squash commit `730509bd5a61048004a95634219c3605221b9278`, from exact reviewed head `dbf3ec2955c821f7f2eec581b6ba252238d9ef9a`. All five head workflows passed: Android foundation [40862634196](https://github.com/gamesbyian/Chunks/actions/runs/40862634196), documentation [40862634073](https://github.com/gamesbyian/Chunks/actions/runs/40862634073), Android 10 shared Downloads [40862634187](https://github.com/gamesbyian/Chunks/actions/runs/40862634187), R8 smoke [40862634770](https://github.com/gamesbyian/Chunks/actions/runs/40862634770), and native Add instrumentation [40862634106](https://github.com/gamesbyian/Chunks/actions/runs/40862634106).
