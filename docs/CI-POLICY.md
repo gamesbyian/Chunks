@@ -1,5 +1,7 @@
 # Lean CI and evidence economy
 
+**Documentation-only changes:** validate repository-local targets offline with `python3 tools/check_docs.py` and its unit tests. Do not dispatch Android, native, host or font Actions merely to validate Markdown. A docs PR merged to main does not justify an unrelated font fan-out; retain path-specific workflow triggers and the [font-lab isolation contract](design/CHUNKS-FONT-LAB-OPERATIONS.md). See [documentation standard](DOCUMENTATION-STANDARD.md).
+
 Updated after Chunks critical review. Borrow Glimpse's native build proof, ROYGBIV's cheap focused gates and UR-Recomp's exact source/evidence accounting, without transplanting their expensive workflows.
 
 ## Font-lab exception: one quiet branch (owner, 2026-10-28)

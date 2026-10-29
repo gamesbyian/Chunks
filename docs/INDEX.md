@@ -1,0 +1,51 @@
+# Chunks documentation index
+
+The [documentation architecture and authoring standard](DOCUMENTATION-STANDARD.md) defines the authority of each document and how agents maintain it. This index is navigation, **not another specification**.
+
+## Agent entry points
+
+- [AGENTS](../AGENTS.md): required operating instructions and safety rules.
+- [WORK-QUEUE](WORK-QUEUE.md): concise active priority/order authority; reconcile with live PRs/issues.
+- [Historical queue archive](archive/WORK-QUEUE-2026-10-29-preconsolidation.md): preserved earlier milestone narratives; not a live plan.
+- [QUALITY-LEDGER](QUALITY-LEDGER.md): append-only dated test evidence and limitations; not a current task queue.
+- [SPEC-COVERAGE](SPEC-COVERAGE.md): required versus implemented capability and acceptance gaps.
+- [CI-POLICY](CI-POLICY.md): runner costs, test gates and workflows.
+
+## Normative foundations
+
+- [PRODUCT](PRODUCT.md): feature scope and user promises.
+- [UX](UX.md): navigation, interactions, states, accessibility.
+- [ARCHITECTURE](ARCHITECTURE.md): domain model, engine boundaries and execution design.
+- [SECURITY](SECURITY.md): threat model, auth, storage and destructive safety.
+- [DECISIONS](DECISIONS.md): stable decision record and supersession.
+- [UNIFIED-ENVIRONMENTS](UNIFIED-ENVIRONMENTS.md): shared phone and rTorrent experience and scoped settings.
+- [CROSS-ENGINE-TRANSFER-JOBS](CROSS-ENGINE-TRANSFER-JOBS.md): job-only Copy/Move; no payload transfer.
+- [SMART-REMOTE-CONNECTION](SMART-REMOTE-CONNECTION.md): discovery, security and multi-profile onboarding.
+- [TRANSFER-ARTWORK](TRANSFER-ARTWORK.md): enrichment, provider provenance and user overrides.
+- [TRANSFER-PRIVACY-LOCK](TRANSFER-PRIVACY-LOCK.md): per-environment access control.
+- [STORAGE-AND-EXTRACTION](STORAGE-AND-EXTRACTION.md): storage, cleanup, extraction and provenance.
+- [RTORRENT-COMPATIBILITY-MATRIX](RTORRENT-COMPATIBILITY-MATRIX.md): verified RPC compatibility.
+- [TRANSFER-SNAPSHOTS](TRANSFER-SNAPSHOTS.md): portable transfer definition backup and restoration.
+- [NATIVE-VISUAL-ATLAS](NATIVE-VISUAL-ATLAS.md): screenshot capture and independent review guidance.
+
+## Implementation and operations
+
+- [BUILD](BUILD.md): build and local verification.
+- [SEEDHOST-REMOTE-TESTING](SEEDHOST-REMOTE-TESTING.md): approved test topology and safety.
+- [PUBLIC-TORRENT-FIXTURES](PUBLIC-TORRENT-FIXTURES.md): lawful test fixtures.
+- [User-supplied test inputs](USER-SUPPLIED-TORRENT-TEST-INPUTS.md): controlled owner-provided fixtures.
+- [RESEARCH](RESEARCH.md) and [REUSE-AUDIT](REUSE-AUDIT.md): upstream references, prior art and reuse boundaries.
+- [Agent lanes](AGENT-LANES.md): concurrency/ownership model.
+- [Dated handoffs](HANDOFF-2026-10-28.md), [Claude app handoff](CLAUDE-APP-HANDOFF-2026-10-28.md), [earlier handoff](HANDOFF-2026-10-27.md): historical session context, not current priorities.
+- [Archive guide](archive/README.md): preserved pre-consolidation documents and status interpretation.
+- [Font lab operations](design/CHUNKS-FONT-LAB-OPERATIONS.md): separate font branch, low-CI iteration.
+- [Design references](design/reference-images/README.md): visual inspiration, not implementation proof.
+- [Historical critical review](CRITICAL-REVIEW-2026-10-24.md): dated findings; do not treat as latest release status.
+
+## Documentation verification
+
+- [Offline link checker](../tools/check_docs.py) and [unit tests](../tests/test_docs_check.py): run locally before modifying or merging docs. Commands in the [standard](DOCUMENTATION-STANDARD.md#automated-local-validation).
+
+## Where to put new information
+
+A user-facing promise goes in PRODUCT or its linked feature contract; screen behavior in UX; implementation details in ARCHITECTURE; a binding choice in DECISIONS; proof in QUALITY-LEDGER; missing test coverage in SPEC-COVERAGE; prioritized work in WORK-QUEUE. Use concise cross-references rather than distributing whole requirements across all seven files.
