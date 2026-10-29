@@ -4,6 +4,10 @@
 
 **Status vocabulary:** **Owner, binding** = explicit product choice; **Adopted/provisional** = engineering decision subject to evidence; **Open** = undecided; **Superseded/amended** = historical choice that no longer governs. The table's last column describes reopening/verification requirements, **not a blanket statement of implementation**.
 
+## Advanced-operations specification decision (2026-10-29)
+
+**D-ADVANCED-OPS-20261029 | Adopted/provisional design, owner confirmation of expanded scope open.** Specify the 58 ecosystem items previously labelled implied/under-specified in three canonical contracts rather than treating the research inventory as an approved backlog. Defaults remain simple, local/remote UI remains unified, external feed/media/cloud integration stays opt-in, and capability-dependent options cannot imply universal rTorrent/server support. No automatic remote privileged administration, broad shell/RPC execution or deletion is authorized. See [intake/queue](INTAKE-QUEUE-AND-POLICIES.md), [files/protocol/diagnostics](FILES-PROTOCOL-AND-DIAGNOSTICS.md), [remote integrations/settings](REMOTE-INTEGRATIONS-AND-PREFERENCES.md), [coverage](SPEC-COVERAGE.md). **Pending owner choices:** how far native feed/indexer automation should extend, and whether any separately permissioned privileged seedbox service-admin panel should ever enter scope. These choices do not block safe specification of the core safeguards.
+
 ## Decision registry
 
 | ID | Status | Decision and boundaries | Reopen condition |
