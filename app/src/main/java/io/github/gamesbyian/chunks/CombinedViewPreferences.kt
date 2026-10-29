@@ -3,12 +3,13 @@ package io.github.gamesbyian.chunks
 import android.content.Context
 import io.github.gamesbyian.chunks.model.EnvironmentId
 import io.github.gamesbyian.chunks.model.EnvironmentViewScope
+import io.github.gamesbyian.chunks.model.UnifiedTransferFilter
 import io.github.gamesbyian.chunks.model.UnifiedSortDirection
 import io.github.gamesbyian.chunks.model.UnifiedSortKey
 import io.github.gamesbyian.chunks.model.UnifiedTransferQuery
 
 /**
- * Remembers the combined Transfers view (scope, sort, direction, grouping)
+ * Remembers the combined Transfers view (scope, filter, sort, direction, grouping)
  * across restart. A saved subset keeps its exact environment IDs; dynamic
  * All is stored as All so newly enabled environments join it. View state
  * only: it is never an Add destination or command target.
@@ -32,12 +33,13 @@ internal class CombinedViewPreferences(context: Context) {
                 is EnvironmentViewScope.Only -> s.ids.map { it.value }.sorted().joinToString(",")
             }
             return listOf(scope, query.sortKey.name, query.direction.name,
-                if (query.groupByEnvironment) "1" else "0").joinToString(";")
+                if (query.groupByEnvironment) "1" else "0", query.filter.name).joinToString(";")
         }
 
         /** Anything malformed restores the default view rather than a guessed scope. */
         fun decode(raw: String?): UnifiedTransferQuery {
-            val parts = raw?.split(';')?.takeIf { it.size == 4 } ?: return UnifiedTransferQuery()
+            val parts = raw?.split(';')?.takeIf { it.size == 4 || it.size == 5 }
+                ?: return UnifiedTransferQuery()
             val scope = if (parts[0] == "*") EnvironmentViewScope.All else {
                 val raw = parts[0].split(',')
                 // One unreadable ID means the saved subset is not what was chosen: use the default.
@@ -49,8 +51,12 @@ internal class CombinedViewPreferences(context: Context) {
             val direction = UnifiedSortDirection.entries.firstOrNull { it.name == parts[2] }
                 ?: return UnifiedTransferQuery()
             if (parts[3] != "0" && parts[3] != "1") return UnifiedTransferQuery()
+            // Older four-field preferences had no filter; keep their scope and sort intact.
+            val filter = if (parts.size == 4) UnifiedTransferFilter.ALL else
+                UnifiedTransferFilter.entries.firstOrNull { it.name == parts[4] }
+                    ?: return UnifiedTransferQuery()
             return UnifiedTransferQuery(scope = scope, sortKey = key, direction = direction,
-                groupByEnvironment = parts[3] == "1")
+                groupByEnvironment = parts[3] == "1", filter = filter)
         }
     }
 }
