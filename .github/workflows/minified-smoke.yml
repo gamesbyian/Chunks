@@ -1,0 +1,93 @@
+name: Chunks R8 minified smoke
+
+# Runs the native-engine + Compose smoke test against the R8-shrunk
+# qaMinified build (release rules plus proguard-qa-rules.pro). Release
+# shrinking stays off until this passes; see app/proguard-rules.pro.
+on:
+  pull_request:
+    paths:
+      - "app/src/main/**"
+      - "app/build.gradle.kts"
+      - "app/proguard-*.pro"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/MinifiedBuildSmokeInstrumentedTest.kt"
+      - ".github/workflows/minified-smoke.yml"
+      - "tools/minified_smoke.sh"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chunks-minified-smoke-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  minified-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+      - name: Install pinned Android compile toolchain
+        run: |
+          printf 'y\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
+          if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          fi
+      - name: Build R8-shrunk app and test APKs
+        run: |
+          gradle --no-daemon -Pchunks.testBuildType=qaMinified :app:assembleQaMinified :app:assembleQaMinifiedAndroidTest
+          ls -l app/build/outputs/apk/qaMinified/*.apk
+          echo "qaMinified APK bytes: $(stat -c %s app/build/outputs/apk/qaMinified/*.apk)" >> "$GITHUB_STEP_SUMMARY"
+      - name: Enable Android emulator KVM
+        run: |
+          if [ ! -c /dev/kvm ]; then
+            echo "::error::This runner does not expose /dev/kvm"
+            exit 1
+          fi
+          sudo chmod 0666 /dev/kvm
+      - name: Run the smoke test on the shrunk build
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          emulator-boot-timeout: 600
+          disable-animations: true
+          # A hung instrumentation fails within 15 minutes with diagnostics.
+          script: bash tools/minified_smoke.sh
+      - name: Require that the smoke test actually ran
+        run: |
+          python3 - <<'PY'
+          import glob, sys, xml.etree.ElementTree as ET
+          reports = glob.glob("app/build/outputs/androidTest-results/connected/**/TEST-*.xml", recursive=True)
+          assert reports, "no instrumentation report"
+          total = failed = skipped = 0
+          for path in reports:
+              suite = ET.parse(path).getroot()
+              total += int(suite.get("tests", 0))
+              failed += int(suite.get("failures", 0)) + int(suite.get("errors", 0))
+              skipped += int(suite.get("skipped", 0))
+          print(f"tests={total} failed={failed} skipped={skipped}")
+          sys.exit(0 if (total, failed, skipped) == (1, 0, 0) else 1)
+          PY
+      - name: Upload R8 mapping and test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-qaminified-r8
+          path: |
+            app/build/outputs/mapping/qaMinified/mapping.txt
+            app/build/outputs/mapping/qaMinified/usage.txt
+            app/build/outputs/androidTest-results/
+            app/build/outputs/qaminified-logcat.txt
+            app/build/outputs/qaminified-gradle.txt
+          retention-days: 14
+          if-no-files-found: warn
