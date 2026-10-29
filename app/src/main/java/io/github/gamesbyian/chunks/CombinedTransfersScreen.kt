@@ -136,7 +136,8 @@ internal const val SAVED_LISTING_FRESH_MS = 120_000L
 internal fun savedListingIsStale(listing: SavedServerListing, now: Long): Boolean =
     listing.loading || listing.error != null ||
         (listing.observedAtEpochMillis != null &&
-            now - listing.observedAtEpochMillis > SAVED_LISTING_FRESH_MS)
+            (now < listing.observedAtEpochMillis ||
+                now - listing.observedAtEpochMillis > SAVED_LISTING_FRESH_MS))
 
 /** A separate single-flight reader so this view never blocks or shares the phone screen's slot. */
 private object CombinedPhoneReader {
