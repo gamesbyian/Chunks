@@ -2,7 +2,7 @@
 
 ## 2026-10-29 session close-out (app lane): merges, fixes and evidence
 
-- **Merged (squash, exact-head CI green):** #463 `ea5833e`, #468 `992d506`, #406 `8f7a034`, #472 `bf5df95`, #475 `4912ba3`, #423 `85a7388`, #478 `13b2303`, #479 `66c319b`, #476 `b41b65f`, #477 `099c36f`, #480 `cc824fc`, #499 `b4f6183`, #481 `707692c`, #473 `c829b57`, #474 `fdf8a21`; #482 and #501 see their PRs.
+- **Merged (squash, exact-head CI green):** #463 `ea5833e`, #468 `992d506`, #406 `8f7a034`, #472 `bf5df95`, #475 `4912ba3`, #423 `85a7388`, #478 `13b2303`, #479 `66c319b`, #476 `b41b65f`, #477 `099c36f`, #480 `cc824fc`, #499 `b4f6183`, #481 `707692c`, #473 `c829b57`, #474 `fdf8a21`, #482 `07f31f9`; #501 (remote FIO) and #502 (batch Move) see their PRs.
 - **Main-red root causes fixed:** API35 instrumentation only triggered on androidTest paths, so #460 (new read-only RPC) and #463 (renamed field) broke it unseen (#472, #479; trigger now includes `app/src/main/**`). `assembleRelease` never built because lintVitalRelease failed on `network_security_config.xml` (#480). Android 10/11 foreground-service crash (#481, reproduced run 40773235821).
 - **Local real-rTorrent rig:** the agent container can run `rtorrent` 0.9.8 + `nginx` SCGI exactly like `disposable-rtorrent-probe.yml`; it exposed that rTorrent 0.9.8 `f.completed_chunks` over-counts at file boundaries (#501 uses `d.bitfield` + `f.range_*`).
 - **Cross-lane hazard:** the font accent-study workflow commits regenerated, non-deterministic OTFs to *any* branch whose push touches font sources (including app branches after a main merge). Bot commits don't trigger CI, leaving PR heads untested; app PRs had to drop those outputs before merging. Font lane: consider restricting that commit step to font branches.
