@@ -150,9 +150,10 @@ private fun Context.findActivity(): Activity? {
     return null
 }
 
-/** Sort keys every source can fill at least partly; "added" is not observed yet, so not offered. */
+/** Shared sort keys. Date added is known on the phone only; server rows sort as unknown (last). */
 internal val CombinedSortChoices = listOf(
-    UnifiedSortKey.NAME to "Name", UnifiedSortKey.PROGRESS to "Progress", UnifiedSortKey.SIZE to "Size",
+    UnifiedSortKey.NAME to "Name", UnifiedSortKey.ADDED_AT to "Date added",
+    UnifiedSortKey.PROGRESS to "Progress", UnifiedSortKey.SIZE to "Size",
     UnifiedSortKey.DOWNLOAD_SPEED to "Download speed", UnifiedSortKey.UPLOAD_SPEED to "Upload speed",
     UnifiedSortKey.PEERS to "Peers")
 

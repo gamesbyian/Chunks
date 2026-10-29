@@ -1,5 +1,14 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-29 date-added sort and All environments at real 200% system font (#567, #8)
+
+- **Source slice:**
+  - libtorrent's resume-persisted `added_time` is now reported on `LocalTransferStatus` and the shared observation.
+  - The phone list offers **Added**, newest first and reversible.
+  - The combined view offers **Date added**; server rows have no added time and sort last in both directions, never guessed from ruTorrent custom fields.
+  - `SystemFontScaleComposeInstrumentedTest` opens All environments from the server list at Android system `fontScale=2.0`. It asserts the title, grouping, the spoken direction control, a real fixture server row and Select are displayed, then saves a seventh real-pixel capture.
+- **Evidence tier:** local JVM suite green. The 200% capture comes from this PR's `actual-system-font-200pct-compose` job. It is not a TalkBack audit or a handset run.
+
 ## 2026-10-29 #580 merged receipts (combined Start/Stop and colours)
 
 - **Merged:** [#580](https://github.com/gamesbyian/Chunks/pull/580), squash `1469870272e8589d2e8efa924f6e7500fa96af75`, exact head `a28690c309042337300ab9ee7dbc502807109935`: [Android/JVM 40918072154](https://github.com/gamesbyian/Chunks/actions/runs/40918072154), [R8 40918072103](https://github.com/gamesbyian/Chunks/actions/runs/40918072103), [API35 native instrumentation incl. `CombinedPhoneBatchInstrumentedTest` 40918072092](https://github.com/gamesbyian/Chunks/actions/runs/40918072092), [API29 Downloads 40918072315](https://github.com/gamesbyian/Chunks/actions/runs/40918072315), [native atlas 40918072398](https://github.com/gamesbyian/Chunks/actions/runs/40918072398). Evidence boundaries are listed in the two entries below.
@@ -9,7 +18,11 @@
 - **Source slice:** `LocalEngineProcessDeathInstrumentedTest`, run in two processes by `tools/process_death_repro.sh` inside the opt-in lifecycle job.
   - **Phase A** seeds under the foreground service, then SIGKILLs itself. There is no Stop all, no onDestroy and no explicit save.
   - **Phase B** must find: no leftover ongoing notification, the transfer restored **stopped**, unchanged payload SHA-256, and a 100% recheck when started.
-- **Evidence:** pending this PR's `api35-fgs-timeout` job. Emulator only.
+- **Merged:** [#581](https://github.com/gamesbyian/Chunks/pull/581), squash `48c111ce0118371f5ed5888aff9145aec5f940ef`, exact head `9cd041dfd297651fcd2be1186607fa8bb3a4078d`: [Android/JVM 40919754762](https://github.com/gamesbyian/Chunks/actions/runs/40919754762), [R8 40919754788](https://github.com/gamesbyian/Chunks/actions/runs/40919754788), [API35 native instrumentation 40919754793](https://github.com/gamesbyian/Chunks/actions/runs/40919754793), [native atlas 40919754797](https://github.com/gamesbyian/Chunks/actions/runs/40919754797).
+- **Observed on a disposable API35 emulator** ([run 40919754887](https://github.com/gamesbyian/Chunks/actions/runs/40919754887)):
+  - **Phase A** (pid 3991) armed transfer `1adc4f07…` and ended with `Process crashed`, its own SIGKILL.
+  - **Phase B** (new pid 4100) passed: no leftover ongoing notification, restored stopped, recheck reached 1,000,000 ppm, and payload SHA-256 was unchanged.
+  - Emulator only; a seeding (complete) payload, not a mid-download interruption.
 
 ## 2026-10-29 read-only listing of other saved servers in All environments (#567)
 
