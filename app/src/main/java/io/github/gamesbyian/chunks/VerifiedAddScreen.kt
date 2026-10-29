@@ -370,9 +370,8 @@ fun VerifiedAddScreen(
                             Text("Confirm one server operation", fontWeight = FontWeight.Bold)
                             environmentLabel?.let { EnvironmentBadge("Adding to: $it", server = true,
                                 // finishInOrderScope is the authenticated endpoint + NUL + username.
-                                environment = finishInOrderScope?.takeIf { s -> '\u0000' in s }?.let { s ->
-                                    io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverId(
-                                        s.substringBefore('\u0000'), s.substringAfter('\u0000'))
+                                environment = finishInOrderScope?.let {
+                                    io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverIdOfAliasScope(it)
                                 }) }
                             Text("Source: " + if (useFile) "Selected .torrent file" else "Magnet link")
                             Text("Infohash: " + plan.expectedInfoHash)

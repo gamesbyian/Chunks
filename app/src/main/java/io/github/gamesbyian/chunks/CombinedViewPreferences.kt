@@ -25,8 +25,6 @@ internal class CombinedViewPreferences(context: Context) {
         preferences.edit().putString("view", encode(query)).commit()
 
     companion object {
-        private val validId = Regex("phone|[a-f0-9]{64}")
-
         /** Search text is deliberately not persisted. */
         fun encode(query: UnifiedTransferQuery): String {
             val scope = when (val s = query.scope) {
@@ -41,8 +39,10 @@ internal class CombinedViewPreferences(context: Context) {
         fun decode(raw: String?): UnifiedTransferQuery {
             val parts = raw?.split(';')?.takeIf { it.size == 4 } ?: return UnifiedTransferQuery()
             val scope = if (parts[0] == "*") EnvironmentViewScope.All else {
-                val ids = parts[0].split(',').filter { it.matches(validId) }.map(::EnvironmentId).toSet()
-                if (ids.isEmpty()) return UnifiedTransferQuery()
+                val raw = parts[0].split(',')
+                // One unreadable ID means the saved subset is not what was chosen: use the default.
+                if (raw.isEmpty() || raw.any { !TransferListSortStore.validEnvironment(it) }) return UnifiedTransferQuery()
+                val ids = raw.map(::EnvironmentId).toSet()
                 EnvironmentViewScope.Only(ids)
             }
             val key = UnifiedSortKey.entries.firstOrNull { it.name == parts[1] } ?: return UnifiedTransferQuery()

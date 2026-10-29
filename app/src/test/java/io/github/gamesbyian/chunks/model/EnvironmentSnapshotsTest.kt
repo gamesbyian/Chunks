@@ -66,4 +66,11 @@ class EnvironmentSnapshotsTest {
         assertEquals(EnvironmentAvailability.LOCKED, EnvironmentSnapshots.server(server, rows, true,
             false, locked = true, fullView = true, observedAtEpochMillis = 9).availability)
     }
+
+    @Test fun aliasScopeParsesToTheSameServerIdOrRejectsMalformedScopes() {
+        assertEquals(server, EnvironmentSnapshots.serverIdOfAliasScope("https://example.org/RPC2\u0000user"))
+        assertNull(EnvironmentSnapshots.serverIdOfAliasScope("https://example.org/RPC2"))
+        assertNull(EnvironmentSnapshots.serverIdOfAliasScope("\u0000user"))
+        assertNull(EnvironmentSnapshots.serverIdOfAliasScope("a\u0000b\u0000c"))
+    }
 }

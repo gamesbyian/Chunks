@@ -1,12 +1,32 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-29 independent review fixes for #577–#584
+
+A code review of everything merged this session (`a8cb13f..2103fc7`) found these defects, now fixed:
+- **Stale phone rows:** when the phone engine stopped while All environments was open, its last rows kept showing as Live and complete. They now drop to "Engine not running" with no rows.
+- **Progress overflow:** server Progress sorting overflowed `Long` above about 9.2 TB completed; it now divides in floating point.
+- **False "may have applied":** a server row with a non-v1 identity was refused by a local validation exception, which read as UNCERTAIN and halted the whole batch. It is now refused before any RPC, and the batch continues.
+- **Saved view decoding:** a saved combined-view subset with one unreadable ID narrowed the scope instead of restoring the default.
+- **Per-frame recomputation:** combined privacy decisions and sources were rebuilt on every recomposition, because profile and server objects carry fresh lambdas. They are now keyed on data.
+- **Duplicated parsing:** environment-ID parsing from an alias scope existed in four copies; it is now one `EnvironmentSnapshots.serverIdOfAliasScope`. A dead `compareKnown` wrapper was also removed.
+
+**Evidence:** new JVM tests for scope parsing, overflow ordering, malformed subsets and the non-v1 refusal; full local suite green. Not changed: badge colours are read once per composition, so a colour change shows on the next screen entry.
+
 ## 2026-10-29 opt-in interrupted real-swarm download (#568, #5)
 
 - **Source slice:** the manual `android-public-swarm.yml` gains `interrupt=true`, which runs `tools/android_public_swarm_interrupt.sh` (`AndroidPublicSwarmInterruptInstrumentedTest`).
   - **Phase A** uses the app's own engine and state directory to download part of the sanitized Debian netinst from ordinary peers, then SIGKILLs itself mid-transfer, with no Stop and no explicit save.
   - **Phase B**, in a fresh process, requires: restored stopped, no restore problems, metadata kept, and continued hash-verified growth past the pre-kill amount.
   - It **records** whether the recheck recovered the pre-kill pieces from disk (`RECOVERED`) or had to fetch them again (`REDOWNLOAD`).
-- **Evidence:** pending a manual dispatch from main after merge. Emulator behind NAT only.
+- **Merged:** [#584](https://github.com/gamesbyian/Chunks/pull/584), squash `2103fc71a4babf7953bd752c5f958cc9eff3a718`.
+- **Observed** ([run 40934164720](https://github.com/gamesbyian/Chunks/actions/runs/40934164720), API35 emulator behind the runner's NAT, from main at `2103fc7`, budget 16 MiB):
+  - **Phase A:** 20,971,520 hash-verified bytes of Debian netinst `7acf8fb5…` (792,723,456 wanted) came from ordinary peers, then the process ended `Process crashed` by its own SIGKILL.
+  - **Phase B** (fresh process):
+    - restored **stopped** with no restore problems;
+    - on Start, the recheck **RECOVERED 21,495,808 verified bytes from disk**, a little more than the last pre-kill observation, because further pieces were written in between;
+    - it then continued to 25,427,968 verified bytes.
+  - So resume data saved only at Add was enough for libtorrent to recheck the on-disk pieces after sudden death, with nothing lost or re-fetched.
+  - One emulator run; not a physical handset, a reboot, or storage revocation.
 
 ## 2026-10-29 Open in its list from All environments (#567)
 
