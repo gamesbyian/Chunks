@@ -25,12 +25,19 @@ The [documentation architecture and authoring standard](DOCUMENTATION-STANDARD.m
 - [TRANSFER-PRIVACY-LOCK](TRANSFER-PRIVACY-LOCK.md): per-environment access control.
 - [STORAGE-AND-EXTRACTION](STORAGE-AND-EXTRACTION.md): storage, cleanup, extraction and provenance.
 - [RTORRENT-COMPATIBILITY-MATRIX](RTORRENT-COMPATIBILITY-MATRIX.md): verified RPC compatibility.
+- [TRANSFER-SNAPSHOTS](TRANSFER-SNAPSHOTS.md): portable transfer definition backup and restoration.
+- [NATIVE-VISUAL-ATLAS](NATIVE-VISUAL-ATLAS.md): screenshot capture and independent review guidance.
 
 ## Implementation and operations
 
 - [BUILD](BUILD.md): build and local verification.
 - [SEEDHOST-REMOTE-TESTING](SEEDHOST-REMOTE-TESTING.md): approved test topology and safety.
 - [PUBLIC-TORRENT-FIXTURES](PUBLIC-TORRENT-FIXTURES.md): lawful test fixtures.
+- [User-supplied test inputs](USER-SUPPLIED-TORRENT-TEST-INPUTS.md): controlled owner-provided fixtures.
+- [RESEARCH](RESEARCH.md) and [REUSE-AUDIT](REUSE-AUDIT.md): upstream references, prior art and reuse boundaries.
+- [Agent lanes](AGENT-LANES.md): concurrency/ownership model.
+- [Dated handoffs](HANDOFF-2026-10-28.md), [Claude app handoff](CLAUDE-APP-HANDOFF-2026-10-28.md), [earlier handoff](HANDOFF-2026-10-27.md): historical session context, not current priorities.
+- [Archive guide](archive/README.md): preserved pre-consolidation documents and status interpretation.
 - [Font lab operations](design/CHUNKS-FONT-LAB-OPERATIONS.md): separate font branch, low-CI iteration.
 - [Design references](design/reference-images/README.md): visual inspiration, not implementation proof.
 - [Historical critical review](CRITICAL-REVIEW-2026-10-24.md): dated findings; do not treat as latest release status.
