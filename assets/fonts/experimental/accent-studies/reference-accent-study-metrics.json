@@ -6,8 +6,8 @@
       "built": 244,
       "skipped_undetected": 24,
       "source_sha256": "a31b5c8726a640beada2113e11002eaac75a79b575f6855fdd60e9dc5ecbf63e",
-      "reference_sha256": "9fb46b67079f822c738c55d1562666fd4b8ce6b39b650e36c23b4e3a5fa80437",
-      "output_sha256": "5750fbec00f05aaed3c1ab618297bd67898e37a51db225d906557af1183faab2",
+      "reference_sha256": "faef08a7b7b8af021fea976b2de526ec772dbe2ff04285ad63bc27942aed8eb3",
+      "output_sha256": "a1165460c0e4135d83ca6c7c610cfb50e2665ea94ec50c9b73e6ba1416e7d191",
       "glyphs": [
         {
           "glyph": "À",
@@ -3677,8 +3677,8 @@
       "built": 243,
       "skipped_undetected": 25,
       "source_sha256": "50b68167346fa4dc5f8c6c8326c0668cfaa0e0c1dacb927b04acd2b31834d529",
-      "reference_sha256": "6a7f107c15a7286bb8185539e0c8e9535ac02736cf3f3fe61f359ed675aa98d1",
-      "output_sha256": "7b70054ef299ab704db8c6c3cc3d626a74a8f73529747269fd57033b2394647d",
+      "reference_sha256": "a902baf3d82aeff5edac775399dde1df842c64e58a1603e6abbe8d7d19192386",
+      "output_sha256": "862d12f0036d8cfa173e079cbdc4dfc9b4318391b0c48eddc9192abab8a0d988",
       "glyphs": [
         {
           "glyph": "À",
@@ -7333,8 +7333,8 @@
       "built": 243,
       "skipped_undetected": 25,
       "source_sha256": "8261803c2870f91db32f3c0506475a31189c5f16a2dfba35a5c0371faee890ef",
-      "reference_sha256": "135d49f37f5bb7a11e63f44c5ccc775be2a630d82f49d0853c5cb7ea221c9004",
-      "output_sha256": "8738195c6785f213b545266909f6bb6f88558649056b4523b70d278d37925aea",
+      "reference_sha256": "6f76867d221ffd327018dade75b38af9dc02c8acdb5d6b70dfc31603032d9f76",
+      "output_sha256": "0cc775a3a48cc09d3a2504a9fb02a74fd2499298e45c783605c341b254696abe",
       "glyphs": [
         {
           "glyph": "À",
@@ -10989,8 +10989,8 @@
       "built": 243,
       "skipped_undetected": 25,
       "source_sha256": "4c4d514999eae9192313499e31b5e69b84a348e7fac2b1554a7728c6a14aa5ae",
-      "reference_sha256": "7deb2335708501210b7f76feca9243d13340648ee8ac1640f635b06817ab7d18",
-      "output_sha256": "0d529dbade4d8b7eb6d86ee5698f6b2dc998b8edb7901f379c1d2b20c39cc59a",
+      "reference_sha256": "4c82a33bd9516d3ebc8cef6ae125b1b2fdc4ef0f7a3aacabfd4a8d3c9b13b3e8",
+      "output_sha256": "1782d3bc82e593d984920e7de982e0fc2b253c84906ae85b1019b70c496cbd0d",
       "glyphs": [
         {
           "glyph": "À",

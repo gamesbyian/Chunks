@@ -1338,10 +1338,10 @@
       "weight": 400,
       "file": "ChunksReferencePanel-Regular-Stacked.otf",
       "source_sha256": "a31b5c8726a640beada2113e11002eaac75a79b575f6855fdd60e9dc5ecbf63e",
-      "input_consolidated_sha256": "1e5908707d29c0a7f17f39c563b8dd0576cd448e05f6880fa98f634fd0f445d2",
-      "output_sha256": "e77037ddfe8fc166f8a69bb3dcd993e28a511f3ca779807f62b480fca8df17f5",
+      "input_consolidated_sha256": "14507d9eedbae8a87d24fd8512d2fec682fae2fea1984cd31532358f26ef824a",
+      "output_sha256": "0a2909bae6c4356615319e471603b35264deb740d79971ed5dd5bbf79c2e64ff",
       "kerning": {
-        "input_sha256": "2718e8441ec21c5f3e971d52e7011a0f271af90354a87e961537f7830e405c4d",
+        "input_sha256": "7edabb32610d16f356ec65320f377368cca122863857de0ace5b4348fa8456da",
         "file": "ChunksReferencePanel-Regular-Stacked.otf",
         "reference_accent_glyphs": 69,
         "candidate_pairs": 13317,
@@ -1473,8 +1473,8 @@
         ],
         "mean_abs_correction_units": 69.63,
         "source_scripts_unchanged": true,
-        "pre_final_name_sha256": "5e15a4ff6607d52098301a2e61ad2cf4c9e87748d7912e17e9b581e68fb7784a",
-        "output_sha256": "e77037ddfe8fc166f8a69bb3dcd993e28a511f3ca779807f62b480fca8df17f5"
+        "pre_final_name_sha256": "694928ccf2154f881bf247d31ea7166f28caf02665041f9767cbf50f5975b306",
+        "output_sha256": "0a2909bae6c4356615319e471603b35264deb740d79971ed5dd5bbf79c2e64ff"
       }
     },
     "Medium": {
@@ -2800,10 +2800,10 @@
       "weight": 500,
       "file": "ChunksReferencePanel-Medium-Stacked.otf",
       "source_sha256": "50b68167346fa4dc5f8c6c8326c0668cfaa0e0c1dacb927b04acd2b31834d529",
-      "input_consolidated_sha256": "a735f8146300280792a40f2c0020f45cdbad28031d7c293c170bf6f38392328e",
-      "output_sha256": "df24dd93fe35e22ef11aad15b9a4aeec90ce022bef2625ed9ee6c56acbf7619e",
+      "input_consolidated_sha256": "c3d13f69db1d719c116cb99ea920f7822bb9e7b3d4b36826ac1e6aab8d976a9a",
+      "output_sha256": "12c74c4164bc0ad1159d32c5b5e7ee784106f1d3cf04742c112b7154d561187f",
       "kerning": {
-        "input_sha256": "7e4a15a1819d9344384a19865dd5d9061b277080e218ddc44f296ca6babe4994",
+        "input_sha256": "ba5b0c5309ba515cec93ee0c0eefefc956fde5e3de1297ee3560b37475dc00d5",
         "file": "ChunksReferencePanel-Medium-Stacked.otf",
         "reference_accent_glyphs": 68,
         "candidate_pairs": 13056,
@@ -2935,8 +2935,8 @@
         ],
         "mean_abs_correction_units": 70.23,
         "source_scripts_unchanged": true,
-        "pre_final_name_sha256": "b4fb943e9734b41fc2a725a9baaaf27b5a333c72a6e7c811792407350e9c7101",
-        "output_sha256": "df24dd93fe35e22ef11aad15b9a4aeec90ce022bef2625ed9ee6c56acbf7619e"
+        "pre_final_name_sha256": "a7fe5d62de1cf2994a8405275474a4770db77cbca2a29082ef6c2d4a50762cac",
+        "output_sha256": "12c74c4164bc0ad1159d32c5b5e7ee784106f1d3cf04742c112b7154d561187f"
       }
     },
     "Semibold": {
@@ -4236,10 +4236,10 @@
       "weight": 600,
       "file": "ChunksReferencePanel-Semibold-Stacked.otf",
       "source_sha256": "8261803c2870f91db32f3c0506475a31189c5f16a2dfba35a5c0371faee890ef",
-      "input_consolidated_sha256": "02cf5194b375d03184abdaa05e5a296ad06df37ee76920bb5649d358b2c9a0f2",
-      "output_sha256": "a8aeed851bb7225a7d3150ec298a1b5fe43bf6055259645da8f19d5ab513f2fe",
+      "input_consolidated_sha256": "314df8525cf253fb846ada85d63b191aaec7883f9998f47c5c2a3488ca82a66d",
+      "output_sha256": "5d929fb91be42f31fed3a76eb605fa19545883815a36fb4dc8872e44f53adb48",
       "kerning": {
-        "input_sha256": "1d4f710535dbb8733957771b9db78185a21b656ea486dd3b31110ba2c9d9a00c",
+        "input_sha256": "31720b8b036cd94952f1a6a962c592609fb656bc19544f0796676fc8166d4af6",
         "file": "ChunksReferencePanel-Semibold-Stacked.otf",
         "reference_accent_glyphs": 66,
         "candidate_pairs": 12540,
@@ -4371,8 +4371,8 @@
         ],
         "mean_abs_correction_units": 70.84,
         "source_scripts_unchanged": true,
-        "pre_final_name_sha256": "13ab1d5610589bc9d12001054e4418fe029a2aa58c20b58bcb70d1eb7a80b5b7",
-        "output_sha256": "a8aeed851bb7225a7d3150ec298a1b5fe43bf6055259645da8f19d5ab513f2fe"
+        "pre_final_name_sha256": "d76605967e03159584a748b5bad428624faf5e25196a0cb84f82e396aa6ef71c",
+        "output_sha256": "5d929fb91be42f31fed3a76eb605fa19545883815a36fb4dc8872e44f53adb48"
       }
     },
     "Bold": {
@@ -5490,10 +5490,10 @@
       "weight": 700,
       "file": "ChunksReferencePanel-Bold-Stacked.otf",
       "source_sha256": "4c4d514999eae9192313499e31b5e69b84a348e7fac2b1554a7728c6a14aa5ae",
-      "input_consolidated_sha256": "5fa324b8d51fc409c450c974fdbe621734b5590212dba1f5635c268ebc628ea8",
-      "output_sha256": "0b7c8643b5bf41448f778c27d4cc9c1f42bc7cbaaf0112caff7436a58c42427b",
+      "input_consolidated_sha256": "2dcd43edd21cf539fa0ed3c068e4344a6956295a154628da254d24a99fc9ae4f",
+      "output_sha256": "6bddcee03a176f67bec7fb9fccc78a01d775a5a417749c9bc1033ef31f35bc35",
       "kerning": {
-        "input_sha256": "e47ea981aed9cd7ec6462f6efa4395a98371f21891897b7138bc6ba53b09c8cb",
+        "input_sha256": "f97fb4839d776c7b6d53f73848d9307fcd627da6704d6dd4b2406b9581a3ed86",
         "file": "ChunksReferencePanel-Bold-Stacked.otf",
         "reference_accent_glyphs": 52,
         "candidate_pairs": 9152,
@@ -5625,8 +5625,8 @@
         ],
         "mean_abs_correction_units": 70.87,
         "source_scripts_unchanged": true,
-        "pre_final_name_sha256": "4555bfa80cb8573d38d9efb25d7ed93d5abe0228b764a4f7c0fe6ab137b02d33",
-        "output_sha256": "0b7c8643b5bf41448f778c27d4cc9c1f42bc7cbaaf0112caff7436a58c42427b"
+        "pre_final_name_sha256": "66d34238e31a6b5c81057bdfa5c8c808c3476905596be95497f31b6b572fc1b8",
+        "output_sha256": "6bddcee03a176f67bec7fb9fccc78a01d775a5a417749c9bc1033ef31f35bc35"
       }
     },
     "ExtraBold": {

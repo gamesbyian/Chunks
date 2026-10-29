@@ -2,7 +2,7 @@
   "status": "NONSHIPPING interim weight study: automated offsets; manual masters still required",
   "source_manifest_sha256": "34413dfabd6d1f846b2dd833e21fa2b57e9b03b06330e4e9a479d082150fca83",
   "profile_sha256": "7da88e239d51208e052c8a359ddf04c724b3aa70e6cd7ad686d64b7f27425e46",
-  "overrides_sha256": "2e4e599edbf6255c1c56565e733d6a31f89718a0de2c7658bf21d8b1b08f0031",
+  "overrides_sha256": "0bdd27016e84e19fd596dbd99bda0ce88b453bf432375b627a82e0859abfdedd",
   "overrides_used": 248,
   "source_svg_sha256": "f475ea924418981a766978dde97ebb97ba7b0866110e1b72b17ac026fbad7aba",
   "accepted_extra_bold_remains_separate": "assets/fonts/experimental/ChunksReferencePanel-ExtraBold-Optical.otf",
@@ -10,7 +10,7 @@
     "Regular": {
       "weight": 400,
       "file": "ChunksReferencePanel-Regular-Study.otf",
-      "sha256": "9fb46b67079f822c738c55d1562666fd4b8ce6b39b650e36c23b4e3a5fa80437",
+      "sha256": "faef08a7b7b8af021fea976b2de526ec772dbe2ff04285ad63bc27942aed8eb3",
       "glyphs_changed": 62,
       "codepoints": 856,
       "kerning_direct_pairs": 13022,
@@ -85,7 +85,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "ca59397c91bb9d2d287b8aa59c52bdf690c168229f10b57c74c00df23ccaefba",
+          "override_svg_sha256": "02504b8d7e541294877f9bd40793e7a3e26479528ef88e4b750b456b3213f7c9",
           "topology_adjustments": []
         },
         "B": {
@@ -95,7 +95,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "8e464640ace2849c60a7e70ded6f3ca68520db7807f771d92ee7166abed51e02",
+          "override_svg_sha256": "a4ae6a1924ab494ce17819551f4ce327e34a984c2dbe25f948afb0c74775bc3a",
           "topology_adjustments": []
         },
         "C": {
@@ -115,7 +115,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "99b0b20983411d353e2f1cd1e085a038489e79b57d861cba3acbce168c652112",
+          "override_svg_sha256": "505c6faf5476219e59c76d9c052b572781478b93572262fd9ce6c4bbaefa1d8c",
           "topology_adjustments": []
         },
         "E": {
@@ -225,7 +225,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "fc01fd3772586d46ce6d1785c934b6f13d979ccd299f3bab2e7f7e08e17e61c4",
+          "override_svg_sha256": "43ccdf23938b139b15e96ec06be43e16fa0103c729f1a9baed6162e3e6b67ebb",
           "topology_adjustments": []
         },
         "P": {
@@ -235,7 +235,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "7aa8a80d29a212cae0cecac5c7992d0492bbee95483ff39e6e18ce9bfc4ba133",
+          "override_svg_sha256": "9cd8a9a93e39cdf5bf678bc26a69ad28e0c8e10453176e85f211ba1d739b080b",
           "topology_adjustments": []
         },
         "Q": {
@@ -245,7 +245,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "1934249aeae78d5fd265b0e7ae7baed472b6f87ad94cd2b3d6fc58a11b8a0a64",
+          "override_svg_sha256": "ee0a29a84d286eb4db5d57c1048e70a3f4fab7644f59eda056a43f6a80491a68",
           "topology_adjustments": []
         },
         "R": {
@@ -255,7 +255,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "a1ecd6f2f03a24f96e9d781c8e94c51e195f93dc7a88636838a7d29e8a67eb4b",
+          "override_svg_sha256": "78c4f6e216c06f3ab5b29f0fa475e5d7f8eaf2810876dba374de461760e7e89e",
           "topology_adjustments": []
         },
         "S": {
@@ -355,7 +355,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "f8df075bb4b787bb13919e8559156b3f896bbc6dcdb1111662d8acb677750305",
+          "override_svg_sha256": "ab1ddf206d49db67f32519eef8ad59f6a6611db0a4c8b32cd5717c254ea48a27",
           "topology_adjustments": []
         },
         "c": {
@@ -385,7 +385,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "841d175d5474e97e218ea72dd26a87136179b052307cd4c9bb8789e3c3cb8fe3",
+          "override_svg_sha256": "e006cabf6500b0ac6b6515f3a4a822204a9d2be19484becd85d1adae8e308d5c",
           "topology_adjustments": []
         },
         "f": {
@@ -405,7 +405,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "a444a78caae1f08b32814e7fd380a75fd301c5960e134bb2bb7f28f6f319e5b7",
+          "override_svg_sha256": "cded5e2219491742c5f2cf9e6bd9592a87811163fcf2ea84ba4d8d30dc900b6a",
           "topology_adjustments": []
         },
         "h": {
@@ -485,7 +485,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "819f6e69b0099de7da144c5c095921c9aa97e1650fafb9f6b650a3a35a96c4d1",
+          "override_svg_sha256": "44781b34cffda2621f4509e1d15135119af358216a1bfd19534b5fcfe8e3bc94",
           "topology_adjustments": []
         },
         "p": {
@@ -495,7 +495,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "37c99745a9eab40fc965e655bd9fef4b3b9ad8bfb708bde1bb2b2a1187bf3b4a",
+          "override_svg_sha256": "e3647bcdd7a1e88287745bedffd24c5ae76168bf3da357965ff4e7e5d4b43fcc",
           "topology_adjustments": []
         },
         "q": {
@@ -605,7 +605,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "0796e545982cf094dc580ac8d74923244244dff9cb398c909d99f45eaea398a7",
+          "override_svg_sha256": "7e671c8d380d332f19d5aa3e9e22ca9170b270f408b36c0a02791c063c699a95",
           "topology_adjustments": []
         },
         "1": {
@@ -685,7 +685,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "69543443613db7f460d511f0e561e6d9827adc2a5bb9cb3f011bde4c7f6c91fe",
+          "override_svg_sha256": "a0fb02b7696a6c294d7dd91df83bd58a3d0adde37f4d2b2035db27cbd18e1504",
           "topology_adjustments": []
         },
         "9": {
@@ -695,7 +695,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "7b8024108f6245903d18c1ee8aeb353a59871e53618b4248037ccaa13d5787ce",
+          "override_svg_sha256": "1a4cf06fff081216f3a6b5325cdaaeee662550f8b461cd34bf4a41d6f9d9849b",
           "topology_adjustments": []
         }
       }
@@ -703,7 +703,7 @@
     "Medium": {
       "weight": 500,
       "file": "ChunksReferencePanel-Medium-Study.otf",
-      "sha256": "6a7f107c15a7286bb8185539e0c8e9535ac02736cf3f3fe61f359ed675aa98d1",
+      "sha256": "a902baf3d82aeff5edac775399dde1df842c64e58a1603e6abbe8d7d19192386",
       "glyphs_changed": 62,
       "codepoints": 856,
       "kerning_direct_pairs": 12978,
@@ -778,7 +778,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "e4683e550891d9e502771c589699359fbcd2153493b21af3ca48e6fd1a00a6ff",
+          "override_svg_sha256": "425be8b1ac7d092660dc017d98f0a156f33641b1e72f39df66d5b4163afb3424",
           "topology_adjustments": []
         },
         "B": {
@@ -788,7 +788,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "dce2f84cec58836e3da6f1ca307a37260a1f4b87e4790698ce0411104e3b003a",
+          "override_svg_sha256": "b6670ecde36b7dd4fa0eeabd4abfca7aea93ff44b79cb670aefcd800a9efdd43",
           "topology_adjustments": []
         },
         "C": {
@@ -808,7 +808,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "2ae8a6fb9f69143a3b129d3e52d6f9b9a16b7e709b3ac29c448f089a1190085f",
+          "override_svg_sha256": "c6ec38161227b59d75c6230634962f2536bfbe6f1f8902e54bf08c82e12b3a6f",
           "topology_adjustments": []
         },
         "E": {
@@ -918,7 +918,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "192a4281616c6eb20253712349df29145a1250e48b28f36abce4f700b629f2f2",
+          "override_svg_sha256": "6d8930d1887ce8b0c7bc03ed443e26e0a1686eec553829a254d7b543e82968ea",
           "topology_adjustments": []
         },
         "P": {
@@ -928,7 +928,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "e8ad42d0cbe028051cccab936e8e24023c9c4789cd0f5c23da333a1e85b1b968",
+          "override_svg_sha256": "6cfc8379e746a7ca08947aec6981ff7f01ace975533bc98c67efd2825c2adc20",
           "topology_adjustments": []
         },
         "Q": {
@@ -938,7 +938,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "38e3d676681fa1b373ee9e976c6fa19923278670e7574ffc8307d36d6086ca68",
+          "override_svg_sha256": "6d6aee521b6c4997f4e23219f033017ed20ba656a7e2d7073bb8c8df8bf06edd",
           "topology_adjustments": []
         },
         "R": {
@@ -948,7 +948,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "16d3a604aa374dc1f80af8e7efea993d9b02fbbdeb96cc3eb7140cdb2a504c93",
+          "override_svg_sha256": "adfc1f0b8a9420ccfc80f24c04979ccffefa582cde5606ca24f805f7cdd34421",
           "topology_adjustments": []
         },
         "S": {
@@ -1048,7 +1048,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "aa5d51b4881218db038387e7d7f2a8aa5dcc52f59bf5d58855da0aa70e6858b8",
+          "override_svg_sha256": "eccf07cf5451cb1cd14026fb03f04e82b9cda9057e40aeb51cc6a0dcf7bb11cb",
           "topology_adjustments": []
         },
         "c": {
@@ -1078,7 +1078,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "d46b9d928aae6b3303377010f12d37df2911ec8d7fd74c68567b049a6661caca",
+          "override_svg_sha256": "7a3aa55c11c34e6482047ad7fc9a8d154074f24a7426f4beb72b68e6c56789fd",
           "topology_adjustments": []
         },
         "f": {
@@ -1098,7 +1098,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "6c92cf3464826a99ee6650c179b37223c5f556e6f3c1b262d809223765b9606f",
+          "override_svg_sha256": "023fad29861f02973a18f8286d2cbff90391c50757f201032c118ae6a6d7fc3b",
           "topology_adjustments": []
         },
         "h": {
@@ -1178,7 +1178,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "fb5c7bd41ec709a75925b560248b20a0388e36a0be1bdfcebe51311d215ce232",
+          "override_svg_sha256": "7517eb80c747460849fe1fe329966ea3de95b39f5162eb12deb5b4446c1b87f7",
           "topology_adjustments": []
         },
         "p": {
@@ -1188,7 +1188,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "be0a5c93591f917ad664d1c62d9372a221ab685fb32e6dabed405ea45b7aaee6",
+          "override_svg_sha256": "6f9b3bf6b390f84aa1a6062223d1c322f08463b2324399f42d3dc2a17e48f0e0",
           "topology_adjustments": []
         },
         "q": {
@@ -1298,7 +1298,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "43a219873bf89ac7240a6977025a4c19a5c182b29d75cfe89dc42146a8da41e7",
+          "override_svg_sha256": "f2b665b3486bdd378af617eaa22e504355dd246649b9d3a5be8683a858760b33",
           "topology_adjustments": []
         },
         "1": {
@@ -1378,7 +1378,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "c69069ff0cf6b06cc230a71b75dcfc6f5f319295c213167dc5d270211e40afff",
+          "override_svg_sha256": "2d58483a4c3c414901ca2e41bd804c3974c8d51c4bb6e985cbf0a314d716a750",
           "topology_adjustments": []
         },
         "9": {
@@ -1388,7 +1388,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "b97c380caf6d6f462bd3a9b9c44b7d80ab2097149953441a71109b136e9188ee",
+          "override_svg_sha256": "86d814acc7e65e4516b0fd40c5dcfd359e75dcfe42b959ae8657a7c59ef3adcb",
           "topology_adjustments": []
         }
       }
@@ -1396,7 +1396,7 @@
     "Semibold": {
       "weight": 600,
       "file": "ChunksReferencePanel-Semibold-Study.otf",
-      "sha256": "135d49f37f5bb7a11e63f44c5ccc775be2a630d82f49d0853c5cb7ea221c9004",
+      "sha256": "6f76867d221ffd327018dade75b38af9dc02c8acdb5d6b70dfc31603032d9f76",
       "glyphs_changed": 62,
       "codepoints": 856,
       "kerning_direct_pairs": 12905,
@@ -1471,7 +1471,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "1654684fbe8305cefcf2ce2273cd5f645809e2870cc0077f3cb94e5b3f4d5322",
+          "override_svg_sha256": "4d5d6807a19000faab4ffafc2b5d41965a518c2d0972b2326e5da3e3d528abf1",
           "topology_adjustments": []
         },
         "B": {
@@ -1481,7 +1481,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "062319c7dd6d1176b4a820853cd1ad7351a3bb32828d3292e3ee00288a140ad2",
+          "override_svg_sha256": "f7ba1dab14f5716ecdf11e2902a3ed87c7b84175469fd3562824b1bdeddc1cf6",
           "topology_adjustments": []
         },
         "C": {
@@ -1501,7 +1501,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "5b788484eb976af4bd0db8afcbb1d7d8e603dddaebd59efb769241a59f382672",
+          "override_svg_sha256": "e78f21bbb8a0887833563cf3b69f53b9b76776b5764e577c3b11cbf2eec21597",
           "topology_adjustments": []
         },
         "E": {
@@ -1611,7 +1611,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "af2f7c23facb96a029b11307f6d7bc0fc928f5068ad0c47e88ea7403c3c290fb",
+          "override_svg_sha256": "bd5f65594c8f5fdf36cdfb4b1e6e7882cbb9c19fd778d4037d00be8a993ccba2",
           "topology_adjustments": []
         },
         "P": {
@@ -1621,7 +1621,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "f0bcc5cad6d0948f8a01cbf65655d783ad4247658b12b2c03c8137d08c12b012",
+          "override_svg_sha256": "762a0ac3213436b1e9938fb6640083b828b401ca35d8e9f6a0dbb2c50c55e60b",
           "topology_adjustments": []
         },
         "Q": {
@@ -1631,7 +1631,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "f8e8b0a2da3984b75b04cfa511ab61c743ae8d04d8d0fafa67d4cdd898e00f5b",
+          "override_svg_sha256": "ede57afe889a546ab751e69468c82acb4977839e2036c585a5bac8da236ed047",
           "topology_adjustments": []
         },
         "R": {
@@ -1641,7 +1641,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "cc4c60691241ec74d67bf046cea4ace204fe91e2072e61604adbb3d70c70ac75",
+          "override_svg_sha256": "de0d6698294c5fbc035fe3057bb357871bda6d65024412d4325b13351f0a5b38",
           "topology_adjustments": []
         },
         "S": {
@@ -1741,7 +1741,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "b927a25d5a998d455ee62a4027d812f1378c0d86415b5858757c09005cc6e680",
+          "override_svg_sha256": "54cd556517753514f091aae315b3858ca11d78af7aeeb5e106e566e7faf85c5e",
           "topology_adjustments": []
         },
         "c": {
@@ -1771,7 +1771,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "5a2232de5468b6f56f2346e69a2fee185e8fe5b20c07df8762322342413dda48",
+          "override_svg_sha256": "2f4c66bbe7381156d358a2f02cdf476d24c96d6a01735eb3183233154777f415",
           "topology_adjustments": []
         },
         "f": {
@@ -1791,7 +1791,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "cc43288b038a26a94d6d624a3b7fd613c6e4d6fa980bf466799a0c5154711ce6",
+          "override_svg_sha256": "f20454c863be0c10d8038dbc92a5e536a9f5fda38b8fa0c31fdf27438f993114",
           "topology_adjustments": []
         },
         "h": {
@@ -1871,7 +1871,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "ff2120786e0a79e87521aaa9abd147de3080dab3f9415ade8ce534fc13122af3",
+          "override_svg_sha256": "9253e749069f157da18198eb6cf5434652e101b2fca2629ad027c1cca7dc8146",
           "topology_adjustments": []
         },
         "p": {
@@ -1881,7 +1881,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "0005fc030f54ed90888aeb7c33b542bc0d3c89c3df43f504f3e817adec1ece07",
+          "override_svg_sha256": "3402d1b5960d40477ab55da54245d154dd7d9a84474901c5769d1b3e4686c495",
           "topology_adjustments": []
         },
         "q": {
@@ -1991,7 +1991,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "00c1fef8b28c5da53515b6ab08693fdb9c82b8f0e78bbdd66a77fb25e38ae16d",
+          "override_svg_sha256": "bbef7d06d2c719f689ba7a64631029956d6428e8d12a8cc6198448405ece9cea",
           "topology_adjustments": []
         },
         "1": {
@@ -2071,7 +2071,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "a0fe4f2d081d1a560ceafcff8e269f17bc5878178a10a58abf41544160d7e1f3",
+          "override_svg_sha256": "f6e49f420811a131eed897ce6db422325cb702cf815aa21ef654662f49d1acc8",
           "topology_adjustments": []
         },
         "9": {
@@ -2081,7 +2081,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "520a1e31f9600cddfd4129584e871d77d59b42af7ac69a12a1d34be27f71c12a",
+          "override_svg_sha256": "bc0854740e12c46da7ffb9d19ab23a8b1f2f860a130d1ba46a94b69732a588d2",
           "topology_adjustments": []
         }
       }
@@ -2089,7 +2089,7 @@
     "Bold": {
       "weight": 700,
       "file": "ChunksReferencePanel-Bold-Study.otf",
-      "sha256": "7deb2335708501210b7f76feca9243d13340648ee8ac1640f635b06817ab7d18",
+      "sha256": "4c82a33bd9516d3ebc8cef6ae125b1b2fdc4ef0f7a3aacabfd4a8d3c9b13b3e8",
       "glyphs_changed": 62,
       "codepoints": 856,
       "kerning_direct_pairs": 13151,
@@ -2164,7 +2164,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "d49dc56c25b1b2e93db011f9d35902d8530d7abb7183523534ecc24585df0264",
+          "override_svg_sha256": "2b9b8336336efcb731e451473f9bff06055f33d6b9e389389543bd3544610a1d",
           "topology_adjustments": []
         },
         "B": {
@@ -2174,7 +2174,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "2321c805c16d2a59cac4502567da859033c9f08ecbd255ee0ee512b135ca9bf0",
+          "override_svg_sha256": "56b81ac6c6c75fb7e2cc44390f87c09366fbd5d760b1a5e464ca6941c6d6ccbe",
           "topology_adjustments": []
         },
         "C": {
@@ -2194,7 +2194,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "1a7458dbf96126040e6d2b9c8f4b7f0e8df0fe98d15348e5807295eac0127350",
+          "override_svg_sha256": "fb9473d4088a2e53b1b9fcd15694e0e42e0eed1699b12b1cdfed7a099b1d172e",
           "topology_adjustments": []
         },
         "E": {
@@ -2304,7 +2304,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "7676a7c6ba46f1734dd10fddcc9b2542f130d92edb6f5977e8276bdde0c20fad",
+          "override_svg_sha256": "a1e881bc4b905f9c9ef1d13f90c02b5bc60d812cf89f56d6b04eb9165a9e85ce",
           "topology_adjustments": []
         },
         "P": {
@@ -2314,7 +2314,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "a39fd9fc7d970d0e395f18cbec264ccf9898cb1102e2a9e1f1cc18f4a7fb3411",
+          "override_svg_sha256": "6a72fefd7c6bdc08ef65d887e56b157c65cb31cda550948ff266865ec06d5f04",
           "topology_adjustments": []
         },
         "Q": {
@@ -2324,7 +2324,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "c297d1c1b0e579363034271d22392692df1955ebea7fdd8890bb4f2c25bd2519",
+          "override_svg_sha256": "805ca349dc5001220a8a42d83dae133df3836ffc1d0b946d5e1e95d340958ac0",
           "topology_adjustments": []
         },
         "R": {
@@ -2334,7 +2334,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "f65dc5fe60ffc53acda6433006d365d3cb6722f1b970512af43badd46b378092",
+          "override_svg_sha256": "559e02318a20b892a7db6c10760d136f0ebe250d50d13d9ff46b67625409f466",
           "topology_adjustments": []
         },
         "S": {
@@ -2434,7 +2434,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "ea21f4621588942baeceb7a1ab78c16cc79e87d435b34744cdeb3e0ce576a724",
+          "override_svg_sha256": "ea849bcb91065aa33af0a2486c95c771e7351c76b256e442e44db61c058be201",
           "topology_adjustments": []
         },
         "c": {
@@ -2464,7 +2464,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "8d57c66bfa46191462bc5f8fddd529c378bda3da58a0992acc47a854570c9702",
+          "override_svg_sha256": "aeec973854c1b107d379119b0517742d5169beccb8f8b2cba16dcab73219bfcc",
           "topology_adjustments": []
         },
         "f": {
@@ -2484,7 +2484,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "2f31f942d88ad39b581a58cc4640483aa0e71ba49b83904c3fb9b4d6674d0e1f",
+          "override_svg_sha256": "07344d9715973616616556bfb70f162ecb5c64ecc0fc6a188b4755cd74feb45a",
           "topology_adjustments": []
         },
         "h": {
@@ -2564,7 +2564,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "69123e930bb5d6ef04027ceb8f74c432ce0a0432b2fcdccb25c1a34df411ffa9",
+          "override_svg_sha256": "89e46b507a41dd271b71a8aef1bb8055461160b202d4012db01971e1cc587a91",
           "topology_adjustments": []
         },
         "p": {
@@ -2574,7 +2574,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "9b2c232804c5ec94faa7fe55ea059c0eed6ede6aed01c5dd2e019e43855afde2",
+          "override_svg_sha256": "50efcc653cbad3f8ded7b17da27c7d6eca37f421ad332e8e84ab3837bca82595",
           "topology_adjustments": []
         },
         "q": {
@@ -2684,7 +2684,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "0de3c0a9f0ecc16ea998e9612f86f27d68197b0959afb2ab610d771830692441",
+          "override_svg_sha256": "333ecc29af3ca26049d281e232700756a104c6730f359dd9ded790cebf7cf4f4",
           "topology_adjustments": []
         },
         "1": {
@@ -2764,7 +2764,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "af8e23633f4016befdbd82c888f53b91d758d01a0bb209fb6724a7244dac9f4e",
+          "override_svg_sha256": "3b74a88698ebd4d3cf0fd614b434156795e25eb8f06118c1c156ad759aaeb595",
           "topology_adjustments": []
         },
         "9": {
@@ -2774,7 +2774,7 @@
           "stroke_offset_px": null,
           "outline_source": "weight-specific-svg-master",
           "outline_encoding": "native-bezier-curves",
-          "override_svg_sha256": "e08000c567df58601c669481e1990c6c198ff7b1fe28bb3c3c86e905bbb26ae7",
+          "override_svg_sha256": "7982b2b07bf4aeeced0e6fc67d1636b586d854a60cff7d9ea1a62f795b8dc014",
           "topology_adjustments": []
         }
       }

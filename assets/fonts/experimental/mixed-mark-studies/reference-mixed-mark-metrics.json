@@ -1,6 +1,6 @@
 {
   "status": "NONSHIPPING conservative mixed above/below accent CFF study",
-  "stacked_source_metrics_sha256": "8ba9806008340e78617f27fd240ceec42b40e440272ce43141dd53668db0f4e8",
+  "stacked_source_metrics_sha256": "f128e2f6979007c6b78e5715349f1ce07331b2f9b4d3f83419aa91f21bb2eff2",
   "policy": "NFD class 230 above, 202/220 below, source-only detached contours, ±font bbox",
   "weights": {
     "Regular": {
@@ -401,11 +401,11 @@
       },
       "weight": 400,
       "input_original_sha256": "a31b5c8726a640beada2113e11002eaac75a79b575f6855fdd60e9dc5ecbf63e",
-      "input_stacked_sha256": "e77037ddfe8fc166f8a69bb3dcd993e28a511f3ca779807f62b480fca8df17f5",
-      "output_sha256": "b320f909cc2daabc651d040bbc738274ff3c3a36921037a049f14970362df9c3",
+      "input_stacked_sha256": "0a2909bae6c4356615319e471603b35264deb740d79971ed5dd5bbf79c2e64ff",
+      "output_sha256": "f6135b00ee1e32746a8b1e8f96349bbd916d8e8bc6ae9461902b735546145bbe",
       "file": "ChunksReferenceMixedMarks-Regular.otf",
       "kerning": {
-        "input_sha256": "539bf26a742855b5abf55b075f038430db73eb66720dc5250eaaa71007535814",
+        "input_sha256": "48eafc47d7ce13f15de0c8bd37180e2574c4febf89b802b69cde6d30a23e89c9",
         "file": "ChunksReferenceMixedMarks-Regular.otf",
         "reference_accent_glyphs": 14,
         "candidate_pairs": 1932,
@@ -537,8 +537,8 @@
         ],
         "mean_abs_correction_units": 77.34,
         "source_scripts_unchanged": true,
-        "pre_family_name_sha256": "eb46638b147a55819943304ef35aec5857e6663e35cd50d15910f9a392f23675",
-        "output_sha256": "b320f909cc2daabc651d040bbc738274ff3c3a36921037a049f14970362df9c3"
+        "pre_family_name_sha256": "d718eb5a2fad085671515c90538f10e7630b5fdeb7eeea706d952a88c1ff3736",
+        "output_sha256": "f6135b00ee1e32746a8b1e8f96349bbd916d8e8bc6ae9461902b735546145bbe"
       }
     },
     "Medium": {
@@ -943,11 +943,11 @@
       },
       "weight": 500,
       "input_original_sha256": "50b68167346fa4dc5f8c6c8326c0668cfaa0e0c1dacb927b04acd2b31834d529",
-      "input_stacked_sha256": "df24dd93fe35e22ef11aad15b9a4aeec90ce022bef2625ed9ee6c56acbf7619e",
-      "output_sha256": "4e733ab6383dcc4f591bc1731665c0ef545cb03b880679b427781e94ef26cb3d",
+      "input_stacked_sha256": "12c74c4164bc0ad1159d32c5b5e7ee784106f1d3cf04742c112b7154d561187f",
+      "output_sha256": "4ddbdb45593d2fb7a9cd08789138f2ef60a901be4459e3110f1ac52b74fd30e9",
       "file": "ChunksReferenceMixedMarks-Medium.otf",
       "kerning": {
-        "input_sha256": "1fc36347f05c8b100b7a159930c4f296e76374828fb1d8fd1ff917d800eb9f87",
+        "input_sha256": "9e53a3f3793bbc115ca0e4e4b887c199168cfe6d444aa7669509fc76e9053e01",
         "file": "ChunksReferenceMixedMarks-Medium.otf",
         "reference_accent_glyphs": 14,
         "candidate_pairs": 1932,
@@ -1079,8 +1079,8 @@
         ],
         "mean_abs_correction_units": 75.67,
         "source_scripts_unchanged": true,
-        "pre_family_name_sha256": "4a5c0e50b81a450ebe9a8ba72ae45a6c4cc8445e1b0db83a1af51bc5042f0f24",
-        "output_sha256": "4e733ab6383dcc4f591bc1731665c0ef545cb03b880679b427781e94ef26cb3d"
+        "pre_family_name_sha256": "9d58639c2203e76d24917390140f5cdefceb9b851f19e0811eaafd9b301c52b7",
+        "output_sha256": "4ddbdb45593d2fb7a9cd08789138f2ef60a901be4459e3110f1ac52b74fd30e9"
       }
     },
     "Semibold": {
@@ -1493,11 +1493,11 @@
       },
       "weight": 600,
       "input_original_sha256": "8261803c2870f91db32f3c0506475a31189c5f16a2dfba35a5c0371faee890ef",
-      "input_stacked_sha256": "a8aeed851bb7225a7d3150ec298a1b5fe43bf6055259645da8f19d5ab513f2fe",
-      "output_sha256": "bd3e66fcb370ec05c217bb6078a0db4610ef6edb4b7c8e7ff2c88017efb46834",
+      "input_stacked_sha256": "5d929fb91be42f31fed3a76eb605fa19545883815a36fb4dc8872e44f53adb48",
+      "output_sha256": "fc400fb22dc39351befc331f061cc751e7de4f5b615953d5a9c0ca055250edb0",
       "file": "ChunksReferenceMixedMarks-Semibold.otf",
       "kerning": {
-        "input_sha256": "a909412d83cc42a80ac5f5241f647fdd2166c58b2a42292d539c638c32453541",
+        "input_sha256": "0c47fd3099fe4bf21df372bf9bb3c9e63bafd304a93a932654a64f7f5a7098a9",
         "file": "ChunksReferenceMixedMarks-Semibold.otf",
         "reference_accent_glyphs": 14,
         "candidate_pairs": 1932,
@@ -1629,8 +1629,8 @@
         ],
         "mean_abs_correction_units": 74.2,
         "source_scripts_unchanged": true,
-        "pre_family_name_sha256": "8159d2247ebeb7dcbd5222e77b20ca529bc4317b71edb80ff467d44248a48a9f",
-        "output_sha256": "bd3e66fcb370ec05c217bb6078a0db4610ef6edb4b7c8e7ff2c88017efb46834"
+        "pre_family_name_sha256": "ccce092742e7f5ae6b45a8f27c4af008c9202165c1aa994edea32d13785eb7a8",
+        "output_sha256": "fc400fb22dc39351befc331f061cc751e7de4f5b615953d5a9c0ca055250edb0"
       }
     },
     "Bold": {
@@ -2099,11 +2099,11 @@
       },
       "weight": 700,
       "input_original_sha256": "4c4d514999eae9192313499e31b5e69b84a348e7fac2b1554a7728c6a14aa5ae",
-      "input_stacked_sha256": "0b7c8643b5bf41448f778c27d4cc9c1f42bc7cbaaf0112caff7436a58c42427b",
-      "output_sha256": "8136b7f72a2a44e946dada2ace4034a92e3410c79185dcaba7acdb52528d2294",
+      "input_stacked_sha256": "6bddcee03a176f67bec7fb9fccc78a01d775a5a417749c9bc1033ef31f35bc35",
+      "output_sha256": "016d43dada055247d29af5539de3959d06b6403ba9dbdc39d8d0967ffb8bd784",
       "file": "ChunksReferenceMixedMarks-Bold.otf",
       "kerning": {
-        "input_sha256": "f53845e5627f0b75d57036eed5d1f2333865a57910aa69cc43a4ed6accc1b6e1",
+        "input_sha256": "8cc65cc83d1b4747dd32337387de70e06c0ec98385e5f392936e849d24340729",
         "file": "ChunksReferenceMixedMarks-Bold.otf",
         "reference_accent_glyphs": 14,
         "candidate_pairs": 1932,
@@ -2235,8 +2235,8 @@
         ],
         "mean_abs_correction_units": 71.8,
         "source_scripts_unchanged": true,
-        "pre_family_name_sha256": "299443d07a8a4c3679008e3beaf7acde24666b9c83a7cbd9a96fd0084e9d0cbd",
-        "output_sha256": "8136b7f72a2a44e946dada2ace4034a92e3410c79185dcaba7acdb52528d2294"
+        "pre_family_name_sha256": "836a53721c93e67edec6299f2c3c9fd55a860df16e7d246769f297dab86c82cc",
+        "output_sha256": "016d43dada055247d29af5539de3959d06b6403ba9dbdc39d8d0967ffb8bd784"
       }
     },
     "ExtraBold": {
