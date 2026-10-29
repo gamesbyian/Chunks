@@ -152,3 +152,20 @@ internal fun ChunksBanner(title: String, message: String, tone: ChunksTone, modi
         }
     }
 }
+
+/**
+ * Card for panels that hold interactive controls: dark surface with an
+ * accent border. Default chip, button and error colours are tuned for dark
+ * surfaces, so they stay readable here (on a filled accent card they fell
+ * below 2:1).
+ */
+@Composable
+internal fun AccentOutlineCard(accent: Color, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    androidx.compose.material3.Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(20.dp),
+        colors = androidx.compose.material3.CardDefaults.cardColors(
+            containerColor = ChunksColors.Surface, contentColor = ChunksColors.Text),
+        border = androidx.compose.foundation.BorderStroke(2.dp, accent)
+    ) { content() }
+}

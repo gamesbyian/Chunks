@@ -1215,10 +1215,7 @@ private fun TransfersScreen(
             }
         }
         if (selecting) item {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = Lilac),
-                shape = RoundedCornerShape(20.dp)
-            ) {
+            AccentOutlineCard(ChunksColors.Purple) {
                 Column(
                     Modifier.fillMaxWidth().padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
