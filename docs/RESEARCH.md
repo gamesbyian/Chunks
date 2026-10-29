@@ -1,5 +1,8 @@
 # Research ledger and upstream references
 
+**Implementation reuse audit (2026-10-29):** [Open-source reuse candidates for dependency-first Chunks development](research/OPEN-SOURCE-REUSE-2026-10-29.md). Source-level references to LibreTorrent/libtorrent4j, Flood/Transdroid/ruTorrent, Android storage/background alternatives, verified licences, expected adaptations, test plans and explicit non-reuse boundaries. This is **research**, not a competing work queue or Chunks runtime acceptance.
+
+
 ## Human-centered BitTorrent ecosystem research (2026-10-29)
 
 The exploratory [240-feature catalogue](BITTORRENT-ECOSYSTEM-FEATURE-INVENTORY-2026-10-29.md), [36-journey/240-activity atlas](BITTORRENT-USER-GOALS-AND-WORKFLOWS-2026-10-29.md) and [multilingual aversion study](BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md) are source references, not normative requirements.
