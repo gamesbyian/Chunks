@@ -37,10 +37,30 @@ internal class FinishInOrderStore(
     fun update(infoHash: String, record: FinishInOrderRecord): Boolean =
         prefs.contains(key(infoHash)) && save(infoHash, record)
 
+    /** Magnet Adds: set up a policy once metadata (the file list) is known. */
+    @Synchronized
+    fun requestAfterMetadata(infoHash: String): Boolean = try {
+        require(hashPattern.matches(infoHash))
+        val now = prefs.getStringSet(AFTER_METADATA, emptySet()).orEmpty() + infoHash.lowercase(Locale.ROOT)
+        prefs.edit().putStringSet(AFTER_METADATA, now.toHashSet()).commit()
+    } catch (_: RuntimeException) { false }
+
+    fun afterMetadataRequests(): Set<String> = try {
+        prefs.getStringSet(AFTER_METADATA, emptySet()).orEmpty().toSet()
+    } catch (_: RuntimeException) { emptySet() }
+
+    @Synchronized
+    fun clearAfterMetadata(infoHash: String): Boolean = try {
+        val now = afterMetadataRequests() - infoHash.lowercase(Locale.ROOT)
+        prefs.edit().putStringSet(AFTER_METADATA, now.toHashSet()).commit()
+    } catch (_: RuntimeException) { false }
+
     @Synchronized
     fun remove(infoHash: String): Boolean = try {
         prefs.edit().remove(key(infoHash)).commit()
     } catch (_: RuntimeException) { false }
+
+    private companion object { const val AFTER_METADATA = "after_metadata_v1" }
 
     private fun key(infoHash: String): String {
         require(hashPattern.matches(infoHash)) { "Invalid transfer identity" }
@@ -78,9 +98,21 @@ internal object FinishInOrderController {
         })
 
     /** Called off the main thread. Never starts an engine. */
-    fun tick(context: Context, hashes: List<String>) {
+    fun tick(context: Context, transfers: List<io.github.gamesbyian.chunks.engine.LocalTransferStatus>) {
         val engine = LocalEngineHolder.current() ?: return
         val store = FinishInOrderStore(context)
+        // Magnet Adds that asked for Finish in Order: set it up once the file list exists.
+        val requested = store.afterMetadataRequests()
+        if (requested.isNotEmpty()) for (t in transfers) {
+            val hash = t.infoHash.lowercase(Locale.ROOT)
+            if (hash !in requested || !t.metadataKnown) continue
+            val note = try { kotlinx.coroutines.runBlocking { enableFinishInOrderAfterAdd(context, engine, t.infoHash) } }
+                catch (_: Exception) { null }
+            if (note != null && !note.contains("not readable yet")) store.clearAfterMetadata(hash)
+        }
+        requested.filter { r -> transfers.none { it.infoHash.equals(r, ignoreCase = true) } }
+            .forEach { store.clearAfterMetadata(it) }   // removed before metadata arrived
+        val hashes = transfers.map { it.infoHash }
         val now = System.nanoTime() / 1_000_000L
         for (hash in hashes) {
             val record = store.get(hash) ?: continue
