@@ -402,7 +402,8 @@ class LocalTorrentEngineTest {
         collision.writeBytes(unrelated)
         val magnet = "magnet:?xt=urn:btih:" + seed.infoHash
 
-        val leecher = engine()
+        val state = temp.newFolder("magnet-blocked-resume-state")
+        val leecher = persistentEngine(state)
         assertTrue(leecher.addMagnet(magnet, destination,
             listOf(InetSocketAddress("127.0.0.1", seeder.listenPort())),
             autoStartAfterMetadata = true) is LocalAddResult.FetchingMetadata)
@@ -417,12 +418,27 @@ class LocalTorrentEngineTest {
         assertEquals(LocalCommandOutcome.UNCERTAIN, leecher.resume(seed.infoHash).outcome)
         assertArrayEquals(unrelated, collision.readBytes())
 
+        // A blocked magnet must be restorable without making a previously
+        // rejected payload collision writable after process restart.
+        waitFor(15_000L) {
+            File(state, seed.infoHash + ".resume").let { it.isFile && it.length() > 0L }
+        }
+        leecher.close()
+        val restarted = persistentEngine(state)
+        val paused = requireNotNull(restarted.status(seed.infoHash))
+        assertTrue("Blocked magnet must restore stopped", paused.stopped)
+        assertTrue("Persistent upload-only gate must survive a process restart", paused.uploadOnly)
+        assertTrue(paused.metadataKnown)
+        assertEquals(LocalCommandOutcome.UNCERTAIN, restarted.resume(seed.infoHash).outcome)
+        assertArrayEquals("Failed re-Start after process death must not overwrite foreign bytes",
+            unrelated, collision.readBytes())
+
         // Test-only recovery: remove our synthetic foreign fixture, then retry
         // Start against an independently observed clean path.
         assertTrue(collision.delete())
-        assertEquals(LocalCommandOutcome.VERIFIED, leecher.resume(seed.infoHash).outcome)
-        waitFor { leecher.status(seed.infoHash)?.progressPpm == 1_000_000 }
-        requireFlushed(leecher, seed.infoHash)
+        assertEquals(LocalCommandOutcome.VERIFIED, restarted.resume(seed.infoHash).outcome)
+        waitFor { restarted.status(seed.infoHash)?.progressPpm == 1_000_000 }
+        requireFlushed(restarted, seed.infoHash)
         assertArrayEquals(fixture.files.getValue("episode.bin"), collision.readBytes())
     }
 
