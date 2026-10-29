@@ -241,6 +241,11 @@ class SystemFontScaleComposeInstrumentedTest {
             assertEquals(3, rpc.listTransfers("main").size)
         }
         receivedMethods.clear()
+        // At 200% type the phone and offline-tool tiles push the address field
+        // below the fold; scroll so the lazy list composes it first.
+        rule.onNode(hasScrollToIndexAction())
+            .performScrollToNode(hasText("Seedbox hostname, ruTorrent URL or RPC address"))
+        rule.waitForIdle()
         rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address")
             .performTextInput(endpoint)
         rule.runOnUiThread {
