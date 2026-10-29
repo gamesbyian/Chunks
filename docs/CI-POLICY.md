@@ -27,6 +27,9 @@ Do not use Secrets in fork/PR builds. Never connect the CI runner to a private r
   - **Phase A** seeds under the service and SIGKILLs its own process.
   - **Phase B**, in a new process, must find no leftover ongoing notification, the transfer restored stopped, unchanged bytes and a 100% recheck.
   - **Failure conditions:** the script fails unless phase A armed and actually died, and phase B passed without being skipped.
+- **Device reboot:** `tools/reboot_repro.sh` (`LocalEngineRebootInstrumentedTest`) seeds under the service, then runs `adb reboot`.
+  - After boot it requires that no Chunks process started by itself, and that there is no engine and no ongoing notification.
+  - On opening the saved state, the transfer must restore **stopped** with unchanged bytes.
 
 ## Manual real-peer lifecycle modes (#568/#569)
 
