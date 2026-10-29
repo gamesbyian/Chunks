@@ -140,7 +140,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     private val handles: MutableMap<String, TorrentHandle> = Collections.synchronizedMap(LinkedHashMap())
     // Keep timed-out requests pending until their real alert arrives: a late
     // alert must not confirm a different save generation.
-    private val pendingSaves = LocalResumeSaveRequests()
+    private val pendingSaves = LocalResumeSaveRequests<TorrentHandle>()
 
     private class PendingFlush {
         val latch = CountDownLatch(1)
@@ -203,7 +203,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                 // confirmed save. Do not let an exception escape the alert
                 // dispatcher or overwrite the previous verified resume file.
             } finally {
-                pendingSaves.complete(key, persisted)
+                pendingSaves.complete(key, handle, persisted)
             }
         }
     }
@@ -950,7 +950,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         awaitingMetadata.remove(key)
         startWhenMetadataArrives.remove(key)
         pendingFlushes.remove(key)?.refused()
-        pendingSaves.cancel(key)
+        pendingSaves.cancel(key, handle)
         val saved = config.stateDirectory?.let { File(it, "$key.resume") } ?: return true
         // A removed session with an undeletable .resume file can reappear on
         // restart. Do not report that as a fully confirmed removal.
@@ -1026,11 +1026,16 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
      * atomically. Returns how many were confirmed before the timeout.
      */
     fun saveResumeData(timeoutMs: Long = 5_000): Int {
-        if (config.stateDirectory == null || !started) return 0
-        val targets = synchronized(handles) { handles.toList() }
-        val requests = targets.map { (key, handle) ->
-            pendingSaves.acquire(key) {
-                handle.saveResumeData(TorrentHandle.SAVE_INFO_DICT)
+        // Register under the same engine monitor as Remove/Close so a save
+        // cannot be issued on a handle already retired from the session.
+        // Release the monitor before awaiting native alerts.
+        val requests = synchronized(this) {
+            if (config.stateDirectory == null || !started) return 0
+            val targets = synchronized(handles) { handles.toList() }
+            targets.map { (key, handle) ->
+                pendingSaves.acquire(key, handle) {
+                    handle.saveResumeData(TorrentHandle.SAVE_INFO_DICT)
+                }
             }
         }
         val deadline = System.nanoTime() + timeoutMs.coerceAtLeast(0L) * 1_000_000
