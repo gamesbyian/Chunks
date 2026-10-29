@@ -2,6 +2,11 @@
 
 > **Authority:** binding owner product outcomes. Detailed feature rules live in the linked canonical contracts; feature completion and evidence live in [SPEC-COVERAGE](SPEC-COVERAGE.md) and [QUALITY-LEDGER](QUALITY-LEDGER.md). This document does not set implementation priority.
 
+## External application access to files
+
+Files in transfer trees and accessible local or remote Places MUST offer capability-grounded Android **Open/Open with**, **Share/Send** and explicit download/export actions. Format-agnostic on-demand reading, including seekable large remote files, is the preferred experience where authorized server access and receiving-app compatibility permit; a full download MUST NOT occur silently. rTorrent RPC control alone does not prove access to file bytes. Canonical rules, limitations and acceptance: [EXTERNAL-FILE-ACCESS](EXTERNAL-FILE-ACCESS.md). This is planned, not verified shipped functionality.
+
+
 ## Product identity
 
 **chunks. Your downloads have places to be.**

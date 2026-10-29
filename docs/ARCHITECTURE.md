@@ -2,6 +2,11 @@
 
 > **Authority:** shared domain model, capability and mutation boundaries. Product rules are in [PRODUCT](PRODUCT.md); implementation receipts and current task priority live in [QUALITY-LEDGER](QUALITY-LEDGER.md) and [WORK-QUEUE](WORK-QUEUE.md). Design notes do not imply physical acceptance.
 
+## External file access and Android handoff
+
+Separate transfer control/metadata from authorized backing-byte reads. A typed per-profile/Place file access capability chooses local content URIs, safe remote-app protocol handoff, read-only seekable Chunks content-provider proxy backed by bounded ranged reads, or explicit materialization. Model lifecycle, file identity, incomplete verified-piece availability, consumer seek/retry/cancellation and per-reader quotas without leaking credentials. rTorrent XML-RPC access does not grant arbitrary filesystem reads. See the canonical [EXTERNAL-FILE-ACCESS](EXTERNAL-FILE-ACCESS.md) contract for adapter, permission and acceptance requirements.
+
+
 ## Architecture: shared semantics, independent capabilities
 
 Android Compose UI and share intents → application command coordinator → Transfer / Place / Collection / Operation domain model → explicit local engine adapter OR rTorrent RPC adapter. Organization produces **proposals**, not filesystem side effects. Storage providers and the optional Companion execute only authorized, capability-proven operations.
