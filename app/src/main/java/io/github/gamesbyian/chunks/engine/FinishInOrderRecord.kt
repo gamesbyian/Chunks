@@ -38,6 +38,18 @@ internal data class FinishInOrderRecord(
             pinned = pinned.filter { it in kept }.toSet(), finished = false)
     }
 
+    /**
+     * One-tap "Finish this next": [index] moves to the front of the order and
+     * every other file keeps its relative place. The user is explicitly asking
+     * for that file, so a pin on it is released. Null while a journal is
+     * unresolved or when the file is not part of this policy.
+     */
+    fun finishNext(index: Int): FinishInOrderRecord? {
+        val target = policy.order.firstOrNull { it.index == index } ?: return null
+        return reordered(policy.copy(order = listOf(target) + policy.order.filter { it.index != index }))
+            ?.let { it.copy(pinned = it.pinned - index, lastApplied = it.lastApplied - index) }
+    }
+
     fun encode(): String = buildString {
         append("v=1\n")
         append("mode=").append(policy.mode.name).append('\n')
