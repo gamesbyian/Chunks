@@ -1,5 +1,12 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-29 P0 native payload collision, confirmed unsafe (#568)
+
+- **Real observed overwrite, not safety acceptance:** synthetic licensed desktop native peer fixture [#633](https://github.com/gamesbyian/Chunks/pull/633), exact source `2c0f64221d02fa7c30abed1e0d0f208668058806`, [workflow 40973832152](https://github.com/gamesbyian/Chunks/actions/runs/40973832152). A stopped Add left an unrelated same-relative-path file intact, but Start **replaced** its bytes. Original SHA-256 `cc0e692ae196745f10abefef20afa2344d22226532465af49c20c38559c16442`; expected torrent and final SHA-256 `bbf2369f3db6526b02c08a33f18d7f6d38ad705d787db5ceebdc14dffe0e36ac`; `foreign_file_replaced=true`. The green experiment proves a desktop-native hazard, not protection.
+- **Unmerged containment:** [#640](https://github.com/gamesbyian/Chunks/pull/640), exact candidate head `404fdcfc127502cc5d83347e98ae5e1f34a039c0`, routes ordinary local `.torrent` Add and snapshot restore through a read-only fail-closed collision survey; API29 public Downloads refusal, Android foundation and native disposable rTorrent checks passed at this head, with additional R8/native instrumentation still running at the time of the entry. This is point-in-time and not a race-free filesystem capability.
+- **Unmerged magnet dependency:** [draft #648](https://github.com/gamesbyian/Chunks/pull/648) is stacked on #640, proposes metadata-time payload path checks, native upload-only retention across paused/restart, and immediate metadata persistence. CI and independent review pending; do not claim full magnet protection or physical-handset evidence.
+- **Gate:** prevent unreviewed same-relative-path writes in every local Add flow, then explicitly verify existing-data attach/recheck through user consent and hashes. Never mistake a matching filename or size for ownership. Android reinstall, permission revocation, SD/providers and external path races remain unverified. [#568](https://github.com/gamesbyian/Chunks/issues/568) owns acceptance.
+
 ## 2026-10-29 per-environment capability snapshots (0A, #567)
 
 - **Source slice:** `EnvironmentCapabilitySnapshot` grades each environment separately.
