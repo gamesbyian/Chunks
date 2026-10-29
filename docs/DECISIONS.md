@@ -12,6 +12,10 @@
 
 **D-ADVANCED-OPS-20261029 | Adopted/provisional design; discovery and seedbox boundaries now resolved by owner.** The initial 58 B-classified inventory items remain documented in three canonical contracts, rather than wholesale adoption of the 240-item research union. Full integrated discovery, with a master switch to disable all discovery activity, is now **binding under D-DISCOVERY-20261029**. Secondary, limited, separately permissioned server health/service tools are now **binding under D-SEEDBOX-TOOLS-20261029**. Both supersede the earlier tentative exclusion of these scopes. Other external media/cloud adapters remain opt-in/provisional and broadened privileged administration stays excluded. See [intake/queue](INTAKE-QUEUE-AND-POLICIES.md), [files/protocol/diagnostics](FILES-PROTOCOL-AND-DIAGNOSTICS.md), [remote integrations/settings](REMOTE-INTEGRATIONS-AND-PREFERENCES.md), [coverage](SPEC-COVERAGE.md).
 
+## Owner-selected human task capabilities (2026-10-29)
+
+**D-HUMAN-TASK-MF02-MF04-MF31 | Owner, binding:** Specify MF02 (outcome receipts), MF04 (continuing an unfinished human task) and MF31 (effective rule/conflict explanation) as deliberate Chunks capabilities. Keep ordinary Add and Transfers usable without Task workflow; distinguish technical verification from user attestation; resumption cannot replay uncertain operations; rule explainability must preserve existing Smart Seeding Rules precedence and environment boundaries. The feature contracts [TASK-OUTCOMES-AND-CONTINUITY](TASK-OUTCOMES-AND-CONTINUITY.md) and [EFFECTIVE-POLICY-EXPLANATIONS](EFFECTIVE-POLICY-EXPLANATIONS.md) own full criteria. This is owner-approved **planned behavior**, not implementation evidence. The owner did not authorize the other research MF families as features by this selection.
+
 ## Decision registry
 
 | ID | Status | Decision and boundaries | Reopen condition |
