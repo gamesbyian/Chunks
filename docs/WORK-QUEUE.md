@@ -26,6 +26,10 @@ These are requirements under [DISCOVERY (intake contract)](INTAKE-QUEUE-AND-POLI
 
 Do not let these slices create admin-focused primary navigation or silently reenable discovery through import/auto-start. The existing seeding rules, remote Smart Connect and unified local/remote acceptance remain separate prerequisites.
 
+## Planned independently testable slice: Task outcomes, continuity and policy explainability
+
+The owner selected **MF02, MF04 and MF31** for careful specification. Canonical contracts: [Task outcomes and continuity](TASK-OUTCOMES-AND-CONTINUITY.md) and [effective-policy explanations](EFFECTIVE-POLICY-EXPLANATIONS.md). These are **planned, not implemented**. Defer relative to active P0/P1 release gates and independently owned work. Suggested separable engineering sequence: (1) pure Task/milestone/receipt types with source certainty, stable environment IDs and non-destructive storage tests; (2) atomic optional Task checkpoints and read-only resume/reconciliation with process-death and offline tests; (3) shared deterministic rule explanation projection and pure conflict fixtures from existing Smart Seeding Rules evaluator; (4) constrained Compose surfaces with scoped previews and accessible outcomes; (5) integration acceptance proving no hidden command replay or implicit cross-profile mutations. Update QUALITY-LEDGER and SPEC-COVERAGE only from actual implementation and verified tests.
+
 ## Planned slice: Smart Seeding Rules
 
 Implement [SMART-SEEDING-RULES](SMART-SEEDING-RULES.md) in independently testable stages once conflicting active PRs and ownership have been checked: pure policy model and deterministic tracker matching; stable rule identities, generated/editable names and explicit multi-environment selection; per-profile capability/readback adapters; Add-route preview and guarded start; opt-in unattended import hold/fallback; scoped batch application and accessibility/host acceptance. Tests must distinguish intended rule selection from runtime-enforced policy. This is planned work, not a new P0 or an implementation claim.
