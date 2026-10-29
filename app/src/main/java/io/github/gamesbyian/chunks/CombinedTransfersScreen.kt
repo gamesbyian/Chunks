@@ -39,6 +39,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.heading
@@ -342,14 +343,19 @@ internal fun CombinedTransfersScreen(
     }
 
     val listState = rememberLazyListState()
+    // Reading LazyListState.layoutInfo during composition creates a feedback
+    // loop: layout publishes info, composition reads it, then remeasures.
+    // Capture only actual size changes and use stable scroll state for visibility.
+    var viewportHeightPx by remember { androidx.compose.runtime.mutableIntStateOf(0) }
     val showReturnToTop = ReturnToTopPolicy.remote(
         firstVisibleIndex = listState.firstVisibleItemIndex,
         firstVisibleOffsetPx = listState.firstVisibleItemScrollOffset,
-        viewportHeightPx = listState.layoutInfo.viewportSize.height,
+        viewportHeightPx = viewportHeightPx,
         hasTransfers = result.transfers.isNotEmpty()
     )
     Box(Modifier.fillMaxSize()) {
-        LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp),
+        LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp)
+                .onSizeChanged { viewportHeightPx = it.height },
             state = listState, contentPadding = PaddingValues(bottom = 88.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item {
