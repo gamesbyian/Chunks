@@ -9,6 +9,7 @@ import androidx.core.view.WindowCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Arrangement
@@ -1109,7 +1110,9 @@ private fun TransfersScreen(
                         Text(if (loading) "Refreshing…" else "Refresh")
                     }
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                val wideText = LocalDensity.current.fontScale >= 1.5f
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(
                         onClick = {
                             selecting = !selecting
@@ -1118,7 +1121,7 @@ private fun TransfersScreen(
                             batchMessage = null
                         },
                         enabled = !loading && !stale && !batchBusy && list.isNotEmpty(),
-                        modifier = Modifier.weight(1f).heightIn(min = 52.dp)
+                        modifier = (if (wideText) Modifier.fillMaxWidth() else Modifier.weight(1f)).heightIn(min = 52.dp)
                     ) {
                         Text(if (selecting) "Exit batch selection" else "Select transfers for a batch")
                     }
@@ -1472,8 +1475,9 @@ private fun TransferCard(
                     else -> ChunksTone.ACTIVE
                 }
             )
-            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically) {
+            // Wraps the pill onto its own line when the text is large.
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(6.dp), itemVerticalAlignment = Alignment.CenterVertically) {
                 Text((transfer.fractionComplete * 100).toInt().toString() + "% · " +
                     Units.bytes(transfer.completedBytes) + " of " + Units.bytes(transfer.sizeBytes),
                     style = MaterialTheme.typography.bodySmall)
@@ -1876,8 +1880,9 @@ private fun StatTile(label: String, value: String, color: Color, modifier: Modif
         colors = CardDefaults.cardColors(containerColor = color)) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(label, style = MaterialTheme.typography.labelMedium, color = Ink)
+            // Two lines at most: at 200% text a single line dropped the unit ("50.4").
             Text(value, style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold, color = Ink, maxLines = 1)
+                fontWeight = FontWeight.Bold, color = Ink, maxLines = 2)
         }
     }
 }
