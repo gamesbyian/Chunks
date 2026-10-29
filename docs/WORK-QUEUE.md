@@ -49,6 +49,9 @@ The owner selected **MF02, MF04 and MF31** for careful specification. Canonical 
 
 ## Planned slice: Smart Seeding Rules
 
+**2026-10-29 maintenance handoff:** #557/#559/#561/#564 delivered the rule store, editor, phone primitives and phone controller; #566 merged as `730509bd` after five green exact-head workflows and supplies the phone `.torrent` Add read-only preview and transfer-card rule explanation. These are partial implemented slices. The next independently executable unclaimed work is **manual Seeding group choice/override in Add with explicit environment identity**, preserving magnet pending-metadata safety; separately pursue remote read-only capability assessment before claiming rTorrent enforcement, and never read passkey-bearing tracker URLs. Check live ownership before beginning. Full MF31 explanation, unattended intake, host and physical accessibility acceptance remain open.
+
+
 Implement [SMART-SEEDING-RULES](SMART-SEEDING-RULES.md) in independently testable stages once conflicting active PRs and ownership have been checked: pure policy model and deterministic tracker matching; stable rule identities, generated/editable names and explicit multi-environment selection; per-profile capability/readback adapters; Add-route preview and guarded start; opt-in unattended import hold/fallback; scoped batch application and accessibility/host acceptance. Tests must distinguish intended rule selection from runtime-enforced policy. This is planned work, not a new P0 or an implementation claim.
 
 ## Planned recovery slice: relocated or renamed transfer backing files
