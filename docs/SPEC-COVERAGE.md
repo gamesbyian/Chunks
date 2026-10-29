@@ -65,7 +65,7 @@ The [only live queue](WORK-QUEUE.md) now orders G0 architecture/viability, G1 or
 
 ## Transfer file recovery after external rename/move
 
-**Required; implementation and acceptance OPEN.** [TRANSFER-FILE-RECOVERY](TRANSFER-FILE-RECOVERY.md) specifies scoped search for moved/renamed backing data, exact verified mapping to immutable torrent files, non-destructive repair, capability-gated root/per-file rebind, actual hash recheck and resumed engine state. Standard rTorrent directory reset does not establish arbitrary per-file relink support. Validate local/remote adapter capabilities, v1/v2 and incomplete piece hash integrity, interrupted batches, side-by-side same-hash profiles, preserved user filenames and zero accidental overwrites. No physical/seedbox verification claimed.
+**Required; implementation and acceptance OPEN.** [TRANSFER-FILE-RECOVERY](TRANSFER-FILE-RECOVERY.md) specifies scoped search for moved/renamed backing data, exact verified mapping to immutable torrent files, non-destructive repair, capability-gated root/per-file rebind, actual hash recheck and resumed engine state. Standard rTorrent directory reset does not establish arbitrary per-file relink support. Validate local/remote adapter capabilities, v1/v2 and incomplete piece hash integrity, interrupted batches, side-by-side same-hash profiles, preserved user filenames and zero accidental overwrites. A first read-only stage exists for phone transfers only: an on-demand per-file presence/size check (missing, size mismatch, unreadable, unsafe path) that never claims content integrity; remote diagnosis, search, match, rebind and recheck remain open. No physical/seedbox verification claimed.
 
 ## Plex filename repair: safe minimal edits
 
