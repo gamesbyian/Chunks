@@ -1,5 +1,16 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-29 Create & Share, Finish this next, restart robustness and real 200% (app lane)
+
+- **Merged (squash, exact-head CI green):**
+  - #530 engine restart robustness `9651b2c` (head `7ba6ad14`: build/JVM 40826105240). It relaxes an over-strict restart assertion to tolerate the in-flight partial pieces lost at pause, while every verified piece must survive. It also adds a test that Finish in Order priorities survive an engine restart and that an interrupted journal is reconciled without replay;
+  - #488 real system 200% Compose test `963522b` (head `1f3a3257`: actual-system-font-200pct-compose 40826343102, API35 40826343082, build 40826343096). It was adapted to the visual pass: it scrolls to the address field and opens More tools before checking the snapshot action;
+  - #542 engine-independent v1 metadata builder `c6befe8` (head `729034f0`: API35 40846677731, build 40846677646, minified-smoke 40846677628). Its info hash equals libtorrent's own builder, and the real engine verifies the payload as 100%;
+  - #545 Create screen `02f2b6f` (head `51735d50`: API35 40850022101, build 40850022278, atlas 40850022274, minified-smoke 40850022182). Pick a file or folder, review, build, then save, share or copy. Tests typing into the Connect address field now scroll to it;
+  - #546 one-tap Finish this next `b0e5c0b` (head `16b54d10`: API35 40850559021, which includes the new real-engine panel test; build 40850559015; minified-smoke 40850558990).
+- **Docs merged after review:** #532 Create & Share contract, #537–#539 and #543 research (non-normative), #541 Smart Seeding Rules contract. #540 was closed by its author in favour of #543.
+- **Evidence tier:** JVM/Robolectric, desktop libtorrent on loopback, and the API35 emulator. Nothing here is handset, real-swarm, TalkBack or human visual acceptance.
+
 ## 2026-10-29 Smart Connect, Finish in Order default and approved ExtraBold
 
 - **Merged (squash, exact-head CI green):**

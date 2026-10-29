@@ -4,7 +4,7 @@
 
 **Inputs:** [Multilingual aversion and abandonment research](https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md), [External 240-feature inventory](https://github.com/gamesbyian/Chunks/blob/26fec615e8241504011f319929c40d22cc35bd9f/docs/BITTORRENT-ECOSYSTEM-FEATURE-INVENTORY-2026-10-29.md) and [36-journey / 240-micro-workflow atlas](https://github.com/gamesbyian/Chunks/blob/7631199f79b6763a961da5a2a3665886eb6964d7/docs/BITTORRENT-USER-GOALS-AND-WORKFLOWS-2026-10-29.md). The machine-readable, inspectable counterpart is [the typed JSON graph](BITTORRENT-CONCEPT-GRAPH-2026-10-29.json).
 
-**Important epistemic boundary:** “Missing” here means **not explicitly represented as a complete capability in the 240-item inventory**, or **a relationship between existing capabilities is not covered there**. It emphatically does *not* mean no BitTorrent software anywhere implements it. Components, plugins, new releases and external services may already provide parts or even all of a candidate. All 69 H-series entries are hypotheses to investigate, not verified unmet market needs, commitments or requests to change a product.
+**Important epistemic boundary:** “Missing” here means **not explicitly represented as a complete capability in the 240-item inventory**, or **a relationship between existing capabilities is not covered there**. It emphatically does *not* mean no BitTorrent software anywhere implements it. Components, plugins, new releases and external services may already provide parts or even all of a candidate. All 72 H-series entries are hypotheses to investigate, not verified unmet market needs, commitments or requests to change a product.
 
 ## 1. Two views of the map
 
@@ -71,7 +71,7 @@ Existing tools have many of the boxes on the main line, and some tools bridge se
 | Cognitive demands | 21 | The mental work a user might be doing or trying to avoid |
 | Possible affective stakes | 21 | Anticipation, uncertainty, trust, loss concern, pride and other context-sensitive possibilities |
 | Gap domains | 11 | Qualitatively identified thin or discontinuous relationship zones |
-| Candidate feature hypotheses | 69 | Potential unrepresented connective capabilities |
+| Candidate feature hypotheses | 72 | Potential unrepresented connective capabilities |
 | Reported aversion factors | 55 | First-person complaints, distinctive cases and contingent perceptions from PR #539 |
 | Friction domains | 6 | Why people avoid, quit or reluctantly participate |
 | Possible exit or alternate paths | 21 | Conditional non-use, interruption, repair abandonment or switching routes |
@@ -79,9 +79,11 @@ Existing tools have many of the boxes on the main line, and some tools bridge se
 | Individual aversion source records | 57 | Original links from PR #539; some share the same underlying discussion |
 | Implementation and context evidence records | 25 | Documented client capabilities, OS rules, task-level accessibility reports and cross-domain studies |
 | Discontinuance theory categories | 7 | Cross-domain analytical taxonomy of different reasons for stopping |
-| **Total** | **877** | Typed nodes available for query, visualization and revision |
+| Consolidated capability families | 33 | Non-overlapping human-outcome groupings of H hypotheses; not 33 inventions |
+| Human workflow seams | 30 | Explicit handoff or cognitive mismatch between existing A activities |
+| **Total** | **943** | Typed nodes available for query, visualization and revision |
 
-The JSON contains **3,832 typed edges**, including 695 prior activity→feature links, 547 *co-support* relationships between feature concepts, 149 journey→activity memberships, 113 potential activity transitions and explicit relationships from the H hypotheses to the activities/features/cognitive demands/affective stakes they could affect.
+The JSON contains **4,118 typed edges**, including 695 prior activity→feature links, 547 *co-support* relationships between feature concepts, 149 journey→activity memberships, 113 potential activity transitions and explicit relationships from the H hypotheses to the activities/features/cognitive demands/affective stakes they could affect.
 
 **Caution about interpretation:** Co-support means that two features were linked to the *same described activity*. It proves neither that the features implement one another nor that they must both be present. The cognitive/affective mappings are analyst-supplied hypotheses, not interviews or psychological measurements. The graph retains the relationship type and evidence/interpretation level so those distinctions can be preserved.
 
@@ -308,6 +310,10 @@ These are deliberately phrased as **capability hypotheses**, not instructions to
 | **H68** | Android destination and distribution-variant capability explanation | File access and allowed save paths vary by Android version, SAF permission and Play/F-Droid/direct packaging | A10.11, A02.07, A16.11 | F03.17, F14.13 |
 | **H69** | Assistive semantic parity for torrent states and controls | Accessible navigation alone does not guarantee readable speed, quota, peer, tracker, status and destructive-action meanings | A18.07, A04.01, A05.02 | F14.09, F08.03 |
 
+| **H70** | Conflicting policy preflight and effective-rule explanation | Two legitimate automated or manually assigned seeding, queue, network and environment rules can apply at once without an intelligible explanation of the winner or how to resolve the conflict. | A17.05, A11.10, A07.11 | F05.13, F12.10 |
+| **H71** | Freshness and source-of-truth markers for transfer status | A cached remote status, command acknowledgement and current observed server state can look identical despite different certainty, source and age. | A08.08, A04.01, A15.12 | F10.10, F13.13 |
+| **H72** | Effective capability map across app, server, Android and storage | A feature can exist in one engine but be unusable in the selected environment because of backend version, Android permissions, provider limits or missing filesystem channel. | A08.03, A10.11, A09.04 | F10.06, F03.17 |
+
 ### 6.1 What “missing” should mean at different levels
 
 1. **Missing from an inventory:** no explicit feature entry describes the *whole* hypothesized function, even though components may exist.
@@ -370,7 +376,7 @@ jq -r '.edges[] | select(.type=="co_supports_activity" and .weight>=2) | [.from,
 jq -r '.nodes[] | select(.type=="missing_capability_hypothesis") | [.id,.label,.missingLink] | @tsv' BITTORRENT-CONCEPT-GRAPH-2026-10-29.json
 ```
 
-The graph stores `confidence` labels such as `document-derived`, `previous_atlas_synthesis`, `derived_co_occurrence`, `interpretive`, and `hypothesis`. They describe **how the edge was produced**, not numerical probabilities of correctness. Human goals and affective stakes are attached at the *activity domain* level, a deliberate low-resolution first pass. It should not be treated as psychographic data about actual users. The 69 H nodes have more specifically chosen activity, feature, cognition and affective links.
+The graph stores `confidence` labels such as `document-derived`, `previous_atlas_synthesis`, `derived_co_occurrence`, `interpretive`, and `hypothesis`. They describe **how the edge was produced**, not numerical probabilities of correctness. Human goals and affective stakes are attached at the *activity domain* level, a deliberate low-resolution first pass. It should not be treated as psychographic data about actual users. The 72 H nodes have more specifically chosen activity, feature, cognition and affective links.
 
 **Edge types to keep separate:**
 
@@ -381,19 +387,19 @@ The graph stores `confidence` labels such as `document-derived`, `previous_atlas
 - `extends_or_bridges_existing`, `would_support_activity`: hypothetical H-to-F and H-to-A connections.
 - `responds_to_possible_affect`, `could_support_affective_shift`: conditional emotional consequences, **not empirical effects**.
 
-## 9. How to examine or falsify a proposed gap
+## 9. How to examine or falsify a proposed gap (desk-only protocol)
 
-A good gap analysis must actively search for disconfirming evidence:
+This research does **not** require observing, recruiting, surveying or interviewing users. It follows a reproducible desk-research protocol instead:
 
-1. **Verify representation:** Does the full 240-feature inventory already say exactly what H proposes? If yes, merge/cross-reference the concept and mark the H as *covered in the inventory*, not a new feature.
-2. **Verify product/version reality:** Search active clients, remote frontends, plugins, provider tools, documentation and implementation. A feature may be hidden in an API, extension or integration.
-3. **Verify interaction completeness:** Does the user actually reach the desired state across all relevant systems, or merely complete a subtask? Test a sequence, not a screenshot.
-4. **Check cognitive assumptions:** Ask whether the user has to understand complex identity, time, authority or consequences to reach the goal; record any genuine confusion.
-5. **Check affective assumptions:** Do not infer emotional prevalence from an adjective in one discussion. Interview or observe people with different goals, including those who enjoy manual control.
-6. **Check conditional necessity:** Does this matter only for cross-seeding, private trackers, media managers, Android storage, remote hosts or low-availability swarms? Mark environments explicitly.
-7. **Record result:** `already_compound`, `already_standalone`, `implementation_specific_gap`, `workflow_gap`, `unsupported_hypothesis`, or `not_yet_checked` are useful evidence labels. The current H series should all initially be considered `not_yet_checked` at market-wide scope.
+1. **Cross-check inventory wording:** Compare an H or MF proposal against the full 240-feature catalogue. If all underlying mechanics are already present, classify it as a composition or relationship, not a completely new protocol feature.
+2. **Look for disconfirming implementations:** Search maintained software specifications, source trees, issue discussions, APIs, user manuals, release notes and plugin docs. Record exact product/version and permission scope.
+3. **Define executable postconditions:** Describe the operation's preconditions, observable states and possible failure paths based on documentation. Never claim empirical reliability without a test.
+4. **Reconstruct cognitive work conservatively:** Explain which identities, clocks, costs, rules and causal outcomes a person has to reason about. Label these as analytical inferences.
+5. **Keep emotional stakes hypothetical:** Public complaints demonstrate particular experiences, not rates of emotion, personality categories or predicted satisfaction.
+6. **Test environment specificity:** Separate Android OS/version, storage grants, local torrent engines, remote APIs, host privileges and private tracker policies; consider lawful alternative paths.
+7. **Classify the result:** `not_explicitly_integrated`, `component_present`, `documented_partial_implementation` or `platform_bounded` describe *inventory coverage*, while verified product/version availability is a separate evidence question.
 
-**A sparsely linked feature is not necessarily underdeveloped; a densely linked feature is not necessarily useful.** The meaningful target is a gap between a person's intention, the interaction they can perform, the resulting state, and the confidence with which they can know that state has been reached.
+Do not infer that a feature is useful because it has many graph edges; do not infer absence because it has only one. [The missing-features synthesis](BITTORRENT-MISSING-FEATURES-SYNTHESIS-2026-10-29.md) applies the above distinctions to the full graph.
 
 ## 10. Integrating non-use, aversion and abandonment
 
@@ -538,23 +544,22 @@ Three distinctions follow:
 
 **No blanket “missing” claim:** H55–H66 are twelve new *candidate completeness questions* about the inventory, not proof of novelty in all torrent clients. Some could be composites of existing features or handled by independent utilities.
 
-### 10.5 Research that would most improve the map next
+### 10.5 Desk-only research directions
 
-The graph now supports more specific investigation than another indiscriminate feature crawl:
+The current research program uses **public primary materials and already-collected accounts**, not additional real-user observation. The most informative next checks are:
 
-1. **Non-adopter and quitter diaries:** Ask people who recently chose direct download, Usenet, streaming, a cloud share or no download: what were they trying to achieve, what exact action did they take last, and what would change their decision? This captures the beginning and terminal branches ignored by enthusiast manuals.
-2. **Interruption and return:** Observe users opening a completed/errored client days later. What do they remember? What does the app know? Which old safety workaround stays enabled after circumstances change?
-3. **Paired device/seedbox studies:** Trace the same content across browser, phone remote, remote torrent job, SFTP, media manager and final playback. Record every state transition where a human guesses if the effect completed.
-4. **Low-resource contribution:** Study homes with small upstream, metered access, expensive electricity, limited storage or shared household connections. Separate willingness to upload from feasibility and demand; avoid moral labels.
-5. **Content sampling, access and publishing:** Include researchers, public-domain archivists, release publishers, language/edition seekers, disabled users and creators distributing their own work. Do not let entertainment acquisition define all usage.
-6. **Technical implementation disconfirmation:** For each H hypothesis, search current client APIs and UI, mobile remotes, seedbox extensions, file managers and sidecars, then record whether the *whole human workflow* is supported or merely its constituent technical primitives.
-7. **Real accessibility and localization testing:** No sufficient first-person accessibility evidence emerged in this additional search to justify new prevalence claims; recruit screen-reader, low-vision, motor-access and non-English participants instead of guessing about their experience.
+1. Compare first-person abandonment accounts against exact releases, source metadata and client implementation documentation; record cases where the user was constrained by supply/demand or legal choices rather than missing controls.
+2. Assemble end-to-end state diagrams from published RPC/API contracts, service-provider manuals and file-management guides. Distinguish registered jobs, actual bytes and downstream copies.
+3. Cross-check mobile service/permission limitations against Android version and app package, without assuming one foreground-service policy applies to every torrent workflow.
+4. Search accessible UI issue trackers, release notes and source code for semantic equivalence of status/controls, not just claims of generic keyboard support.
+5. Use examples from scientific publishers, software distributors, archivists and creators as counterweights to media-download-only assumptions.
+6. For each proposed gap, actively look for mature implementations that disprove novelty and mark the status at the *documented scope*.
 
-**Highest-value new evidence types:** first-run recordings, task-level observation, before/after screenshots of real repair, abort logs with consent, longitudinal diary studies, client issue reports with reproduction steps, and provider-specific operation manuals. None of these justify invasive telemetry by default.
+The [source-by-source validation audit](BITTORRENT-CONCEPT-MAP-EVIDENCE-AUDIT-2026-10-29.md) and [consolidated missing-features report](BITTORRENT-MISSING-FEATURES-SYNTHESIS-2026-10-29.md) implement this approach. These sources cannot establish population frequency or measured usability improvements.
 
 ## 11. What further research changed: novelty, Android, accessibility and exit
 
-The latest audit [separately documents 25 sources and their consequences](BITTORRENT-CONCEPT-MAP-EVIDENCE-AUDIT-2026-10-29.md). It is essential reading alongside the 69 H-series hypotheses. **Sixteen existing hypotheses have scope-limited validation status annotations in the JSON graph.** Most assessed cases have an existing partial implementation or source-specific precedent. These entries must not be advertised as new capabilities without a tighter definition and version-specific verification.
+The latest audit [separately documents 25 sources and their consequences](BITTORRENT-CONCEPT-MAP-EVIDENCE-AUDIT-2026-10-29.md). It is essential reading alongside the 72 H-series hypotheses. **Sixteen existing hypotheses have scope-limited validation status annotations in the JSON graph.** Most assessed cases have an existing partial implementation or source-specific precedent. These entries must not be advertised as new capabilities without a tighter definition and version-specific verification.
 
 ### 11.1 Documented features that disprove broad novelty
 
@@ -584,15 +589,54 @@ The H series is now best treated as **validation questions**, with a feature's s
 
 Read the [detailed evidence register, disconfirmation matrix, Android platform analysis, accessibility cases, publisher workflows and research follow-ups](BITTORRENT-CONCEPT-MAP-EVIDENCE-AUDIT-2026-10-29.md) rather than equating a graph's count of hypotheses with the number of genuine absent features.
 
-## 12. Boundaries and handoff
+## 12. Desk-only consolidation: where the 240-feature list is actually thin
 
-The research remains external and exploratory, now explicitly including users who decline, abandon or switch away from BitTorrent. It introduces **no new requirements**, makes **no assessment of the existing product**, creates **no backlog or prioritized roadmap**, and does not modify the underlying 240-feature inventory or the 240-activity atlas. No user study or instrumented usage data was collected. Neither the numerical graph size nor the 69 hypotheses should be interpreted as population coverage or proven novelty.
+The original 69 H hypotheses, plus three further analytical possibilities H70–H72, are now mapped **exactly once** into 33 `MF` capability families. The [full gap synthesis](BITTORRENT-MISSING-FEATURES-SYNTHESIS-2026-10-29.md) is the canonical report for the *missing-features question*. The 30 `SM` seam nodes in [the JSON graph](BITTORRENT-CONCEPT-GRAPH-2026-10-29.json) represent specific human workflow boundaries rather than additional unique features.
+
+| Interpretation of capability-family coverage | Count | Meaning |
+|---|---:|---|
+| **Not explicitly integrated in inventory** | 7 | Potentially missing complete user-facing capabilities; not proven absent from real products |
+| **Documented partial implementation** | 8 | Mature implementations exist for significant parts; further work would extend coverage or cross-tool scope |
+| **Component primitives already represented** | 16 | The novelty, if any, lies in their orchestration and comprehensibility rather than new mechanics |
+| **Mainly platform-bounded** | 2 | Android service/storage constraints, not features software can unilaterally circumvent |
+| **Total** | **33** | Consolidated reporting families, covering all 72 H hypotheses |
+
+### 12.1 Seven candidate integrated-feature omissions
+
+These are the clearest gaps *in the existing list's conceptual coverage*:
+
+- **MF02:** one outcome receipt joining remote torrent submission, download, payload copy/import and actually usable result.
+- **MF04:** resumption of a person's unfinished task, not just restarting a stored torrent job.
+- **MF18:** evidence-backed explanation of which network route was actually tested for peer/tracker traffic, with privacy limitations.
+- **MF20:** creator-side first-seed/recipient delivery readiness, separating published metadata from reachable content.
+- **MF24:** continuity of a creator's multiple release versions, their swarms and recipient migrations.
+- **MF31:** explanation of conflicting ratio, speed, category, tracker and environment rules, including which rule wins.
+- **MF32:** explicit age and source of displayed status, distinguishing cached or acknowledged values from current verified state.
+
+**Do not call these globally novel.** The list identifies a missing **integrated description in the 240-item inventory**. No exhaustive market-wide implementation audit or user-study outcome measurement has been performed.
+
+### 12.2 Three refined hypotheses
+
+- **H70 (MF31):** a policy-conflict and effective-rule explanation across simultaneous per-job, group, tracker and environment settings.
+- **H71 (MF32):** freshness, provenance and uncertainty for a remote status when cached data and command acknowledgements may be mistaken for current server state.
+- **H72 (MF33):** a capability explanation that combines engine API, provider permissions, Android constraints and filesystem connectivity into the actual ability to execute a chosen action.
+
+### 12.3 The human question behind each relationship
+
+The useful test is: **What can someone now decide, verify, recover, or intentionally decline that was not clear before?** A product may expose many low-level settings without resolving that question. Conversely, a short explanation or safe verification step may connect several existing mechanisms without requiring new transport functionality.
+
+All MF and SM links are marked as desk-research synthesis, not observed behavior. They preserve the existing 240 F concepts and 240 A activities unchanged.
+
+## 13. Boundaries and handoff
+
+The research remains external and exploratory, now explicitly including users who decline, abandon or switch away from BitTorrent. It introduces **no new requirements**, makes **no assessment of the existing product**, creates **no backlog or prioritized roadmap**, and does not modify the underlying 240-feature inventory or the 240-activity atlas. No user study or instrumented usage data was collected. Neither the numerical graph size nor the 72 hypotheses should be interpreted as population coverage or proven novelty.
 
 **Artifacts:**
 
 - This document: readable conceptual map, sparsity interpretation, diagrams, all H hypotheses and research validation method.
 - [Typed graph data](BITTORRENT-CONCEPT-GRAPH-2026-10-29.json): full nodes, edges, IDs, alternative routes, cognitive and possible emotional relations, plus derived feature co-occurrence.
 - [Evidence audit](BITTORRENT-CONCEPT-MAP-EVIDENCE-AUDIT-2026-10-29.md): implementation disconfirmation, source-specific conclusions, Android and accessibility research, and refined exit taxonomy.
+- [Missing-features synthesis](BITTORRENT-MISSING-FEATURES-SYNTHESIS-2026-10-29.md): consolidated 33-family inventory coverage, all 72 hypothesis cross-links, and 30 human workflow seam explanations.
 - [Feature inventory](https://github.com/gamesbyian/Chunks/blob/26fec615e8241504011f319929c40d22cc35bd9f/docs/BITTORRENT-ECOSYSTEM-FEATURE-INVENTORY-2026-10-29.md): source-of-record for observed product capabilities.
 - [Activity atlas](https://github.com/gamesbyian/Chunks/blob/7631199f79b6763a961da5a2a3665886eb6964d7/docs/BITTORRENT-USER-GOALS-AND-WORKFLOWS-2026-10-29.md): source-of-record for illustrated user workflows.
 

@@ -49,6 +49,8 @@ Changes to rules default to future transfers only. An explicit "Apply to existin
 - Persist a stable rule ID independent of the editable display name. Environment membership is keyed by immutable environment/profile IDs, never by user-editable profile names. Renaming a rule or server never changes rule precedence, past assignment, matching or existing transfer identity.
 - In Add, display the effective rule and group only for the currently selected destination environment, recomputing the matching preview if the user changes environment. If the manually selected rule does not apply to the newly selected environment, visibly request a compatible selection or auto-detection rather than carrying forward an invalid policy.
 
+**Policy boundary:** Seeding-group ratio, duration and upload cap meaning/precedence belong to this contract. Optional **download** scheduling, network/battery prerequisites, queue slots, stall/watchdog behavior, quotas and source retrieval belong to [INTAKE-QUEUE-AND-POLICIES](INTAKE-QUEUE-AND-POLICIES.md). The shared Add review combines both summaries for the exact selected environment without silently applying either to unrelated profiles.
+
 ## Transfer details and control surfaces
 
 Show a compact group name and effective stop/rate summary in transfer details with "Why this rule?", quick override, reassign, pause, and detailed metrics. Transfer lists can filter by seeding group, source tracker, ratio goal, paused-by-rule status and compliance/enforcement state. Batch assignment follows exact-hash and environment scope safety. Settings use a single visual rule builder (When / Then / Exceptions) with examples, a natural-language summary and a nontechnical mode; experts may inspect full criteria and order.
@@ -75,3 +77,15 @@ UI distinguishes rule **selected**, **applied to Chunks**, **acknowledged by eng
 8. Unit, property, lifecycle, controller-offline, duplicate/uncertain-command, policy collision, persistence/process-death, accessibility and 200% type tests; test on approved public torrent fixtures only.
 9. Rules are clearly selectable per one, several or all named environments; adding a new profile does not unexpectedly include it; disabled/offline scope and capability differences are explicit. Generated descriptive names are editable and stable, with a separate immutable rule identity and no secret leakage.
 10. Native engine and Seedhost remote capabilities are reported from evidence, not from aspirational UI. Maintain SPEC-COVERAGE and QUALITY-LEDGER separately when implementation/test evidence exists.
+
+## Implementation note: domain model (2026-10-29)
+
+`app/src/main/java/io/github/gamesbyian/chunks/seeding/SeedingRules.kt` holds the shared, offline rule domain:
+- `RateLimit.parse` with exact units, showing bits beside bytes;
+- `SeedingPolicy`, with independent ratio, duration and cap, ANY/ALL combination, contradiction warnings, and a plain-language description that says stopping never removes or deletes;
+- `TrackerHosts`, matching whole labels and never keeping credentials or paths;
+- `SeedingRule`, with a stable ID, generated names that follow conditions until the user renames, and explicit environment membership where future environments are opt-in;
+- `SeedingRuleEngine.resolve`.
+
+Evidence: JVM tests, including acceptance case 1. Not yet: persistence, Add/detail UI, or local/remote enforcement adapters with readback.
+

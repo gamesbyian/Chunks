@@ -1,0 +1,42 @@
+name: Documentation validation
+
+on:
+  push:
+    branches:
+      - docs/reconcile-specs-main-20261029
+    paths:
+      - 'docs/**'
+      - 'README.md'
+      - 'AGENTS.md'
+      - 'assets/fonts/README.md'
+      - 'tools/check_docs.py'
+      - 'tests/test_docs_check.py'
+      - '.github/workflows/documentation-validation.yml'
+  pull_request:
+    paths:
+      - 'docs/**'
+      - 'README.md'
+      - 'AGENTS.md'
+      - 'assets/fonts/README.md'
+      - 'tools/check_docs.py'
+      - 'tests/test_docs_check.py'
+      - '.github/workflows/documentation-validation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-validation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate repository-wide local documentation links
+        run: python3 tools/check_docs.py
+      - name: Test documentation validator
+        run: python3 -m unittest discover -s tests -p 'test_docs_check.py'
