@@ -5,10 +5,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
@@ -34,7 +36,7 @@ class RemoteFilePageRowTest {
         rule.setContent {
             CompositionLocalProvider(LocalDensity provides Density(1f, 2f)) {
                 ChunksTheme {
-                    Box(Modifier.width(288.dp)) {
+                    Box(Modifier.width(288.dp).testTag("file-container")) {
                         RemoteFilePageRow(7, file, "Normal", false, true) { clicks[0]++ }
                     }
                 }
@@ -47,7 +49,8 @@ class RemoteFilePageRowTest {
             .getUnclippedBoundsInRoot()
         assertTrue("large text must not compete with the action for horizontal space", action.top >= facts.bottom)
         assertTrue("action height must accommodate accessibility", action.bottom - action.top >= 48.dp)
-        assertTrue("action must stay in 288dp content width", action.right <= 288.dp)
+        val container = rule.onNodeWithTag("file-container").getUnclippedBoundsInRoot()
+        assertTrue("action must stay inside its file row", action.left >= container.left && action.right <= container.right)
         rule.onNodeWithContentDescription(
             "Change priority for file 8: Season 1/Episode 01 The Long Title.mkv").performClick()
         assertEquals(1, clicks[0])
