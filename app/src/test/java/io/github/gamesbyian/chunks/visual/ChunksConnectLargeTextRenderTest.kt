@@ -1,7 +1,10 @@
 package io.github.gamesbyian.chunks.visual
 
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.gamesbyian.chunks.MainActivity
 import org.junit.Rule
@@ -21,5 +24,11 @@ class ChunksConnectLargeTextRenderTest {
     @Test fun connectAt200Percent() {
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/chunks-visual/connect-200pct.png")
+    }
+
+    @Test fun phoneAt200Percent() {
+        rule.onNodeWithText("Download on this phone", substring = true).performScrollTo().performClick()
+        rule.waitForIdle()
+        rule.onRoot().captureRoboImage("build/chunks-visual/phone-200pct.png")
     }
 }
