@@ -59,8 +59,7 @@ internal fun StatusPill(label: String, tone: ChunksTone, modifier: Modifier = Mo
             .padding(horizontal = 10.dp, vertical = 3.dp),
         color = if (tone == ChunksTone.INACTIVE) ChunksColors.Text else ChunksColors.OnAccent,
         style = MaterialTheme.typography.labelLarge,
-        fontWeight = FontWeight.Bold,
-        maxLines = 1
+        fontWeight = FontWeight.Bold
     )
 }
 

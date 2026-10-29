@@ -19,7 +19,12 @@ internal sealed class LocalServicePoll {
             if (running.isEmpty()) return Idle
             return Active(
                 count = running.size,
-                averagePercent = running.sumOf { it.progressPpm.toLong() } / running.size / 10_000
+                // A native status can be temporarily malformed during teardown or
+                // recovery. Never expose impossible progress in the ongoing
+                // notification; calculate with Long to avoid Int overflow.
+                averagePercent = running.sumOf {
+                    it.progressPpm.toLong().coerceIn(0L, 1_000_000L)
+                } / running.size / 10_000
             )
         }
     }

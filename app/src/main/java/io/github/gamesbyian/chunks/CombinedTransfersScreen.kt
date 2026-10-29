@@ -133,6 +133,13 @@ internal fun listingFailure(failure: Throwable): String = when (failure) {
 /** A listing older than this is shown as out of date; it is never refreshed silently. */
 internal const val SAVED_LISTING_FRESH_MS = 120_000L
 
+/** A failed refresh invalidates live status immediately, while preserving last-known rows. */
+internal fun savedListingIsStale(listing: SavedServerListing, now: Long): Boolean =
+    listing.loading || listing.error != null ||
+        (listing.observedAtEpochMillis != null &&
+            (now < listing.observedAtEpochMillis ||
+                now - listing.observedAtEpochMillis > SAVED_LISTING_FRESH_MS))
+
 /** A separate single-flight reader so this view never blocks or shares the phone screen's slot. */
 private object CombinedPhoneReader {
     /** The list (null if no engine) and the fence revision sampled before the read. */
@@ -310,7 +317,7 @@ internal fun CombinedTransfersScreen(
             val observed = listing?.observedAtEpochMillis
             val locked = savedPrivacy[id]?.mayShow == false
             add(EnvironmentSnapshots.server(id, listing?.transfers.orEmpty(), connected = observed != null,
-                stale = listing?.loading == true || (observed != null && now - observed > SAVED_LISTING_FRESH_MS),
+                stale = listing?.let { savedListingIsStale(it, now) } == true,
                 locked = locked, fullView = true, observedAtEpochMillis = observed)
                 .withAliases { hash -> profile.aliasScope?.let { aliases.get(it, hash) } })
         }
@@ -437,6 +444,8 @@ internal fun CombinedTransfersScreen(
                         listing?.loading == true -> "Loading list…"
                         listing?.error != null && listing.observedAtEpochMillis == null ->
                             "Could not load (" + listing.error + ")"
+                        listing?.error != null ->
+                            "Refresh failed (" + listing.error + "), showing last list"
                         else -> availabilityText(source)
                     }
                     Text(labels[source.environment].orEmpty() + ": " + status + " · " +
@@ -477,6 +486,8 @@ internal fun CombinedTransfersScreen(
                     "${result.missingSelectedEnvironments.size} selected environment(s) are no longer set up. " +
                         "Choose All or reselect environments.", style = MaterialTheme.typography.bodySmall,
                     color = ChunksColors.Yellow)
+                Text(combinedTotalsText(io.github.gamesbyian.chunks.model.UnifiedTransferTotals.of(result)),
+                    style = MaterialTheme.typography.bodySmall)
                 Text("Showing ${result.transfers.size}" +
                     if (result.hasIncompleteOrStaleSource) " · some environments are missing or out of date" else "",
                     style = MaterialTheme.typography.titleSmall)
@@ -586,6 +597,10 @@ private fun CombinedTransferRow(
                 .semantics { contentDescription = "Open ${row.displayName} in $environmentLabel" }) {
                 Text("Open in its list")
             }
+            // Say why no action is offered rather than leaving the user to hunt for one.
+            else if (row.key.environment != EnvironmentSnapshots.PHONE) Text(
+                "Listed only. Sign in to this server to open or change it.",
+                style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary)
         }
     }
 }
@@ -612,10 +627,13 @@ internal suspend fun runCombinedLifecycle(
     var phoneLeased = false
     var serverLeased = false
     try {
-        // A source that is not live is refused by the batch itself; never lease its gate.
-        val live = sources.filter { it.availability == EnvironmentAvailability.LIVE }.map { it.environment }.toSet()
+        // An unavailable, incomplete or unobserved inventory cannot authorize
+        // a batch, so never even acquire its engine's mutation gate. The pure
+        // batch still returns an explicit per-transfer refusal.
+        val actionable = sources.filter { it.canClaimCompleteLiveInventory }
+            .map { it.environment }.toSet()
         for (environment in targets.map { it.key.environment }.toSet()) {
-            if (environment !in live) continue
+            if (environment !in actionable) continue
             if (environment == EnvironmentSnapshots.PHONE) {
                 val engine = phoneEngine()
                 when {
@@ -752,3 +770,10 @@ private fun EnvironmentColourChooser(
         }
     }
 }
+
+/** Live-only totals in words, saying what is unknown or left out. */
+internal fun combinedTotalsText(t: io.github.gamesbyian.chunks.model.UnifiedTransferTotals): String =
+    "Live total: ↓ " + Units.bytes(t.downloadBytesPerSecond) + "/s · ↑ " + Units.bytes(t.uploadBytesPerSecond) +
+        "/s across ${t.liveRows} transfers" +
+        (if (t.rowsWithUnknownRate > 0) " · ${t.rowsWithUnknownRate} with rates not reported" else "") +
+        (if (t.excludedEnvironments > 0) " · ${t.excludedEnvironments} environment(s) not included (not live)" else "")

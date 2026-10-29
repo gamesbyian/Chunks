@@ -39,4 +39,28 @@ class LocalServicePollTest {
         val list = List(20_000) { transfer(false, 1_000_000) }
         assertEquals(LocalServicePoll.Active(20_000, 100), LocalServicePoll.classify(list))
     }
+    @Test fun malformedNativeProgressDoesNotMakeNotificationImpossible() {
+        assertEquals(
+            LocalServicePoll.Active(4, 50),
+            LocalServicePoll.classify(
+                listOf(
+                    transfer(false, -100),
+                    transfer(false, 1_500_000),
+                    transfer(false, Int.MIN_VALUE),
+                    transfer(false, Int.MAX_VALUE),
+                    transfer(true, Int.MAX_VALUE)
+                )
+            )
+        )
+    }
+
+    @Test fun maximumAndMinimumNativeValuesRemainBounded() {
+        assertEquals(
+            LocalServicePoll.Active(2, 50),
+            LocalServicePoll.classify(
+                listOf(transfer(false, Int.MIN_VALUE), transfer(false, Int.MAX_VALUE))
+            )
+        )
+    }
+
 }

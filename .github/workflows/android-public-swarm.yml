@@ -22,6 +22,14 @@ on:
         description: "Kill the app mid-download after the budget, then verify restore and continuation"
         type: boolean
         default: false
+      doze:
+        description: "Force deep Doze during a foreground-service download and record whether bytes keep arriving"
+        type: boolean
+        default: false
+      netflap:
+        description: "Turn Wi-Fi and mobile data off for 30 s mid-download, then require verified growth to resume"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -80,4 +88,4 @@ jobs:
           profile: pixel_6
           emulator-boot-timeout: 600
           disable-animations: true
-          script: bash tools/${{ inputs.interrupt && 'android_public_swarm_interrupt.sh' || 'android_public_swarm.sh' }}
+          script: bash tools/${{ inputs.netflap && 'android_public_swarm_netflap.sh' || (inputs.doze && 'android_public_swarm_doze.sh' || (inputs.interrupt && 'android_public_swarm_interrupt.sh' || 'android_public_swarm.sh')) }}
