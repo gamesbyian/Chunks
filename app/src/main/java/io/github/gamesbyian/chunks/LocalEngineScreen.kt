@@ -378,6 +378,9 @@ internal fun LocalEngineScreen(
     val proposedAddDestination = remember(destination, addFolderDraft) {
         LocalOwnedAddFolder.proposed(destination, addFolderDraft)
     }
+    val addFolderNameInvalid = remember(addFolderDraft) {
+        LocalOwnedAddFolder.normalizedName(addFolderDraft) == null
+    }
     LaunchedEffect(pending?.preview?.infoHashV1, destination) {
         addStorage = null
         val review = pending
@@ -595,7 +598,9 @@ internal fun LocalEngineScreen(
             label = { Text("Optional phone download subfolder") },
             placeholder = { Text("Leave blank for Chunks default") },
             singleLine = true,
-            isError = proposedAddDestination == null,
+            // Only the typed name can be wrong; an unresolved download location is
+            // reported separately ("Checking where this phone can save…").
+            isError = addFolderNameInvalid,
             enabled = !busy && !inventoryStale,
             modifier = Modifier.fillMaxWidth()
         )
@@ -605,12 +610,13 @@ internal fun LocalEngineScreen(
             "refused to prevent collisions. No folder is created until Add is confirmed, " +
             "and nothing is ever created on a remote server.",
             style = MaterialTheme.typography.bodySmall)
-        if (proposedAddDestination == null)
+        if (addFolderNameInvalid)
             Text("Use one plain folder name, without slashes, dot-prefixed names, " +
                 "control characters or path traversal.",
                 color = MaterialTheme.colorScheme.error)
-        else Text("Planned local Place: " + proposedAddDestination.absolutePath,
-            style = MaterialTheme.typography.bodySmall)
+        else if (proposedAddDestination != null)
+            Text("Planned local Place: " + proposedAddDestination.absolutePath,
+                style = MaterialTheme.typography.bodySmall)
         Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
             .toggleable(value = dht, enabled = !dhtSaving, role = Role.Switch,
                 onValueChange = ::requestDhtSetting), verticalAlignment = Alignment.CenterVertically) {
@@ -1599,13 +1605,22 @@ internal fun LocalAddReview(
 }
 
 private fun stateLabel(transfer: LocalTransferStatus): String = when {
-    transfer.error != null -> "Error: " + transfer.error
+    transfer.error != null -> "Error"
     transfer.stopped -> "Stopped"
     transfer.state == LocalTransferState.CHECKING -> "Checking files"
-    !transfer.metadataKnown || transfer.state == LocalTransferState.DOWNLOADING_METADATA -> "Fetching description (no file data)"
+    !transfer.metadataKnown || transfer.state == LocalTransferState.DOWNLOADING_METADATA -> "Fetching description"
     transfer.state == LocalTransferState.DOWNLOADING -> "Downloading"
     transfer.state == LocalTransferState.SEEDING || transfer.state == LocalTransferState.FINISHED -> "Sharing"
     else -> "Unknown"
+}
+
+/** Colour family for the state above; always shown next to its label. */
+private fun stateTone(transfer: LocalTransferStatus): ChunksTone = when {
+    transfer.error != null -> ChunksTone.ERROR
+    transfer.stopped -> ChunksTone.PAUSED
+    transfer.state == LocalTransferState.SEEDING || transfer.state == LocalTransferState.FINISHED -> ChunksTone.COMPLETE
+    transfer.state == LocalTransferState.UNKNOWN -> ChunksTone.INACTIVE
+    else -> ChunksTone.ACTIVE
 }
 
 @Composable
@@ -1646,7 +1661,18 @@ internal fun LocalTransferCard(
                     alias = alias, onSave = onSaveAlias
                 )
             }
-            Text(stateLabel(transfer) + " · " + percent + "% · " + transfer.peers + " peers")
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                StatusPill(stateLabel(transfer), stateTone(transfer))
+                Text("$percent% · " + transfer.peers + " peers", fontWeight = FontWeight.Bold)
+            }
+            transfer.error?.let { problem ->
+                Text(problem, color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall)
+            }
+            if (!transfer.metadataKnown && transfer.error == null && !transfer.stopped)
+                Text("No file data is downloaded until the torrent's description arrives.",
+                    style = MaterialTheme.typography.bodySmall)
             if (!transfer.stopped) {
                 // The libtorrent status sample is an instantaneous estimate;
                 // unlike the independent observed-growth window below, it
@@ -1660,7 +1686,7 @@ internal fun LocalTransferCard(
                 LocalEngineHolder.dhtPreferred(LocalContext.current))?.let {
                 Text(it, style = MaterialTheme.typography.bodySmall)
             }
-            ChunkedProgressBar(progress = transfer.progressPpm / 1_000_000f,
+            ChunkedProgressBar(progress = transfer.progressPpm / 1_000_000f, tone = stateTone(transfer),
                 modifier = Modifier.fillMaxWidth().semantics { stateDescription = "$percent percent complete" })
             // totalWantedDone is hash-verified completed payload; allTimeDownload
             // is a libtorrent network counter and may exclude HTTPS web seeds.
@@ -1699,16 +1725,14 @@ internal fun LocalTransferCard(
                     else "Running, but 0 peers connected. Check trackers, DHT, VPN/firewall and live seed availability. Starting alone cannot produce bytes.",
                     style = MaterialTheme.typography.bodySmall)
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = onToggle, enabled = !busy, modifier = Modifier.heightIn(min = 48.dp)) {
-                    Text(if (transfer.stopped) "Start" else "Stop")
-                }
-                OutlinedButton(onClick = { confirmRemove = true }, enabled = !busy && !confirmRemove,
-                    modifier = Modifier.heightIn(min = 48.dp)) { Text("Remove…") }
-                if (transfer.metadataKnown) OutlinedButton(onClick = onShowFiles,
-                    enabled = !busy, modifier = Modifier.heightIn(min = 48.dp)) {
-                    Text(if (filesShown) "Hide files" else "Files")
-                }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                ActionTile(if (transfer.stopped) "Start" else "Stop",
+                    if (transfer.stopped) ChunksColors.Green else ChunksColors.Purple,
+                    onClick = onToggle, enabled = !busy, modifier = Modifier.weight(1f))
+                ActionTile("Remove…", ChunksColors.Orange, onClick = { confirmRemove = true },
+                    enabled = !busy && !confirmRemove, modifier = Modifier.weight(1f))
+                if (transfer.metadataKnown) ActionTile(if (filesShown) "Hide files" else "Files",
+                    ChunksColors.Cyan, onClick = onShowFiles, enabled = !busy, modifier = Modifier.weight(1f))
             }
             if (onRepairTrackers != null && transfer.stopped &&
                 transfer.metadataKnown && transfer.trackers?.total == 0) {
