@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -209,7 +210,7 @@ internal fun LocalZipReviewScreen(onBack: (() -> Unit)? = null) {
             .padding(horizontal = 18.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if (onBack != null) {
-            Button(onClick = onBack, modifier = Modifier.heightIn(min = 48.dp)) {
+            OutlinedButton(onClick = onBack, modifier = Modifier.heightIn(min = 48.dp)) {
                 Text("Back")
             }
         }
@@ -219,10 +220,9 @@ internal fun LocalZipReviewScreen(onBack: (() -> Unit)? = null) {
         LocalZipInterruptedExtractions()
         // Android document providers disagree on ZIP MIME types. Show all
         // openable documents, then trust ONLY our actual ZIP validation.
-        Button(onClick = { picker.launch(arrayOf("*/*")) },
-            enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
-            Text(if (busy) "Checking ZIP…" else "Choose local ZIP")
-        }
+        ActionTile(if (busy) "Checking ZIP…" else "Choose local ZIP", ChunksColors.Yellow,
+            onClick = { picker.launch(arrayOf("*/*")) }, enabled = !busy,
+            modifier = Modifier.fillMaxWidth(), icon = R.drawable.chunks_ic_archive, stacked = false)
         Text("Read-only limits: up to 256 MiB ZIP input and 64 MiB expanded output. Larger or unsupported archives are not verified or extracted. The private temporary copy is discarded after each review or extraction.",
             style = MaterialTheme.typography.bodySmall)
         if (review != null) LocalZipReviewResults(requireNotNull(review))

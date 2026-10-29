@@ -360,7 +360,8 @@ fun VerifiedAddScreen(
                             val trackers = if (useFile) selectedTorrent?.trackerCount ?: 0
                                 else TorrentMetainfoReader.magnetTrackerCount(magnet)
                             if (trackers == 0) {
-                                Text(trackerlessWarning(useFile), color = MaterialTheme.colorScheme.error)
+                                // Red text on this green card measured 1.74:1; a dark inset banner keeps it readable.
+                                ChunksBanner("No tracker", trackerlessWarning(useFile), ChunksTone.ERROR)
                             }
                         }
                     }

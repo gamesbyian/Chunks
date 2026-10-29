@@ -87,18 +87,27 @@ internal fun ActionTile(
         colors = ButtonDefaults.buttonColors(containerColor = color, contentColor = ChunksColors.OnAccent),
         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)
     ) {
-        val image: @Composable () -> Unit = {
-            if (icon != null) Image(painterResource(icon), contentDescription = null,
-                modifier = Modifier.size(if (stacked) 28.dp else 24.dp).alpha(if (enabled) 1f else 0.38f))
+        if (stacked) Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            TileIcon(icon, 28.dp, enabled)
+            TileLabel(label)
+        } else Row(verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            TileIcon(icon, 24.dp, enabled)
+            TileLabel(label)
         }
-        val text: @Composable () -> Unit = {
-            Text(label, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.ExtraBold,
-                textAlign = TextAlign.Center)
-        }
-        if (stacked) Column(horizontalAlignment = Alignment.CenterHorizontally) { image(); text() }
-        else Row(verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)) { image(); text() }
     }
+}
+
+@Composable
+private fun TileIcon(@DrawableRes icon: Int?, size: androidx.compose.ui.unit.Dp, enabled: Boolean) {
+    if (icon != null) Image(painterResource(icon), contentDescription = null,
+        modifier = Modifier.size(size).alpha(if (enabled) 1f else 0.38f))
+}
+
+@Composable
+private fun TileLabel(label: String) {
+    Text(label, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.ExtraBold,
+        textAlign = TextAlign.Center)
 }
 
 /** Decorative on-dark file-type icon chosen from the file extension only. */
@@ -151,4 +160,21 @@ internal fun ChunksBanner(title: String, message: String, tone: ChunksTone, modi
             Text(message, style = MaterialTheme.typography.bodySmall, color = ChunksColors.Text)
         }
     }
+}
+
+/**
+ * Card for panels that hold interactive controls: dark surface with an
+ * accent border. Default chip, button and error colours are tuned for dark
+ * surfaces, so they stay readable here (on a filled accent card they fell
+ * below 2:1).
+ */
+@Composable
+internal fun AccentOutlineCard(accent: Color, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    androidx.compose.material3.Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(20.dp),
+        colors = androidx.compose.material3.CardDefaults.cardColors(
+            containerColor = ChunksColors.Surface, contentColor = ChunksColors.Text),
+        border = androidx.compose.foundation.BorderStroke(2.dp, accent)
+    ) { content() }
 }
