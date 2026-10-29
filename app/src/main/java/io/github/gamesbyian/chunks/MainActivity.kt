@@ -154,7 +154,7 @@ class MainActivity : ComponentActivity() {
 }
 
 private enum class Section(val label: String) {
-    TRANSFERS("Transfers"), PLACES("Places"), ORGANIZE("Organize"), SERVER("Server"), ARCHIVES("ZIP review"), LOCAL("On this phone"), ADD("Add"), NAMES("Names"), SNAPSHOT("Inventory backup"), SNAPSHOT_INSPECT("Inspect backup")
+    TRANSFERS("Transfers"), PLACES("Places"), ORGANIZE("Organize"), SERVER("Server"), ARCHIVES("ZIP review"), CREATE("Create"), LOCAL("On this phone"), ADD("Add"), NAMES("Names"), SNAPSHOT("Inventory backup"), SNAPSHOT_INSPECT("Inspect backup")
 }
 
 @Composable
@@ -319,6 +319,8 @@ private fun ChunksApp(
             ) {
                 SnapshotDocumentInspectScreen(onBack = { section = Section.TRANSFERS })
             }
+        } else if (section == Section.CREATE && server == null) {
+            io.github.gamesbyian.chunks.create.CreateTorrentScreen(onBack = { section = Section.TRANSFERS })
         } else if (section == Section.LOCAL && server == null) {
             LocalTransferPrivacyGate(
                 scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
@@ -435,6 +437,7 @@ private fun ChunksApp(
                 onLocalZipReview = { section = Section.ARCHIVES },
                 onInspectSnapshot = { section = Section.SNAPSHOT_INSPECT },
                 onLocalEngine = { section = Section.LOCAL },
+                onCreateTorrent = { section = Section.CREATE },
                 onEndpoint = { endpoint = it }, onUsername = { username = it },
                 onPassword = { password = it },
                 onConnect = {
@@ -780,6 +783,8 @@ private fun ChunksApp(
                     LocalZipReviewScreen(onBack = { section = Section.TRANSFERS })
                 }
                 Section.LOCAL -> Unit // Composed by the independent local gate above.
+                Section.CREATE -> io.github.gamesbyian.chunks.create.CreateTorrentScreen(
+                    onBack = { section = Section.TRANSFERS })
                 Section.PLACES -> PlacesScreen(transfers) { path ->
                     draftPath = path
                     section = Section.ADD
@@ -902,6 +907,7 @@ private fun ConnectionScreen(
     onLocalZipReview: () -> Unit,
     onInspectSnapshot: () -> Unit,
     onLocalEngine: () -> Unit,
+    onCreateTorrent: () -> Unit = {},
     onEndpoint: (String) -> Unit, onUsername: (String) -> Unit,
     onPassword: (String) -> Unit, onConnect: () -> Unit
 ) {
@@ -935,6 +941,9 @@ private fun ConnectionScreen(
                     modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
                     offline(Modifier.weight(1f).fillMaxHeight())
                 }
+                ActionTile("Create a torrent from phone files", ChunksColors.Green,
+                    onClick = onCreateTorrent, modifier = Modifier.fillMaxWidth(),
+                    icon = R.drawable.chunks_ic_add_torrent, stacked = false)
             }
         }
         if (rememberLogin && savedProfiles.isNotEmpty()) {

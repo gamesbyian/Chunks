@@ -31,4 +31,10 @@ class ChunksConnectLargeTextRenderTest {
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/chunks-visual/phone-200pct.png")
     }
+
+    @Test fun createAt200Percent() {
+        rule.onNodeWithText("Create a torrent from phone files").performScrollTo().performClick()
+        rule.waitForIdle()
+        rule.onRoot().captureRoboImage("build/chunks-visual/create-200pct.png")
+    }
 }
