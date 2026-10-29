@@ -539,6 +539,15 @@ private fun ChunksApp(
                         initialMagnet = phoneHandoffMagnet,
                         initialTorrentUri = incomingTorrent,
                         canReviewOnConnectedServer = true,
+                        serverCopy = if (remotePrivacyScope == null) null
+                            else LocalServerCopyLink(runCatching {
+                                java.net.URI(aliasScope.substringBefore('\u0000').trim()).host
+                            }.getOrNull() ?: "your server") { bytes ->
+                                // Re-read the default for each Add; the adapter checks it again.
+                                val place = connectedRemote.defaultDirectory()
+                                    ?: error("The server reports no default download location")
+                                connectedRemote.loadStoppedTorrentBytes(bytes, place, useServerDefault = true)
+                            },
                         // Only an unambiguous authenticated account can own a Move.
                         moveServer = if (remotePrivacyScope == null) null
                             else LocalMoveServer(aliasScope) { hash ->
