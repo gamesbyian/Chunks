@@ -1,6 +1,6 @@
 # Chunks active engineering work queue
 
-**Purpose:** one concise, executable set of current work priorities. **Scope:** app development, QA, release; font work is separately governed by [font lab operations](design/CHUNKS-FONT-LAB-OPERATIONS.md). **Status:** reconciled with live GitHub for #511 on 2026-10-29 UTC. **Refresh rule:** GitHub PR/issue/check state is authoritative at the instant of work. Never assume a date-stamped status below is still live.
+**Purpose:** one concise, executable set of current work priorities. **Scope:** app development, QA, release; font work is separately governed by [font lab operations](design/CHUNKS-FONT-LAB-OPERATIONS.md). **Status:** maintenance reconciliation on 2026-10-29 UTC: #566 merged, zero open PRs observed; ongoing issue and work ownership must still be checked live. **Refresh rule:** GitHub PR/issue/check state is authoritative at the instant of work. Never assume a date-stamped status below is still live.
 
 [Agent instructions](../AGENTS.md) · [Documentation index](INDEX.md) · [Product contract](PRODUCT.md) · [Coverage gaps](SPEC-COVERAGE.md) · [Evidence](QUALITY-LEDGER.md) · [Documentation authoring standard](DOCUMENTATION-STANDARD.md)
 
