@@ -555,6 +555,6 @@ The research remains external and exploratory, now explicitly including users wh
 - This document: readable conceptual map, sparsity interpretation, diagrams, all H hypotheses and research validation method.
 - [Typed graph data](BITTORRENT-CONCEPT-GRAPH-2026-10-29.json): full nodes, edges, IDs, alternative routes, cognitive and possible emotional relations, plus derived feature co-occurrence.
 - [Feature inventory](https://github.com/gamesbyian/Chunks/blob/26fec615e8241504011f319929c40d22cc35bd9f/docs/BITTORRENT-ECOSYSTEM-FEATURE-INVENTORY-2026-10-29.md): source-of-record for observed product capabilities.
-- [Activity atlas](https://github.com/gamesbyian/Chunks/blob/7631199f79b6763a961da5a2a3782886eb6964d7/docs/BITTORRENT-USER-GOALS-AND-WORKFLOWS-2026-10-29.md): source-of-record for illustrated user workflows.
+- [Activity atlas](https://github.com/gamesbyian/Chunks/blob/7631199f79b6763a961da5a2a3665886eb6964d7/docs/BITTORRENT-USER-GOALS-AND-WORKFLOWS-2026-10-29.md): source-of-record for illustrated user workflows.
 
 To extend the map in future research, update the evidence and edge semantics before treating a weakly supported candidate as a truly missing capability. The graph is intentionally designed to help challenge its own assumptions.
