@@ -61,6 +61,20 @@ class EnvironmentCapabilitiesTest {
         assertEquals(CapabilityEvidence.MISSING, eraseOnly.of(EnvironmentOperation.SESSION_REMOVE))
     }
 
+    @Test fun oneServerWithoutActivityGetterCannotPrecheckVerifiableStartStop() {
+        val missing = EnvironmentCapabilities.fromProbe(serverA,
+            RemoteProbe("0.16", all - "d.is_active"), 7)
+        val complete = EnvironmentCapabilities.fromProbe(serverB,
+            RemoteProbe("0.16", all), 8)
+        assertEquals(CapabilityEvidence.MISSING, missing.of(EnvironmentOperation.START_STOP))
+        assertFalse(missing.decide(EnvironmentOperation.START_STOP, EnvironmentAvailability.LIVE).allowed)
+        assertEquals(CapabilityEvidence.ADVERTISED, complete.of(EnvironmentOperation.START_STOP))
+        assertTrue(complete.decide(EnvironmentOperation.START_STOP, EnvironmentAvailability.LIVE).allowed)
+        // A server with unavailable introspection stays UNKNOWN, never missing.
+        assertEquals(CapabilityEvidence.UNKNOWN, EnvironmentCapabilities.fromProbe(serverA,
+            RemoteProbe("0.16", null), 9).of(EnvironmentOperation.START_STOP))
+    }
+
     @Test fun unknownIsNeverMissingAndUnavailableEnvironmentsRefuse() {
         val noList = EnvironmentCapabilities.fromProbe(serverA, RemoteProbe("0.9.6", null), 1)
         val unprobed = EnvironmentCapabilities.unprobed(serverA)
