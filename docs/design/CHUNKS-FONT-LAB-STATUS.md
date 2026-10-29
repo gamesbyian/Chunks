@@ -4,7 +4,27 @@
 
 ## Built, reproducible, still nonshipping
 
-## Final verified engineering acceptance: 2026-10-28 (Calgary)
+## Latest owner-directed C/c/j refinement, verified 2026-10-28
+
+**Current frozen validated candidate:** [one controlled full-family run #40820307607](https://github.com/gamesbyian/Chunks/actions/runs/40820307607) **PASSED every step**, persisted exact OTF / source-hash receipts to isolated lab commit [`44c419ac4`](https://github.com/gamesbyian/Chunks/commit/44c419ac487c71a79bf70b95e560671a2e26d733), and attached the complete `chunks-font-lab-all-families` optical specimen bundle.
+
+- **Owner instruction:** the fifth (ExtraBold, 800) weight is perfect and must not be redesigned. Only the first four weights (Regular 400, Medium 500, Semibold 600, Bold 700) change in `C`, `c`, `j` (12 editable SVG files).
+- `j`: centered its detached dot over the **actual vertical shaft** using separately measured horizontal-only translations +4.53/+4.71/+4.88/+5.03 source units, maintaining the dot's exact original native Bézier geometry, vertical position and size.
+- `C`, `c`: removed the pinched, segmented internal contour in favor of **two continuous cubic curves** with a matching vertical tangent at their leftmost point and tangent-aligned rounded arm connections. Outside silhouettes, terminal lobes and all other glyphs unchanged. Ink remains strictly ordered across the lighter weights and below the 800 reference.
+- Both new [source-focused tests](../../tests/test_font_lab_owner_optical_refinements.py) **passed**, along with the existing 248-master geometry/contour/winding validations, 856-cmap/shaping/kerning/line metric tests, **zero 14px and 24px rendered counter failures** in all four lighter weights, unchanged Hindi shaping and **20 derivation-family/weight binary checks**.
+- The actual compiled **ExtraBold-Consolidated.otf is byte-for-byte identical** across the previous and current experimental full-family artifacts. SHA-256 unchanged: `55ba6f8a114a0da6223023bde4e0b6ad12d469616b2743ac471d8415b1d8813c`.
+- Current nonshipping base study CFF SHA-256 receipts:
+
+| Style | Latest SHA-256 |
+|---|---|
+| Regular | `82d3d3995175cd3b763734d983512e7549040c04830c0cf712fb4a86133e59c2` |
+| Medium | `cfc89524a6af0c983f8acb87ed0a43d16d78b718ce31b31d53a844e4d3005d4a` |
+| Semibold | `8a7ac1f4dc0f72d9519d631edad693df5401991d94f8c41333c0889f7efa85d5` |
+| Bold | `705b2d69a8b9f22e5e955eec3b02d92fa748b56401d5f60ce5089c1b85de7f51` |
+
+See [owner optical change design](CHUNKS-FONT-LAB-OWNER-OPTICAL-REFINEMENTS.md). The older run #40817681146 and hashes below are the **previous candidate**, retained for before/after comparison and provenance. Engineering acceptance does not replace aesthetic evaluation of the revised first four weights in real app context, Android 200%/TalkBack, or explicit shipping authorisation. Keep source art on one quiet `font/lab` branch, no per-glyph PR.
+
+## Previous frozen engineering acceptance: 2026-10-28 (historical candidate)
 
 **Green frozen acceptance:** [GitHub Actions #40817681146](https://github.com/gamesbyian/Chunks/actions/runs/40817681146), exact generated artifact source commit [`12f05bc06dd42b09befe317b417fa74a9a1d2f1e`](https://github.com/gamesbyian/Chunks/commit/12f05bc06dd42b09befe317b417fa74a9a1d2f1e). This run passed every workflow step, persisted reproducible experimental CFF binaries/metrics and attached the `chunks-font-lab-all-families` specimen/evidence artifact.
 

@@ -11,9 +11,15 @@ The core reference-family **engineering build is complete**, but the source artw
 - Five-weight compatibility through source and derived accent, punctuation, dotless, consolidated, stacked and mixed-mark families; cross-family integrity audits passed for 20 experimental derivative binaries and unchanged Hindi shaping.
 - No shipping Android font or approved reference art modifications; no font PR open; all development and generated experimental artifacts confined to [`font/lab`](https://github.com/gamesbyian/Chunks/tree/font/lab).
 
-## Final strict small-size raster result
+## Earlier strict small-size raster result (still passing in latest build)
 
 The latest [frozen run #40817681146](https://github.com/gamesbyian/Chunks/actions/runs/40817681146) **PASSED** a new real CFF pixel-level gate: all 20 source glyphs with expected counters in **all four lighter weights** preserve **at least 2 enclosed background pixels per counter at both 14px and 24px**. It also rebuilt all experimental derivative families and audited 20 compatible binaries. The counter and terminal improvements include A/4 adjustments and the 0.4-source-pixel upper-hole position correction for Bold 8. All results are reproducible and reflected in [current lab status](CHUNKS-FONT-LAB-STATUS.md). This resolves the earlier *measured missing-counter defects*, **not** the subjectively judged appearance of the heavy display alphabet.
+
+## Owner's exact artistic feedback and accepted fifth weight
+
+The owner specifically said the **fifth weight is perfect**. Treat **ExtraBold 800 as approved as-is**, and preserve it bit-for-bit. Its consolidated OTF SHA remains `55ba6f8a114a0da6223023bde4e0b6ad12d469616b2743ac471d8415b1d8813c` through this new build.
+
+The owner requested only two changes in **400–700**: center `j`'s dot more to the right over its true vertical stem, and smooth the formerly angular inner bowls of `C` and `c`. Those twelve source masters are revised and fully compiled in [isolated run #40820307607](https://github.com/gamesbyian/Chunks/actions/runs/40820307607), which passed source tests, real raster counter checks and all 20 derivative family audits. **The first four weights' revised visual style is still subject to owner editorial review in the application**, but the fifth weight requires no further stylistic intervention. See [refinement spec](CHUNKS-FONT-LAB-OWNER-OPTICAL-REFINEMENTS.md) and [current status](CHUNKS-FONT-LAB-STATUS.md).
 
 ## Not yet accepted
 
