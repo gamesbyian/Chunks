@@ -12,3 +12,21 @@
 # No renaming in qaMinified: the separately built test APK then needs no
 # mapping. Shrinking and optimisation (the risky part for JNI) still run.
 -dontobfuscate
+
+# The instrumentation runs in the app's process and resolves the libraries it
+# shares with the app (tracing, Kotlin, coroutines, Compose, AndroidX core and
+# lifecycle) from the shrunk app APK. R8 removes members the app never calls,
+# so AndroidJUnitRunner failed with NoSuchMethodError on androidx.tracing.Trace.
+# Keep those shared libraries whole in qaMinified only; Chunks' own code and
+# the libtorrent4j JNI path stay shrunk and optimised. Release shrinking of
+# these libraries relies on their published consumer rules.
+-keep class androidx.tracing.** { *; }
+-keep class kotlin.** { *; }
+-keep class kotlinx.coroutines.** { *; }
+-keep class androidx.compose.** { *; }
+-keep class androidx.core.** { *; }
+-keep class androidx.lifecycle.** { *; }
+-keep class androidx.activity.** { *; }
+-keep class androidx.savedstate.** { *; }
+-keep class androidx.annotation.** { *; }
+-keep class androidx.collection.** { *; }
