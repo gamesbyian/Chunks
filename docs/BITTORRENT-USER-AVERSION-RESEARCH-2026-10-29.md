@@ -27,7 +27,7 @@ The strongest counterintuitive lesson: **“I cannot seed” often means “I am
 | A02 | R | Fear that ordinary torrent downloading exposes the household IP and identity to a swarm | S01 S03 S05 S16 | Make privacy state clear; never imply anonymity by default |
 | A03 | R | VPN necessity, ongoing price, interface binding and kill-switch failures feel like a second specialized system | S02 S03 S06 S16 S35 | Diagnose interface changes and disclose traffic route without magical safety claims |
 | A04 | R | Malware, spoofed uploads, suspicious executables and dubious index quality defeat trust | S07 S08 S09 S43 | File type, provenance and trust cues; warnings without asserting safety |
-| A05 | D | User distrusts torrent software itself after years of advertising, bundled software or security stories | S09 S40 | Keep the client transparent, minimal and predictable |
+| A05 | D | User distrusts torrent software itself after security concerns or regression stories | S09 S40 | Keep the client transparent, minimal and predictable |
 | A06 | D | Ethical objections to unauthorized distribution are a genuine reason to refuse torrenting altogether | S30 S46 | Support lawful user-shared content without treating all nonusers as prospective pirates |
 | A07 | R | Perceived technical initiation cost: VPNs, ports, Docker, NAS, trackers, folders, codecs, ratios | S10 S11 S16 S36 | A straightforward ordinary path and layered guidance |
 | A08 | R | Hostile, opaque or exclusionary communities make beginners reluctant to ask | S11 S12 S31 | Teach concepts in product language and avoid shaming |
@@ -40,10 +40,10 @@ The strongest counterintuitive lesson: **“I cannot seed” often means “I am
 | B01 | R | Cannot find a trusted source/index without dead domains, mirrors or misleading results | S09 S12 S31 S42 | Source provenance, user-controlled provider handoffs; no invented search guarantees |
 | B02 | R | Scarcity of seeds for older, niche, regional or obscure works | S13 S14 S15 S31 S42 | Explain observed swarm availability, alternate source searches and honest waiting |
 | B03 | R | Advertised seed counts do not match available complete peers; apparent abundance is misleading | S14 S15 S37 | Separate website claims from observed connected peers and piece availability |
-| B04 | R | Wrong episode, unwanted release, variant, codec or language discovered *after* a lengthy download | S18 S31 S41 | Preview contents, full filenames and media attributes *before* commitment |
+| B04 | R | Wrong episode, unwanted release, variant, codec or language discovered *after* a lengthy download | S41 S42 S51 | Preview contents, full filenames and media attributes *before* commitment |
 | B05 | D | Regional-language subtitles, dubbing or desired audio editions are unavailable even where seeds exist | S31 S42 | Expose track/release metadata where knowable; avoid claiming a file exists |
 | B06 | D | Private trackers become chokepoints: site shutdown, changed limits and access obstacles | S12 S31 S32 | Keep transfer definitions/export independent of an index site's longevity |
-| B07 | R | Users cannot distinguish a magnet URI, a .torrent file, the actual payload, and a search/result page | S11 S36 S38 | Conceptual onboarding through the intended action |
+| B07 | R | Users cannot distinguish a magnet URI, a .torrent file, the actual payload, and a search/result page | S19 S50 S56 | Conceptual onboarding through the intended action |
 | B08 | D | Better competing methods exist for the user's immediate objective: one-click direct files, streaming, Usenet, personal media services | S19 S20 S31 | Judge Chunks by time-to-usable-content, not only transfer throughput |
 
 ### C. Progress, speed and recoverability
@@ -56,9 +56,9 @@ The strongest counterintuitive lesson: **“I cannot seed” often means “I am
 | C04 | R | “Stalled,” “connecting,” “slow,” and “error” give insufficient causal information | S10 S17 S19 S35 S44 | Context-specific diagnosis rather than generic retry advice |
 | C05 | R | One download works while another does not, so users cannot tell whether device, tracker, torrent, VPN or ISP is at fault | S19 S20 S35 | Layered network/source/peer/disk diagnostic model |
 | C06 | R | Throughput swings wildly or stays far below advertised bandwidth, including uploading faster than downloading | S21 S24 S39 S42 | Report bottleneck and units honestly; do not imply guaranteed speed |
-| C07 | D | Restarting the app or pausing for hours sometimes “fixes” transfers but gives no explanation | S20 S24 S35 | Surface reannounce/reconnect behavior and eventual outcome |
+| C07 | D | Restarting the app or pausing for hours sometimes “fixes” transfers but gives no explanation | S20 S35 | Surface reannounce/reconnect behavior and eventual outcome |
 | C08 | D | Client update, firewall rule or VPN adapter-name change silently breaks previously working magnets | S19 S35 | Network-binding validity check, actionable reauthorization, safe fail-closed behavior |
-| C09 | R | Defective/blocked download or write looks like a torrent bug but is a permission/antivirus/disk error | S22 S23 S44 | Evidence-specific diagnostics and integrity-preserving repair |
+| C09 | D | Defective/blocked download or write looks like a torrent bug but is a permission/antivirus/disk error | S22 S44 | Evidence-specific diagnostics and integrity-preserving repair |
 | C10 | D | A swarm shows an apparently complete peer that repeatedly appears but cannot actually connect | S37 | Mark connectivity vs full-copy sightings as separate signals |
 
 ### D. Sharing obligations and resource economics
@@ -86,7 +86,7 @@ The strongest counterintuitive lesson: **“I cannot seed” often means “I am
 | E04 | D | Some filename/case collisions work initially and fail after restart, causing mysterious “missing files” | S48 | Platform-aware collision detection and persisted mapping tests |
 | E05 | R | Users stop seeding so media managers can organize, rename and import files into their libraries | S23 S47 | Separate serving copy from managed torrent backing, or verified rebinding |
 | E06 | D | Existing file migration to another client/seedbox requires manual .torrent/resume extraction and hash rechecks | S33 | Portable transfer-definition backup and guided restoration |
-| E07 | R | “Delete torrent” versus “delete content” and trash versus permanent deletion are easily misunderstood | S49 S50 | Deliberate scope, exact object preview, reversible paths when possible |
+| E07 | D | “Delete torrent” versus “delete content” and trash versus permanent deletion are easily misunderstood | S49 | Deliberate scope, exact object preview, reversible paths when possible |
 | E08 | D | Paid mobile client hides full filenames and shows unexplained remote warnings for users without a computer | S51 | Full metadata visibility; local-only and remote-only are complete, unobtrusive modes |
 | E09 | D | Cannot rename at initial add after an upgrade, or client crashes while renaming | S52 | Pre-add naming/preflight and regression tests |
 | E10 | D | Torrent packages that are fine as individual media files are unusable as incomplete solid archives | S13 | Distinguish playable individual files from extraction-required archives |
@@ -96,13 +96,13 @@ The strongest counterintuitive lesson: **“I cannot seed” often means “I am
 | ID | Code | Distinct pain or resistance | Evidence | User goal / design implication |
 |---|---|---|---|---|
 | F01 | R | Client UI changes break themes, readability or familiar workflows without sensible fallback | S40 S51 | Stable accessibility, contrast and deliberate settings migration |
-| F02 | D | Clashing software conventions cause uncertain statuses (“seeding” mistaken for not downloaded) | S36 | Explain downloading done / sharing ongoing in ordinary language |
+| F02 | D | Clashing software conventions cause uncertain statuses (“seeding” mistaken for not downloaded) | S50 | Explain downloading done / sharing ongoing in ordinary language |
 | F03 | R | Seedboxes add financial cost, capped storage, FTP transfer and a second set of stateful tools | S33 S53 S54 | Make remote-to-phone actions clear, distinguish transfer job from payload |
 | F04 | D | User leaves a seedbox because maintaining it takes more time than infrequent downloads justify | S33 | Zero-maintenance paths and graceful export/exit |
 | F05 | D | Hosted seedbox speed/peering/disk conditions can be worse than expected | S54 | Expose host-side limits and evidence without guaranteed performance |
 | F06 | D | Client connection setup is confusing even for technically capable users choosing a provider | S53 S55 | Connection discovery and guided fallback, no insecure guesses |
 | F07 | R | Users struggle to create/share torrents because piece sizing, trackers, web seeds and source flags are cryptic | S56 S12 | Plain-language Create & Share and honest publication outcomes |
-| F08 | D | People distrust torrent apps that overload users with advertising, opaque monetization or unsupported extras | S40 S51 S57 | No forced paid/remote surface or deceptive status prompts |
+| F08 | D | People distrust torrent apps that overload users with advertising, opaque monetization or unsupported extras | S51 S57 | No forced paid/remote surface or deceptive status prompts |
 
 ## Short first-person evidence vignettes (paraphrased or translated)
 
