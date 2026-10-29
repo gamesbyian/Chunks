@@ -1,5 +1,12 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-29 solo-agent batch safety and G2 plan reconciliation
+
+- **Merged #586 (P0 combined-batch safety):** [PR #586](https://github.com/gamesbyian/Chunks/pull/586), squash `d88d03a11c7f59ef199151fc302944c42a896686`, exact head `989077fe60f02d3717cfe3a0376f9e2cf357d44e`. [Android foundation/JVM 40944402686](https://github.com/gamesbyian/Chunks/actions/runs/40944402686), [R8 40944402821](https://github.com/gamesbyian/Chunks/actions/runs/40944402821) and [API35 native Add instrumentation 40944402760](https://github.com/gamesbyian/Chunks/actions/runs/40944402760) all passed. The shared batch controller now refuses incomplete live inventories, missing verified observation timestamps, and targets whose observed Start/Stop state differs from the reviewed state. Pure tests assert no command dispatch on these invalid sources, while healthy independent sources continue. Does **not** add command capability to saved-but-not-signed-in remotes or prove handset/network behavior.
+- **Merged #588 (documentation-only):** [PR #588](https://github.com/gamesbyian/Chunks/pull/588), squash `fe768e75d17992f46efbfc6bd02270f737791cf0`, [documentation run 40945775663](https://github.com/gamesbyian/Chunks/actions/runs/40945775663) passed. Corrected executable G2 queue/coverage to recognize already implemented #577–#585 milestones while preserving remaining shared details, scoped settings, multi-server acceptance and physical accessibility gates.
+- **Open P0 risk (#569):** `LocalEngineService.onTimeout` still stops phone transfers via sequential per-torrent 2s readback waits plus persistence, potentially exceeding OS foreground shutdown grace on a large or blocked queue. This is a **source-review hypothesis**, not a demonstrated defect or verified repair; bounded real-engine crowded-load/timeout proof and explicit safe fail-closed semantics remain outstanding.
+
+
 ## 2026-10-29 independent review fixes for #577–#584
 
 A code review of everything merged this session (`a8cb13f..2103fc7`) found these defects, now fixed:
