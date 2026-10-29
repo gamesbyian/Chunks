@@ -2,7 +2,7 @@
 # Pure fake-adb controls for the opt-in real-peer interruption runner.
 # This never starts an emulator, downloads payloads or changes Android state.
 set -euo pipefail
-repo="$(cd "$(dirname "\${BASH_SOURCE[0]}")" && pwd -P)"
+repo="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 mkdir -p "$tmp/bin"
@@ -10,18 +10,18 @@ printf 'disposable metainfo\n' > "$tmp/public.torrent"
 cat > "$tmp/bin/adb" <<'ADB_MOCK'
 #!/usr/bin/env bash
 set -euo pipefail
-: "\${MOCK_DIR:?}"
-case "\${1:-}" in
+: "${MOCK_DIR:?}"
+case "${1:-}" in
   devices)
     printf 'List of devices attached\nMOCK_USB\tdevice\n'
-    [[ "\${MOCK_MULTI:-0}" != 1 ]] || printf 'ANOTHER\tdevice\n'
+    [[ "${MOCK_MULTI:-0}" != 1 ]] || printf 'ANOTHER\tdevice\n'
     ;;
   get-state)
-    [[ "\${ANDROID_SERIAL:-}" == MOCK_USB ]] || exit 1
+    [[ "${ANDROID_SERIAL:-}" == MOCK_USB ]] || exit 1
     printf 'device\n'
     ;;
   install)
-    if [[ "\${MOCK_INSTALL_BAD:-0}" == 1 ]]; then
+    if [[ "${MOCK_INSTALL_BAD:-0}" == 1 ]]; then
       printf 'Failure [INSTALL_FAILED_INVALID_APK]\n'
     else
       printf 'Performing Streamed Install\nSuccess\n'
@@ -29,10 +29,10 @@ case "\${1:-}" in
     ;;
   exec-in) cat >/dev/null ;;
   logcat)
-    if [[ "\${2:-}" == "-d" ]]; then
-      if [[ "\${MOCK_ARM_MISSING:-0}" != 1 && ! -e "$MOCK_DIR/b" ]]; then
+    if [[ "${2:-}" == "-d" ]]; then
+      if [[ "${MOCK_ARM_MISSING:-0}" != 1 && ! -e "$MOCK_DIR/b" ]]; then
         printf 'CHUNKS_SWARM_INTERRUPT: armed verified_before_kill=8388608\n'
-        if [[ "\${MOCK_LONG_LOG:-0}" == 1 ]]; then
+        if [[ "${MOCK_LONG_LOG:-0}" == 1 ]]; then
           sleep 0.02
           for ((i=0; i<20000; i++)); do printf 'irrelevant fake log %d\n' "$i"; done
         fi
@@ -43,17 +43,17 @@ case "\${1:-}" in
     ;;
   shell)
     shift
-    if [[ "\${1:-}" == "pidof" ]]; then
-      [[ "\${MOCK_ALIVE:-0}" == 1 ]] && exit 0 || exit 1
+    if [[ "${1:-}" == "pidof" ]]; then
+      [[ "${MOCK_ALIVE:-0}" == 1 ]] && exit 0 || exit 1
     fi
-    if [[ "\${1:-}" == am && "\${2:-}" == instrument ]]; then
+    if [[ "${1:-}" == am && "${2:-}" == instrument ]]; then
       if [[ " $* " == *' chunksInterruptPhase a '* ]]; then
-        if [[ "\${MOCK_NO_CRASH:-0}" != 1 ]]; then printf 'Process crashed\n'; fi
+        if [[ "${MOCK_NO_CRASH:-0}" != 1 ]]; then printf 'Process crashed\n'; fi
         exit 0
       fi
       if [[ " $* " == *' chunksInterruptPhase b '* ]]; then
         : > "$MOCK_DIR/b"
-        case "\${MOCK_B_RESULT:-ok}" in
+        case "${MOCK_B_RESULT:-ok}" in
           skip) printf 'INSTRUMENTATION_STATUS_CODE: -3\nOK (1 test)\n' ;;
           fail) printf 'INSTRUMENTATION_STATUS_CODE: -1\nOK (1 test)\n' ;;
           ok) printf 'INSTRUMENTATION_RESULT: stream=OK\nOK (1 test)\n' ;;
