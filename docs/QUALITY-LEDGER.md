@@ -1,5 +1,16 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-29 Create & Share seeding, remote Finish this next, Smart Seeding and Discovery foundations (app lane)
+
+- **Merged (squash, exact-head CI green):**
+  - #547 Share → Create target, seed a verified copy on the phone, share the `.torrent` file `835ec4e` (head `f7a4a073`: API35 40854400777, API29 40854400634, build 40854400620, atlas 40854400698, minified-smoke 40854400600). The tested-earlier head `1e252344` was also green (40852727771 and others). Desktop libtorrent loopback: **an independent peer downloaded the seeded copy byte-exact**;
+  - #549 Finish this next for rTorrent `3174c4b` (head `f1d6404c`: API35 40854607051, build 40854606985, check 40854607002, minified-smoke 40854606997);
+  - #552 Smart Seeding domain model `1838069` (head `1a8327da`: API35 40853919377, build 40853919356, check 40853919580, minified-smoke 40853919353);
+  - #553 Discovery default-off gate `667de9c` (head `0a1dfee1`: build/check/API35/minified green);
+  - #556 environment identity badges `44b9b05` (head `93827b74`: API35 40855512004, API29 40855511896, build 40855511790, atlas 40855511993, check 40855511769, minified-smoke 40855511866).
+- **Docs:** #548 evidence and lane status. #554 **restored Create & Share and Finish in Order content** that #550's rewrite from an older snapshot had dropped (including D-CREATE-SHARE-20261029); #550's own additions were kept. #551 research merged after resolving an INDEX conflict; it also restored #539's aversion-atlas link.
+- **Evidence tier:** JVM/Robolectric, desktop libtorrent on loopback, API35 emulator, and the CI real-rTorrent jobs where they ran. No handset, real swarm, real provider, TalkBack or human visual acceptance.
+
 ## 2026-10-29 Create & Share, Finish this next, restart robustness and real 200% (app lane)
 
 - **Merged (squash, exact-head CI green):**
