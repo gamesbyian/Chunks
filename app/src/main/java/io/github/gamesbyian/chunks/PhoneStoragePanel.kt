@@ -10,7 +10,18 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -129,8 +140,11 @@ internal fun PhoneStoragePanel(
                     fontWeight = FontWeight.SemiBold)
                 val occupied = snapshot.occupiedFraction
                 if (occupied != null) {
-                    LinearProgressIndicator(progress = { occupied },
-                        modifier = Modifier.fillMaxWidth())
+                    StorageCapacityBar(occupied, Modifier.fillMaxWidth())
+                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        StorageLegend(ChunksColors.Blue, "Occupied", Units.bytes(total - free))
+                        StorageLegend(ChunksColors.Green, "Free", Units.bytes(free))
+                    }
                     Text("Occupied or reserved on this volume, including other apps. Not Chunks torrent usage.",
                         style = MaterialTheme.typography.bodySmall)
                 }
@@ -263,6 +277,34 @@ internal fun PhoneStoragePanel(
                 modifier = Modifier.heightIn(min = 48.dp)) {
                 Text("Refresh phone space")
             }
+        }
+    }
+}
+
+/** Chunky two-part volume bar (occupied vs free) in the design sheet's style. */
+@Composable
+private fun StorageCapacityBar(occupied: Float, modifier: Modifier = Modifier) {
+    val value = safeProgressFraction(occupied)
+    Row(modifier.semantics(mergeDescendants = true) {
+            progressBarRangeInfo = ProgressBarRangeInfo(value, 0f..1f)
+        }
+        .clip(RoundedCornerShape(12.dp)).background(ChunksColors.Trough)
+        .border(2.dp, ChunksColors.Muted, RoundedCornerShape(12.dp)).padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+        if (value > 0f) Box(Modifier.weight(value).height(22.dp)
+            .clip(RoundedCornerShape(8.dp)).background(ChunksColors.Blue))
+        if (value < 1f) Box(Modifier.weight(1f - value).height(22.dp)
+            .clip(RoundedCornerShape(8.dp)).background(ChunksColors.Green))
+    }
+}
+
+@Composable
+private fun StorageLegend(color: androidx.compose.ui.graphics.Color, label: String, value: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Box(Modifier.size(12.dp).clip(RoundedCornerShape(6.dp)).background(color))
+        Column {
+            Text(label, style = MaterialTheme.typography.labelLarge)
+            Text(value, style = MaterialTheme.typography.bodySmall)
         }
     }
 }

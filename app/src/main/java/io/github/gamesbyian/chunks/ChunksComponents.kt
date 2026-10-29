@@ -8,6 +8,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.painterResource
@@ -93,5 +97,34 @@ internal fun ActionTile(
         if (stacked) Column(horizontalAlignment = Alignment.CenterHorizontally) { image(); text() }
         else Row(verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)) { image(); text() }
+    }
+}
+
+/** Decorative on-dark file-type icon chosen from the file extension only. */
+@DrawableRes
+internal fun fileTypeIcon(path: String): Int =
+    when (path.substringAfterLast('.', "").lowercase(java.util.Locale.ROOT)) {
+        "mkv", "mp4", "avi", "mov", "webm", "m4v", "ts", "wmv" -> R.drawable.chunks_ic_file_video_on_dark
+        "mp3", "flac", "ogg", "opus", "m4a", "m4b", "wav", "aac" -> R.drawable.chunks_ic_file_audio_on_dark
+        "jpg", "jpeg", "png", "gif", "webp", "bmp", "heic" -> R.drawable.chunks_ic_file_image_on_dark
+        "zip", "rar", "7z", "tar", "gz", "xz", "bz2" -> R.drawable.chunks_ic_file_archive_on_dark
+        else -> R.drawable.chunks_ic_file_document_on_dark
+    }
+
+/**
+ * Slim per-file progress line for file rows. Decorative: the row's text
+ * already states the percentage, so it adds no separate semantics.
+ */
+@Composable
+internal fun FileProgressLine(fraction: Float, wanted: Boolean, modifier: Modifier = Modifier) {
+    val value = safeProgressFraction(fraction)
+    val fill = when {
+        !wanted -> ChunksColors.Outline
+        value >= 1f -> ChunksColors.Green
+        else -> ChunksColors.Purple
+    }
+    androidx.compose.foundation.layout.Box(modifier.height(6.dp).clip(RoundedCornerShape(3.dp))
+        .background(ChunksColors.Muted)) {
+        androidx.compose.foundation.layout.Box(Modifier.fillMaxWidth(value).fillMaxHeight().background(fill))
     }
 }
