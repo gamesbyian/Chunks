@@ -57,7 +57,7 @@ Use the **Android platform's standard primary Downloads location**, normally the
 
 ## Transfer details: copy/move between local and remote (owner, 2026-10-27)
 
-On each transfer-details screen show **Copy Transfer to phone/server** and **Move Transfer to phone/server** for torrent-job handoff. Both add a new torrent job with no payload copying. Copy preserves original job and files. Move, after verified target Add and separate approval, removes only original source job, retaining all original files. See CROSS-ENGINE-TRANSFER-JOBS.md. **Planned, not shipped.** The separately labelled, already shipped **Copy files to this phone** action for a completed server transfer (`ServerToPhoneCopyControl`, real-host verified in run [40756284173](https://github.com/gamesbyian/Chunks/actions/runs/40756284173)) is a distinct payload capability: it adds a phone job that fetches and hash-verifies bytes from the server's peer address, leaves the server job seeding, and must keep its own label and evidence.
+On each transfer-details screen show **Copy Transfer to phone/server** and **Move Transfer to phone/server** for torrent-job handoff. Both add a new torrent job with no payload copying. Copy preserves original job and files. Move, after verified target Add and separate approval, removes only original source job, retaining all original files. See [CROSS-ENGINE-TRANSFER-JOBS.md](CROSS-ENGINE-TRANSFER-JOBS.md). **Limited automated implementation exists for single and batch directions; full real-device/host acceptance remains open.** The separately labelled, already shipped **Copy files to this phone** action for a completed server transfer (`ServerToPhoneCopyControl`, real-host verified in run [40756284173](https://github.com/gamesbyian/Chunks/actions/runs/40756284173)) is a distinct payload capability: it adds a phone job that fetches and hash-verifies bytes from the server's peer address, leaves the server job seeding, and must keep its own label and evidence.
 
 ## Remove transfer: extracted archive cleanup (owner, 2026-10-27)
 
@@ -65,7 +65,7 @@ Beside **Remove transfer** (keep data) and **Remove transfer & data** (delete to
 
 ## Batch cross-engine transfer (owner addition, 2026-10-27)
 
-Local ↔ remote transfer-job Copy/Move must support multi-select batches from lists, search and Collections. Each job independently adds and verifies the target; Move then obtains separate approval to remove only its source torrent job. Show future download/storage estimates, duplicates, failures and durable per-item reconciliation; never copy or delete downloaded files. See CROSS-ENGINE-TRANSFER-JOBS.md. Planned, not implemented.
+Local ↔ remote transfer-job Copy/Move must support multi-select batches from lists, search and Collections. Each job independently adds and verifies the target; Move then obtains separate approval to remove only its source torrent job. Show future download/storage estimates, duplicates, failures and durable per-item reconciliation; never copy or delete downloaded files. See [CROSS-ENGINE-TRANSFER-JOBS.md](CROSS-ENGINE-TRANSFER-JOBS.md). **Limited automated batch implementation exists in both directions; full production and physical-device acceptance remains open.**
 
 ## Non-negotiable user outcomes
 
@@ -79,7 +79,7 @@ Server management continues with or without a companion. Chunks does not require
 
 **Owner clarification (2026-10-27):** Every Add flow must clearly display the resolved destination and offer **Change location**, but never require a folder-picker interaction merely to Add. Start with the environment's existing default. For on-device transfers the intended Chunks default is a lazily created **Downloads/Chunks Downloads** folder within the device's user-visible Downloads location, subject to Android storage permissions and verified seekable/direct-write support; do not silently substitute app-private storage while claiming the public destination is active. On remote rTorrent profiles use the server's configured default location and **never create a Chunks Downloads folder on the server**. Recent successfully used destinations should appear directly in Add, scoped to each device/remote profile, with readable labels and safe validity checks. A previously chosen per-transfer location must not quietly change the default for future Add operations. If a default is unavailable or cannot be verified, explain the limitation and ask for a valid destination rather than manufacturing success. Android's modern scoped-storage restrictions require explicit engineering validation before claiming public Downloads/libtorrent writes work. This overrides earlier language treating destination choice as mandatory. See [ARCHITECTURE.md](ARCHITECTURE.md), [UX.md](UX.md), and [WORK-QUEUE.md](WORK-QUEUE.md).
 
-### 2. Destination selection whenever a transfer begins
+### 2a. Additional destination controls
 
 Start/Add prominently shows the current default destination and an optional Change action; users need not select a folder to proceed when the default is valid. Show device/server and full human-readable destination, with recent/favorite folders and a new-folder action only when supported. Validate destination scope, permissions and collisions before submission; show pending/unknown server response honestly. The action is not complete merely because an RPC returned success.
 
