@@ -2,6 +2,11 @@
 
 > **Interpretation:** each row states a specific requirement, bounded implementation observation and what still needs acceptance. Older run/PR references are historical snapshots, not automatic proof of the latest main branch. Reconcile against live code/PRs and the [QUALITY-LEDGER](QUALITY-LEDGER.md) before changing a status. Product intent belongs in [PRODUCT](PRODUCT.md) and feature contracts; task ordering only in [WORK-QUEUE](WORK-QUEUE.md).
 
+## Combined multi-environment Transfers and palette identity (owner requirement, 2026-10-29)
+
+**Required; implementation/acceptance OPEN.** The canonical [unified-environment contract](UNIFIED-ENVIRONMENTS.md) now requires any-subset local/remote browsing; one combined search/filter/sort; optional coloured environment groups with the **same secondary sort and reversible direction in every group**; stable environment-ID-based palette colours (excluding black/white); and environment-coloured names across settings, rules and actions. Existing basic environment labels do not demonstrate the selector, combined list, persistent colours or grouping. Implement shared read-only union projection, stable job keys and visible partial/offline snapshots; independently validate both sort directions per key, cross-profile action safety, light/dark and Android 320×700/412×892 accessibility. Task handoff: [WORK-QUEUE](WORK-QUEUE.md).
+
+
 ## Ecosystem implied-capability specification closure (58 research items)
 
 **Specification-only, implementation/acceptance OPEN.** The preliminary B-classified capabilities in the external 240-item research inventory have 58 unique Fxx.yy IDs. The three feature contracts now define per-item scope, default UX, capability/security boundaries and test gates: [21 intake/queue/policies](INTAKE-QUEUE-AND-POLICIES.md), [27 files/protocol/diagnostics](FILES-PROTOCOL-AND-DIAGNOSTICS.md), [10 remote/integrations/preferences](REMOTE-INTEGRATIONS-AND-PREFERENCES.md). This does not demonstrate implementation or compel immediate implementation of optional third-party connectors.
