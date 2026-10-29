@@ -40,13 +40,13 @@ class AndroidCiTriggerContract(unittest.TestCase):
 
     def test_missing_pull_request_allowlist_fails_closed(self):
         with self.assertRaisesRegex(AssertionError, "no pull_request.paths"):
-            pull_request_paths("on:\\n  workflow_dispatch:\\n")
+            pull_request_paths("on:\n  workflow_dispatch:\n")
 
     def test_unrelated_lists_do_not_count_as_triggers(self):
-        sample = ("on:\\n  pull_request:\\n    paths:\\n"
-                  "      - 'app/**'\\n"
-                  "jobs:\\n  build:\\n    steps:\\n"
-                  "      - 'tools/physical_android_preflight.sh'\\n")
+        sample = ("on:\n  pull_request:\n    paths:\n"
+                  "      - 'app/**'\n"
+                  "jobs:\n  build:\n    steps:\n"
+                  "      - 'tools/physical_android_preflight.sh'\n")
         self.assertNotIn("tools/physical_android_preflight.sh", pull_request_paths(sample))
 
     def test_preflight_checks_are_executed(self):
