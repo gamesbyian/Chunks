@@ -26,6 +26,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -63,7 +64,10 @@ import kotlinx.coroutines.withContext
 internal fun CreateTorrentScreen(
     onBack: () -> Unit,
     /** Tests start from an already-listed source; the app always starts empty. */
-    initialSource: CreateTorrentSource? = null
+    initialSource: CreateTorrentSource? = null,
+    /** A file shared to the "Create torrent" target; listed once, then consumed. */
+    shared: SharedCreateDocument.Request? = null,
+    onSharedConsumed: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -96,6 +100,14 @@ internal fun CreateTorrentScreen(
         if (uri != null) scope.launch {
             message = withContext(Dispatchers.IO) { save(context, uri, bytes) }
         }
+    }
+    LaunchedEffect(shared) {
+        when (shared) {
+            is SharedCreateDocument.Request.File -> scan { CreateTorrentSource.fromDocument(context, shared.uri) }
+            is SharedCreateDocument.Request.Unusable -> { source = null; result = null; message = shared.reason }
+            null -> return@LaunchedEffect
+        }
+        onSharedConsumed()
     }
     val busy = scanning || progress != null
 

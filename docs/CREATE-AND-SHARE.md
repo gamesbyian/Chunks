@@ -80,3 +80,7 @@ Evidence (JVM/Robolectric):
 
 **Not yet:** seeding (local or remote), `.torrent` share via a content provider, the Android Share-intent entry, publication, and handset/TalkBack acceptance.
 
+## Implementation note: Android Share entry (2026-10-29)
+
+Sharing one file from any app to the separately labelled **Create torrent** target (an `activity-alias` of the main activity) opens the Create review with that file listed. Nothing is hashed until the user taps **Create torrent**. Shares addressed to Chunks itself are never routed here, so a shared `.torrent` or magnet keeps its existing Add review. Text, several files, conflicting stream/clip URIs and non-`content://` URIs are explained, not read. Evidence: JVM intent-routing tests and a Compose test of a shared file opening the review. The real Android share sheet on a handset is not yet verified.
+

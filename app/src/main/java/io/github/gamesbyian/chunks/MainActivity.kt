@@ -111,14 +111,21 @@ private val Blue = ChunksColors.Cyan
 class MainActivity : ComponentActivity() {
     private var incomingMagnet by mutableStateOf<String?>(null)
     private var incomingTorrent by mutableStateOf<Uri?>(null)
+    private var incomingCreate by mutableStateOf<io.github.gamesbyian.chunks.create.SharedCreateDocument.Request?>(null)
+
+    private fun accept(intent: Intent?) {
+        // Shares to the separate "Create torrent" target never become Add drafts.
+        incomingCreate = io.github.gamesbyian.chunks.create.SharedCreateDocument.fromIntent(intent)
+        incomingMagnet = if (incomingCreate == null) ExternalMagnetInput.fromIntent(intent) else null
+        incomingTorrent = if (incomingCreate == null) SharedTorrentDocument.fromIntent(intent) else null
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // The near-black Compose surface extends behind the system status bar,
         // so the status bar icons must be light.
         WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = false
-        incomingMagnet = ExternalMagnetInput.fromIntent(intent)
-        incomingTorrent = SharedTorrentDocument.fromIntent(intent)
+        accept(intent)
         setContent {
             ChunksTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
@@ -126,7 +133,9 @@ class MainActivity : ComponentActivity() {
                         sharedMagnet = incomingMagnet,
                         incomingTorrent = incomingTorrent,
                         onIncomingMagnetConsumed = { incomingMagnet = null },
-                        onIncomingTorrentConsumed = { incomingTorrent = null }
+                        onIncomingTorrentConsumed = { incomingTorrent = null },
+                        incomingCreate = incomingCreate,
+                        onIncomingCreateConsumed = { incomingCreate = null }
                     )
                 }
             }
@@ -146,8 +155,7 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        incomingMagnet = ExternalMagnetInput.fromIntent(intent)
-        incomingTorrent = SharedTorrentDocument.fromIntent(intent)
+        accept(intent)
     }
 
 
@@ -162,7 +170,9 @@ private fun ChunksApp(
     sharedMagnet: String?,
     incomingTorrent: Uri?,
     onIncomingMagnetConsumed: () -> Unit,
-    onIncomingTorrentConsumed: () -> Unit
+    onIncomingTorrentConsumed: () -> Unit,
+    incomingCreate: io.github.gamesbyian.chunks.create.SharedCreateDocument.Request? = null,
+    onIncomingCreateConsumed: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val vault = remember(context) { RememberedRemoteLogin(context) }
@@ -229,6 +239,15 @@ private fun ChunksApp(
     // review without starting an engine, creating a file or contacting peers.
     LaunchedEffect(incomingTorrent) {
         if (incomingTorrent != null) section = Section.LOCAL
+    }
+    // A file shared to "Create torrent" opens the Create review; nothing is read yet.
+    var createRequest by remember { mutableStateOf<io.github.gamesbyian.chunks.create.SharedCreateDocument.Request?>(null) }
+    LaunchedEffect(incomingCreate) {
+        if (incomingCreate != null) {
+            createRequest = incomingCreate
+            section = Section.CREATE
+            onIncomingCreateConsumed()
+        }
     }
 
     // Every incoming magnet becomes an explicit Add draft, never an Add call.
@@ -320,7 +339,8 @@ private fun ChunksApp(
                 SnapshotDocumentInspectScreen(onBack = { section = Section.TRANSFERS })
             }
         } else if (section == Section.CREATE && server == null) {
-            io.github.gamesbyian.chunks.create.CreateTorrentScreen(onBack = { section = Section.TRANSFERS })
+            io.github.gamesbyian.chunks.create.CreateTorrentScreen(onBack = { section = Section.TRANSFERS },
+                shared = createRequest, onSharedConsumed = { createRequest = null })
         } else if (section == Section.LOCAL && server == null) {
             LocalTransferPrivacyGate(
                 scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
@@ -784,7 +804,8 @@ private fun ChunksApp(
                 }
                 Section.LOCAL -> Unit // Composed by the independent local gate above.
                 Section.CREATE -> io.github.gamesbyian.chunks.create.CreateTorrentScreen(
-                    onBack = { section = Section.TRANSFERS })
+                    onBack = { section = Section.TRANSFERS },
+                    shared = createRequest, onSharedConsumed = { createRequest = null })
                 Section.PLACES -> PlacesScreen(transfers) { path ->
                     draftPath = path
                     section = Section.ADD

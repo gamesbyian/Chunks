@@ -67,6 +67,20 @@
                 <data android:mimeType="application/vnd.bittorrent" />
             </intent-filter>
         </activity>
+        <!-- Share any single file to "Create torrent". A separate target so
+             sharing a .torrent or magnet to Chunks keeps its Add review. -->
+        <activity-alias
+            android:name=".CreateShareAlias"
+            android:targetActivity=".MainActivity"
+            android:label="Create torrent"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+        </activity-alias>
         <service
             android:name=".LocalEngineService"
             android:exported="false"
