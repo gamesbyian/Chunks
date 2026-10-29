@@ -2,6 +2,10 @@
 
 > **Interpretation:** each row states a specific requirement, bounded implementation observation and what still needs acceptance. Older run/PR references are historical snapshots, not automatic proof of the latest main branch. Reconcile against live code/PRs and the [QUALITY-LEDGER](QUALITY-LEDGER.md) before changing a status. Product intent belongs in [PRODUCT](PRODUCT.md) and feature contracts; task ordering only in [WORK-QUEUE](WORK-QUEUE.md).
 
+## Smart Seeding Rules: ratio, bandwidth and scoped automatic assignment
+
+**Required; implementation and acceptance OPEN.** [SMART-SEEDING-RULES](SMART-SEEDING-RULES.md) governs named/editable seeding groups, generated default labels, stable ID and explicit phone/per-remote environment scopes, ratio/duration/rate semantics, tracker matches, precedence, Add workflow, unattended intake opt-in, and truthful capability-specific enforcement. Test unit normalization (kbps vs KiB/s), missing/multiple tracker provenance, manual override, new/offline/renamed profiles, future-environment opt-in, shared-versus-per-job caps, auto-start hold/fallback, local/rTorrent readbacks, service disconnection, persisted rules and scoped batch changes. No source, emulator, Seedhost or physical-device implementation evidence is claimed.
+
 ## Transfer file recovery after external rename/move
 
 **Required; implementation and acceptance OPEN.** [TRANSFER-FILE-RECOVERY](TRANSFER-FILE-RECOVERY.md) specifies scoped search for moved/renamed backing data, exact verified mapping to immutable torrent files, non-destructive repair, capability-gated root/per-file rebind, actual hash recheck and resumed engine state. Standard rTorrent directory reset does not establish arbitrary per-file relink support. Validate local/remote adapter capabilities, v1/v2 and incomplete piece hash integrity, interrupted batches, side-by-side same-hash profiles, preserved user filenames and zero accidental overwrites. No physical/seedbox verification claimed.
