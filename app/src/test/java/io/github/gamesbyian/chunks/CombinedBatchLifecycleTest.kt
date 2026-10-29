@@ -52,6 +52,32 @@ class CombinedBatchLifecycleTest {
         assertFalse(PhoneMutationFence.revision.blocksMutations())
     }
 
+    @Test fun serverThatDoesNotAdvertiseStartStopRefusesBeforeLeasing() = runBlocking {
+        val calls = ArrayList<Pair<String, Boolean>>()
+        var begins = 0
+        fun lifecycle(probe: suspend () -> io.github.gamesbyian.chunks.rpc.RemoteProbe) = CombinedServerLifecycle(
+            begin = { begins++; true }, settled = {},
+            setStarted = { h, on -> calls += h to on; LifecycleOutcome.Verified(on) }, probe = probe)
+        val all = io.github.gamesbyian.chunks.model.RemoteCapabilities.features.flatMap { it.methods }.toSet()
+        val onServer = row(server, false)
+        val missing = runCombinedLifecycle(setOf(onServer.key), true, listOf(source(server, onServer)),
+            lifecycle { io.github.gamesbyian.chunks.rpc.RemoteProbe("0.9.8", all - "d.start") }, server,
+            phoneEngine = { null })
+        assertEquals(0, begins)
+        assertTrue(calls.isEmpty())
+        assertEquals(CommandEvidence.REFUSED, missing.items.single().evidence)
+        assertTrue(missing.items.single().reason!!.contains("does not offer"))
+
+        // No method list or a failed probe is UNKNOWN, not MISSING: the guarded command still runs.
+        for (probe in listOf<suspend () -> io.github.gamesbyian.chunks.rpc.RemoteProbe>(
+            { io.github.gamesbyian.chunks.rpc.RemoteProbe("0.9.8", null) }, { error("timeout") })) {
+            val report = runCombinedLifecycle(setOf(onServer.key), true, listOf(source(server, onServer)),
+                lifecycle(probe), server, phoneEngine = { null })
+            assertEquals(CommandEvidence.VERIFIED, report.items.single().evidence)
+        }
+        assertEquals(2, begins)
+    }
+
     @Test fun busyGateStaleSourceAndUnconnectedProfileNeverReceiveCommands() = runBlocking {
         val busy = FakeGate(grant = false)
         val report = runCombinedLifecycle(setOf(row(server, true).key), false,
