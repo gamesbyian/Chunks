@@ -4,6 +4,11 @@
 
 [Agent instructions](../AGENTS.md) · [Documentation index](INDEX.md) · [Product contract](PRODUCT.md) · [Coverage gaps](SPEC-COVERAGE.md) · [Evidence](QUALITY-LEDGER.md) · [Documentation authoring standard](DOCUMENTATION-STANDARD.md)
 
+## Combined Transfers / environment identity implementation slice (specified, not implemented)
+
+Build a persistent environment-ID palette assignment and user colour picker, with contrast-safe name/badge rendering in Add, settings, rules, lists, details and confirmations. Implement the multi-select environment-scope Transfers query with selected-union search/filter, global sorting, optional Group by environment, and one shared **reversible** secondary comparator/direction within all groups. Keep exact (environment, infohash) job identity, independently identified offline/stale snapshots and partial totals; test multi-profile duplicates, changing profile membership, sort reversals and safe cross-profile batch selection. Add mobile and accessibility screenshot/TalkBack acceptance. This is a distinct product UI slice, not proof of implementation; retain existing P0/P1 device/host validation priorities. Canonical acceptance: [UNIFIED-ENVIRONMENTS](UNIFIED-ENVIRONMENTS.md).
+
+
 ## Newly specified advanced-operations backlog (lower than current P0/P1)
 
 The 58 previously under-specified ecosystem items are assigned to canonical contracts: [intake/queue/policies](INTAKE-QUEUE-AND-POLICIES.md) (21), [files/protocol/diagnostics](FILES-PROTOCOL-AND-DIAGNOSTICS.md) (27) and [remote/integrations/preferences](REMOTE-INTEGRATIONS-AND-PREFERENCES.md) (10). **Specification does not imply shipped feature parity.** The following independently executable slices do not replace higher-priority real-phone/Seedhost/release acceptance and do not duplicate the separate Smart Seeding Rules lane.
