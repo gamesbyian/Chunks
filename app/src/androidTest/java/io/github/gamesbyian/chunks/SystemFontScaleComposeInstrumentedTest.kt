@@ -267,11 +267,18 @@ class SystemFontScaleComposeInstrumentedTest {
         // Require the actual bottom Transfer action to be composed and
         // visible before accepting these real 200% screen pixels.
         rule.waitUntil(15_000) {
-            rule.onAllNodesWithText("Save inventory-only snapshot")
+            rule.onAllNodesWithText("More tools")
                 .fetchSemanticsNodes().isNotEmpty()
         }
-        rule.onNodeWithText("Save inventory-only snapshot").assertIsDisplayed()
+        rule.onNodeWithText("More tools").assertIsDisplayed()
         savePixels("transfers-initial")
+        // Occasional tools are collapsed behind More tools; they must still
+        // open and show their actions at 200% type.
+        rule.onNodeWithText("More tools").performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText("Save inventory-only snapshot").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("Hide tools").performScrollTo().performClick()
+        rule.waitForIdle()
         // Existing installed-app navigation paths with real Compose UI and
         // read-only localhost RPC records. Visit every main navigation destination and
         // return to Transfers, retaining actual pixels for review.
