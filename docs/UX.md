@@ -2,6 +2,11 @@
 
 > **Authority:** user-visible behavior, interaction state and accessibility requirements. Dated implementation notes describe bounded evidence only; the live [coverage map](SPEC-COVERAGE.md), [quality ledger](QUALITY-LEDGER.md) and [work queue](WORK-QUEUE.md) determine present status and next work.
 
+## Fix for Plex in rename and bulk-rename flows
+
+Expose **Fix for Plex** as an optional preset within file rename, bulk rename and folder scan, operating on actual accessible local/remote files. Show original name, minimal changed spans, exact reason, retained technical/release metadata, confidence and sidecar impacts. Separate **No change needed**, **Safe minimal suggestions**, **Needs review** and **Unavailable**. Require explicit review before physical mutations; explain that Chunks display aliases do not change Plex's scan filenames, and distinguish engine-backed rename from independent library publication. [PLEX-FILENAME-REPAIR](PLEX-FILENAME-REPAIR.md) governs behavior.
+
+
 ## Mental model, first-run and navigation
 
 - **Transfers**: what is downloading, completed, uploading, stuck and awaiting a safe move.
