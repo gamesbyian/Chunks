@@ -44,4 +44,8 @@ internal class LocalResumeSaveRequests {
     fun cancel(key: String) {
         outstanding.remove(key)?.resolve(false)
     }
+
+    fun cancelAll() {
+        outstanding.keys.toList().forEach(::cancel)
+    }
 }
