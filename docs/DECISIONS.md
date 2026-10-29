@@ -69,3 +69,7 @@ Pre-alpha alias slice merged in [#74](https://github.com/gamesbyian/Chunks/pull/
 - **D29 | Partly adopted (2026-10-27):** User chooses default-ON remembered remote login, with visible opt-out and Forget. Merged #232 encrypts one remembered profile using Android Keystore, unbacked-up device-private ciphertext, and pre-fills manual reconnection. Additional profiles, rotation/biometric privacy lock, signed distribution, minimum Android support and third-party licenses remain open (#10).
 - **D30 | Open:** Real per-volume caps, physical reclaim accounting, native cleanup and opt-in extraction require device write-path, provider, journaling and physical acceptance (#70).
 - **D31 | Adopted:** rTorrent compatibility is build/proxy specific: Ubuntu 0.9.8 + Arch 0.16.x pass scoped disposable tests; Alpine 0.15.2 unresolved (#151); these are not device evidence.
+
+## Owner decision: one experience across environments (2026-10-28)
+
+**D-UNIFIED-ENV-20261028 | Owner, binding.** Chunks behaves as one torrent manager for local device and any rTorrent profiles, with common controls/navigation/terms and only capability-necessary divergence. Local-only is the default offered mode; remote-only and both are equally supported. The active list and transfer-details source are explicit in combined mode. All settings identify app-global, environment or transfer scope. Switching is non-mutating; disabling cannot silently delete jobs/files or credentials. See [UNIFIED-ENVIRONMENTS.md](UNIFIED-ENVIRONMENTS.md); full product acceptance remains open.
