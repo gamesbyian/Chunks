@@ -1,10 +1,10 @@
 # Human-centered BitTorrent conceptual map: relationships and unexplored feature space
 
-**Research snapshot:** 2026-10-29. **Status:** external descriptive research, **not normative requirements**. **Purpose:** explore conceptual sparsity and plausible missing capabilities in the *union* of the 240 existing feature concepts already compiled, by examining the functional, cognitive and possible emotional relationships among the human activities those features support.
+**Research snapshot:** 2026-10-29 (aversion-evidence bridge added same date). **Status:** external descriptive research, **not normative requirements**. **Purpose:** explore conceptual sparsity and plausible missing capabilities in the *union* of the 240 existing feature concepts already compiled, by examining the functional, cognitive and possible emotional relationships among the human activities those features support.
 
-**Inputs:** [External 240-feature inventory](https://github.com/gamesbyian/Chunks/blob/26fec615e8241504011f319929c40d22cc35bd9f/docs/BITTORRENT-ECOSYSTEM-FEATURE-INVENTORY-2026-10-29.md) and [36-journey / 240-micro-workflow atlas](https://github.com/gamesbyian/Chunks/blob/7631199f79b6763a961da5a2a3665886eb6964d7/docs/BITTORRENT-USER-GOALS-AND-WORKFLOWS-2026-10-29.md). The machine-readable, inspectable counterpart is [the typed JSON graph](BITTORRENT-CONCEPT-GRAPH-2026-10-29.json).
+**Inputs:** [Multilingual aversion and abandonment research](https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md), [External 240-feature inventory](https://github.com/gamesbyian/Chunks/blob/26fec615e8241504011f319929c40d22cc35bd9f/docs/BITTORRENT-ECOSYSTEM-FEATURE-INVENTORY-2026-10-29.md) and [36-journey / 240-micro-workflow atlas](https://github.com/gamesbyian/Chunks/blob/7631199f79b6763a961da5a2a3782886eb6964d7/docs/BITTORRENT-USER-GOALS-AND-WORKFLOWS-2026-10-29.md). The machine-readable, inspectable counterpart is [the typed JSON graph](BITTORRENT-CONCEPT-GRAPH-2026-10-29.json).
 
-**Important epistemic boundary:** “Missing” here means **not explicitly represented as a complete capability in the 240-item inventory**, or **a relationship between existing capabilities is not covered there**. It emphatically does *not* mean no BitTorrent software anywhere implements it. Components, plugins, new releases and external services may already provide parts or even all of a candidate. All 54 H-series entries are hypotheses to investigate, not verified unmet market needs, commitments or requests to change a product.
+**Important epistemic boundary:** “Missing” here means **not explicitly represented as a complete capability in the 240-item inventory**, or **a relationship between existing capabilities is not covered there**. It emphatically does *not* mean no BitTorrent software anywhere implements it. Components, plugins, new releases and external services may already provide parts or even all of a candidate. All 66 H-series entries are hypotheses to investigate, not verified unmet market needs, commitments or requests to change a product.
 
 ## 1. Two views of the map
 
@@ -67,14 +67,18 @@ Existing tools have many of the boxes on the main line, and some tools bridge se
 | Macro journeys | 36 | Human-scale examples showing activities used together |
 | Activity domains | 20 | Navigation groupings for tasks |
 | Feature families | 15 | Navigation groupings for capabilities |
-| Human goals | 18 | Desired outcomes independent of software mechanism |
-| Cognitive demands | 16 | The mental work a user might be doing or trying to avoid |
-| Possible affective stakes | 17 | Anticipation, uncertainty, trust, loss concern, pride and other context-sensitive possibilities |
-| Gap domains | 9 | Qualitatively identified thin or discontinuous relationship zones |
-| Candidate feature hypotheses | 54 | Potential unrepresented connective capabilities |
-| **Total** | **665** | Typed nodes available for query, visualization and revision |
+| Human goals | 23 | Desired outcomes independent of software mechanism |
+| Cognitive demands | 21 | The mental work a user might be doing or trying to avoid |
+| Possible affective stakes | 21 | Anticipation, uncertainty, trust, loss concern, pride and other context-sensitive possibilities |
+| Gap domains | 11 | Qualitatively identified thin or discontinuous relationship zones |
+| Candidate feature hypotheses | 66 | Potential unrepresented connective capabilities |
+| Reported aversion factors | 55 | First-person complaints, distinctive cases and contingent perceptions from PR #539 |
+| Friction domains | 6 | Why people avoid, quit or reluctantly participate |
+| Possible exit or alternate paths | 18 | Conditional non-use, interruption, repair abandonment or switching routes |
+| Additional evidence sources | 10 | Historical academic findings, individual user accounts and primary software guidance |
+| **Total** | **782** | Typed nodes available for query, visualization and revision |
 
-The JSON contains **3190 typed edges**, including 695 prior activity→feature links, 547 *co-support* relationships between feature concepts, 149 journey→activity memberships, 113 potential activity transitions and explicit relationships from the H hypotheses to the activities/features/cognitive demands/affective stakes they could affect.
+The JSON contains **3456 typed edges**, including 695 prior activity→feature links, 547 *co-support* relationships between feature concepts, 149 journey→activity memberships, 113 potential activity transitions and explicit relationships from the H hypotheses to the activities/features/cognitive demands/affective stakes they could affect.
 
 **Caution about interpretation:** Co-support means that two features were linked to the *same described activity*. It proves neither that the features implement one another nor that they must both be present. The cognitive/affective mappings are analyst-supplied hypotheses, not interviews or psychological measurements. The graph retains the relationship type and evidence/interpretation level so those distinctions can be preserved.
 
@@ -131,9 +135,9 @@ The following map links *what someone is trying to do*, *what they must think ab
 
 **Interpretation rule:** An emotion is a possible *stake in a task*, not a demographic label or stable property of a person. A user may enjoy a technical challenge that frustrates another. Some users enjoy manual curation; others value entirely unattended work. Emotional concepts should be treated as testable perspectives, not a deterministic UI-personality model.
 
-## 5. Nine regions of potential conceptual whitespace
+## 5. Eleven regions of potential conceptual whitespace
 
-The nine regions below separate broad kinds of relationship gap. They are *not* ranked by importance, implementation cost or market demand.
+The eleven regions below separate broad kinds of relationship gap. They are *not* ranked by importance, implementation cost or market demand.
 
 ### B01 · Goal-to-outcome continuity
 
@@ -207,6 +211,22 @@ The nine regions below separate broad kinds of relationship gap. They are *not* 
 
 **Candidate nodes:** H49, H50, H51, H52, H53, H54.
 
+### B10 · Before adoption: deciding not to use BitTorrent
+
+**Thin relationship:** The original map starts with intent *inside* a BitTorrent journey, but someone may compare price, source trust, privacy, ethics, effort and other acquisition routes **before** ever installing a client.
+
+**Candidate nodes:** H55, H56, H60–H64 and H66. **Possible exits:** N01–N04, N11–N14, N16–N17.
+
+**Distinction:** Some factors are under software control (explanation, metadata visibility, better backup/export), others are external (law, participant choice, source authenticity, tracker access). A legitimate outcome may be choosing a completely different channel or declining to acquire the content.
+
+### B11 · Participation: willingness to share versus ability to do so
+
+**Thin relationship:** A user can sincerely want to seed, yet be constrained by asymmetric uplink, household contention, metered data, battery, electricity, disk, poor peer demand or private tracker credit schemes.
+
+**Candidate nodes:** H57–H59 and H65. **Possible exits:** N06–N08, N10, N15–N16.
+
+**Distinction:** Contribution has multiple measures: uptime, availability to rare swarms, bytes uploaded and policy credit. They are not equivalent. Neither a client nor a user's effort can manufacture upload demand or guarantee acceptance into a private community.
+
 ## 6. Candidate missing-capability catalogue
 
 These are deliberately phrased as **capability hypotheses**, not instructions to build them. Every row identifies what appears missing from the *description of the 240-feature union*, which activities would be helped, and which existing features border the apparent gap. `H` numbers are stable research identifiers in the graph data. The cognitive and possible affective relationships are also available as typed graph edges.
@@ -267,6 +287,19 @@ These are deliberately phrased as **capability hypotheses**, not instructions to
 | **H52** | Automation reason and provenance explanation | A rule-triggered rename, delete or import can feel arbitrary when the matching evidence is hidden. | A11.09, A11.10, A14.12 | F12.13, F12.10 |
 | **H53** | Restore task continuity after a failure | Diagnostics are often disconnected from where the user was trying to finish a task. | A15.12, A04.10, A16.10 | F08.08, F14.07 |
 | **H54** | Contextual default from stated immediate purpose | People may intend 'use Wi-Fi, finish before travel, preserve seeding' rather than manually setting many scopes. | A17.07, A02.07, A20.11 | F05.07, F05.13 |
+
+| **H55** | Purpose-aware alternative-channel choice | Choosing not to torrent can be a good outcome | A01.12 | F01.06 |
+| **H56** | Pre-commit release fitness check | A valid torrent can still contain an unsuitable episode, audio or archive | A01.05 | F09.07 |
+| **H57** | Feasible sharing budget planning | Someone may want to seed while lacking uplink, storage, electricity or time | A17.04 | F05.05 |
+| **H58** | Explain low-demand seeding without blame | A long seeding duration may yield no upload due to demand or competition | A05.06 | F08.11 |
+| **H59** | Pre-add tracker policy outcome preview | Tracker obligations may outlive a chosen-file download | A05.02 | F13.05 |
+| **H60** | Clarify distinct trust and risk boundaries | File authenticity, legal permission, client trust and network privacy are not equivalent | A14.01 | F13.15 |
+| **H61** | Graceful exit with portable data and state | Provider/client abandonment need not mean losing valid bytes and resume metadata | A20.07 | F02.17 |
+| **H62** | Minimal setup and staged expertise | Occasional users may not accept full advanced stack setup cost | A09.01 | F14.13 |
+| **H63** | Honest stopping points for unavailable content | Prolonged near-completion should surface uncertainty and choices | A06.07 | F04.14 |
+| **H64** | Repair established workflow after version changes | A changed UI, rename behavior or integration can destroy learned routine | A18.10 | F14.11 |
+| **H65** | True remote service overhead accounting | Seedbox costs include transport, upkeep, time and storage constraints | A09.11 | F11.11 |
+| **H66** | Support sampling and access motives beyond price | Access to older regional material and preference exploration can motivate P2P | A12.01 | F09.01 |
 
 ### 6.1 What “missing” should mean at different levels
 
@@ -330,7 +363,7 @@ jq -r '.edges[] | select(.type=="co_supports_activity" and .weight>=2) | [.from,
 jq -r '.nodes[] | select(.type=="missing_capability_hypothesis") | [.id,.label,.missingLink] | @tsv' BITTORRENT-CONCEPT-GRAPH-2026-10-29.json
 ```
 
-The graph stores `confidence` labels such as `document-derived`, `previous_atlas_synthesis`, `derived_co_occurrence`, `interpretive`, and `hypothesis`. They describe **how the edge was produced**, not numerical probabilities of correctness. Human goals and affective stakes are attached at the *activity domain* level, a deliberate low-resolution first pass. It should not be treated as psychographic data about actual users. The 54 H nodes have more specifically chosen activity, feature, cognition and affective links.
+The graph stores `confidence` labels such as `document-derived`, `previous_atlas_synthesis`, `derived_co_occurrence`, `interpretive`, and `hypothesis`. They describe **how the edge was produced**, not numerical probabilities of correctness. Human goals and affective stakes are attached at the *activity domain* level, a deliberate low-resolution first pass. It should not be treated as psychographic data about actual users. The 66 H nodes have more specifically chosen activity, feature, cognition and affective links.
 
 **Edge types to keep separate:**
 
@@ -355,15 +388,172 @@ A good gap analysis must actively search for disconfirming evidence:
 
 **A sparsely linked feature is not necessarily underdeveloped; a densely linked feature is not necessarily useful.** The meaningful target is a gap between a person's intention, the interaction they can perform, the resulting state, and the confidence with which they can know that state has been reached.
 
-## 10. Boundaries and handoff
+## 10. Integrating non-use, aversion and abandonment
 
-The research remains external and exploratory. It introduces **no new requirements**, makes **no assessment of the existing product**, creates **no backlog or prioritized roadmap**, and does not modify the underlying 240-feature inventory or the 240-activity atlas. No user study or instrumented usage data was collected. Neither the numerical graph size nor the 54 hypotheses should be interpreted as population coverage or proven novelty.
+The 240-activity atlas is largely a map of **things people manage to do**. [The independent multilingual friction research in PR #539](https://github.com/gamesbyian/Chunks/pull/539) deliberately samples people who *do not start*, *cannot finish*, *quit*, or *keep using the software only reluctantly*. Adding that source changes what a thin region means. A point with no feature link may be an **unattempted activity** or an **external constraint**, not simply an unimplemented feature.
+
+The evidence adds **55 source-coded friction nodes** (`AV-A01` to `AV-F08`), **six friction families**, and **18 possible negative or alternative paths** (`N01`–`N18`) to the graph. The `AV-` prefix is intentional: `AV-A01` is a friction factor from the other document; `A01.01` is a user activity in the existing atlas. Do not confuse them.
+
+An `AV` node stores its original code, qualitative evidence classification, original source codes, source-language synopsis and related work. Original codes **R/D/M** distinguish repeated evidence within a purposive sample, distinctive evidence and mixed/possibly inaccurate perceptions. They are **not user prevalence percentages**. The graph provides *possible* interrupted activity and abandonment/alternative links. These are analyst-supplied hypotheses, not observed trajectories of every complainant.
+
+### 10.1 The revised human decision graph
+
+```mermaid
+flowchart TD
+  N["Need, curiosity, social obligation or publishing intent"] --> K{"Does BitTorrent seem worth using?"}
+  R["Anticipated risk, history and resource constraints"] -. influences decision .-> K
+  K -->|No| ALT["Choose another channel or decline"]
+  K -->|Yes| SETUP["Choose source, client and environment"]
+  SETUP --> Q{"Setup / source suitable?"}
+  Q -->|No| STOP["Repair, defer or leave"]
+  Q -->|Yes| DO["Run, observe and complete"]
+  DO --> P{"Can the intended use be completed?"}
+  P -->|Yes| USE["Use, share or preserve"]
+  P -->|No| FAIL["Diagnose, retry or switch"]
+  FAIL --> DO
+  FAIL --> ALT
+  USE --> S{"Can or wants to keep sharing?"}
+  S -->|Yes| SEED["Continue under feasible limits"]
+  S -->|No| EXIT["Retain, archive, suspend or stop"]
+  SEED --> EXIT
+  EXIT --> H["Prior experience influences next decision"]
+  H -. future use .-> K
+```
+
+The graph now represents **feedback from earlier experiences**. An old bad experience can shape a default setting or a future decision even after bandwidth, disk and device circumstances change. This is the difference between a protocol-state machine and an actual human activity map.
+
+### 10.2 The 55 friction factors and their causal boundary
+
+| Source family | Count | Typical interruption | What should not be assumed |
+|---|---:|---|---|
+| AV-A: refusal, privacy, authenticity and ethics | 9 | Never begins, distrusts tool, avoids participation | A feature can change applicable law or make arbitrary content safe |
+| AV-B: suitability and discovery | 8 | Rejects source, chooses competing channel, discovers wrong edition | A torrent client can create missing subtitles, releases or permission |
+| AV-C: indefinite progress and ambiguous errors | 10 | Abandons magnet/partial transfer or repeats unhelpful workaround | A client can always complete a swarm missing actual pieces |
+| AV-D: social obligations and finite resources | 10 | Disables seeding, exits tracker, pays for faster host or stops | Long seeding hours necessarily yield upload credit |
+| AV-E: organization, identities and integrity | 10 | Stops sharing to rename, gives up restore, loses confidence | A correct hash check alone repairs arbitrary path references |
+| AV-F: client, remote and provider costs | 8 | Abandons setup, switches client, cancels seedbox | Every operator wants multi-app complexity or subscription-based infrastructure |
+
+**Source-code crosswalk: all 55 factors and their proposed link to the activity graph**
+
+| Factor ID | Reported barrier (abridged) | Connected activity | Possible path |
+|---|---|---|---|
+| AV-A01 | Copyright/ISP notices, threatened fines or takedown anxiety deter participation or cause abandonment | A14.01 | N01 |
+| AV-A02 | Fear that ordinary torrent downloading exposes the household IP and identity to a swarm | A14.01 | N01 |
+| AV-A03 | VPN necessity, ongoing price, interface binding and kill-switch failures feel like a second specialized system | A08.01 | N02 |
+| AV-A04 | Malware, spoofed uploads, suspicious executables and dubious index quality defeat trust | A01.07 | N03 |
+| AV-A05 | User distrusts torrent software itself after security concerns or regression stories | A18.10 | N11 |
+| AV-A06 | Ethical objections to unauthorized distribution are a genuine reason to refuse torrenting altogether | A01.10 | N01 |
+| AV-A07 | Perceived technical initiation cost: VPNs, ports, Docker, NAS, trackers, folders, codecs, ratios | A09.01 | N02 |
+| AV-A08 | Hostile, opaque or exclusionary communities make beginners reluctant to ask | A01.12 | N02 |
+| AV-A09 | Users conflate BitTorrent protocol, torrent indexes, a specific client, and piracy in their assessment of risk | A02.01 | N01 |
+| AV-B01 | Cannot find a trusted source/index without dead domains, mirrors or misleading results | A01.02 | N03 |
+| AV-B02 | Scarcity of seeds for older, niche, regional or obscure works | A01.08 | N05 |
+| AV-B03 | Advertised seed counts do not match available complete peers; apparent abundance is misleading | A15.02 | N05 |
+| AV-B04 | Wrong episode, unwanted release, variant, codec or language discovered *after* a lengthy download | A01.05 | N12 |
+| AV-B05 | Regional-language subtitles, dubbing or desired audio editions are unavailable even where seeds exist | A01.03 | N12 |
+| AV-B06 | Private trackers become chokepoints: site shutdown, changed limits and access obstacles | A11.05 | N07 |
+| AV-B07 | Users cannot distinguish a magnet URI, a .torrent file, the actual payload, and a search/result page | A02.02 | N02 |
+| AV-B08 | Better competing methods exist for the user's immediate objective: one-click direct files, streaming, Usenet, personal media services | A01.12 | N17 |
+| AV-C01 | Download indefinitely stranded at 99–99.9%, sometimes after tens of gigabytes | A06.07 | N05 |
+| AV-C02 | A missing tiny auxiliary piece prevents “100%” despite main media being playable | A03.08 | N18 |
+| AV-C03 | Magnet stays at “downloading metadata”; user cannot even inspect the file list | A03.01 | N04 |
+| AV-C04 | “Stalled,” “connecting,” “slow,” and “error” give insufficient causal information | A15.02 | N05 |
+| AV-C05 | One download works while another does not, so users cannot tell whether device, tracker, torrent, VPN or ISP is at fault | A15.03 | N05 |
+| AV-C06 | Throughput swings wildly or stays far below advertised bandwidth, including uploading faster than downloading | A15.06 | N05 |
+| AV-C07 | Restarting the app or pausing for hours sometimes “fixes” transfers but gives no explanation | A15.12 | N16 |
+| AV-C08 | Client update, firewall rule or VPN adapter-name change silently breaks previously working magnets | A14.01 | N04 |
+| AV-C09 | Defective/blocked download or write looks like a torrent bug but is a permission/antivirus/disk error | A15.07 | N09 |
+| AV-C10 | A swarm shows an apparently complete peer that repeatedly appears but cannot actually connect | A06.02 | N05 |
+| AV-D01 | Seeding saturates limited upstream, breaking browsing or shared household Internet | A17.04 | N06 |
+| AV-D02 | Data/FUP caps and metered connections turn ongoing seeding into unexpected bills or slowdowns | A17.03 | N15 |
+| AV-D03 | The computer/phone must stay powered, online and awake long after the useful download ends | A17.07 | N15 |
+| AV-D04 | Keeping payloads to seed consumes disk space, duplicates collections or blocks cleanup | A17.01 | N08 |
+| AV-D05 | Seeding feels competitive and futile when fast seedboxes monopolize upload opportunities | A05.06 | N07 |
+| AV-D06 | Private tracker ratio, hit-and-run, freeleech and minimum retention rules are confusing and threatening | A05.02 | N07 |
+| AV-D07 | Uploader must maintain unwanted or huge incomplete collections to avoid tracker sanctions | A03.02 | N07 |
+| AV-D08 | Users want to contribute but have weak uplink or scarce bandwidth, creating guilt and moral pressure | A05.01 | N06 |
+| AV-D09 | Some purposely suppress upload while downloading because earlier congestion and disk-wear experiences became habits | A20.02 | N16 |
+| AV-D10 | Private tracker completion status can disagree with “I can play the file” because omitted non-media files still count | A03.08 | N07 |
+| AV-E01 | Renaming/moving a file after download breaks seeding or resume mapping | A16.01 | N09 |
+| AV-E02 | Want to reorganize TV seasons/music genres without manually renaming hundreds of entries | A10.03 | N08 |
+| AV-E03 | Impossible/awkward to represent alternate internal folders with duplicate names | A16.11 | N09 |
+| AV-E04 | Some filename/case collisions work initially and fail after restart, causing mysterious “missing files” | A16.10 | N09 |
+| AV-E05 | Users stop seeding so media managers can organize, rename and import files into their libraries | A12.12 | N08 |
+| AV-E06 | Existing file migration to another client/seedbox requires manual .torrent/resume extraction and hash rechecks | A16.05 | N09 |
+| AV-E07 | “Delete torrent” versus “delete content” and trash versus permanent deletion are easily misunderstood | A20.05 | N16 |
+| AV-E08 | Paid mobile client hides full filenames and shows unexplained remote warnings for users without a computer | A18.01 | N11 |
+| AV-E09 | Cannot rename at initial add after an upgrade, or client crashes while renaming | A02.07 | N11 |
+| AV-E10 | Torrent packages that are fine as individual media files are unusable as incomplete solid archives | A10.04 | N18 |
+| AV-F01 | Client UI changes break themes, readability or familiar workflows without sensible fallback | A18.10 | N11 |
+| AV-F02 | Clashing software conventions cause uncertain statuses (“seeding” mistaken for not downloaded) | A04.01 | N16 |
+| AV-F03 | Seedboxes add financial cost, capped storage, FTP transfer and a second set of stateful tools | A10.01 | N10 |
+| AV-F04 | User leaves a seedbox because maintaining it takes more time than infrequent downloads justify | A20.07 | N10 |
+| AV-F05 | Hosted seedbox speed/peering/disk conditions can be worse than expected | A09.10 | N10 |
+| AV-F06 | Client connection setup is confusing even for technically capable users choosing a provider | A08.01 | N02 |
+| AV-F07 | Users struggle to create/share torrents because piece sizing, trackers, web seeds and source flags are cryptic | A13.02 | N13 |
+| AV-F08 | People distrust torrent apps that overload users with advertising, opaque monetization or unsupported extras | A18.06 | N11 |
+
+The 18 paths are **contingent alternatives**, not predictions: `N01` (declines due to privacy, legal or ethical risk); `N02` (quits during setup due to complexity); `N03` (rejects untrusted or unsuitable release); `N04` (stops waiting for missing magnet metadata); `N05` (abandons indefinitely stalled or incomplete data); `N06` (discontinues seeding because of household/device impact); `N07` (leaves tracker membership because of rules or ratio pressure); `N08` (stops seeding to curate files); `N09` (gives up path repair or migration); `N10` (retires seedbox when costs exceed benefits); `N11` (leaves client after regression or unwanted monetization); `N12` (retries source discovery after wrong release/language); `N13` (abandons sharing because publishing is cryptic); `N14` (cannot or will not join private tracker); `N15` (suspends operations after resource surprise); `N16` (keeps workaround learned after an earlier negative event); `N17` (chooses another distribution channel on purpose); `N18` (leaves acquired files unused because handoff failed).
+
+### 10.3 Research on motivations and behavior beyond enthusiast forums
+
+PR #539 contributes a large multilingual source catalogue, but it intentionally overrepresents people willing to post frustrations. Independent academic work gives useful complementary perspectives:
+
+- **Q01 · [More Than Just Free Content](https://journals.sagepub.com/doi/10.1177/0196859909333697)**: 2009 Singapore 40 P2P user interviews, historic qualitative.
+- **Q02 · [P2P motivational factor survey](https://www.sciencedirect.com/science/article/pii/S1877042813039293)**: 2013 Turkey questionnaire n=1360, P2P not BT-specific.
+- **Q03 · [Socioeconomic and content heterogeneity](https://pmc.ncbi.nlm.nih.gov/articles/PMC4217464/)**: 2014 study of variation in observed P2P patterns.
+- **Q04 · [Private BT community sharing ratio study](https://www.sciencedirect.com/science/article/abs/pii/S1389128613004131)**: 2014 observed long but sometimes unproductive seeding.
+- **Q05 · [Economics of BitTorrent communities](https://www.microsoft.com/en-us/research/publication/economics-of-bittorrent-communities/)**: 2012 case study of community credit incentives.
+- **Q06 · [Wants to seed but must rename for Plex](https://www.reddit.com/r/qBittorrent/comments/1udad8i/)**: 2026 first person user account.
+- **Q07 · [Jellyfin library organization breaks seeding](https://www.reddit.com/r/qBittorrent/comments/1nlri61)**: 2025 first person user account.
+- **Q08 · [Weak upstream and private tracker dilemma](https://www.reddit.com/r/trackers/comments/1vad87g/)**: 2026 first person user account.
+- **Q09 · [Different demand between public and private swarms](https://www.reddit.com/r/trackers/comments/1uu6cg4)**: 2026 first person user account.
+- **Q10 · [Ubuntu verifies publisher authenticity separately](https://documentation.ubuntu.com/security/software-integrity/)**: Official software integrity guide.
+
+The older studies should be considered context-specific and historical. Interviews and surveys about **P2P generally** must not be relabelled as representative BitTorrent-only usage. Neither country-level socioeconomic correlations nor tracker study samples justify an individual user's motivations or emotional profile.
+
+Three distinctions follow:
+
+1. **Download motives include more than price.** Sampling, access to regionally unavailable works, convenience, format choice, gifting and pleasure in sharing all change the concept of a “good result.”  
+2. **Participation effort is not participation outcome.** A long-seeded private torrent may earn few bytes or credits because nobody needs the pieces; a faster seeder or high-demand swarm can change the apparent reward. Economic incentives may influence selection and retention rather than simply increasing universal generosity.
+3. **Restraint can be competent and intentional.** Choosing not to join a private tracker, not to seed on metered mobile data or not to set up a seedbox may be rational agency, not failed onboarding.
+
+### 10.4 Which gaps are actually solvable in software?
+
+| Locus of cause | Examples | Candidate useful research | Boundary |
+|---|---|---|---|
+| Client or remote interaction | Incomprehensible names, unclear completion, unsafe action, missing profile | H49, H55–H56, H60, H62, H64 | Can improve explanation, choice and control |
+| Cross-app integration | Torrent complete, SFTP import fails, renamed files lose seeding | H02, H08–H10, H22, H44–H45, H61 | Can improve orchestration, identity and recovery |
+| Swarm supply/demand | Missing rare piece, no leechers to upload to | H14, H39, H58, H63 | Can assess and explain, not create absent peers |
+| Household and infrastructure | Asymmetric broadband, battery, caps, hosting expenses | H26, H57, H65 | Can forecast and constrain, cannot eliminate external cost |
+| Community governance | Ratio, hit-and-run, entry barriers, arbitrary account rules | H41, H59 | Can model stated rules; cannot grant access or rewrite rules |
+| Source / publisher / law | Counterfeit file, misleading release, rights to redistribute | H42, H55–H56, H60, H66 | Can surface evidence; cannot guarantee legal permission or authenticity |
+
+**No blanket “missing” claim:** H55–H66 are twelve new *candidate completeness questions* about the inventory, not proof of novelty in all torrent clients. Some could be composites of existing features or handled by independent utilities.
+
+### 10.5 Research that would most improve the map next
+
+The graph now supports more specific investigation than another indiscriminate feature crawl:
+
+1. **Non-adopter and quitter diaries:** Ask people who recently chose direct download, Usenet, streaming, a cloud share or no download: what were they trying to achieve, what exact action did they take last, and what would change their decision? This captures the beginning and terminal branches ignored by enthusiast manuals.
+2. **Interruption and return:** Observe users opening a completed/errored client days later. What do they remember? What does the app know? Which old safety workaround stays enabled after circumstances change?
+3. **Paired device/seedbox studies:** Trace the same content across browser, phone remote, remote torrent job, SFTP, media manager and final playback. Record every state transition where a human guesses if the effect completed.
+4. **Low-resource contribution:** Study homes with small upstream, metered access, expensive electricity, limited storage or shared household connections. Separate willingness to upload from feasibility and demand; avoid moral labels.
+5. **Content sampling, access and publishing:** Include researchers, public-domain archivists, release publishers, language/edition seekers, disabled users and creators distributing their own work. Do not let entertainment acquisition define all usage.
+6. **Technical implementation disconfirmation:** For each H hypothesis, search current client APIs and UI, mobile remotes, seedbox extensions, file managers and sidecars, then record whether the *whole human workflow* is supported or merely its constituent technical primitives.
+7. **Real accessibility and localization testing:** No sufficient first-person accessibility evidence emerged in this additional search to justify new prevalence claims; recruit screen-reader, low-vision, motor-access and non-English participants instead of guessing about their experience.
+
+**Highest-value new evidence types:** first-run recordings, task-level observation, before/after screenshots of real repair, abort logs with consent, longitudinal diary studies, client issue reports with reproduction steps, and provider-specific operation manuals. None of these justify invasive telemetry by default.
+
+## 11. Boundaries and handoff
+
+The research remains external and exploratory, now explicitly including users who decline, abandon or switch away from BitTorrent. It introduces **no new requirements**, makes **no assessment of the existing product**, creates **no backlog or prioritized roadmap**, and does not modify the underlying 240-feature inventory or the 240-activity atlas. No user study or instrumented usage data was collected. Neither the numerical graph size nor the 66 hypotheses should be interpreted as population coverage or proven novelty.
 
 **Artifacts:**
 
 - This document: readable conceptual map, sparsity interpretation, diagrams, all H hypotheses and research validation method.
 - [Typed graph data](BITTORRENT-CONCEPT-GRAPH-2026-10-29.json): full nodes, edges, IDs, alternative routes, cognitive and possible emotional relations, plus derived feature co-occurrence.
 - [Feature inventory](https://github.com/gamesbyian/Chunks/blob/26fec615e8241504011f319929c40d22cc35bd9f/docs/BITTORRENT-ECOSYSTEM-FEATURE-INVENTORY-2026-10-29.md): source-of-record for observed product capabilities.
-- [Activity atlas](https://github.com/gamesbyian/Chunks/blob/7631199f79b6763a961da5a2a3665886eb6964d7/docs/BITTORRENT-USER-GOALS-AND-WORKFLOWS-2026-10-29.md): source-of-record for illustrated user workflows.
+- [Activity atlas](https://github.com/gamesbyian/Chunks/blob/7631199f79b6763a961da5a2a3782886eb6964d7/docs/BITTORRENT-USER-GOALS-AND-WORKFLOWS-2026-10-29.md): source-of-record for illustrated user workflows.
 
 To extend the map in future research, update the evidence and edge semantics before treating a weakly supported candidate as a truly missing capability. The graph is intentionally designed to help challenge its own assumptions.
