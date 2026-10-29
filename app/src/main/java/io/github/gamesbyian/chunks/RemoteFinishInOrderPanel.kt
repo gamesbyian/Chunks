@@ -16,7 +16,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.engine.FinishInOrderPlanner
@@ -134,6 +137,35 @@ internal fun RemoteFinishInOrderPanel(
         } else {
             Text(finishInOrderStatus(current, null, names) + " Advances while Chunks is open and connected.",
                 style = MaterialTheme.typography.bodySmall)
+            // The server reports no per-file completion here, so "up next" is the
+            // order after the file it currently has at High; a finished file
+            // chosen anyway is simply skipped by the next verified step.
+            val order = current.policy.order.map { it.index }
+            val activePosition = order.indexOfFirst { files.getOrNull(it)?.priority == 2 }.coerceAtLeast(0)
+            val upNext = order.drop(activePosition + 1).take(4)
+            if (current.pending.isEmpty() && current.suspendedReason == null && upNext.isNotEmpty()) {
+                Text("Up next", style = MaterialTheme.typography.labelLarge)
+                upNext.forEach { index ->
+                    val name = names[index] ?: "file ${index + 1}"
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(name, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+                        OutlinedButton(onClick = {
+                            act {
+                                val saved = FinishInOrderController.exclusive {
+                                    withContext(Dispatchers.IO) {
+                                        val next = store.get(transfer.hash)?.finishNext(index)
+                                        next != null && store.save(transfer.hash, next)
+                                    }
+                                }
+                                if (!saved) "This file could not be moved first now. Nothing changed."
+                                else describe(stepRemoteFinishInOrder(remote, store, transfer.hash))
+                                    ?: "$name is next."
+                            }
+                        }, enabled = !stale && !working, modifier = Modifier.heightIn(min = 48.dp)
+                            .semantics { contentDescription = "Finish $name next" }) { Text("Finish this next") }
+                    }
+                }
+            }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (current.suspendedReason != null) Button(onClick = {
                     act {

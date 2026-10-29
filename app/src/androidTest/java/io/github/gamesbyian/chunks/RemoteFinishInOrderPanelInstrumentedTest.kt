@@ -22,6 +22,8 @@ import java.io.InputStreamReader
 import java.net.InetAddress
 import java.net.ServerSocket
 import java.util.Collections
+import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onNodeWithContentDescription
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
@@ -118,5 +120,34 @@ class RemoteFinishInOrderPanelInstrumentedTest {
         }
         assertEquals(1, started)
         assertEquals(listOf("f1=2"), writes.toList())
+    }
+
+    @Test fun finishThisNextRaisesTheChosenEpisodeOnTheServer() {
+        val remote = RTorrentRemote(RemoteCredentials(startLoopback(), "", ""))
+        val files = paths.mapIndexed { i, p -> RemoteFile(p, 4096, priorities[i]) }
+        val asLocal = files.mapIndexed { i, f ->
+            io.github.gamesbyian.chunks.engine.LocalTransferFile(i, f.path, f.sizeBytes, 0L, true, 4)
+        }
+        // Order E01 (index 1), E02 (0), E03 (2), already saved.
+        FinishInOrderStore(context, scope).save(hash, io.github.gamesbyian.chunks.engine.FinishInOrderRecord(
+            io.github.gamesbyian.chunks.engine.FinishInOrderPlanner.policyFor(
+                io.github.gamesbyian.chunks.engine.FinishInOrderPlanner.Mode.BALANCED, asLocal, listOf(1, 0, 2))))
+        var started = 0
+        rule.setContent {
+            MaterialTheme {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    RemoteFinishInOrderPanel(remote, RemoteTransfer(hash, "Show", 12288, 0, true, "/srv"),
+                        scope, files, stale = false, onMutationStarted = { started++; true }, onSettled = {})
+                }
+            }
+        }
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithContentDescription("Finish Show S01E03.mkv next").fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithContentDescription("Finish Show S01E03.mkv next").performScrollTo().performClick()
+        rule.waitUntil(10_000) { writes.contains("f2=2") }
+        assertEquals(1, started)
+        assertEquals(listOf(2, 1, 0), FinishInOrderStore(context, scope).get(hash)!!.policy.order.map { it.index })
+        assertEquals(listOf(1, 1, 2), priorities.toList())
     }
 }
