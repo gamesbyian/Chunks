@@ -127,4 +127,6 @@ Not yet: remote rTorrent enforcement, an Add-review preview or per-transfer "Why
 
 The phone Add review shows a **Seeding** line for a `.torrent`: the rule (or this phone's default) the controller will snapshot, in plain words, with the first match reason and any flagged conflicts. It is computed offline from the file's tracker hosts and private flag, using saved phone-scoped rules only. Magnet links have no preview; the controller resolves them once metadata arrives. The preview never changes a transfer; the controller still decides on first sight after Add.
 
-Evidence: JVM tests for the preview helper and metainfo tracker/private parsing. Not yet: the remote Add preview, per-transfer "Why this rule?", a manual rule override in Add, and TalkBack/handset review.
+Each phone transfer card then shows the stored snapshot, read-only: the policy and its source, whether the rule paused it (and that starting it again is respected), any unconfirmed-action note, and **Why this rule?** with the stored match reasons. Transfers that were there before the controller's first run say they are not managed by rules.
+
+Evidence: JVM tests for the preview helper, metainfo tracker/private parsing and the card summary (Compose). Not yet: the remote Add preview, a manual rule override in Add, full MF31 explanations (considered-but-unmatched rules, observed versus proposed values), and TalkBack/handset review.
