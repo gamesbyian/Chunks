@@ -356,6 +356,33 @@ class RTorrentRemoteFixtureTest {
         }
     }
 
+    @Test fun initiallyEmptyPagedViewMustRejectNewlyVisibleTorrent() = runBlocking {
+        largeQueue(0, relistCount = 1).use { fixture ->
+            val remote = RTorrentRemote(RemoteCredentials(fixture.endpoint, "", ""))
+            val received = assertThrows(IllegalStateException::class.java) {
+                runBlocking { remote.listTransfersPaged("main") }
+            }
+            assertTrue(received.message.orEmpty().contains("membership changed"))
+            assertEquals(2, fixture.methods.count {
+                it.contains("<methodName>download_list</methodName>")
+            })
+            assertFalse(fixture.methods.any {
+                it.contains("<methodName>system.multicall</methodName>")
+            })
+        }
+    }
+
+    @Test fun stableEmptyPagedViewCanReturnEmptyWithoutPageRequests() = runBlocking {
+        largeQueue(0).use { fixture ->
+            val remote = RTorrentRemote(RemoteCredentials(fixture.endpoint, "", ""))
+            assertTrue(remote.listTransfersPaged("main").isEmpty())
+            assertEquals(2, fixture.methods.count {
+                it.contains("<methodName>download_list</methodName>")
+            })
+            assertEquals(2, fixture.methods.size)
+        }
+    }
+
     @Test fun changedMembershipDuringPagedReadFailsClosed() = runBlocking {
         largeQueue(2, relistCount = 1).use { fixture ->
             val remote = RTorrentRemote(RemoteCredentials(fixture.endpoint, "", ""))
