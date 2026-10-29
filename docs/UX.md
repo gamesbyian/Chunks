@@ -2,6 +2,11 @@
 
 > **Authority:** user-visible behavior, interaction state and accessibility requirements. Dated implementation notes describe bounded evidence only; the live [coverage map](SPEC-COVERAGE.md), [quality ledger](QUALITY-LEDGER.md) and [work queue](WORK-QUEUE.md) determine present status and next work.
 
+## Restore transfer from relocated/renamed files
+
+Broken/missing-file transfer details and eligible multi-select lists expose **Find files to restore transfer**. Open with expected source paths and precise phone/server scope, let the user choose an authorized search root, preview likely and hash-verified matches, show a zero-mutation path mapping plan and required engine/filesystem capabilities, and request separate approval for any link/copy operation. Preserve chosen names and distinguish found, verified, relinked and resumed. Unknown remote file access or insufficient per-file mapping yields an honest limitation, never simulated success. [TRANSFER-FILE-RECOVERY](TRANSFER-FILE-RECOVERY.md).
+
+
 ## Mental model, first-run and navigation
 
 - **Transfers**: what is downloading, completed, uploading, stuck and awaiting a safe move.
