@@ -2,6 +2,11 @@
 
 > **Authority:** binding feature-level product/interaction contract for ratio, duration and upload speed policy. [PRODUCT](PRODUCT.md) owns the user promise; [UX](UX.md) owns common screen behavior; [UNIFIED-ENVIRONMENTS](UNIFIED-ENVIRONMENTS.md) owns scope. This is a planned feature, not proof of implementation.
 
+## Environment colour in rule scope presentation
+
+The rule list/editor, Add match explanation, effective-policy preview and every **Applies to** summary MUST render each environment's visible name in its persistent, user-customizable nonblack/nonwhite Chunks palette colour, independently for every named environment in multi-scope sentences. Retain textual names, accessible contrast and clear capability/status labels even without colour. Environment colour follows stable profile identity, while rule applicability remains independently controlled by explicit environment IDs; the currently selected combined Transfers view never alters applicability. See [UNIFIED-ENVIRONMENTS](UNIFIED-ENVIRONMENTS.md).
+
+
 ## Intent and user model
 
 A user can express ordinary intentions without learning rTorrent ratio group syntax: "All torrents from IPTorrents seed indefinitely; everything else seeds to ratio 1.00 and uploads at no more than 24 KiB/s." Settings are understandable, previewable and accessible at Add, as well as automatic intake and transfer details. A **Seeding Group** is a named Chunks policy preset plus optional matching rules, not a Collection (semantic organization), Place (filesystem location), tracker category or rTorrent-internal group. Groups never move or rename backing data.

@@ -2,6 +2,11 @@
 
 > **Interpretation:** each row states a specific requirement, bounded implementation observation and what still needs acceptance. Older run/PR references are historical snapshots, not automatic proof of the latest main branch. Reconcile against live code/PRs and the [QUALITY-LEDGER](QUALITY-LEDGER.md) before changing a status. Product intent belongs in [PRODUCT](PRODUCT.md) and feature contracts; task ordering only in [WORK-QUEUE](WORK-QUEUE.md).
 
+## Combined multi-environment Transfers and palette identity (owner requirement, 2026-10-29)
+
+**Required; implementation/acceptance OPEN.** The canonical [unified-environment contract](UNIFIED-ENVIRONMENTS.md) now requires any-subset local/remote browsing; one combined search/filter/sort; optional coloured environment groups with the **same secondary sort and reversible direction in every group**; stable environment-ID-based palette colours (excluding black/white); and environment-coloured names across settings, rules and actions. Existing basic environment labels do not demonstrate the selector, combined list, persistent colours or grouping. Implement shared read-only union projection, stable job keys and visible partial/offline snapshots; independently validate both sort directions per key, cross-profile action safety, light/dark and Android 320×700/412×892 accessibility. Task handoff: [WORK-QUEUE](WORK-QUEUE.md).
+
+
 ## Five owner-approved niche workflows: specification versus evidence
 
 **Scope approved, implementation and independent acceptance OPEN unless a narrower existing slice already has separate ledger proof.** Five thematic initiatives from the non-eliminated ecosystem inventory are now canonically specified without implying the entire external 64-item class is approved or implemented. The ordinary torrent manager, Add/transfer actions, phone/rTorrent parity and the Discovery master off switch stay first-class. Five specialist UX flows live behind contextual More, Properties, Settings or source connection routes.
