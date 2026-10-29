@@ -433,7 +433,8 @@ internal fun CombinedTransfersScreen(
                 Text("Group by environment", style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.weight(1f))
                 Switch(checked = query.groupByEnvironment,
-                    onCheckedChange = { update(query.copy(groupByEnvironment = it)) })
+                    onCheckedChange = { update(query.copy(groupByEnvironment = it)) },
+                    modifier = Modifier.semantics { contentDescription = "Group by environment" })
             }
         }
         item {
