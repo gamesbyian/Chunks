@@ -19,3 +19,7 @@
 ## Owner exception: dedicated font laboratory (2026-10-28)
 
 Typeface development is intentionally isolated in the single persistent [`font/lab`](https://github.com/gamesbyian/Chunks/tree/font/lab) branch. Unlike the app workstreams above, it does **not** open small PRs or run continuous GitHub CI for each glyph. Keep it separate from app branches and app navigation/services; run local reproducible builds and audits, then submit one frozen promotion batch with full PR CI only when warranted. See [font lab operations](design/CHUNKS-FONT-LAB-OPERATIONS.md). This is a source-ownership and CI exception, not an art approval or release shortcut.
+
+## Owner assignment: lead app agent owns open PRs and issues (2026-10-29)
+
+The owner assigned the lead app agent ownership of **all open pull requests and issues**. That agent drives each open PR to a mergeable state (merge main in with a merge commit, fix CI properly, merge on exact-head green) or records a disposition. It also keeps each open issue's status current. This assignment does not change the font laboratory exception above: glyph drawing and font source iteration stay on `font/lab`, and promotion still arrives as one reviewed batch. The lead agent may review and merge such a promotion PR, as it did for #528, the approved ExtraBold 800, after verifying binary identity, glyph coverage and full CI.
