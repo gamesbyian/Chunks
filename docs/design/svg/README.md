@@ -23,6 +23,16 @@ This is an original, **all-variants-preserved** SVG collection. No source PNG is
 - `gallery.html`: fully searchable static library of 825 current SVG drafts, with category filters, dark/light/checkerboard surfaces, side-by-side comparison and an experimental layer preview.
 - `python3 tools/validate_svg_library.py`: validates manifest, XML, self-contained SVG structure, gallery coverage and file coverage. CI runs it on relevant PRs.
 
+## In-app icons (generated Android vectors)
+
+Selected library icons ship in the app as VectorDrawables
+`app/src/main/res/drawable/chunks_ic_*.xml`, generated deterministically by
+`node tools/generate_icon_vectors.cjs` from the SVGs listed in that script.
+The SVG stays the only editable source: edit it, regenerate, and CI's
+`--check` step fails on drift. These are renderings of existing indexed
+vector drafts chosen for the app's visual pass (owner authorised choosing
+from the library, 2026-10-29), not new or separately approved artwork.
+
 ## Experimental layer composition workbench
 
 The [gallery](gallery.html) supports a four-layer, **non-destructive vector workbench**: select differing logo, mascot, sticker or icon variants; drag the active layer on the preview or use keyboard-accessible sliders to adjust position, scale, rotation and opacity; reorder layers; change the background; and export a **self-contained SVG** containing actual source paths and gradients. Save or reload a compact JSON recipe to preserve editable layer identities and settings. Each exported SVG also embeds its validated recipe as inert XML metadata, so the same SVG can be loaded back into the gallery and edited again. Identical internal IDs are namespaced in exported files.

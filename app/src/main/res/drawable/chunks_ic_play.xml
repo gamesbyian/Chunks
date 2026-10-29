@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- GENERATED from docs/design/svg/icons/transfers/play.svg by tools/generate_icon_vectors.cjs (sha256 7507c8fcac3167df); edit the SVG, then regenerate. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp" android:viewportWidth="64" android:viewportHeight="64">
+  <path android:pathData="M23 15 L49 32 L23 49 Z" android:fillColor="#FF22D97A" android:strokeColor="#FF0B0F17" android:strokeWidth="5" android:strokeLineCap="round" android:strokeLineJoin="round"/>
+</vector>

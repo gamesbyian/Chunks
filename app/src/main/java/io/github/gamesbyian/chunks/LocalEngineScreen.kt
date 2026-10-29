@@ -1728,11 +1728,14 @@ internal fun LocalTransferCard(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 ActionTile(if (transfer.stopped) "Start" else "Stop",
                     if (transfer.stopped) ChunksColors.Green else ChunksColors.Purple,
-                    onClick = onToggle, enabled = !busy, modifier = Modifier.weight(1f))
+                    onClick = onToggle, enabled = !busy, modifier = Modifier.weight(1f),
+                    icon = if (transfer.stopped) R.drawable.chunks_ic_play else R.drawable.chunks_ic_stop)
                 ActionTile("Remove…", ChunksColors.Orange, onClick = { confirmRemove = true },
-                    enabled = !busy && !confirmRemove, modifier = Modifier.weight(1f))
+                    enabled = !busy && !confirmRemove, modifier = Modifier.weight(1f),
+                    icon = R.drawable.chunks_ic_remove)
                 if (transfer.metadataKnown) ActionTile(if (filesShown) "Hide files" else "Files",
-                    ChunksColors.Cyan, onClick = onShowFiles, enabled = !busy, modifier = Modifier.weight(1f))
+                    ChunksColors.Cyan, onClick = onShowFiles, enabled = !busy, modifier = Modifier.weight(1f),
+                    icon = R.drawable.chunks_ic_folder)
             }
             if (onRepairTrackers != null && transfer.stopped &&
                 transfer.metadataKnown && transfer.trackers?.total == 0) {

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- GENERATED from docs/design/svg/icons/transfers/remove-transfer.svg by tools/generate_icon_vectors.cjs (sha256 6ea31ba08052427c); edit the SVG, then regenerate. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp" android:viewportWidth="64" android:viewportHeight="64">
+  <path android:pathData="M21 19 H43 A4 4 0 0 1 47 23 V50 A4 4 0 0 1 43 54 H21 A4 4 0 0 1 17 50 V23 A4 4 0 0 1 21 19 Z" android:fillColor="#FFFF8A3D" android:strokeColor="#FF0B0F17" android:strokeWidth="5" android:strokeLineCap="round" android:strokeLineJoin="round"/>
+  <path android:pathData="M12 18 L52 18" android:strokeColor="#FF0B0F17" android:strokeWidth="5" android:strokeLineCap="round" android:strokeLineJoin="round"/>
+  <path android:pathData="M24 11 L40 11" android:strokeColor="#FF0B0F17" android:strokeWidth="5" android:strokeLineCap="round" android:strokeLineJoin="round"/>
+  <path android:pathData="M26 28 L26 45" android:strokeColor="#FF0B0F17" android:strokeWidth="5" android:strokeLineCap="round" android:strokeLineJoin="round"/>
+  <path android:pathData="M38 28 L38 45" android:strokeColor="#FF0B0F17" android:strokeWidth="5" android:strokeLineCap="round" android:strokeLineJoin="round"/>
+</vector>
