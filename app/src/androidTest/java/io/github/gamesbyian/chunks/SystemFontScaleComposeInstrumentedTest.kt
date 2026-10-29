@@ -318,8 +318,17 @@ class SystemFontScaleComposeInstrumentedTest {
         rule.onNodeWithContentDescription("Open Big Buck Bunny public demo in", substring = true)
             .performSemanticsAction(SemanticsActions.OnClick)
         rule.waitForIdle()
-        rule.waitUntil(10_000) { rule.onAllNodesWithText("1 shown").fetchSemanticsNodes().isNotEmpty() }
+        // At 200% the count row can sit below the fold: scroll the server list to it.
+        rule.waitUntil(15_000) {
+            runCatching {
+                rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("1 shown"))
+            }.isSuccess && rule.onAllNodesWithText("1 shown").fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Big Buck Bunny public demo"))
         rule.onNodeWithText("Big Buck Bunny public demo").assertExists()
+        // The other fixture transfers are filtered out by the exact-hash search.
+        assertTrue(rule.onAllNodesWithText("Public.Example.Long.Named.Archive.S01E01.mkv")
+            .fetchSemanticsNodes().isEmpty())
         // Seven distinct captures: unauthenticated Connection, initial and
         // return-to-Transfers, Places / Organize / Server and All environments.
         assertTrue("Test fixture unexpectedly failed: $fixtureProblem",
