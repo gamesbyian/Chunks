@@ -336,12 +336,7 @@ internal fun CombinedTransfersScreen(
 
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item {
-            Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("All environments", style = MaterialTheme.typography.headlineSmall,
-                    modifier = Modifier.semantics { heading() })
-                OutlinedButton(onClick = onBack, modifier = Modifier.heightIn(min = 48.dp)) { Text("Back") }
-            }
+            CombinedTransfersHeader(onBack)
             Text("Browse every environment together. Start and Stop can be applied to a selection " +
                 "here; every other change happens in each environment's own list.",
                 style = MaterialTheme.typography.bodySmall)
