@@ -10,6 +10,11 @@
 
 **Cross-media/privacy expansion:** Category inference must not accidentally trigger remote queries; adult catalogs and explicit thumbnails require separate affirmative switches and safe default art. General image search may send only sanitized and consented inferred title/edition/platform/artist terms to a compliant image API; never expose raw filename, infohash, tracker, paths, server details, credentials, private content or user IDs. Treat search-engine results as untrusted candidates with independent license, host, pixel and safety validation, never blindly download arbitrary image URLs. See [TRANSFER-ARTWORK](TRANSFER-ARTWORK.md).
 
+## Discovery and reconnection of missing torrent data
+
+The [TRANSFER-FILE-RECOVERY](TRANSFER-FILE-RECOVERY.md) wizard searches only user-authorized local/remote roots, with bounded traversal and hashing, safe symlink/path handling, exact tenant scoping, no default overwrite/delete/move and explicit confirmation for filesystem or engine mapping changes. File-name/size matches are not proof of bytes; recheck actual content before claiming resumed seeding. Protect existing files and private paths against cross-profile leakage.
+
+
 ## Trust boundaries and threats
 
 1. Android UI/import boundary: an untrusted magnet link, torrent metainfo, file name or tracker URL can carry malicious paths, giant strings, Unicode, private tracker passkeys or URLs. Never use torrent-provided paths for raw file writes without engine + filesystem containment checks.
