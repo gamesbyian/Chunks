@@ -643,7 +643,7 @@ private fun ChunksApp(
                 }
             }
             if (error != null) {
-                Notice("Refresh problem", error.orEmpty(), Coral)
+                Notice("Refresh problem", error.orEmpty())
             }
             when (section) {
                 Section.TRANSFERS -> TransfersScreen(
@@ -1010,7 +1010,7 @@ private fun ConnectionScreen(
             ) { Text(if (loading) "Finding secure rTorrent…" else "Connect to rTorrent") }
         }
         item { ConnectionDiagnosticsPanel(diagnostics, loading, onCancelConnect) }
-        if (error != null) item { Notice("Connection unsuccessful", error, Coral) }
+        if (error != null) item { Notice("Connection unsuccessful", error) }
         item {
             Text("Protected HTTPS is required for remote servers. Login is encrypted and stored only on this device unless you opt out. No torrents or files are changed by connecting.",
                 style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary)
@@ -1876,13 +1876,6 @@ private fun StatTile(label: String, value: String, color: Color, modifier: Modif
 }
 
 @Composable
-private fun Notice(title: String, message: String, color: Color) {
-    Card(shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = color),
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp)) {
-        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(title, fontWeight = FontWeight.Bold, color = Ink)
-            Text(message, style = MaterialTheme.typography.bodySmall, color = Ink)
-        }
-    }
-}
+/** A failure the user should read before retrying. */
+private fun Notice(title: String, message: String) =
+    ChunksBanner(title, message, ChunksTone.ERROR, Modifier.padding(horizontal = 2.dp))
