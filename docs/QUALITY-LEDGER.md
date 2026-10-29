@@ -1,5 +1,22 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-29 app lane, second checkpoint: batch transfers, Finish in Order entry points
+
+- **Merged (squash, exact-head CI green):** #502 batch Move Transfer to server `f7a6f42` (head `b7e2a3d5`: API35 run [40793408909](https://github.com/gamesbyian/Chunks/actions/runs/40793408909), API29 40793408957, build 40793408876); #504 batch Copy Transfer to phone `cc4733b` (head `aeb464a7`: API35 40793708343, build 40793708390, atlas 40793708376); #505 Finish in Order on the `.torrent` Add review `9cf14ea` (head `c007b764`: API35 40793933750, API29 40793933786, build 40793933725); #507 Finish in Order for magnet Adds after metadata `c34b9aa` (head `76e1244f`: API35 40795059648, real-rTorrent 0.9.8 + Arch 40795059659, build 40795059647, atlas 40795059669).
+- **Merged later the same session (squash, exact-head CI green):**
+  - **#506 batch Move Transfer to phone** `764ae10`. The first exact-head API35 run (40795206625, head `e590368a`) failed on `BatchMoveRemovalPanelInstrumentedTest`, which still expected #502's "stay on this phone". #506 names the source in the panel, so the assertion was updated to the new wording, not removed. The fixed head `f23322c7` passed: API35 [40796533295](https://github.com/gamesbyian/Chunks/actions/runs/40796533295), real rTorrent 0.9.8 + Arch 40796532966, build 40796533204, atlas 40796532937. The merge onto newer main was also compiled locally.
+  - **#508 Smart Connect provider catalog** `a8f4cef` (head `e0a3f417`: API35 40795431453, build 40795431448, atlas 40795431443). Before the swap, the pinned-plan JVM test passed against the old hard-coded rules.
+  - **#509 phone Sequential Playback** `e910256` (head `e31d8aff`: API35 40796070311, real rTorrent 40796070426, build 40796070358). Locally `*FinishInOrder*` passes: planner 10/10, runner 10/10 including a real-libtorrent flag readback, remote port 3/3. The merge onto newer main was compiled and tested locally.
+  - **#510 controlled loopback-swarm timing** `a5e2646` (head `48e463e0`: build 40796578341, which runs `testDebugUnitTest`). One seeder at 384 KiB/s, 6 × 256 KiB files, the order reversing native order, five local runs:
+    - Finish first: first ordered file in 1329–2458 ms, with the other files 20–49% verified.
+    - Baseline: 3963–5508 ms, with the other files 66–100% verified.
+    - Ratio 0.24–0.55.
+    - Asserted bound: other files under 75%. libtorrent's ~3 s request queue rules out strict order.
+- **Open:** #511 R8 keep rules and `qaMinified` API35 smoke. Locally the shrunk APK is 36.4 MB vs 68.1 MB debug (dex 3.7 vs 33 MB). Release shrinking stays off until its smoke workflow passes.
+- **Design note:** Finish in Order leaves sidecar subtitles out of the order. They keep native Normal priority, which outranks the Low background files, so they already arrive early. Grouping is deferred until device evidence shows a need.
+- **Environment hazard:** after a container restart the agent proxy port changes, and `~/.gradle/gradle.properties` must follow `$HTTPS_PROXY`. The AGP version needs Gradle 9.3.1 (`/opt/gradle9`), not the default 8.14.
+- **Still not established:** physical handset for any of these flows; Seedhost or real-provider Smart Connect; playback-start timing; public-swarm timing; 200% text and TalkBack on device.
+
 ## 2026-10-29 session close-out (app lane): merges, fixes and evidence
 
 - **Merged (squash, exact-head CI green):** #463 `ea5833e`, #468 `992d506`, #406 `8f7a034`, #472 `bf5df95`, #475 `4912ba3`, #423 `85a7388`, #478 `13b2303`, #479 `66c319b`, #476 `b41b65f`, #477 `099c36f`, #480 `cc824fc`, #499 `b4f6183`, #481 `707692c`, #473 `c829b57`, #474 `fdf8a21`, #482 `07f31f9`; #501 (remote FIO) and #502 (batch Move) see their PRs.
