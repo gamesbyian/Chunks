@@ -59,6 +59,15 @@ Use these headings when creating or substantially rewriting a feature contract; 
 
 The existing documents contain valuable but historically accumulated text. Refactor incrementally by domain, without silently discarding owner decisions or safety preconditions. First establish authority/navigation and tag current versus historical sections. Then migrate repeated paragraphs into the canonical feature contract and replace duplicates with short links; only then reorganize deep sections. Each migration PR must contain a **requirements-preserved checklist** listing moved/merged material and separately noting intentional behavioral changes. Treat stylistic cleanup as zero functional change until verified otherwise.
 
+## Automated local validation
+
+Before proposing a documentation merge, run:
+```sh
+python3 tools/check_docs.py
+python3 -m unittest discover -s tests -p 'test_docs_check.py'
+```
+The checker validates repository-local Markdown targets without network access and reports unresolved heading fragments. Use `--strict-anchors` when cleaning existing anchor debt; do not weaken the link-target check to hide broken paths. Link checks are quick/local and should not spawn Android or font GitHub workflows.
+
 ## Quality gate
 
 A documentation PR passes only when an unfamiliar agent can answer: **What is required? Why? Where is it implemented? What evidence supports it? What remains? Which file may I edit? How will I verify success?** If these require searching multiple contradictory paragraphs, the document is not finished.
