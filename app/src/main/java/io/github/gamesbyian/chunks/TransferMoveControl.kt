@@ -49,6 +49,12 @@ internal class TransferMoveStore(context: Context) {
         prefs.edit().remove(key(direction, infoHash)).commit()
     } catch (_: RuntimeException) { false }
 
+    /** Every journaled move in one direction (malformed entries are skipped). */
+    fun all(direction: Direction): List<TransferMove.Record> = try {
+        prefs.all.filterKeys { it.startsWith(direction.name + "_") }.values
+            .mapNotNull { (it as? String)?.let(TransferMove::decode) }
+    } catch (_: RuntimeException) { emptyList() }
+
     private fun key(direction: Direction, infoHash: String) =
         direction.name + "_" + infoHash.lowercase(Locale.ROOT)
 
@@ -93,13 +99,15 @@ internal fun TransferMoveControl(
     onStartMove: () -> Unit,
     /** Gate for the source removal mutation; false means another change is in flight. */
     onMutationStarted: () -> Boolean = { true },
-    onMutationSettled: () -> Unit = {}
+    onMutationSettled: () -> Unit = {},
+    /** Bumped by batch Move actions so this card re-reads its journal entry. */
+    revision: Int = 0
 ) {
     if (!Regex("[0-9a-fA-F]{40}").matches(infoHash)) return
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val store = remember { TransferMoveStore(context) }
-    var record by remember(direction, infoHash) { mutableStateOf(store.get(direction, infoHash)) }
+    var record by remember(direction, infoHash, revision) { mutableStateOf(store.get(direction, infoHash)) }
     var confirmingStart by remember(infoHash) { mutableStateOf(false) }
     var confirmingRemoval by remember(infoHash) { mutableStateOf(false) }
     var working by remember(infoHash) { mutableStateOf(false) }
