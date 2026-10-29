@@ -1,9 +1,22 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-29 opt-in interrupted real-swarm download (#568, #5)
+
+- **Source slice:** the manual `android-public-swarm.yml` gains `interrupt=true`, which runs `tools/android_public_swarm_interrupt.sh` (`AndroidPublicSwarmInterruptInstrumentedTest`).
+  - **Phase A** uses the app's own engine and state directory to download part of the sanitized Debian netinst from ordinary peers, then SIGKILLs itself mid-transfer, with no Stop and no explicit save.
+  - **Phase B**, in a fresh process, requires: restored stopped, no restore problems, metadata kept, and continued hash-verified growth past the pre-kill amount.
+  - It **records** whether the recheck recovered the pre-kill pieces from disk (`RECOVERED`) or had to fetch them again (`REDOWNLOAD`).
+- **Evidence:** pending a manual dispatch from main after merge. Emulator behind NAT only.
+
 ## 2026-10-29 Open in its list from All environments (#567)
 
 - **Source slice:** phone and signed-in-server rows navigate to their own list, searched to the exact infohash with the filter reset. The phone screen gains a one-shot `initialSearch`. Rows from listed-only servers have no open action.
-- **Evidence tier:** Robolectric checks that the callback receives the exact environment ID and hash, and that listed-only rows show no action. The MainActivity navigation itself is not instrumented.
+- **Merged:** [#583](https://github.com/gamesbyian/Chunks/pull/583), squash `2b80be65d758e69303db79e84cc9a3552076cabb`, exact head `80ba225452f25f8fa0b797c3c63fb2ccc53bec89`: [Android/JVM 40928595224](https://github.com/gamesbyian/Chunks/actions/runs/40928595224), [R8 40928594984](https://github.com/gamesbyian/Chunks/actions/runs/40928594984), [API35 native instrumentation 40928595593](https://github.com/gamesbyian/Chunks/actions/runs/40928595593), [real 200% font 40928595222](https://github.com/gamesbyian/Chunks/actions/runs/40928595222), [API29 40928594935](https://github.com/gamesbyian/Chunks/actions/runs/40928594935), [atlas 40928594961](https://github.com/gamesbyian/Chunks/actions/runs/40928594961).
+- **Defect found and fixed in review:** `TransferCatalog` search did not match infohashes, so opening a server row produced an empty list. Search now matches the hash (JVM test).
+- **Evidence tier:**
+  - Robolectric checks the exact environment ID and hash in the callback, and no action on listed-only rows.
+  - The installed MainActivity at real 200% system font (run 40928595222) taps *Open in its list* on a fixture server row and reaches the server list showing "1 shown" with the other fixture transfers filtered out.
+  - Two CI failures on the way were diagnosed rather than re-run: an IME-resize race in the pre-existing connect step, and the count row below the fold at 200%.
 - **Settings scope labels:** phone Speed limits and DHT, and the server's Server view, now state "Applies to: <environment> only. Other environments keep their own settings." beside the setting. This is source change only; it has not been checked on a device.
 
 ## 2026-10-29 date-added sort and All environments at real 200% system font (#567, #8)

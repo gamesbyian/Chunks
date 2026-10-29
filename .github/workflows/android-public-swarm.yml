@@ -18,6 +18,10 @@ on:
         type: number
         default: 600
         required: true
+      interrupt:
+        description: "Kill the app mid-download after the budget, then verify restore and continuation"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -76,4 +80,4 @@ jobs:
           profile: pixel_6
           emulator-boot-timeout: 600
           disable-animations: true
-          script: bash tools/android_public_swarm.sh
+          script: bash tools/${{ inputs.interrupt && 'android_public_swarm_interrupt.sh' || 'android_public_swarm.sh' }}
