@@ -14,6 +14,10 @@
 
 A **torrent job** is `(environmentId, engineIdentity, infohashVersioned)`; **file identity** includes exact storage adapter, Place/root, path, size, observed generation and content fingerprint; a **candidate** is a proposed metainfo-to-file mapping, not evidence that an engine can safely seed it. **Cross-seed receipt** stores candidate source, matching evidence, approved mapping, target job scope and verification. **Payload-copy receipt** stores immutable source/destination endpoint identities, byte-range journal, source snapshot, cryptographic digests, progress, permission and user intent. A single filename or ordinary SHA of an individual file is insufficient to claim full torrent-piece compatibility; piece hashes, order, padding, file boundaries, per-file offsets, v1/v2/hybrid rules and skipped files matter.
 
+## Relation to human Task outcomes
+
+A resumed actual-byte copy MAY attach operation receipts to a user-selected goal under [TASK-OUTCOMES-AND-CONTINUITY](TASK-OUTCOMES-AND-CONTINUITY.md), but only verified destination bytes can satisfy a **Remote payload retrieved** milestone. Cross-seed **Candidate** is not a completed seeding outcome; independent hash/engine verification is needed. Neither a newly registered job nor a verified file copy implies that the user's media import, playback or recipient handoff succeeded. This feature does not create a second task-checkpoint or policy engine.
+
 ## Cross-seed discovery journey and UI states
 
 **Entry:** `Transfers → selected job → More → Find compatible torrents`, or `Places → selected folder/files → More → Find cross-seeding opportunities`. A secondary optional **Cross-seeding** view is available within **Discover → Advanced** only while Discovery is enabled; it does not add a main-tab or permanent transfer-card button. A user may explicitly scan imported .torrent metadata without enabling network discovery.
