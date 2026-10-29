@@ -44,6 +44,9 @@ import org.libtorrent4j.swig.torrent_flags_t
  * targeting for every command, session-only removal that keeps payload bytes.
  * Background lifetime, foreground service and resume data are separate gates.
  */
+/** libtorrent4j's built-in disk implementations. This is not an Android SAF or MediaStore adapter. */
+enum class LocalDiskIoMode { DEFAULT, POSIX }
+
 data class LocalEngineConfig(
     /** libtorrent listen_interfaces, e.g. "0.0.0.0:6881" or "127.0.0.1:0" for tests. */
     val listenInterfaces: String = "0.0.0.0:0,[::]:0",
@@ -61,7 +64,9 @@ data class LocalEngineConfig(
      * Apply speed limits to local-network and loopback peers too. libtorrent
      * exempts them by default; tests use this to observe throttling over loopback.
      */
-    val rateLimitLocalPeers: Boolean = false
+    val rateLimitLocalPeers: Boolean = false,
+    /** For controlled compatibility tests. The app continues using libtorrent's default backend. */
+    val diskIoMode: LocalDiskIoMode = LocalDiskIoMode.DEFAULT
 )
 
 enum class LocalTransferState { CHECKING, DOWNLOADING_METADATA, DOWNLOADING, FINISHED, SEEDING, UNKNOWN }
@@ -203,8 +208,10 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         pack.setBoolean(settings_pack.bool_types.enable_natpmp.swigValue(), config.enablePortMapping)
         pack.setBoolean(settings_pack.bool_types.allow_multiple_connections_per_ip.swigValue(),
             config.allowMultipleConnectionsPerIp)
+        val params = SessionParams(pack)
+        if (config.diskIoMode == LocalDiskIoMode.POSIX) params.setPosixDiskIO()
         session.addListener(engineListener)
-        session.start(SessionParams(pack))
+        session.start(params)
         if (config.rateLimitLocalPeers) {
             // Every address in the global peer class only, dropping the exempt local class.
             val filter = ip_filter()
