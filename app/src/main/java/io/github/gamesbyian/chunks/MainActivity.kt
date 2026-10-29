@@ -1048,6 +1048,8 @@ private fun TransfersScreen(
     val listState = rememberLazyListState()
     val topControlScope = rememberCoroutineScope()
     val context = LocalContext.current
+    var serverMoveRevision by remember { mutableStateOf(0) }
+    var serverMoveMessage by remember { mutableStateOf<String?>(null) }
     val membershipStore = remember(context) { TransferCollectionStore(context) }
     // Selection is scoped to authenticated account + rTorrent view. A newly
     // accepted queue revision clears it: never apply an old batch to new rows.
@@ -1294,8 +1296,37 @@ private fun TransfersScreen(
                     RemoteBatchPhoneCopyPanel(
                         selected = list.filter { it.hash in batchHashes },
                         enabled = !stale && !loading && !batchBusy && batchHashes.isNotEmpty(),
-                        run = { items -> runBatchPhoneCopy(context, remote, items) }
+                        run = { items -> runBatchPhoneCopy(context, remote, items) },
+                        move = { items ->
+                            runBatchPhoneMove(context, remote, aliasScope, items).also { serverMoveRevision++ }
+                        }
                     )
+                    val serverDigest = TransferMoveStore.scopeDigest(aliasScope)
+                    val pendingServerMoves = remember(list, serverMoveRevision) {
+                        TransferMoveStore(context).all(TransferMove.Direction.SERVER_TO_PHONE).filter { record ->
+                            record.stage == TransferMove.Stage.TARGET_VERIFIED &&
+                                record.serverScopeDigest == serverDigest &&
+                                list.any { it.hash.equals(record.infoHash, ignoreCase = true) }
+                        }
+                    }
+                    if (view == "main") BatchMoveRemovalPanel(
+                        pending = pendingServerMoves, serverLabel = "this phone", sourceLabel = "server",
+                        busy = stale || loading,
+                        observeTarget = { hash -> TransferMoveObservations.phone(hash) },
+                        removeSource = { hash ->
+                            // Guarded by the transfer's current name and Place; session-only d.erase.
+                            list.firstOrNull { it.hash.equals(hash, ignoreCase = true) }?.let { t ->
+                                remote.eraseFromSession(t.hash, t.name, t.directory)
+                            }
+                        },
+                        observeSource = { hash -> TransferMoveObservations.server(remote, hash) },
+                        save = { record -> TransferMoveStore(context).save(record) },
+                        forget = { record -> TransferMoveStore(context).remove(record.direction, record.infoHash) },
+                        onFinished = { text -> serverMoveMessage = text; serverMoveRevision++ },
+                        onStarted = onMutationStarted,
+                        onSettled = onLifecycleSettled
+                    )
+                    serverMoveMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
                 }
             }
         }

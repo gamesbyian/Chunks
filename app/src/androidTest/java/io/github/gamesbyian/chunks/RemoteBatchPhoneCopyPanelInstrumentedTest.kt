@@ -25,7 +25,7 @@ class RemoteBatchPhoneCopyPanelInstrumentedTest {
             RemoteTransfer("BB".repeat(20), "Public two", 10, 10, true, "/srv"))
         rule.setContent {
             MaterialTheme {
-                RemoteBatchPhoneCopyPanel(selected, enabled = true) { items -> runs += items; "2 added to the phone" }
+                RemoteBatchPhoneCopyPanel(selected, enabled = true, run = { items -> runs += items; "2 added to the phone" })
             }
         }
         rule.onNodeWithText("Copy Transfer to phone (2)…").performClick()
