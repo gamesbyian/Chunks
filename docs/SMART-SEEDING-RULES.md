@@ -19,6 +19,10 @@ Every configured environment (phone or named rTorrent profile) offers the same v
 - **Defaults and overrides:** an environment's default seeding group applies in absence of a matching rule. A transfer can have one effective seeding policy, derived from deterministic matching or explicit override. Individual settings can override group fields only with clear inherited/custom indications. Manual overrides survive later tracker updates and background rescans unless the user expressly chooses to resume automation.
 - **Safe defaults:** do not delete files or auto-remove jobs on ratio attainment; no silent policy changes on existing transfers. Consider private tracker rules and minimum seed times: clearly warn where a selected policy might conflict with tracker obligations, but never infer or promise satisfaction of site requirements.
 
+## Effective-policy inspection and conflict reasoning (MF31)
+
+The separate [effective-policy explanation contract](EFFECTIVE-POLICY-EXPLANATIONS.md) adds deterministic, **read-only** precedence traces, explicit conflicts, per-field effective sources and scope-aware impact preview. It **does not change** this document's winning-rule ordering or auto-intake fallbacks. Group budgets, global caps and external tracker expectations remain separate from per-transfer resolved policy. A preview cannot establish engine enforcement; only exact-environment readback can satisfy an optional [Task policy milestone](TASK-OUTCOMES-AND-CONTINUITY.md).
+
 ## Matching and rule engine
 
 - Rules support tracker hostname/domain and optional verified announce URL patterns, source/import channel, private metadata flag, tags selected by the user, and environment/profile; expert matching can grow later. Tracker identity is established from parsed tracker metadata and normalized hosts, never guessed from torrent name. Avoid generic substring matching (e.g., deceptive hosts containing a known brand). Support multiple trackers and magnet tracker updates; show every matched criterion and reason.
@@ -98,7 +102,7 @@ Evidence: JVM tests, including acceptance case 1. `SeedingRuleStore` persists ru
 - explicit environment checkboxes (phone, each saved server, the connected server) and a separate "Also apply to servers added later";
 - an editable generated name with "Use suggested name".
 
-Environment IDs are `phone` and `remote:` plus the saved-profile ID, so renaming a server never changes rule scope. A yellow **Saved, not applied yet** banner states that this version does not apply rules to transfers. Evidence: Compose tests (create, scope, persistence, refused URL and ambiguous unit, delete confirmation) and renders. Not yet: the enforcement controller, Add-review preview, remote adapters, and TalkBack/handset review.
+Environment IDs are `phone` and `remote:` plus the saved-profile ID, so renaming a server never changes rule scope. The editor's banner, **What these rules do today**, states exactly what is applied (since the phone controller below: phone transfers added from now on; servers not yet). Evidence: Compose tests (create, scope, persistence, refused URL and ambiguous unit, delete confirmation) and renders. Not yet: remote adapters and TalkBack/handset review.
 
 ## Implementation note: phone enforcement primitives (2026-10-29)
 
@@ -108,7 +112,7 @@ Environment IDs are `phone` and `remote:` plus the saved-profile ID, so renaming
 
 The phone engine gains `setUploadLimit` with exact readback (null removes the cap) and `seedingObservation` (all-time counters and seeding time from one snapshot).
 
-Evidence: JVM decision tests, plus a desktop-libtorrent loopback swarm showing cap readback and real counters. The original seeder reports zero downloaded bytes, so its ratio goal correctly cannot be judged. Not yet: the controller that applies rules from the service loop, the rule editor UI, and remote adapters.
+Evidence: JVM decision tests, plus a desktop-libtorrent loopback swarm showing cap readback and real counters. The original seeder reports zero downloaded bytes, so its ratio goal correctly cannot be judged. Not yet: remote adapters.
 
 ## Implementation note: phone controller (2026-10-29)
 
