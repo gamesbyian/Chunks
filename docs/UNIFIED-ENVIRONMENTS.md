@@ -112,8 +112,8 @@ The server label comes from the authenticated alias scope via the same address f
   - combined row rails and environment labels; label text uses the hue only when it reaches WCAG AA on the card surface, otherwise it uses normal text;
   - scope-chip dots;
   - group headers;
-  - the phone, server and Seeding-rule environment badges.
-- **Still uncoloured:** the Add-review badge and notifications.
+  - the phone, server, Add-review and Seeding-rule environment badges.
+- **Still uncoloured:** notifications.
 
 Not yet built:
 - other actions from this view;
