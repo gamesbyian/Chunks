@@ -52,11 +52,15 @@ adb_command=(adb)
 if [[ -n "${ADB_SERIAL:-}" ]]; then
     adb_command+=(-s "$ADB_SERIAL")
 else
-    attached_count="$(adb devices | awk 'NR > 1 && $2 == "device" { count++ } END { print count+0 }')"
-    [[ "$attached_count" == 1 ]] || {
+    # Count and select in the same snapshot, then pin every subsequent command
+    # to that serial. An unscoped adb install could target another handset if
+    # attachments change after enumeration.
+    mapfile -t attached_serials < <(adb devices | awk 'NR > 1 && $2 == "device" { print $1 }')
+    [[ "${#attached_serials[@]}" -eq 1 ]] || {
         echo "Connect exactly one authorized physical Android device, or set ADB_SERIAL" >&2
         exit 2
     }
+    adb_command+=(-s "${attached_serials[0]}")
 fi
 [[ "$("${adb_command[@]}" get-state | tr -d '\r\n')" == "device" ]] || {
     echo "The selected device is not authorized for adb" >&2
@@ -80,7 +84,16 @@ model="$("${adb_command[@]}" shell getprop ro.product.model | tr -d '\r\n')"
     exit 1
 }
 
-"${adb_command[@]}" install -r "$apk" >/dev/null
+install_output="$("${adb_command[@]}" install -r "$apk" 2>&1)" || {
+    echo "adb install failed; installation was not verified" >&2
+    exit 1
+}
+# Older adb variants can return zero when the package manager reports failure.
+# Require a genuine Success line, not merely command exit status.
+if ! printf '%s\n' "$install_output" | tr -d '\r' | grep -qx 'Success'; then
+    echo "adb did not report successful installation: refusing acceptance" >&2
+    exit 1
+fi
 installed_version="$("${adb_command[@]}" shell dumpsys package io.github.gamesbyian.chunks |
     grep -m 1 -o 'versionName=[^[:space:]]*' | cut -d = -f 2)"
 expected_version="0.1.0-dev+${built_commit:0:12}"
@@ -88,7 +101,18 @@ expected_version="0.1.0-dev+${built_commit:0:12}"
     echo "Installed Chunks version does not match the built checkout: refusing to record success" >&2
     exit 1
 }
-"${adb_command[@]}" shell am start -W -n io.github.gamesbyian.chunks/.MainActivity >/dev/null
+launch_output="$("${adb_command[@]}" shell am start -W -n io.github.gamesbyian.chunks/.MainActivity 2>&1)" || {
+    echo "Android activity launch command failed" >&2
+    exit 1
+}
+# An activity-start Error may be printed even if the shell returns zero.
+# Require both positive status and an exact Chunks MainActivity component.
+launch_output="$(printf '%s' "$launch_output" | tr -d '\r')"
+if ! grep -qx 'Status: ok' <<< "$launch_output" ||
+   ! grep -Eq '^Activity: io\.github\.gamesbyian\.chunks/(\.MainActivity|io\.github\.gamesbyian\.chunks\.MainActivity)$' <<< "$launch_output"; then
+    echo "Android did not confirm Chunks MainActivity launch: refusing acceptance" >&2
+    exit 1
+fi
 
 printf 'CHUNKS_PHYSICAL_PREFLIGHT device_model=%s android=%s api=%s\n' "$model" "$release" "$sdk"
 printf 'CHUNKS_PHYSICAL_PREFLIGHT source_checkout=%s apk_sha256=%s version=%s\n' \
