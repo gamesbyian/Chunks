@@ -2,6 +2,12 @@
 
 > **Authority:** binding owner product outcomes. Detailed feature rules live in the linked canonical contracts; feature completion and evidence live in [SPEC-COVERAGE](SPEC-COVERAGE.md) and [QUALITY-LEDGER](QUALITY-LEDGER.md). This document does not set implementation priority.
 
+## Human task outcomes, continuity and effective-rule explanations (binding, planned)
+
+Chunks offers optional **Task outcomes** (MF02) and **Continue task** (MF04), connecting a person's chosen goal to evidence from one or more exact local/remote transfer operations. Existing ordinary Add and transfer lists remain primary and task-free by default. The app must distinguish a sent/accepted command, verified job/data result, external steps needing confirmation, and user-marked completion. Resuming a human Task preserves context and prompts a safe read-only reconciliation, **never** replays a destructive or uncertain command or redirects it to another environment. Archiving or removing a Task never removes a transfer or its files. [Canonical task contract](TASK-OUTCOMES-AND-CONTINUITY.md).
+
+**Effective-rule explanations** (MF31) must make the winning group or manual override, matched conditions, exact phone/remote environment, global constraints, conflicting rules, and impact of changing a setting understandable before applying it. Preserve existing deterministic Smart Seeding Rules precedence and per-environment enforcement; simulation is not proof of application. [Canonical rule explanation contract](EFFECTIVE-POLICY-EXPLANATIONS.md).
+
 ## Smart Seeding Rules and Seeding Groups
 
 Provide simple named seeding groups with independently configured ratio stop, seeding duration and upload speed limits, deterministic tracker-based auto-detection and plain-language summaries. Show group/automatic matching alongside environment, destination and start-on-add on **every** Add route, and offer optional verified rule application for unattended auto-add/auto-start. Support identical user semantics across phone/rTorrent instances with honest per-engine enforcement and explicit scopes. No automatic deletion, invented tracker identity or silent retroactive changes. Binding contract: [SMART-SEEDING-RULES](SMART-SEEDING-RULES.md). Planned, not shipped.
@@ -18,6 +24,18 @@ Expose **Find files to restore transfer** for local or remote torrents whose bac
 
 Files in transfer trees and accessible local or remote Places MUST offer capability-grounded Android **Open/Open with**, **Share/Send** and explicit download/export actions. Format-agnostic on-demand reading, including seekable large remote files, is the preferred experience where authorized server access and receiving-app compatibility permit; a full download MUST NOT occur silently. rTorrent RPC control alone does not prove access to file bytes. Canonical rules, limitations and acceptance: [EXTERNAL-FILE-ACCESS](EXTERNAL-FILE-ACCESS.md). This is planned, not verified shipped functionality.
 
+
+## Optional specialist workflows: five owner-approved capabilities
+
+The following are **required product scope**, with **secondary opt-in interactions proportional to specialist demand**, not new primary tabs or mandatory setup. Every action uses explicit phone/named-remote scope; read-only inspection and suggestions are never mislabeled as mutation or verified success. Detailed feature contracts are authoritative and independent of implementation/CI status.
+
+1. **More approachable file sharing:** Create & Share MAY offer an embedded, reachability-verified tracker, independently verified WebRTC/browser-compatible sharing, and explicitly chosen public-share subscription feeds under **More sharing options**. The ordinary account-free torrent path remains primary; a magnet or rTorrent server alone does **not** establish browser compatibility. [CREATE-AND-SHARE](CREATE-AND-SHARE.md#optional-advanced-sharing-embedded-tracker-browser-peers-and-subscription-feeds).
+2. **Reuse the bytes users already have:** Optional verified cross-seeding candidates and a separately labelled **Copy payload files** operation between authorized Places, with resumable, readback-verified bytes, no automatic source deletion or torrent registration. **Copy/Move Transfer remains job only**, as already bound. [CROSS-SEED-AND-PAYLOAD-COPY](CROSS-SEED-AND-PAYLOAD-COPY.md).
+3. **Inspect media rather than trusting filenames:** On-demand local/remote technical MediaInfo-style container, codec, track and subtitle details and optional constrained video thumbnails through **Properties → Media details**. No default bulk scanning, transcode/player tab or external content upload. [MEDIA-INSPECTION](MEDIA-INSPECTION.md).
+4. **Event-based convenience without scripting:** Opt-in **Settings → Automation**, friendly `When → If → Then` rules, user-reviewed actions, saved filters and narrowly permissioned webhook/app handoffs. The [Smart Seeding Rules](SMART-SEEDING-RULES.md) editor retains exclusive ratio/group semantics; no generic shell/server-admin execution or promise of always-on Android execution. [EVENT-AUTOMATION](EVENT-AUTOMATION.md).
+5. **Integrate services users already run:** Optional `Settings → Discovery → Sources → Connect existing service` (Prowlarr/Torznab-style verified adapters), plus secondary Place-based independently authorized storage synchronization. Discovery must respect its **master off switch** and source permissions; no mandatory Chunks cloud or first-class seedbox admin surfaces. [EXISTING-SERVICE-INTEGRATIONS](EXISTING-SERVICE-INTEGRATIONS.md).
+
+These are **specified future outcomes**, not claims that the Android app, libtorrent engine, rTorrent server or connected provider already supports them.
 
 ## Product identity
 
@@ -179,7 +197,7 @@ Users should ordinarily connect rTorrent by pasting their hostname or ruTorrent 
 
 ## Deferred, not forgotten
 
-Cross-machine payload migration, **broad privileged** seedbox administration, large-scale always-on automation, additional remote engine adapters and premium multi-server dashboards remain exploratory and require separate owner/product approval. **Narrow secondary service-status and individually authorized start/stop/restart controls are approved** under the server-tools contract. Optional Plex/Sonarr/Radarr handoff, cloud independent-copy backup, feed intake, streaming preview and advanced naming have now been given **bounded opt-in contracts**, but no implementation or independent compatibility is implied; activation stays subject to their explicit safety and acceptance gates in [REMOTE-INTEGRATIONS-AND-PREFERENCES](REMOTE-INTEGRATIONS-AND-PREFERENCES.md), [FILES-PROTOCOL-AND-DIAGNOSTICS](FILES-PROTOCOL-AND-DIAGNOSTICS.md), [PLEX-FILENAME-REPAIR](PLEX-FILENAME-REPAIR.md) and [EXTERNAL-FILE-ACCESS](EXTERNAL-FILE-ACCESS.md).
+**Unrestricted** cross-machine payload migration, **broad privileged** seedbox administration, developer-hosted always-on automation, additional remote engine adapters and premium multi-server dashboards remain exploratory and require separate owner/product approval. **Bounded user-initiated verified payload copying** and **user-authorized conditional automation** are now approved within their narrow specialist contracts; neither grants broad server control, payload auto-migration or infrastructure hosting. **Narrow secondary service-status and individually authorized start/stop/restart controls are approved** under the server-tools contract. Optional Plex/Sonarr/Radarr handoff, cloud independent-copy backup, feed intake, streaming preview and advanced naming have now been given **bounded opt-in contracts**, but no implementation or independent compatibility is implied; activation stays subject to their explicit safety and acceptance gates in [REMOTE-INTEGRATIONS-AND-PREFERENCES](REMOTE-INTEGRATIONS-AND-PREFERENCES.md), [FILES-PROTOCOL-AND-DIAGNOSTICS](FILES-PROTOCOL-AND-DIAGNOSTICS.md), [PLEX-FILENAME-REPAIR](PLEX-FILENAME-REPAIR.md) and [EXTERNAL-FILE-ACCESS](EXTERNAL-FILE-ACCESS.md).
 
 ## Explicit exclusions
 

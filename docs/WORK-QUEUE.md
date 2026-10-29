@@ -4,6 +4,18 @@
 
 [Agent instructions](../AGENTS.md) · [Documentation index](INDEX.md) · [Product contract](PRODUCT.md) · [Coverage gaps](SPEC-COVERAGE.md) · [Evidence](QUALITY-LEDGER.md) · [Documentation authoring standard](DOCUMENTATION-STANDARD.md)
 
+## Owner-approved specialist-workflow pipeline (below active P0/P1)
+
+Owner has approved **specifying** five useful niche areas; do not displace live Android transfer reliability, unified modes, seedbox compatibility, Smart Seeding Rules or other already-claimed app lanes. Check current PRs and [AGENT-LANES](AGENT-LANES.md) before choosing any independent slice. Each domain contract is the single source of technical/UX requirements. These are **candidate implementation stages**, not a commitment to install external services, create a new primary tab or run a central backend.
+
+1. **Media facts first:** build a read-only typed media facts/parser seam on authorized local files with deterministic track/codec/unknown fixtures, then bounded thumbnail extraction, then capability-gated remote byte-range reader and privacy cache. UI in `File → Properties → Media details`. Owner [MEDIA-INSPECTION](MEDIA-INSPECTION.md); proof: malicious/truncated sample bounds, no new network calls, screenshot and TalkBack.
+2. **Cross-seed matching before writes:** read-only exact v1/v2/hybrid piece/file map comparison and candidate ranking on permissioned data; demonstrate false-positive rejection and source retention before attempting second job, shared backing or resumable physical copy. Owner [CROSS-SEED-AND-PAYLOAD-COPY](CROSS-SEED-AND-PAYLOAD-COPY.md); independently prove local/remote storage adapter permissions, staging and exact destination bytes. Keep `Copy Transfer` job-only.
+3. **Advanced Create & Share:** begin with in-wizard advanced expander, separate truthful browser capability status and independently validated WebRTC signaling/seeder feasibility prototype. Only then optional local tracker and publication of reviewed public feed entries; never equate magnet or rTorrent with browser download. Owner [CREATE-AND-SHARE](CREATE-AND-SHARE.md#optional-advanced-sharing-embedded-tracker-browser-peers-and-subscription-feeds).
+4. **Pure event policy and safe external actions:** versioned generated-name `When → If → Then` evaluator, deterministic no-mutation dry run, event dedupe and named environments; then privacy-safe bounded webhook/Android handoff adapters, then optional scheduler with truthful phone/server lifetime. Owner [EVENT-AUTOMATION](EVENT-AUTOMATION.md). Do not fork Smart Seeding Rules or authorize arbitrary shell.
+5. **Existing services:** opt-in Prowlarr read-only source listing and validated search behind global Discovery gate; then independent authorized storage adapter, verified copy and optional manual or explicitly supported scheduled sync from selected Places. Owner [EXISTING-SERVICE-INTEGRATIONS](EXISTING-SERVICE-INTEGRATIONS.md); no universal service admin, no default always-on syncing.
+
+All five flows must be optional, discoverable in **secondary context only**, idempotent/consent aware and accepted on 320×700 / 412×892, 200% text and TalkBack. Each independent slice updates [SPEC-COVERAGE](SPEC-COVERAGE.md) and [QUALITY-LEDGER](QUALITY-LEDGER.md) with evidence before being called implemented. See decisions `D-NICHE-*` in [DECISIONS](DECISIONS.md).
+
 ## Newly specified advanced-operations backlog (lower than current P0/P1)
 
 The 58 previously under-specified ecosystem items are assigned to canonical contracts: [intake/queue/policies](INTAKE-QUEUE-AND-POLICIES.md) (21), [files/protocol/diagnostics](FILES-PROTOCOL-AND-DIAGNOSTICS.md) (27) and [remote/integrations/preferences](REMOTE-INTEGRATIONS-AND-PREFERENCES.md) (10). **Specification does not imply shipped feature parity.** The following independently executable slices do not replace higher-priority real-phone/Seedhost/release acceptance and do not duplicate the separate Smart Seeding Rules lane.
@@ -25,6 +37,10 @@ These are requirements under [DISCOVERY (intake contract)](INTAKE-QUEUE-AND-POLI
 4. **Optional limited service controls:** enable per-profile only with separately verified provider permission, fixed allowlist, impact warning for live torrents, confirmation and postcondition/reconciliation. Test unsupported managed hosts, independent tenants, disconnect mid-restart and prohibitions on generic shell/reboot/firewall/user/package operations. Keep server administration out of default notification/background monitoring.
 
 Do not let these slices create admin-focused primary navigation or silently reenable discovery through import/auto-start. The existing seeding rules, remote Smart Connect and unified local/remote acceptance remain separate prerequisites.
+
+## Planned independently testable slice: Task outcomes, continuity and policy explainability
+
+The owner selected **MF02, MF04 and MF31** for careful specification. Canonical contracts: [Task outcomes and continuity](TASK-OUTCOMES-AND-CONTINUITY.md) and [effective-policy explanations](EFFECTIVE-POLICY-EXPLANATIONS.md). These are **planned, not implemented**. Defer relative to active P0/P1 release gates and independently owned work. Suggested separable engineering sequence: (1) pure Task/milestone/receipt types with source certainty, stable environment IDs and non-destructive storage tests; (2) atomic optional Task checkpoints and read-only resume/reconciliation with process-death and offline tests; (3) shared deterministic rule explanation projection and pure conflict fixtures from existing Smart Seeding Rules evaluator; (4) constrained Compose surfaces with scoped previews and accessible outcomes; (5) integration acceptance proving no hidden command replay or implicit cross-profile mutations. Update QUALITY-LEDGER and SPEC-COVERAGE only from actual implementation and verified tests.
 
 ## Planned slice: Smart Seeding Rules
 
