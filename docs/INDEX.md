@@ -18,6 +18,9 @@ The [documentation architecture and authoring standard](DOCUMENTATION-STANDARD.m
 - [Remote integrations and settings portability](REMOTE-INTEGRATIONS-AND-PREFERENCES.md): 10 gap items plus **owner-approved secondary Server tools**, service-health/quota visibility and limited capability-gated service actions; opt-in adapters and preferences.
 - [Smart Seeding Rules](SMART-SEEDING-RULES.md): owner-approved policy, generated editable rule names and explicit named-environment applicability.
 
+- [Task outcomes and continuity](TASK-OUTCOMES-AND-CONTINUITY.md): MF02 end-to-end evidence receipts and MF04 non-destructive human task resumption (planned, binding).
+- [Effective-policy explanations](EFFECTIVE-POLICY-EXPLANATIONS.md): MF31 rule winners, conflicts, precedence traces and safe simulations (planned, binding).
+
 ## Normative foundations
 
 - [PRODUCT](PRODUCT.md): feature scope and user promises.

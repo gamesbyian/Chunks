@@ -2,6 +2,12 @@
 
 > **Authority:** binding owner product outcomes. Detailed feature rules live in the linked canonical contracts; feature completion and evidence live in [SPEC-COVERAGE](SPEC-COVERAGE.md) and [QUALITY-LEDGER](QUALITY-LEDGER.md). This document does not set implementation priority.
 
+## Human task outcomes, continuity and effective-rule explanations (binding, planned)
+
+Chunks offers optional **Task outcomes** (MF02) and **Continue task** (MF04), connecting a person's chosen goal to evidence from one or more exact local/remote transfer operations. Existing ordinary Add and transfer lists remain primary and task-free by default. The app must distinguish a sent/accepted command, verified job/data result, external steps needing confirmation, and user-marked completion. Resuming a human Task preserves context and prompts a safe read-only reconciliation, **never** replays a destructive or uncertain command or redirects it to another environment. Archiving or removing a Task never removes a transfer or its files. [Canonical task contract](TASK-OUTCOMES-AND-CONTINUITY.md).
+
+**Effective-rule explanations** (MF31) must make the winning group or manual override, matched conditions, exact phone/remote environment, global constraints, conflicting rules, and impact of changing a setting understandable before applying it. Preserve existing deterministic Smart Seeding Rules precedence and per-environment enforcement; simulation is not proof of application. [Canonical rule explanation contract](EFFECTIVE-POLICY-EXPLANATIONS.md).
+
 ## Smart Seeding Rules and Seeding Groups
 
 Provide simple named seeding groups with independently configured ratio stop, seeding duration and upload speed limits, deterministic tracker-based auto-detection and plain-language summaries. Show group/automatic matching alongside environment, destination and start-on-add on **every** Add route, and offer optional verified rule application for unattended auto-add/auto-start. Support identical user semantics across phone/rTorrent instances with honest per-engine enforcement and explicit scopes. No automatic deletion, invented tracker identity or silent retroactive changes. Binding contract: [SMART-SEEDING-RULES](SMART-SEEDING-RULES.md). Planned, not shipped.

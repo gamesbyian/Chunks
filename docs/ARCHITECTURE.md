@@ -2,6 +2,12 @@
 
 > **Authority:** shared domain model, capability and mutation boundaries. Product rules are in [PRODUCT](PRODUCT.md); implementation receipts and current task priority live in [QUALITY-LEDGER](QUALITY-LEDGER.md) and [WORK-QUEUE](WORK-QUEUE.md). Design notes do not imply physical acceptance.
 
+## Human Task and explainable policy integration (MF02 / MF04 / MF31)
+
+[Task outcomes and continuity](TASK-OUTCOMES-AND-CONTINUITY.md) owns goal and milestone semantics. Add a separate optional, device-local Task/TaskMilestone/Checkpoint projection over existing typed Transfer identities and Operation receipts. Receipt provenance includes exact environment/profile, source kind, freshness, requested/acknowledged/observed/verified state and user-attestation distinction. Durable versioned checkpoint writes are atomic and store drafts rather than executable pending commands. After restart or connectivity return, read-only re-observation reconciles uncertain actions; no replay, cross-profile fallback or inference of remote payload movement from transfer registration. Archive/delete Task is referentially non-destructive. Existing engine/operation adapters remain the only mutation authority.
+
+[Effective-policy explanations](EFFECTIVE-POLICY-EXPLANATIONS.md) are a pure deterministic projection from the existing Smart Seeding Rules evaluator, per-transfer overrides, environment defaults and independently applicable engine/global constraints. Snapshot rule revision, transfer metadata and profile capabilities, then render precedence trace, conflicts and per-field observed-vs-intended outcome. Dry-run is read-only and versioned; apply requires exact-profile authorization, revalidation and per-operation readback. Store references to rule/receipt revisions, not a competing rules database. No remote authority is implied by having a Task or cached policy preview.
+
 ## Smart Seeding Rules domain and enforcement integration
 
 [SMART-SEEDING-RULES](SMART-SEEDING-RULES.md) defines policy semantics and state transitions. Model immutable rule ID, optional generated/custom human-facing label, match conditions and precedence, version, explicit environment-ID membership (including distinct future-environment opt-in), per-profile capability evaluation, and transfer-specific manual override separately. A rule's display label and a server's editable name must never serve as identity or match provenance.
