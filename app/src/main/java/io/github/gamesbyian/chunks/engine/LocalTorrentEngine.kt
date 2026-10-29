@@ -138,17 +138,9 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     private val session = SessionManager(false)
     // Guarded by its own monitor so the alert thread never needs the engine lock.
     private val handles: MutableMap<String, TorrentHandle> = Collections.synchronizedMap(LinkedHashMap())
-    private class PendingSave {
-        val latch = CountDownLatch(1)
-        @Volatile var confirmed = false
-        fun complete(success: Boolean) {
-            confirmed = success
-            latch.countDown()
-        }
-    }
     // Keep timed-out requests pending until their real alert arrives: a late
     // alert must not confirm a different save generation.
-    private val pendingSaves = ConcurrentHashMap<String, PendingSave>()
+    private val pendingSaves = LocalResumeSaveRequests()
 
     private class PendingFlush {
         val latch = CountDownLatch(1)
@@ -207,7 +199,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                     }
                 }
             } finally {
-                pendingSaves.remove(key)?.complete(persisted)
+                pendingSaves.complete(key, persisted)
             }
         }
     }
@@ -954,7 +946,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         awaitingMetadata.remove(key)
         startWhenMetadataArrives.remove(key)
         pendingFlushes.remove(key)?.refused()
-        pendingSaves.remove(key)?.complete(false)
+        pendingSaves.cancel(key)
         val saved = config.stateDirectory?.let { File(it, "$key.resume") } ?: return true
         // A removed session with an undeletable .resume file can reappear on
         // restart. Do not report that as a fully confirmed removal.
@@ -1033,22 +1025,14 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         if (config.stateDirectory == null || !started) return 0
         val targets = synchronized(handles) { handles.toList() }
         val requests = targets.map { (key, handle) ->
-            val candidate = PendingSave()
-            val existing = pendingSaves.putIfAbsent(key, candidate)
-            val request = existing ?: candidate
-            if (existing == null) {
-                try { handle.saveResumeData(TorrentHandle.SAVE_INFO_DICT) }
-                catch (_: Exception) {
-                    if (pendingSaves.remove(key, candidate)) candidate.complete(false)
-                }
+            pendingSaves.acquire(key) {
+                handle.saveResumeData(TorrentHandle.SAVE_INFO_DICT)
             }
-            request
         }
         val deadline = System.nanoTime() + timeoutMs.coerceAtLeast(0L) * 1_000_000
         return requests.count {
             try {
-                it.latch.await(maxOf(0, deadline - System.nanoTime()), TimeUnit.NANOSECONDS) &&
-                    it.confirmed
+                it.awaitConfirmed(maxOf(0, deadline - System.nanoTime()))
             } catch (_: InterruptedException) {
                 Thread.currentThread().interrupt()
                 false
