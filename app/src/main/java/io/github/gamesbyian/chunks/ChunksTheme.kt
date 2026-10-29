@@ -84,7 +84,9 @@ private val ChunksColorScheme = darkColorScheme(
     primary = ChunksColors.PurpleLight, onPrimary = ChunksColors.OnAccent,
     primaryContainer = ChunksColors.Purple, onPrimaryContainer = ChunksColors.OnAccent,
     secondary = ChunksColors.Cyan, onSecondary = ChunksColors.OnAccent,
-    secondaryContainer = ChunksColors.Muted, onSecondaryContainer = ChunksColors.Text,
+    // Selected chips/tabs and tonal buttons: light purple with near-black text,
+    // as in the design sheet's tab bar (9.1:1).
+    secondaryContainer = ChunksColors.PurpleLight, onSecondaryContainer = ChunksColors.OnAccent,
     tertiary = ChunksColors.Green, onTertiary = ChunksColors.OnAccent,
     tertiaryContainer = ChunksColors.Green, onTertiaryContainer = ChunksColors.OnAccent,
     background = ChunksColors.Background, onBackground = ChunksColors.Text,

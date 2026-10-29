@@ -54,6 +54,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -1052,6 +1053,7 @@ private fun TransfersScreen(
     // Selection is scoped to authenticated account + rTorrent view. A newly
     // accepted queue revision clears it: never apply an old batch to new rows.
     var selecting by remember(aliasScope, view) { mutableStateOf(false) }
+    var toolsOpen by remember(aliasScope) { mutableStateOf(false) }
     var batchHashes by remember(aliasScope, view) { mutableStateOf<Set<String>>(emptySet()) }
     var batchName by remember(aliasScope, view) { mutableStateOf("") }
     var batchConfirm by remember(aliasScope, view) { mutableStateOf(false) }
@@ -1099,38 +1101,48 @@ private fun TransfersScreen(
                         Text(if (loading) "Refreshing…" else "Refresh")
                     }
                 }
-                OutlinedButton(onClick = onReviewNames,
-                    modifier = Modifier.fillMaxWidth().height(52.dp)) {
-                    Text("Review suggested queue names")
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(
+                        onClick = {
+                            selecting = !selecting
+                            batchHashes = emptySet()
+                            batchConfirm = false
+                            batchMessage = null
+                        },
+                        enabled = !loading && !stale && !batchBusy && list.isNotEmpty(),
+                        modifier = Modifier.weight(1f).heightIn(min = 52.dp)
+                    ) {
+                        Text(if (selecting) "Exit batch selection" else "Select transfers for a batch")
+                    }
+                    // Occasional tools stay one tap away so the transfer list leads.
+                    OutlinedButton(onClick = { toolsOpen = !toolsOpen },
+                        modifier = Modifier.heightIn(min = 52.dp)
+                            .semantics { stateDescription = if (toolsOpen) "Expanded" else "Collapsed" }) {
+                        Text(if (toolsOpen) "Hide tools" else "More tools")
+                    }
                 }
-                OutlinedButton(onClick = onExportSnapshot, enabled = !loading && !stale,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
-                    Text("Save inventory-only snapshot")
-                }
-                RemoteTransferHealthExportPanel(
-                    transfers = list, serverView = view, stale = stale || loading
-                )
-                BatchMagnetExportPanel(
-                    rows = visible.map { io.github.gamesbyian.chunks.model.BatchMagnetHandoff.Row(
-                        it.hash, it.name) },
-                    stale = stale || loading,
-                    sourceLabel = "remote"
-                )
-                OutlinedButton(onClick = onInspectSnapshot,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
-                    Text("Inspect saved .chunksnap file")
-                }
-                OutlinedButton(
-                    onClick = {
-                        selecting = !selecting
-                        batchHashes = emptySet()
-                        batchConfirm = false
-                        batchMessage = null
-                    },
-                    enabled = !loading && !stale && !batchBusy && list.isNotEmpty(),
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
-                ) {
-                    Text(if (selecting) "Exit batch selection" else "Select transfers for a batch")
+                if (toolsOpen) {
+                    OutlinedButton(onClick = onReviewNames,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+                        Text("Review suggested queue names")
+                    }
+                    OutlinedButton(onClick = onExportSnapshot, enabled = !loading && !stale,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+                        Text("Save inventory-only snapshot")
+                    }
+                    RemoteTransferHealthExportPanel(
+                        transfers = list, serverView = view, stale = stale || loading
+                    )
+                    BatchMagnetExportPanel(
+                        rows = visible.map { io.github.gamesbyian.chunks.model.BatchMagnetHandoff.Row(
+                            it.hash, it.name) },
+                        stale = stale || loading,
+                        sourceLabel = "remote"
+                    )
+                    OutlinedButton(onClick = onInspectSnapshot,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+                        Text("Inspect saved .chunksnap file")
+                    }
                 }
             }
         }
