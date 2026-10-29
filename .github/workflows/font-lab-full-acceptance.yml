@@ -49,6 +49,7 @@ jobs:
             reference-panel-*.json
             font-stress-artifacts/*
             chunks-font-cross-family-audit.json
+            font-lab-raster-counters.json
       - name: Commit only reproducible nonshipping experimental font-family artifacts
         if: github.event_name == 'push' && github.ref == 'refs/heads/font/lab'
         shell: bash

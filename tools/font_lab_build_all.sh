@@ -16,6 +16,7 @@ python tools/font_lab_source_ledger.py
 # reference glyphs retain the original safe polygon-derived provisional form.
 python tools/build_reference_panel_weight_studies.py
 python -m unittest discover -s tests -p test_reference_panel_weights.py -v
+python tools/font_lab_raster_counter_audit.py --strict --output font-lab-raster-counters.json
 python tools/render_reference_panel_weights.py
 python tools/render_reference_glyph_grid.py
 python -m unittest discover -s tests -p test_reference_glyph_grid.py -v
