@@ -2,6 +2,7 @@ package io.github.gamesbyian.chunks
 
 import androidx.compose.material3.Surface
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -53,6 +54,49 @@ class CombinedSavedServersTest {
         // Listed-only rows have no live list to open.
         rule.onNodeWithText("Open in its list").assertDoesNotExist()
         rule.onNodeWithText("Listed only. Sign in to this server to open or change it.").assertExists()
+    }
+
+    @Test fun failedRefreshImmediatelyInvalidatesOldLiveSnapshotWithoutDeletingRows() {
+        val row = RemoteTransfer("a".repeat(40), "Cached Linux", 100, 80, true, "/d")
+        val good = SavedServerListing(listOf(row), observedAtEpochMillis = 10_000)
+        assertFalse(savedListingIsStale(good, now = 10_010))
+        assertTrue("A backwards device clock must not leave a listing live indefinitely",
+            savedListingIsStale(good, now = 9_999))
+        assertTrue(savedListingIsStale(good.copy(loading = true), now = 10_010))
+        val failed = good.copy(error = "connection refused")
+        assertTrue("A failed fresh retry cannot leave a cached server marked Live",
+            savedListingIsStale(failed, now = 10_010))
+        val source = io.github.gamesbyian.chunks.model.EnvironmentSnapshots.server(
+            io.github.gamesbyian.chunks.model.EnvironmentId(id(scopeA)),
+            failed.transfers, connected = true,
+            stale = savedListingIsStale(failed, now = 10_010),
+            locked = false, fullView = true, observedAtEpochMillis = failed.observedAtEpochMillis)
+        assertEquals(io.github.gamesbyian.chunks.model.EnvironmentAvailability.STALE,
+            source.availability)
+        assertEquals("Cached Linux", source.transfers.single().displayName)
+        assertFalse(source.canClaimCompleteLiveInventory)
+    }
+
+    @Test fun failedRefreshShowsLastKnownRowsAsStaleInsteadOfLive() {
+        var attempts = 0
+        val label = "Server · ann @ a.example/RPC2"
+        show(listOf(CombinedSavedProfile(id(scopeA), "ann @ a.example/RPC2", scopeA) {
+            attempts++
+            if (attempts == 1)
+                listOf(RemoteTransfer("a".repeat(40), "Cached Linux", 100, 80, true, "/d"))
+            else throw java.net.ConnectException("refused")
+        }))
+        rule.onNodeWithText("Load other saved servers (read-only)").performScrollTo().performClick()
+        rule.waitUntil(5_000) {
+            rule.onAllNodesWithText(label + ": Live · 1 transfers").fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithText("Refresh other saved servers").performScrollTo().performClick()
+        rule.waitUntil(5_000) {
+            rule.onAllNodesWithText(label + ": Refresh failed (connection refused), showing last list · 1 transfers")
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithText("Cached Linux").performScrollTo().assertExists()
+        assertEquals(2, attempts)
     }
 
     @Test fun profileWithoutVerifiableScopeStaysLockedAndIsNeverFetched() {
