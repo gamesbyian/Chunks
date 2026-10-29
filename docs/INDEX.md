@@ -11,6 +11,13 @@ The [documentation architecture and authoring standard](DOCUMENTATION-STANDARD.m
 - [SPEC-COVERAGE](SPEC-COVERAGE.md): required versus implemented capability and acceptance gaps.
 - [CI-POLICY](CI-POLICY.md): runner costs, test gates and workflows.
 
+## Advanced operations (normative feature contracts)
+
+- [Intake, queue and policies](INTAKE-QUEUE-AND-POLICIES.md): 21 URL/feed, queue, schedule, traffic and source-filter requirements.
+- [Files, protocol and diagnostics](FILES-PROTOCOL-AND-DIAGNOSTICS.md): 27 archive/link, piece/peer/network privacy, diagnostics and partial-preview requirements.
+- [Remote integrations and settings portability](REMOTE-INTEGRATIONS-AND-PREFERENCES.md): 10 remote auth/profile, consented integration, responsive expert UI and preferences requirements.
+- [Smart Seeding Rules](SMART-SEEDING-RULES.md): owner-approved policy, generated editable rule names and explicit named-environment applicability.
+
 ## Normative foundations
 
 - [PRODUCT](PRODUCT.md): feature scope and user promises.
