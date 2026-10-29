@@ -329,6 +329,10 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             // Never repeat the call automatically: duplicates or path drift
             // must be reconciled by a later explicit inventory refresh.
             return RemoteAddOutcome.Uncertain(plan.expectedInfoHash)
+        } catch (_: RpcFault) {
+            // The server may apply a load before reporting a fault. A fault is
+            // not evidence of rollback or a safe invitation to repeat Add.
+            return RemoteAddOutcome.Uncertain(plan.expectedInfoHash)
         }
         return awaitFreshStoppedAddReadback(plan)
     }
@@ -358,6 +362,8 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                 else listOf("", torrentBytes, "d.directory.set=" + plan.destination)
             call("load.raw_verbose", params)
         } catch (_: IOException) {
+            return RemoteAddOutcome.Uncertain(hash)
+        } catch (_: RpcFault) {
             return RemoteAddOutcome.Uncertain(hash)
         }
         return awaitFreshStoppedAddReadback(plan)
@@ -572,6 +578,10 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         try {
             call("d.erase", listOf(hash))
         } catch (_: IOException) {
+            return SessionEraseOutcome.Uncertain(hash)
+        } catch (_: RpcFault) {
+            // A server fault cannot prove that a destructive session command
+            // was not applied. Reconcile read-only; never issue a second erase.
             return SessionEraseOutcome.Uncertain(hash)
         }
         return try {
