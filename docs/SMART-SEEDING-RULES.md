@@ -87,5 +87,5 @@ UI distinguishes rule **selected**, **applied to Chunks**, **acknowledged by eng
 - `SeedingRule`, with a stable ID, generated names that follow conditions until the user renames, and explicit environment membership where future environments are opt-in;
 - `SeedingRuleEngine.resolve`.
 
-Evidence: JVM tests, including acceptance case 1. Not yet: persistence, Add/detail UI, or local/remote enforcement adapters with readback.
+Evidence: JVM tests, including acceptance case 1. `SeedingRuleStore` persists rules and per-environment defaults as versioned Chunks-only JSON with domains and numbers only: no tracker URLs, passkeys or infohashes. A URL-shaped domain, duplicate ID, unknown version or corruption never loads, and an unreadable record is reported and never silently overwritten (Robolectric tests). Not yet: Add/detail UI, or local/remote enforcement adapters with readback.
 
