@@ -13,7 +13,8 @@ internal enum class LocalQueueOrder(val label: String, val kind: TransferSortOrd
     NAME("Name", TransferSortOrdering.Kind.NAME),
     PROGRESS("Progress", TransferSortOrdering.Kind.PROGRESS),
     SIZE("Size", TransferSortOrdering.Kind.SIZE),
-    PEERS("Peers", TransferSortOrdering.Kind.PEERS);
+    PEERS("Peers", TransferSortOrdering.Kind.PEERS),
+    ADDED("Added", TransferSortOrdering.Kind.ADDED);
 
     val naturalDirection: UnifiedSortDirection get() = TransferSortOrdering.naturalDirection(kind)
     fun directionLabel(direction: UnifiedSortDirection): String = TransferSortOrdering.label(kind, direction)
@@ -60,6 +61,7 @@ internal object LocalQueueCatalog {
             LocalQueueOrder.PROGRESS -> item.progressPpm.toLong().takeIf { item.metadataKnown }
             LocalQueueOrder.SIZE -> item.wantedBytes.takeIf { item.metadataKnown && it >= 0 }
             LocalQueueOrder.PEERS -> item.peers.toLong().takeIf { it >= 0 }
+            LocalQueueOrder.ADDED -> item.addedAtEpochMillis
         }
         val ordered = filtered.sortedWith(Comparator { x, y ->
             val primary = if (order == LocalQueueOrder.NAME)

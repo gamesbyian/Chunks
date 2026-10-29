@@ -93,7 +93,9 @@ data class LocalTransferStatus(
     val trackers: LocalTrackerSummary? = null,
     /** Current native payload rates, sampled by libtorrent in bytes per second. */
     val downloadPayloadRateBytesPerSecond: Int = 0,
-    val uploadPayloadRateBytesPerSecond: Int = 0
+    val uploadPayloadRateBytesPerSecond: Int = 0,
+    /** When libtorrent first added this job (kept in resume data); null if unreported. */
+    val addedAtEpochMillis: Long? = null
 )
 
 /** Aggregate tracker health for one transfer, without URLs or tracker messages. */
@@ -1102,7 +1104,8 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             error = error,
             trackers = trackerSummary(handle),
             downloadPayloadRateBytesPerSecond = status.downloadPayloadRate().coerceAtLeast(0),
-            uploadPayloadRateBytesPerSecond = status.uploadPayloadRate().coerceAtLeast(0)
+            uploadPayloadRateBytesPerSecond = status.uploadPayloadRate().coerceAtLeast(0),
+            addedAtEpochMillis = status.addedTime().takeIf { it > 0 }
         )
     }
 

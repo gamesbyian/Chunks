@@ -128,6 +128,7 @@ object UnifiedTransferObservations {
             downloadBytesPerSecond = item.downloadPayloadRateBytesPerSecond.toLong().takeIf { it >= 0 },
             uploadBytesPerSecond = item.uploadPayloadRateBytesPerSecond.toLong().takeIf { it >= 0 },
             peers = item.peers.takeIf { it >= 0 },
+            addedAtEpochMillis = item.addedAtEpochMillis,
             hasError = !item.error.isNullOrBlank()
         )
 

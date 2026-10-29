@@ -292,8 +292,24 @@ class SystemFontScaleComposeInstrumentedTest {
             rule.waitForIdle()
             savePixels(if (tab == "Transfers") "transfers-return" else tab.lowercase())
         }
-        // Six distinct captures: unauthenticated Connection, initial and
-        // return-to-Transfers, and Places / Organize / Server screens.
+        // The combined All environments view must stay usable at 200% type too:
+        // header, scope, direction and grouping controls and a real server row.
+        rule.onNodeWithText("All environments…").performScrollTo().performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText("All environments").assertIsDisplayed()
+        // One lazy list: scroll by semantics so items below the fold get composed first.
+        val combinedList = rule.onNode(hasScrollToIndexAction())
+        combinedList.performScrollToNode(hasText("Group by environment"))
+        rule.onNodeWithText("Group by environment").assertIsDisplayed()
+        rule.onNodeWithContentDescription("Sorted by Name, A–Z. Reverse order").assertIsDisplayed()
+        combinedList.performScrollToNode(hasText("Big Buck Bunny public demo"))
+        rule.onNodeWithText("Big Buck Bunny public demo").assertIsDisplayed()
+        combinedList.performScrollToNode(hasText("Select…"))
+        rule.onNodeWithText("Select…").assertIsDisplayed()
+        rule.waitForIdle()
+        savePixels("combined")
+        // Seven distinct captures: unauthenticated Connection, initial and
+        // return-to-Transfers, Places / Organize / Server and All environments.
         assertTrue("Test fixture unexpectedly failed: $fixtureProblem",
             fixtureProblem == null)
         assertTrue("Installed Compose must have fetched server transfers read-only",
