@@ -134,7 +134,14 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
      */
     suspend fun lookupName(hash: String): String? {
         require(Regex("[0-9a-fA-F]{40}([0-9a-fA-F]{24})?").matches(hash)) { "Invalid torrent identity" }
-        return try { (call("d.name", listOf(hash)) as? String)?.take(2048) } catch (_: RpcFault) { null }
+        return try {
+            (call("d.name", listOf(hash)) as? String)?.take(2048)
+                ?: error("Unexpected exact-hash name reply")
+        } catch (fault: RpcFault) {
+            // Only rTorrent's "unknown info-hash" reply (legacy or modern) proves absence.
+            // Unknown method/server faults must not be mistaken for a missing Add.
+            if (fault.isUnknownInfoHash()) null else throw fault
+        }
     }
 
     /**
@@ -587,9 +594,9 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         }
         true
     } catch (fault: RpcFault) {
-        // -501 is the observed rTorrent 'Could not find info-hash' fault.
-        // Other faults do not prove absence and must never authorize mutation.
-        if (fault.code == "-501") false else throw fault
+        // Only rTorrent's "unknown info-hash" reply (legacy -501 or modern -500)
+        // proves absence; other faults must never authorize mutation.
+        if (fault.isUnknownInfoHash()) false else throw fault
     }
 
     /** A per-torrent read-only file inspector; never changes file priorities. */

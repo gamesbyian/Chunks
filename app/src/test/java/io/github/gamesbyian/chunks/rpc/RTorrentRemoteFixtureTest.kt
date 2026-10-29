@@ -576,4 +576,42 @@ class RTorrentRemoteFixtureTest {
     }
 
 
+    @Test fun exactHashLookupDoesNotMistakeServerFaultForMissingTorrent() = runBlocking {
+        val hash = "A".repeat(40)
+        for (faultCode in listOf(-32601, -503)) {
+            Fixture { request, _ ->
+                assertTrue(request.contains("<methodName>d.name</methodName>"))
+                Reply(200, fault(faultCode, "Server rejected exact-hash lookup"))
+            }.use { fixture ->
+                val remote = RTorrentRemote(RemoteCredentials(fixture.endpoint, "", ""))
+                val received = assertThrows(RpcFault::class.java) {
+                    runBlocking { remote.lookupName(hash) }
+                }
+                assertEquals(faultCode.toString(), received.code)
+                assertEquals(1, fixture.methods.size)
+                assertFalse(fixture.methods.single().contains("load."))
+            }
+        }
+    }
+
+
+    @Test fun unknownInfoHashIsRecognisedForLegacyAndModernRTorrentOnly() {
+        assertTrue(RpcFault("-501", "Could not find info-hash.").isUnknownInfoHash())
+        assertTrue(RpcFault("-500", "invalid parameters: info-hash not found").isUnknownInfoHash())
+        // Same codes with other meanings, and unknown methods, never prove absence.
+        assertFalse(RpcFault("-500", "Bad return code.").isUnknownInfoHash())
+        assertFalse(RpcFault("-501", "expected a text value").isUnknownInfoHash())
+        assertFalse(RpcFault("-506", "method 'd.name' not defined").isUnknownInfoHash())
+        assertFalse(RpcFault("-32601", "info-hash not found").isUnknownInfoHash())
+    }
+
+    @Test fun modernRTorrentUnknownHashReplyReadsAsAbsentForExactLookup() = runBlocking {
+        Fixture { request, _ ->
+            assertTrue(request.contains("<methodName>d.name</methodName>"))
+            Reply(200, fault(-500, "invalid parameters: info-hash not found"))
+        }.use { fixture ->
+            val remote = RTorrentRemote(RemoteCredentials(fixture.endpoint, "", ""))
+            assertNull(remote.lookupName("B".repeat(40)))
+        }
+    }
 }

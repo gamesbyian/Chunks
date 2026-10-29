@@ -228,6 +228,19 @@ object XmlRpcCodec {
 class RpcFault(val code: String, message: String) : Exception(message)
 
 /**
+ * rTorrent's reply for an exact-hash command on a torrent it does not have.
+ * Legacy xmlrpc-c builds answer -501 "Could not find info-hash."; modern
+ * tinyxml2 builds (0.15+) answer -500 "invalid parameters: info-hash not
+ * found". The message is checked too, so no other -500/-501 fault (or an
+ * unknown method, -506/-32601) is ever read as proof of absence.
+ */
+internal fun RpcFault.isUnknownInfoHash(): Boolean {
+    val text = message.orEmpty().lowercase()
+    return (code == "-501" && "could not find info-hash" in text) ||
+        (code == "-500" && "info-hash not found" in text)
+}
+
+/**
  * A well-formed reply exceeded a wide-but-shallow budget (total elements, values,
  * array entries). Distinct from hostile nesting so callers can switch to a
  * paged read instead of failing; still an IllegalArgumentException for callers
