@@ -33,7 +33,7 @@ A code review of everything merged this session (`a8cb13f..2103fc7`) found these
 - **Per-frame recomputation:** combined privacy decisions and sources were rebuilt on every recomposition, because profile and server objects carry fresh lambdas. They are now keyed on data.
 - **Duplicated parsing:** environment-ID parsing from an alias scope existed in four copies; it is now one `EnvironmentSnapshots.serverIdOfAliasScope`. A dead `compareKnown` wrapper was also removed.
 
-**Evidence:** new JVM tests for scope parsing, overflow ordering, malformed subsets and the non-v1 refusal; full local suite green. Not changed: badge colours are read once per composition, so a colour change shows on the next screen entry.
+**Merged:** [#585](https://github.com/gamesbyian/Chunks/pull/585), squash `4b9b839fceeab1c4c040b1096385085547d3dd37`, exact head `f64ca5af5294e370c7a106eed570bf37dd38b095`: [Android/JVM 40937046942](https://github.com/gamesbyian/Chunks/actions/runs/40937046942), [R8 40937046588](https://github.com/gamesbyian/Chunks/actions/runs/40937046588), [API35 native instrumentation 40937046886](https://github.com/gamesbyian/Chunks/actions/runs/40937046886), [atlas 40937046865](https://github.com/gamesbyian/Chunks/actions/runs/40937046865). **Evidence:** new JVM tests for scope parsing, overflow ordering, malformed subsets and the non-v1 refusal; full local suite green. Not changed: badge colours are read once per composition, so a colour change shows on the next screen entry.
 
 ## 2026-10-29 opt-in interrupted real-swarm download (#568, #5)
 
