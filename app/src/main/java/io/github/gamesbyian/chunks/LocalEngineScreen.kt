@@ -1730,17 +1730,25 @@ internal fun LocalTransferCard(
                     else "Running, but 0 peers connected. Check trackers, DHT, VPN/firewall and live seed availability. Starting alone cannot produce bytes.",
                     style = MaterialTheme.typography.bodySmall)
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            // Three tiles side by side split words at 200% text; stack them instead.
+            val wideText = LocalDensity.current.fontScale >= 1.5f
+            val tile: Modifier = if (wideText) Modifier.fillMaxWidth() else Modifier
+            val actions: @Composable (Modifier) -> Unit = { each ->
                 ActionTile(if (transfer.stopped) "Start" else "Stop",
                     if (transfer.stopped) ChunksColors.Green else ChunksColors.Purple,
-                    onClick = onToggle, enabled = !busy, modifier = Modifier.weight(1f),
-                    icon = if (transfer.stopped) R.drawable.chunks_ic_play else R.drawable.chunks_ic_stop)
+                    onClick = onToggle, enabled = !busy, modifier = each,
+                    icon = if (transfer.stopped) R.drawable.chunks_ic_play else R.drawable.chunks_ic_stop,
+                    stacked = !wideText)
                 ActionTile("Remove…", ChunksColors.Orange, onClick = { confirmRemove = true },
-                    enabled = !busy && !confirmRemove, modifier = Modifier.weight(1f),
-                    icon = R.drawable.chunks_ic_remove)
+                    enabled = !busy && !confirmRemove, modifier = each,
+                    icon = R.drawable.chunks_ic_remove, stacked = !wideText)
                 if (transfer.metadataKnown) ActionTile(if (filesShown) "Hide files" else "Files",
-                    ChunksColors.Cyan, onClick = onShowFiles, enabled = !busy, modifier = Modifier.weight(1f),
-                    icon = R.drawable.chunks_ic_folder)
+                    ChunksColors.Cyan, onClick = onShowFiles, enabled = !busy, modifier = each,
+                    icon = R.drawable.chunks_ic_folder, stacked = !wideText)
+            }
+            if (wideText) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { actions(tile) }
+            else Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                actions(Modifier.weight(1f))
             }
             if (onRepairTrackers != null && transfer.stopped &&
                 transfer.metadataKnown && transfer.trackers?.total == 0) {

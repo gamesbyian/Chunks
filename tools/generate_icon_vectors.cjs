@@ -25,6 +25,8 @@ const ICONS = {
   chunks_ic_server: "docs/design/svg/icons/connectivity/server.svg",
   chunks_ic_archive: "docs/design/svg/icons/files/archive-zip.svg",
   chunks_ic_document: "docs/design/svg/icons/files/document.svg",
+  chunks_ic_warning: "docs/design/svg/icons/status/warning.svg",
+  chunks_ic_error: "docs/design/svg/icons/status/error.svg",
   chunks_ic_file_video_on_dark: { source: "docs/design/svg/icons/files/video.svg", onDark: true },
   chunks_ic_file_audio_on_dark: { source: "docs/design/svg/icons/files/audio.svg", onDark: true },
   chunks_ic_file_image_on_dark: { source: "docs/design/svg/icons/files/image.svg", onDark: true },

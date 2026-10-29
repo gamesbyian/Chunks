@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- GENERATED from docs/design/svg/icons/status/warning.svg by tools/generate_icon_vectors.cjs (sha256 4ef572eb5156e843); edit the SVG, then regenerate. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp" android:viewportWidth="64" android:viewportHeight="64">
+  <path android:pathData="M8 32 A24 24 0 1 1 56 32 A24 24 0 1 1 8 32 Z" android:fillColor="#FFFFD93D" android:strokeColor="#FF0B0F17" android:strokeWidth="5" android:strokeLineCap="round" android:strokeLineJoin="round"/>
+  <path android:pathData="M32 18 L32 37" android:strokeColor="#FF0B0F17" android:strokeWidth="7" android:strokeLineCap="round" android:strokeLineJoin="round"/>
+  <path android:pathData="M29 47 A3 3 0 1 1 35 47 A3 3 0 1 1 29 47 Z" android:fillColor="#FF0B0F17"/>
+</vector>
