@@ -257,9 +257,14 @@ class SystemFontScaleComposeInstrumentedTest {
         rule.waitForIdle()
         // The Connect action is below the fold, especially at 200% type.
         // Only one actual click is sent; scroll for node attachment first.
-        rule.onNode(hasScrollToIndexAction())
-            .performScrollToNode(hasText("Connect to rTorrent"))
-        rule.waitForIdle()
+        // The IME hide above can resize the viewport after the first scroll and
+        // dispose the lazy item again; re-scroll until it is actually composed.
+        rule.waitUntil(15_000) {
+            rule.onNode(hasScrollToIndexAction())
+                .performScrollToNode(hasText("Connect to rTorrent"))
+            rule.waitForIdle()
+            rule.onAllNodesWithText("Connect to rTorrent").fetchSemanticsNodes().isNotEmpty()
+        }
         rule.onNodeWithText("Connect to rTorrent")
             .performSemanticsAction(SemanticsActions.OnClick)
         rule.waitUntil(20_000) {
