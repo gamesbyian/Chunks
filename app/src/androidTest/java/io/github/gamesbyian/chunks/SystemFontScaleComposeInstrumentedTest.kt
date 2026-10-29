@@ -308,6 +308,13 @@ class SystemFontScaleComposeInstrumentedTest {
         rule.onNodeWithText("Select…").assertIsDisplayed()
         rule.waitForIdle()
         savePixels("combined")
+        // Open in its list: the signed-in server's own list, searched to that exact hash.
+        combinedList.performScrollToNode(hasText("Big Buck Bunny public demo"))
+        rule.onNodeWithContentDescription("Open Big Buck Bunny public demo in", substring = true)
+            .performSemanticsAction(SemanticsActions.OnClick)
+        rule.waitForIdle()
+        rule.waitUntil(10_000) { rule.onAllNodesWithText("1 shown").fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithText("Big Buck Bunny public demo").assertExists()
         // Seven distinct captures: unauthenticated Connection, initial and
         // return-to-Transfers, Places / Organize / Server and All environments.
         assertTrue("Test fixture unexpectedly failed: $fixtureProblem",

@@ -81,4 +81,11 @@ class TransferCatalogTest {
         assertEquals("Largest first", TransferOrder.SIZE.directionLabel(UnifiedSortDirection.DESCENDING))
         assertEquals("Slowest first", TransferOrder.SPEED.directionLabel(UnifiedSortDirection.ASCENDING))
     }
+
+    @Test fun searchFindsAnExactInfohashCaseInsensitively() {
+        val target = RemoteTransfer("ab".repeat(20), "Target", 10, 0, false, "/x")
+        val other = RemoteTransfer("cd".repeat(20), "Other", 10, 0, false, "/x")
+        assertEquals(listOf(target.hash), TransferCatalog.visible(listOf(other, target), "AB".repeat(20),
+            TransferFilter.ALL, TransferOrder.NAME).map { it.hash })
+    }
 }
