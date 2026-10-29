@@ -73,6 +73,25 @@ class CombinedBatchLifecycleTest {
         assertEquals("only listed here; sign in to this server to change it", offline.items.single().reason)
     }
 
+    @Test fun partialAndUnobservedSourcesDoNotTakeAnyMutationGate() = runBlocking {
+        val gate = FakeGate(grant = true)
+        val onServer = row(server, true)
+        val full = source(server, onServer)
+        for (blocked in listOf(
+            full.copy(inventoryComplete = false),
+            full.copy(observedAtEpochMillis = null)
+        )) {
+            val result = runCombinedLifecycle(setOf(onServer.key), start = false,
+                sources = listOf(blocked), serverLifecycle = gate.lifecycle,
+                serverId = server, phoneEngine = { null })
+            assertEquals(CommandEvidence.REFUSED, result.items.single().evidence)
+            assertNull(result.haltedOn)
+        }
+        assertEquals("A partial inventory must never reserve the remote command lane", 0, gate.begins)
+        assertEquals(0, gate.settles)
+        assertTrue(gate.calls.isEmpty())
+    }
+
     @Test fun previewAndResultsNameEveryEnvironment() = runBlocking {
         val labels = mapOf(phone to "On this phone", server to "Server · ian @ box")
         val preview = combinedBatchPreview(false, setOf(row(phone, true).key, row(server, true).key), labels)
