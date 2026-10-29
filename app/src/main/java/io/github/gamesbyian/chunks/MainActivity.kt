@@ -1258,6 +1258,11 @@ private fun TransfersScreen(
                         onSettled = onLifecycleSettled,
                         performLifecycle = remote::setStarted
                     )
+                    RemoteBatchPhoneCopyPanel(
+                        selected = list.filter { it.hash in batchHashes },
+                        enabled = !stale && !loading && !batchBusy && batchHashes.isNotEmpty(),
+                        run = { items -> runBatchPhoneCopy(context, remote, items) }
+                    )
                 }
             }
         }
