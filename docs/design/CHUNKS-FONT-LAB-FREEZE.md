@@ -1,4 +1,4 @@
-# Font laboratory full-family freeze, candidate 2 (correct native CFF counter winding)
+# Font laboratory full-family freeze, candidate 3 (A/4 small-counter optical refinement)
 
 - Branch: `font/lab`
 - Scope: 62 basic reference source glyphs × 4 independently editable lighter-weight masters, plus immutable reference ExtraBold and compatible derived accents, punctuation and marks.
@@ -11,3 +11,7 @@
 ## Second integration gate
 
 The first full-family run [#40812391453](https://github.com/gamesbyian/Chunks/actions/runs/40812391453) passed all stages and committed derived experimental CFF families. This deliberately scheduled second run normalizes native SVG counter winding (source edits confined to lighter weight overrides) before rebuilding the same CFF and mark chain; the new raw-path and synthetic nonzero-fill regression tests must pass. The approved artwork, ExtraBold, Android app and main stay untouched.
+
+## Third integration gate
+
+This frozen batch changes only the four lighter-weight SVG inner counters in A and 4 and adds the actual-CFF raster counter audit. The prior winding-corrected all-family run #40812996755 passed. Require all 248 editable source geometry tests, actual 24px counter raster safety, 856 cmap/shaping/kerning, complete accent and mark family compatibility, and one 20-variant cross-family audit before considering this optical correction integrated. 14px is deliberately diagnostic because this is a heavy display font. Keep nonshipping; preserve original source/ExtraBold/Android isolation.
