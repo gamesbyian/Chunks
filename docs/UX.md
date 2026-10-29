@@ -2,6 +2,11 @@
 
 > **Authority:** user-visible behavior, interaction state and accessibility requirements. Dated implementation notes describe bounded evidence only; the live [coverage map](SPEC-COVERAGE.md), [quality ledger](QUALITY-LEDGER.md) and [work queue](WORK-QUEUE.md) determine present status and next work.
 
+## Open files in other Android apps
+
+Provide a consistent file action surface within transfer file trees and phone/remote Place browsing: **Open**, **Open with…**, **Share/Send**, **Download to device**, and **Properties**, capability-gated and scoped to the visible phone/server profile. Prefer an Android resolver and bounded on-demand remote reading over forced full local download; show when streaming, random seeking, credentials, source permissions or recipient compatibility prevent the operation. Never silently materialize a large file. **Opening .torrent/magnet links in Chunks is the separate inbound workflow** described below. Canonical [external-file-access UX and behavior](EXTERNAL-FILE-ACCESS.md) governs both source views.
+
+
 ## Mental model, first-run and navigation
 
 - **Transfers**: what is downloading, completed, uploading, stuck and awaiting a safe move.
