@@ -46,6 +46,9 @@ import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.engine.LocalTransferStatus
 import io.github.gamesbyian.chunks.model.EnvironmentAvailability
 import io.github.gamesbyian.chunks.model.EnvironmentId
+import io.github.gamesbyian.chunks.model.EnvironmentCapabilities
+import io.github.gamesbyian.chunks.model.EnvironmentCapabilitySnapshot
+import io.github.gamesbyian.chunks.model.EnvironmentOperation
 import io.github.gamesbyian.chunks.model.EnvironmentSnapshots
 import io.github.gamesbyian.chunks.model.EnvironmentTransferSnapshot
 import io.github.gamesbyian.chunks.model.EnvironmentViewScope
@@ -100,7 +103,9 @@ internal data class CombinedServerSource(
 internal class CombinedServerLifecycle(
     val begin: () -> Boolean,
     val settled: () -> Unit,
-    val setStarted: suspend (String, Boolean) -> LifecycleOutcome
+    val setStarted: suspend (String, Boolean) -> LifecycleOutcome,
+    /** Read-only method-list probe of the same signed-in server; null skips the pre-check. */
+    val probe: (suspend () -> io.github.gamesbyian.chunks.rpc.RemoteProbe)? = null
 )
 
 /** A saved profile that is not signed in during this session. */
@@ -176,7 +181,7 @@ internal fun UnifiedSortKey.orderingKind(): TransferSortOrdering.Kind = when (th
 }
 
 internal fun availabilityText(source: EnvironmentTransferSnapshot): String = when (source.availability) {
-    EnvironmentAvailability.LIVE -> if (source.inventoryComplete) "Live" else "Live, list may be incomplete"
+    EnvironmentAvailability.LIVE -> if (source.canClaimCompleteLiveInventory) "Live" else "Live, list may be incomplete"
     EnvironmentAvailability.STALE -> "Out of date, showing last list"
     EnvironmentAvailability.OFFLINE -> if (source.environment == EnvironmentSnapshots.PHONE)
         "Engine not running, open On this phone" else "Not connected"
@@ -650,7 +655,13 @@ internal suspend fun runCombinedLifecycle(
                     }
                 }
             } else if (environment == serverId && serverLifecycle != null) {
-                if (!serverLifecycle.begin()) refusals[environment] = "server is busy or refreshing"
+                // Fresh read-only pre-check before leasing: a server that does not
+                // advertise Start/Stop refuses here. No answer leaves it UNKNOWN,
+                // and the command's own readback still decides.
+                val capability = serverCapabilities(environment, serverLifecycle.probe)
+                    .decide(EnvironmentOperation.START_STOP, EnvironmentAvailability.LIVE)
+                if (!capability.allowed) refusals[environment] = capability.explanation
+                else if (!serverLifecycle.begin()) refusals[environment] = "server is busy or refreshing"
                 else {
                     serverLeased = true
                     adapters[environment] = UnifiedBatchLifecycle.Adapter { hash, on ->
@@ -666,6 +677,20 @@ internal suspend fun runCombinedLifecycle(
     } finally {
         if (phoneLeased) PhoneMutationFence.revision.settledMutation()
         if (serverLeased) serverLifecycle?.settled?.invoke()
+    }
+}
+
+internal suspend fun serverCapabilities(
+    environment: EnvironmentId,
+    probe: (suspend () -> io.github.gamesbyian.chunks.rpc.RemoteProbe)?
+): EnvironmentCapabilitySnapshot {
+    if (probe == null) return EnvironmentCapabilities.unprobed(environment)
+    return try {
+        EnvironmentCapabilities.fromProbe(environment, probe(), System.currentTimeMillis())
+    } catch (cancel: kotlinx.coroutines.CancellationException) {
+        throw cancel
+    } catch (_: Exception) {
+        EnvironmentCapabilities.unprobed(environment)
     }
 }
 
@@ -776,4 +801,4 @@ internal fun combinedTotalsText(t: io.github.gamesbyian.chunks.model.UnifiedTran
     "Live total: ↓ " + Units.bytes(t.downloadBytesPerSecond) + "/s · ↑ " + Units.bytes(t.uploadBytesPerSecond) +
         "/s across ${t.liveRows} transfers" +
         (if (t.rowsWithUnknownRate > 0) " · ${t.rowsWithUnknownRate} with rates not reported" else "") +
-        (if (t.excludedEnvironments > 0) " · ${t.excludedEnvironments} environment(s) not included (not live)" else "")
+        (if (t.excludedEnvironments > 0) " · ${t.excludedEnvironments} environment(s) excluded (not fully observed)" else "")

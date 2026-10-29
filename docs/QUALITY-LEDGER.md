@@ -1,5 +1,26 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-29 per-environment capability snapshots (0A, #567)
+
+- **Source slice:** `EnvironmentCapabilitySnapshot` grades each environment separately.
+  - The phone engine's operations are `BUILT_IN`; "Copy files to this phone" is `NOT_APPLICABLE` there.
+  - Each signed-in server is graded from **its own** `system.listMethods` probe as `ADVERTISED`, `MISSING` or `UNKNOWN`. A server probe cannot describe the phone.
+  - It uses the separated route table carried over from #621: magnet Add and .torrent Add are graded independently, the server default Add folder is optional (its absence never refuses an explicit-destination Add) and session Remove requires `d.multicall2` + `d.hash` + `d.erase`, not `d.erase` alone.
+  - `decide()` refuses when an environment is not LIVE or when an operation is MISSING or NOT_APPLICABLE. UNKNOWN is allowed, with a "not pre-checked" note, and the command's own readback decides.
+  - Combined Start/Stop now runs a fresh read-only probe before taking the server's mutation lease. A server that does not advertise the Start/Stop methods refuses without being leased or sent a command. A failed probe or one without a method list stays UNKNOWN.
+- **Evidence:** JVM `EnvironmentCapabilitiesTest` and `CombinedBatchLifecycleTest` (missing method refuses before lease; no method list and probe failure still run the guarded command). No real-server or device evidence yet. Advertised is not authorized.
+
+## 2026-10-29 read-only phone file-on-disk check (TRANSFER-FILE-RECOVERY stage 1)
+
+- **Source slice:** `LocalFileDiskCheck` and its UI, "Check files on disk (read-only)", in a phone transfer's Files panel.
+  - It runs only when tapped, on the IO dispatcher, and stats each torrent file under the transfer's own save folder.
+  - Each file is reported as present at the expected size, not started, skipped, partly on disk, **missing** (engine has bytes, no file), **size mismatch**, **not a file**, **unreadable** or **unsafe path**.
+  - A path that escapes the save folder (`..` or a symlink) is refused, not followed.
+  - It never hashes, creates, renames or deletes anything, and the summary says it checks presence and size only, not contents.
+  - Non-file-path folders (for example a SAF tree URI) are explained instead of checked.
+  - A missing save folder, or one that is a regular file, fails closed: every file reads **save folder unavailable**, never a clean report. A result is cleared when the save folder or file layout changes.
+- **Evidence:** JVM `LocalFileDiskCheckTest` (every status, read-only assertion, symlink escape) and Robolectric `LocalFilesOnDiskCheckTest` (runs only on tap, lists the missing file, creates nothing). No device, no remote and no hash verification. Search, match, rebind and recheck stages remain open.
+
 ## 2026-10-29 opt-in device reboot repro (#569)
 
 - **Source slice:** `LocalEngineRebootInstrumentedTest` + `tools/reboot_repro.sh` are added to the path-scoped opt-in lifecycle job.
