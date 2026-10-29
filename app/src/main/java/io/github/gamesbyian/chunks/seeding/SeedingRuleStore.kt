@@ -82,7 +82,7 @@ class SeedingRuleStore(context: Context) {
                 knownEnvironments = strings(o.getJSONArray("knownEnvironments")).toSet())
         }
 
-        private fun policy(p: SeedingPolicy) = JSONObject()
+        internal fun policy(p: SeedingPolicy) = JSONObject()
             .put("ratio", p.ratioGoal?.toPlainString() ?: JSONObject.NULL)
             .put("minSeconds", p.minSeedSeconds ?: JSONObject.NULL)
             .put("maxSeconds", p.maxSeedSeconds ?: JSONObject.NULL)
@@ -90,7 +90,7 @@ class SeedingRuleStore(context: Context) {
             .put("uploadUnit", p.uploadLimit?.unit?.name ?: JSONObject.NULL)
             .put("combine", p.combine.name)
 
-        private fun policy(o: JSONObject) = SeedingPolicy(
+        internal fun policy(o: JSONObject) = SeedingPolicy(
             ratioGoal = if (o.isNull("ratio")) null else BigDecimal(o.getString("ratio")),
             minSeedSeconds = if (o.isNull("minSeconds")) null else o.getLong("minSeconds"),
             maxSeedSeconds = if (o.isNull("maxSeconds")) null else o.getLong("maxSeconds"),
