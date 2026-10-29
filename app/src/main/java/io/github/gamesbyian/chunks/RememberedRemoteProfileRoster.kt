@@ -28,6 +28,12 @@ internal class RememberedRemoteProfileRoster(context: Context) {
         const val MAX_PROFILES = 12
         private const val MAX_ENCODED = 196_608
 
+        /** Stable profile ID: SHA-256 of endpoint + NUL + username. Also the seeding environment key. */
+        internal fun identityOf(endpoint: String, username: String): String =
+            MessageDigest.getInstance("SHA-256")
+                .digest((endpoint.trim() + "\u0000" + username.trim()).toByteArray(Charsets.UTF_8))
+                .joinToString("") { "%02x".format(it.toInt() and 255) }
+
         internal fun addressOf(endpoint: String): String = try {
             val uri = URI(endpoint.trim())
             val port = if (uri.port == -1) "" else ":" + uri.port
@@ -73,13 +79,7 @@ internal class RememberedRemoteProfileRoster(context: Context) {
         return generator.generateKey()
     }
 
-    private fun identity(credentials: RemoteCredentials): String {
-        val source = credentials.endpoint.trim() + "\u0000" +
-            credentials.username.trim()
-        return MessageDigest.getInstance("SHA-256")
-            .digest(source.toByteArray(Charsets.UTF_8))
-            .joinToString("") { "%02x".format(it.toInt() and 255) }
-    }
+    private fun identity(credentials: RemoteCredentials): String = identityOf(credentials.endpoint, credentials.username)
 
     private fun valid(credentials: RemoteCredentials): Boolean =
         credentials.endpoint.length in 1..2048 &&

@@ -162,7 +162,7 @@ class MainActivity : ComponentActivity() {
 }
 
 private enum class Section(val label: String) {
-    TRANSFERS("Transfers"), PLACES("Places"), ORGANIZE("Organize"), SERVER("Server"), ARCHIVES("ZIP review"), CREATE("Create"), LOCAL("On this phone"), ADD("Add"), NAMES("Names"), SNAPSHOT("Inventory backup"), SNAPSHOT_INSPECT("Inspect backup")
+    TRANSFERS("Transfers"), PLACES("Places"), ORGANIZE("Organize"), SERVER("Server"), ARCHIVES("ZIP review"), CREATE("Create"), SEEDING("Seeding rules"), LOCAL("On this phone"), ADD("Add"), NAMES("Names"), SNAPSHOT("Inventory backup"), SNAPSHOT_INSPECT("Inspect backup")
 }
 
 @Composable
@@ -241,6 +241,14 @@ private fun ChunksApp(
         if (incomingTorrent != null) section = Section.LOCAL
     }
     // A file shared to "Create torrent" opens the Create review; nothing is read yet.
+    val seedingEnvironments = remember(savedProfiles, aliasScope, server) {
+        buildList {
+            add(SeedingEnvironment.phone())
+            savedProfiles.forEach { add(SeedingEnvironment.server(it.credentials.endpoint, it.credentials.username)) }
+            if (server != null && aliasScope.isNotBlank())
+                add(SeedingEnvironment.server(aliasScope.substringBefore('\u0000'), aliasScope.substringAfter('\u0000', "")))
+        }.distinctBy { it.id }
+    }
     var createRequest by remember { mutableStateOf<io.github.gamesbyian.chunks.create.SharedCreateDocument.Request?>(null) }
     LaunchedEffect(incomingCreate) {
         if (incomingCreate != null) {
@@ -338,6 +346,8 @@ private fun ChunksApp(
             ) {
                 SnapshotDocumentInspectScreen(onBack = { section = Section.TRANSFERS })
             }
+        } else if (section == Section.SEEDING) {
+            SeedingRulesScreen(seedingEnvironments, onBack = { section = Section.TRANSFERS })
         } else if (section == Section.CREATE && server == null) {
             io.github.gamesbyian.chunks.create.CreateTorrentScreen(onBack = { section = Section.TRANSFERS },
                 shared = createRequest, onSharedConsumed = { createRequest = null })
@@ -348,6 +358,7 @@ private fun ChunksApp(
             ) {
                 LocalEngineScreen(
                     onBack = { section = Section.TRANSFERS },
+                    onSeedingRules = { section = Section.SEEDING },
                     initialMagnet = phoneHandoffMagnet,
                     initialTorrentUri = incomingTorrent,
                     onTorrentConsumed = onIncomingTorrentConsumed,
@@ -582,6 +593,7 @@ private fun ChunksApp(
                 ) {
                     LocalEngineScreen(
                         onBack = { section = Section.TRANSFERS },
+                        onSeedingRules = { section = Section.SEEDING },
                         initialMagnet = phoneHandoffMagnet,
                         initialTorrentUri = incomingTorrent,
                         canReviewOnConnectedServer = true,
@@ -668,7 +680,7 @@ private fun ChunksApp(
                 modifier = Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                for (tab in Section.entries.filter { it != Section.ADD && it != Section.NAMES && it != Section.SNAPSHOT &&
+                for (tab in Section.entries.filter { it != Section.ADD && it != Section.NAMES && it != Section.SNAPSHOT && it != Section.SEEDING &&
                     it != Section.SNAPSHOT_INSPECT }) {
                     FilterChip(
                         selected = section == tab,
@@ -803,6 +815,7 @@ private fun ChunksApp(
                     LocalZipReviewScreen(onBack = { section = Section.TRANSFERS })
                 }
                 Section.LOCAL -> Unit // Composed by the independent local gate above.
+                Section.SEEDING -> Unit // Composed by the top-level route above.
                 Section.CREATE -> io.github.gamesbyian.chunks.create.CreateTorrentScreen(
                     onBack = { section = Section.TRANSFERS },
                     shared = createRequest, onSharedConsumed = { createRequest = null })
@@ -840,6 +853,7 @@ private fun ChunksApp(
                         }
                     },
                     onRefresh = refresh,
+                    onSeedingRules = { section = Section.SEEDING },
                     onDisconnect = {
                         // Invalidate every in-flight read before clearing UI state.
                         remoteFence.invalidate()
@@ -1879,7 +1893,8 @@ private fun ServerScreen(
     version: String, displayedView: String, requestedView: String, onRequestedView: (String) -> Unit,
     loading: Boolean, stale: Boolean, count: Int,
     credentialNotice: String?, savedLoginPresent: Boolean, onForgetLogin: () -> Unit,
-    onRefresh: () -> Unit, onDisconnect: () -> Unit
+    onRefresh: () -> Unit, onDisconnect: () -> Unit,
+    onSeedingRules: () -> Unit = {}
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -1922,6 +1937,11 @@ private fun ServerScreen(
         }
         if (credentialNotice != null) item {
             Text(credentialNotice, style = MaterialTheme.typography.bodySmall)
+        }
+        item {
+            OutlinedButton(onClick = onSeedingRules, modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp)) {
+                Text("Seeding rules…")
+            }
         }
         item {
             OutlinedButton(onClick = onDisconnect, modifier = Modifier.fillMaxWidth().height(54.dp)) {
