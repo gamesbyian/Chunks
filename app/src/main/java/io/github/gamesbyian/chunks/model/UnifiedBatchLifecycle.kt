@@ -117,8 +117,12 @@ object UnifiedBatchLifecycle {
         source.availability == EnvironmentAvailability.LOCKED -> "Environment is locked"
         source.availability == EnvironmentAvailability.OFFLINE -> "Environment is offline"
         source.availability == EnvironmentAvailability.STALE -> "Transfer list is out of date; refresh first"
+        !source.inventoryComplete -> "Transfer list is incomplete; refresh the full inventory first"
+        source.observedAtEpochMillis == null -> "Transfer list has no verified observation; refresh first"
         adapter == null -> "This environment does not support Start/Stop here"
         source.transfers.none { it.key == target.key } -> "Not in this environment's current list"
+        source.transfers.first { it.key == target.key }.started != target.started ->
+            "Selected state has changed; review the current list before acting"
         target.started == null -> "Current state is unknown; refresh first"
         else -> null
     }
