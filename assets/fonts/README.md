@@ -1,6 +1,10 @@
 # Chunks font asset catalog
 
-Two font families intentionally coexist. **Only one weight of the primary family is currently installed in Android.**
+## Production: approved reference-panel ExtraBold only
+
+The owner approved **ExtraBold 800**, not the reference-panel Regular/Medium/Semibold/Bold studies. Android's sole packaged `res/font/chunks_extrabold.otf` now contains the byte-identical reference-panel consolidated ExtraBold from `assets/fonts/experimental/consolidated/ChunksReferencePanel-ExtraBold-Consolidated.otf` (SHA-256: `55ba6f8a114a0da6223023bde4e0b6ad12d469616b2743ac471d8415b1d8813c`). Compose's existing `ChunksDisplayFamily` uses it for headings and brand text; body text and dense lists retain system fonts. The preBuild `verifyChunksWordmarkFont` asserts source/package binary equality and unchanged OFL license. **Never regenerate this approved 800 from the older baseline font builder**, and do not package the four unapproved lighter weights. The pending 400–700 redesign remains on the isolated `font/lab` branch; real handset font-scale/TalkBack acceptance remains to be performed.
+
+Two font families intentionally coexist. **Only the approved reference-panel ExtraBold weight is installed in Android.**
 
 | Asset | Status | Purpose |
 | --- | --- | --- |

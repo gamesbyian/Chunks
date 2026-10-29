@@ -206,14 +206,14 @@ tasks.named("preBuild").configure { dependsOn(verifyChunksLauncherArtwork) }
 val verifyChunksWordmarkFont by tasks.registering {
     group = "verification"
     description = "Verify packaged Chunks display OTF and OFL license are byte-identical to repo masters"
-    val sourceFont = rootProject.file("assets/fonts/chunks/Chunks-ExtraBold.otf")
+    val sourceFont = rootProject.file("assets/fonts/experimental/consolidated/ChunksReferencePanel-ExtraBold-Consolidated.otf")
     val packagedFont = project.file("src/main/res/font/chunks_extrabold.otf")
     val sourceLicense = rootProject.file("assets/fonts/source/OFL.txt")
     val packagedLicense = project.file("src/main/assets/licenses/Baloo2-OFL.txt")
     inputs.files(sourceFont, packagedFont, sourceLicense, packagedLicense)
     doLast {
         check(sourceFont.readBytes().contentEquals(packagedFont.readBytes())) {
-            "Android font is stale: regenerate with the Chunks font family CI pipeline"
+            "Android approved ExtraBold is stale: packaged OTF must match reference-panel consolidated source"
         }
         check(sourceLicense.readBytes().contentEquals(packagedLicense.readBytes())) {
             "Bundled modified-font OFL license must remain byte-identical to its source"
