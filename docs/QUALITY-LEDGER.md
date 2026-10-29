@@ -1,5 +1,16 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-29 #580 merged receipts (combined Start/Stop and colours)
+
+- **Merged:** [#580](https://github.com/gamesbyian/Chunks/pull/580), squash `1469870272e8589d2e8efa924f6e7500fa96af75`, exact head `a28690c309042337300ab9ee7dbc502807109935`: [Android/JVM 40918072154](https://github.com/gamesbyian/Chunks/actions/runs/40918072154), [R8 40918072103](https://github.com/gamesbyian/Chunks/actions/runs/40918072103), [API35 native instrumentation incl. `CombinedPhoneBatchInstrumentedTest` 40918072092](https://github.com/gamesbyian/Chunks/actions/runs/40918072092), [API29 Downloads 40918072315](https://github.com/gamesbyian/Chunks/actions/runs/40918072315), [native atlas 40918072398](https://github.com/gamesbyian/Chunks/actions/runs/40918072398). Evidence boundaries are listed in the two entries below.
+
+## 2026-10-29 sudden process-death restore repro (#569)
+
+- **Source slice:** `LocalEngineProcessDeathInstrumentedTest`, run in two processes by `tools/process_death_repro.sh` inside the opt-in lifecycle job.
+  - **Phase A** seeds under the foreground service, then SIGKILLs itself. There is no Stop all, no onDestroy and no explicit save.
+  - **Phase B** must find: no leftover ongoing notification, the transfer restored **stopped**, unchanged payload SHA-256, and a 100% recheck when started.
+- **Evidence:** pending this PR's `api35-fgs-timeout` job. Emulator only.
+
 ## 2026-10-29 read-only listing of other saved servers in All environments (#567)
 
 - **Source slice:** each saved profile can be listed read-only (`RTorrentRemote(profile.credentials).listTransfers("main")`, 45 s timeout), but only on an explicit button press.
