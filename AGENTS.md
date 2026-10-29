@@ -8,7 +8,7 @@
 2. Read the [documentation index](docs/INDEX.md), [authoring/authority standard](docs/DOCUMENTATION-STANDARD.md) and [one active work queue](docs/WORK-QUEUE.md). The queue is executable priority, not evidence or product authority.
 3. Consult the [PRODUCT](docs/PRODUCT.md), [UX](docs/UX.md), [ARCHITECTURE](docs/ARCHITECTURE.md), [SECURITY](docs/SECURITY.md), [DECISIONS](docs/DECISIONS.md) and domain contract relevant to the slice. [SPEC-COVERAGE](docs/SPEC-COVERAGE.md) identifies acceptance gaps; [QUALITY-LEDGER](docs/QUALITY-LEDGER.md) records evidence.
 4. Check [AGENT-LANES](docs/AGENT-LANES.md) for ownership/concurrency boundaries, claim an independent slice and serialize edits to core model, engine, navigation and Gradle files. No fixed agent roster or competing live plans.
-5. Complete an observable vertical slice, test the exact head and use [CI-POLICY](docs/CI-POLICY.md) to avoid runner fan-out. Merge only qualified work with appropriate independent review, update the owning issue, evidence and queue, then choose the next unclaimed task.
+5. Use the current [dependency-ordered G0–G5 gates](docs/WORK-QUEUE.md) to prefer unblocked fundamentals and P0 integration/QA over new specialty features. Treat discretionary feature expansion as deferred while foundational acceptance is incomplete; urgent integrity/security regressions still take precedence. A blocked physical test is not a reason to pick unrelated filigree. Complete an observable vertical slice, test the exact head and use [CI-POLICY](docs/CI-POLICY.md) to avoid runner fan-out. Merge only qualified work with appropriate independent review, update the owning issue, evidence and queue, then choose the next unclaimed task.
 
 ## Binding product and command invariants
 
