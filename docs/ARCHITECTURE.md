@@ -2,6 +2,11 @@
 
 > **Authority:** shared domain model, capability and mutation boundaries. Product rules are in [PRODUCT](PRODUCT.md); implementation receipts and current task priority live in [QUALITY-LEDGER](QUALITY-LEDGER.md) and [WORK-QUEUE](WORK-QUEUE.md). Design notes do not imply physical acceptance.
 
+## Minimal-change Plex filename repair
+
+Implement compatibility analysis as a pure, abstaining minimal-edit proposal stage, separate from alias metadata, engine-backed path mutation and published-library copy execution. Preserve all unrelated filename spans including codec, release group and technical tokens. Execute physical changes only via versioned, exact-scope mapping and storage transaction verification with conditional rollback/reconciliation. No automatic filesystem rename of torrent-seeded bytes by generic SFTP/RPC. Canonical design and tests: [PLEX-FILENAME-REPAIR](PLEX-FILENAME-REPAIR.md).
+
+
 ## Architecture: shared semantics, independent capabilities
 
 Android Compose UI and share intents → application command coordinator → Transfer / Place / Collection / Operation domain model → explicit local engine adapter OR rTorrent RPC adapter. Organization produces **proposals**, not filesystem side effects. Storage providers and the optional Companion execute only authorized, capability-proven operations.
