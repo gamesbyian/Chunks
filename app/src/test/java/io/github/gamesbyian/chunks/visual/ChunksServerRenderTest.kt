@@ -32,7 +32,7 @@ import org.robolectric.annotation.GraphicsMode
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [35], qualifiers = "w411dp-h891dp-xxhdpi")
-class ChunksServerRenderTest {
+open class ChunksServerRenderTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
     private var server: ServerSocket? = null
 
@@ -88,6 +88,8 @@ class ChunksServerRenderTest {
         }
     } }
 
+    protected open val prefix = "server"
+
     @Test fun serverTransfers() {
         val listening = ServerSocket(0, 16, InetAddress.getByName("127.0.0.1")).also { server = it }
         Thread { while (!listening.isClosed) try { serve(listening.accept()) } catch (_: Exception) {} }
@@ -99,16 +101,22 @@ class ChunksServerRenderTest {
         try {
             rule.waitUntil(20_000) { rule.onAllNodesWithText("3 transfers", substring = true).fetchSemanticsNodes().isNotEmpty() }
         } catch (timeout: Throwable) {
-            rule.onRoot().captureRoboImage("build/chunks-visual/server-timeout.png")
+            rule.onRoot().captureRoboImage("build/chunks-visual/$prefix-timeout.png")
             throw timeout
         }
         rule.waitForIdle()
-        rule.onRoot().captureRoboImage("build/chunks-visual/server.png")
+        rule.onRoot().captureRoboImage("build/chunks-visual/$prefix.png")
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Our Planet S01 (2160p)"))
         rule.waitForIdle()
-        rule.onRoot().captureRoboImage("build/chunks-visual/server-cards.png")
+        rule.onRoot().captureRoboImage("build/chunks-visual/$prefix-cards.png")
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Sci Fi Pack (2024)"))
         rule.waitForIdle()
-        rule.onRoot().captureRoboImage("build/chunks-visual/server-scrolled.png")
+        rule.onRoot().captureRoboImage("build/chunks-visual/$prefix-scrolled.png")
     }
+}
+
+/** The same server screens at Android's 200% font scale. */
+@Config(sdk = [35], qualifiers = "w411dp-h891dp-xxhdpi", fontScale = 2.0f)
+class ChunksServerLargeTextRenderTest : ChunksServerRenderTest() {
+    override val prefix = "server-200pct"
 }

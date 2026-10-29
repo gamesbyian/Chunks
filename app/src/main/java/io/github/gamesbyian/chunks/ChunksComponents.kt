@@ -3,6 +3,7 @@ package io.github.gamesbyian.chunks
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -126,5 +127,28 @@ internal fun FileProgressLine(fraction: Float, wanted: Boolean, modifier: Modifi
     androidx.compose.foundation.layout.Box(modifier.height(6.dp).clip(RoundedCornerShape(3.dp))
         .background(ChunksColors.Muted)) {
         androidx.compose.foundation.layout.Box(Modifier.fillMaxWidth(value).fillMaxHeight().background(fill))
+    }
+}
+
+/**
+ * Warning/error banner from the design sheet: dark card, tone-coloured
+ * border and title, library status icon. Text carries the meaning; the
+ * icon is decorative.
+ */
+@Composable
+internal fun ChunksBanner(title: String, message: String, tone: ChunksTone, modifier: Modifier = Modifier) {
+    val (icon, accent) = when (tone) {
+        ChunksTone.ERROR -> R.drawable.chunks_ic_error to ChunksColors.Red
+        else -> R.drawable.chunks_ic_warning to ChunksColors.Yellow
+    }
+    Row(modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(ChunksColors.Surface)
+            .border(2.dp, accent, RoundedCornerShape(16.dp)).padding(14.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Image(painterResource(icon), contentDescription = null, modifier = Modifier.size(32.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(title, color = accent, fontWeight = FontWeight.ExtraBold,
+                style = MaterialTheme.typography.titleSmall)
+            Text(message, style = MaterialTheme.typography.bodySmall, color = ChunksColors.Text)
+        }
     }
 }
