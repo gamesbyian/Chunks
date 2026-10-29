@@ -1044,6 +1044,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     override fun close() {
         if (!started) return
         saveResumeData()
+        pendingSaves.cancelAll()
         pendingFlushes.values.forEach { it.refused() }
         pendingFlushes.clear()
         handles.clear()
