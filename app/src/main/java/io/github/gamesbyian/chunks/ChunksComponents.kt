@@ -222,3 +222,13 @@ internal fun serverEnvironmentLabel(aliasScope: String): String {
 
 internal const val PHONE_ENVIRONMENT_LABEL = "On this phone"
 
+/**
+ * States exactly which environment a setting applies to (UNIFIED-ENVIRONMENTS
+ * "Settings and scope"), beside the setting itself. Text carries the scope.
+ */
+@Composable
+internal fun SettingScopeNote(environmentLabel: String, modifier: Modifier = Modifier) {
+    Text("Applies to: $environmentLabel only. Other environments keep their own settings.",
+        style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary, modifier = modifier)
+}
+

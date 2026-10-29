@@ -4,6 +4,7 @@
 
 - **Source slice:** phone and signed-in-server rows navigate to their own list, searched to the exact infohash with the filter reset. The phone screen gains a one-shot `initialSearch`. Rows from listed-only servers have no open action.
 - **Evidence tier:** Robolectric checks that the callback receives the exact environment ID and hash, and that listed-only rows show no action. The MainActivity navigation itself is not instrumented.
+- **Settings scope labels:** phone Speed limits and DHT, and the server's Server view, now state "Applies to: <environment> only. Other environments keep their own settings." beside the setting. This is source change only; it has not been checked on a device.
 
 ## 2026-10-29 date-added sort and All environments at real 200% system font (#567, #8)
 

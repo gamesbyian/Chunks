@@ -944,6 +944,7 @@ private fun ChunksApp(
                     },
                     onRefresh = refresh,
                     onSeedingRules = { section = Section.SEEDING },
+                    environmentLabel = serverEnvironmentLabel(aliasScope),
                     onDisconnect = {
                         // Invalidate every in-flight read before clearing UI state.
                         remoteFence.invalidate()
@@ -2002,7 +2003,9 @@ private fun ServerScreen(
     loading: Boolean, stale: Boolean, count: Int,
     credentialNotice: String?, savedLoginPresent: Boolean, onForgetLogin: () -> Unit,
     onRefresh: () -> Unit, onDisconnect: () -> Unit,
-    onSeedingRules: () -> Unit = {}
+    onSeedingRules: () -> Unit = {},
+    /** Exact server environment label, so the view choice states its scope. */
+    environmentLabel: String = "this server"
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -2015,6 +2018,7 @@ private fun ServerScreen(
         }
         item {
             Text("Server view", style = MaterialTheme.typography.titleLarge)
+            SettingScopeNote(environmentLabel)
             Text("Different rTorrent servers organize views differently. Chunks never assumes the current view covers every torrent.",
                 style = MaterialTheme.typography.bodySmall)
         }

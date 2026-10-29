@@ -668,6 +668,7 @@ internal fun LocalEngineScreen(
                 Text("Find peers without trackers (DHT)")
                 Text("Needed for most magnet links. Off by default: when on, this phone's IP address is shared with the public DHT network.",
                     style = MaterialTheme.typography.bodySmall)
+                SettingScopeNote(PHONE_ENVIRONMENT_LABEL)
                 if (dhtSaving) Text("Applying DHT setting…", style = MaterialTheme.typography.bodySmall)
                 dhtError?.let { Text(it, style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error) }
@@ -2084,6 +2085,7 @@ internal fun LocalSpeedLimits() {
     val downloadLimit = parseSpeedLimit(download)
     val uploadLimit = parseSpeedLimit(upload)
     Text("Speed limits", fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
+    SettingScopeNote(PHONE_ENVIRONMENT_LABEL)
     Text("In KiB per second; leave blank for unlimited. Devices on your own network are not limited.",
         style = MaterialTheme.typography.bodySmall)
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
