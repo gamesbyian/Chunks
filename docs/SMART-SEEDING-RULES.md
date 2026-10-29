@@ -110,3 +110,16 @@ The phone engine gains `setUploadLimit` with exact readback (null removes the ca
 
 Evidence: JVM decision tests, plus a desktop-libtorrent loopback swarm showing cap readback and real counters. The original seeder reports zero downloaded bytes, so its ratio goal correctly cannot be judged. Not yet: the controller that applies rules from the service loop, the rule editor UI, and remote adapters.
 
+## Implementation note: phone controller (2026-10-29)
+
+`SeedingController` runs from the phone engine's foreground-service poll (`PhoneSeeding.tick`):
+- A transfer gets a frozen policy **snapshot** the first time it is seen after the controller's first run (the stored epoch). Transfers that existed earlier are marked unmanaged for good, and later rule edits never rewrite a snapshot. This is the contract's "future transfers only" default.
+- Magnets wait until metadata gives tracker identity and the private flag.
+- The upload cap is applied only with exact readback.
+- A reached stop condition **pauses once**, after the engine confirms; a later manual resume is respected. Unconfirmed results are noted, never retried blindly.
+- Snapshots hold policy numbers and reasons only, never tracker URLs. Unreadable rules mean no change.
+
+Evidence: JVM controller tests with fakes, plus a desktop-libtorrent loopback test. In that test a downloaded transfer matched a rule by its tracker host, got a verified 24 KiB/s cap, and was really paused after a one-second time limit, never removed.
+
+Not yet: remote rTorrent enforcement, an Add-review preview or per-transfer "Why this rule?", the reviewed "apply to existing transfers" batch, and handset/Doze evidence. Enforcement runs only while the foreground service polls.
+

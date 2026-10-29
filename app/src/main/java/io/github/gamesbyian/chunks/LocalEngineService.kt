@@ -174,6 +174,10 @@ class LocalEngineService : Service() {
         if (observed != null) {
             try { FinishInOrderController.tick(this, observed) }
             catch (_: Exception) {}
+            // Smart Seeding: snapshots for transfers added after it was first
+            // enabled; verified caps and pauses only, never removal.
+            try { LocalEngineHolder.current()?.let { io.github.gamesbyian.chunks.seeding.PhoneSeeding.tick(this, it) } }
+            catch (_: Exception) {}
         }
         val poll = LocalServicePoll.classify(observed)
         handler.post {
