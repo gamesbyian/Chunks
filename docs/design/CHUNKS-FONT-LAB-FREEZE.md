@@ -1,4 +1,4 @@
-# Font laboratory full-family freeze, candidate 3 (A/4 small-counter optical refinement)
+# Font laboratory full-family freeze, candidate 4 (strict 14px and 24px optical gate)
 
 - Branch: `font/lab`
 - Scope: 62 basic reference source glyphs × 4 independently editable lighter-weight masters, plus immutable reference ExtraBold and compatible derived accents, punctuation and marks.
@@ -15,3 +15,7 @@ The first full-family run [#40812391453](https://github.com/gamesbyian/Chunks/ac
 ## Third integration gate
 
 This frozen batch changes only the four lighter-weight SVG inner counters in A and 4 and adds the actual-CFF raster counter audit. The prior winding-corrected all-family run #40812996755 passed. Require all 248 editable source geometry tests, actual 24px counter raster safety, 856 cmap/shaping/kerning, complete accent and mark family compatibility, and one 20-variant cross-family audit before considering this optical correction integrated. 14px is deliberately diagnostic because this is a heavy display font. Keep nonshipping; preserve original source/ExtraBold/Android isolation.
+
+## Fourth and final small-size source acceptance
+
+The third full run [#40816749998](https://github.com/gamesbyian/Chunks/actions/runs/40816749998) passed all source, CFF, accents, kerning, marks and cross-family tests; its real raster counter gate reported zero 24px failures and the remaining 14px warnings Medium 4, Bold g/p/8. Apply only four inner-counter fixes, then demand **zero 14px and 24px counter visibility failures** in all four lighter weights. Rebuild all derived families sequentially in one freeze-triggered workflow; preserve the original source, ExtraBold, Android shipping font and app branches. This is source/raster engineering completion only, not owner artwork signoff.
