@@ -67,6 +67,7 @@ android {
         }
     }
     buildFeatures { compose = true; resValues = true }
+    testOptions { unitTests.isIncludeAndroidResources = true }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -89,6 +90,13 @@ dependencies {
     implementation("org.libtorrent4j:libtorrent4j-android-x86_64:$libtorrent4j")
     testImplementation("org.libtorrent4j:libtorrent4j-linux:$libtorrent4j")
     testImplementation("junit:junit:4.13.2")
+    // JVM screenshots of real Compose UI (Robolectric native graphics) for
+    // visual review against docs/design/reference-images; never a device claim.
+    testImplementation(composeBom)
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    testImplementation("org.robolectric:robolectric:4.17")
+    testImplementation("io.github.takahirom.roborazzi:roborazzi:1.77.0")
+    testImplementation("io.github.takahirom.roborazzi:roborazzi-compose:1.77.0")
     androidTestImplementation(composeBom)
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
@@ -103,6 +111,8 @@ tasks.withType<Test>().configureEach {
     // later ordinary test (e.g. deep XML parsing) kills the test JVM with exit 139.
     val signalChaining = File(System.getProperty("java.home"), "lib/libjsig.so")
     if (signalChaining.isFile) environment("LD_PRELOAD", signalChaining.absolutePath)
+    // JVM screenshots (visual review only) are written under app/build/chunks-visual.
+    systemProperty("roborazzi.test.record", "true")
 }
 
 /**

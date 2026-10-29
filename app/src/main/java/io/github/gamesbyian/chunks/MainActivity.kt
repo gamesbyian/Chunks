@@ -39,7 +39,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -93,12 +92,14 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-private val Ink = Color(0xFF262442)
-private val Cream = Color(0xFFFFF8EC)
-private val Lilac = Color(0xFFE6DAFF)
-private val Lime = Color(0xFFDDF1A7)
-private val Coral = Color(0xFFFFB69D)
-private val Blue = Color(0xFF4662C6)
+// Local aliases for the shared ChunksColors tokens (see ChunksTheme.kt).
+// Panels filled with an accent always carry Ink (near-black) text.
+private val Ink = ChunksColors.OnAccent
+private val Cream = ChunksColors.Background
+private val Lilac = ChunksColors.Purple
+private val Lime = ChunksColors.Green
+private val Coral = ChunksColors.Orange
+private val Blue = ChunksColors.Cyan
 
 class MainActivity : ComponentActivity() {
     private var incomingMagnet by mutableStateOf<String?>(null)
@@ -106,16 +107,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // The cream Compose surface extends behind the system status bar.
-        // Use dark icons; white icons failed contrast review in actual API 35 captures.
-        WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = true
+        // The near-black Compose surface extends behind the system status bar,
+        // so the status bar icons must be light.
+        WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = false
         incomingMagnet = ExternalMagnetInput.fromIntent(intent)
         incomingTorrent = SharedTorrentDocument.fromIntent(intent)
         setContent {
-            MaterialTheme(colorScheme = lightColorScheme(
-                primary = Blue, onPrimary = Color.White, surface = Cream,
-                onSurface = Ink, background = Cream, secondary = Ink
-            )) {
+            ChunksTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     ChunksApp(
                         sharedMagnet = incomingMagnet,
@@ -1013,7 +1011,7 @@ private fun ConnectionScreen(
         if (error != null) item { Notice("Connection unsuccessful", error, Coral) }
         item {
             Text("Protected HTTPS is required for remote servers. Login is encrypted and stored only on this device unless you opt out. No torrents or files are changed by connecting.",
-                style = MaterialTheme.typography.bodySmall, color = Color(0xFF595575))
+                style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary)
         }
     }
 }
@@ -1428,9 +1426,9 @@ private fun TransferCard(
 ) {
     var confirmPhoneHandoff by remember(transfer.hash) { mutableStateOf(false) }
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = ChunksColors.Surface),
         shape = RoundedCornerShape(24.dp),
-        border = androidx.compose.foundation.BorderStroke(2.dp, Ink),
+        border = androidx.compose.foundation.BorderStroke(2.dp, ChunksColors.Muted),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
@@ -1438,7 +1436,7 @@ private fun TransferCard(
                 maxLines = 2, overflow = TextOverflow.Ellipsis)
             if (alias != null) {
                 Text("Original torrent: " + transfer.name,
-                    style = MaterialTheme.typography.bodySmall, color = Color(0xFF595575),
+                    style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary,
                     maxLines = if (expanded) 5 else 1, overflow = TextOverflow.Ellipsis)
             }
             TransferAliasEditor(
@@ -1448,7 +1446,7 @@ private fun TransferCard(
             ChunkedProgressBar(
                 progress = transfer.fractionComplete,
                 modifier = Modifier.fillMaxWidth(),
-                activeColor = Blue, trackColor = Lilac
+                activeColor = Blue, trackColor = ChunksColors.Muted
             )
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 Text((transfer.fractionComplete * 100).toInt().toString() + "% · " +
@@ -1478,7 +1476,7 @@ private fun TransferCard(
                     style = MaterialTheme.typography.bodySmall)
             }
             Text("Place: " + transfer.directory, style = MaterialTheme.typography.bodySmall,
-                color = Color(0xFF595575), maxLines = if (expanded) 5 else 2,
+                color = ChunksColors.TextSecondary, maxLines = if (expanded) 5 else 2,
                 overflow = TextOverflow.Ellipsis)
             val suggestion = remember(transfer.name) { Classifier.suggest(transfer.name) }
             if (suggestion.category != "Unsorted") {
@@ -1548,7 +1546,7 @@ private fun TransferCard(
             )
             if (expanded) {
                 if (filesLoading) Text("Reading server file list…")
-                if (filesError != null) Text(filesError, color = Color(0xFF9E3930))
+                if (filesError != null) Text(filesError, color = ChunksColors.Red)
                 if (files != null) {
                     if (mainView && finishInOrderScope != null) RemoteFinishInOrderPanel(
                         remote = remote, transfer = transfer, scope = finishInOrderScope,
@@ -1581,7 +1579,7 @@ private fun PlacesScreen(list: List<RemoteTransfer>, onUsePlace: (String) -> Uni
         item { PhoneStoragePanel() }
         items(places, key = { it.first }) { place ->
             Card(shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)) {
+                colors = CardDefaults.cardColors(containerColor = ChunksColors.Surface)) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(place.first, fontWeight = FontWeight.Bold)
                     Text(place.second.toString() + " transfers",
@@ -1755,7 +1753,7 @@ private fun OrganizeScreen(
         item { Text("Why these suggestions?", style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold) }
         items(examples, key = { it.first.hash }) { (transfer, idea) ->
-            Card(colors = CardDefaults.cardColors(containerColor = Color.White),
+            Card(colors = CardDefaults.cardColors(containerColor = ChunksColors.Surface),
                 shape = RoundedCornerShape(16.dp)) {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(transfer.name, fontWeight = FontWeight.SemiBold, maxLines = 2)

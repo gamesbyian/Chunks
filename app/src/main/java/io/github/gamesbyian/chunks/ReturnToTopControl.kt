@@ -62,8 +62,8 @@ internal fun ReturnToTopControl(
         modifier = modifier.heightIn(min = 48.dp)
             .semantics { contentDescription = "Back to top" },
         colors = ButtonDefaults.buttonColors(
-            containerColor = Color(0xFF262442),
-            contentColor = Color.White
+            containerColor = ChunksColors.Cyan,
+            contentColor = ChunksColors.OnAccent
         )
     ) {
         Row {
