@@ -1,42 +1,52 @@
 {
-  "schema": "bittorrent-human-concept-graph/v1",
+  "schema": "bittorrent-human-concept-graph/v2",
   "asOf": "2026-10-29",
   "scope": "external research, descriptive, non-normative",
-  "epistemicWarning": "Activity-feature links and candidate gap links are analytical syntheses, not measured usage, all-product support, or proven absence elsewhere.",
+  "epistemicWarning": "Activity-feature links and candidate gap links are analytical syntheses, not measured usage, all-product support, or proven absence elsewhere. Friction code recurrence is not population prevalence, negative paths are possibilities, historical studies do not describe 2026 population.",
   "inputs": {
     "featureInventory": "https://github.com/gamesbyian/Chunks/blob/26fec615e8241504011f319929c40d22cc35bd9f/docs/BITTORRENT-ECOSYSTEM-FEATURE-INVENTORY-2026-10-29.md",
-    "activityAtlas": "https://github.com/gamesbyian/Chunks/blob/7631199f79b6763a961da5a2a3665886eb6964d7/docs/BITTORRENT-USER-GOALS-AND-WORKFLOWS-2026-10-29.md"
+    "activityAtlas": "https://github.com/gamesbyian/Chunks/blob/7631199f79b6763a961da5a2a3665886eb6964d7/docs/BITTORRENT-USER-GOALS-AND-WORKFLOWS-2026-10-29.md",
+    "aversionAtlas": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md"
   },
   "statistics": {
-    "nodes": 665,
-    "edges": 3190,
+    "nodes": 782,
+    "edges": 3456,
     "nodeTypes": {
       "activity": 240,
       "existing_inventory_feature": 240,
       "activity_domain": 20,
       "feature_family": 15,
       "macro_journey": 36,
-      "human_goal": 18,
-      "cognitive_demand": 16,
-      "possible_affective_stake": 17,
-      "gap_domain": 9,
-      "missing_capability_hypothesis": 54
+      "human_goal": 23,
+      "cognitive_demand": 21,
+      "possible_affective_stake": 21,
+      "gap_domain": 11,
+      "missing_capability_hypothesis": 66,
+      "friction_domain": 6,
+      "reported_friction_factor": 55,
+      "possible_exit_or_alternative": 18,
+      "evidence_source": 10
     },
     "edgeTypes": {
       "classified_as": 240,
       "enabled_or_explained_by": 695,
-      "belongs_to": 294,
+      "belongs_to": 306,
       "serves_goal": 240,
       "involves_cognitive_demand": 240,
       "may_involve_affective_stake": 240,
-      "would_support_activity": 162,
-      "extends_or_bridges_existing": 108,
-      "could_reduce_cognitive_burden": 54,
-      "responds_to_possible_affect": 54,
-      "could_support_affective_shift": 54,
+      "would_support_activity": 174,
+      "extends_or_bridges_existing": 120,
+      "could_reduce_cognitive_burden": 66,
+      "responds_to_possible_affect": 66,
+      "could_support_affective_shift": 66,
       "illustratively_contains": 149,
       "may_precede_in_example": 113,
-      "co_supports_activity": 547
+      "co_supports_activity": 547,
+      "classified_as_friction_domain": 55,
+      "may_interrupt_activity": 55,
+      "may_lead_to_alternative_path": 55,
+      "relates_to_choice_or_retained_goal": 18,
+      "offers_context_for": 11
     },
     "baseAtlas": {
       "activityCount": 240,
@@ -78,7 +88,13 @@
       "featuresWithOneLink": 54,
       "featuresWithTwoOrFewerLinks": 120
     },
-    "hypothesisCount": 54
+    "hypothesisCount": 66,
+    "aversionBridge": {
+      "factors": 55,
+      "exitRoutes": 18,
+      "newHypotheses": 12,
+      "additionalSources": 10
+    }
   },
   "nodes": [
     {
@@ -4607,6 +4623,1258 @@
       "domain": "B09",
       "missingLink": "People may intend 'use Wi-Fi, finish before travel, preserve seeding' rather than manually setting many scopes.",
       "interpretation": "candidate capability not explicitly represented as a complete interaction in the 240-feature inventory; may exist elsewhere"
+    },
+    {
+      "id": "FA",
+      "type": "friction_domain",
+      "label": "Pre-use risk and trust",
+      "sourceSection": "A"
+    },
+    {
+      "id": "FB",
+      "type": "friction_domain",
+      "label": "Finding usable content",
+      "sourceSection": "B"
+    },
+    {
+      "id": "FC",
+      "type": "friction_domain",
+      "label": "Progress and recovery",
+      "sourceSection": "C"
+    },
+    {
+      "id": "FD",
+      "type": "friction_domain",
+      "label": "Seeding and finite resources",
+      "sourceSection": "D"
+    },
+    {
+      "id": "FE",
+      "type": "friction_domain",
+      "label": "File continuity and integrity",
+      "sourceSection": "E"
+    },
+    {
+      "id": "FF",
+      "type": "friction_domain",
+      "label": "Software and provider overhead",
+      "sourceSection": "F"
+    },
+    {
+      "id": "AV-A01",
+      "sourceCode": "A01",
+      "sampleCode": "R",
+      "label": "Copyright/ISP notices, threatened fines or takedown anxiety deter participation or cause abandonment",
+      "references": [
+        "S01",
+        "S02",
+        "S03",
+        "S04",
+        "S05",
+        "S29"
+      ],
+      "suggestion": "Explain visibility and environment-specific risk without legal guarantees",
+      "type": "reported_friction_factor",
+      "domain": "FA",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-A02",
+      "sourceCode": "A02",
+      "sampleCode": "R",
+      "label": "Fear that ordinary torrent downloading exposes the household IP and identity to a swarm",
+      "references": [
+        "S01",
+        "S03",
+        "S05",
+        "S16"
+      ],
+      "suggestion": "Make privacy state clear; never imply anonymity by default",
+      "type": "reported_friction_factor",
+      "domain": "FA",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-A03",
+      "sourceCode": "A03",
+      "sampleCode": "R",
+      "label": "VPN necessity, ongoing price, interface binding and kill-switch failures feel like a second specialized system",
+      "references": [
+        "S02",
+        "S03",
+        "S06",
+        "S16",
+        "S35"
+      ],
+      "suggestion": "Diagnose interface changes and disclose traffic route without magical safety claims",
+      "type": "reported_friction_factor",
+      "domain": "FA",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-A04",
+      "sourceCode": "A04",
+      "sampleCode": "R",
+      "label": "Malware, spoofed uploads, suspicious executables and dubious index quality defeat trust",
+      "references": [
+        "S07",
+        "S08",
+        "S09",
+        "S43"
+      ],
+      "suggestion": "File type, provenance and trust cues; warnings without asserting safety",
+      "type": "reported_friction_factor",
+      "domain": "FA",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-A05",
+      "sourceCode": "A05",
+      "sampleCode": "D",
+      "label": "User distrusts torrent software itself after security concerns or regression stories",
+      "references": [
+        "S09",
+        "S40"
+      ],
+      "suggestion": "Keep the client transparent, minimal and predictable",
+      "type": "reported_friction_factor",
+      "domain": "FA",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-A06",
+      "sourceCode": "A06",
+      "sampleCode": "D",
+      "label": "Ethical objections to unauthorized distribution are a genuine reason to refuse torrenting altogether",
+      "references": [
+        "S30",
+        "S46"
+      ],
+      "suggestion": "Support lawful user-shared content without treating all nonusers as prospective pirates",
+      "type": "reported_friction_factor",
+      "domain": "FA",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-A07",
+      "sourceCode": "A07",
+      "sampleCode": "R",
+      "label": "Perceived technical initiation cost: VPNs, ports, Docker, NAS, trackers, folders, codecs, ratios",
+      "references": [
+        "S10",
+        "S11",
+        "S16",
+        "S36"
+      ],
+      "suggestion": "A straightforward ordinary path and layered guidance",
+      "type": "reported_friction_factor",
+      "domain": "FA",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-A08",
+      "sourceCode": "A08",
+      "sampleCode": "R",
+      "label": "Hostile, opaque or exclusionary communities make beginners reluctant to ask",
+      "references": [
+        "S11",
+        "S12",
+        "S31"
+      ],
+      "suggestion": "Teach concepts in product language and avoid shaming",
+      "type": "reported_friction_factor",
+      "domain": "FA",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-A09",
+      "sourceCode": "A09",
+      "sampleCode": "M",
+      "label": "Users conflate BitTorrent protocol, torrent indexes, a specific client, and piracy in their assessment of risk",
+      "references": [
+        "S08",
+        "S12",
+        "S30",
+        "S40"
+      ],
+      "suggestion": "Clearly distinguish transport, content source, app and legal context",
+      "type": "reported_friction_factor",
+      "domain": "FA",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-B01",
+      "sourceCode": "B01",
+      "sampleCode": "R",
+      "label": "Cannot find a trusted source/index without dead domains, mirrors or misleading results",
+      "references": [
+        "S09",
+        "S12",
+        "S31",
+        "S42"
+      ],
+      "suggestion": "Source provenance, user-controlled provider handoffs; no invented search guarantees",
+      "type": "reported_friction_factor",
+      "domain": "FB",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-B02",
+      "sourceCode": "B02",
+      "sampleCode": "R",
+      "label": "Scarcity of seeds for older, niche, regional or obscure works",
+      "references": [
+        "S13",
+        "S14",
+        "S15",
+        "S31",
+        "S42"
+      ],
+      "suggestion": "Explain observed swarm availability, alternate source searches and honest waiting",
+      "type": "reported_friction_factor",
+      "domain": "FB",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-B03",
+      "sourceCode": "B03",
+      "sampleCode": "R",
+      "label": "Advertised seed counts do not match available complete peers; apparent abundance is misleading",
+      "references": [
+        "S14",
+        "S15",
+        "S37"
+      ],
+      "suggestion": "Separate website claims from observed connected peers and piece availability",
+      "type": "reported_friction_factor",
+      "domain": "FB",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-B04",
+      "sourceCode": "B04",
+      "sampleCode": "R",
+      "label": "Wrong episode, unwanted release, variant, codec or language discovered *after* a lengthy download",
+      "references": [
+        "S41",
+        "S42",
+        "S51"
+      ],
+      "suggestion": "Preview contents, full filenames and media attributes *before* commitment",
+      "type": "reported_friction_factor",
+      "domain": "FB",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-B05",
+      "sourceCode": "B05",
+      "sampleCode": "D",
+      "label": "Regional-language subtitles, dubbing or desired audio editions are unavailable even where seeds exist",
+      "references": [
+        "S31",
+        "S42"
+      ],
+      "suggestion": "Expose track/release metadata where knowable; avoid claiming a file exists",
+      "type": "reported_friction_factor",
+      "domain": "FB",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-B06",
+      "sourceCode": "B06",
+      "sampleCode": "D",
+      "label": "Private trackers become chokepoints: site shutdown, changed limits and access obstacles",
+      "references": [
+        "S12",
+        "S31",
+        "S32"
+      ],
+      "suggestion": "Keep transfer definitions/export independent of an index site's longevity",
+      "type": "reported_friction_factor",
+      "domain": "FB",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-B07",
+      "sourceCode": "B07",
+      "sampleCode": "R",
+      "label": "Users cannot distinguish a magnet URI, a .torrent file, the actual payload, and a search/result page",
+      "references": [
+        "S19",
+        "S50",
+        "S56"
+      ],
+      "suggestion": "Conceptual onboarding through the intended action",
+      "type": "reported_friction_factor",
+      "domain": "FB",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-B08",
+      "sourceCode": "B08",
+      "sampleCode": "D",
+      "label": "Better competing methods exist for the user's immediate objective: one-click direct files, streaming, Usenet, personal media services",
+      "references": [
+        "S19",
+        "S20",
+        "S31"
+      ],
+      "suggestion": "Judge Chunks by time-to-usable-content, not only transfer throughput",
+      "type": "reported_friction_factor",
+      "domain": "FB",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-C01",
+      "sourceCode": "C01",
+      "sampleCode": "R",
+      "label": "Download indefinitely stranded at 99–99.9%, sometimes after tens of gigabytes",
+      "references": [
+        "S13",
+        "S14",
+        "S15",
+        "S17"
+      ],
+      "suggestion": "Piece-availability diagnosis; distinguish useful completed files from torrent-wide completion",
+      "type": "reported_friction_factor",
+      "domain": "FC",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-C02",
+      "sourceCode": "C02",
+      "sampleCode": "R",
+      "label": "A missing tiny auxiliary piece prevents “100%” despite main media being playable",
+      "references": [
+        "S14",
+        "S15",
+        "S17"
+      ],
+      "suggestion": "File-by-file completeness and safe usable-file indicators; explain v1 piece overlap",
+      "type": "reported_friction_factor",
+      "domain": "FC",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-C03",
+      "sourceCode": "C03",
+      "sampleCode": "R",
+      "label": "Magnet stays at “downloading metadata”; user cannot even inspect the file list",
+      "references": [
+        "S19",
+        "S20",
+        "S35"
+      ],
+      "suggestion": "Show metadata-acquisition progress, reachability and alternate metainfo options",
+      "type": "reported_friction_factor",
+      "domain": "FC",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-C04",
+      "sourceCode": "C04",
+      "sampleCode": "R",
+      "label": "“Stalled,” “connecting,” “slow,” and “error” give insufficient causal information",
+      "references": [
+        "S10",
+        "S17",
+        "S19",
+        "S35",
+        "S44"
+      ],
+      "suggestion": "Context-specific diagnosis rather than generic retry advice",
+      "type": "reported_friction_factor",
+      "domain": "FC",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-C05",
+      "sourceCode": "C05",
+      "sampleCode": "R",
+      "label": "One download works while another does not, so users cannot tell whether device, tracker, torrent, VPN or ISP is at fault",
+      "references": [
+        "S19",
+        "S20",
+        "S35"
+      ],
+      "suggestion": "Layered network/source/peer/disk diagnostic model",
+      "type": "reported_friction_factor",
+      "domain": "FC",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-C06",
+      "sourceCode": "C06",
+      "sampleCode": "R",
+      "label": "Throughput swings wildly or stays far below advertised bandwidth, including uploading faster than downloading",
+      "references": [
+        "S21",
+        "S24",
+        "S39",
+        "S42"
+      ],
+      "suggestion": "Report bottleneck and units honestly; do not imply guaranteed speed",
+      "type": "reported_friction_factor",
+      "domain": "FC",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-C07",
+      "sourceCode": "C07",
+      "sampleCode": "D",
+      "label": "Restarting the app or pausing for hours sometimes “fixes” transfers but gives no explanation",
+      "references": [
+        "S20",
+        "S35"
+      ],
+      "suggestion": "Surface reannounce/reconnect behavior and eventual outcome",
+      "type": "reported_friction_factor",
+      "domain": "FC",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-C08",
+      "sourceCode": "C08",
+      "sampleCode": "D",
+      "label": "Client update, firewall rule or VPN adapter-name change silently breaks previously working magnets",
+      "references": [
+        "S19",
+        "S35"
+      ],
+      "suggestion": "Network-binding validity check, actionable reauthorization, safe fail-closed behavior",
+      "type": "reported_friction_factor",
+      "domain": "FC",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-C09",
+      "sourceCode": "C09",
+      "sampleCode": "D",
+      "label": "Defective/blocked download or write looks like a torrent bug but is a permission/antivirus/disk error",
+      "references": [
+        "S22",
+        "S44"
+      ],
+      "suggestion": "Evidence-specific diagnostics and integrity-preserving repair",
+      "type": "reported_friction_factor",
+      "domain": "FC",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-C10",
+      "sourceCode": "C10",
+      "sampleCode": "D",
+      "label": "A swarm shows an apparently complete peer that repeatedly appears but cannot actually connect",
+      "references": [
+        "S37"
+      ],
+      "suggestion": "Mark connectivity vs full-copy sightings as separate signals",
+      "type": "reported_friction_factor",
+      "domain": "FC",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-D01",
+      "sourceCode": "D01",
+      "sampleCode": "R",
+      "label": "Seeding saturates limited upstream, breaking browsing or shared household Internet",
+      "references": [
+        "S24",
+        "S25",
+        "S26",
+        "S27",
+        "S28"
+      ],
+      "suggestion": "Safe adaptive uplink limits and per-network scheduling",
+      "type": "reported_friction_factor",
+      "domain": "FD",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-D02",
+      "sourceCode": "D02",
+      "sampleCode": "R",
+      "label": "Data/FUP caps and metered connections turn ongoing seeding into unexpected bills or slowdowns",
+      "references": [
+        "S25",
+        "S27",
+        "S28"
+      ],
+      "suggestion": "Accounting, limits, network-specific rules, proactive alerts",
+      "type": "reported_friction_factor",
+      "domain": "FD",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-D03",
+      "sourceCode": "D03",
+      "sampleCode": "R",
+      "label": "The computer/phone must stay powered, online and awake long after the useful download ends",
+      "references": [
+        "S24",
+        "S26",
+        "S27",
+        "S33"
+      ],
+      "suggestion": "Explicit policies, maintenance windows, battery-friendly transparent states",
+      "type": "reported_friction_factor",
+      "domain": "FD",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-D04",
+      "sourceCode": "D04",
+      "sampleCode": "R",
+      "label": "Keeping payloads to seed consumes disk space, duplicates collections or blocks cleanup",
+      "references": [
+        "S14",
+        "S26",
+        "S33"
+      ],
+      "suggestion": "Storage provenance, non-destructive cleanup and seeding continuity",
+      "type": "reported_friction_factor",
+      "domain": "FD",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-D05",
+      "sourceCode": "D05",
+      "sampleCode": "D",
+      "label": "Seeding feels competitive and futile when fast seedboxes monopolize upload opportunities",
+      "references": [
+        "S34",
+        "S38"
+      ],
+      "suggestion": "Explain “no demand” versus blocked connectivity and time-based obligations",
+      "type": "reported_friction_factor",
+      "domain": "FD",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-D06",
+      "sourceCode": "D06",
+      "sampleCode": "R",
+      "label": "Private tracker ratio, hit-and-run, freeleech and minimum retention rules are confusing and threatening",
+      "references": [
+        "S32",
+        "S33",
+        "S34",
+        "S38",
+        "S45"
+      ],
+      "suggestion": "User-entered tracker policy reminders, not unsupported scraper promises",
+      "type": "reported_friction_factor",
+      "domain": "FD",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-D07",
+      "sourceCode": "D07",
+      "sampleCode": "D",
+      "label": "Uploader must maintain unwanted or huge incomplete collections to avoid tracker sanctions",
+      "references": [
+        "S45"
+      ],
+      "suggestion": "Show policy implications before starting/stopping/removing",
+      "type": "reported_friction_factor",
+      "domain": "FD",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-D08",
+      "sourceCode": "D08",
+      "sampleCode": "R",
+      "label": "Users want to contribute but have weak uplink or scarce bandwidth, creating guilt and moral pressure",
+      "references": [
+        "S26",
+        "S28",
+        "S38"
+      ],
+      "suggestion": "Respect voluntary limits; do not moralize or shame",
+      "type": "reported_friction_factor",
+      "domain": "FD",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-D09",
+      "sourceCode": "D09",
+      "sampleCode": "D",
+      "label": "Some purposely suppress upload while downloading because earlier congestion and disk-wear experiences became habits",
+      "references": [
+        "S24"
+      ],
+      "suggestion": "Explain impact and separate download-time upload from post-completion seeding",
+      "type": "reported_friction_factor",
+      "domain": "FD",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-D10",
+      "sourceCode": "D10",
+      "sampleCode": "D",
+      "label": "Private tracker completion status can disagree with “I can play the file” because omitted non-media files still count",
+      "references": [
+        "S17",
+        "S38"
+      ],
+      "suggestion": "Show torrent-wide versus selected-file completion and tracker consequences",
+      "type": "reported_friction_factor",
+      "domain": "FD",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-E01",
+      "sourceCode": "E01",
+      "sampleCode": "R",
+      "label": "Renaming/moving a file after download breaks seeding or resume mapping",
+      "references": [
+        "S18",
+        "S23",
+        "S36",
+        "S47"
+      ],
+      "suggestion": "Separate display alias, torrent mapping and physical filesystem path",
+      "type": "reported_friction_factor",
+      "domain": "FE",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-E02",
+      "sourceCode": "E02",
+      "sampleCode": "R",
+      "label": "Want to reorganize TV seasons/music genres without manually renaming hundreds of entries",
+      "references": [
+        "S23",
+        "S47"
+      ],
+      "suggestion": "Previewed bulk restructuring while preserving content identity",
+      "type": "reported_friction_factor",
+      "domain": "FE",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-E03",
+      "sourceCode": "E03",
+      "sampleCode": "D",
+      "label": "Impossible/awkward to represent alternate internal folders with duplicate names",
+      "references": [
+        "S23"
+      ],
+      "suggestion": "Avoid flattening real structure or assuming arbitrary renamed paths are reversible",
+      "type": "reported_friction_factor",
+      "domain": "FE",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-E04",
+      "sourceCode": "E04",
+      "sampleCode": "D",
+      "label": "Some filename/case collisions work initially and fail after restart, causing mysterious “missing files”",
+      "references": [
+        "S48"
+      ],
+      "suggestion": "Platform-aware collision detection and persisted mapping tests",
+      "type": "reported_friction_factor",
+      "domain": "FE",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-E05",
+      "sourceCode": "E05",
+      "sampleCode": "R",
+      "label": "Users stop seeding so media managers can organize, rename and import files into their libraries",
+      "references": [
+        "S23",
+        "S47"
+      ],
+      "suggestion": "Separate serving copy from managed torrent backing, or verified rebinding",
+      "type": "reported_friction_factor",
+      "domain": "FE",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-E06",
+      "sourceCode": "E06",
+      "sampleCode": "D",
+      "label": "Existing file migration to another client/seedbox requires manual .torrent/resume extraction and hash rechecks",
+      "references": [
+        "S33"
+      ],
+      "suggestion": "Portable transfer-definition backup and guided restoration",
+      "type": "reported_friction_factor",
+      "domain": "FE",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-E07",
+      "sourceCode": "E07",
+      "sampleCode": "D",
+      "label": "“Delete torrent” versus “delete content” and trash versus permanent deletion are easily misunderstood",
+      "references": [
+        "S49"
+      ],
+      "suggestion": "Deliberate scope, exact object preview, reversible paths when possible",
+      "type": "reported_friction_factor",
+      "domain": "FE",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-E08",
+      "sourceCode": "E08",
+      "sampleCode": "D",
+      "label": "Paid mobile client hides full filenames and shows unexplained remote warnings for users without a computer",
+      "references": [
+        "S51"
+      ],
+      "suggestion": "Full metadata visibility; local-only and remote-only are complete, unobtrusive modes",
+      "type": "reported_friction_factor",
+      "domain": "FE",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-E09",
+      "sourceCode": "E09",
+      "sampleCode": "D",
+      "label": "Cannot rename at initial add after an upgrade, or client crashes while renaming",
+      "references": [
+        "S52"
+      ],
+      "suggestion": "Pre-add naming/preflight and regression tests",
+      "type": "reported_friction_factor",
+      "domain": "FE",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-E10",
+      "sourceCode": "E10",
+      "sampleCode": "D",
+      "label": "Torrent packages that are fine as individual media files are unusable as incomplete solid archives",
+      "references": [
+        "S13"
+      ],
+      "suggestion": "Distinguish playable individual files from extraction-required archives",
+      "type": "reported_friction_factor",
+      "domain": "FE",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-F01",
+      "sourceCode": "F01",
+      "sampleCode": "R",
+      "label": "Client UI changes break themes, readability or familiar workflows without sensible fallback",
+      "references": [
+        "S40",
+        "S51"
+      ],
+      "suggestion": "Stable accessibility, contrast and deliberate settings migration",
+      "type": "reported_friction_factor",
+      "domain": "FF",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-F02",
+      "sourceCode": "F02",
+      "sampleCode": "D",
+      "label": "Clashing software conventions cause uncertain statuses (“seeding” mistaken for not downloaded)",
+      "references": [
+        "S50"
+      ],
+      "suggestion": "Explain downloading done / sharing ongoing in ordinary language",
+      "type": "reported_friction_factor",
+      "domain": "FF",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-F03",
+      "sourceCode": "F03",
+      "sampleCode": "R",
+      "label": "Seedboxes add financial cost, capped storage, FTP transfer and a second set of stateful tools",
+      "references": [
+        "S33",
+        "S53",
+        "S54"
+      ],
+      "suggestion": "Make remote-to-phone actions clear, distinguish transfer job from payload",
+      "type": "reported_friction_factor",
+      "domain": "FF",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-F04",
+      "sourceCode": "F04",
+      "sampleCode": "D",
+      "label": "User leaves a seedbox because maintaining it takes more time than infrequent downloads justify",
+      "references": [
+        "S33"
+      ],
+      "suggestion": "Zero-maintenance paths and graceful export/exit",
+      "type": "reported_friction_factor",
+      "domain": "FF",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-F05",
+      "sourceCode": "F05",
+      "sampleCode": "D",
+      "label": "Hosted seedbox speed/peering/disk conditions can be worse than expected",
+      "references": [
+        "S54"
+      ],
+      "suggestion": "Expose host-side limits and evidence without guaranteed performance",
+      "type": "reported_friction_factor",
+      "domain": "FF",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-F06",
+      "sourceCode": "F06",
+      "sampleCode": "D",
+      "label": "Client connection setup is confusing even for technically capable users choosing a provider",
+      "references": [
+        "S53",
+        "S55"
+      ],
+      "suggestion": "Connection discovery and guided fallback, no insecure guesses",
+      "type": "reported_friction_factor",
+      "domain": "FF",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-F07",
+      "sourceCode": "F07",
+      "sampleCode": "R",
+      "label": "Users struggle to create/share torrents because piece sizing, trackers, web seeds and source flags are cryptic",
+      "references": [
+        "S56",
+        "S12"
+      ],
+      "suggestion": "Plain-language Create & Share and honest publication outcomes",
+      "type": "reported_friction_factor",
+      "domain": "FF",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "AV-F08",
+      "sourceCode": "F08",
+      "sampleCode": "D",
+      "label": "People distrust torrent apps that overload users with advertising, opaque monetization or unsupported extras",
+      "references": [
+        "S51",
+        "S57"
+      ],
+      "suggestion": "No forced paid/remote surface or deceptive status prompts",
+      "type": "reported_friction_factor",
+      "domain": "FF",
+      "sourceDocument": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md",
+      "epistemic": "R/D/M codes apply only to purposive source sample"
+    },
+    {
+      "id": "N01",
+      "type": "possible_exit_or_alternative",
+      "label": "Declines due to privacy, legal or ethical risk",
+      "epistemic": "Possible, not deterministic or population estimated"
+    },
+    {
+      "id": "N02",
+      "type": "possible_exit_or_alternative",
+      "label": "Quits during setup due to complexity",
+      "epistemic": "Possible, not deterministic or population estimated"
+    },
+    {
+      "id": "N03",
+      "type": "possible_exit_or_alternative",
+      "label": "Rejects untrusted or unsuitable release",
+      "epistemic": "Possible, not deterministic or population estimated"
+    },
+    {
+      "id": "N04",
+      "type": "possible_exit_or_alternative",
+      "label": "Stops waiting for missing magnet metadata",
+      "epistemic": "Possible, not deterministic or population estimated"
+    },
+    {
+      "id": "N05",
+      "type": "possible_exit_or_alternative",
+      "label": "Abandons indefinitely stalled or incomplete data",
+      "epistemic": "Possible, not deterministic or population estimated"
+    },
+    {
+      "id": "N06",
+      "type": "possible_exit_or_alternative",
+      "label": "Discontinues seeding because of household/device impact",
+      "epistemic": "Possible, not deterministic or population estimated"
+    },
+    {
+      "id": "N07",
+      "type": "possible_exit_or_alternative",
+      "label": "Leaves tracker membership because of rules or ratio pressure",
+      "epistemic": "Possible, not deterministic or population estimated"
+    },
+    {
+      "id": "N08",
+      "type": "possible_exit_or_alternative",
+      "label": "Stops seeding to curate files",
+      "epistemic": "Possible, not deterministic or population estimated"
+    },
+    {
+      "id": "N09",
+      "type": "possible_exit_or_alternative",
+      "label": "Gives up path repair or migration",
+      "epistemic": "Possible, not deterministic or population estimated"
+    },
+    {
+      "id": "N10",
+      "type": "possible_exit_or_alternative",
+      "label": "Retires seedbox when costs exceed benefits",
+      "epistemic": "Possible, not deterministic or population estimated"
+    },
+    {
+      "id": "N11",
+      "type": "possible_exit_or_alternative",
+      "label": "Leaves client after regression or unwanted monetization",
+      "epistemic": "Possible, not deterministic or population estimated"
+    },
+    {
+      "id": "N12",
+      "type": "possible_exit_or_alternative",
+      "label": "Retries source discovery after wrong release/language",
+      "epistemic": "Possible, not deterministic or population estimated"
+    },
+    {
+      "id": "N13",
+      "type": "possible_exit_or_alternative",
+      "label": "Abandons sharing because publishing is cryptic",
+      "epistemic": "Possible, not deterministic or population estimated"
+    },
+    {
+      "id": "N14",
+      "type": "possible_exit_or_alternative",
+      "label": "Cannot or will not join private tracker",
+      "epistemic": "Possible, not deterministic or population estimated"
+    },
+    {
+      "id": "N15",
+      "type": "possible_exit_or_alternative",
+      "label": "Suspends operations after resource surprise",
+      "epistemic": "Possible, not deterministic or population estimated"
+    },
+    {
+      "id": "N16",
+      "type": "possible_exit_or_alternative",
+      "label": "Keeps workaround learned after an earlier negative event",
+      "epistemic": "Possible, not deterministic or population estimated"
+    },
+    {
+      "id": "N17",
+      "type": "possible_exit_or_alternative",
+      "label": "Chooses another distribution channel on purpose",
+      "epistemic": "Possible, not deterministic or population estimated"
+    },
+    {
+      "id": "N18",
+      "type": "possible_exit_or_alternative",
+      "label": "Leaves acquired files unused because handoff failed",
+      "epistemic": "Possible, not deterministic or population estimated"
+    },
+    {
+      "id": "G19",
+      "type": "human_goal",
+      "label": "Choose whether BitTorrent is appropriate at all"
+    },
+    {
+      "id": "G20",
+      "type": "human_goal",
+      "label": "Retain autonomy to stop or switch channels"
+    },
+    {
+      "id": "G21",
+      "type": "human_goal",
+      "label": "Sample and assess unfamiliar material"
+    },
+    {
+      "id": "G22",
+      "type": "human_goal",
+      "label": "Access a suitable version unavailable through familiar channels"
+    },
+    {
+      "id": "G23",
+      "type": "human_goal",
+      "label": "Contribute without exceeding household resources"
+    },
+    {
+      "id": "C17",
+      "type": "cognitive_demand",
+      "label": "Compare effort, trust and purpose of alternative channels"
+    },
+    {
+      "id": "C18",
+      "type": "cognitive_demand",
+      "label": "Recall earlier failures and reassess workarounds"
+    },
+    {
+      "id": "C19",
+      "type": "cognitive_demand",
+      "label": "Distinguish willingness to seed from actual demand and capacity"
+    },
+    {
+      "id": "C20",
+      "type": "cognitive_demand",
+      "label": "Anticipate recurring setup, account and maintenance overhead"
+    },
+    {
+      "id": "C21",
+      "type": "cognitive_demand",
+      "label": "Separate legal permission, software trust, metadata provenance and peer exposure"
+    },
+    {
+      "id": "E18",
+      "type": "possible_affective_stake",
+      "label": "Possible reluctance before starting"
+    },
+    {
+      "id": "E19",
+      "type": "possible_affective_stake",
+      "label": "Possible resentment about perceived inequity"
+    },
+    {
+      "id": "E20",
+      "type": "possible_affective_stake",
+      "label": "Possible disappointment after wasted effort"
+    },
+    {
+      "id": "E21",
+      "type": "possible_affective_stake",
+      "label": "Possible relief on selecting a viable alternative"
+    },
+    {
+      "id": "B10",
+      "type": "gap_domain",
+      "label": "Pre-adoption, alternatives and safe departure"
+    },
+    {
+      "id": "B11",
+      "type": "gap_domain",
+      "label": "Feasible contribution and community fairness"
+    },
+    {
+      "id": "H55",
+      "type": "missing_capability_hypothesis",
+      "label": "Purpose-aware alternative-channel choice",
+      "domain": "B10",
+      "missingLink": "Choosing not to torrent can be a good outcome",
+      "interpretation": "research hypothesis, not proven worldwide absence"
+    },
+    {
+      "id": "H56",
+      "type": "missing_capability_hypothesis",
+      "label": "Pre-commit release fitness check",
+      "domain": "B10",
+      "missingLink": "A valid torrent can still contain an unsuitable episode, audio or archive",
+      "interpretation": "research hypothesis, not proven worldwide absence"
+    },
+    {
+      "id": "H57",
+      "type": "missing_capability_hypothesis",
+      "label": "Feasible sharing budget planning",
+      "domain": "B11",
+      "missingLink": "Someone may want to seed while lacking uplink, storage, electricity or time",
+      "interpretation": "research hypothesis, not proven worldwide absence"
+    },
+    {
+      "id": "H58",
+      "type": "missing_capability_hypothesis",
+      "label": "Explain low-demand seeding without blame",
+      "domain": "B11",
+      "missingLink": "A long seeding duration may yield no upload due to demand or competition",
+      "interpretation": "research hypothesis, not proven worldwide absence"
+    },
+    {
+      "id": "H59",
+      "type": "missing_capability_hypothesis",
+      "label": "Pre-add tracker policy outcome preview",
+      "domain": "B11",
+      "missingLink": "Tracker obligations may outlive a chosen-file download",
+      "interpretation": "research hypothesis, not proven worldwide absence"
+    },
+    {
+      "id": "H60",
+      "type": "missing_capability_hypothesis",
+      "label": "Clarify distinct trust and risk boundaries",
+      "domain": "B10",
+      "missingLink": "File authenticity, legal permission, client trust and network privacy are not equivalent",
+      "interpretation": "research hypothesis, not proven worldwide absence"
+    },
+    {
+      "id": "H61",
+      "type": "missing_capability_hypothesis",
+      "label": "Graceful exit with portable data and state",
+      "domain": "B10",
+      "missingLink": "Provider/client abandonment need not mean losing valid bytes and resume metadata",
+      "interpretation": "research hypothesis, not proven worldwide absence"
+    },
+    {
+      "id": "H62",
+      "type": "missing_capability_hypothesis",
+      "label": "Minimal setup and staged expertise",
+      "domain": "B10",
+      "missingLink": "Occasional users may not accept full advanced stack setup cost",
+      "interpretation": "research hypothesis, not proven worldwide absence"
+    },
+    {
+      "id": "H63",
+      "type": "missing_capability_hypothesis",
+      "label": "Honest stopping points for unavailable content",
+      "domain": "B10",
+      "missingLink": "Prolonged near-completion should surface uncertainty and choices",
+      "interpretation": "research hypothesis, not proven worldwide absence"
+    },
+    {
+      "id": "H64",
+      "type": "missing_capability_hypothesis",
+      "label": "Repair established workflow after version changes",
+      "domain": "B10",
+      "missingLink": "A changed UI, rename behavior or integration can destroy learned routine",
+      "interpretation": "research hypothesis, not proven worldwide absence"
+    },
+    {
+      "id": "H65",
+      "type": "missing_capability_hypothesis",
+      "label": "True remote service overhead accounting",
+      "domain": "B11",
+      "missingLink": "Seedbox costs include transport, upkeep, time and storage constraints",
+      "interpretation": "research hypothesis, not proven worldwide absence"
+    },
+    {
+      "id": "H66",
+      "type": "missing_capability_hypothesis",
+      "label": "Support sampling and access motives beyond price",
+      "domain": "B10",
+      "missingLink": "Access to older regional material and preference exploration can motivate P2P",
+      "interpretation": "research hypothesis, not proven worldwide absence"
+    },
+    {
+      "id": "Q01",
+      "type": "evidence_source",
+      "label": "More Than Just Free Content",
+      "url": "https://journals.sagepub.com/doi/10.1177/0196859909333697",
+      "summary": "2009 Singapore 40 P2P user interviews, historic qualitative"
+    },
+    {
+      "id": "Q02",
+      "type": "evidence_source",
+      "label": "P2P motivational factor survey",
+      "url": "https://www.sciencedirect.com/science/article/pii/S1877042813039293",
+      "summary": "2013 Turkey questionnaire n=1360, P2P not BT-specific"
+    },
+    {
+      "id": "Q03",
+      "type": "evidence_source",
+      "label": "Socioeconomic and content heterogeneity",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC4217464/",
+      "summary": "2014 study of variation in observed P2P patterns"
+    },
+    {
+      "id": "Q04",
+      "type": "evidence_source",
+      "label": "Private BT community sharing ratio study",
+      "url": "https://www.sciencedirect.com/science/article/abs/pii/S1389128613004131",
+      "summary": "2014 observed long but sometimes unproductive seeding"
+    },
+    {
+      "id": "Q05",
+      "type": "evidence_source",
+      "label": "Economics of BitTorrent communities",
+      "url": "https://www.microsoft.com/en-us/research/publication/economics-of-bittorrent-communities/",
+      "summary": "2012 case study of community credit incentives"
+    },
+    {
+      "id": "Q06",
+      "type": "evidence_source",
+      "label": "Wants to seed but must rename for Plex",
+      "url": "https://www.reddit.com/r/qBittorrent/comments/1udad8i/",
+      "summary": "2026 first person user account"
+    },
+    {
+      "id": "Q07",
+      "type": "evidence_source",
+      "label": "Jellyfin library organization breaks seeding",
+      "url": "https://www.reddit.com/r/qBittorrent/comments/1nlri61",
+      "summary": "2025 first person user account"
+    },
+    {
+      "id": "Q08",
+      "type": "evidence_source",
+      "label": "Weak upstream and private tracker dilemma",
+      "url": "https://www.reddit.com/r/trackers/comments/1vad87g/",
+      "summary": "2026 first person user account"
+    },
+    {
+      "id": "Q09",
+      "type": "evidence_source",
+      "label": "Different demand between public and private swarms",
+      "url": "https://www.reddit.com/r/trackers/comments/1uu6cg4",
+      "summary": "2026 first person user account"
+    },
+    {
+      "id": "Q10",
+      "type": "evidence_source",
+      "label": "Ubuntu verifies publisher authenticity separately",
+      "url": "https://documentation.ubuntu.com/security/software-integrity/",
+      "summary": "Official software integrity guide"
     }
   ],
   "edges": [
@@ -24409,6 +25677,1602 @@
       "type": "co_supports_activity",
       "confidence": "derived_co_occurrence",
       "weight": 1
+    },
+    {
+      "from": "AV-A01",
+      "to": "FA",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-A01",
+      "to": "A14.01",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-A01",
+      "to": "N01",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-A02",
+      "to": "FA",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-A02",
+      "to": "A14.01",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-A02",
+      "to": "N01",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-A03",
+      "to": "FA",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-A03",
+      "to": "A08.01",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-A03",
+      "to": "N02",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-A04",
+      "to": "FA",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-A04",
+      "to": "A01.07",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-A04",
+      "to": "N03",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-A05",
+      "to": "FA",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-A05",
+      "to": "A18.10",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-A05",
+      "to": "N11",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-A06",
+      "to": "FA",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-A06",
+      "to": "A01.10",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-A06",
+      "to": "N01",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-A07",
+      "to": "FA",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-A07",
+      "to": "A09.01",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-A07",
+      "to": "N02",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-A08",
+      "to": "FA",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-A08",
+      "to": "A01.12",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-A08",
+      "to": "N02",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-A09",
+      "to": "FA",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-A09",
+      "to": "A02.01",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-A09",
+      "to": "N01",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-B01",
+      "to": "FB",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-B01",
+      "to": "A01.02",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-B01",
+      "to": "N03",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-B02",
+      "to": "FB",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-B02",
+      "to": "A01.08",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-B02",
+      "to": "N05",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-B03",
+      "to": "FB",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-B03",
+      "to": "A15.02",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-B03",
+      "to": "N05",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-B04",
+      "to": "FB",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-B04",
+      "to": "A01.05",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-B04",
+      "to": "N12",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-B05",
+      "to": "FB",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-B05",
+      "to": "A01.03",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-B05",
+      "to": "N12",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-B06",
+      "to": "FB",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-B06",
+      "to": "A11.05",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-B06",
+      "to": "N07",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-B07",
+      "to": "FB",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-B07",
+      "to": "A02.02",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-B07",
+      "to": "N02",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-B08",
+      "to": "FB",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-B08",
+      "to": "A01.12",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-B08",
+      "to": "N17",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-C01",
+      "to": "FC",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-C01",
+      "to": "A06.07",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-C01",
+      "to": "N05",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-C02",
+      "to": "FC",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-C02",
+      "to": "A03.08",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-C02",
+      "to": "N18",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-C03",
+      "to": "FC",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-C03",
+      "to": "A03.01",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-C03",
+      "to": "N04",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-C04",
+      "to": "FC",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-C04",
+      "to": "A15.02",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-C04",
+      "to": "N05",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-C05",
+      "to": "FC",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-C05",
+      "to": "A15.03",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-C05",
+      "to": "N05",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-C06",
+      "to": "FC",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-C06",
+      "to": "A15.06",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-C06",
+      "to": "N05",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-C07",
+      "to": "FC",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-C07",
+      "to": "A15.12",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-C07",
+      "to": "N16",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-C08",
+      "to": "FC",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-C08",
+      "to": "A14.01",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-C08",
+      "to": "N04",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-C09",
+      "to": "FC",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-C09",
+      "to": "A15.07",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-C09",
+      "to": "N09",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-C10",
+      "to": "FC",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-C10",
+      "to": "A06.02",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-C10",
+      "to": "N05",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-D01",
+      "to": "FD",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-D01",
+      "to": "A17.04",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-D01",
+      "to": "N06",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-D02",
+      "to": "FD",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-D02",
+      "to": "A17.03",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-D02",
+      "to": "N15",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-D03",
+      "to": "FD",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-D03",
+      "to": "A17.07",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-D03",
+      "to": "N15",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-D04",
+      "to": "FD",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-D04",
+      "to": "A17.01",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-D04",
+      "to": "N08",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-D05",
+      "to": "FD",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-D05",
+      "to": "A05.06",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-D05",
+      "to": "N07",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-D06",
+      "to": "FD",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-D06",
+      "to": "A05.02",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-D06",
+      "to": "N07",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-D07",
+      "to": "FD",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-D07",
+      "to": "A03.02",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-D07",
+      "to": "N07",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-D08",
+      "to": "FD",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-D08",
+      "to": "A05.01",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-D08",
+      "to": "N06",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-D09",
+      "to": "FD",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-D09",
+      "to": "A20.02",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-D09",
+      "to": "N16",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-D10",
+      "to": "FD",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-D10",
+      "to": "A03.08",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-D10",
+      "to": "N07",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-E01",
+      "to": "FE",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-E01",
+      "to": "A16.01",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-E01",
+      "to": "N09",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-E02",
+      "to": "FE",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-E02",
+      "to": "A10.03",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-E02",
+      "to": "N08",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-E03",
+      "to": "FE",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-E03",
+      "to": "A16.11",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-E03",
+      "to": "N09",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-E04",
+      "to": "FE",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-E04",
+      "to": "A16.10",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-E04",
+      "to": "N09",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-E05",
+      "to": "FE",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-E05",
+      "to": "A12.12",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-E05",
+      "to": "N08",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-E06",
+      "to": "FE",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-E06",
+      "to": "A16.05",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-E06",
+      "to": "N09",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-E07",
+      "to": "FE",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-E07",
+      "to": "A20.05",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-E07",
+      "to": "N16",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-E08",
+      "to": "FE",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-E08",
+      "to": "A18.01",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-E08",
+      "to": "N11",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-E09",
+      "to": "FE",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-E09",
+      "to": "A02.07",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-E09",
+      "to": "N11",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-E10",
+      "to": "FE",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-E10",
+      "to": "A10.04",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-E10",
+      "to": "N18",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-F01",
+      "to": "FF",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-F01",
+      "to": "A18.10",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-F01",
+      "to": "N11",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-F02",
+      "to": "FF",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-F02",
+      "to": "A04.01",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-F02",
+      "to": "N16",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-F03",
+      "to": "FF",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-F03",
+      "to": "A10.01",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-F03",
+      "to": "N10",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-F04",
+      "to": "FF",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-F04",
+      "to": "A20.07",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-F04",
+      "to": "N10",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-F05",
+      "to": "FF",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-F05",
+      "to": "A09.10",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-F05",
+      "to": "N10",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-F06",
+      "to": "FF",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-F06",
+      "to": "A08.01",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-F06",
+      "to": "N02",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-F07",
+      "to": "FF",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-F07",
+      "to": "A13.02",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-F07",
+      "to": "N13",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "AV-F08",
+      "to": "FF",
+      "type": "classified_as_friction_domain",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-F08",
+      "to": "A18.06",
+      "type": "may_interrupt_activity",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "AV-F08",
+      "to": "N11",
+      "type": "may_lead_to_alternative_path",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "N01",
+      "to": "G19",
+      "type": "relates_to_choice_or_retained_goal",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "N02",
+      "to": "G19",
+      "type": "relates_to_choice_or_retained_goal",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "N03",
+      "to": "G19",
+      "type": "relates_to_choice_or_retained_goal",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "N04",
+      "to": "G20",
+      "type": "relates_to_choice_or_retained_goal",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "N05",
+      "to": "G20",
+      "type": "relates_to_choice_or_retained_goal",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "N06",
+      "to": "G23",
+      "type": "relates_to_choice_or_retained_goal",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "N07",
+      "to": "G20",
+      "type": "relates_to_choice_or_retained_goal",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "N08",
+      "to": "G20",
+      "type": "relates_to_choice_or_retained_goal",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "N09",
+      "to": "G20",
+      "type": "relates_to_choice_or_retained_goal",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "N10",
+      "to": "G20",
+      "type": "relates_to_choice_or_retained_goal",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "N11",
+      "to": "G20",
+      "type": "relates_to_choice_or_retained_goal",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "N12",
+      "to": "G20",
+      "type": "relates_to_choice_or_retained_goal",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "N13",
+      "to": "G20",
+      "type": "relates_to_choice_or_retained_goal",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "N14",
+      "to": "G20",
+      "type": "relates_to_choice_or_retained_goal",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "N15",
+      "to": "G23",
+      "type": "relates_to_choice_or_retained_goal",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "N16",
+      "to": "G20",
+      "type": "relates_to_choice_or_retained_goal",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "N17",
+      "to": "G19",
+      "type": "relates_to_choice_or_retained_goal",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "N18",
+      "to": "G20",
+      "type": "relates_to_choice_or_retained_goal",
+      "confidence": "interpretive"
+    },
+    {
+      "from": "H55",
+      "to": "B10",
+      "type": "belongs_to",
+      "confidence": "document_derived"
+    },
+    {
+      "from": "H55",
+      "to": "A01.12",
+      "type": "would_support_activity",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H55",
+      "to": "F01.06",
+      "type": "extends_or_bridges_existing",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H55",
+      "to": "C17",
+      "type": "could_reduce_cognitive_burden",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H55",
+      "to": "E18",
+      "type": "responds_to_possible_affect",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H55",
+      "to": "E21",
+      "type": "could_support_affective_shift",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H56",
+      "to": "B10",
+      "type": "belongs_to",
+      "confidence": "document_derived"
+    },
+    {
+      "from": "H56",
+      "to": "A01.05",
+      "type": "would_support_activity",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H56",
+      "to": "F09.07",
+      "type": "extends_or_bridges_existing",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H56",
+      "to": "C17",
+      "type": "could_reduce_cognitive_burden",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H56",
+      "to": "E20",
+      "type": "responds_to_possible_affect",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H56",
+      "to": "E03",
+      "type": "could_support_affective_shift",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H57",
+      "to": "B11",
+      "type": "belongs_to",
+      "confidence": "document_derived"
+    },
+    {
+      "from": "H57",
+      "to": "A17.04",
+      "type": "would_support_activity",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H57",
+      "to": "F05.05",
+      "type": "extends_or_bridges_existing",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H57",
+      "to": "C19",
+      "type": "could_reduce_cognitive_burden",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H57",
+      "to": "E19",
+      "type": "responds_to_possible_affect",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H57",
+      "to": "E03",
+      "type": "could_support_affective_shift",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H58",
+      "to": "B11",
+      "type": "belongs_to",
+      "confidence": "document_derived"
+    },
+    {
+      "from": "H58",
+      "to": "A05.06",
+      "type": "would_support_activity",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H58",
+      "to": "F08.11",
+      "type": "extends_or_bridges_existing",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H58",
+      "to": "C19",
+      "type": "could_reduce_cognitive_burden",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H58",
+      "to": "E19",
+      "type": "responds_to_possible_affect",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H58",
+      "to": "E03",
+      "type": "could_support_affective_shift",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H59",
+      "to": "B11",
+      "type": "belongs_to",
+      "confidence": "document_derived"
+    },
+    {
+      "from": "H59",
+      "to": "A05.02",
+      "type": "would_support_activity",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H59",
+      "to": "F13.05",
+      "type": "extends_or_bridges_existing",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H59",
+      "to": "C20",
+      "type": "could_reduce_cognitive_burden",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H59",
+      "to": "E18",
+      "type": "responds_to_possible_affect",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H59",
+      "to": "E03",
+      "type": "could_support_affective_shift",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H60",
+      "to": "B10",
+      "type": "belongs_to",
+      "confidence": "document_derived"
+    },
+    {
+      "from": "H60",
+      "to": "A14.01",
+      "type": "would_support_activity",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H60",
+      "to": "F13.15",
+      "type": "extends_or_bridges_existing",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H60",
+      "to": "C21",
+      "type": "could_reduce_cognitive_burden",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H60",
+      "to": "E18",
+      "type": "responds_to_possible_affect",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H60",
+      "to": "E03",
+      "type": "could_support_affective_shift",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H61",
+      "to": "B10",
+      "type": "belongs_to",
+      "confidence": "document_derived"
+    },
+    {
+      "from": "H61",
+      "to": "A20.07",
+      "type": "would_support_activity",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H61",
+      "to": "F02.17",
+      "type": "extends_or_bridges_existing",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H61",
+      "to": "C18",
+      "type": "could_reduce_cognitive_burden",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H61",
+      "to": "E20",
+      "type": "responds_to_possible_affect",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H61",
+      "to": "E21",
+      "type": "could_support_affective_shift",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H62",
+      "to": "B10",
+      "type": "belongs_to",
+      "confidence": "document_derived"
+    },
+    {
+      "from": "H62",
+      "to": "A09.01",
+      "type": "would_support_activity",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H62",
+      "to": "F14.13",
+      "type": "extends_or_bridges_existing",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H62",
+      "to": "C20",
+      "type": "could_reduce_cognitive_burden",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H62",
+      "to": "E18",
+      "type": "responds_to_possible_affect",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H62",
+      "to": "E03",
+      "type": "could_support_affective_shift",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H63",
+      "to": "B10",
+      "type": "belongs_to",
+      "confidence": "document_derived"
+    },
+    {
+      "from": "H63",
+      "to": "A06.07",
+      "type": "would_support_activity",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H63",
+      "to": "F04.14",
+      "type": "extends_or_bridges_existing",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H63",
+      "to": "C17",
+      "type": "could_reduce_cognitive_burden",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H63",
+      "to": "E17",
+      "type": "responds_to_possible_affect",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H63",
+      "to": "E21",
+      "type": "could_support_affective_shift",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H64",
+      "to": "B10",
+      "type": "belongs_to",
+      "confidence": "document_derived"
+    },
+    {
+      "from": "H64",
+      "to": "A18.10",
+      "type": "would_support_activity",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H64",
+      "to": "F14.11",
+      "type": "extends_or_bridges_existing",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H64",
+      "to": "C18",
+      "type": "could_reduce_cognitive_burden",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H64",
+      "to": "E04",
+      "type": "responds_to_possible_affect",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H64",
+      "to": "E14",
+      "type": "could_support_affective_shift",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H65",
+      "to": "B11",
+      "type": "belongs_to",
+      "confidence": "document_derived"
+    },
+    {
+      "from": "H65",
+      "to": "A09.11",
+      "type": "would_support_activity",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H65",
+      "to": "F11.11",
+      "type": "extends_or_bridges_existing",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H65",
+      "to": "C20",
+      "type": "could_reduce_cognitive_burden",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H65",
+      "to": "E13",
+      "type": "responds_to_possible_affect",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H65",
+      "to": "E03",
+      "type": "could_support_affective_shift",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H66",
+      "to": "B10",
+      "type": "belongs_to",
+      "confidence": "document_derived"
+    },
+    {
+      "from": "H66",
+      "to": "A12.01",
+      "type": "would_support_activity",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H66",
+      "to": "F09.01",
+      "type": "extends_or_bridges_existing",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H66",
+      "to": "C17",
+      "type": "could_reduce_cognitive_burden",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H66",
+      "to": "E12",
+      "type": "responds_to_possible_affect",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "H66",
+      "to": "E08",
+      "type": "could_support_affective_shift",
+      "confidence": "hypothesis"
+    },
+    {
+      "from": "Q01",
+      "to": "G21",
+      "type": "offers_context_for",
+      "confidence": "external_source"
+    },
+    {
+      "from": "Q01",
+      "to": "G22",
+      "type": "offers_context_for",
+      "confidence": "external_source"
+    },
+    {
+      "from": "Q02",
+      "to": "G23",
+      "type": "offers_context_for",
+      "confidence": "external_source"
+    },
+    {
+      "from": "Q03",
+      "to": "G22",
+      "type": "offers_context_for",
+      "confidence": "external_source"
+    },
+    {
+      "from": "Q04",
+      "to": "H58",
+      "type": "offers_context_for",
+      "confidence": "external_source"
+    },
+    {
+      "from": "Q05",
+      "to": "H59",
+      "type": "offers_context_for",
+      "confidence": "external_source"
+    },
+    {
+      "from": "Q06",
+      "to": "H57",
+      "type": "offers_context_for",
+      "confidence": "external_source"
+    },
+    {
+      "from": "Q07",
+      "to": "H45",
+      "type": "offers_context_for",
+      "confidence": "external_source"
+    },
+    {
+      "from": "Q08",
+      "to": "H57",
+      "type": "offers_context_for",
+      "confidence": "external_source"
+    },
+    {
+      "from": "Q09",
+      "to": "H58",
+      "type": "offers_context_for",
+      "confidence": "external_source"
+    },
+    {
+      "from": "Q10",
+      "to": "H60",
+      "type": "offers_context_for",
+      "confidence": "external_source"
     }
   ]
 }
