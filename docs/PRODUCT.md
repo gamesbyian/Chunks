@@ -2,6 +2,11 @@
 
 > **Authority:** binding owner product outcomes. Detailed feature rules live in the linked canonical contracts; feature completion and evidence live in [SPEC-COVERAGE](SPEC-COVERAGE.md) and [QUALITY-LEDGER](QUALITY-LEDGER.md). This document does not set implementation priority.
 
+## Plex-compatible filename repair
+
+**Fix for Plex** is a conservative analysis/preset for individual and bulk file rename or folder scans. It MUST preserve codec, resolution, source, release group, edition and other meaningful technical/provenance filename tokens unless an identified scanner defect specifically requires a limited edit. Prefer no change for already recognizable filenames; changes are reviewed and minimally scoped, never blanket cosmetic normalization. Display alias, torrent backing filename and independently published Plex-ready library copy remain distinct; an alias does not correct Plex-visible names. Canonical contract: [PLEX-FILENAME-REPAIR](PLEX-FILENAME-REPAIR.md). Implementation/physical acceptance remains open.
+
+
 ## Product identity
 
 **chunks. Your downloads have places to be.**
