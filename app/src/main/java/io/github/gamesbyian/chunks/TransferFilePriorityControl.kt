@@ -59,9 +59,7 @@ internal fun TransferFilePriorityControl(
     val allowed = valid && file.priority in 0..2 && mainView && !snapshotStale
     val choices = listOf("Skip", "Normal", "High")
 
-    Card(colors = CardDefaults.cardColors(
-        containerColor = MaterialTheme.colorScheme.tertiaryContainer
-    )) {
+    AccentOutlineCard(ChunksColors.Green) {
         Column(Modifier.fillMaxWidth().padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("Edit one file priority", fontWeight = FontWeight.Bold)

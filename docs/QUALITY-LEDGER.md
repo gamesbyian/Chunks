@@ -1,5 +1,34 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-29 visual passes and R8 smoke (app lane)
+
+- **Owner direction (2026-10-29):** wording may change, the Chunks typeface may be used anywhere, and artwork may be chosen from the library and reference sheets. Specs win over the references, and no mockup feature is implemented. The design system is recorded in UX.md.
+- **Merged visual PRs (squash, exact-head CI green):**
+  - #514 theme `113104b` (head `27b44029`: API35 40801648442, build 40801648441, atlas 40801648454);
+  - #515 components `0a2eebf` (head `96e987aa`: API35 40802615892, which **passed on its one re-run** after an adb screenshot-pull flake that came after all 210 tests had passed; build 40802615852; atlas 40802615834);
+  - #516 icons `08d0412` (head `8ae644ce`: API35 40814694284, build 40814694283; tree identical to the previously green `ef465cde`);
+  - #517 server card `6321bdc` (head `d004cb59`: API35 40816106548, build 40816106539, atlas 40816106457);
+  - #518 chips/tabs + More tools `3efc452` (head `0d91173c`: API35 40817187005, build 40817187007, atlas 40817186998, minified-smoke 40817186995);
+  - #519 entry-screen tiles `ab04d2d` (head `127737fa`: API35 40818275012, API29 40818275017, build 40818275155, atlas 40818275122, minified-smoke 40818275072);
+  - #520 file rows + storage bar `938c95e` (head `3eb5765d`: API35 40819491492, API29 40819491475, build 40819491426, atlas 40819491494, minified-smoke 40819491471);
+  - #522 API35 screenshot-pull retry `880328a` (head `a9862c2b`: API35 40816923510);
+  - #521 banners + 200% fixes `ef696f8` (head `abe16c96`: API35 40820549675, API29 40820549658, build 40820549669, atlas 40820549692, minified-smoke 40820549665);
+  - #523 accent-panel contrast, ZIP review restyle and simpler `ActionTile` `220fcc3` (head `8f903319`: API35 40821692945, build 40821692900, atlas 40821693173, minified-smoke 40821692958).
+- **#511 R8 merged `052bc9f`** (head `a25c8b8d`): `minified-smoke` [40815893549](https://github.com/gamesbyian/Chunks/actions/runs/40815893549) passes. Two native engines move exact bytes and Compose renders on API35 against the R8-shrunk `qaMinified` build. How the first failures were diagnosed:
+  1. Instrumentation hung because the test APK had been shrunk without keeping the runner.
+  2. A bounded diagnostic run then showed `NoSuchMethodError androidx.tracing.Trace.endSection()`: libraries shared with the runner resolve from the shrunk app.
+
+  qa-only rules keep those shared libraries; the release rules don't. Release shrinking remains **off** (estimated 36.4 MB vs 68.1 MB debug) until a signed release is checked on hardware.
+- **JVM visual evidence (Robolectric 4.17 + Roborazzi 1.77, review only):** real Connect, phone, server, tab, Add-review, component, file-row, storage and banner renders, plus 200% font-scale renders. These found and fixed:
+  - words split in side-by-side tiles at 200%;
+  - stat tiles dropping units ("50.4" instead of "50.4 MiB/s"), which predates the visual pass;
+  - the server state pill clipped to "St";
+  - an empty optional subfolder field showing an error while the destination resolved;
+  - red-on-green text at 1.74:1 for the trackerless-magnet warning, and red/light controls on accent panels.
+
+  These renders are not device, TalkBack or human visual acceptance.
+- **Not established:** physical handset rendering, TalkBack on device, human visual approval of the chosen library assets, and a signed shrunk release on hardware.
+
 ## 2026-10-29 app lane, second checkpoint: batch transfers, Finish in Order entry points
 
 - **Merged (squash, exact-head CI green):** #502 batch Move Transfer to server `f7a6f42` (head `b7e2a3d5`: API35 run [40793408909](https://github.com/gamesbyian/Chunks/actions/runs/40793408909), API29 40793408957, build 40793408876); #504 batch Copy Transfer to phone `cc4733b` (head `aeb464a7`: API35 40793708343, build 40793708390, atlas 40793708376); #505 Finish in Order on the `.torrent` Add review `9cf14ea` (head `c007b764`: API35 40793933750, API29 40793933786, build 40793933725); #507 Finish in Order for magnet Adds after metadata `c34b9aa` (head `76e1244f`: API35 40795059648, real-rTorrent 0.9.8 + Arch 40795059659, build 40795059647, atlas 40795059669).
