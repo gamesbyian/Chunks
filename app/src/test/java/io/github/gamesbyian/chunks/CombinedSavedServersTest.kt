@@ -44,8 +44,15 @@ class CombinedSavedServersTest {
         rule.onNodeWithText("Server · ann @ a.example/RPC2: Not connected · 0 transfers").assertExists()
         assertEquals("nothing is fetched until the user asks", 0, calls)
         rule.onNodeWithText("Load other saved servers (read-only)").performScrollTo().performClick()
-        rule.waitUntil(5_000) { calls == 2 }
-        rule.waitForIdle()
+        // Both fetches starting is not both results applied: the listings land
+        // from a background coroutine that waitForIdle does not wait for.
+        rule.waitUntil(5_000) {
+            calls == 2 &&
+                rule.onAllNodesWithText("Server · ann @ a.example/RPC2: Live · 1 transfers")
+                    .fetchSemanticsNodes().isNotEmpty() &&
+                rule.onAllNodesWithText("Server · bob @ b.example/RPC2: Could not load (connection refused) · 0 transfers")
+                    .fetchSemanticsNodes().isNotEmpty()
+        }
         rule.onNodeWithText("Linux ISO").performScrollTo().assertExists()
         rule.onNodeWithText("Server · ann @ a.example/RPC2: Live · 1 transfers").assertExists()
         rule.onNodeWithText("Server · bob @ b.example/RPC2: Could not load (connection refused) · 0 transfers")
