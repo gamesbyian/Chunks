@@ -3,7 +3,9 @@
 **As-of:** 2026-10-29  
 **Class:** Descriptive external research reference; non-normative  
 **Audience:** Researchers, designers, writers and developers seeking a realistic, end-to-end understanding of user behavior  
-**Scope:** Activities before, during, between and after interactions with BitTorrent clients, remote controllers, seedbox platforms, file managers, indexers, library software and associated automation. It includes common, intermittent and exceptional activity.
+**Scope:** 36 complete example journeys and 240 reusable micro-workflows, with typed relationships to the separate 240-feature catalogue. Activities before, during, between and after interactions with BitTorrent clients, remote controllers, seedbox platforms, file managers, indexers, library software and associated automation. It includes common, intermittent and exceptional activity.
+
+**Navigation:** Sections 1–18 explain goals, user journeys and behavior; Section 19 is a 240-activity atlas; Sections 20–22 provide a conceptual-map relationship model and crosswalk; Sections 23–24 discuss limitations and sources.
 
 **Boundary:** This document describes behaviors, goals, activity chains and user mental models. It makes no comparison against any application in this repository, proposes no product requirements, prioritizes no engineering work, and does not assess implementation or UX. The separate external feature catalogue is complementary, but this document stands on its own.
 
@@ -780,9 +782,536 @@ A compact map can locate almost any user action in this ecosystem:
 
 **The principal observable unit is a *goal-driven activity chain*, not a screen, menu or individual torrent job.** Some chains last seconds, some run continuously and some span several distinct applications. A user's first and last contact may be with a browser, phone, file manager, library app or provider account portal, while the torrent daemon does the work unseen.
 
-## 19. Research limitations and next possible evidence
+## 19. Activity atlas for conceptual mapping (240 reusable micro-workflows)
 
-- The 36 illustrated journeys are **constructed scenarios**, synthesized from sources; no claim is made that each exact ordered sequence was witnessed end-to-end.
+**Purpose of this expansion.** The 36 earlier J-series journeys are deliberately broad examples. For building a conceptual map from the separate product feature inventory, they are insufficient as the only units of analysis. This atlas adds **240 A-series micro-workflows** covering routine, side-branch, intermittent, exceptional and long-running behaviors. These are *reusable patterns*, not 240 distinct personas or 240 newly observed end-to-end sessions. A person may combine several micro-workflows during one larger journey, and one micro-workflow may be served by several different software features.
+
+**IDs and mapping contract:** `A09.03` is a stable micro-workflow. `J23` is one of the preexisting end-to-end example journeys. `F09.03` identifies category 09, item 03 **as numbered in Section B of the external BitTorrent ecosystem feature inventory dated 2026-10-29**; it is a *research cross-reference*, not a stable application requirement ID. Feature tags identify a plausible enabling or explanatory capability, **not a claim that a particular product supports all of them**. `S..` references identify evidence sources. Feature-to-activity edges are reasoned synthesis (`I`), not measured use rates.
+
+**Read each row:** initiating situation/desired result → plausible sequence of actions and resulting state → the external feature concepts that support, expose or explain it. Cadence is relative to users who have this workflow, and is **never** a measured ecosystem frequency. The actor/tool class and work character are shown at the group level to avoid repeating the same metadata 12 times.
+
+**Interpretation:** 'Rare' does not mean unimportant. Deleting the wrong folder or recovering a failed remote service can be more consequential than dozens of frequent status checks. 'Continuous' describes daemon/automation work that may require almost no human attention.
+
+### A01 · Discovery, intent and choosing a source
+
+**Activity character:** acquisitive, evaluative, curatorial. **Typical actor/tools and evidence:** browser/indexer/tracker/publisher; S01 S03 S04 S20 S21 S34 S41. **Temporal pattern:** episodic.
+
+| ID | Situation / goal | Action sequence and desired exit | Feature-family cross-links | Cadence |
+|---|---|---|---|---|
+| **A01.01** | Need a known OS image | Open publisher's torrent listing → compare architecture/version/checksum → obtain its descriptor | F06.01, F06.03, F01.03 | O |
+| **A01.02** | Need an unknown title | Search several indexes → filter by format/size/seeders → choose plausible result | F06.01, F06.03, F06.15 | F |
+| **A01.03** | Need specific language or codec | Filter and compare release naming/metadata → inspect file list → accept or reject | F06.14, F09.07, F03.01 | O |
+| **A01.04** | Need one item from an archive | Browse catalogue → read file manifest → choose subset before or after add | F06.03, F03.01, F03.02 | O |
+| **A01.05** | Need newest matching episode | Review RSS rule matches and exclusions → decide automatic or manual grab | F06.04, F06.05, F06.15 | F |
+| **A01.06** | Need a specific infohash | Search by hash rather than title → compare with existing job → avoid duplicate | F06.13, F01.09, F08.01 | R |
+| **A01.07** | Need a safer original source | Check publisher, metadata and verification information → reject mismatched candidate | F01.19, F08.01, F03.13 | O |
+| **A01.08** | Need to compare multiple releases | Compare size, age, quality and active peers → choose one or postpone | F06.03, F06.14, F08.11 | F |
+| **A01.09** | Need to discover content socially | Inspect shared ratings/comments or channel post → investigate torrent provenance | F06.12, F15.04 | O |
+| **A01.10** | Need publication permissions | Review source license/tracker upload conditions → select allowed sharing channel | F01.17, F13.05 | R |
+| **A01.11** | Need to revisit a prior find | Open saved recent search/feed history → compare updated entries → resume decision | F06.04, F07.10, F06.15 | O |
+| **A01.12** | Need to stop looking | Compare alternatives against goal → decide ordinary download, torrent or defer entirely | F01.06, F06.15 | O |
+
+### A02 · Adding, identifying and placing a new job
+
+**Activity character:** acquisitive, delegative, operational. **Typical actor/tools and evidence:** client, remote, browser, operating-system share surface; S01 S05 S06 S07 S18 S37 S43. **Temporal pattern:** per acquisition.
+
+| ID | Situation / goal | Action sequence and desired exit | Feature-family cross-links | Cadence |
+|---|---|---|---|---|
+| **A02.01** | A magnet is tapped in browser | Resolve protocol handler → identify target engine → show add confirmation → submit | F01.02, F10.12, F14.06 | F |
+| **A02.02** | A small torrent file is received in chat | Open/share file → inspect metainfo → choose location → add | F01.01, F01.07, F14.06 | F |
+| **A02.03** | A page links directly to torrent metadata | Paste remote URL → client fetches descriptor → inspect or add job | F01.03, F10.11 | O |
+| **A02.04** | Several links need adding | Select or paste batch → choose common destination/category → confirm distinct jobs | F01.04, F02.04 | O |
+| **A02.05** | A feed produces a match | Accept matching event → pass descriptor into chosen client → watch acknowledgement | F01.05, F12.02, F06.05 | C |
+| **A02.06** | User wants transfer to wait | Set initially stopped/queued or future schedule → verify pending entry exists | F01.08, F02.09 | O |
+| **A02.07** | Default folder is wrong | Choose alternate storage before starting → verify engine-visible path | F01.07, F03.07, F03.18 | F |
+| **A02.08** | An identical hash already exists | Compare existing instance/job with proposed add → reuse, focus or decline duplicate | F01.09, F08.01, F10.08 | O |
+| **A02.09** | Job needs its own rules immediately | Set tag, tracker, rate, share targets and classification at intake | F01.10, F07.01, F05.06 | O |
+| **A02.10** | An importer has original .torrent | Restore or add metainfo to existing data path → recheck instead of redownloading | F01.11, F01.15, F03.15 | R |
+| **A02.11** | Source is non-torrent download | Select HTTP/FTP/Metalink path → send to multi-protocol tool instead of peer swarm | F01.06, F15.03 | O |
+| **A02.12** | Metainfo appears corrupt | Reject unsafe/bad input → explain discrepancy → seek trusted replacement | F01.19, F13.12, F08.08 | R |
+
+### A03 · Metadata, file selection and piece order
+
+**Activity character:** curatorial, scheduling, consumptive, technical. **Typical actor/tools and evidence:** client file tree, player, archive explorer; S03 S05 S13 S37 S43. **Temporal pattern:** per multipart job.
+
+| ID | Situation / goal | Action sequence and desired exit | Feature-family cross-links | Cadence |
+|---|---|---|---|---|
+| **A03.01** | Magnet has no visible files yet | Observe metadata progress → wait for full file tree → select wanted files | F04.07, F03.01, F08.02 | F |
+| **A03.02** | Only selected files matter | Mark files and directories wanted/unwanted → check required size → proceed | F03.02, F03.01, F01.07 | F |
+| **A03.03** | Important file should finish first | Assign higher file priority → check wanted progress separately | F03.03, F05.12, F08.04 | O |
+| **A03.04** | Want beginning of a video soon | Prioritize beginning pieces or sequential mode → try preview when buffered | F03.04, F09.01, F09.02 | O |
+| **A03.05** | Want to seek to later scene | Seek in player → adjust piece demand toward required range → buffer/play | F09.02, F03.04, F04.15 | O |
+| **A03.06** | File tree has many nested folders | Expand/filter tree → select only intended subtree → verify totals | F03.01, F03.02, F03.16 | O |
+| **A03.07** | Selection changed midway | Toggle wanted files → recalculate remaining work → continue without losing valid bytes | F03.02, F08.02, F03.15 | O |
+| **A03.08** | A file seems incomplete after 100% | Compare overall, wanted and per-file completion → verify relevant pieces | F08.02, F08.04, F03.15 | R |
+| **A03.09** | First and last bytes are needed | Prioritize headers/index data → verify preview readiness rather than total completion | F03.04, F09.01, F04.14 | O |
+| **A03.10** | Need to inspect archived contents | Preview NFO/listing or archive tree → decide extraction or file selection | F09.09, F03.11, F03.13 | O |
+| **A03.11** | Different BitTorrent formats are encountered | Inspect v1/v2/hybrid identity and client support → select compatible engine | F04.01, F01.14, F10.06 | R |
+| **A03.12** | Torrent file layout makes partial reuse hard | Inspect piece/file boundaries → evaluate file layout or creation alignment before reseeding | F03.14, F15.07, F04.14 | R |
+
+### A04 · Watching status, queues and ordinary control
+
+**Activity character:** operational, observational, attentional. **Typical actor/tools and evidence:** transfer list, remote controller, notifications; S05 S06 S07 S24 S37 S43. **Temporal pattern:** repeated throughout active jobs.
+
+| ID | Situation / goal | Action sequence and desired exit | Feature-family cross-links | Cadence |
+|---|---|---|---|---|
+| **A04.01** | Want quick progress reassurance | Open selected instance → scan active states/rates/ETA → close without modifying | F02.01, F08.03, F14.04 | F |
+| **A04.02** | Need one torrent among thousands | Filter by status/category → sort by ETA/last activity → open matching detail | F07.03, F07.05, F07.06 | F |
+| **A04.03** | Want to resume only one paused job | Open row/action → start selected job → verify state transition | F02.02, F08.03 | F |
+| **A04.04** | Want to stop traffic for now | Pause selected jobs or all → verify stopped while retaining data | F02.02, F02.04, F02.18 | O |
+| **A04.05** | Urgent job stuck behind queue | Move priority up or force-start → verify active slot changed | F02.05, F02.02, F05.12 | O |
+| **A04.06** | Too many simultaneous transfers | Lower active/seed/download slots → observe queue redistribution | F02.06, F05.04 | O |
+| **A04.07** | A job is stalled | Inspect stalled state and timeout policy → optionally requeue another | F02.07, F02.08, F05.11 | O |
+| **A04.08** | Several related items need same change | Select by category/filter → batch tag/pause/recheck with target review | F02.04, F07.04, F14.02 | O |
+| **A04.09** | Completion event arrives | Read notification → verify status → decide retrieve/use/seed/archive next | F02.12, F12.06, F14.07 | F |
+| **A04.10** | Looking for what changed overnight | Inspect activity/transfer history → find newly completed or errored jobs | F02.11, F07.10, F08.13 | O |
+| **A04.11** | Client was updated or restarted | Reopen → inspect restored session and progress → verify no lost registrations | F02.10, F02.17, F08.08 | R |
+| **A04.12** | Need to leave app without ending work | Close window/controller while background engine continues → later check session | F10.01, F14.07, F02.10 | F |
+
+### A05 · Seeding, reciprocity and long-term availability
+
+**Activity character:** custodial, communal, contractual. **Typical actor/tools and evidence:** torrent daemon, tracker account, retention policy; S25 S26 S35 S15 S16. **Temporal pattern:** continuous with periodic inspection.
+
+| ID | Situation / goal | Action sequence and desired exit | Feature-family cross-links | Cadence |
+|---|---|---|---|---|
+| **A05.01** | Just finished downloading | Leave job active for upload → check ratio/time after an interval | F04.16, F05.06, F08.03 | F |
+| **A05.02** | Private tracker requires minimum time | Identify site policy → seed until eligible → verify tracker/account status | F04.19, F13.05, F05.06 | O |
+| **A05.03** | Want to achieve chosen ratio | Set per-job or group ratio target → allow upload → inspect actual accounting | F05.06, F02.14, F08.03 | O |
+| **A05.04** | Few seeders remain | Favor retention of rare torrent → keep host powered/connected → review uptime | F04.16, F08.11, F05.04 | O |
+| **A05.05** | Seedbox should upload overnight | Schedule seed/rate policy → leave daemon alone → check later usage | F02.09, F05.02, F11.11 | F |
+| **A05.06** | Want to favor cooperative swarms | Inspect demand and seed count → choose retention/queue priority | F08.11, F04.13, F05.04 | O |
+| **A05.07** | Need seed health at a glance | Filter seeding jobs → sort by ratio, last activity or errors → handle exceptions | F07.03, F07.05, F08.03 | F |
+| **A05.08** | Torrent seeding has ended unexpectedly | Inspect tracker, file state and quota → correct cause → resume upload | F08.05, F03.19, F02.08 | R |
+| **A05.09** | Content must remain shareable for years | Create resilient storage/backup plan → verify files and job after migration | F11.14, F03.15, F02.17 | R |
+| **A05.10** | Want to seed same data elsewhere | Validate compatible release → create separate job/link → verify no duplicate payload | F06.11, F03.20, F15.15 | O |
+| **A05.11** | Small publisher starts first seed | Publish metadata → make entire original payload available → watch first swarm joins | F04.16, F01.12, F15.02 | R |
+| **A05.12** | Need to stop seeding while keeping bytes | Stop/remove only job after obligations → confirm backing files remain accessible | F02.03, F02.18, F13.11 | O |
+
+### A06 · Peers, discovery mechanisms and protocol choices
+
+**Activity character:** technical, exploratory, diagnostic. **Typical actor/tools and evidence:** client advanced controls, peer and tracker panels; S05 S28 S37 S43. **Temporal pattern:** exception-driven.
+
+| ID | Situation / goal | Action sequence and desired exit | Feature-family cross-links | Cadence |
+|---|---|---|---|---|
+| **A06.01** | Torrent has zero known peers | Inspect tracker messages/DHT discovery → distinguish no swarm from blocked network | F04.03, F04.05, F08.11 | R |
+| **A06.02** | Tracker reports peers but no connections | Inspect NAT/port and transport → compare reachable peers with announced counts | F04.08, F08.07, F08.11 | R |
+| **A06.03** | Need to identify a problematic peer | Inspect IP/client/rates → optionally disconnect or block with reason | F04.11, F08.06, F13.09 | R |
+| **A06.04** | Public torrent has no tracker success | Check DHT/PEX/local discovery configuration → test public-only fallback | F04.05, F04.06, F04.02 | R |
+| **A06.05** | Private tracker forbids peer discovery | Inspect private flag and announce policy → avoid DHT/PEX for that job | F04.19, F04.02, F13.05 | R |
+| **A06.06** | Several trackers disagree | Compare announce tiers/status → adjust trackers → reannounce and read response | F04.03, F04.04, F08.05 | R |
+| **A06.07** | Need to inspect piece scarcity | View bitfield/availability → decide whether wait, prioritize or find other source | F04.14, F08.02, F04.15 | R |
+| **A06.08** | Want to share with browser peers | Choose WebTorrent-compatible distribution → test WebRTC/native interoperability | F04.18, F01.13 | R |
+| **A06.09** | Experiencing very slow disk IO | Inspect cache, allocation and activity → change performance setting → remeasure | F04.21, F05.09, F08.10 | R |
+| **A06.10** | Want to test encryption settings | Review tracker and peer compatibility → adjust supported transport security → verify connects | F04.09, F13.04, F08.06 | R |
+| **A06.11** | Multi-source downloader has alternate sources | Evaluate peers, web seeds and HTTP/FTP sources → choose safe supported combination | F04.04, F04.17, F15.03 | R |
+| **A06.12** | Want alternate privacy network | Choose appropriate I2P/onion-supported client → check identity and performance limits | F04.20, F13.02, F13.15 | R |
+
+### A07 · Naming, classification and finding things later
+
+**Activity character:** curatorial, organizational, operational. **Typical actor/tools and evidence:** client list, labels, media tools; S20 S24 S43. **Temporal pattern:** often for large collections.
+
+| ID | Situation / goal | Action sequence and desired exit | Feature-family cross-links | Cadence |
+|---|---|---|---|---|
+| **A07.01** | New job needs classification | Choose category/tags → file under working collection → verify views | F07.01, F07.04, F01.10 | F |
+| **A07.02** | Want category-specific storage | Set category save path → classify incoming job → verify actual engine location | F07.02, F03.08, F03.09 | O |
+| **A07.03** | Original release name is opaque | Apply readable display alias while retaining metainfo/source identity | F07.07, F03.05 | O |
+| **A07.04** | Need release details later | Store comment/notes/source metadata → return through detail view | F07.08, F08.13 | O |
+| **A07.05** | Looking for a recently touched job | Open recents or pin list → inspect change history → resume prior task | F07.10, F02.11 | F |
+| **A07.06** | List is visually overwhelming | Switch to compact columns/grouped view → emphasize status or tags | F07.12, F14.03 | F |
+| **A07.07** | Need saved view for errors | Compose filter for failed/stalled items → save → revisit after monitoring | F07.03, F07.06, F08.08 | O |
+| **A07.08** | Many jobs need reclassification | Select group by tracker/path → bulk update tags/category → check resulting groups | F07.09, F07.11, F02.04 | O |
+| **A07.09** | Need to distinguish same-named releases | Compare infohash/source path/labels → assign distinct aliases | F07.07, F08.01, F07.01 | O |
+| **A07.10** | Need a list by tracker | Group and sort by tracker, last active and ratio → inspect subset | F07.04, F07.05, F08.05 | F |
+| **A07.11** | Automatically tag new items | Define tracker/path rule → test match → run classification on future jobs | F07.09, F12.10, F07.01 | O |
+| **A07.12** | Want custom dashboard appearance | Select theme, columns or density → save UI choices → continue routine use | F07.12, F14.08, F14.11 | O |
+
+### A08 · Remote control, multiple locations and authority
+
+**Activity character:** delegative, administrative, operational. **Typical actor/tools and evidence:** phone/web/desktop client; local daemon and remote daemon; S07 S18 S21 S30 S37. **Temporal pattern:** frequent remote work, setup occasional.
+
+| ID | Situation / goal | Action sequence and desired exit | Feature-family cross-links | Cadence |
+|---|---|---|---|---|
+| **A08.01** | First time connecting remote app | Obtain host, scheme, port and RPC path → authenticate → verify server identity | F10.03, F10.15, F14.13 | R |
+| **A08.02** | More than one remote engine exists | Save distinct profiles → choose intended endpoint → inspect its own jobs | F10.04, F10.08, F10.03 | O |
+| **A08.03** | Want unified view of heterogeneous clients | Connect supported protocols → inspect capability differences → perform available action | F10.05, F10.06, F10.02 | O |
+| **A08.04** | Phone encounters magnet away from home | Open share target → select remote profile → submit and verify target job | F10.12, F10.11, F01.02 | F |
+| **A08.05** | Want browser-only access on travel laptop | Open saved WebUI address → authenticate → inspect/change remote job | F10.01, F10.18, F10.15 | O |
+| **A08.06** | Switch from local to remote view | Change current environment → confirm identity → avoid touching other session | F10.08, F10.04, F14.04 | F |
+| **A08.07** | Connection drops after command | Treat result as uncertain → refresh/reconnect → reconcile actual remote state | F10.09, F10.10, F13.13 | R |
+| **A08.08** | Remote UI wakes after days offline | Load cached list with stale indication → reconnect → replace with fresh state | F10.10, F10.09, F14.10 | O |
+| **A08.09** | Server certificate unexpectedly changed | Inspect certificate/host identity → decide trust scoped to endpoint → reconnect | F10.14, F13.08, F13.04 | R |
+| **A08.10** | Need remote path operation | Authenticate distinct filesystem channel → identify path permissions → operate on remote data | F10.07, F03.23, F13.06 | O |
+| **A08.11** | Need to move job registration to other engine | Export/share metadata and settings → add on destination → independently begin new acquisition | F02.16, F10.05, F01.15 | R |
+| **A08.12** | Remote credentials should survive phone replacement | Export encrypted profile backup → restore on new phone → test connection | F10.13, F13.07, F14.11 | R |
+
+### A09 · Provisioning, accounts and infrastructure
+
+**Activity character:** administrative, technical, resource-economic. **Typical actor/tools and evidence:** seedbox portal, SSH, host app manager; S09 S17 S18 S33 S42. **Temporal pattern:** setup, monthly, exception.
+
+| ID | Situation / goal | Action sequence and desired exit | Feature-family cross-links | Cadence |
+|---|---|---|---|---|
+| **A09.01** | Start hosted seedbox from scratch | Choose plan and slot → install torrent app → open control and connection details | F11.01, F11.16, F11.17 | R |
+| **A09.02** | Torrent daemon appears offline | Inspect app status/process → restart → verify healthy RPC and resumed jobs | F11.02, F11.04, F10.17 | R |
+| **A09.03** | Web interface returns gateway error | Check webserver/proxy → restart or repair approved layer → retry correct URL | F11.06, F11.02, F11.04 | R |
+| **A09.04** | Need access from new device | Find service host/ports/credentials in provider panel → configure secure client | F11.03, F11.09, F10.03 | O |
+| **A09.05** | User lost client password | Use provider-specific reset/change route → update saved remote credential → test | F11.05, F11.03, F13.07 | R |
+| **A09.06** | Need another service like media server | Inspect app catalogue → install/configure → connect required storage path | F11.15, F11.16, F11.13 | O |
+| **A09.07** | Need separate household users | Assign roles/permissions and services → test each person's authorized views | F11.05, F11.17, F13.06 | R |
+| **A09.08** | Infrastructure security needs review | Check firewall/reverse proxy/TLS/tunnel rules → test access and rejection | F11.06, F11.07, F11.08 | O |
+| **A09.09** | Service upgrade is available | Back up settings → upgrade known app → verify API compatibility and state | F11.01, F11.12, F10.06 | O |
+| **A09.10** | Need to view remote resource pressure | Open CPU/memory/disk/network charts → correlate load with stalled jobs | F11.10, F08.10, F11.04 | O |
+| **A09.11** | Provider renews soon | Check expiry, plan usage and options → renew, change plan or prepare migration | F11.11, F11.17 | O |
+| **A09.12** | Manage another slot or tenant | Select correct slot/account → inspect entitlement → act only in intended tenant | F11.17, F10.17, F13.06 | O |
+
+### A10 · Remote files, archives, moves and retrieval
+
+**Activity character:** file operations, curatorial, custodial. **Typical actor/tools and evidence:** remote file manager, FTP/SFTP, browser, media tools; S10 S11 S23 S31 S38. **Temporal pattern:** per completed item or repair.
+
+| ID | Situation / goal | Action sequence and desired exit | Feature-family cross-links | Cadence |
+|---|---|---|---|---|
+| **A10.01** | Need files on phone, not on seedbox | Locate payload on remote server → download through file channel → open local copy | F03.23, F03.10, F10.07 | F |
+| **A10.02** | Want to move finished media into a folder | Confirm file ownership/seeding → relocate via supported engine/file tool → verify actual path | F03.07, F03.08, F03.21 | O |
+| **A10.03** | Want new name without losing seeding | Decide alias versus backing rename → perform correct operation → verify job mapping | F03.05, F03.06, F03.16 | O |
+| **A10.04** | Need to unpack release archive | Inspect extension/trust → extract on permitted storage → inspect results | F03.11, F03.12, F13.12 | F |
+| **A10.05** | Archive is encrypted or nested | Supply permitted password → extract recursive layers with space checks → validate output | F03.12, F03.18, F03.13 | O |
+| **A10.06** | Need screenshots without copying video | Request remote thumbnails or media analysis → inspect output → choose full retrieval | F09.06, F15.11, F03.23 | O |
+| **A10.07** | Want to validate downloaded data | Compare checksums and info files → inspect discrepancy → use trusted content | F03.13, F03.15, F09.09 | O |
+| **A10.08** | Need one file over slow link | Select only wanted remote file → download with resume → verify copied bytes | F03.10, F03.23, F11.14 | O |
+| **A10.09** | Want long-running remote-to-local sync | Configure SFTP/rclone/Syncthing paths → monitor sync → check duplicates/conflicts | F11.14, F12.12, F03.23 | C |
+| **A10.10** | Need to clean staging folders | Inspect archives/partial and dependent job refs → move to trash or keep → verify space | F03.19, F03.22, F03.18 | O |
+| **A10.11** | Want to transfer across filesystems | Select destination → copy or move safely → check checksum → update any active mapping | F03.21, F03.24, F03.15 | O |
+| **A10.12** | Remote and local paths look different | Reconcile container/host/mount paths → translate location for downstream tool | F03.24, F10.07, F11.13 | R |
+
+### A11 · Automated intake, scripts and rule maintenance
+
+**Activity character:** orchestrational, operational, diagnostic. **Typical actor/tools and evidence:** RSS/IRC/indexer, plugins, watch folder, APIs; S13 S14 S19 S37 S43 S44. **Temporal pattern:** once setup, continuous execution.
+
+| ID | Situation / goal | Action sequence and desired exit | Feature-family cross-links | Cadence |
+|---|---|---|---|---|
+| **A11.01** | Want an RSS feed polled regularly | Subscribe → refresh and preview → mark read or enqueue selected matches | F06.04, F12.02, F01.05 | C |
+| **A11.02** | Need a precise RSS rule | Specify include/exclude/quality → preview matches → enable auto-download | F06.05, F06.14, F12.02 | O |
+| **A11.03** | Want early IRC-announced additions | Authenticate announcement source → filter release → dispatch to chosen client | F06.10, F12.02, F01.05 | C |
+| **A11.04** | Use multiple indexers for same rule | Normalize Torznab providers → sync definitions → test one manual query | F06.06, F06.07, F06.09 | O |
+| **A11.05** | Private search site needs login | Configure its credentials/proxy → test query → handle auth changes safely | F06.08, F01.18, F13.05 | O |
+| **A11.06** | Use watched torrent folder | Place small .torrent in directory → watcher notices → adds according to rules | F12.01, F01.05 | C |
+| **A11.07** | Completion should trigger next task | Configure event hook → download completes → script/extractor/importer runs → verify outcome | F12.03, F12.07, F12.08 | C |
+| **A11.08** | Need a custom automation integration | Read API/plugin capabilities → implement filter/script → test against known job | F12.04, F12.05, F12.10 | R |
+| **A11.09** | Rule grabbed wrong match | Inspect event/match history → edit condition → test sample before reenabling | F12.13, F06.15, F06.05 | O |
+| **A11.10** | Want housekeeping policy | Define tag/ratio/age/orphan rule → dry-run where supported → review affected jobs | F12.09, F12.10, F13.11 | O |
+| **A11.11** | Want failure watchdog | Define retry/throttle schedule → detect failure → requeue and verify progress | F12.11, F12.14, F02.08 | C |
+| **A11.12** | Need alerts in another app | Connect notification integration → select meaningful events → inspect delivery logs | F12.06, F12.13, F14.07 | O |
+
+### A12 · Media, preview, playback and library consumption
+
+**Activity character:** consumptive, curatorial, orchestrational. **Typical actor/tools and evidence:** player, media manager, device cast, seedbox; S13 S14 S20 S22 S38. **Temporal pattern:** per consumed item.
+
+| ID | Situation / goal | Action sequence and desired exit | Feature-family cross-links | Cadence |
+|---|---|---|---|---|
+| **A12.01** | Want to preview before full completion | Select playable file → buffer pieces → open player → observe whether enough data exists | F09.01, F09.02, F03.04 | O |
+| **A12.02** | Want finished video to appear in library | Detect completion → import/hardlink/copy and rename → media server scan → play | F09.11, F09.12, F12.08 | F |
+| **A12.03** | Player is on TV rather than torrent device | Choose cast target → stream/transcode as supported → confirm target playback | F09.04, F09.05, F15.10 | O |
+| **A12.04** | Want detailed media quality before keeping | Inspect codec/container/audio tracks → compare needs → decide retain or replace | F09.07, F09.10, F06.14 | O |
+| **A12.05** | Archive contains subtitles/NFO | Inspect text and auxiliary files → choose retention and matching media item | F09.09, F03.01, F09.10 | O |
+| **A12.06** | Media library shows wrong title | Inspect file name and metadata → adjust curated label → rescan library | F09.10, F09.11, F07.07 | O |
+| **A12.07** | Want screenshot before retrieval | Generate remote stills → evaluate visual content → choose download | F09.06, F03.23 | O |
+| **A12.08** | Want spectrogram to inspect audio | Analyze audio file → inspect spectrogram/metadata → compare with expected source | F09.08, F15.11 | R |
+| **A12.09** | Need compact output for another device | Choose compatible transcode target → process data → play copied/streamed version | F09.05, F15.10 | O |
+| **A12.10** | Want queue of music/videos | Open built-in library/playlist → select item → continue listening while job seeds | F09.03, F04.16 | O |
+| **A12.11** | Household member makes a request | Receive media request → search/approve/grab → import → notify/serve | F09.12, F06.01, F12.06 | O |
+| **A12.12** | Hardlink import must preserve seeding | Check same-filesystem paths → create separate library link → verify both readers and uploader | F03.20, F09.11, F15.15 | O |
+
+### A13 · Publishing, original distribution and community sharing
+
+**Activity character:** creative, distributive, custodial. **Typical actor/tools and evidence:** torrent creator, publisher, tracker, file manager; S02 S03 S04 S12 S34 S41. **Temporal pattern:** per original release.
+
+| ID | Situation / goal | Action sequence and desired exit | Feature-family cross-links | Cadence |
+|---|---|---|---|---|
+| **A13.01** | Have a file to share with a friend | Prepare original file → create metainfo/link → seed → check recipient can connect | F01.12, F01.16, F15.01 | R |
+| **A13.02** | Have a large directory to publish | Freeze final folder layout → choose piece size → create metainfo → seed from same bytes | F01.12, F01.14, F03.14 | R |
+| **A13.03** | Need tracker-restricted private release | Read site rules → mark private and enter announce credentials → upload metadata → seed | F01.13, F04.19, F13.05 | R |
+| **A13.04** | Want trackerless sharing | Choose DHT-compatible public torrent/magnet → announce availability through peers | F01.13, F04.02, F04.05 | R |
+| **A13.05** | Need browser-compatible sharing | Build WebTorrent-supported release → test peer discovery and browser playback | F04.18, F01.13, F09.01 | R |
+| **A13.06** | Need older client compatibility | Choose v1/v2/hybrid metadata → validate target client support → test download | F01.14, F04.01, F10.06 | R |
+| **A13.07** | Want distribution via site/indexer | Prepare title, category and description → submit permitted metainfo → verify listing | F01.17, F06.01, F07.08 | R |
+| **A13.08** | Want resilient official download | Seed official release plus webseed/mirrors → publish checksums → verify consumer retrieval | F04.04, F03.13, F01.13 | R |
+| **A13.09** | Want initial upload not to waste bandwidth | Choose supported initial/super seed mode → watch distribution to early peers | F15.02, F04.16, F08.06 | R |
+| **A13.10** | Want live publishing status | Inspect peer counts, bytes served and tracker announce → maintain seed until stable | F08.03, F08.05, F04.16 | O |
+| **A13.11** | Need new version of published data | Prepare new immutable file set → create new metainfo → distinguish versions for recipients | F01.12, F01.11, F07.08 | O |
+| **A13.12** | Audience reports they cannot download | Inspect announce/peer reachability and their metadata → repair initial seeding path | F08.07, F04.03, F08.11 | R |
+
+### A14 · Privacy, credentials, trust and permissions
+
+**Activity character:** risk, governance, technical. **Typical actor/tools and evidence:** VPN, remote auth, tracker, storage, host; S09 S18 S37 S43. **Temporal pattern:** initial and exception.
+
+| ID | Situation / goal | Action sequence and desired exit | Feature-family cross-links | Cadence |
+|---|---|---|---|---|
+| **A14.01** | Avoid leaking peer traffic outside VPN | Bind daemon to intended network interface → disconnect VPN deliberately → confirm no fallback | F13.03, F05.08, F13.15 | O |
+| **A14.02** | Separate tracker and peer proxy policy | Configure scoped proxies → verify which requests take which routes | F13.01, F13.02, F04.09 | R |
+| **A14.03** | Use remote HTTPS safely | Validate hostname, scheme and certificate chain → authenticate → avoid unsafe downgrade | F13.04, F10.15, F13.08 | O |
+| **A14.04** | Endpoint has self-signed certificate | Inspect fingerprint/identity → explicitly trust only intended server if acceptable | F13.08, F10.14, F10.03 | R |
+| **A14.05** | Tracker login/private passkey is involved | Store credentials only in proper scope → test announce → avoid exposing descriptor | F13.05, F04.19, F01.18 | O |
+| **A14.06** | Phone profile backup is exported | Encrypt/transfer profile data → restore privately → revoke obsolete stored copies | F13.07, F10.13 | R |
+| **A14.07** | Shared host has multiple accounts | Check roles for RPC and file operations → act only as authorized user | F13.06, F11.05, F11.17 | O |
+| **A14.08** | Peer is considered unwanted | Inspect behavior/IP information → block scoped peer/range → monitor side effects | F13.09, F04.11, F04.12 | R |
+| **A14.09** | Public and private networks should be isolated | Separate interfaces/sessions → test profile constraints → monitor traffic routes | F13.10, F05.10, F05.08 | R |
+| **A14.10** | Download contains risky archive | Inspect provenance and content paths → unpack with protection/space limits | F13.12, F01.19, F03.12 | O |
+| **A14.11** | About to remove files or reinstall service | Review target and consequences → confirm specific destructive action → verify state | F13.11, F02.18, F11.12 | O |
+| **A14.12** | Want to know what changed after suspicious error | Inspect audit and activity logs → identify actor/command → recover trustworthy state | F13.14, F13.13, F08.13 | R |
+
+### A15 · Connectivity, diagnostics and controlled troubleshooting
+
+**Activity character:** technical, diagnostic, exploratory. **Typical actor/tools and evidence:** tracker panel, system network, client logs, provider dashboard; S28 S37 S43. **Temporal pattern:** exception.
+
+| ID | Situation / goal | Action sequence and desired exit | Feature-family cross-links | Cadence |
+|---|---|---|---|---|
+| **A15.01** | Remote app says disconnected | Check general internet → inspect exact endpoint and credentials → test safe read-only call | F08.08, F08.12, F10.16 | R |
+| **A15.02** | Torrent stalled despite available peers | Compare tracker counts to live connections → inspect port policy and error | F08.11, F08.07, F08.05 | R |
+| **A15.03** | Inbound peer port appears closed | Run port test → inspect host NAT/firewall and listener → retest | F08.07, F11.07, F04.08 | R |
+| **A15.04** | Need to distinguish auth from transport problem | Read HTTP/RPC status and server version → isolate path/protocol mismatch | F08.08, F08.12, F10.02 | R |
+| **A15.05** | Torrent has a tracker error | Read last announce/scrape status and next interval → adjust only relevant tracker | F08.05, F04.03, F02.13 | R |
+| **A15.06** | Speed has collapsed after tweak | Inspect live graphs and prior setting → revert/change one variable → compare | F08.10, F05.09, F08.09 | R |
+| **A15.07** | Content seems corrupted | Inspect hash-failure and per-file progress → force recheck → redownload invalid pieces | F03.15, F08.04, F08.13 | R |
+| **A15.08** | Device battery or metered network matters | Check policy/battery/network profile → schedule/resume when conditions fit | F05.07, F15.09, F14.07 | O |
+| **A15.09** | Bandwidth chart looks wrong | Compare session totals and per-peer rates → distinguish accounting period and reset | F08.09, F08.10, F08.06 | O |
+| **A15.10** | Different remote app behaves differently | Check API version and supported method → compare capability, avoid unsupported mutation | F10.06, F08.12, F10.02 | R |
+| **A15.11** | Need exact torrent technical identity | Inspect infohash, piece size and private flag → compare original descriptor | F08.01, F01.14, F08.13 | R |
+| **A15.12** | Need evidence after failed command | Capture error and before/after state → distinguish request from result → retry only safely | F13.13, F08.08, F08.13 | R |
+
+### A16 · Recovery, integrity, migration and reuse
+
+**Activity character:** restorative, technical, custodial. **Typical actor/tools and evidence:** client, filesystem, backup, old/new server; S27 S36 S38 S39 S40. **Temporal pattern:** rare but high consequence.
+
+| ID | Situation / goal | Action sequence and desired exit | Feature-family cross-links | Cadence |
+|---|---|---|---|---|
+| **A16.01** | Externally renamed one file | Find actual file → update engine's mapped filename/path → recheck hash → resume | F03.06, F03.19, F03.15 | R |
+| **A16.02** | Folder moved to another directory | Locate data root → set client location or reconcile paths → verify files then seed | F03.07, F03.19, F03.15 | R |
+| **A16.03** | App lost registration but data exists | Recover original metainfo → point new job to existing bytes → verify then resume | F01.15, F02.17, F03.15 | R |
+| **A16.04** | Need to migrate without moving bytes | Export job descriptor/settings → register in other engine → acquire separately there | F02.16, F10.08, F02.17 | R |
+| **A16.05** | Need to move both payload and job | Inventory paths and references → securely copy bytes → register/recheck new engine → retire old | F03.21, F11.14, F02.17 | R |
+| **A16.06** | Need to preserve hardlinked library | Inspect links, mounts and dependent jobs → migrate filesystem references safely | F03.20, F03.24, F15.15 | R |
+| **A16.07** | Want cross-seed despite different filenames | Choose matching method → create safe hardlinks/reflinks → inject and verify jobs | F06.11, F03.20, F15.15 | O |
+| **A16.08** | Have partially downloaded bytes from other client | Choose existing directory → verify piece hashes → request only missing data | F01.15, F03.15, F08.04 | R |
+| **A16.09** | Backup must be restorable | Export config, torrents, fast-resume metadata → restore test → compare state | F02.17, F11.12, F10.13 | R |
+| **A16.10** | Client or host crash corrupts state | Read logs → inspect payload integrity → rebuild registrations without deleting bytes | F02.10, F08.08, F03.15 | R |
+| **A16.11** | Large tree has Unicode or case mismatch | Compare actual names and path semantics → repair safe mapping → verify exact files | F03.16, F03.19, F03.06 | R |
+| **A16.12** | Need to check changes following cleanup | Compare before/after job state and affected files → restore from recycle/backup if possible | F03.22, F13.14, F02.18 | R |
+
+### A17 · Space, traffic, performance and cost economics
+
+**Activity character:** resource-economic, operational, administrative. **Typical actor/tools and evidence:** client, host quota panel, file manager; S09 S17 S25 S38. **Temporal pattern:** periodic/threshold.
+
+| ID | Situation / goal | Action sequence and desired exit | Feature-family cross-links | Cadence |
+|---|---|---|---|---|
+| **A17.01** | Disk approaches 100% | Compare file tree and quota → identify reclaimable data → retire safely | F03.18, F11.11, F03.22 | O |
+| **A17.02** | Multiple paths use same bytes | Inspect hardlinks/reflinks and duplicates → avoid double-counting or false savings | F03.20, F03.19, F11.10 | O |
+| **A17.03** | Want to honor ISP monthly cap | Set quota/rate policy → watch session usage → pause/adjust on threshold | F05.05, F11.11, F08.09 | O |
+| **A17.04** | Speed limit needed only during video call | Toggle alternate schedule → verify latency → restore normal rates | F05.02, F05.01, F05.09 | F |
+| **A17.05** | Some torrents must have separate budgets | Assign torrent/tag/group policy → verify overrides and global bounds | F05.03, F05.13, F07.01 | O |
+| **A17.06** | Queue too aggressive for device | Limit active/seeding slots → monitor disk and peer load | F05.04, F02.06, F04.21 | O |
+| **A17.07** | Battery should be conserved | Restrict cellular/battery schedule → background wait → resume on preferred power/network | F05.07, F15.09, F14.07 | O |
+| **A17.08** | Host traffic cap is near reset | Inspect provider graph and renewal date → defer retrieval or change data policy | F11.11, F08.10, F05.05 | O |
+| **A17.09** | Upload credit and retention conflict | Compare rare content, ratio targets and storage cap → select retention deliberately | F05.06, F11.11, F08.11 | O |
+| **A17.10** | Need bandwidth isolation by task | Choose separate network/session policy → verify intended limits on each | F05.10, F05.13, F10.04 | R |
+| **A17.11** | Want disk and network throughput balance | Review CPU/IO/network figures → tune cache/connection → test against baseline | F05.09, F04.21, F11.10 | R |
+| **A17.12** | Ready to increase hosted capacity | Review current usage and service entitlements → change plan/slot → verify resources | F11.17, F11.11, F11.01 | R |
+
+### A18 · Interaction surfaces, notifications and accessibility
+
+**Activity character:** observational, assistive, operational. **Typical actor/tools and evidence:** Android, desktop, browser, TV, CLI; S07 S08 S37 S43. **Temporal pattern:** frequent, preference setup.
+
+| ID | Situation / goal | Action sequence and desired exit | Feature-family cross-links | Cadence |
+|---|---|---|---|---|
+| **A18.01** | Phone screen is narrow | Switch between list and detail/compact layout → complete selected action without losing target | F14.01, F14.05, F14.09 | F |
+| **A18.02** | Need to act on many rows efficiently | Use selection range/keyboard commands → review set → bulk apply action | F14.02, F02.04 | O |
+| **A18.03** | Need clear overview of all jobs | Choose status widgets, rate graph and free-space tile → monitor from dashboard | F14.03, F14.04, F08.10 | F |
+| **A18.04** | Client is used on TV/tablet | Use responsive target/layout → navigate larger list with available input method | F14.05, F14.09, F10.18 | O |
+| **A18.05** | Notification announces completion | Open notification → jump to exact job → retrieve/use or continue seeding | F14.07, F12.06, F02.12 | F |
+| **A18.06** | Want high contrast or local language | Change theme, typography or language → inspect readability and status meaning | F14.08, F14.09 | O |
+| **A18.07** | Need screen-reader or keyboard access | Navigate focusable actions → read file/status → confirm intended operation | F14.09, F14.02 | F |
+| **A18.08** | Remote mobile polling consumes data | Adjust background refresh → distinguish freshness from cached states | F14.10, F10.09, F10.10 | O |
+| **A18.09** | Moving to a new laptop | Import preferences/presets → verify preferred views and connectivity | F14.11, F10.13 | R |
+| **A18.10** | Confused by changed interface after update | Read release notes/help → compare new setting → continue safely | F14.12, F10.06 | R |
+| **A18.11** | Provider has unusual RPC URL | Use profile quick setup hints → test path/credential combination → retain verified address | F14.13, F10.03, F10.16 | O |
+| **A18.12** | Need to distinguish local vs remote notifications | Inspect notification's job/server source → open correct session | F14.07, F10.08, F13.13 | O |
+
+### A19 · Unusual, historical and ecosystem-specific goals
+
+**Activity character:** technical, creative, experimental. **Typical actor/tools and evidence:** specialized engine, seedbox plugin, transport tools; S03 S04 S11 S34 S37 S45. **Temporal pattern:** occasional/rare.
+
+| ID | Situation / goal | Action sequence and desired exit | Feature-family cross-links | Cadence |
+|---|---|---|---|---|
+| **A19.01** | Want embedded tracker for friends | Enable appropriate local tracker → create descriptor → verify route and recipient download | F15.01, F01.16, F01.13 | R |
+| **A19.02** | Need very long-tail reseeding mechanism | Evaluate long-term/super-seeding approach → watch availability and uploads | F15.02, F04.16 | R |
+| **A19.03** | Have HTTP/FTP mirrors plus torrent | Provide or use compatible multi-protocol sources → compare integrity and transfer success | F15.03, F01.06, F04.17 | R |
+| **A19.04** | Want distributed recommendations | Explore decentralized chat/reviews/tags → evaluate content independently | F15.04, F06.12 | R |
+| **A19.05** | Participate in reward or token system | Inspect available system rules → seed according to chosen reputation objective | F15.05, F04.16 | R |
+| **A19.06** | Want syndication or continuous publish | Set RSS/channel broadcast → subscribers auto-discover → maintain data availability | F15.06, F06.04, F12.02 | R |
+| **A19.07** | Preparing torrent with file-aligned pieces | Choose metadata layout → generate pieces → test partial-file selection | F15.07, F03.14, F01.12 | R |
+| **A19.08** | Machine should shut down after queue ends | Set completion-triggered OS shutdown → verify files persisted → resume next time | F15.08, F02.12 | O |
+| **A19.09** | Remote seedbox offers media processing plugin | Request screenshots/spectrogram → inspect artifact → optionally download file | F15.11, F09.08, F09.06 | O |
+| **A19.10** | Need archive creation remotely | Open seedbox file manager → compress or checksum chosen folder → download/share result | F15.12, F03.11, F03.13 | O |
+| **A19.11** | Want one-click server stack | Choose provisioning dashboard package → install service → validate permission/port | F15.13, F11.16, F11.13 | R |
+| **A19.12** | Need resumable server-to-server migration | Plan copy with checksums → resume interrupted transfer → confirm integrity | F15.14, F11.14, F03.21 | R |
+
+### A20 · Ending, suspending, retiring and resuming later
+
+**Activity character:** administrative, custodial, operational. **Typical actor/tools and evidence:** client, storage, host dashboard, backup; S05 S09 S17 S35 S36. **Temporal pattern:** per-item, periodic, exceptional.
+
+| ID | Situation / goal | Action sequence and desired exit | Feature-family cross-links | Cadence |
+|---|---|---|---|---|
+| **A20.01** | Done with interface but not job | Close window/remote UI → daemon remains active → reenter for check later | F10.01, F02.10, F14.07 | F |
+| **A20.02** | Need temporary pause of all activity | Stop selected/all jobs → leave bytes on disk → restart when condition changes | F02.02, F02.04, F02.18 | O |
+| **A20.03** | Torrent reached share obligation | Verify ratio/time and tracker state → stop job while keeping payload | F05.06, F02.14, F13.05 | O |
+| **A20.04** | Want to hide historical item | Choose filter/archive/remove registration → verify whether data still exists | F07.03, F02.03, F02.18 | O |
+| **A20.05** | Want to reclaim disk | Inspect dependence and backups → delete chosen actual files with explicit consent → check free space | F03.22, F13.11, F03.18 | O |
+| **A20.06** | Need to retire auto-downloading rule | Disable feed action → keep past jobs → confirm no new unintended submissions | F06.05, F12.02, F12.14 | O |
+| **A20.07** | Stop hosting a seedbox but keep collection | Back up config and transfer data → verify local copies → deprovision service | F11.12, F11.14, F11.01 | R |
+| **A20.08** | Replace old device with another | Export profile and session metadata → restore/test → revoke obsolete access | F10.13, F02.17, F13.07 | R |
+| **A20.09** | Need to delete only metadata | Remove job while preserving shared bytes → confirm remaining hardlinks/references | F02.03, F03.20, F02.18 | O |
+| **A20.10** | Delete original .torrent file after import | Check client saved job metadata → remove descriptor copy only if no needed provenance | F01.11, F02.17, F13.11 | O |
+| **A20.11** | Leave long-term seed unattended | Check disk and network sustainability → retain active daemon → set alerts for exceptions | F04.16, F12.06, F11.11 | C |
+| **A20.12** | A task is intentionally abandoned | Choose cancel versus pause or delete → verify intended final state and dependent automation | F02.18, F13.13, F12.13 | O |
+
+## 20. Relationship vocabulary for the eventual conceptual map
+
+The intent is a **typed, many-to-many activity graph**, not a tree of screens or a flat checklist of feature names. Useful node kinds include:
+
+| Node kind | What it represents | Example |
+|---|---|---|
+| G: human goal | A desired outcome independent of UI | Play a chosen video without sacrificing a seed |
+| T: trigger | What causes a session or intervention | Friend sends a magnet; quota warning appears |
+| J: macro journey | A composition of several activities | Seedbox-to-local media retrieval (J16) |
+| A: micro-workflow | Reusable action with a meaningful exit state | Retrieve one remote file (A10.08) |
+| P: actor/persona-context | Who or what initiates the action | Casual phone user, publisher, scheduled rule |
+| E: execution environment | Where an operation *runs* | Phone engine, hosted rTorrent, NAS, remote file daemon |
+| O: object/artifact | What changes or remains | Metainfo, job registration, content bytes, hardlink, credential |
+| S: observed state | What can actually be established | Job queued, file hash checked, library playback succeeded |
+| C: constraint | Conditions and boundaries | Disk quota, private tracker rule, Android SAF, filesystem mount |
+| X: failure or uncertainty | Why the desired transition may not occur | RPC timeout, missing path, no peers, import failed |
+| F: feature/capability | Product affordance in the independent 240-feature catalogue | File-priority editing (F03.03) |
+| V: verification/evidence | How an outcome is checked | Readback RPC, on-disk checksum, remote SFTP listing |
+| R: resource | What is budgeted or preserved | Network data, storage blocks, money, attention, seeding time |
+| L: lifecycle phase | Before/during/after with looping and overlap | Discovery, acquisition, delivery, long-term stewardship |
+
+**Core edge labels and example semantics:**
+
+- `goal →motivates→ journey/activity`; `trigger →initiates→ activity`.
+- `journey →contains→ activity`; `activity →decomposes_into→ smaller actions`; `activity →precedes→ activity` (**only if ordering is necessary**).
+- `activity →requires→ state/permission/resource`; `activity →optional_after→ activity`; `activity →alternates_with→ activity`.
+- `activity →uses_capability→ F`; `F →exposes_state_of→ O`; `activity →operates_on→ O`.
+- `actor →delegates_to→ daemon/remote/automation`; `activity →executes_at→ E`; `activity →observed_from→ E`.
+- `activity →produces→ O/S`; `activity →verified_by→ V`; `activity →may_fail_as→ X`; `X →recovered_by→ A`.
+- `activity →recurs_after→ time/event`; `activity →continues_while→ background state`; `activity →interrupts→ activity`.
+- `job →references→ payload`; `file path →resolves_to→ stored bytes`; `library item →uses→ same bytes through a link/copy`. **Reference, copy and shared bytes are different edge types.**
+- `setting →scoped_to→ engine/session/profile/job/file`; `command →acknowledged_by→ daemon`; `requested state →not_yet_verified_as→ observed state` when appropriate.
+
+**One example with typed relationships:** `G: watch a movie at home` → motivates → `J16 remote-to-local retrieval` → contains → `A08.04 submit remote` → executes at → `seedbox` → produces → `remote torrent job` → references → `remote payload`; `A10.08 retrieve file` → executes via → `SFTP` → produces → `local copy` → verified by → `file read/playback`; `A05.01 keep sharing` → continues while → `local copy is consumed`. This graph avoids the common error of attaching a remote torrent action directly to phone-local file storage.
+
+**Causality and evidence:** A documented API capability supports an `A →uses_capability→ F` hypothesis. It does not establish that users commonly take that path, that every frontend exposes the operation, or that any specific product is safe to perform it in all circumstances.
+
+## 21. Composition examples and crosswalk from the 36 original journeys
+
+The original 36 macro journeys are retained intact in Section 6 because they show credible narratives. Here are **example memberships**, not exhaustive or mandatory action sequences. Within each list, order is approximate: many tasks may occur concurrently, be omitted or repeat. The main point is that the same A-series unit is reused across many J-series purposes.
+
+| Macro journey | Reusable activity units |
+|---|---|
+| **J01** | A01.01, A02.02, A02.07, A04.01, A20.01 |
+| **J02** | A01.04, A03.01, A03.02, A03.06, A20.04 |
+| **J03** | A01.05, A03.03, A03.04, A12.01, A04.09 |
+| **J04** | A08.04, A02.01, A08.06, A04.01, A20.01 |
+| **J05** | A08.04, A08.01, A02.07, A10.01, A20.01 |
+| **J06** | A04.01, A04.02, A18.03, A20.01 |
+| **J07** | A04.12, A20.01, A05.01 |
+| **J08** | A17.04, A04.04, A17.03 |
+| **J09** | A04.07, A15.02, A06.01, A15.07, A04.03 |
+| **J10** | A05.01, A05.03, A05.12, A20.03 |
+| **J11** | A05.04, A05.09, A16.09, A20.11 |
+| **J12** | A05.02, A14.05, A17.09, A05.03 |
+| **J13** | A05.10, A16.07, A03.12, A05.07 |
+| **J14** | A01.02, A02.02, A10.03, A12.02, A12.06 |
+| **J15** | A11.04, A11.02, A11.07, A12.02, A12.12 |
+| **J16** | A10.01, A10.08, A10.09, A20.11 |
+| **J17** | A10.09, A12.02, A11.07 |
+| **J18** | A12.12, A16.06, A17.02, A05.01 |
+| **J19** | A10.02, A10.03, A16.02, A15.07 |
+| **J20** | A16.01, A16.02, A16.11, A15.07 |
+| **J21** | A17.01, A17.02, A10.10, A20.05 |
+| **J22** | A09.11, A17.08, A17.12, A20.07 |
+| **J23** | A09.01, A08.01, A09.04, A02.02 |
+| **J24** | A15.01, A09.02, A09.03, A14.04 |
+| **J25** | A13.01, A13.02, A13.07, A13.10 |
+| **J26** | A13.02, A13.07, A19.10, A05.11 |
+| **J27** | A13.08, A13.06, A01.01, A05.11 |
+| **J28** | A01.01, A13.08, A16.09, A05.09 |
+| **J29** | A01.04, A03.02, A03.10, A12.05 |
+| **J30** | A11.01, A11.02, A11.03, A11.09 |
+| **J31** | A04.02, A04.08, A07.07, A18.02 |
+| **J32** | A16.04, A16.05, A16.09, A20.08 |
+| **J33** | A08.02, A08.03, A08.06, A17.10 |
+| **J34** | A16.10, A04.11, A15.12, A16.03 |
+| **J35** | A11.11, A11.09, A15.04, A09.10 |
+| **J36** | A20.03, A20.05, A20.07, A20.09 |
+
+### 21.1 Cross-cutting activity loops that a linear feature map would miss
+
+- **Observe → decide → change → observe again:** A04.01 → A04.05 → A04.01. Can run many times within one torrent, and no mutation may be needed.
+- **Find → choose → defer → later add:** A01.02 → A01.08 → A02.06 → A04.03. Discovery and acquisition are not obligatorily contiguous.
+- **Acquire → consume while seeding → maintain:** A02.01 → A03.04 → A12.01 while A05.01 runs concurrently → A20.11.
+- **Automated intake with exception recovery:** A11.01 → A11.02 → A02.05 → A11.07; error branches to A11.09 or A15.12.
+- **Move files without removing job:** A10.02 → A16.02 → A15.07. A backing path change affects session integrity.
+- **Remove job but retain payload:** A20.09 → A17.02. Separate from A20.05, which intends to reclaim disk.
+- **Migrate a service while preserving data:** A16.09 → A16.05 → A09.01 → A08.01 → A20.07.
+- **Publish and remain available:** A13.02 → A13.07 → A13.10 ↔ A05.09; distribution outlives metadata creation.
+- **Change which machine is in control:** A08.06 → A08.02 → A04.01; switching view is not equivalent to moving a job.
+- **Resource alarm interrupts other goals:** A17.01 interrupts A05.04 and A11.01; decision may lead to A20.05, A17.12 or deferral.
+- **Cross-seed without downloading duplicate content:** A16.07 → A05.10 → A05.07 while A17.02 observes storage references.
+- **Stop now, resume someday:** A20.02 → unattended interval → A04.03. “Leave app” is distinct from stop/pause.
+
+## 22. Connecting the activity atlas back to the 240 external features
+
+The feature reference contains 15 families and 240 numbered entries. Activity families deliberately **cross** feature families; the following is a navigation index, not a one-to-one allocation or a claim of exhaustive pairwise edges.
+
+| Feature family in inventory | Primary activity clusters | Important cross-cutting associations |
+|---|---|---|
+| F01 Acquisition/intake/publication | A01 A02 A13 | A08 remote add; A16 imported existing data |
+| F02 Lifecycle/queue | A02 A04 A05 A20 | A11 automation; A16 migration |
+| F03 File and storage | A03 A10 A16 A17 | A12 media; A20 retirement |
+| F04 Swarm/protocol | A05 A06 A13 A15 | A14 privacy; A19 experimental modes |
+| F05 Bandwidth/policies | A04 A05 A17 | A06 peer settings; A20 seeding end |
+| F06 Search/discovery/RSS | A01 A11 A13 | A05 cross-seeding; A12 library |
+| F07 Organization/metadata | A07 A04 | A10 file naming; A02 initial classification |
+| F08 Diagnostics | A04 A05 A15 | A06 swarm details; A16 recovery |
+| F09 Media/intelligence | A03 A12 | A19 media plugins; A10 extraction |
+| F10 Remote/multi-instance | A08 A09 | A02 add; A18 UI; A14 trust |
+| F11 Seedbox admin | A09 A17 | A08 connectivity; A20 deprovision |
+| F12 Automation/event | A11 A04 | A12 library; A05 stewardship |
+| F13 Privacy/security | A14 A20 | A06 peer policy; A09 roles; A16 audit |
+| F14 UX/accessibility | A18 A04 | A08 mobile remotes; A07 displays |
+| F15 Specialized | A19 A13 A05 | A10 archives; A16 cross-server migration |
+
+### 22.1 A map compiler must distinguish these layers
+
+**User action ≠ product feature:** “Make episode 1 watchable sooner” (A03.04) may be enabled by file priority, sequential pieces and a player; none of those features alone is the user's goal.
+
+**Generic feature ≠ exact capability in every environment:** F03.06 (rename backing file) can be native on one engine, provided by a plugin on a seedbox, or absent from a particular remote. An activity node can be relevant even when its implementation differs.
+
+**Visible confirmation ≠ completed effect:** A08.04 might only establish that the daemon accepted an Add command; A10.08 requires independently observing local bytes. Keeping those as different states prevents incorrect edges.
+
+**Jobs ≠ bytes ≠ references:** A16.04 intentionally moves registrations without moving payloads, while A16.05 moves both. A12.12 and A16.07 can increase visible entries without proportionally increasing storage blocks.
+
+**Frequency ≠ importance:** A04.01 (glance) can happen constantly with almost zero harm; A20.05 (delete payload) may happen rarely with high consequences.
+
+**Architecture ≠ user task:** TCP, DHT, RPC method version and piece allocation are often enabling mechanisms or diagnostic knobs, not consciously named objectives. Their feature nodes attach to human outcomes and to technical constraints, rather than being treated as independent goals.
+
+### 22.2 Mapping checklist (for later conceptual-map authoring, not a product plan)
+
+To translate the current two research references into a credible conceptual graph, each activity should retain: a **stable A ID**, a **goal and trigger**, one or more **actor/tool roles**, the **object being acted upon**, a **causal sequence** only where meaningful, **start and verified exit states**, **failure paths**, **work character**, **relative cadence**, relevant **F references**, and available **S evidence**. Additionally, every feature should either link to an explicit A activity, to a low-level enabling mechanism, or be marked *not yet explained by the observed activities*. Do not invent user behavior merely to make every feature have an incoming edge.
+
+The A-series entries intentionally function as **candidate graph nodes** rather than hidden requirements, screen wireframes, UX recommendations, or implementation tickets.
+
+## 23. Research limitations and next possible evidence
+
+- The original 36 J-series journeys and 240 A-series micro-workflows are **constructed scenarios**, synthesized from sources; no claim is made that each exact ordered sequence was witnessed end-to-end.
 - No user interviews, in-product analytics, diary studies or controlled task observation were conducted. Frequency terms must remain qualitative.
 - Manuals show supported operations, not user intent or relative popularity. Forum discussions overrepresent troubleshooting and advanced hobbyists.
 - A source can be dated or specific to a provider, plugin, client version, tracker policy or integration configuration; do not universalize it.
@@ -790,9 +1319,9 @@ A compact map can locate almost any user action in this ecosystem:
 - No behavioral analysis establishes legal permission to access or republish particular material. The protocol is neutral; content provenance and rules remain context-dependent.
 - The document intentionally makes no current UI implementation, requirements, priority, or competitive-parity assertions about any application in this repository.
 
-## 20. Source register
+## 24. Source register
 
-Sources are grouped by evidence type via the label in each entry. URL links point to underlying product documentation or individual discussion threads; they are not a substitute for direct field observation. Synthesis entries above reference codes.
+Sources are grouped by evidence type via the label in each entry. S37–S45 were added to ground the deeper activity atlas. URL links point to underlying product documentation or individual discussion threads; they are not a substitute for direct field observation. Synthesis entries above reference codes.
 
 - **S01 · BitTorrent support: importing torrents and magnet links** — [Source](https://help.bittorrent.com/en/support/solutions/articles/29000022483-how-do-i-add-a-torrent-) · *Vendor help*. Evidence: Entry methods, metadata retrieval, destination and starting a job.
 - **S02 · Ubuntu: BitTorrent alternative downloads** — [Source](https://ubuntu.com/download/alternative-downloads) · *Publisher workflow*. Evidence: Legitimate large-file distribution, end-user download motivation.
@@ -832,5 +1361,15 @@ Sources are grouped by evidence type via the label in each entry. URL links poin
 - **S36 · Community: hardlink-aware migration between clients** — [Source](https://www.reddit.com/r/trackers/comments/1sp7qr2/migrating_bt_clients_best_practices/) · *Qualitative migration discussion*. Evidence: Large-session moves and tracker identity/overlap concerns.
 
 ---
+
+- **S37 · Transmission remote operations/RPC state** — [Source](https://github.com/transmission/transmission/blob/main/docs/rpc-spec.md) · *Corroborating technical, operational or user-account reference*. Evidence: Primary RPC reference; torrent actions, file selection, queues, bandwidth and diagnostics.
+- **S38 · TRaSH Guides: hardlinks and instant moves** — [Source](https://trash-guides.info/File-and-Folder-Structure/Hardlinks-and-Instant-Moves/) · *Corroborating technical, operational or user-account reference*. Evidence: Operational guide; storage ownership, same-volume linking, media import and cleanup semantics.
+- **S39 · cross-seed: linking tutorial** — [Source](https://www.cross-seed.org/docs/tutorials/linking) · *Corroborating technical, operational or user-account reference*. Evidence: Maintainer guide; hardlink/symlink/reflink differences and path requirements.
+- **S40 · cross-seed: data-based matching tutorial** — [Source](https://www.cross-seed.org/docs/tutorials/data-based-matching) · *Corroborating technical, operational or user-account reference*. Evidence: Maintainer guide; renamed data, partial matching and indexing existing files.
+- **S41 · Community: sharing large original video with friend** — [Source](https://www.reddit.com/r/torrents/comments/1i69v08) · *Corroborating technical, operational or user-account reference*. Evidence: User-described motivation; public/private sharing, embedded tracker and alternative transport decisions.
+- **S42 · Ultra.cc User Control Panel** — [Source](https://docs.ultra.cc/control-panel/user-control-panel-tour) · *Corroborating technical, operational or user-account reference*. Evidence: Provider manual; service install, control, recovery, ports, credentials and monitoring.
+- **S43 · qBittorrent 5 WebUI API** — [Source](https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-%28qBittorrent-5.0%29) · *Corroborating technical, operational or user-account reference*. Evidence: Primary API reference; torrent management, tags, rename, RSS, search, remote state.
+- **S44 · qbit_manage configuration and housekeeping rules** — [Source](https://github.com/StuffAnThings/qbit_manage/wiki/Config-Setup) · *Corroborating technical, operational or user-account reference*. Evidence: Maintainer guide; orphan-file investigation, automation and cleanup guardrails.
+- **S45 · LibreTorrent Android README** — [Source](https://github.com/proninyaroslav/libretorrent) · *Corroborating technical, operational or user-account reference*. Evidence: Primary project reference; phone-specific power, storage, RSS and scheduling.
 
 **Document boundary:** Standalone external ecosystem/user-activity reference only. It neither amends nor ranks product requirements, compares an application to competitors, creates tasks/issues, nor claims a software capability has been implemented.
