@@ -4,6 +4,11 @@
 
 [Agent instructions](../AGENTS.md) · [Documentation index](INDEX.md) · [Product contract](PRODUCT.md) · [Coverage gaps](SPEC-COVERAGE.md) · [Evidence](QUALITY-LEDGER.md) · [Documentation authoring standard](DOCUMENTATION-STANDARD.md)
 
+## Planned recovery slice: relocated or renamed transfer backing files
+
+Develop [TRANSFER-FILE-RECOVERY](TRANSFER-FILE-RECOVERY.md) behind verified local/remote filesystem and engine capabilities: read-only diagnostics → bounded candidate discovery → content verification and unambiguous mapping → preview and user-approved non-destructive rebind/linking → hash recheck and confirmed resumption. Keep ahead of cosmetic organization work when independently executable; do not claim feature support or use unsafe rTorrent RPC shortcuts without actual capability tests.
+
+
 ## How agents select and complete work
 
 1. Inspect current main, open PRs, claimed lanes, relevant issues and exact-head CI. Resolve obvious red integration issues before starting another overlapping change.
