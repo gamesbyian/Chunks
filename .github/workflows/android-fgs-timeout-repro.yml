@@ -14,6 +14,8 @@ on:
       - "tools/fgs_timeout_repro.sh"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalEngineProcessDeathInstrumentedTest.kt"
       - "tools/process_death_repro.sh"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalEngineRebootInstrumentedTest.kt"
+      - "tools/reboot_repro.sh"
       - ".github/workflows/android-fgs-timeout-repro.yml"
   workflow_dispatch:
 
@@ -59,4 +61,4 @@ jobs:
           emulator-boot-timeout: 600
           disable-animations: true
           # Timeout first (installs APKs), then the two-process sudden-death repro.
-          script: bash tools/fgs_timeout_repro.sh && bash tools/process_death_repro.sh
+          script: bash tools/fgs_timeout_repro.sh && bash tools/process_death_repro.sh && bash tools/reboot_repro.sh

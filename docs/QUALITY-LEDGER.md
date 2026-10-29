@@ -1,5 +1,13 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-29 opt-in device reboot repro (#569)
+
+- **Source slice:** `LocalEngineRebootInstrumentedTest` + `tools/reboot_repro.sh` are added to the path-scoped opt-in lifecycle job.
+  - **Phase A** seeds under the foreground service.
+  - **`adb reboot`**, then the script waits for boot to complete. It then requires that no Chunks process is running by itself; Chunks has no boot receiver, and Android forbids starting `dataSync` from boot.
+  - **Phase B** requires no engine and no ongoing notification, then a **stopped** restore with unchanged SHA-256.
+- **Evidence:** this PR's `api35-fgs-timeout` job. Emulator only.
+
 ## 2026-10-29 opt-in network loss and return with real peers (#569)
 
 - **Source slice:** `netflap=true` on the manual `android-public-swarm.yml` runs `tools/android_public_swarm_netflap.sh` (`AndroidPublicSwarmNetworkFlapInstrumentedTest`).
