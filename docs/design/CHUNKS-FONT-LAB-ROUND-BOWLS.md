@@ -1,3 +1,5 @@
+> **Historical contour design checkpoint.** The original source counts, binary-refresh warnings and pending stages below describe this earlier batch. For the current 248-master build, canonical receipts and remaining approval gates, see [font-lab status](CHUNKS-FONT-LAB-STATUS.md). These are nonshipping editable proposals, not owner-approved final type design.
+
 # Nonshipping lab: O/o/zero and C/c independent bowl-master designs
 
 **2026-10-28. Source-only preflight, NOT integrated CFF, NOT editorial approval.**

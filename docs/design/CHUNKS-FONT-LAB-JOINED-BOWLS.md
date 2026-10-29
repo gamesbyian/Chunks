@@ -1,3 +1,5 @@
+> **Historical contour design checkpoint.** The original source counts, binary-refresh warnings and pending stages below describe this earlier batch. For the current 248-master build, canonical receipts and remaining approval gates, see [font-lab status](CHUNKS-FONT-LAB-STATUS.md). These are nonshipping editable proposals, not owner-approved final type design.
+
 # Nonshipping native joined-stem and counter masters: D/P/b/d/p/q
 
 **Design status: SOURCE CANDIDATES ONLY.** Six individually authored, connected outer silhouettes at four actual weights (24 standalone native quadratic/cubic SVG masters); each encloses one optically specified counter. Unlike polygon-thinning derived weight studies, this introduces true vertical stem, bowl join, ascender or descender geometry with independent counter growth and visibly different curved terminals across categories.
