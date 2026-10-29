@@ -1,8 +1,8 @@
 package io.github.gamesbyian.chunks
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,97 +15,74 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 
-private val ChunksDisplayTypeface = FontFamily(Font(R.font.chunks_extrabold, weight = FontWeight.ExtraBold))
-
 /**
- * Native, scalable brand header inspired by the six owner-selected references.
- * No generated artwork is baked into the UI. Decorative blocks are silent to
- * TalkBack; the entire wordmark and tagline are one heading.
+ * Native, scalable brand header. The only artwork is the owner-approved
+ * launcher illustration (generated VectorDrawable of
+ * docs/design/approved/chunks-app-icon-master.svg). It is silent to TalkBack;
+ * the wordmark and tagline are one heading.
  */
 @Composable
 internal fun ChunksBrandHeader(modifier: Modifier = Modifier) {
-    val ink = Color(0xFF262442)
-    val paper = Color(0xFFFFF8EC)
-    val lilac = Color(0xFFE6DAFF)
-    val lime = Color(0xFFDDF1A7)
-    val coral = Color(0xFFFFB69D)
-    val blue = Color(0xFF90A7FF)
-    // At 200% text scaling the headline owns the width; ornamental blocks
-    // yield space rather than clipping the actual navigational identity.
+    // At 200% text scaling the headline owns the width; the illustration
+    // yields space rather than clipping the actual navigational identity.
     val showArtwork = LocalDensity.current.fontScale < 1.5f
     Row(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(bottomStart = 28.dp, bottomEnd = 28.dp))
-            .background(ink)
+            .background(ChunksColors.Surface)
             .semantics(mergeDescendants = true) {
                 contentDescription = "chunks. Your downloads have places to be."
                 heading()
             }
-            .padding(horizontal = 20.dp, vertical = 16.dp),
+            .padding(start = 20.dp, end = 12.dp, top = 12.dp, bottom = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(
                     "Chunks",
-                    fontFamily = ChunksDisplayTypeface,
+                    fontFamily = ChunksDisplayFamily,
                     fontWeight = FontWeight.ExtraBold,
-                    fontSize = 35.sp,
+                    fontSize = 38.sp,
                     // Measured optical preset in chunks-font-metrics.json (800/display).
                     letterSpacing = (-0.0067).em,
-                    lineHeight = 40.sp,
-                    color = paper
+                    lineHeight = 44.sp,
+                    color = ChunksColors.Text
                 )
                 Text(
                     ".",
-                    fontFamily = ChunksDisplayTypeface,
+                    fontFamily = ChunksDisplayFamily,
                     fontWeight = FontWeight.ExtraBold,
-                    fontSize = 35.sp,
-                    lineHeight = 40.sp,
-                    color = coral
+                    fontSize = 38.sp,
+                    lineHeight = 44.sp,
+                    color = ChunksColors.Pink
                 )
             }
             Text(
                 "Your downloads have places to be.",
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.Medium,
-                color = lilac
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = ChunksColors.PurpleLight
             )
         }
         if (showArtwork) {
-            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                    BrandBlock(lime)
-                    BrandBlock(blue)
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                    BrandBlock(coral)
-                    BrandBlock(lilac)
-                }
-            }
+            Image(
+                painter = painterResource(R.drawable.chunks_launcher_artwork),
+                contentDescription = null,
+                modifier = Modifier.size(84.dp)
+            )
         }
     }
-}
-
-@Composable
-private fun BrandBlock(color: Color) {
-    Box(
-        Modifier
-            .size(18.dp)
-            .background(color, RoundedCornerShape(5.dp))
-    )
 }
