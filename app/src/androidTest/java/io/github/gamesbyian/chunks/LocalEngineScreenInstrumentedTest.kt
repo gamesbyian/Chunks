@@ -1,5 +1,8 @@
 package io.github.gamesbyian.chunks
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import android.content.ContentValues
 import android.os.Environment
 import android.provider.MediaStore
@@ -362,6 +365,31 @@ class LocalEngineScreenInstrumentedTest {
         assertEquals(io.github.gamesbyian.chunks.engine.FinishInOrderPlanner.Mode.FINISH_FIRST,
             confirmed?.first)
         assertEquals(listOf(20, 10, 30), confirmed?.second)
+    }
+
+    @Test fun sequentialPlaybackIsOfferedOnlyWhereSupportedAndExplainsItsCost() {
+        var confirmed: io.github.gamesbyian.chunks.engine.FinishInOrderPlanner.Mode? = null
+        var supported by mutableStateOf(false)
+        val season = listOf(
+            LocalTransferFile(10, "Season/Series S01E02.mkv", 8192, 0, true, 4),
+            LocalTransferFile(20, "Season/Series S01E01.mkv", 8192, 0, true, 4))
+        val suggestion = requireNotNull(
+            io.github.gamesbyian.chunks.engine.FinishInOrderPlanner.suggest(season))
+        rule.setContent {
+            MaterialTheme {
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
+                    FinishInOrderReview(season, suggestion.order, suggestion.source, busy = false,
+                        onConfirm = { mode, _ -> confirmed = mode }, onCancel = {},
+                        sequentialSupported = supported)
+                }
+            }
+        }
+        rule.onNodeWithText("Sequential Playback", substring = true).assertDoesNotExist()
+        supported = true
+        rule.waitForIdle()
+        rule.onNodeWithText("less helpful to other peers", substring = true).performScrollTo().performClick()
+        rule.onNodeWithText("Start Finish in Order").performScrollTo().performClick()
+        assertEquals(io.github.gamesbyian.chunks.engine.FinishInOrderPlanner.Mode.SEQUENTIAL_PLAYBACK, confirmed)
     }
 
     @Test fun selectionPagesReachEveryFileWithoutRenderingHugeLists() {

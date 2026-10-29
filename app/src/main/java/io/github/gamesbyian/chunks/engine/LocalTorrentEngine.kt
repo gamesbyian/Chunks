@@ -713,6 +713,37 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         }
     }
 
+    /** Fresh read of the transfer's in-order piece picking flag, or null. */
+    internal fun sequentialDownload(infoHash: String): Boolean? = try {
+        synchronized(this) {
+            handles[normal(infoHash)]?.takeIf { it.isValid }?.status()?.flags()
+                ?.and_(org.libtorrent4j.TorrentFlags.SEQUENTIAL_DOWNLOAD)?.non_zero()
+        }
+    } catch (_: Exception) { null }
+
+    /**
+     * Turn in-order piece picking on or off for one transfer (Finish in Order
+     * Sequential Playback). True only once a fresh status readback shows the
+     * requested state; touches no file priority, selection or payload.
+     */
+    internal fun setSequentialDownload(infoHash: String, on: Boolean, readbackTimeoutMs: Long = 5_000L): Boolean {
+        require(readbackTimeoutMs in 0L..60_000L)
+        val key = normal(infoHash)
+        try {
+            synchronized(this) {
+                val handle = handles[key]?.takeIf { it.isValid } ?: return false
+                if (on) handle.setFlags(org.libtorrent4j.TorrentFlags.SEQUENTIAL_DOWNLOAD)
+                else handle.unsetFlags(org.libtorrent4j.TorrentFlags.SEQUENTIAL_DOWNLOAD)
+            }
+        } catch (_: Exception) { return false }
+        val deadline = System.nanoTime() + readbackTimeoutMs * 1_000_000L
+        while (true) {
+            if (sequentialDownload(infoHash) == on) return true
+            if (System.nanoTime() >= deadline) return false
+            Thread.sleep(25)
+        }
+    }
+
     /**
      * Apply a single explicitly confirmed episode-first rolling-window plan.
      * Validate ALL original file identities and priorities before the first

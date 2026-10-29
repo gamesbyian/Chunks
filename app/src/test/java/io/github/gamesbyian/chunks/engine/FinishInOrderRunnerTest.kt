@@ -112,6 +112,71 @@ class FinishInOrderRunnerTest {
         assertEquals(7, port.files.single { it.index == 9 }.priority)
     }
 
+    /** Fake engine whose sequential flag is observable and optionally unconfirmable. */
+    private class SequentialPort(files: MutableList<LocalTransferFile>) : FinishInOrderRunner.Port {
+        val inner = FakePort(files)
+        var flag = false
+        var confirms = true
+        val flagWrites = ArrayList<Boolean>()
+        override val supportsSequential get() = true
+        override suspend fun observe(infoHash: String) = inner.observe(infoHash)
+        override suspend fun apply(infoHash: String, record: FinishInOrderRecord, changes: List<Change>) =
+            inner.apply(infoHash, record, changes)
+        override fun save(infoHash: String, record: FinishInOrderRecord) = inner.save(infoHash, record)
+        override suspend fun sequential(infoHash: String) = flag
+        override suspend fun setSequential(infoHash: String, on: Boolean): Boolean {
+            flagWrites += on
+            if (confirms) flag = on
+            return confirms
+        }
+    }
+
+    @Test fun sequentialPlaybackTurnsTheFlagOnWithFinishFirstPrioritiesAndOffWhenDone() = kotlinx.coroutines.runBlocking {
+        val port = SequentialPort(episodes(3))
+        val record = FinishInOrderRecord(FinishInOrderPlanner.policyFor(
+            Mode.SEQUENTIAL_PLAYBACK, port.inner.files, port.inner.files.map { it.index }))
+        val first = FinishInOrderRunner(port).step(hash, record) as Step.Applied
+        // Finish first bands: active High, every later file Low (no lookahead).
+        assertEquals(mapOf(3 to 7, 6 to 1, 9 to 1), first.record.lastApplied)
+        assertTrue(port.flag)
+        assertEquals(listOf(true), port.flagWrites)
+        // Already on: no further flag write.
+        assertTrue(FinishInOrderRunner(port).step(hash, first.record) is Step.Idle)
+        assertEquals(listOf(true), port.flagWrites)
+        port.inner.verified.putAll(mapOf(3 to 100L, 6 to 100L, 9 to 100L))
+        val done = FinishInOrderRunner(port).step(hash, first.record) as Step.Idle
+        assertTrue(done.record.finished)
+        assertFalse(port.flag)
+        assertEquals(listOf(true, false), port.flagWrites)
+    }
+
+    @Test fun otherModesClearAStaleFlagAndUnconfirmedFlagSuspendsWithoutRetry() = kotlinx.coroutines.runBlocking {
+        val balanced = SequentialPort(episodes(3)).apply { flag = true }
+        FinishInOrderRunner(balanced).step(hash, FinishInOrderRecord(FinishInOrderPlanner.policyFor(
+            Mode.BALANCED, balanced.inner.files, balanced.inner.files.map { it.index }))) as Step.Applied
+        assertFalse(balanced.flag)
+
+        val stuck = SequentialPort(episodes(3)).apply { confirms = false }
+        val record = FinishInOrderRecord(FinishInOrderPlanner.policyFor(
+            Mode.SEQUENTIAL_PLAYBACK, stuck.inner.files, stuck.inner.files.map { it.index }))
+        val suspended = FinishInOrderRunner(stuck).step(hash, record) as Step.Suspended
+        assertTrue(suspended.record.suspendedReason!!.contains("Sequential Playback"))
+        assertEquals(suspended.record, stuck.inner.stored)
+        // The priority batch itself landed and is recorded, not journaled.
+        assertTrue(suspended.record.pending.isEmpty())
+        assertEquals(listOf(true), stuck.flagWrites)
+        assertTrue(FinishInOrderRunner(stuck).step(hash, suspended.record) is Step.Suspended)
+        assertEquals(listOf(true), stuck.flagWrites)
+    }
+
+    @Test fun portsWithoutSequentialSupportTreatItAsFinishFirst() = kotlinx.coroutines.runBlocking {
+        val port = FakePort(episodes(3))
+        val step = FinishInOrderRunner(port).step(hash, record(port, Mode.SEQUENTIAL_PLAYBACK)) as Step.Applied
+        assertEquals(mapOf(3 to 7, 6 to 1, 9 to 1), step.record.lastApplied)
+        assertEquals(Mode.SEQUENTIAL_PLAYBACK,
+            FinishInOrderRecord.decode(step.record.encode())!!.policy.mode)
+    }
+
     @get:Rule val temp = TemporaryFolder()
     private val engines = mutableListOf<LocalTorrentEngine>()
     @Before fun native() = DesktopLibtorrent.ensureLoaded()
@@ -168,5 +233,40 @@ class FinishInOrderRunnerTest {
         // A replay of the same batch no longer matches the expected priorities.
         assertEquals(LocalFileBatchOutcome.STALE_REVIEW,
             engine.applyFinishInOrder(infoHash, step.record, step.plan.changes))
+    }
+
+    @Test fun realNativeEngineSetsAndClearsSequentialDownloadWithReadback() = kotlinx.coroutines.runBlocking {
+        val source = File(temp.newFolder("seq-source"), "Season 1").apply { mkdirs() }
+        for (episode in 1..3) File(source, "Public S01E0$episode.mkv")
+            .writeBytes(ByteArray(32 * 1024) { (episode * 7 + it).toByte() })
+        val bytes = TorrentBuilder().path(source).pieceSize(16 * 1024)
+            .flags(TorrentBuilder.V1_ONLY).generate().entry().bencode()
+        val engine = LocalTorrentEngine(LocalEngineConfig(listenInterfaces = "127.0.0.1:0"))
+            .also { it.start(); engines += it }
+        val infoHash = (engine.addStopped(bytes, temp.newFolder("seq-target")) as LocalAddResult.AddedStopped)
+            .status.infoHash
+        assertEquals(false, engine.sequentialDownload(infoHash))
+        val files = requireNotNull(engine.files(infoHash))
+        var stored = FinishInOrderRecord(FinishInOrderPlanner.policyFor(Mode.SEQUENTIAL_PLAYBACK,
+            files, requireNotNull(FinishInOrderPlanner.suggest(files)).order))
+        val runner = FinishInOrderRunner(object : FinishInOrderRunner.Port {
+            override suspend fun observe(infoHash: String) = engine.observeFinishInOrder(infoHash)
+            override suspend fun apply(infoHash: String, record: FinishInOrderRecord, changes: List<Change>) =
+                engine.applyFinishInOrder(infoHash, record, changes)
+            override fun save(infoHash: String, record: FinishInOrderRecord): Boolean { stored = record; return true }
+            override val supportsSequential get() = true
+            override suspend fun sequential(infoHash: String) = engine.sequentialDownload(infoHash)
+            override suspend fun setSequential(infoHash: String, on: Boolean) = engine.setSequentialDownload(infoHash, on)
+        })
+        assertTrue(runner.step(infoHash, stored) is Step.Applied)
+        assertEquals(true, engine.sequentialDownload(infoHash))
+        val priorities = requireNotNull(engine.files(infoHash)).map { it.priority }
+        val byIndex = requireNotNull(engine.files(infoHash)).associateBy { it.index }
+        assertEquals(listOf(7, 1, 1), stored.policy.order.map { byIndex.getValue(it.index).priority })
+        assertTrue(engine.setSequentialDownload(infoHash, false))
+        assertEquals(false, engine.sequentialDownload(infoHash))
+        // Clearing the flag leaves file priorities and selection untouched.
+        assertEquals(priorities, requireNotNull(engine.files(infoHash)).map { it.priority })
+        assertFalse(engine.setSequentialDownload("b".repeat(40), true))
     }
 }

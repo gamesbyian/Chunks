@@ -18,7 +18,17 @@ import java.util.Locale
  * on disk. Nothing is unskipped, deleted, renamed or moved.
  */
 internal object FinishInOrderPlanner {
-    enum class Mode { BALANCED, FINISH_FIRST }
+    enum class Mode {
+        BALANCED,
+        FINISH_FIRST,
+        /**
+         * Finish first priorities plus the engine's per-transfer in-order
+         * piece picking (phone engine only). Requests the active file's
+         * pieces front to back so playback can start sooner; it lowers swarm
+         * efficiency and still cannot make unseeded pieces exist.
+         */
+        SEQUENTIAL_PLAYBACK
+    }
 
     /** How the suggested order was derived; shown so the user can check it. */
     enum class OrderSource { EPISODES, FILENAMES }

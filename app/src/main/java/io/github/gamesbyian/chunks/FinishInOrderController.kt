@@ -75,7 +75,30 @@ internal object FinishInOrderController {
                 engine.applyFinishInOrder(infoHash, record, changes)
             override fun save(infoHash: String, record: FinishInOrderRecord) = store.update(infoHash, record)
             override suspend fun persistNativeState() { try { engine.saveResumeData(2_000L) } catch (_: Exception) {} }
+            override val supportsSequential get() = true
+            override suspend fun sequential(infoHash: String) = engine.sequentialDownload(infoHash)
+            override suspend fun setSequential(infoHash: String, on: Boolean) =
+                engine.setSequentialDownload(infoHash, on)
         })
+
+    /**
+     * Turn a phone policy off. Priorities stay exactly as they are; only the
+     * Sequential Playback flag Chunks itself manages is cleared (with
+     * readback) before the policy is forgotten. Null means not removed.
+     */
+    suspend fun turnOff(context: Context, infoHash: String): String? = exclusive {
+        val store = FinishInOrderStore(context)
+        val record = store.get(infoHash)
+        val engine = LocalEngineHolder.current()
+        val flagOn = engine?.sequentialDownload(infoHash) == true
+        if (record?.policy?.mode == io.github.gamesbyian.chunks.engine.FinishInOrderPlanner.Mode.SEQUENTIAL_PLAYBACK &&
+            flagOn && engine?.setSequentialDownload(infoHash, false) != true)
+            return@exclusive null
+        if (!store.remove(infoHash)) null
+        else "Finish in Order is off. Current file priorities were left exactly as they are." +
+            if (flagOn && record?.policy?.mode == io.github.gamesbyian.chunks.engine.FinishInOrderPlanner.Mode.SEQUENTIAL_PLAYBACK)
+                " Sequential Playback is off." else ""
+    }
 
     /** Called off the main thread. Never starts an engine. */
     fun tick(context: Context, hashes: List<String>) {
