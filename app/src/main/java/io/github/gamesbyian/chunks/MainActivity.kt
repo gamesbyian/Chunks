@@ -1446,7 +1446,11 @@ private fun TransferCard(
             ChunkedProgressBar(
                 progress = transfer.fractionComplete,
                 modifier = Modifier.fillMaxWidth(),
-                activeColor = Blue, trackColor = ChunksColors.Muted
+                tone = when {
+                    transfer.fractionComplete >= 1f -> ChunksTone.COMPLETE
+                    !transfer.started -> ChunksTone.PAUSED
+                    else -> ChunksTone.ACTIVE
+                }
             )
             Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 Text((transfer.fractionComplete * 100).toInt().toString() + "% · " +

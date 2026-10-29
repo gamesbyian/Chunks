@@ -35,6 +35,8 @@ internal object ChunksColors {
     val Red = Color(0xFFFF4E5C)
 
     val Background = Color(0xFF0B0F17)
+    /** Recessed fill behind segmented progress. */
+    val Trough = Color(0xFF05070C)
     val Surface = Color(0xFF1A1F2B)
     val SurfaceRaised = Color(0xFF232A39)
     val Muted = Color(0xFF2E3647)
@@ -90,7 +92,8 @@ private val ChunksColorScheme = darkColorScheme(
     surfaceVariant = ChunksColors.Muted, onSurfaceVariant = ChunksColors.TextSecondary,
     surfaceContainerLowest = ChunksColors.Background, surfaceContainerLow = ChunksColors.Surface,
     surfaceContainer = ChunksColors.Surface, surfaceContainerHigh = ChunksColors.SurfaceRaised,
-    surfaceContainerHighest = ChunksColors.Muted,
+    // Material's filled Card uses this: keep cards at the reference card tone.
+    surfaceContainerHighest = ChunksColors.Surface,
     inverseSurface = ChunksColors.Text, inverseOnSurface = ChunksColors.OnAccent,
     outline = ChunksColors.Outline, outlineVariant = ChunksColors.Muted,
     error = ChunksColors.Red, onError = ChunksColors.OnAccent,

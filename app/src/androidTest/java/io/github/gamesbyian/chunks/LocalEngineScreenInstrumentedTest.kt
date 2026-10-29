@@ -119,7 +119,9 @@ class LocalEngineScreenInstrumentedTest {
                 }
             }
         }
-        rule.onNodeWithText("Downloading · 42% · 3 peers").assertExists()
+        // The state is a labelled pill, never colour alone; numbers sit beside it.
+        rule.onNodeWithText("Downloading").assertExists()
+        rule.onNodeWithText("42% · 3 peers").assertExists()
         rule.onNodeWithText("Verified on disk 420 B of 1000 B", substring = true).assertExists()
         // Chunk boundaries are decorative; TalkBack receives continuous 42% progress.
         rule.onNode(SemanticsMatcher.expectValue(
