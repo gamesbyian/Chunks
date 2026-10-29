@@ -70,8 +70,10 @@ data class EnvironmentTransferSnapshot(
         }
     }
 
+    /** A LIVE label alone is not a verified read: timestamp-less inventories remain unconfirmed. */
     val canClaimCompleteLiveInventory: Boolean
-        get() = inventoryComplete && availability == EnvironmentAvailability.LIVE
+        get() = inventoryComplete && observedAtEpochMillis != null &&
+            availability == EnvironmentAvailability.LIVE
 }
 
 sealed class EnvironmentViewScope {
