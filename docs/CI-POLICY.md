@@ -2,6 +2,10 @@
 
 Updated after Chunks critical review. Borrow Glimpse's native build proof, ROYGBIV's cheap focused gates and UR-Recomp's exact source/evidence accounting, without transplanting their expensive workflows.
 
+## Font-lab exception: one quiet branch (owner, 2026-10-28)
+
+Routine font development is isolated to [`font/lab`](https://github.com/gamesbyian/Chunks/tree/font/lab) with local builds, no open PR and no automatic font CI on its pushes. Freeze meaningful batches and promote a single PR only at integration gates. See [Font lab operations](design/CHUNKS-FONT-LAB-OPERATIONS.md).
+
 ## Automatic CI
 
 One PR Android build/test job when app/Gradle/toolchain sources change. Compile debug APK and run JVM tests on pinned, documented toolchain. Upload short-lived unsigned debug artifacts. Do not run both main-push and PR versions for identical source changes. Docs-only plans need editorial review, not a full Android runner.
