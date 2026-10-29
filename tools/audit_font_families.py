@@ -52,14 +52,14 @@ def audit(root: Path):
     android_license = root/'app/src/main/assets/licenses/Baloo2-OFL.txt'
     if not source_license.read_bytes() == android_license.read_bytes():
         raise AssertionError('Android OFL license differs from source')
-    if _sha(android_font) != _sha(base_path/'Chunks-ExtraBold.otf'):
-        raise AssertionError('Android installed font is no longer original Chunks ExtraBold')
+    if _sha(android_font) != _sha(experiments/'consolidated/ChunksReferencePanel-ExtraBold-Consolidated.otf'):
+        raise AssertionError('Android installed ExtraBold differs from the owner-approved reference-panel consolidated master')
 
     accent_metrics = json.loads((accent_path/'reference-accent-study-metrics.json').read_text())
     kerned_path = experiments/'accent-kerned'
     kerned_metrics = json.loads((kerned_path/'reference-accent-kerned-metrics.json').read_text())
     weight_metrics = json.loads((study_path/'reference-panel-weight-study-metrics.json').read_text())
-    summary = {'status':'experimental variants isolated; audit does not promote them',
+    summary = {'status':'approved reference-panel ExtraBold 800 packaged in Android; 400–700 studies isolated',
                'families':{},'audit_scope':'20 total CFF family/weight binaries; 5 accepted + 15 experiments', 'android':{'font_sha256':_sha(android_font),'license_sha256':_sha(source_license)}}
     original_cm = None
     originals = {}

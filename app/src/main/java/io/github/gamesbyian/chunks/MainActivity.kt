@@ -950,7 +950,15 @@ private fun ConnectionScreen(
                         pendingForget = null
                         onSelectProfile(profile)
                     }, enabled = !loading, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                        Text("Use " + profile.label)
+                        Column(Modifier.fillMaxWidth()) {
+                            Text("Use " + profile.label)
+                            // The exact address tells instances of one account apart.
+                            Text(profile.address, style = MaterialTheme.typography.bodySmall)
+                            Text(profile.lastVerifiedAt?.let {
+                                "Last connected " + android.text.format.DateUtils.getRelativeTimeSpanString(
+                                    it, System.currentTimeMillis(), android.text.format.DateUtils.MINUTE_IN_MILLIS)
+                            } ?: "Last connection time not recorded", style = MaterialTheme.typography.bodySmall)
+                        }
                     }
                     if (pendingForget == profile.id) {
                         Text("Forget saved credentials for this account? Torrents are unchanged.",
