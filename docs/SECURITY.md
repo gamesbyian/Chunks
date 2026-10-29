@@ -10,6 +10,10 @@
 
 **Cross-media/privacy expansion:** Category inference must not accidentally trigger remote queries; adult catalogs and explicit thumbnails require separate affirmative switches and safe default art. General image search may send only sanitized and consented inferred title/edition/platform/artist terms to a compliant image API; never expose raw filename, infohash, tracker, paths, server details, credentials, private content or user IDs. Treat search-engine results as untrusted candidates with independent license, host, pixel and safety validation, never blindly download arbitrary image URLs. See [TRANSFER-ARTWORK](TRANSFER-ARTWORK.md).
 
+## Discovery and reconnection of missing torrent data
+
+The [TRANSFER-FILE-RECOVERY](TRANSFER-FILE-RECOVERY.md) wizard searches only user-authorized local/remote roots, with bounded traversal and hashing, safe symlink/path handling, exact tenant scoping, no default overwrite/delete/move and explicit confirmation for filesystem or engine mapping changes. File-name/size matches are not proof of bytes; recheck actual content before claiming resumed seeding. Protect existing files and private paths against cross-profile leakage.
+
 ## External apps and remote file streaming
 
 Android Open with/Share grants one-file, short-lived read-only access, not remote filesystem credentials or a server-wide access token. Keep remote authentication inside Chunks and restrict temporary URIs/streaming bridges to the exact verified profile, file and recipient; enforce TLS/SSH validation, privacy lock, bounded cache and revocation. Never publish a remote link or automatically download an entire file as a handoff side effect. Follow [EXTERNAL-FILE-ACCESS](EXTERNAL-FILE-ACCESS.md) for the authoritative security and lifecycle matrix.
