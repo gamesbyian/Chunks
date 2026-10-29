@@ -387,6 +387,45 @@ class LocalTorrentEngineTest {
         assertEquals(destination.absolutePath, restored.savePath)
     }
 
+    @Test fun metadataReadyMagnetWithForeignFileRefusesPayloadUntilCollisionCleared() {
+        val fixture = fixture()
+        val seeder = engine()
+        val seed = added(seeder.addStopped(fixture.torrent, fixture.root.parentFile))
+        assertEquals(LocalCommandOutcome.VERIFIED, seeder.resume(seed.infoHash).outcome)
+        waitFor { seeder.status(seed.infoHash)?.state == LocalTransferState.SEEDING }
+
+        val destination = temp.newFolder("magnet-collision-destination")
+        val collision = File(destination, "Chunks public fixture/episode.bin")
+        assertTrue(collision.parentFile.mkdirs())
+        val unrelated = ByteArray(fixture.files.getValue("episode.bin").size)
+        java.util.Random(568L).nextBytes(unrelated)
+        collision.writeBytes(unrelated)
+        val magnet = "magnet:?xt=urn:btih:" + seed.infoHash
+
+        val leecher = engine()
+        assertTrue(leecher.addMagnet(magnet, destination,
+            listOf(InetSocketAddress("127.0.0.1", seeder.listenPort())),
+            autoStartAfterMetadata = true) is LocalAddResult.FetchingMetadata)
+        waitFor {
+            leecher.status(seed.infoHash)?.let { it.metadataKnown && it.stopped } == true
+        }
+        val blocked = requireNotNull(leecher.status(seed.infoHash))
+        assertTrue("Blocked magnet must remain upload-only", blocked.uploadOnly)
+        assertTrue("Collision must be visible", blocked.error.orEmpty().contains("Existing files"))
+        assertArrayEquals("Early Start consent cannot overwrite unrelated bytes",
+            unrelated, collision.readBytes())
+        assertEquals(LocalCommandOutcome.UNCERTAIN, leecher.resume(seed.infoHash).outcome)
+        assertArrayEquals(unrelated, collision.readBytes())
+
+        // Test-only recovery: remove our synthetic foreign fixture, then retry
+        // Start against an independently observed clean path.
+        assertTrue(collision.delete())
+        assertEquals(LocalCommandOutcome.VERIFIED, leecher.resume(seed.infoHash).outcome)
+        waitFor { leecher.status(seed.infoHash)?.progressPpm == 1_000_000 }
+        requireFlushed(leecher, seed.infoHash)
+        assertArrayEquals(fixture.files.getValue("episode.bin"), collision.readBytes())
+    }
+
     @Test fun manualStartBeforeMagnetMetadataPersistsThroughDiscoveryAndDownloadsBytes() {
         val fixture = fixture()
         val seeder = engine()
