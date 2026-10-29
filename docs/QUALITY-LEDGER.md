@@ -1,5 +1,14 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-29 per-environment capability snapshots (0A, #567)
+
+- **Source slice:** `EnvironmentCapabilitySnapshot` grades each environment separately.
+  - The phone engine's operations are `BUILT_IN`; "Copy files to this phone" is `NOT_APPLICABLE` there.
+  - Each signed-in server is graded from **its own** `system.listMethods` probe as `ADVERTISED`, `MISSING` or `UNKNOWN`. A server probe cannot describe the phone.
+  - `decide()` refuses when an environment is not LIVE or when an operation is MISSING or NOT_APPLICABLE. UNKNOWN is allowed, with a "not pre-checked" note, and the command's own readback decides.
+  - Combined Start/Stop now runs a fresh read-only probe before taking the server's mutation lease. A server that does not advertise the Start/Stop methods refuses without being leased or sent a command. A failed probe or one without a method list stays UNKNOWN.
+- **Evidence:** JVM `EnvironmentCapabilitiesTest` and `CombinedBatchLifecycleTest` (missing method refuses before lease; no method list and probe failure still run the guarded command). No real-server or device evidence yet. Advertised is not authorized.
+
 ## 2026-10-29 read-only phone file-on-disk check (TRANSFER-FILE-RECOVERY stage 1)
 
 - **Source slice:** `LocalFileDiskCheck` and its UI, "Check files on disk (read-only)", in a phone transfer's Files panel.

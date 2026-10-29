@@ -11,24 +11,24 @@ import io.github.gamesbyian.chunks.rpc.RemoteProbe
 internal object RemoteCapabilities {
     enum class Status { ADVERTISED, MISSING, UNKNOWN }
 
-    data class Feature(val label: String, val methods: List<String>)
+    data class Feature(val label: String, val methods: List<String>, val operation: EnvironmentOperation? = null)
     data class Graded(val feature: Feature, val status: Status, val missing: List<String>)
 
     val features = listOf(
-        Feature("Transfer list", listOf("d.multicall2", "d.hash", "d.name")),
+        Feature("Transfer list", listOf("d.multicall2", "d.hash", "d.name"), EnvironmentOperation.LIST),
         // These are separate protocol routes, not an all-or-nothing Add bundle.
         // The ruTorrent HTTP upload form cannot be inferred from XML-RPC introspection.
-        Feature("Add magnet via XML-RPC", listOf("d.multicall2", "d.name", "load.verbose")),
-        Feature("Add .torrent via XML-RPC", listOf("d.multicall2", "d.name", "load.raw_verbose")),
-        Feature("Use server default Add folder", listOf("directory.default")),
-        Feature("Start and stop", listOf("d.open", "d.start", "d.resume", "d.stop", "d.close", "d.state")),
-        Feature("File list and priorities", listOf("f.multicall", "f.priority.set", "d.update_priorities")),
-        Feature("Tracker health", listOf("d.tracker_size", "t.multicall")),
+        Feature("Add magnet via XML-RPC", listOf("d.multicall2", "d.name", "load.verbose"), EnvironmentOperation.ADD_MAGNET),
+        Feature("Add .torrent via XML-RPC", listOf("d.multicall2", "d.name", "load.raw_verbose"), EnvironmentOperation.ADD_TORRENT_FILE),
+        Feature("Use server default Add folder", listOf("directory.default"), EnvironmentOperation.SERVER_DEFAULT_ADD_FOLDER),
+        Feature("Start and stop", listOf("d.open", "d.start", "d.resume", "d.stop", "d.close", "d.state"), EnvironmentOperation.START_STOP),
+        Feature("File list and priorities", listOf("f.multicall", "f.priority.set", "d.update_priorities"), EnvironmentOperation.FILE_PRIORITIES),
+        Feature("Tracker health", listOf("d.tracker_size", "t.multicall"), EnvironmentOperation.TRACKER_HEALTH),
         // Erase requires main-view preflight and exact d.hash readback,
         // not merely an advertised d.erase setter.
-        Feature("Remove from server session", listOf("d.multicall2", "d.hash", "d.erase")),
-        Feature("Copy files to this phone", listOf("network.listen.port", "network.bind_address", "d.is_private", "d.is_active")),
-        Feature("Finish in Order", listOf("f.multicall", "f.priority.set", "d.update_priorities", "d.bitfield", "d.size_chunks"))
+        Feature("Remove from server session", listOf("d.multicall2", "d.hash", "d.erase"), EnvironmentOperation.SESSION_REMOVE),
+        Feature("Copy files to this phone", listOf("network.listen.port", "network.bind_address", "d.is_private", "d.is_active"), EnvironmentOperation.COPY_TO_PHONE),
+        Feature("Finish in Order", listOf("f.multicall", "f.priority.set", "d.update_priorities", "d.bitfield", "d.size_chunks"), EnvironmentOperation.FINISH_IN_ORDER)
     )
 
     fun grade(probe: RemoteProbe): List<Graded> {
