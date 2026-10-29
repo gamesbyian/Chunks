@@ -1,8 +1,8 @@
 name: Build experimental Chunks Reference Panel weight studies
 on:
   push:
-    # Routine lab work runs locally. Push builds are limited to integrated main changes.
-    branches: [main]
+    # One controlled source-completeness and full-CFF acceptance run; revert to [main].
+    branches: [main, font/lab]
     paths:
       - 'tools/build_reference_panel_weight_studies.py'
       - 'tools/reference_weight_profiles.json'
@@ -47,6 +47,11 @@ jobs:
         with:
           python-version: '3.11'
       - run: python -m pip install -r tools/requirements-reference-panel-weights.txt
+      - name: Gate all 248 editable lab masters and native outline integrity before CFF build
+        if: github.event_name == 'push' && github.ref == 'refs/heads/font/lab'
+        run: |
+          python tools/font_lab_source_ledger.py --require-full --out /tmp/font-lab-source-inventory.json
+          python -m unittest discover -s tests -p 'test_font_lab_*.py' -v
       - name: Build four distinct topology-safe CFF weight studies and recompute optical kerning
         run: python tools/build_reference_panel_weight_studies.py
       - name: Verify format, all glyphs, accents, shaping, line metrics and deterministic CFF sources
