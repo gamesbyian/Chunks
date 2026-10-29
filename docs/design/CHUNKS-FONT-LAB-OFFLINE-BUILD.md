@@ -11,6 +11,8 @@ This orchestrates: safe source and SVG tests; reference weight CFFs and 62-chara
 
 `python tools/font_lab_source_ledger.py` is a read-only, JSON-formatted progress inventory. `--require-full` can serve as an **explicit design-completeness gate** when all 62 original glyphs finally have four editable source masters. It does not classify an affine-synthesized contour as independently hand-drawn or approved. Current source checkpoint has **62/62 glyphs with four editable masters (248/248)**, with the original heavy reference untouched; the 856-codepoint CFF mapping is not the same as 856 hand-approved reference glyphs.
 
+The exact final candidate passed the [strict 14px/24px full-family freeze run #40817681146](https://github.com/gamesbyian/Chunks/actions/runs/40817681146), now including `python tools/font_lab_raster_counter_audit.py --strict --output font-lab-raster-counters.json` after the four lighter-weight OTFs are compiled. The audit measures **real font pixels**, failing if any expected counter of any of the four lighter faces has fewer than 2 enclosed pixels at either 14 or 24px. A zero-failure JSON report is attached to the run's artifact, and 48/82px specimens remain available for editorial review. This is a reproducible technical gate, not a substitute for visual signoff.
+
 This factory intentionally targets **one local font agent**, and only a frozen, meaningfully reviewed batch should be promoted to a PR. Do not add `push` triggers for `font/lab` to run this factory automatically.
 
 ## OpenType hole winding

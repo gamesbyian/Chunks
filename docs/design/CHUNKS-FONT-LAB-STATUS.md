@@ -4,6 +4,25 @@
 
 ## Built, reproducible, still nonshipping
 
+## Final verified engineering acceptance: 2026-10-28 (Calgary)
+
+**Green frozen acceptance:** [GitHub Actions #40817681146](https://github.com/gamesbyian/Chunks/actions/runs/40817681146), exact generated artifact source commit [`12f05bc06dd42b09befe317b417fa74a9a1d2f1e`](https://github.com/gamesbyian/Chunks/commit/12f05bc06dd42b09befe317b417fa74a9a1d2f1e). This run passed every workflow step, persisted reproducible experimental CFF binaries/metrics and attached the `chunks-font-lab-all-families` specimen/evidence artifact.
+
+- **248/248** editable native Bézier source masters (62 basic source glyphs × four lighter weights), immutable original ExtraBold and approved reference drawings.
+- **Zero 14px or 24px counter-visibility defects**: all **20 counter-bearing glyphs** in each of Regular, Medium, Semibold and Bold showed at least 2 rendered interior pixels for every expected counter, with thresholded *actual OpenType CFF rasterizations*. The same raster JSON documents 48px and 82px as additional nonstrict specimen sizes. [Source/test](../../tools/font_lab_raster_counter_audit.py), [optical fix details](CHUNKS-FONT-LAB-SMALL-COUNTERS.md).
+- The source topology/weight gradient, CFF nonzero winding, 856-cmap and text shaping, GPOS/kerning/leading/tracking, accent/dotless/punctuation/stacked/mixed-mark construction, Hindi invariance, and cross-family integrity across **20 derivative binaries** all passed in the **same isolated full-family run**.
+- Binary SHA-256 for the nonshipping 400–700 **base weight study OTFs** (authoritative machine-readable receipts in `assets/fonts/experimental/weight-studies/reference-panel-weight-study-metrics.json`):
+
+| Style | SHA-256 |
+|---|---|
+| Regular 400 | `d6d790f81e037caeb5f8402a485a9db31956d3c5ceb3bb96fa837f91b8819ab1` |
+| Medium 500 | `59d54773ae88482cf012e07061f455097466faaa9ee9bbc1b4e0abbda4d76599` |
+| Semibold 600 | `7509e63ece8e722630a98ba807ff8241287cc24ba437d5c1f22494f4746ed519` |
+| Bold 700 | `4a97ba57e97c7b4ca1da8f87fad82e84f330a9a8336059185253378eabb9c6c5` |
+
+**Engineering validation now complete for the frozen experimental candidate.** This does **not** establish owner approval of style, reference fidelity, universally accessible body-text legibility or on-device Compose/TalkBack integration. Shipping fonts and Android application assets are still unchanged. The owner-directed single-branch quiet-lab policy remains in force, with no font PR open and no routine font push CI.
+
+
 - All **62 original basic Latin/digit glyphs** have weight-specific, editable, native quadratic/cubic SVG candidates in 400, 500, 600 and 700: **248/248 source masters**. The original 62 traced reference SVGs and separate ExtraBold 800 master are unchanged.
 - The full [source and weight build run #40812154148](https://github.com/gamesbyian/Chunks/actions/runs/40812154148) **PASSED**: source topology/bounds/weight gradient, editable source SHA receipts, four distinct actual CFF OpenType faces, 856-codepoint cmap/shaping tests, at least 12,000 kerning pairs per lighter weight, leading/tracking gates, five-weight glyph grid renders at 14/24/48/82px.
 - The first [full family acceptance #40812391453](https://github.com/gamesbyian/Chunks/actions/runs/40812391453) **PASSED**: the single offline process rebuilt weight, accents, accent-kerned, dotless-kerned, punctuation, consolidated, stacked-accent and mixed-mark families, preserving unchanged Hindi shaping, and **audited 20 source/weight derivatives**. Reproducible experimental OTFs and metrics were committed to this branch; no `app/`, shipping font, approved reference or original reference SVG changed.
@@ -25,6 +44,6 @@ python tools/font_lab_normalize_winding.py
 bash tools/font_lab_build_all.sh
 ```
 
-All commands are local-first and do not push. `font_lab_build_all.sh` explicitly rejects incorrect source counter winding. Install the pinned font dependencies first. The final winding-corrected [full-family artifact bundle](https://github.com/gamesbyian/Chunks/actions/runs/40812996755) contains compiled nonshipping CFF samples and render evidence. Preserve the frozen exact-head source and binary hashes when evaluating any additional glyph edits.
+All commands are local-first and do not push. `font_lab_build_all.sh` explicitly rejects incorrect source counter winding. Install the pinned font dependencies first. The final small-size-corrected [full-family artifact bundle](https://github.com/gamesbyian/Chunks/actions/runs/40817681146) contains the actual compiled CFF specimens, per-size raster counter audit and derivative family evidence. Preserve the frozen exact-head source and binary hashes when evaluating any additional glyph edits.
 
-**Remaining gates:** complete the winding-corrected all-family run with committed exact SHA receipts; actual image-by-image optical/kerning review; accessible Android 200%/TalkBack evaluation; explicit decision whether to promote the candidate into shipping assets. Track final decisions on [issue #347](https://github.com/gamesbyian/Chunks/issues/347). The single-branch isolation contract remains authoritative in [FONT-LAB-OPERATIONS](CHUNKS-FONT-LAB-OPERATIONS.md).
+**Remaining gates (not automated engineering failures):** owner/editorial image-by-image style approval against the intended original; accessible Android 200%/TalkBack device evaluation; and an explicit owner decision whether to promote the candidate into shipping assets. Track final decisions on [issue #347](https://github.com/gamesbyian/Chunks/issues/347). The single-branch isolation contract remains authoritative in [FONT-LAB-OPERATIONS](CHUNKS-FONT-LAB-OPERATIONS.md).
