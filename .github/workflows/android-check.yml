@@ -6,6 +6,8 @@ on:
       - "app/**"
       - "docs/design/approved/chunks-app-icon-master.svg"
       - "tools/generate_launcher_vector.cjs"
+      - "tools/generate_icon_vectors.cjs"
+      - "docs/design/svg/icons/**"
       - "gradle/**"
       - "*.gradle.kts"
       - "gradle.properties"
@@ -39,6 +41,8 @@ jobs:
         run: |
           node tools/generate_launcher_vector.cjs --check
           test ! -e app/src/main/res/drawable-nodpi/chunks_launcher_artwork.png
+      - name: Verify SVG-derived in-app icon vectors are up to date
+        run: node tools/generate_icon_vectors.cjs --check
       - uses: actions/setup-java@v4
         with:
           distribution: temurin

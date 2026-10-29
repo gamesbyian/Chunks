@@ -23,16 +23,74 @@ android {
         resValue("string", "chunks_app_name", if (sideBySide) "Chunks Preview" else "Chunks")
         minSdk = 29
         targetSdk = 37
-        versionCode = 1
+        // Release builds supply a monotonically increasing code; dev stays 1.
+        versionCode = providers.environmentVariable("CHUNKS_VERSION_CODE").orNull
+            ?.toIntOrNull()?.takeIf { it in 1..2_100_000_000 } ?: 1
         // CI provides the actual checked-out commit, including the synthetic PR merge
         // commit when applicable. Local builds without this environment variable
         // retain the plain development version and must not invent provenance.
         val builtCommit = providers.environmentVariable("CHUNKS_SOURCE_SHA").orNull
             ?.trim()?.takeIf { it.matches(Regex("[0-9a-fA-F]{40}")) }?.take(12)
-        versionName = "0.1.0-dev" + (builtCommit?.let { "+$it" } ?: "")
+        // A release workflow may supply a plain semantic version instead.
+        val releaseName = providers.environmentVariable("CHUNKS_VERSION_NAME").orNull
+            ?.trim()?.takeIf { it.matches(Regex("[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.]+)?")) }
+        versionName = releaseName ?: ("0.1.0-dev" + (builtCommit?.let { "+$it" } ?: ""))
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
+    // Release signing is opt-in and secret-driven: all four values must come
+    // from the environment (CI secrets), never from the repository. Without
+    // them assembleRelease yields only an *unsigned* APK, which the release
+    // workflow refuses to publish.
+    val releaseKeystore = providers.environmentVariable("CHUNKS_RELEASE_KEYSTORE").orNull
+    val releaseStorePassword = providers.environmentVariable("CHUNKS_RELEASE_STORE_PASSWORD").orNull
+    val releaseKeyAlias = providers.environmentVariable("CHUNKS_RELEASE_KEY_ALIAS").orNull
+    val releaseKeyPassword = providers.environmentVariable("CHUNKS_RELEASE_KEY_PASSWORD").orNull
+    val releaseSigningAvailable = listOf(releaseKeystore, releaseStorePassword,
+        releaseKeyAlias, releaseKeyPassword).all { !it.isNullOrEmpty() }
+    signingConfigs {
+        if (releaseSigningAvailable) create("release") {
+            storeFile = file(releaseKeystore!!)
+            storePassword = releaseStorePassword
+            keyAlias = releaseKeyAlias
+            keyPassword = releaseKeyPassword
+            enableV2Signing = true
+            enableV3Signing = true
+        }
+    }
+    buildTypes {
+        getByName("release") {
+            // Not shrunk until the qaMinified smoke (same rules, R8 full mode)
+            // has passed on an emulator: libtorrent4j is JNI and R8 mistakes
+            // only show up at runtime.
+            isMinifyEnabled = false
+            isDebuggable = false
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (releaseSigningAvailable) signingConfig = signingConfigs.getByName("release")
+        }
+        // Debug-signed copy of the intended release shrinking, so instrumented
+        // tests can run against R8 output. Never published.
+        create("qaMinified") {
+            initWith(getByName("debug"))
+            isMinifyEnabled = true
+            isShrinkResources = true
+            isDebuggable = false
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro",
+                "proguard-qa-rules.pro")
+            testProguardFiles("proguard-test-rules.pro")
+            matchingFallbacks += "debug"
+        }
+    }
+    // qaMinified reuses the debug-only test fixtures (documents provider) so
+    // the same instrumented suite can run against the shrunk build.
+    sourceSets.getByName("qaMinified") {
+        kotlin.srcDir("src/debug/java")
+        manifest.srcFile("src/debug/AndroidManifest.xml")
+    }
+    // Instrumented tests normally target debug; the minified smoke workflow
+    // passes -Pchunks.testBuildType=qaMinified.
+    testBuildType = providers.gradleProperty("chunks.testBuildType").getOrElse("debug")
     buildFeatures { compose = true; resValues = true }
+    testOptions { unitTests.isIncludeAndroidResources = true }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -55,6 +113,13 @@ dependencies {
     implementation("org.libtorrent4j:libtorrent4j-android-x86_64:$libtorrent4j")
     testImplementation("org.libtorrent4j:libtorrent4j-linux:$libtorrent4j")
     testImplementation("junit:junit:4.13.2")
+    // JVM screenshots of real Compose UI (Robolectric native graphics) for
+    // visual review against docs/design/reference-images; never a device claim.
+    testImplementation(composeBom)
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    testImplementation("org.robolectric:robolectric:4.17")
+    testImplementation("io.github.takahirom.roborazzi:roborazzi:1.77.0")
+    testImplementation("io.github.takahirom.roborazzi:roborazzi-compose:1.77.0")
     androidTestImplementation(composeBom)
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
@@ -69,6 +134,8 @@ tasks.withType<Test>().configureEach {
     // later ordinary test (e.g. deep XML parsing) kills the test JVM with exit 139.
     val signalChaining = File(System.getProperty("java.home"), "lib/libjsig.so")
     if (signalChaining.isFile) environment("LD_PRELOAD", signalChaining.absolutePath)
+    // JVM screenshots (visual review only) are written under app/build/chunks-visual.
+    systemProperty("roborazzi.test.record", "true")
 }
 
 /**

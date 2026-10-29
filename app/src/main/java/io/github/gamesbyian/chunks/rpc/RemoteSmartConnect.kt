@@ -29,19 +29,90 @@ object RemoteSmartConnect {
         val attempts: Int
     )
 
+    /** One tried candidate, safe to show: description, path only, outcome. */
+    data class Attempt(val description: String, val path: String, val outcome: String)
+
     class ConnectionFailed(
         val category: Category,
-        val tested: Int
+        val tested: Int,
+        val attempts: List<Attempt> = emptyList()
     ) : IOException(
         when (category) {
             Category.AUTH -> "Login rejected. Check the username/password for this rTorrent instance."
             Category.TLS -> "Secure connection failed. Check the HTTPS hostname/certificate. Chunks will not bypass TLS."
             Category.NETWORK -> "The server is unreachable or did not respond. Check its address and network."
-            Category.ENDPOINT -> "No compatible rTorrent XML-RPC endpoint was verified. Paste the complete ruTorrent URL or enter the RPC path in Advanced settings."
+            Category.ENDPOINT -> "No compatible rTorrent XML-RPC endpoint was verified. Paste the complete ruTorrent URL, or enter your provider's exact RPC path under Advanced connection settings."
         }
     )
 
     enum class Category { AUTH, TLS, NETWORK, ENDPOINT }
+
+    /** Targeted next steps for a failed connection; never echoes secrets. */
+    fun repairAdvice(failure: ConnectionFailed, input: String): List<String> {
+        val explicit = "://" in input && try {
+            URI(input.trim()).rawPath.orEmpty().trim('/').isNotEmpty()
+        } catch (_: Exception) { false }
+        return when (failure.category) {
+            Category.AUTH -> listOf(
+                "Use the same username and password that open ruTorrent in your browser.",
+                "Some providers use a separate web-UI password from the SSH/FTP one.",
+                "Chunks stopped after the login was refused so repeated guesses cannot lock your account.")
+            Category.TLS -> listOf(
+                "Open the same address in your phone's browser and check that it shows a valid padlock.",
+                "If your server uses a self-signed certificate, Chunks cannot connect to it yet; it will not bypass certificate checks.")
+            Category.NETWORK -> listOf(
+                "Check the hostname for typos and that the phone is online.",
+                "If the server is only reachable on a home network or VPN, connect to that network first.")
+            Category.ENDPOINT -> buildList {
+                if (!explicit) add("Open ruTorrent in your browser and paste the full address from the address bar " +
+                    "(for example https://host/username/rutorrent/).")
+                else add("Check that this exact address opens ruTorrent or your provider's RPC page in a browser.")
+                add("If your provider documents an XML-RPC address (often ending in /RPC2 or /RPC1), paste that instead.")
+                if (failure.attempts.any { it.outcome.startsWith("No rTorrent gateway") })
+                    add("Addresses answering “not found” are not the right path on this server.")
+            }
+        }
+    }
+
+    /** Short user-facing reason for one candidate's failure. */
+    internal fun describe(failure: Exception): String {
+        val message = failure.message.orEmpty()
+        val status = Regex("HTTP (\\d{3})").find(message)?.groupValues?.get(1)?.toIntOrNull()
+        return when {
+            failure is RpcFault -> "Answered, but rTorrent refused the read-only check"
+            status == 404 -> "No rTorrent gateway here (HTTP 404)"
+            status == 401 || status == 403 -> "Login refused (HTTP $status)"
+            status in 300..399 -> "Redirected (HTTP $status); Chunks does not follow redirects with your login"
+            status != null -> "Server error (HTTP $status)"
+            failure is RpcReplyTooLarge -> "Answered with an unexpectedly large reply"
+            else -> "Answered, but not with an rTorrent XML-RPC reply"
+        }
+    }
+
+    /**
+     * Advanced manual endpoint: joins a hostname (or bare origin) with an
+     * exact RPC path such as `/RPC2`, so [candidates] tests only that one
+     * address. A blank path returns [input] unchanged. Refuses an input that
+     * already names a path, so the two fields can never disagree about which
+     * instance is meant.
+     */
+    fun withExactPath(input: String, rpcPath: String): String {
+        val path = rpcPath.trim()
+        if (path.isEmpty()) return input
+        require(path.length <= 512 && path.startsWith("/") && "//" !in path &&
+            Regex("[A-Za-z0-9._~%/-]+").matches(path) &&
+            path.split('/').none { it == "." || it == ".." || it.equals("%2e", true) ||
+                it.equals("%2e%2e", true) || it.equals(".%2e", true) || it.equals("%2e.", true) }) {
+            "Enter an RPC path that starts with / (for example /RPC2), without spaces, ? or #"
+        }
+        val raw = input.trim()
+        val uri = try { URI(if ("://" in raw) raw else "https://$raw") }
+            catch (_: Exception) { throw IllegalArgumentException("Enter a valid seedbox address") }
+        require(uri.rawPath.orEmpty().trim('/').isEmpty() && uri.rawQuery == null && uri.rawFragment == null) {
+            "The address already includes a path. Clear the advanced RPC path, or enter only the hostname."
+        }
+        return "${uri.scheme}://${uri.rawAuthority}$path"
+    }
 
     /** No network access, no login attempts, at most six HTTPS candidates. */
     fun candidates(input: String, username: String): List<Candidate> {
@@ -100,55 +171,14 @@ object RemoteSmartConnect {
             return entries.values.toList()
         }
 
-        val host = uri.host.lowercase()
         val safeUser = username.trim().takeIf {
             it.length in 1..64 && Regex("[A-Za-z0-9_.-]+").matches(it) &&
                 it != "." && it != ".."
         }
-        when {
-            host == "seedhost.eu" || host.endsWith(".seedhost.eu") -> {
-                // SeedHost documents both /username/RPC1 and an HTTP-RPC
-                // route under the ruTorrent root, with deployment variance.
-                // Some provider installations put the account in the host,
-                // others in the path. Keep the exact host the user entered.
-                if (safeUser != null && host.startsWith(safeUser.lowercase() + ".")) {
-                    add("/rutorrent/plugins/httprpc/action.php", "SeedHost ruTorrent")
-                    add("/RPC1", "SeedHost direct RPC")
-                }
-                if (safeUser != null) {
-                    add("/$safeUser/rutorrent/plugins/httprpc/action.php", "SeedHost account ruTorrent")
-                    add("/$safeUser/RPC1", "SeedHost account SCGI")
-                }
-                add("/rutorrent/plugins/httprpc/action.php", "SeedHost ruTorrent")
-                add("/RPC1", "SeedHost direct RPC")
-            }
-            host == "usbx.me" || host.endsWith(".usbx.me") -> {
-                add("/RPC2", "Ultra.cc direct RPC")
-                add("/rutorrent/plugins/httprpc/action.php", "ruTorrent HTTP-RPC")
-            }
-            host == "whatbox.ca" || host.endsWith(".whatbox.ca") -> {
-                add("/xmlrpc", "Whatbox XML-RPC")
-                add("/rutorrent/plugins/httprpc/action.php", "ruTorrent HTTP-RPC")
-            }
-            host == "appboxes.co" || host.endsWith(".appboxes.co") -> {
-                add("/RPC2", "Appbox direct RPC")
-                add("/rutorrent/plugins/httprpc/action.php", "ruTorrent HTTP-RPC")
-            }
-            // RapidSeedbox's dedicated HTTPS rt-* service uses rpc.php,
-            // not the usual httprpc/action.php name.
-            host.endsWith(".seedbox.vip") && host.startsWith("rt-") -> {
-                add("/plugins/rpc/rpc.php", "RapidSeedbox ruTorrent RPC")
-                add("/rutorrent/plugins/rpc/rpc.php", "RapidSeedbox prefixed RPC")
-            }
-            else -> {
-                // Bounded generic nginx/Apache patterns. Custom providers
-                // remain possible through an explicit, user-pasted full URL.
-                add("/rutorrent/plugins/httprpc/action.php", "ruTorrent HTTP-RPC")
-                add("/RPC2", "Common direct SCGI")
-                add("/xmlrpc", "Common XML-RPC")
-                if (safeUser != null) add("/$safeUser", "Account SCGI mount")
-            }
-        }
+        // Reviewed provider templates (source URL + date in the catalog), or
+        // bounded generic nginx/Apache patterns. Custom providers remain
+        // possible through an explicit, user-pasted full URL.
+        for ((path, description) in RemoteProviderCatalog.plan(uri.host, safeUser)) add(path, description)
         return entries.values.toList()
     }
 
@@ -164,12 +194,18 @@ object RemoteSmartConnect {
         input: String,
         username: String,
         password: String,
+        /** Called before each candidate: 1-based index, total, candidate. */
+        onAttempt: (Int, Int, Candidate) -> Unit = { _, _, _ -> },
         probe: suspend (RemoteCredentials) -> T
     ): Verified<T> {
         val choices = candidates(input, username)
         var attempted = 0
+        val attempts = ArrayList<Attempt>()
         for (candidate in choices) {
             attempted++
+            onAttempt(attempted, choices.size, candidate)
+            val path = try { URI(candidate.endpoint).rawPath.orEmpty().ifEmpty { "/" } }
+                catch (_: Exception) { "/" }
             val credentials = RemoteCredentials(candidate.endpoint, username, password)
             try {
                 val result = probe(credentials)
@@ -188,10 +224,16 @@ object RemoteSmartConnect {
                         Category.AUTH
                     else -> Category.ENDPOINT
                 }
+                attempts += Attempt(candidate.description, path, when (category) {
+                    Category.ENDPOINT -> describe(failure)
+                    Category.AUTH -> "Login refused"
+                    Category.TLS -> "Secure connection failed"
+                    Category.NETWORK -> "Unreachable"
+                })
                 if (category != Category.ENDPOINT)
-                    throw ConnectionFailed(category, attempted)
+                    throw ConnectionFailed(category, attempted, attempts)
             }
         }
-        throw ConnectionFailed(Category.ENDPOINT, attempted)
+        throw ConnectionFailed(Category.ENDPOINT, attempted, attempts)
     }
 }

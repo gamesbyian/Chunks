@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- GENERATED from docs/design/svg/icons/transfers/copy.svg by tools/generate_icon_vectors.cjs (sha256 361249a708b819f7); edit the SVG, then regenerate. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp" android:viewportWidth="64" android:viewportHeight="64">
+  <path android:pathData="M14 10 H36 A4 4 0 0 1 40 14 V37 A4 4 0 0 1 36 41 H14 A4 4 0 0 1 10 37 V14 A4 4 0 0 1 14 10 Z" android:fillColor="#FFF8FAFC" android:strokeColor="#FF0B0F17" android:strokeWidth="5" android:strokeLineCap="round" android:strokeLineJoin="round"/>
+  <path android:pathData="M27 23 H50 A4 4 0 0 1 54 27 V50 A4 4 0 0 1 50 54 H27 A4 4 0 0 1 23 50 V27 A4 4 0 0 1 27 23 Z" android:fillColor="#FFE5E7EB" android:strokeColor="#FF0B0F17" android:strokeWidth="5" android:strokeLineCap="round" android:strokeLineJoin="round"/>
+</vector>

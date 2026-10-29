@@ -67,13 +67,11 @@ fun TransferSessionRemoveControl(
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (!attempted && !confirming) {
-            OutlinedButton(
+            ActionTile("Remove from rTorrent…", ChunksColors.Orange,
                 onClick = { confirming = true },
                 enabled = mainView && !snapshotStale,
-                modifier = Modifier.height(48.dp)
-            ) {
-                Text("Remove from rTorrent…", color = MaterialTheme.colorScheme.error)
-            }
+                modifier = Modifier.fillMaxWidth(),
+                icon = R.drawable.chunks_ic_remove, stacked = false)
             if (!mainView) {
                 Text("Switch to the main server view before removing a transfer.",
                     style = MaterialTheme.typography.bodySmall)

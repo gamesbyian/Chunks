@@ -79,6 +79,19 @@ profile. Unit tests cover tenant boundaries, provider patterns,
 unsupported/insecure input, credential failure and fallback. This does
 **not** claim all provider families have live acceptance.
 
+**Provider catalog (2026-10-29):** hostname-only plans now come from
+`rpc/RemoteProviderCatalog.kt`, a data-only list whose entries carry the
+reference URL, review date, DNS domains matched on whole labels, optional
+first-label prefix, ordered path templates (account placeholders only from
+a validated username, never for Feral slots) and a `liveAccepted` flag that
+stays `false` until a ledger-recorded handset journey exists. A JVM test pins
+every plan exactly, so catalog edits are deliberate. The Connect form shows a
+credential-free "Recognised <provider>" hint (polite live region) stating the
+match is based on reviewed docs and not yet tested by Chunks. Feral and
+Bytesized entries carry only a paste-your-full-address tip; self-hosted
+families (Swizzin, QuickBox) and Seedbox.io's numbered RPC paths have no
+host pattern and keep using an exact pasted URL.
+
 **Known first-slice limitations:** No explicit provider selector; no live
 capability grading beyond version+main view; no cancel/progress details
 for discovery; no DNS-SRV, Zeroconf, QR pairing, browser extension
@@ -181,3 +194,11 @@ offline status without claiming server-side downloads stopped.
 See [SEEDHOST-REMOTE-TESTING](SEEDHOST-REMOTE-TESTING.md),
 [SECURITY](SECURITY.md), [QUALITY-LEDGER](QUALITY-LEDGER.md)
 and [WORK-QUEUE](WORK-QUEUE.md) for live acceptance boundaries.
+
+## Implementation note: progress, cancel and repair (2026-10-28)
+
+`RemoteSmartConnect.connect` reports each candidate before probing (`onAttempt`) and, on failure, returns per-candidate `Attempt(description, path, outcome)`. Only the description, the URL **path** and a short classified outcome (404, refused read-only check, login refused, redirect refused, non-XML-RPC reply) are ever shown: no hostnames with credentials, passwords or raw server replies. `repairAdvice` gives category-specific next steps (paste the browser's ruTorrent address, provider XML-RPC path, web-UI vs SSH password, certificate check, VPN/home network) and states that Chunks stops after one refused login to avoid account lockout. Cancel abandons the read-only discovery coroutine and fences any late result. Credentials are still only sent in response to a same-endpoint 401 challenge, so candidates answering 404 never receive the password.
+
+## Implementation note: advanced exact RPC path (2026-10-29)
+
+Connect has an **Advanced connection settings** disclosure with one optional **Exact RPC path** field (for example `/RPC2`). `RemoteSmartConnect.withExactPath` joins it to a hostname-only address on the same origin, so discovery tests only that one address with the usual read-only version + main-view probe. It refuses a path without a leading `/`, `..`/encoded dot segments, `//`, spaces, `?` or `#`, and refuses an address that already names a path, so the two fields can never disagree about which instance is meant. HTTPS, embedded-credential and loopback rules still apply to the joined address. After a verified connection the address field holds the full RPC address and the path field is cleared. Evidence: JVM unit tests and a Robolectric Connect-screen test of both refusals; no real-provider or handset acceptance.

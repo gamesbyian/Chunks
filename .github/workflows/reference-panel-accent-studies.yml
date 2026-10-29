@@ -1,6 +1,8 @@
 name: Build experimental Chunks Reference Panel accent studies
 on:
   push:
+    # Validate changes to feature branches via pull_request; build merged changes on main only.
+    branches: [main]
     paths:
       - 'tools/build_reference_accent_studies.py'
       - 'tools/render_reference_accent_studies.py'

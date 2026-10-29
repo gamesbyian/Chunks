@@ -88,3 +88,18 @@ The manual-only [Disposable rTorrent protocol proof](https://github.com/gamesbyi
 ## Historical integration baseline (2026-10-24; superseded by current queue)
 
 Current `main` includes device-local editable transfer aliases (#74), lazy-queue alias sort optimizations (#78), read-only ZIP structural inventory (#79/#85), Android platform XML-RPC parser compatibility (#81), storage-warning policy hysteresis (#87) and session mutation confirmation recycling safety (#89). The #89 merge `3e11d502dca11513e7b272676aab49079280e10d` had Android/JVM [40143850496](https://github.com/gamesbyian/Chunks/actions/runs/40143850496) and API35 [40143850653](https://github.com/gamesbyian/Chunks/actions/runs/40143850653) green at source `cdea90ce1e62cd7d82c6013a24a1dc17846e5389`. Native installed-app populated synthetic acceptance [#82](https://github.com/gamesbyian/Chunks/pull/82) **merged** at `6dd07cb36df1df674b2a9a210c8ab6c0b7e22b27`; exact source `5b26357b2c67b54ebb688e1d62107c13bdbc1fa0` passed [Android/JVM 40155244595](https://github.com/gamesbyian/Chunks/actions/runs/40155244595), [API35 40155244582](https://github.com/gamesbyian/Chunks/actions/runs/40155244582) (17/17) and [four-viewport 40155244601](https://github.com/gamesbyian/Chunks/actions/runs/40155244601), with inspected native PNGs; physical phone, full hosted Seedhost adapter inventory, local download/seeding engine, real quota enforcement/extraction and filesystem mutation acceptance are still outstanding. Consult WORK-QUEUE and QUALITY-LEDGER for live gates; historical build examples above are not the present feature inventory.
+
+## Signed release APK (manual, owner secrets required)
+
+`release-apk.yml` is `workflow_dispatch`-only and refuses to run off `main`. Inputs: `version_name` (semantic version) and a monotonic `version_code`. It requires four repository secrets and fails before building if any is missing — it never produces or uploads an unsigned release:
+
+| Secret | Content |
+|---|---|
+| `CHUNKS_RELEASE_KEYSTORE_BASE64` | base64 of the upload/release keystore (`base64 -w0 chunks-release.jks`) |
+| `CHUNKS_RELEASE_STORE_PASSWORD` | keystore password |
+| `CHUNKS_RELEASE_KEY_ALIAS` | key alias |
+| `CHUNKS_RELEASE_KEY_PASSWORD` | key password |
+
+The keystore is decoded to a 0600 file in `$RUNNER_TEMP` and deleted on exit. After JVM tests, `assembleRelease` signs via the Gradle `release` signing config (populated only from `CHUNKS_RELEASE_*` environment variables), `apksigner verify` must report a v2/v3 signature (minSdk 29 ⇒ AGP signs v3), and the artifact `chunks-release-<version>.apk` is uploaded with `CHUNKS-RELEASE-SHA256.txt` (APK SHA-256, signing-certificate SHA-256, source commit). No GitHub Release is created automatically. Release builds are non-debuggable and not shrunk (R8 keep rules for libtorrent4j JNI are not yet audited).
+
+Creating the key is an owner action: generate it offline (e.g. `keytool -genkeypair -keystore chunks-release.jks -alias chunks -keyalg RSA -keysize 4096 -validity 10000`), keep an offline backup, and record the certificate SHA-256 so users can verify future builds. **A signed APK proves publisher identity only; it is not physical-device or release acceptance.**

@@ -20,4 +20,10 @@ This document supersedes earlier local↔remote Copy/Move designs involving down
 - Tests: local→remote and remote→local Copy leave source job/files unchanged; both Move directions delete only source job after verified target Add and separate approval; incomplete source jobs start independent destination downloads; failed metadata, duplicate, timeout and false/uncertain Add never retire source; retirement failure retains source files and displays both jobs; mixed batches report per-item status and survive resume/reconciliation; no payload transport APIs invoked.
 - UI copy: "Downloaded files will not be transferred." Move confirmation: "Remove the original torrent job after adding it to the destination? Existing downloaded files will remain on the source device/server." Expose new downloads and retained storage.
 
-**Implementation status:** Existing reviewed v1 magnet handoff (#320) is a partial precursor, not verified completed Copy or Move. Historical byte-copy proposals must no longer be implemented under these UI labels.
+## Implementation and evidence (maintained separately)
+
+The normative behavior and failure rules above remain binding regardless of current code status. Do not use an old implementation snapshot in this contract to decide whether a path is shipped.
+
+**Accepted limited automated slices, as of the 2026-10-29 app-lane checkpoint:** single Copy/Move in both directions; phone → server batch Copy (#482) and Move (#502); server → phone batch Copy (#504) and Move (#506). These are independently scoped job operations; no payload transfer is implied. See [QUALITY-LEDGER](QUALITY-LEDGER.md) for commit SHAs, failing/repaired tests and actual evidence tiers, and [SPEC-COVERAGE](SPEC-COVERAGE.md) for outstanding acceptance. Installed physical-handset Move, real Seedhost batch semantics, privacy/accessibility, process-death, interruption and all-server capability compatibility remain unproven until independently tested.
+
+The separate **Copy files to this phone** payload capability remains documented and tested on a development Seedhost but is not Copy Transfer. The [active queue](WORK-QUEUE.md) controls implementation priority.

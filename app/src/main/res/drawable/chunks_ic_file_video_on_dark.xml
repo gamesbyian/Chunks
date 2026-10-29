@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- GENERATED from docs/design/svg/icons/files/video.svg (on-dark outline) by tools/generate_icon_vectors.cjs (sha256 cd0259a30ddbd46f); edit the SVG, then regenerate. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp" android:viewportWidth="64" android:viewportHeight="64">
+  <path android:pathData="M16 10 H48 A7 7 0 0 1 55 17 V47 A7 7 0 0 1 48 54 H16 A7 7 0 0 1 9 47 V17 A7 7 0 0 1 16 10 Z" android:fillColor="#FFFF4EC4" android:strokeColor="#FFF8FAFC" android:strokeWidth="5" android:strokeLineCap="round" android:strokeLineJoin="round"/>
+  <path android:pathData="M26 20 L45 32 L26 44 Z" android:fillColor="#FF0B0F17"/>
+</vector>

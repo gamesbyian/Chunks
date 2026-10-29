@@ -1,6 +1,8 @@
 name: Audit Chunks layered Latin CFF design completeness
 on:
   push:
+    # Validate changes to feature branches via pull_request; build merged changes on main only.
+    branches: [main]
     paths:
       - 'tools/audit_reference_layered_latin_coverage.py'
       - 'tests/test_reference_layered_latin_coverage.py'

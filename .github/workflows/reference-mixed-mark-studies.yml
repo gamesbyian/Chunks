@@ -1,6 +1,8 @@
 name: Build nonshipping mixed above/below Latin CFF experiments
 on:
   push:
+    # Validate changes to feature branches via pull_request; build merged changes on main only.
+    branches: [main]
     paths:
       - 'tools/build_reference_mixed_marks.py'
       - 'tools/render_reference_mixed_marks.py'

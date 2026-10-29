@@ -9,6 +9,9 @@ import android.os.SystemClock
 import android.os.StatFs
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
@@ -55,6 +58,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.engine.LocalAddResult
+import io.github.gamesbyian.chunks.model.TransferMove
 import io.github.gamesbyian.chunks.engine.LocalCommandOutcome
 import io.github.gamesbyian.chunks.engine.LocalEpisodeFocusPlanner
 import io.github.gamesbyian.chunks.engine.LocalFileBatchOutcome
@@ -99,6 +103,18 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** One engine per process. It lives only as long as Android keeps Chunks running. */
+/** Adds one exact .torrent as a stopped job at the signed-in server's default Place. */
+internal class LocalServerCopyLink(
+    val hostLabel: String,
+    val addStoppedAtDefault: suspend (ByteArray) -> io.github.gamesbyian.chunks.rpc.RemoteAddOutcome
+)
+
+/** The connected rTorrent account as seen by phone-side Move Transfer. */
+internal class LocalMoveServer(
+    val aliasScope: String,
+    val observe: suspend (String) -> TransferMove.Observation
+)
+
 internal object LocalEngineHolder {
     private var engine: LocalTorrentEngine? = null
 
@@ -215,6 +231,10 @@ internal fun LocalEngineScreen(
     initialTorrentUri: Uri? = null,
     /** A connected, independently privacy-gated rTorrent Add screen is available. */
     canReviewOnConnectedServer: Boolean = false,
+    /** The signed-in rTorrent account for batch Copy Transfer to server; null when signed out. */
+    serverCopy: LocalServerCopyLink? = null,
+    /** The connected rTorrent account, for Move Transfer checks; null when signed out. */
+    moveServer: LocalMoveServer? = null,
     onTorrentConsumed: () -> Unit = {},
     onPrefillConsumed: () -> Unit = {},
     onPrepareRemote: ((String) -> Unit)? = null,
@@ -223,6 +243,9 @@ internal fun LocalEngineScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val finishInOrderStore = remember { FinishInOrderStore(context) }
+    val moveStore = remember { TransferMoveStore(context) }
+    var moveRevision by remember { mutableStateOf(0) }
     val collectionStore = remember(context) { TransferCollectionStore(context) }
     val aliasStore = remember(context) { TransferAliasStore(context) }
     var aliasRevision by remember { mutableStateOf(0) }
@@ -357,6 +380,9 @@ internal fun LocalEngineScreen(
     val destination = place?.root
     val proposedAddDestination = remember(destination, addFolderDraft) {
         LocalOwnedAddFolder.proposed(destination, addFolderDraft)
+    }
+    val addFolderNameInvalid = remember(addFolderDraft) {
+        LocalOwnedAddFolder.normalizedName(addFolderDraft) == null
     }
     LaunchedEffect(pending?.preview?.infoHashV1, destination) {
         addStorage = null
@@ -547,12 +573,13 @@ internal fun LocalEngineScreen(
             .padding(start = 18.dp, end = 18.dp, top = 12.dp, bottom = 92.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        if (onBack != null) Button(onClick = onBack, modifier = Modifier.heightIn(min = 48.dp)) { Text("Back") }
+        if (onBack != null) OutlinedButton(onClick = onBack, modifier = Modifier.heightIn(min = 48.dp)) { Text("Back") }
         Text("On this phone (experimental)", style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
         Text("Downloads and seeds with Chunks' own engine. While a transfer runs, an ongoing notification keeps it going in the background, with Stop all; Android may still stop it, and from Android 15 limits this kind of background transfer to about 6 hours a day, after which Chunks pauses everything. Nothing connects to the network until you add a torrent. Transfers are remembered and come back stopped after Chunks restarts. Peers and trackers can see this phone's IP address.")
-        Button(onClick = { picker.launch(arrayOf("*/*")) }, enabled = !busy && !inventoryStale && destination != null,
-            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Text("Choose .torrent file") }
+        ActionTile("Choose .torrent file", ChunksColors.Green, onClick = { picker.launch(arrayOf("*/*")) },
+            enabled = !busy && !inventoryStale && destination != null,
+            modifier = Modifier.fillMaxWidth(), icon = R.drawable.chunks_ic_add_torrent, stacked = false)
         LocalDownloadPlacePicker(
             resolution = placeResolution,
             enabled = !busy && !inventoryStale,
@@ -575,7 +602,9 @@ internal fun LocalEngineScreen(
             label = { Text("Optional phone download subfolder") },
             placeholder = { Text("Leave blank for Chunks default") },
             singleLine = true,
-            isError = proposedAddDestination == null,
+            // Only the typed name can be wrong; an unresolved download location is
+            // reported separately ("Checking where this phone can save…").
+            isError = addFolderNameInvalid,
             enabled = !busy && !inventoryStale,
             modifier = Modifier.fillMaxWidth()
         )
@@ -585,12 +614,13 @@ internal fun LocalEngineScreen(
             "refused to prevent collisions. No folder is created until Add is confirmed, " +
             "and nothing is ever created on a remote server.",
             style = MaterialTheme.typography.bodySmall)
-        if (proposedAddDestination == null)
+        if (addFolderNameInvalid)
             Text("Use one plain folder name, without slashes, dot-prefixed names, " +
                 "control characters or path traversal.",
                 color = MaterialTheme.colorScheme.error)
-        else Text("Planned local Place: " + proposedAddDestination.absolutePath,
-            style = MaterialTheme.typography.bodySmall)
+        else if (proposedAddDestination != null)
+            Text("Planned local Place: " + proposedAddDestination.absolutePath,
+                style = MaterialTheme.typography.bodySmall)
         Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
             .toggleable(value = dht, enabled = !dhtSaving, role = Role.Switch,
                 onValueChange = ::requestDhtSetting), verticalAlignment = Alignment.CenterVertically) {
@@ -614,7 +644,16 @@ internal fun LocalEngineScreen(
         OutlinedTextField(value = magnet, onValueChange = { magnet = it.trim() },
             label = { Text("Or paste a magnet link") }, singleLine = true,
             modifier = Modifier.fillMaxWidth())
+        var finishInOrderDefault by remember { mutableStateOf(finishInOrderStore.defaultForNewAdds()) }
+        var magnetFinishInOrder by remember(magnet) { mutableStateOf(finishInOrderDefault) }
         if (magnet.isNotEmpty() && destination != null) {
+            FinishInOrderAddChoice(
+                "Finish in Order once the file list arrives (episodes or numbered files)",
+                checked = magnetFinishInOrder, enabled = !busy && !inventoryStale,
+                onChecked = { magnetFinishInOrder = it },
+                defaultOn = finishInOrderDefault,
+                onDefault = { on -> if (finishInOrderStore.setDefaultForNewAdds(on)) finishInOrderDefault = on }
+            )
             Text("Saves into the download location shown above. Magnets first discover metadata via peers/trackers; if Start after Add is selected, payload downloading begins after metadata arrives. Without peers, downloading cannot begin.",
                 style = MaterialTheme.typography.bodySmall)
             LocalMagnetDiscoveryPrompt(
@@ -624,11 +663,13 @@ internal fun LocalEngineScreen(
                 blocked = busy || inventoryStale,
                 onEnable = { requestDhtSetting(true) }
             )
-            OutlinedButton(onClick = {
+            ActionTile(if (startAfterAdd) "Add magnet and start" else "Add magnet (metadata only)",
+                ChunksColors.Purple, icon = R.drawable.chunks_ic_magnet, stacked = false, onClick = {
                 val selectedDraft = addFolderDraft
                 val selectedPlace = place
                 val selectedMagnet = magnet
                 val autoStart = startAfterAdd
+                val orderLater = magnetFinishInOrder
                 performLocalMutation {
                     try {
                         val result = withContext(Dispatchers.IO) {
@@ -638,6 +679,9 @@ internal fun LocalEngineScreen(
                                 "The download location or subfolder is unavailable, nonempty or unsafe. Nothing was added.")
                             else LocalEngineHolder.get(context).addMagnet(
                                 selectedMagnet, chosen, autoStartAfterMetadata = autoStart)
+                        }
+                        if (orderLater && result is LocalAddResult.FetchingMetadata) withContext(Dispatchers.IO) {
+                            finishInOrderStore.requestAfterMetadata(result.status.infoHash)
                         }
                         message = when (result) {
                             is LocalAddResult.Refused -> result.reason
@@ -664,7 +708,7 @@ internal fun LocalEngineScreen(
                 }
             }, enabled = !busy && !inventoryStale && !dhtSaving &&
                 proposedAddDestination != null,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text(if (startAfterAdd) "Add magnet and start" else "Add magnet (metadata only)") }
+                modifier = Modifier.fillMaxWidth())
         }
         repairReview?.let { prepared ->
             val (hash, source) = prepared
@@ -770,6 +814,17 @@ internal fun LocalEngineScreen(
                 }
             )
         }
+        var finishInOrderAfterAdd by remember(add?.preview?.infoHashV1) { mutableStateOf(finishInOrderDefault) }
+        if (add != null && destination != null && add.preview.fileCount >= 2) {
+            FinishInOrderAddChoice(
+                "Finish in Order: prioritise the first episode or numbered file, then the next " +
+                    "(set up before downloading starts; change or turn off from Files)",
+                checked = finishInOrderAfterAdd, enabled = !busy && !inventoryStale,
+                onChecked = { finishInOrderAfterAdd = it },
+                defaultOn = finishInOrderDefault,
+                onDefault = { on -> if (finishInOrderStore.setDefaultForNewAdds(on)) finishInOrderDefault = on }
+            )
+        }
         if (add != null && destination != null) LocalAddReview(
             add.preview, proposedAddDestination ?: destination,
             placeTitle = place?.title,
@@ -780,6 +835,8 @@ internal fun LocalEngineScreen(
                 val selectedDraft = addFolderDraft
                 val selectedPlace = place
                 val autoStart = startAfterAdd
+                val orderAfterAdd = finishInOrderAfterAdd
+                var orderNote: String? = null
                 performLocalMutation {
                     try {
                         val result = withContext(Dispatchers.IO) {
@@ -791,6 +848,11 @@ internal fun LocalEngineScreen(
                             else {
                                 val engine = LocalEngineHolder.get(context)
                                 val added = engine.addStopped(add.bytes, chosen)
+                                // While still stopped: set up the policy and apply its first verified
+                                // step, so the very first piece requests already follow the order.
+                                if (orderAfterAdd && added is LocalAddResult.AddedStopped) {
+                                    orderNote = enableFinishInOrderAfterAdd(context, engine, added.status.infoHash)
+                                }
                                 if (autoStart && added is LocalAddResult.AddedStopped)
                                     added to engine.resume(added.status.infoHash)
                                 else added to null
@@ -818,6 +880,7 @@ internal fun LocalEngineScreen(
                                 null -> "Added stopped. Start manually from its transfer card."
                             }
                         }
+                        orderNote?.let { note -> message = listOfNotNull(message, note).joinToString(" ") }
                         if (added !is LocalAddResult.Refused) {
                             pending = null
                             addFolderDraft = ""
@@ -976,6 +1039,27 @@ internal fun LocalEngineScreen(
             stale = inventoryStale || busy,
             sourceLabel = "phone"
         )
+        moveServer?.let { server ->
+            val digest = TransferMoveStore.scopeDigest(server.aliasScope)
+            val pending = remember(transfers, moveRevision) {
+                moveStore.all(TransferMove.Direction.PHONE_TO_SERVER).filter { record ->
+                    record.stage == TransferMove.Stage.TARGET_VERIFIED && record.serverScopeDigest == digest &&
+                        transfers.any { it.infoHash.equals(record.infoHash, ignoreCase = true) }
+                }
+            }
+            BatchMoveRemovalPanel(
+                pending = pending, serverLabel = TransferMoveStore.hostLabel(server.aliasScope),
+                busy = busy || inventoryStale,
+                observeTarget = { hash -> server.observe(hash) },
+                removeSource = { hash ->
+                    withContext(Dispatchers.IO) { LocalEngineHolder.current()?.removeKeepingData(hash) }
+                },
+                observeSource = { hash -> TransferMoveObservations.phone(hash) },
+                save = { record -> moveStore.save(record) },
+                forget = { record -> moveStore.remove(record.direction, record.infoHash) },
+                onFinished = { text -> message = text; moveRevision++ }
+            )
+        }
         LocalBatchCollectionPanel(
             transfers = transfers,
             shown = displayedTransfers,
@@ -984,6 +1068,72 @@ internal fun LocalEngineScreen(
             onMembershipChanged = {
                 registeredNames = nameRegistry.names(TransferCollectionStore.LOCAL_ENGINE_SCOPE)
                 collectionRevision++
+            },
+            copyServerLabel = serverCopy?.hostLabel,
+            onBatchCopyToServer = serverCopy?.let { link ->
+                { ids ->
+                    val items = transfers.filter { it.infoHash in ids }
+                        .map { io.github.gamesbyian.chunks.model.BatchServerCopy.Item(it.infoHash, it.name) }
+                    performLocalMutation {
+                        val problem = io.github.gamesbyian.chunks.model.BatchServerCopy.validate(items)
+                        message = if (problem != null) problem else try {
+                            val report = io.github.gamesbyian.chunks.model.BatchServerCopy.run(items,
+                                exportTorrent = { hash ->
+                                    withContext(Dispatchers.IO) {
+                                        LocalEngineHolder.current()?.exportTorrentFile(hash)
+                                    }
+                                },
+                                addStopped = link.addStoppedAtDefault)
+                            report.summary() + report.results
+                                .filter { it.second != io.github.gamesbyian.chunks.model.BatchServerCopy.Result.ADDED }
+                                .take(10).joinToString("") { (item, result) ->
+                                    "\n• " + item.name.take(80) + ": " + result.label
+                                }
+                        } catch (cancel: kotlinx.coroutines.CancellationException) {
+                            throw cancel
+                        } catch (_: Exception) {
+                            "The batch copy stopped unexpectedly. Check the server list before " +
+                                "copying again; nothing is retried automatically."
+                        }
+                    }
+                }
+            },
+            onBatchMoveToServer = if (serverCopy == null || moveServer == null) null else { ids ->
+                val link = serverCopy
+                val server = moveServer
+                val items = transfers.filter { it.infoHash in ids }
+                    .map { io.github.gamesbyian.chunks.model.BatchServerCopy.Item(it.infoHash, it.name) }
+                performLocalMutation {
+                    val problem = io.github.gamesbyian.chunks.model.BatchServerCopy.validate(items)
+                    message = if (problem != null) problem else try {
+                        val report = io.github.gamesbyian.chunks.model.BatchServerCopy.run(items,
+                            exportTorrent = { hash ->
+                                withContext(Dispatchers.IO) { LocalEngineHolder.current()?.exportTorrentFile(hash) }
+                            },
+                            addStopped = link.addStoppedAtDefault)
+                        // Only destination jobs verified by readback (or already present) start a Move.
+                        val verified = report.results.filter {
+                            it.second == io.github.gamesbyian.chunks.model.BatchServerCopy.Result.ADDED ||
+                                it.second == io.github.gamesbyian.chunks.model.BatchServerCopy.Result.ALREADY_ON_SERVER
+                        }
+                        val journaled = withContext(Dispatchers.IO) {
+                            verified.count { (item, _) ->
+                                moveStore.save(TransferMove.start(TransferMove.Direction.PHONE_TO_SERVER,
+                                    item.infoHash, item.name, TransferMoveStore.scopeDigest(server.aliasScope),
+                                    TransferMoveStore.hostLabel(server.aliasScope))
+                                    .copy(stage = TransferMove.Stage.TARGET_VERIFIED))
+                            }
+                        }
+                        moveRevision++
+                        report.summary() + " $journaled ready to finish moving: review removal of the " +
+                            "original phone jobs below."
+                    } catch (cancel: kotlinx.coroutines.CancellationException) {
+                        throw cancel
+                    } catch (_: Exception) {
+                        "The batch move stopped before removal. Check the server list; nothing was removed " +
+                            "and nothing is retried automatically."
+                    }
+                }
             },
             onBatchLifecycle = { ids, start ->
                 val targets = transfers.filter { it.infoHash in ids }
@@ -1069,6 +1219,32 @@ internal fun LocalEngineScreen(
             val displayedAlias = remember(transfer.infoHash, aliasRevision) {
                 aliasStore.get(TransferCollectionStore.LOCAL_ENGINE_SCOPE, transfer.infoHash)
             }
+            val prepareRemoteHandoff: (() -> Unit)? = onPrepareRemote?.let { send ->
+                    {
+                        scope.launch {
+                            // Prefer the complete .torrent (identity + trackers):
+                            // rTorrent cannot find peers for a bare hash unless
+                            // DHT happens to be usable on that server.
+                            val document = onPrepareRemoteTorrent?.let {
+                                withContext(Dispatchers.IO) {
+                                    try {
+                                        LocalEngineHolder.current()?.exportTorrentFile(transfer.infoHash)
+                                            ?.takeIf { bytes ->
+                                                TorrentMetainfoReader.preview(bytes).infoHashV1
+                                                    .equals(transfer.infoHash, ignoreCase = true)
+                                            }
+                                    } catch (_: Exception) { null }
+                                }
+                            }
+                            val prepared = TorrentIdentityHandoff.prepare(transfer.infoHash, transfer.name)
+                            when {
+                                document != null -> onPrepareRemoteTorrent(document)
+                                prepared != null -> send(prepared)
+                                else -> message = "This torrent has no supported v1 identity to hand off."
+                            }
+                        }
+                    }
+                }
             LocalTransferCard(transfer, busy || inventoryStale,
                 onRepairTrackers = if (transfer.stopped && transfer.metadataKnown &&
                     transfer.trackers?.total == 0) ({
@@ -1156,7 +1332,24 @@ internal fun LocalEngineScreen(
                         }
                     }
                 },
-                onFocusEpisodes = { reviewedPlan ->
+                finishInOrder = { shownFiles ->
+                    FinishInOrderPanel(transfer.infoHash, shownFiles, busy || inventoryStale,
+                        onPrioritiesChanged = {
+                            scope.launch {
+                                files = try {
+                                    withContext(Dispatchers.IO) {
+                                        LocalEngineHolder.current()?.files(transfer.infoHash)
+                                    }
+                                } catch (cancel: kotlinx.coroutines.CancellationException) {
+                                    throw cancel
+                                } catch (_: Exception) { null }
+                            }
+                        })
+                },
+                // The one-time focus would fight a rolling policy, so it is
+                // only offered while Finish in Order is off for this transfer.
+                onFocusEpisodes = if (finishInOrderStore.get(transfer.infoHash) != null) null
+                    else { reviewedPlan ->
                     performLocalMutation {
                         try {
                             val result = withContext(Dispatchers.IO) {
@@ -1270,31 +1463,26 @@ internal fun LocalEngineScreen(
                         }
                     }
                 },
-                onPrepareRemote = onPrepareRemote?.let { send ->
-                    {
-                        scope.launch {
-                            // Prefer the complete .torrent (identity + trackers):
-                            // rTorrent cannot find peers for a bare hash unless
-                            // DHT happens to be usable on that server.
-                            val document = onPrepareRemoteTorrent?.let {
+                onPrepareRemote = prepareRemoteHandoff,
+                move = {
+                    TransferMoveControl(
+                        direction = TransferMove.Direction.PHONE_TO_SERVER,
+                        infoHash = transfer.infoHash, name = transfer.name,
+                        serverAliasScope = moveServer?.aliasScope?.takeIf { prepareRemoteHandoff != null },
+                        busy = busy || inventoryStale,
+                        ports = TransferMovePorts(
+                            observeTarget = moveServer?.let { server -> { server.observe(transfer.infoHash) } },
+                            observeSource = { TransferMoveObservations.phone(transfer.infoHash) },
+                            removeSource = {
                                 withContext(Dispatchers.IO) {
-                                    try {
-                                        LocalEngineHolder.current()?.exportTorrentFile(transfer.infoHash)
-                                            ?.takeIf { bytes ->
-                                                TorrentMetainfoReader.preview(bytes).infoHashV1
-                                                    .equals(transfer.infoHash, ignoreCase = true)
-                                            }
-                                    } catch (_: Exception) { null }
+                                    LocalEngineHolder.current()?.removeKeepingData(transfer.infoHash)
                                 }
-                            }
-                            val prepared = TorrentIdentityHandoff.prepare(transfer.infoHash, transfer.name)
-                            when {
-                                document != null -> onPrepareRemoteTorrent(document)
-                                prepared != null -> send(prepared)
-                                else -> message = "This torrent has no supported v1 identity to hand off."
-                            }
-                        }
-                    }
+                            },
+                            targetUnavailableReason = "Connect to the server account to check it."
+                        ),
+                        onStartMove = { prepareRemoteHandoff?.invoke() },
+                        revision = moveRevision
+                    )
                 },
                 onRemove = {
                     performLocalMutation {
@@ -1421,13 +1609,22 @@ internal fun LocalAddReview(
 }
 
 private fun stateLabel(transfer: LocalTransferStatus): String = when {
-    transfer.error != null -> "Error: " + transfer.error
+    transfer.error != null -> "Error"
     transfer.stopped -> "Stopped"
     transfer.state == LocalTransferState.CHECKING -> "Checking files"
-    !transfer.metadataKnown || transfer.state == LocalTransferState.DOWNLOADING_METADATA -> "Fetching description (no file data)"
+    !transfer.metadataKnown || transfer.state == LocalTransferState.DOWNLOADING_METADATA -> "Fetching description"
     transfer.state == LocalTransferState.DOWNLOADING -> "Downloading"
     transfer.state == LocalTransferState.SEEDING || transfer.state == LocalTransferState.FINISHED -> "Sharing"
     else -> "Unknown"
+}
+
+/** Colour family for the state above; always shown next to its label. */
+private fun stateTone(transfer: LocalTransferStatus): ChunksTone = when {
+    transfer.error != null -> ChunksTone.ERROR
+    transfer.stopped -> ChunksTone.PAUSED
+    transfer.state == LocalTransferState.SEEDING || transfer.state == LocalTransferState.FINISHED -> ChunksTone.COMPLETE
+    transfer.state == LocalTransferState.UNKNOWN -> ChunksTone.INACTIVE
+    else -> ChunksTone.ACTIVE
 }
 
 @Composable
@@ -1443,9 +1640,11 @@ internal fun LocalTransferCard(
     onBatchFileWanted: ((List<LocalTransferFile>, Boolean) -> Unit)? = null,
     onFilePriority: ((LocalTransferFile, Int) -> Unit)? = null,
     onFocusEpisodes: ((LocalEpisodeFocusPlanner.Plan) -> Unit)? = null,
+    finishInOrder: (@Composable (List<LocalTransferFile>) -> Unit)? = null,
     alias: String? = null,
     onSaveAlias: ((String?) -> Boolean)? = null,
     onPrepareRemote: (() -> Unit)? = null,
+    move: (@Composable () -> Unit)? = null,
     onRepairTrackers: (() -> Unit)? = null,
     observedGrowth: LocalProgressHistory.ObservedDelta? = null
 ) {
@@ -1466,7 +1665,18 @@ internal fun LocalTransferCard(
                     alias = alias, onSave = onSaveAlias
                 )
             }
-            Text(stateLabel(transfer) + " · " + percent + "% · " + transfer.peers + " peers")
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                StatusPill(stateLabel(transfer), stateTone(transfer))
+                Text("$percent% · " + transfer.peers + " peers", fontWeight = FontWeight.Bold)
+            }
+            transfer.error?.let { problem ->
+                Text(problem, color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall)
+            }
+            if (!transfer.metadataKnown && transfer.error == null && !transfer.stopped)
+                Text("No file data is downloaded until the torrent's description arrives.",
+                    style = MaterialTheme.typography.bodySmall)
             if (!transfer.stopped) {
                 // The libtorrent status sample is an instantaneous estimate;
                 // unlike the independent observed-growth window below, it
@@ -1480,7 +1690,7 @@ internal fun LocalTransferCard(
                 LocalEngineHolder.dhtPreferred(LocalContext.current))?.let {
                 Text(it, style = MaterialTheme.typography.bodySmall)
             }
-            ChunkedProgressBar(progress = transfer.progressPpm / 1_000_000f,
+            ChunkedProgressBar(progress = transfer.progressPpm / 1_000_000f, tone = stateTone(transfer),
                 modifier = Modifier.fillMaxWidth().semantics { stateDescription = "$percent percent complete" })
             // totalWantedDone is hash-verified completed payload; allTimeDownload
             // is a libtorrent network counter and may exclude HTTPS web seeds.
@@ -1519,16 +1729,25 @@ internal fun LocalTransferCard(
                     else "Running, but 0 peers connected. Check trackers, DHT, VPN/firewall and live seed availability. Starting alone cannot produce bytes.",
                     style = MaterialTheme.typography.bodySmall)
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = onToggle, enabled = !busy, modifier = Modifier.heightIn(min = 48.dp)) {
-                    Text(if (transfer.stopped) "Start" else "Stop")
-                }
-                OutlinedButton(onClick = { confirmRemove = true }, enabled = !busy && !confirmRemove,
-                    modifier = Modifier.heightIn(min = 48.dp)) { Text("Remove…") }
-                if (transfer.metadataKnown) OutlinedButton(onClick = onShowFiles,
-                    enabled = !busy, modifier = Modifier.heightIn(min = 48.dp)) {
-                    Text(if (filesShown) "Hide files" else "Files")
-                }
+            // Three tiles side by side split words at 200% text; stack them instead.
+            val wideText = LocalDensity.current.fontScale >= 1.5f
+            val tile: Modifier = if (wideText) Modifier.fillMaxWidth() else Modifier
+            val actions: @Composable (Modifier) -> Unit = { each ->
+                ActionTile(if (transfer.stopped) "Start" else "Stop",
+                    if (transfer.stopped) ChunksColors.Green else ChunksColors.Purple,
+                    onClick = onToggle, enabled = !busy, modifier = each,
+                    icon = if (transfer.stopped) R.drawable.chunks_ic_play else R.drawable.chunks_ic_stop,
+                    stacked = !wideText)
+                ActionTile("Remove…", ChunksColors.Orange, onClick = { confirmRemove = true },
+                    enabled = !busy && !confirmRemove, modifier = each,
+                    icon = R.drawable.chunks_ic_remove, stacked = !wideText)
+                if (transfer.metadataKnown) ActionTile(if (filesShown) "Hide files" else "Files",
+                    ChunksColors.Cyan, onClick = onShowFiles, enabled = !busy, modifier = each,
+                    icon = R.drawable.chunks_ic_folder, stacked = !wideText)
+            }
+            if (wideText) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { actions(tile) }
+            else Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                actions(Modifier.weight(1f))
             }
             if (onRepairTrackers != null && transfer.stopped &&
                 transfer.metadataKnown && transfer.trackers?.total == 0) {
@@ -1542,7 +1761,7 @@ internal fun LocalTransferCard(
                 TorrentIdentityHandoff.prepare(transfer.infoHash, transfer.name) != null) {
                 OutlinedButton(onClick = { confirmHandoff = true }, enabled = !busy,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                    Text("Prepare torrent on rTorrent")
+                    Text("Copy Transfer to server…")
                 }
                 if (confirmHandoff) {
                     Text("Chunks opens your rTorrent server's Add review with this torrent's " +
@@ -1566,11 +1785,13 @@ internal fun LocalTransferCard(
                     }
                 }
             }
+            move?.invoke()
             if (filesShown) LocalFileSelection(
                 files, busy, transferKey = transfer.infoHash,
                 onFileWanted = onFileWanted, onBatchFileWanted = onBatchFileWanted,
                 onFilePriority = onFilePriority,
-                onFocusEpisodes = onFocusEpisodes
+                onFocusEpisodes = onFocusEpisodes,
+                finishInOrder = finishInOrder
             )
             if (confirmRemove) {
                 Text("Remove from the phone engine only. Downloaded files stay in Chunks' folder; sharing of this torrent stops.")
@@ -1598,6 +1819,7 @@ internal fun LocalFileSelection(
     onBatchFileWanted: ((List<LocalTransferFile>, Boolean) -> Unit)? = null,
     onFilePriority: ((LocalTransferFile, Int) -> Unit)? = null,
     onFocusEpisodes: ((LocalEpisodeFocusPlanner.Plan) -> Unit)? = null,
+    finishInOrder: (@Composable (List<LocalTransferFile>) -> Unit)? = null,
     onFileWanted: (Int, Boolean) -> Unit
 ) {
     if (files == null) {
@@ -1634,6 +1856,7 @@ internal fun LocalFileSelection(
 
     Text("Untick a file to skip downloading it. Already downloaded parts are kept.",
         style = MaterialTheme.typography.bodySmall)
+    finishInOrder?.invoke(files)
     if (onFocusEpisodes != null && focusPlan != null) {
         OutlinedButton(onClick = { pendingEpisodeFocus = !pendingEpisodeFocus },
             enabled = !busy,
@@ -1723,12 +1946,17 @@ internal fun LocalFileSelection(
                     onValueChange = { onFileWanted(file.index, it) }),
                 verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(checked = file.wanted, onCheckedChange = null)
-                Column(Modifier.padding(start = 8.dp).weight(1f)) {
+                Image(painterResource(fileTypeIcon(file.path)), contentDescription = null,
+                    modifier = Modifier.padding(start = 4.dp).size(28.dp))
+                Column(Modifier.padding(start = 8.dp).weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text(file.path.substringAfterLast('/'),
-                        style = MaterialTheme.typography.bodyMedium)
+                        style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                     Text(Units.bytes(file.sizeBytes) + " · " + percent + "%" +
                         if (file.wanted) "" else " · skipped",
                         style = MaterialTheme.typography.bodySmall)
+                    FileProgressLine(if (file.sizeBytes <= 0L) 1f else file.doneBytes.toFloat() / file.sizeBytes,
+                        file.wanted, Modifier.fillMaxWidth())
                 }
             }
             if (file.wanted && onFilePriority != null) {
@@ -1832,4 +2060,59 @@ internal fun LocalSpeedLimits() {
         Text(if (saving) "Checking speed limits…" else "Save speed limits")
     }
     result?.let { Text(it, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }) }
+}
+
+/**
+ * Add-review Finish in Order choice plus the opt-in default for later Adds.
+ * The default only pre-ticks future Add reviews on this phone; it never
+ * changes a transfer that already exists.
+ */
+@Composable
+internal fun FinishInOrderAddChoice(
+    label: String, checked: Boolean, enabled: Boolean, onChecked: (Boolean) -> Unit,
+    defaultOn: Boolean, onDefault: (Boolean) -> Unit
+) = Column(Modifier.fillMaxWidth()) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
+        .toggleable(value = checked, enabled = enabled, role = Role.Checkbox, onValueChange = onChecked),
+        verticalAlignment = Alignment.CenterVertically) {
+        Checkbox(checked = checked, enabled = enabled, onCheckedChange = null)
+        Text(label, modifier = Modifier.padding(start = 8.dp))
+    }
+    if (checked || defaultOn) Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(start = 32.dp)
+        .toggleable(value = defaultOn, enabled = enabled, role = Role.Checkbox, onValueChange = onDefault),
+        verticalAlignment = Alignment.CenterVertically) {
+        Checkbox(checked = defaultOn, enabled = enabled, onCheckedChange = null)
+        Text("Tick this for new multi-file Adds on this phone. Existing transfers are not changed.",
+            style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(start = 8.dp))
+    }
+}
+
+/**
+ * Create a Finish in Order policy from the suggested order of a just-added,
+ * still-stopped phone transfer and apply its first verified step. Returns a
+ * user-facing note; never starts the transfer or changes skipped files.
+ */
+internal suspend fun enableFinishInOrderAfterAdd(
+    context: Context, engine: io.github.gamesbyian.chunks.engine.LocalTorrentEngine, infoHash: String
+): String {
+    val files = engine.files(infoHash) ?: return "Finish in Order was not set up: the file list is not readable yet."
+    val suggestion = io.github.gamesbyian.chunks.engine.FinishInOrderPlanner.suggest(files)
+        ?: return "Finish in Order was not set up: no episode or numbered order was found. You can arrange one from Files."
+    val store = FinishInOrderStore(context)
+    val policy = io.github.gamesbyian.chunks.engine.FinishInOrderPlanner.policyFor(
+        io.github.gamesbyian.chunks.engine.FinishInOrderPlanner.Mode.BALANCED, files, suggestion.order)
+    if (!FinishInOrderController.exclusive {
+            store.save(infoHash, io.github.gamesbyian.chunks.engine.FinishInOrderRecord(policy))
+        }) return "Finish in Order could not be saved; priorities are unchanged."
+    val step = FinishInOrderController.exclusive {
+        store.get(infoHash)?.let { FinishInOrderController.runner(engine, store).step(infoHash, it) }
+    }
+    return when (step) {
+        is io.github.gamesbyian.chunks.engine.FinishInOrderRunner.Step.Applied,
+        is io.github.gamesbyian.chunks.engine.FinishInOrderRunner.Step.Idle ->
+            "Finish in Order is on for ${suggestion.order.size} files (Balanced)."
+        is io.github.gamesbyian.chunks.engine.FinishInOrderRunner.Step.Suspended ->
+            "Finish in Order is paused: " + step.record.suspendedReason
+        else -> "Finish in Order is saved and will apply once the engine reports this transfer."
+    }
 }

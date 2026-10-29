@@ -1,6 +1,6 @@
 # Chunks: agent concurrency and ownership
 
-**These are capability areas, never fixed agent jobs.** On 2026-10-26 the owner had not assigned a persistent multi-agent roster. All agents choose from the **one** [ranked workboard](WORK-QUEUE.md), after reconciling live main, PRs, issues and active branches. No agent is presumed to be running because an old prompt mentions one. One agent may deliver multiple compatible slices; multiple agents must avoid the same source ownership.
+**These are capability areas, never fixed agent jobs.** No permanent app-development roster is established by this document; inspect actual live agent/branch ownership. All agents choose from the **one** [ranked workboard](WORK-QUEUE.md), after reconciling live main, PRs, issues and active branches. No agent is presumed to be running because an old prompt mentions one. One agent may deliver multiple compatible slices; multiple agents must avoid the same source ownership.
 
 | Expertise needed | Typical workboard issues | Coordination boundary |
 |---|---|---|
@@ -15,3 +15,7 @@
 **Exit:** build a small reviewable PR, run cheap focused tests, supply exact source SHA and evidence tier, seek independent review for filesystem/security changes, and update the owning issue plus [quality ledger](QUALITY-LEDGER.md). Qualified work may be merged; disputed/failed PRs must stay open with concrete blocker or be closed with a recorded replacement/disposition. Work ahead on a different unclaimed task while CI runs. Do not babysit or multiply workflows without need.
 
 **Protected development testing:** named Seedhost transfer inventory is owner-approved nonsecret QA data and targeted destructive **torrent** tests are allowed. Authentication material, tracker passkeys, unrelated accounts and arbitrary remote filesystem mutations are not. Always revalidate exact identity and postconditions; no blind retries.
+
+## Owner exception: dedicated font laboratory (2026-10-28)
+
+Typeface development is intentionally isolated in the single persistent [`font/lab`](https://github.com/gamesbyian/Chunks/tree/font/lab) branch. Unlike the app workstreams above, it does **not** open small PRs or run continuous GitHub CI for each glyph. Keep it separate from app branches and app navigation/services; run local reproducible builds and audits, then submit one frozen promotion batch with full PR CI only when warranted. See [font lab operations](design/CHUNKS-FONT-LAB-OPERATIONS.md). This is a source-ownership and CI exception, not an art approval or release shortcut.

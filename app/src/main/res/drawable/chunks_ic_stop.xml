@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- GENERATED from docs/design/svg/icons/transfers/stop.svg by tools/generate_icon_vectors.cjs (sha256 5c924b7939cabffb); edit the SVG, then regenerate. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp" android:viewportWidth="64" android:viewportHeight="64">
+  <path android:pathData="M22 17 H42 A5 5 0 0 1 47 22 V42 A5 5 0 0 1 42 47 H22 A5 5 0 0 1 17 42 V22 A5 5 0 0 1 22 17 Z" android:fillColor="#FF0B0F17" android:strokeColor="#FF0B0F17" android:strokeWidth="5" android:strokeLineCap="round" android:strokeLineJoin="round"/>
+</vector>

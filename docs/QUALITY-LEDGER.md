@@ -1,5 +1,76 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-29 visual passes and R8 smoke (app lane)
+
+- **Owner direction (2026-10-29):** wording may change, the Chunks typeface may be used anywhere, and artwork may be chosen from the library and reference sheets. Specs win over the references, and no mockup feature is implemented. The design system is recorded in UX.md.
+- **Merged visual PRs (squash, exact-head CI green):**
+  - #514 theme `113104b` (head `27b44029`: API35 40801648442, build 40801648441, atlas 40801648454);
+  - #515 components `0a2eebf` (head `96e987aa`: API35 40802615892, which **passed on its one re-run** after an adb screenshot-pull flake that came after all 210 tests had passed; build 40802615852; atlas 40802615834);
+  - #516 icons `08d0412` (head `8ae644ce`: API35 40814694284, build 40814694283; tree identical to the previously green `ef465cde`);
+  - #517 server card `6321bdc` (head `d004cb59`: API35 40816106548, build 40816106539, atlas 40816106457);
+  - #518 chips/tabs + More tools `3efc452` (head `0d91173c`: API35 40817187005, build 40817187007, atlas 40817186998, minified-smoke 40817186995);
+  - #519 entry-screen tiles `ab04d2d` (head `127737fa`: API35 40818275012, API29 40818275017, build 40818275155, atlas 40818275122, minified-smoke 40818275072);
+  - #520 file rows + storage bar `938c95e` (head `3eb5765d`: API35 40819491492, API29 40819491475, build 40819491426, atlas 40819491494, minified-smoke 40819491471);
+  - #522 API35 screenshot-pull retry `880328a` (head `a9862c2b`: API35 40816923510);
+  - #521 banners + 200% fixes `ef696f8` (head `abe16c96`: API35 40820549675, API29 40820549658, build 40820549669, atlas 40820549692, minified-smoke 40820549665);
+  - #523 accent-panel contrast, ZIP review restyle and simpler `ActionTile` `220fcc3` (head `8f903319`: API35 40821692945, build 40821692900, atlas 40821693173, minified-smoke 40821692958).
+- **#511 R8 merged `052bc9f`** (head `a25c8b8d`): `minified-smoke` [40815893549](https://github.com/gamesbyian/Chunks/actions/runs/40815893549) passes. Two native engines move exact bytes and Compose renders on API35 against the R8-shrunk `qaMinified` build. How the first failures were diagnosed:
+  1. Instrumentation hung because the test APK had been shrunk without keeping the runner.
+  2. A bounded diagnostic run then showed `NoSuchMethodError androidx.tracing.Trace.endSection()`: libraries shared with the runner resolve from the shrunk app.
+
+  qa-only rules keep those shared libraries; the release rules don't. Release shrinking remains **off** (estimated 36.4 MB vs 68.1 MB debug) until a signed release is checked on hardware.
+- **JVM visual evidence (Robolectric 4.17 + Roborazzi 1.77, review only):** real Connect, phone, server, tab, Add-review, component, file-row, storage and banner renders, plus 200% font-scale renders. These found and fixed:
+  - words split in side-by-side tiles at 200%;
+  - stat tiles dropping units ("50.4" instead of "50.4 MiB/s"), which predates the visual pass;
+  - the server state pill clipped to "St";
+  - an empty optional subfolder field showing an error while the destination resolved;
+  - red-on-green text at 1.74:1 for the trackerless-magnet warning, and red/light controls on accent panels.
+
+  These renders are not device, TalkBack or human visual acceptance.
+- **Not established:** physical handset rendering, TalkBack on device, human visual approval of the chosen library assets, and a signed shrunk release on hardware.
+
+## 2026-10-29 app lane, second checkpoint: batch transfers, Finish in Order entry points
+
+- **Merged (squash, exact-head CI green):** #502 batch Move Transfer to server `f7a6f42` (head `b7e2a3d5`: API35 run [40793408909](https://github.com/gamesbyian/Chunks/actions/runs/40793408909), API29 40793408957, build 40793408876); #504 batch Copy Transfer to phone `cc4733b` (head `aeb464a7`: API35 40793708343, build 40793708390, atlas 40793708376); #505 Finish in Order on the `.torrent` Add review `9cf14ea` (head `c007b764`: API35 40793933750, API29 40793933786, build 40793933725); #507 Finish in Order for magnet Adds after metadata `c34b9aa` (head `76e1244f`: API35 40795059648, real-rTorrent 0.9.8 + Arch 40795059659, build 40795059647, atlas 40795059669).
+- **Merged later the same session (squash, exact-head CI green):**
+  - **#506 batch Move Transfer to phone** `764ae10`. The first exact-head API35 run (40795206625, head `e590368a`) failed on `BatchMoveRemovalPanelInstrumentedTest`, which still expected #502's "stay on this phone". #506 names the source in the panel, so the assertion was updated to the new wording, not removed. The fixed head `f23322c7` passed: API35 [40796533295](https://github.com/gamesbyian/Chunks/actions/runs/40796533295), real rTorrent 0.9.8 + Arch 40796532966, build 40796533204, atlas 40796532937. The merge onto newer main was also compiled locally.
+  - **#508 Smart Connect provider catalog** `a8f4cef` (head `e0a3f417`: API35 40795431453, build 40795431448, atlas 40795431443). Before the swap, the pinned-plan JVM test passed against the old hard-coded rules.
+  - **#509 phone Sequential Playback** `e910256` (head `e31d8aff`: API35 40796070311, real rTorrent 40796070426, build 40796070358). Locally `*FinishInOrder*` passes: planner 10/10, runner 10/10 including a real-libtorrent flag readback, remote port 3/3. The merge onto newer main was compiled and tested locally.
+  - **#510 controlled loopback-swarm timing** `a5e2646` (head `48e463e0`: build 40796578341, which runs `testDebugUnitTest`). One seeder at 384 KiB/s, 6 × 256 KiB files, the order reversing native order, five local runs:
+    - Finish first: first ordered file in 1329–2458 ms, with the other files 20–49% verified.
+    - Baseline: 3963–5508 ms, with the other files 66–100% verified.
+    - Ratio 0.24–0.55.
+    - Asserted bound: other files under 75%. libtorrent's ~3 s request queue rules out strict order.
+- **Open:** #511 R8 keep rules and `qaMinified` API35 smoke. Locally the shrunk APK is 36.4 MB vs 68.1 MB debug (dex 3.7 vs 33 MB). Release shrinking stays off until its smoke workflow passes.
+- **Design note:** Finish in Order leaves sidecar subtitles out of the order. They keep native Normal priority, which outranks the Low background files, so they already arrive early. Grouping is deferred until device evidence shows a need.
+- **Environment hazard:** after a container restart the agent proxy port changes, and `~/.gradle/gradle.properties` must follow `$HTTPS_PROXY`. The AGP version needs Gradle 9.3.1 (`/opt/gradle9`), not the default 8.14.
+- **Still not established:** physical handset for any of these flows; Seedhost or real-provider Smart Connect; playback-start timing; public-swarm timing; 200% text and TalkBack on device.
+
+## 2026-10-29 session close-out (app lane): merges, fixes and evidence
+
+- **Merged (squash, exact-head CI green):** #463 `ea5833e`, #468 `992d506`, #406 `8f7a034`, #472 `bf5df95`, #475 `4912ba3`, #423 `85a7388`, #478 `13b2303`, #479 `66c319b`, #476 `b41b65f`, #477 `099c36f`, #480 `cc824fc`, #499 `b4f6183`, #481 `707692c`, #473 `c829b57`, #474 `fdf8a21`, #482 `07f31f9`; #501 (remote FIO) and #502 (batch Move) see their PRs.
+- **Main-red root causes fixed:** API35 instrumentation only triggered on androidTest paths, so #460 (new read-only RPC) and #463 (renamed field) broke it unseen (#472, #479; trigger now includes `app/src/main/**`). `assembleRelease` never built because lintVitalRelease failed on `network_security_config.xml` (#480). Android 10/11 foreground-service crash (#481, reproduced run 40773235821).
+- **Local real-rTorrent rig:** the agent container can run `rtorrent` 0.9.8 + `nginx` SCGI exactly like `disposable-rtorrent-probe.yml`; it exposed that rTorrent 0.9.8 `f.completed_chunks` over-counts at file boundaries (#501 uses `d.bitfield` + `f.range_*`).
+- **Cross-lane hazard:** the font accent-study workflow commits regenerated, non-deterministic OTFs to *any* branch whose push touches font sources (including app branches after a main merge). Bot commits don't trigger CI, leaving PR heads untested; app PRs had to drop those outputs before merging. Font lane: consider restricting that commit step to font branches.
+
+## 2026-10-28 Android 10/11 foreground-service crash (found by lint, reproduced on API 29)
+
+- `LocalEngineService` called API 31-only `Notification.Builder.setForegroundServiceBehavior` with minSdk 29. With the new API 29 service test and **without** the fix, run [40773235821](https://github.com/gamesbyian/Chunks/actions/runs/40773235821) failed with `NoSuchMethodError` from `onStartCommand`: starting any phone download on Android 10/11 crashed the app. Earlier "API 29 native write/resume/seed" evidence never started the foreground service. The fix PR's exact-head API 29 run (3 service tests, skip-intolerant) is the acceptance record; a physical Android 10/11 handset is still unverified.
+
+## 2026-10-28 Move Transfer (job-only) single-transfer slice (source evidence only)
+
+- Local agent-container run: `gradle :app:testDebugUnitTest --tests '*TransferMoveTest*'` 6/6 passed (stage machine: target before removal, fresh pre-removal target check, crash → UNCERTAIN, observation-only resolution, messages never claim files moved, codec). `:app:compileDebugAndroidTestKotlin` OK for `TransferMoveControlInstrumentedTest` (2 API35 Compose flows, fake ports); exact-head CI is the gate and is recorded on the PR.
+- **Not established:** real rTorrent `d.erase` via this UI, real phone engine removal via this UI, Seedhost, physical handset, batch.
+
+## 2026-10-28 batch Copy Transfer to server (source evidence only)
+
+- `BatchServerCopy` + phone batch panel section: JVM `BatchServerCopyTest` 3/3 locally (order, duplicate skip, missing/mismatched definition never sent, stop at first unconfirmed Add with no retry, selection validation); 2 API35 Compose tests added. Uses the existing `loadStoppedTorrentBytes` at the server default Place with readback. Real rTorrent 0.9.8 batch run: `RTorrentDisposableBatchCopyTest` passed against a local rTorrent 0.9.8 + nginx SCGI rig in the agent container (ALREADY_ON_SERVER then ADDED, both stopped at `directory.default`, other jobs unchanged) and is a skip-intolerant step of `disposable-rtorrent-probe.yml`. **Not established:** Seedhost, handset.
+
+
+## 2026-10-28 Finish in Order local scheduler (source evidence only)
+
+- Local run in the agent container (JDK 21, Gradle 9.3.1, Android SDK platform 37.0): `gradle :app:testDebugUnitTest --tests '*FinishInOrder*'` **15/15 passed** (planner/record 9, runner 6 including a real libtorrent4j 2.1.0-39 Linux session that hash-checks piece-aligned episodes, advances past verified files and refuses a stale replay with `STALE_REVIEW`); the full JVM suite earlier compiled the same sources with all pre-existing tests passing. `:app:compileDebugAndroidTestKotlin` and `:app:assembleDebug` succeeded. Exact PR-head GitHub Android/JVM and API35 runs are the merge gate and are recorded on the PR.
+- **Not established:** emulator process-death recovery, physical handset, Doze/background, controlled multi-peer swarm time-to-first-file comparison, remote rTorrent, 200%/TalkBack on device.
 **Native Android font raster acceptance, 2026-10-28:** [#445](https://github.com/gamesbyian/Chunks/pull/445) MERGED at `492dd8e6f752848eb933938d07943afe85b3090b`, exact head `74adcf2e0bbd60eefdb369a393f6b8e95cf4ea9b`, with all five app+native CFF+Add UI instrumentation checks green. The API35 Android emulator loaded five **debug-only** Stacked reference candidate OTFs and ran one non-skipped selected `TextView`/`Canvas` instrumentation test, successfully writing 30 nonblank PNGs covering 5 weights × 2 simulated text-size factors × 3 long multilingual/stacked/transfer-stat samples. Source [run 40778103543](https://github.com/gamesbyian/Chunks/actions/runs/40778103543) exported **30 files pulled, 0 skipped**, checked PNG signatures/IHDR, wrote SHA256 checksums and retained artifact **12854669450**. The Android instrumented test checked full line endings and accessibility labels. This is native TextView proof only, not shipping font integration, Compose layout, genuine system nonlinear 200% font settings, TalkBack, physical handset testing, or editorial/owner visual acceptance. Issue #347 stays OPEN.
 
 **Individually authored reference weight contours, 2026-10-28:** [#483](https://github.com/gamesbyian/Chunks/pull/483) **MERGED** at `ebc09f136ee31e48ac579361e35ccdb9ceea708d`. Source branch exact head `347929838f21423963ba66ee28f4b8dab338e489` passed seven native CFF/provenance/optical-kerning/weight/visual/Latin acceptance checks. Eight editable Bézier SVGs for uppercase `I` and lowercase `l` across 400–700 were compiled into four checked-in, nonshipping OTFs; all 856 Unicode mappings and original ExtraBold remain intact. New per-glyph `outline_source=weight-specific-svg-master` and `outline_encoding=native-bezier-curves` are evidenced in source-hashed weight metrics. [#484](https://github.com/gamesbyian/Chunks/pull/484) **MERGED** at `15d99533832d7ec3358e0bf72807078061a52cd0`, exact head `9ad7ed8a2ffe9ecb8b652f72409033a15d82c69f`, after seven green tests. Four native two-contour dotted-`i` SVGs and four recompiled source-matched OTFs bring the total to **12** independently editable 400–700 alphabet source masters (three glyphs per weight). Verified `i` area ratios 0.7249/0.8043/0.8859/0.9677 Regular–Bold, retained original dot/stem topology, noncolliding clearance, all 856 cmap and SHA metrics. **59/62 original reference glyphs per lighter weight still need individual editorial drawing.** No new source master has received final editorial/user artwork or Android Compose/TalkBack approval; #347 remains open.

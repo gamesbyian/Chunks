@@ -9,6 +9,9 @@ import androidx.core.view.WindowCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,11 +38,11 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -47,11 +50,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -66,12 +75,15 @@ import io.github.gamesbyian.chunks.model.CollectionMembershipRules
 import io.github.gamesbyian.chunks.model.ManualCollectionPager
 import io.github.gamesbyian.chunks.model.TransferFilter
 import io.github.gamesbyian.chunks.model.TransferOrder
+import io.github.gamesbyian.chunks.model.TransferMove
 import io.github.gamesbyian.chunks.model.PublicTrackerHandoff
+import io.github.gamesbyian.chunks.engine.FinishInOrderRunner
 import io.github.gamesbyian.chunks.model.Units
 import io.github.gamesbyian.chunks.organize.Classifier
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
 import io.github.gamesbyian.chunks.rpc.RemoteSmartConnect
+import io.github.gamesbyian.chunks.rpc.RemoteProviderCatalog
 import io.github.gamesbyian.chunks.rpc.RemoteFile
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
 import io.github.gamesbyian.chunks.rpc.RemoteQueueActivityContext
@@ -87,12 +99,14 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-private val Ink = Color(0xFF262442)
-private val Cream = Color(0xFFFFF8EC)
-private val Lilac = Color(0xFFE6DAFF)
-private val Lime = Color(0xFFDDF1A7)
-private val Coral = Color(0xFFFFB69D)
-private val Blue = Color(0xFF4662C6)
+// Local aliases for the shared ChunksColors tokens (see ChunksTheme.kt).
+// Panels filled with an accent always carry Ink (near-black) text.
+private val Ink = ChunksColors.OnAccent
+private val Cream = ChunksColors.Background
+private val Lilac = ChunksColors.Purple
+private val Lime = ChunksColors.Green
+private val Coral = ChunksColors.Orange
+private val Blue = ChunksColors.Cyan
 
 class MainActivity : ComponentActivity() {
     private var incomingMagnet by mutableStateOf<String?>(null)
@@ -100,16 +114,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // The cream Compose surface extends behind the system status bar.
-        // Use dark icons; white icons failed contrast review in actual API 35 captures.
-        WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = true
+        // The near-black Compose surface extends behind the system status bar,
+        // so the status bar icons must be light.
+        WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = false
         incomingMagnet = ExternalMagnetInput.fromIntent(intent)
         incomingTorrent = SharedTorrentDocument.fromIntent(intent)
         setContent {
-            MaterialTheme(colorScheme = lightColorScheme(
-                primary = Blue, onPrimary = Color.White, surface = Cream,
-                onSurface = Ink, background = Cream, secondary = Ink
-            )) {
+            ChunksTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     ChunksApp(
                         sharedMagnet = incomingMagnet,
@@ -163,6 +174,8 @@ private fun ChunksApp(
         mutableStateOf(if (vault.rememberingEnabled()) profileRoster.list() else emptyList())
     }
     var endpoint by remember { mutableStateOf(remembered?.endpoint.orEmpty()) }
+    // Advanced manual endpoint path; joined with a hostname-only address.
+    var rpcPath by remember { mutableStateOf("") }
     var username by remember { mutableStateOf(remembered?.username.orEmpty()) }
     var password by remember { mutableStateOf(remembered?.password.orEmpty()) }
     // Remembering is the default. Every user can opt out before Connect.
@@ -179,6 +192,8 @@ private fun ChunksApp(
     var snapshotRevision by remember { mutableLongStateOf(0L) }
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var connectDiagnostics by remember { mutableStateOf(ConnectionDiagnostics()) }
+    var connectJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     var stale by remember { mutableStateOf(false) }
     var currentView by remember { mutableStateOf("main") }
     var requestedView by remember { mutableStateOf("main") }
@@ -328,11 +343,22 @@ private fun ChunksApp(
         } else if (server == null) {
             ConnectionScreen(
                 endpoint = endpoint, username = username, password = password,
+                rpcPath = rpcPath, onRpcPath = { rpcPath = it },
                 error = error, loading = loading,
+                diagnostics = connectDiagnostics,
+                onCancelConnect = {
+                    // Discovery is read-only, so abandoning it changes nothing.
+                    connectJob?.cancel()
+                    remoteFence.invalidate()
+                    loading = false
+                    connectDiagnostics = ConnectionDiagnostics()
+                    error = "Connection check cancelled. Nothing was changed on the server."
+                },
                 rememberLogin = rememberLogin, savedLoginPresent = savedLoginPresent,
                 savedProfiles = savedProfiles, credentialNotice = credentialNotice,
                 onSelectProfile = { profile ->
                     endpoint = profile.credentials.endpoint
+                    rpcPath = ""
                     username = profile.credentials.username
                     password = profile.credentials.password
                     error = null
@@ -412,18 +438,30 @@ private fun ChunksApp(
                 onEndpoint = { endpoint = it }, onUsername = { username = it },
                 onPassword = { password = it },
                 onConnect = {
-                    if (!loading) {
+                    // An advanced RPC path makes this one exact address: no discovery.
+                    val target = try { RemoteSmartConnect.withExactPath(endpoint, rpcPath) }
+                        catch (invalid: IllegalArgumentException) {
+                            error = invalid.message
+                            connectDiagnostics = ConnectionDiagnostics()
+                            null
+                        }
+                    if (!loading && target != null) {
                         loading = true
                         error = null
                         val ticket = remoteFence.begin("main")
                         // Freeze credentials for this one connection attempt.
                         // A later edit or lifecycle reset cannot redirect it.
-                        val settings = RemoteCredentials(endpoint, username, password)
+                        val settings = RemoteCredentials(target, username, password)
                         val saveThisLogin = rememberLogin
-                        scope.launch {
+                        connectDiagnostics = ConnectionDiagnostics()
+                        connectJob = scope.launch {
                             try {
                                 val discovered = RemoteSmartConnect.connect(
-                                    settings.endpoint, settings.username, settings.password
+                                    settings.endpoint, settings.username, settings.password,
+                                    onAttempt = { index, total, candidate ->
+                                        if (remoteFence.current(ticket)) connectDiagnostics =
+                                            ConnectionDiagnostics(ConnectionDiagnostics.progress(index, total, candidate))
+                                    }
                                 ) { credentials ->
                                     val connection = RTorrentRemote(credentials)
                                     val verifiedVersion = connection.version()
@@ -446,6 +484,8 @@ private fun ChunksApp(
                                     version = v
                                     aliasScope = verifiedSettings.endpoint.trim() + "\u0000" + username.trim()
                                     endpoint = verifiedSettings.endpoint
+                                    // The full address now carries the path.
+                                    rpcPath = ""
                                     // Never carry another server/account's custom destination
                                     // into this Add draft. Blank selects the new server default.
                                     draftPath = ""
@@ -485,9 +525,16 @@ private fun ChunksApp(
                                     // Do not retain another copy in the screen field.
                                     password = ""
                                 }
+                            } catch (cancel: kotlinx.coroutines.CancellationException) {
+                                throw cancel
                             } catch (failure: Exception) {
-                                if (remoteFence.current(ticket) && server == null)
+                                if (remoteFence.current(ticket) && server == null) {
                                     error = readableFailure(failure)
+                                    connectDiagnostics = if (failure is RemoteSmartConnect.ConnectionFailed)
+                                        ConnectionDiagnostics(attempts = failure.attempts,
+                                            advice = RemoteSmartConnect.repairAdvice(failure, settings.endpoint))
+                                    else ConnectionDiagnostics()
+                                }
                             } finally {
                                 if (remoteFence.current(ticket) && server == null) loading = false
                                 // On success, the session is no longer in the connection UI,
@@ -515,6 +562,20 @@ private fun ChunksApp(
                         initialMagnet = phoneHandoffMagnet,
                         initialTorrentUri = incomingTorrent,
                         canReviewOnConnectedServer = true,
+                        serverCopy = if (remotePrivacyScope == null) null
+                            else LocalServerCopyLink(runCatching {
+                                java.net.URI(aliasScope.substringBefore('\u0000').trim()).host
+                            }.getOrNull() ?: "your server") { bytes ->
+                                // Re-read the default for each Add; the adapter checks it again.
+                                val place = connectedRemote.defaultDirectory()
+                                    ?: error("The server reports no default download location")
+                                connectedRemote.loadStoppedTorrentBytes(bytes, place, useServerDefault = true)
+                            },
+                        // Only an unambiguous authenticated account can own a Move.
+                        moveServer = if (remotePrivacyScope == null) null
+                            else LocalMoveServer(aliasScope) { hash ->
+                                TransferMoveObservations.server(connectedRemote, hash)
+                            },
                         onTorrentConsumed = onIncomingTorrentConsumed,
                         onPrefillConsumed = { phoneHandoffMagnet = null },
                         onPrepareRemote = { draft ->
@@ -555,6 +616,31 @@ private fun ChunksApp(
                     refresh()
                 }
             }
+            // Finish in Order on rTorrent advances only while connected here:
+            // at most one guarded step per policy every 30 s, under the same
+            // mutation gate as every other server change.
+            LaunchedEffect(connectedRemote, aliasScope) {
+                val store = FinishInOrderStore(context, aliasScope)
+                while (true) {
+                    kotlinx.coroutines.delay(30_000L)
+                    if (remotePrivacyScope == null) continue
+                    for (transfer in transfers.filter { it.started }) {
+                        val record = withContext(Dispatchers.IO) { store.get(transfer.hash) } ?: continue
+                        if (record.suspendedReason != null || (record.finished && record.pending.isEmpty())) continue
+                        if (server !== connectedRemote || loading || stale || !mutationGate.tryStart()) break
+                        var changed = false
+                        try {
+                            val step = try { stepRemoteFinishInOrder(connectedRemote, store, transfer.hash) }
+                                catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
+                                catch (_: Exception) { null }
+                            changed = step !is FinishInOrderRunner.Step.Idle
+                        } finally {
+                            mutationGate.settled()
+                            if (changed && server === connectedRemote) { stale = true; refresh() }
+                        }
+                    }
+                }
+            }
             Row(
                 modifier = Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -565,12 +651,16 @@ private fun ChunksApp(
                         selected = section == tab,
                         onClick = { section = tab },
                         label = { Text(tab.label) },
-                        modifier = Modifier.height(48.dp)
+                        // A hard 48dp height clips enlarged Compose labels when
+                        // Android system font scale reaches 200%. Keep the
+                        // minimum touch target while letting text determine
+                        // the natural height on large-font devices.
+                        modifier = Modifier.heightIn(min = 48.dp)
                     )
                 }
             }
             if (error != null) {
-                Notice("Refresh problem", error.orEmpty(), Coral)
+                Notice("Refresh problem", error.orEmpty())
             }
             when (section) {
                 Section.TRANSFERS -> TransfersScreen(
@@ -801,6 +891,9 @@ private fun readableFailure(failure: Exception): String = when (failure) {
 @Composable
 private fun ConnectionScreen(
     endpoint: String, username: String, password: String, error: String?, loading: Boolean,
+    rpcPath: String = "", onRpcPath: (String) -> Unit = {},
+    diagnostics: ConnectionDiagnostics = ConnectionDiagnostics(),
+    onCancelConnect: () -> Unit = {},
     rememberLogin: Boolean, savedLoginPresent: Boolean,
     savedProfiles: List<RememberedRemoteProfileRoster.Profile>, credentialNotice: String?,
     onRememberLogin: (Boolean) -> Unit, onForgetLogin: () -> Unit,
@@ -822,21 +915,26 @@ private fun ConnectionScreen(
             ColoredPanel("Hello, server.", "Paste your seedbox hostname or ruTorrent web address. Chunks checks known secure rTorrent endpoints automatically. Torrent changes require separate confirmation.", Lilac)
         }
         item {
-            OutlinedButton(onClick = onLocalZipReview,
-                modifier = Modifier.fillMaxWidth().height(52.dp)) {
-                Text("Inspect a local ZIP without connecting")
-            }
-        }
-        item {
-            OutlinedButton(onClick = onInspectSnapshot,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
-                Text("Inspect .chunksnap backup (offline)")
-            }
-        }
-        item {
-            OutlinedButton(onClick = onLocalEngine,
-                modifier = Modifier.fillMaxWidth().height(52.dp)) {
-                Text("Download on this phone (experimental)")
+            // Things that work without a server: the phone engine and two offline inspectors.
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                ActionTile("Download on this phone (experimental)", ChunksColors.Cyan,
+                    onClick = onLocalEngine, modifier = Modifier.fillMaxWidth(),
+                    icon = R.drawable.chunks_ic_phone, stacked = false)
+                // Half-width tiles split long words at 200% text; stack them instead.
+                val wideText = LocalDensity.current.fontScale >= 1.5f
+                val offline: @Composable (Modifier) -> Unit = { each ->
+                    ActionTile("Inspect a local ZIP without connecting", ChunksColors.Yellow,
+                        onClick = onLocalZipReview, modifier = each,
+                        icon = R.drawable.chunks_ic_archive, stacked = !wideText)
+                    ActionTile("Inspect .chunksnap backup (offline)", ChunksColors.Pink,
+                        onClick = onInspectSnapshot, modifier = each,
+                        icon = R.drawable.chunks_ic_document, stacked = !wideText)
+                }
+                if (wideText) offline(Modifier.fillMaxWidth())
+                else Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+                    offline(Modifier.weight(1f).fillMaxHeight())
+                }
             }
         }
         if (rememberLogin && savedProfiles.isNotEmpty()) {
@@ -884,6 +982,27 @@ private fun ConnectionScreen(
                 placeholder = { Text("server.example or https://server.example/rutorrent/") },
                 singleLine = true, modifier = Modifier.fillMaxWidth()
             )
+            val providerHint = remember(endpoint) { RemoteProviderCatalog.hint(endpoint) }
+            if (providerHint != null) Text(providerHint, style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 4.dp).semantics { liveRegion = LiveRegionMode.Polite })
+        }
+        item {
+            var advancedOpen by rememberSaveable { mutableStateOf(rpcPath.isNotBlank()) }
+            TextButton(onClick = { advancedOpen = !advancedOpen },
+                modifier = Modifier.heightIn(min = 48.dp)) {
+                Text(if (advancedOpen) "Hide advanced connection settings" else "Advanced connection settings")
+            }
+            if (advancedOpen) Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                OutlinedTextField(
+                    value = rpcPath, onValueChange = onRpcPath,
+                    label = { Text("Exact RPC path (optional)") },
+                    placeholder = { Text("/RPC2") },
+                    singleLine = true, enabled = !loading, modifier = Modifier.fillMaxWidth()
+                )
+                Text("For a server your provider documents with a specific XML-RPC path. Enter only the " +
+                    "hostname above; Chunks then tests just this one address, read-only, instead of " +
+                    "checking known paths.", style = MaterialTheme.typography.bodySmall)
+            }
         }
         item {
             OutlinedTextField(
@@ -932,10 +1051,11 @@ private fun ConnectionScreen(
                 modifier = Modifier.fillMaxWidth().height(56.dp)
             ) { Text(if (loading) "Finding secure rTorrent…" else "Connect to rTorrent") }
         }
-        if (error != null) item { Notice("Connection unsuccessful", error, Coral) }
+        item { ConnectionDiagnosticsPanel(diagnostics, loading, onCancelConnect) }
+        if (error != null) item { Notice("Connection unsuccessful", error) }
         item {
             Text("Protected HTTPS is required for remote servers. Login is encrypted and stored only on this device unless you opt out. No torrents or files are changed by connecting.",
-                style = MaterialTheme.typography.bodySmall, color = Color(0xFF595575))
+                style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary)
         }
     }
 }
@@ -970,10 +1090,13 @@ private fun TransfersScreen(
     val listState = rememberLazyListState()
     val topControlScope = rememberCoroutineScope()
     val context = LocalContext.current
+    var serverMoveRevision by remember { mutableStateOf(0) }
+    var serverMoveMessage by remember { mutableStateOf<String?>(null) }
     val membershipStore = remember(context) { TransferCollectionStore(context) }
     // Selection is scoped to authenticated account + rTorrent view. A newly
     // accepted queue revision clears it: never apply an old batch to new rows.
     var selecting by remember(aliasScope, view) { mutableStateOf(false) }
+    var toolsOpen by remember(aliasScope) { mutableStateOf(false) }
     var batchHashes by remember(aliasScope, view) { mutableStateOf<Set<String>>(emptySet()) }
     var batchName by remember(aliasScope, view) { mutableStateOf("") }
     var batchConfirm by remember(aliasScope, view) { mutableStateOf(false) }
@@ -1021,38 +1144,50 @@ private fun TransfersScreen(
                         Text(if (loading) "Refreshing…" else "Refresh")
                     }
                 }
-                OutlinedButton(onClick = onReviewNames,
-                    modifier = Modifier.fillMaxWidth().height(52.dp)) {
-                    Text("Review suggested queue names")
+                val wideText = LocalDensity.current.fontScale >= 1.5f
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(
+                        onClick = {
+                            selecting = !selecting
+                            batchHashes = emptySet()
+                            batchConfirm = false
+                            batchMessage = null
+                        },
+                        enabled = !loading && !stale && !batchBusy && list.isNotEmpty(),
+                        modifier = (if (wideText) Modifier.fillMaxWidth() else Modifier.weight(1f)).heightIn(min = 52.dp)
+                    ) {
+                        Text(if (selecting) "Exit batch selection" else "Select transfers for a batch")
+                    }
+                    // Occasional tools stay one tap away so the transfer list leads.
+                    OutlinedButton(onClick = { toolsOpen = !toolsOpen },
+                        modifier = Modifier.heightIn(min = 52.dp)
+                            .semantics { stateDescription = if (toolsOpen) "Expanded" else "Collapsed" }) {
+                        Text(if (toolsOpen) "Hide tools" else "More tools")
+                    }
                 }
-                OutlinedButton(onClick = onExportSnapshot, enabled = !loading && !stale,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
-                    Text("Save inventory-only snapshot")
-                }
-                RemoteTransferHealthExportPanel(
-                    transfers = list, serverView = view, stale = stale || loading
-                )
-                BatchMagnetExportPanel(
-                    rows = visible.map { io.github.gamesbyian.chunks.model.BatchMagnetHandoff.Row(
-                        it.hash, it.name) },
-                    stale = stale || loading,
-                    sourceLabel = "remote"
-                )
-                OutlinedButton(onClick = onInspectSnapshot,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
-                    Text("Inspect saved .chunksnap file")
-                }
-                OutlinedButton(
-                    onClick = {
-                        selecting = !selecting
-                        batchHashes = emptySet()
-                        batchConfirm = false
-                        batchMessage = null
-                    },
-                    enabled = !loading && !stale && !batchBusy && list.isNotEmpty(),
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
-                ) {
-                    Text(if (selecting) "Exit batch selection" else "Select transfers for a batch")
+                if (toolsOpen) {
+                    OutlinedButton(onClick = onReviewNames,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+                        Text("Review suggested queue names")
+                    }
+                    OutlinedButton(onClick = onExportSnapshot, enabled = !loading && !stale,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+                        Text("Save inventory-only snapshot")
+                    }
+                    RemoteTransferHealthExportPanel(
+                        transfers = list, serverView = view, stale = stale || loading
+                    )
+                    BatchMagnetExportPanel(
+                        rows = visible.map { io.github.gamesbyian.chunks.model.BatchMagnetHandoff.Row(
+                            it.hash, it.name) },
+                        stale = stale || loading,
+                        sourceLabel = "remote"
+                    )
+                    OutlinedButton(onClick = onInspectSnapshot,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+                        Text("Inspect saved .chunksnap file")
+                    }
                 }
             }
         }
@@ -1114,10 +1249,7 @@ private fun TransfersScreen(
             }
         }
         if (selecting) item {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = Lilac),
-                shape = RoundedCornerShape(20.dp)
-            ) {
+            AccentOutlineCard(ChunksColors.Purple) {
                 Column(
                     Modifier.fillMaxWidth().padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -1213,6 +1345,40 @@ private fun TransfersScreen(
                         onSettled = onLifecycleSettled,
                         performLifecycle = remote::setStarted
                     )
+                    RemoteBatchPhoneCopyPanel(
+                        selected = list.filter { it.hash in batchHashes },
+                        enabled = !stale && !loading && !batchBusy && batchHashes.isNotEmpty(),
+                        run = { items -> runBatchPhoneCopy(context, remote, items) },
+                        move = { items ->
+                            runBatchPhoneMove(context, remote, aliasScope, items).also { serverMoveRevision++ }
+                        }
+                    )
+                    val serverDigest = TransferMoveStore.scopeDigest(aliasScope)
+                    val pendingServerMoves = remember(list, serverMoveRevision) {
+                        TransferMoveStore(context).all(TransferMove.Direction.SERVER_TO_PHONE).filter { record ->
+                            record.stage == TransferMove.Stage.TARGET_VERIFIED &&
+                                record.serverScopeDigest == serverDigest &&
+                                list.any { it.hash.equals(record.infoHash, ignoreCase = true) }
+                        }
+                    }
+                    if (view == "main") BatchMoveRemovalPanel(
+                        pending = pendingServerMoves, serverLabel = "this phone", sourceLabel = "server",
+                        busy = stale || loading,
+                        observeTarget = { hash -> TransferMoveObservations.phone(hash) },
+                        removeSource = { hash ->
+                            // Guarded by the transfer's current name and Place; session-only d.erase.
+                            list.firstOrNull { it.hash.equals(hash, ignoreCase = true) }?.let { t ->
+                                remote.eraseFromSession(t.hash, t.name, t.directory)
+                            }
+                        },
+                        observeSource = { hash -> TransferMoveObservations.server(remote, hash) },
+                        save = { record -> TransferMoveStore(context).save(record) },
+                        forget = { record -> TransferMoveStore(context).remove(record.direction, record.infoHash) },
+                        onFinished = { text -> serverMoveMessage = text; serverMoveRevision++ },
+                        onStarted = onMutationStarted,
+                        onSettled = onLifecycleSettled
+                    )
+                    serverMoveMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
                 }
             }
         }
@@ -1268,10 +1434,13 @@ private fun TransfersScreen(
                 files = files, filesLoading = filesLoading, filesError = filesError,
                 onInspect = { onInspect(transfer) },
                 onPreparePhone = { onPreparePhone(transfer) },
-                onCopyToPhone = onCopyToPhone
+                onCopyToPhone = onCopyToPhone,
+                moveScope = aliasScope,
+                finishInOrderScope = aliasScope
             )
             }
         }
+        item { RemoteCapabilityPanel(remote) }
         item {
             Text("Server snapshot. Start/stop and main-view session removal each require exact-target confirmation and readback. Session removal does not request payload deletion.",
                 style = MaterialTheme.typography.bodySmall)
@@ -1303,21 +1472,25 @@ private fun TransferCard(
     files: List<RemoteFile>?, filesLoading: Boolean, filesError: String?,
     onInspect: () -> Unit,
     onPreparePhone: () -> Unit,
-    onCopyToPhone: (String) -> Unit
+    onCopyToPhone: (String) -> Unit,
+    /** Authenticated endpoint + account scope, or null when ambiguous. */
+    moveScope: String? = null,
+    /** Authenticated endpoint + account scope for Finish in Order; null when ambiguous. */
+    finishInOrderScope: String? = null
 ) {
     var confirmPhoneHandoff by remember(transfer.hash) { mutableStateOf(false) }
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = ChunksColors.Surface),
         shape = RoundedCornerShape(24.dp),
-        border = androidx.compose.foundation.BorderStroke(2.dp, Ink),
+        border = androidx.compose.foundation.BorderStroke(2.dp, ChunksColors.Muted),
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
-            Text(alias ?: transfer.name, fontWeight = FontWeight.Bold,
+            Text(alias ?: transfer.name, style = MaterialTheme.typography.titleMedium,
                 maxLines = 2, overflow = TextOverflow.Ellipsis)
             if (alias != null) {
                 Text("Original torrent: " + transfer.name,
-                    style = MaterialTheme.typography.bodySmall, color = Color(0xFF595575),
+                    style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary,
                     maxLines = if (expanded) 5 else 1, overflow = TextOverflow.Ellipsis)
             }
             TransferAliasEditor(
@@ -1327,14 +1500,28 @@ private fun TransferCard(
             ChunkedProgressBar(
                 progress = transfer.fractionComplete,
                 modifier = Modifier.fillMaxWidth(),
-                activeColor = Blue, trackColor = Lilac
+                tone = when {
+                    transfer.fractionComplete >= 1f -> ChunksTone.COMPLETE
+                    !transfer.started -> ChunksTone.PAUSED
+                    else -> ChunksTone.ACTIVE
+                }
             )
-            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+            // Wraps the pill onto its own line when the text is large.
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(6.dp), itemVerticalAlignment = Alignment.CenterVertically) {
                 Text((transfer.fractionComplete * 100).toInt().toString() + "% · " +
                     Units.bytes(transfer.completedBytes) + " of " + Units.bytes(transfer.sizeBytes),
                     style = MaterialTheme.typography.bodySmall)
-                Text(if (transfer.started) "Start state set" else "Stopped",
-                    style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                // rTorrent's started flag is a requested state, not proof of activity.
+                StatusPill(when {
+                    transfer.fractionComplete >= 1f -> "Complete"
+                    transfer.started -> "Start state set"
+                    else -> "Stopped"
+                }, when {
+                    transfer.fractionComplete >= 1f -> ChunksTone.COMPLETE
+                    transfer.started -> ChunksTone.ACTIVE
+                    else -> ChunksTone.PAUSED
+                })
             }
             if (transfer.started && transfer.downBytesPerSecond == 0L &&
                 transfer.fractionComplete < 1f) {
@@ -1357,7 +1544,7 @@ private fun TransferCard(
                     style = MaterialTheme.typography.bodySmall)
             }
             Text("Place: " + transfer.directory, style = MaterialTheme.typography.bodySmall,
-                color = Color(0xFF595575), maxLines = if (expanded) 5 else 2,
+                color = ChunksColors.TextSecondary, maxLines = if (expanded) 5 else 2,
                 overflow = TextOverflow.Ellipsis)
             val suggestion = remember(transfer.name) { Classifier.suggest(transfer.name) }
             if (suggestion.category != "Unsorted") {
@@ -1365,14 +1552,12 @@ private fun TransferCard(
                     (suggestion.collection?.let { " / " + it } ?: ""),
                     style = MaterialTheme.typography.labelLarge, color = Blue)
             }
-            OutlinedButton(onClick = onInspect, modifier = Modifier.height(48.dp)) {
-                Text(if (expanded) "Hide files" else "Inspect files")
-            }
+            ActionTile(if (expanded) "Hide files" else "Inspect files", ChunksColors.Cyan,
+                onClick = onInspect, modifier = Modifier.fillMaxWidth(), icon = R.drawable.chunks_ic_folder, stacked = false)
             if (TorrentIdentityHandoff.prepare(transfer.hash, transfer.name) != null) {
-                OutlinedButton(onClick = { confirmPhoneHandoff = true },
-                    enabled = !stale, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                    Text("Copy Transfer to phone…")
-                }
+                ActionTile("Copy Transfer to phone…", ChunksColors.Blue,
+                    onClick = { confirmPhoneHandoff = true }, enabled = !stale,
+                    modifier = Modifier.fillMaxWidth(), icon = R.drawable.chunks_ic_copy, stacked = false)
                 if (confirmPhoneHandoff) {
                     Text("This torrent's v1 hash and name, plus its public tracker " +
                         "addresses, become a magnet Add draft on your phone. Private " +
@@ -1394,6 +1579,24 @@ private fun TransferCard(
                     }
                 }
             }
+            if (mainView) TransferMoveControl(
+                direction = TransferMove.Direction.SERVER_TO_PHONE,
+                infoHash = transfer.hash, name = transfer.name,
+                serverAliasScope = moveScope?.takeIf {
+                    TorrentIdentityHandoff.prepare(transfer.hash, transfer.name) != null
+                },
+                busy = stale,
+                ports = TransferMovePorts(
+                    observeTarget = { TransferMoveObservations.phone(transfer.hash) },
+                    observeSource = { TransferMoveObservations.server(remote, transfer.hash) },
+                    // Guarded by the current name and Place; session-only d.erase.
+                    removeSource = { remote.eraseFromSession(transfer.hash, transfer.name, transfer.directory) },
+                    targetUnavailableReason = "Open phone transfers once so Chunks can check the phone."
+                ),
+                onStartMove = onPreparePhone,
+                onMutationStarted = onMutationStarted,
+                onMutationSettled = onLifecycleSettled
+            )
             ServerToPhoneCopyControl(remote = remote, transfer = transfer, stale = stale,
                 onReviewPhoneAdd = onCopyToPhone)
             TransferLifecycleControl(
@@ -1409,8 +1612,12 @@ private fun TransferCard(
             )
             if (expanded) {
                 if (filesLoading) Text("Reading server file list…")
-                if (filesError != null) Text(filesError, color = Color(0xFF9E3930))
+                if (filesError != null) Text(filesError, color = ChunksColors.Red)
                 if (files != null) {
+                    if (mainView && finishInOrderScope != null) RemoteFinishInOrderPanel(
+                        remote = remote, transfer = transfer, scope = finishInOrderScope,
+                        files = files, stale = stale,
+                        onMutationStarted = onMutationStarted, onSettled = onLifecycleSettled)
                     TransferFilePager(
                         remote = remote, hash = transfer.hash, files = files,
                         snapshotStale = stale, mainView = mainView,
@@ -1438,7 +1645,7 @@ private fun PlacesScreen(list: List<RemoteTransfer>, onUsePlace: (String) -> Uni
         item { PhoneStoragePanel() }
         items(places, key = { it.first }) { place ->
             Card(shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)) {
+                colors = CardDefaults.cardColors(containerColor = ChunksColors.Surface)) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(place.first, fontWeight = FontWeight.Bold)
                     Text(place.second.toString() + " transfers",
@@ -1612,7 +1819,7 @@ private fun OrganizeScreen(
         item { Text("Why these suggestions?", style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold) }
         items(examples, key = { it.first.hash }) { (transfer, idea) ->
-            Card(colors = CardDefaults.cardColors(containerColor = Color.White),
+            Card(colors = CardDefaults.cardColors(containerColor = ChunksColors.Surface),
                 shape = RoundedCornerShape(16.dp)) {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(transfer.name, fontWeight = FontWeight.SemiBold, maxLines = 2)
@@ -1704,20 +1911,14 @@ private fun StatTile(label: String, value: String, color: Color, modifier: Modif
         colors = CardDefaults.cardColors(containerColor = color)) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(label, style = MaterialTheme.typography.labelMedium, color = Ink)
+            // Two lines at most: at 200% text a single line dropped the unit ("50.4").
             Text(value, style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold, color = Ink, maxLines = 1)
+                fontWeight = FontWeight.Bold, color = Ink, maxLines = 2)
         }
     }
 }
 
 @Composable
-private fun Notice(title: String, message: String, color: Color) {
-    Card(shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = color),
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp)) {
-        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(title, fontWeight = FontWeight.Bold, color = Ink)
-            Text(message, style = MaterialTheme.typography.bodySmall, color = Ink)
-        }
-    }
-}
+/** A failure the user should read before retrying. */
+private fun Notice(title: String, message: String) =
+    ChunksBanner(title, message, ChunksTone.ERROR, Modifier.padding(horizontal = 2.dp))

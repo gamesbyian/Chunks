@@ -68,6 +68,35 @@ class RemoteSmartConnectTest {
             ).map { it.endpoint })
     }
 
+    @Test fun advancedExactPathTestsOnlyThatAddressOnTheSameOrigin() {
+        val joined = RemoteSmartConnect.withExactPath("mybox.example:9443", " /user/RPC1 ")
+        assertEquals("https://mybox.example:9443/user/RPC1", joined)
+        assertEquals(listOf(joined), RemoteSmartConnect.candidates(joined, "user").map { it.endpoint })
+        assertEquals("https://host.example/RPC2", RemoteSmartConnect.withExactPath("https://host.example/", "/RPC2"))
+        // Blank keeps ordinary discovery.
+        assertEquals("host.example", RemoteSmartConnect.withExactPath("host.example", "  "))
+        val refused = listOf(
+            "host.example" to "RPC2",
+            "host.example" to "/a/../RPC2",
+            "host.example" to "/a/%2E%2E/RPC2",
+            "host.example" to "/RPC2?x=1",
+            "host.example" to "/RPC2#x",
+            "host.example" to "//other.example/RPC2",
+            "host.example" to "/RPC 2",
+            // Both fields naming a path could disagree about the instance.
+            "https://host.example/rutorrent2/" to "/RPC2"
+        )
+        for ((host, path) in refused) try {
+            RemoteSmartConnect.withExactPath(host, path)
+            fail("Should refuse $host + $path")
+        } catch (_: IllegalArgumentException) { }
+        // Scheme and embedded-credential checks still apply to the joined address.
+        for (host in listOf("http://host.example", "user:pass@host.example")) try {
+            RemoteSmartConnect.candidates(RemoteSmartConnect.withExactPath(host, "/RPC2"), "user")
+            fail("Should refuse $host")
+        } catch (_: IllegalArgumentException) { }
+    }
+
     @Test fun refusesCredentialsQueriesAndInsecureOrInvalidSchemes() {
         val invalid = listOf(
             "http://wood.seedhost.eu/rutorrent/",
@@ -142,5 +171,58 @@ class RemoteSmartConnectTest {
         assertTrue(candidates.size <= 6)
         assertTrue(candidates.all { it.endpoint.startsWith("https://my-server.example/") })
         assertFalse(candidates.any { it.endpoint.contains("user:") })
+    }
+}
+
+class RemoteSmartConnectDiagnosticsTest {
+    @Test fun reportsEachAttemptWithPathOnlyOutcomesAndRepairAdvice() {
+        val seen = ArrayList<String>()
+        val failure = try {
+            runBlocking {
+                RemoteSmartConnect.connect("custom.example", "user", "secret-pass",
+                    onAttempt = { index, total, candidate -> seen += "$index/$total ${candidate.description}" }
+                ) { credentials ->
+                    when {
+                        credentials.endpoint.endsWith("/RPC2") -> throw IOException("rTorrent gateway returned HTTP 404")
+                        credentials.endpoint.endsWith("/xmlrpc") -> throw RpcFault("-506", "Method not defined")
+                        else -> throw IOException("Unexpected reply")
+                    }
+                }
+            }
+            null
+        } catch (failed: RemoteSmartConnect.ConnectionFailed) { failed }
+        requireNotNull(failure)
+        assertEquals(RemoteSmartConnect.Category.ENDPOINT, failure.category)
+        assertEquals(failure.tested, seen.size)
+        assertTrue(seen.first().startsWith("1/${failure.tested} "))
+        assertEquals(failure.tested, failure.attempts.size)
+        assertTrue(failure.attempts.all { it.path.startsWith("/") })
+        val byPath = failure.attempts.associate { it.path to it.outcome }
+        assertEquals("No rTorrent gateway here (HTTP 404)", byPath["/RPC2"])
+        assertEquals("Answered, but rTorrent refused the read-only check", byPath["/xmlrpc"])
+        // Nothing user-visible may carry the password or a full URL.
+        val visible = failure.attempts.joinToString() +
+            RemoteSmartConnect.repairAdvice(failure, "custom.example").joinToString()
+        assertFalse(visible.contains("secret-pass"))
+        assertFalse(visible.contains("https://custom.example"))
+        assertTrue(RemoteSmartConnect.repairAdvice(failure, "custom.example")
+            .first().contains("paste the full address"))
+    }
+
+    @Test fun authFailureStopsAfterFirstRefusalWithAccountSafeAdvice() {
+        var calls = 0
+        val failure = try {
+            runBlocking {
+                RemoteSmartConnect.connect("custom.example", "user", "pw") {
+                    calls++; throw IOException("rTorrent gateway returned HTTP 401")
+                }
+            }
+            null
+        } catch (failed: RemoteSmartConnect.ConnectionFailed) { failed }
+        assertEquals(1, calls)
+        assertEquals(RemoteSmartConnect.Category.AUTH, failure?.category)
+        assertEquals(listOf("Login refused"), failure?.attempts?.map { it.outcome })
+        assertTrue(RemoteSmartConnect.repairAdvice(requireNotNull(failure), "custom.example")
+            .any { it.contains("cannot lock your account") })
     }
 }

@@ -620,6 +620,131 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     }
 
     /**
+     * One Finish in Order observation. Completion counts only pieces that
+     * passed their hash check (piece granularity), never written-but-unverified
+     * blocks. A file is [FinishInOrderPlanner.Observed.blocked] only on positive
+     * evidence: the torrent is running with a non-empty peer availability map
+     * and some still-missing piece of that file is held by no connected peer.
+     */
+    internal fun observeFinishInOrder(infoHash: String): List<FinishInOrderPlanner.Observed>? {
+        val key = normal(infoHash)
+        synchronized(this) {
+            val handle = handles[key]?.takeIf { it.isValid } ?: return null
+            val current = files(key) ?: return null
+            val info = handle.torrentFile() ?: return null
+            val storage = info.files()
+            val verified = handle.fileProgress(TorrentHandle.PIECE_GRANULARITY)
+            val status = handle.status()
+            // With no connected peer every missing piece reads as zero: that is
+            // "no peers", not evidence that one particular file is starved.
+            val evidence = !status.flags().and_(org.libtorrent4j.TorrentFlags.PAUSED).non_zero() &&
+                status.numPeers() > 0
+            val availability = if (evidence) handle.pieceAvailability() else IntArray(0)
+            val pieceLength = info.pieceLength().toLong()
+            return current.map { file ->
+                val done = verified.getOrElse(file.index) { 0L }
+                val blocked = availability.isNotEmpty() && pieceLength > 0 &&
+                    file.sizeBytes > 0 && done < file.sizeBytes && run {
+                        val offset = storage.fileOffset(file.index)
+                        val first = (offset / pieceLength).toInt()
+                        val last = ((offset + file.sizeBytes - 1) / pieceLength).toInt()
+                        (first..last).any { piece ->
+                            piece < availability.size && availability[piece] == 0 &&
+                                !handle.havePiece(piece)
+                        }
+                    }
+                FinishInOrderPlanner.Observed(file, done, blocked)
+            }
+        }
+    }
+
+    /**
+     * Apply one rolling Finish in Order batch. Every change's file identity
+     * (as reviewed in [record]), selection and *expected* current priority
+     * must match a fresh observation before the first JNI write. Skipped files
+     * are never targeted. Partial readback is UNCERTAIN and never retried.
+     */
+    internal fun applyFinishInOrder(
+        infoHash: String,
+        record: FinishInOrderRecord,
+        changes: List<FinishInOrderPlanner.Change>,
+        readbackTimeoutMs: Long = 5_000L
+    ): LocalFileBatchOutcome {
+        require(readbackTimeoutMs in 0L..60_000L)
+        if (changes.isEmpty()) return LocalFileBatchOutcome.UNCHANGED
+        val key = normal(infoHash)
+        val reviewed = record.policy.order.associateBy { it.index }
+        synchronized(this) {
+            val handle = handles[key]?.takeIf { it.isValid }
+                ?: return LocalFileBatchOutcome.NOT_FOUND
+            val byIndex = (files(key) ?: return LocalFileBatchOutcome.STALE_REVIEW)
+                .associateBy { it.index }
+            if (changes.size > FinishInOrderPlanner.MAX_FILES ||
+                changes.map { it.index }.toSet().size != changes.size ||
+                changes.any { change ->
+                    val fresh = byIndex[change.index]
+                    val identity = reviewed[change.index]
+                    fresh == null || identity == null || !fresh.wanted ||
+                        fresh.path != identity.path || fresh.sizeBytes != identity.sizeBytes ||
+                        fresh.priority != change.expectedPriority ||
+                        change.requestedPriority !in setOf(FinishInOrderPlanner.LOW,
+                            FinishInOrderPlanner.NORMAL, FinishInOrderPlanner.HIGH)
+                }) return LocalFileBatchOutcome.STALE_REVIEW
+            try {
+                changes.forEach { change ->
+                    handle.filePriority(change.index, when (change.requestedPriority) {
+                        FinishInOrderPlanner.LOW -> org.libtorrent4j.Priority.LOW
+                        FinishInOrderPlanner.NORMAL -> org.libtorrent4j.Priority.DEFAULT
+                        else -> org.libtorrent4j.Priority.TOP_PRIORITY
+                    })
+                }
+            } catch (_: Exception) { return LocalFileBatchOutcome.UNCERTAIN }
+        }
+        val deadline = System.nanoTime() + readbackTimeoutMs * 1_000_000L
+        while (true) {
+            val actual = try {
+                synchronized(this) { handles[key]?.takeIf { it.isValid }?.filePriorities() }
+            } catch (_: Exception) { null }
+            if (actual != null && changes.all { change ->
+                    actual.getOrNull(change.index)?.swig()?.toInt() == change.requestedPriority
+                }) return LocalFileBatchOutcome.VERIFIED
+            if (System.nanoTime() >= deadline) return LocalFileBatchOutcome.UNCERTAIN
+            Thread.sleep(25)
+        }
+    }
+
+    /** Fresh read of the transfer's in-order piece picking flag, or null. */
+    internal fun sequentialDownload(infoHash: String): Boolean? = try {
+        synchronized(this) {
+            handles[normal(infoHash)]?.takeIf { it.isValid }?.status()?.flags()
+                ?.and_(org.libtorrent4j.TorrentFlags.SEQUENTIAL_DOWNLOAD)?.non_zero()
+        }
+    } catch (_: Exception) { null }
+
+    /**
+     * Turn in-order piece picking on or off for one transfer (Finish in Order
+     * Sequential Playback). True only once a fresh status readback shows the
+     * requested state; touches no file priority, selection or payload.
+     */
+    internal fun setSequentialDownload(infoHash: String, on: Boolean, readbackTimeoutMs: Long = 5_000L): Boolean {
+        require(readbackTimeoutMs in 0L..60_000L)
+        val key = normal(infoHash)
+        try {
+            synchronized(this) {
+                val handle = handles[key]?.takeIf { it.isValid } ?: return false
+                if (on) handle.setFlags(org.libtorrent4j.TorrentFlags.SEQUENTIAL_DOWNLOAD)
+                else handle.unsetFlags(org.libtorrent4j.TorrentFlags.SEQUENTIAL_DOWNLOAD)
+            }
+        } catch (_: Exception) { return false }
+        val deadline = System.nanoTime() + readbackTimeoutMs * 1_000_000L
+        while (true) {
+            if (sequentialDownload(infoHash) == on) return true
+            if (System.nanoTime() >= deadline) return false
+            Thread.sleep(25)
+        }
+    }
+
+    /**
      * Apply a single explicitly confirmed episode-first rolling-window plan.
      * Validate ALL original file identities and priorities before the first
      * JNI write, then confirm complete readback. A partially applied batch is
