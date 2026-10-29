@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- GENERATED from docs/design/svg/icons/connectivity/server.svg by tools/generate_icon_vectors.cjs (sha256 15a62aa829c2c9d9); edit the SVG, then regenerate. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp" android:viewportWidth="64" android:viewportHeight="64">
+  <path android:pathData="M17 8 H47 A5 5 0 0 1 52 13 V18 A5 5 0 0 1 47 23 H17 A5 5 0 0 1 12 18 V13 A5 5 0 0 1 17 8 Z" android:fillColor="#FF2E3647" android:strokeColor="#FF0B0F17" android:strokeWidth="5" android:strokeLineCap="round" android:strokeLineJoin="round"/>
+  <path android:pathData="M17 28 H47 A5 5 0 0 1 52 33 V38 A5 5 0 0 1 47 43 H17 A5 5 0 0 1 12 38 V33 A5 5 0 0 1 17 28 Z" android:fillColor="#FF2E3647" android:strokeColor="#FF0B0F17" android:strokeWidth="5" android:strokeLineCap="round" android:strokeLineJoin="round"/>
+  <path android:pathData="M15 48 H49 A3 3 0 0 1 52 51 V54 A3 3 0 0 1 49 57 H15 A3 3 0 0 1 12 54 V51 A3 3 0 0 1 15 48 Z" android:fillColor="#FF2E3647" android:strokeColor="#FF0B0F17" android:strokeWidth="5" android:strokeLineCap="round" android:strokeLineJoin="round"/>
+  <path android:pathData="M19 15 A2 2 0 1 1 23 15 A2 2 0 1 1 19 15 Z" android:fillColor="#FF22D97A"/>
+  <path android:pathData="M19 35 A2 2 0 1 1 23 35 A2 2 0 1 1 19 35 Z" android:fillColor="#FF22D97A"/>
+</vector>
