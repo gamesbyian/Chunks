@@ -138,7 +138,9 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     private val session = SessionManager(false)
     // Guarded by its own monitor so the alert thread never needs the engine lock.
     private val handles: MutableMap<String, TorrentHandle> = Collections.synchronizedMap(LinkedHashMap())
-    private val pendingSaves = ConcurrentHashMap<String, CountDownLatch>()
+    // Keep timed-out requests pending until their real alert arrives: a late
+    // alert must not confirm a different save generation.
+    private val pendingSaves = LocalResumeSaveRequests<TorrentHandle>()
 
     private class PendingFlush {
         val latch = CountDownLatch(1)
@@ -183,6 +185,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                 }
                 return
             }
+            var persisted = false
             try {
                 // A magnet without metadata has nothing restorable yet; never persist it half-known.
                 if (alert is SaveResumeDataAlert && alert.params().torrentInfo?.isValid == true) {
@@ -192,10 +195,15 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                     // same lock before deleting the saved resume file.
                     LocalResumeWriteFence.writeIfCurrent(handles, key, handle) {
                         writeResume(key, bytes)
+                        persisted = true
                     }
                 }
+            } catch (_: Exception) {
+                // Corrupt native data or a failed fsync/atomic rename is not a
+                // confirmed save. Do not let an exception escape the alert
+                // dispatcher or overwrite the previous verified resume file.
             } finally {
-                pendingSaves.remove(key)?.countDown()
+                pendingSaves.complete(key, handle, persisted)
             }
         }
     }
@@ -942,7 +950,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         awaitingMetadata.remove(key)
         startWhenMetadataArrives.remove(key)
         pendingFlushes.remove(key)?.refused()
-        pendingSaves.remove(key)?.countDown()
+        pendingSaves.cancel(key, handle)
         val saved = config.stateDirectory?.let { File(it, "$key.resume") } ?: return true
         // A removed session with an undeletable .resume file can reappear on
         // restart. Do not report that as a fully confirmed removal.
@@ -1018,19 +1026,34 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
      * atomically. Returns how many were confirmed before the timeout.
      */
     fun saveResumeData(timeoutMs: Long = 5_000): Int {
-        if (config.stateDirectory == null || !started) return 0
-        val targets = synchronized(handles) { handles.toList() }
-        val latches = targets.map { (key, handle) ->
-            CountDownLatch(1).also { pendingSaves[key] = it; handle.saveResumeData(TorrentHandle.SAVE_INFO_DICT) }
+        // Register under the same engine monitor as Remove/Close so a save
+        // cannot be issued on a handle already retired from the session.
+        // Release the monitor before awaiting native alerts.
+        val requests = synchronized(this) {
+            if (config.stateDirectory == null || !started) return 0
+            val targets = synchronized(handles) { handles.toList() }
+            targets.map { (key, handle) ->
+                pendingSaves.acquire(key, handle) {
+                    handle.saveResumeData(TorrentHandle.SAVE_INFO_DICT)
+                }
+            }
         }
-        val deadline = System.nanoTime() + timeoutMs * 1_000_000
-        return latches.count { it.await(maxOf(0, deadline - System.nanoTime()), TimeUnit.NANOSECONDS) }
+        val deadline = System.nanoTime() + timeoutMs.coerceAtLeast(0L) * 1_000_000
+        return requests.count {
+            try {
+                it.awaitConfirmed(maxOf(0, deadline - System.nanoTime()))
+            } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
+                false
+            }
+        }
     }
 
     @Synchronized
     override fun close() {
         if (!started) return
         saveResumeData()
+        pendingSaves.cancelAll()
         pendingFlushes.values.forEach { it.refused() }
         pendingFlushes.clear()
         handles.clear()
