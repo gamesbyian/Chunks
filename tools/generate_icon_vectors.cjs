@@ -9,7 +9,9 @@ const path = require("node:path");
 const crypto = require("node:crypto");
 
 const root = path.resolve(__dirname, "..");
-// drawable name -> library source. Add entries here, then regenerate.
+// drawable name -> library source (or {source, onDark}). onDark swaps the
+// near-black outline for off-white so the icon reads on dark surfaces; fills
+// are unchanged. Add entries here, then regenerate.
 const ICONS = {
   chunks_ic_play: "docs/design/svg/icons/transfers/play.svg",
   chunks_ic_stop: "docs/design/svg/icons/transfers/stop.svg",
@@ -23,6 +25,11 @@ const ICONS = {
   chunks_ic_server: "docs/design/svg/icons/connectivity/server.svg",
   chunks_ic_archive: "docs/design/svg/icons/files/archive-zip.svg",
   chunks_ic_document: "docs/design/svg/icons/files/document.svg",
+  chunks_ic_file_video_on_dark: { source: "docs/design/svg/icons/files/video.svg", onDark: true },
+  chunks_ic_file_audio_on_dark: { source: "docs/design/svg/icons/files/audio.svg", onDark: true },
+  chunks_ic_file_image_on_dark: { source: "docs/design/svg/icons/files/image.svg", onDark: true },
+  chunks_ic_file_document_on_dark: { source: "docs/design/svg/icons/files/document.svg", onDark: true },
+  chunks_ic_file_archive_on_dark: { source: "docs/design/svg/icons/files/archive-zip.svg", onDark: true },
 };
 
 const attrs = s => Object.fromEntries([...s.matchAll(/([:\w-]+)="([^"]*)"/g)].map(m => [m[1], m[2]]));
@@ -40,24 +47,27 @@ const rectPath = a => {
     `V${num(y + h - r)} A${num(r)} ${num(r)} 0 0 1 ${num(x + w - r)} ${num(y + h)} H${num(x + r)} ` +
     `A${num(r)} ${num(r)} 0 0 1 ${num(x)} ${num(y + h - r)} V${num(y + r)} A${num(r)} ${num(r)} 0 0 1 ${num(x + r)} ${num(y)} Z`;
 };
-const circlePath = a => {
-  const cx = +a.cx, cy = +a.cy, r = +a.r;
-  return `M${num(cx - r)} ${num(cy)} A${num(r)} ${num(r)} 0 1 1 ${num(cx + r)} ${num(cy)} ` +
-    `A${num(r)} ${num(r)} 0 1 1 ${num(cx - r)} ${num(cy)} Z`;
-};
+const ellipsePath = (cx, cy, rx, ry) =>
+  `M${num(cx - rx)} ${num(cy)} A${num(rx)} ${num(ry)} 0 1 1 ${num(cx + rx)} ${num(cy)} ` +
+  `A${num(rx)} ${num(ry)} 0 1 1 ${num(cx - rx)} ${num(cy)} Z`;
+const circlePath = a => ellipsePath(+a.cx, +a.cy, +a.r, +a.r);
 
-function build(svg, source) {
+const NEAR_BLACK = "#FF0B0F17", OFF_WHITE = "#FFF8FAFC";
+function build(svg, source, onDark) {
   const view = (svg.match(/viewBox="([^"]+)"/) || [])[1];
   if (view !== "0 0 64 64") throw new Error(source + ": expected viewBox 0 0 64 64");
   if (/<(linearGradient|radialGradient|filter|use|text|image|mask|clipPath)\b/.test(svg))
     throw new Error(source + ": unsupported element");
   const group = attrs((svg.match(/<g\b([^>]*)>/) || ["", ""])[1]);
-  const shapes = [...svg.matchAll(/<(path|rect|circle)\b([^>]*?)\/?>/g)];
+  const shapes = [...svg.matchAll(/<(path|rect|circle|ellipse)\b([^>]*?)\/?>/g)];
   if (!shapes.length) throw new Error(source + ": no shapes");
   const out = shapes.map(([, tag, raw]) => {
     const a = { ...group, ...attrs(raw) };
-    const d = tag === "path" ? a.d.replace(/\s+/g, " ").trim() : tag === "rect" ? rectPath(a) : circlePath(a);
-    const fill = color(a.fill), stroke = color(a.stroke);
+    const d = tag === "path" ? a.d.replace(/\s+/g, " ").trim() : tag === "rect" ? rectPath(a)
+      : tag === "ellipse" ? ellipsePath(+a.cx, +a.cy, +a.rx, +a.ry) : circlePath(a);
+    const fill = color(a.fill);
+    let stroke = color(a.stroke);
+    if (onDark && stroke === NEAR_BLACK) stroke = OFF_WHITE;
     let p = `  <path android:pathData="${d}"`;
     if (fill) p += ` android:fillColor="${fill}"`;
     if (stroke) {
@@ -69,7 +79,7 @@ function build(svg, source) {
   });
   const hash = crypto.createHash("sha256").update(svg).digest("hex").slice(0, 16);
   return `<?xml version="1.0" encoding="utf-8"?>\n` +
-    `<!-- GENERATED from ${source} by tools/generate_icon_vectors.cjs (sha256 ${hash}); edit the SVG, then regenerate. -->\n` +
+    `<!-- GENERATED from ${source}${onDark ? " (on-dark outline)" : ""} by tools/generate_icon_vectors.cjs (sha256 ${hash}); edit the SVG, then regenerate. -->\n` +
     `<vector xmlns:android="http://schemas.android.com/apk/res/android"\n` +
     `    android:width="24dp" android:height="24dp" android:viewportWidth="64" android:viewportHeight="64">\n` +
     out.join("\n") + `\n</vector>\n`;
@@ -77,8 +87,9 @@ function build(svg, source) {
 
 const check = process.argv.includes("--check");
 let stale = 0;
-for (const [name, source] of Object.entries(ICONS)) {
-  const xml = build(fs.readFileSync(path.join(root, source), "utf8"), source);
+for (const [name, entry] of Object.entries(ICONS)) {
+  const { source, onDark = false } = typeof entry === "string" ? { source: entry } : entry;
+  const xml = build(fs.readFileSync(path.join(root, source), "utf8"), source, onDark);
   const target = path.join(root, "app/src/main/res/drawable", name + ".xml");
   const current = fs.existsSync(target) ? fs.readFileSync(target, "utf8") : null;
   if (current === xml) continue;

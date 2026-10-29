@@ -9,6 +9,9 @@ import android.os.SystemClock
 import android.os.StatFs
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
@@ -1936,12 +1939,17 @@ internal fun LocalFileSelection(
                     onValueChange = { onFileWanted(file.index, it) }),
                 verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(checked = file.wanted, onCheckedChange = null)
-                Column(Modifier.padding(start = 8.dp).weight(1f)) {
+                Image(painterResource(fileTypeIcon(file.path)), contentDescription = null,
+                    modifier = Modifier.padding(start = 4.dp).size(28.dp))
+                Column(Modifier.padding(start = 8.dp).weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text(file.path.substringAfterLast('/'),
-                        style = MaterialTheme.typography.bodyMedium)
+                        style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                     Text(Units.bytes(file.sizeBytes) + " · " + percent + "%" +
                         if (file.wanted) "" else " · skipped",
                         style = MaterialTheme.typography.bodySmall)
+                    FileProgressLine(if (file.sizeBytes <= 0L) 1f else file.doneBytes.toFloat() / file.sizeBytes,
+                        file.wanted, Modifier.fillMaxWidth())
                 }
             }
             if (file.wanted && onFilePriority != null) {
