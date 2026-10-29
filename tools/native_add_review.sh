@@ -13,7 +13,16 @@ gradle --no-daemon :app:connectedDebugAndroidTest \
 test_status=$?
 set -e
 mkdir -p "$RUNNER_TEMP/chunks-add-native-review"
-adb pull /sdcard/Pictures/ChunksAddAtlas/. "$RUNNER_TEMP/chunks-add-native-review" || true
+# The screenshots exist on the device once instrumentation has finished; an
+# adb transport hiccup during the pull (seen once after all 210 tests passed)
+# must not be mistaken for missing evidence. Retry the pull only, then let the
+# PNG validation below fail loudly if anything is still absent.
+for attempt in 1 2 3; do
+  if adb pull /sdcard/Pictures/ChunksAddAtlas/. "$RUNNER_TEMP/chunks-add-native-review"; then break; fi
+  echo "CHUNKS_NATIVE_DIAGNOSTIC: screenshot pull attempt $attempt failed"
+  adb wait-for-device || true
+  sleep 3
+done
 if [ "$test_status" -ne 0 ]; then
   echo "CHUNKS_NATIVE_DIAGNOSTIC: instrumentation failed; any captured PNGs were retained"
   exit "$test_status"

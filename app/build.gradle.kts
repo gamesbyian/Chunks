@@ -59,13 +59,36 @@ android {
     }
     buildTypes {
         getByName("release") {
-            // No shrinking yet: libtorrent4j's JNI bindings need audited keep
-            // rules before R8 can be trusted with them.
+            // Not shrunk until the qaMinified smoke (same rules, R8 full mode)
+            // has passed on an emulator: libtorrent4j is JNI and R8 mistakes
+            // only show up at runtime.
             isMinifyEnabled = false
             isDebuggable = false
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             if (releaseSigningAvailable) signingConfig = signingConfigs.getByName("release")
         }
+        // Debug-signed copy of the intended release shrinking, so instrumented
+        // tests can run against R8 output. Never published.
+        create("qaMinified") {
+            initWith(getByName("debug"))
+            isMinifyEnabled = true
+            isShrinkResources = true
+            isDebuggable = false
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro",
+                "proguard-qa-rules.pro")
+            testProguardFiles("proguard-test-rules.pro")
+            matchingFallbacks += "debug"
+        }
     }
+    // qaMinified reuses the debug-only test fixtures (documents provider) so
+    // the same instrumented suite can run against the shrunk build.
+    sourceSets.getByName("qaMinified") {
+        kotlin.srcDir("src/debug/java")
+        manifest.srcFile("src/debug/AndroidManifest.xml")
+    }
+    // Instrumented tests normally target debug; the minified smoke workflow
+    // passes -Pchunks.testBuildType=qaMinified.
+    testBuildType = providers.gradleProperty("chunks.testBuildType").getOrElse("debug")
     buildFeatures { compose = true; resValues = true }
     testOptions { unitTests.isIncludeAndroidResources = true }
     compileOptions {
