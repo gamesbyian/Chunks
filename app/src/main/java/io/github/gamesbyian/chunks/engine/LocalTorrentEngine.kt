@@ -1053,14 +1053,22 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                 }
             } catch (_: Exception) { null }
             if (params == null) { problems += file.name; continue }
-            val info = try { params.torrentInfo } catch (_: Exception) { null }
-            if (info == null || !info.isValid || identity(info) != key) { problems += file.name; continue }
-            params.setFlags(params.flags.or_(org.libtorrent4j.TorrentFlags.PAUSED)
-                .and_(org.libtorrent4j.TorrentFlags.AUTO_MANAGED.inv()))
-            val addError = error_code()
-            val handle = session.swig().add_torrent(params.swig(), addError)
-            if (addError.value() != 0 || !handle.is_valid) { problems += file.name; continue }
-            handles[key] = TorrentHandle(handle)
+            // A single invalid native record must not abort restoration of
+            // unrelated, valid transfers. Preserve every failed input on disk.
+            val restored = try {
+                val info = params.torrentInfo
+                if (info == null || !info.isValid || identity(info) != key) null
+                else {
+                    params.setFlags(params.flags.or_(org.libtorrent4j.TorrentFlags.PAUSED)
+                        .and_(org.libtorrent4j.TorrentFlags.AUTO_MANAGED.inv()))
+                    val addError = error_code()
+                    val handle = session.swig().add_torrent(params.swig(), addError)
+                    if (addError.value() != 0 || !handle.is_valid) null
+                    else TorrentHandle(handle)
+                }
+            } catch (_: Exception) { null }
+            if (restored == null) { problems += file.name; continue }
+            handles[key] = restored
         }
         restoreProblems = problems
     }
