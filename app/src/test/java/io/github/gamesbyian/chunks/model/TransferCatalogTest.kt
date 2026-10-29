@@ -88,4 +88,12 @@ class TransferCatalogTest {
         assertEquals(listOf(target.hash), TransferCatalog.visible(listOf(other, target), "AB".repeat(20),
             TransferFilter.ALL, TransferOrder.NAME).map { it.hash })
     }
+
+    @Test fun progressSortDoesNotOverflowOnHugeTorrents() {
+        val huge = 20_000_000_000_000L
+        val almost = RemoteTransfer("1".repeat(40), "Almost", huge, huge - 1_000_000_000_000L, true, "/x")
+        val little = RemoteTransfer("2".repeat(40), "Little", huge, 1_000_000_000_000L, true, "/x")
+        assertEquals(listOf("1".repeat(40), "2".repeat(40)), TransferCatalog.visible(listOf(little, almost), "",
+            TransferFilter.ALL, TransferOrder.PROGRESS, UnifiedSortDirection.DESCENDING).map { it.hash })
+    }
 }

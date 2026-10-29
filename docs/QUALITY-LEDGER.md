@@ -1,5 +1,17 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-29 independent review fixes for #577–#584
+
+A code review of everything merged this session (`a8cb13f..2103fc7`) found these defects, now fixed:
+- **Stale phone rows:** when the phone engine stopped while All environments was open, its last rows kept showing as Live and complete. They now drop to "Engine not running" with no rows.
+- **Progress overflow:** server Progress sorting overflowed `Long` above about 9.2 TB completed; it now divides in floating point.
+- **False "may have applied":** a server row with a non-v1 identity was refused by a local validation exception, which read as UNCERTAIN and halted the whole batch. It is now refused before any RPC, and the batch continues.
+- **Saved view decoding:** a saved combined-view subset with one unreadable ID narrowed the scope instead of restoring the default.
+- **Per-frame recomputation:** combined privacy decisions and sources were rebuilt on every recomposition, because profile and server objects carry fresh lambdas. They are now keyed on data.
+- **Duplicated parsing:** environment-ID parsing from an alias scope existed in four copies; it is now one `EnvironmentSnapshots.serverIdOfAliasScope`. A dead `compareKnown` wrapper was also removed.
+
+**Evidence:** new JVM tests for scope parsing, overflow ordering, malformed subsets and the non-v1 refusal; full local suite green. Not changed: badge colours are read once per composition, so a colour change shows on the next screen entry.
+
 ## 2026-10-29 opt-in interrupted real-swarm download (#568, #5)
 
 - **Source slice:** the manual `android-public-swarm.yml` gains `interrupt=true`, which runs `tools/android_public_swarm_interrupt.sh` (`AndroidPublicSwarmInterruptInstrumentedTest`).

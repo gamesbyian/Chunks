@@ -202,7 +202,7 @@ object UnifiedTransferCatalog {
     private fun comparator(key: UnifiedSortKey, direction: UnifiedSortDirection):
         Comparator<UnifiedTransferObservation> = Comparator { a, b ->
         val primary = when (key) {
-            UnifiedSortKey.NAME -> compareKnown(a.displayName.lowercase(Locale.ROOT),
+            UnifiedSortKey.NAME -> TransferSortOrdering.compareKnown(a.displayName.lowercase(Locale.ROOT),
                 b.displayName.lowercase(Locale.ROOT), direction)
             else -> {
                 fun value(item: UnifiedTransferObservation): Long? = when (key) {
@@ -214,7 +214,7 @@ object UnifiedTransferCatalog {
                     UnifiedSortKey.PEERS -> item.peers?.toLong()
                     UnifiedSortKey.NAME -> null
                 }
-                compareKnown(value(a), value(b), direction)
+                TransferSortOrdering.compareKnown(value(a), value(b), direction)
             }
         }
         if (primary != 0) primary
@@ -222,7 +222,4 @@ object UnifiedTransferCatalog {
             ?: a.key.infoHash.compareTo(b.key.infoHash)
     }
 
-    private fun <T : Comparable<T>> compareKnown(a: T?, b: T?,
-                                                    direction: UnifiedSortDirection): Int =
-        TransferSortOrdering.compareKnown(a, b, direction)
 }

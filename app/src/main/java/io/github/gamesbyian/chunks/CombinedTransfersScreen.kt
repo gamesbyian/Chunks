@@ -60,6 +60,7 @@ import io.github.gamesbyian.chunks.privacy.RemoteTransferPrivacyScope
 import io.github.gamesbyian.chunks.privacy.TransferPrivacyRuntime
 import io.github.gamesbyian.chunks.privacy.TransferPrivacyVisibility
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
+import io.github.gamesbyian.chunks.model.LifecycleReply
 import io.github.gamesbyian.chunks.model.UnifiedBatchLifecycle
 import io.github.gamesbyian.chunks.model.UnifiedTransferKey
 import io.github.gamesbyian.chunks.model.describe
@@ -222,6 +223,12 @@ internal fun CombinedTransfersScreen(
                 is LocalScreenPollOutcome.Fresh -> {
                     val (list, sample) = outcome.value
                     phoneRunning = list != null
+                    if (list == null) {
+                        // The engine went away: nothing here is live any more.
+                        phoneConfirmed = false
+                        phoneFrame = LocalInventoryFrame(emptyList(), stale = false)
+                        phoneObservedAt = null
+                    }
                     // A read sampled before or during a phone command cannot clear its readback latch.
                     if (list != null && PhoneMutationFence.revision.acceptObservation(sample, list)) {
                         phoneFrame = LocalInventoryFrame(list, stale = false)
@@ -251,7 +258,8 @@ internal fun CombinedTransfersScreen(
             ?.let { TransferPrivacyVisibility.current(context, activity, it) }
     }
 
-    val savedPrivacy = remember(privacyRevision, savedProfiles) {
+    // Keyed on identities, not the profile objects (their loader lambdas change every recomposition).
+    val savedPrivacy = remember(privacyRevision, savedProfiles.map { it.id to it.aliasScope }) {
         savedProfiles.associate { profile ->
             EnvironmentId(profile.id) to (profile.aliasScope
                 ?.let { RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(it) }
@@ -260,7 +268,7 @@ internal fun CombinedTransfersScreen(
         }
     }
     val serverId = server?.let {
-        EnvironmentSnapshots.serverId(it.aliasScope.substringBefore('\u0000'), it.aliasScope.substringAfter('\u0000', ""))
+        EnvironmentSnapshots.serverIdOfAliasScope(it.aliasScope)
     }
     val labels = LinkedHashMap<EnvironmentId, String>().apply {
         put(EnvironmentSnapshots.PHONE, PHONE_ENVIRONMENT_LABEL)
@@ -276,7 +284,10 @@ internal fun CombinedTransfersScreen(
         if (key.environment == EnvironmentSnapshots.PHONE || (serverId != null && key.environment == serverId))
             ({ onOpenTransfer(key) }) else null
 
-    val sources = buildList {
+    // Keyed on data only: MainActivity rebuilds the server source (and its lifecycle lambdas) each frame.
+    val sources = remember(phoneFrame, phoneConfirmed, phoneRunning, phoneObservedAt, phonePrivacy,
+        server?.aliasScope, server?.transfers, server?.stale, server?.fullView, server?.observedAtEpochMillis,
+        serverPrivacy, savedPrivacy, listings, now, batchRunning, PhoneMutationFence.revision.blocksMutations()) { buildList {
         val phoneStale = phoneFrame.stale || PhoneMutationFence.revision.blocksMutations() || batchRunning
         val phone = if (phoneRunning || phoneConfirmed) EnvironmentSnapshots.phone(
             phoneFrame.copy(stale = phoneStale), phoneConfirmed,
@@ -302,6 +313,7 @@ internal fun CombinedTransfersScreen(
                 locked = locked, fullView = true, observedAtEpochMillis = observed)
                 .withAliases { hash -> profile.aliasScope?.let { aliases.get(it, hash) } })
         }
+    }
     }
     val result = remember(sources, query) { UnifiedTransferCatalog.query(sources, query) }
 
@@ -560,6 +572,7 @@ private fun CombinedTransferRow(
 }
 
 /**
+ * Runs in stable order (environment ID, then hash), not tap order.
  * Leases each selected environment's own mutation gate, runs the pure batch
  * on exactly those adapters, then settles every lease it took. An environment
  * whose gate is busy, awaiting a readback or signed out refuses its items.
@@ -604,7 +617,10 @@ internal suspend fun runCombinedLifecycle(
                 else {
                     serverLeased = true
                     adapters[environment] = UnifiedBatchLifecycle.Adapter { hash, on ->
-                        serverLifecycle.setStarted(hash, on).toLifecycleReply(on)
+                        // rTorrent identities are v1 only: refuse before any RPC rather than
+                        // letting a local validation failure read as an uncertain mutation.
+                        if (!hash.matches(Regex("[0-9a-f]{40}"))) LifecycleReply.NOT_FOUND
+                        else serverLifecycle.setStarted(hash, on).toLifecycleReply(on)
                     }
                 }
             } else refusals[environment] = "only listed here; sign in to this server to change it"

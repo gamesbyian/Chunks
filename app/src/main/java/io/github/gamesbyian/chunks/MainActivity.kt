@@ -242,8 +242,7 @@ private fun ChunksApp(
         runCatching {
             EnvironmentColourStore(context).ensure(buildList {
                 add(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE)
-                if (aliasScope.isNotBlank()) add(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverId(
-                    aliasScope.substringBefore('\u0000'), aliasScope.substringAfter('\u0000', "")))
+                io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverIdOfAliasScope(aliasScope)?.let { add(it) }
                 savedProfiles.forEach { add(io.github.gamesbyian.chunks.model.EnvironmentId(it.id)) }
             }.distinct())
         }
@@ -1283,10 +1282,7 @@ private fun TransfersScreen(
                     Lime
                 )
                 EnvironmentBadge(serverEnvironmentLabel(aliasScope), server = true,
-                    environment = aliasScope.takeIf { it.isNotBlank() }?.let {
-                        io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverId(
-                            it.substringBefore('\u0000'), it.substringAfter('\u0000', ""))
-                    })
+                    environment = io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverIdOfAliasScope(aliasScope))
                 OutlinedButton(onClick = onCombined, modifier = Modifier.heightIn(min = 48.dp)) {
                     Text("All environments…")
                 }

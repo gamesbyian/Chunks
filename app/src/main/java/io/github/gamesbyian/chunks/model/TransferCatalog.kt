@@ -64,8 +64,9 @@ object TransferCatalog {
         // unreported rate is UNKNOWN, not 0 B/s: both stay last in either direction.
         fun known(item: RemoteTransfer): Long? = when (order) {
             TransferOrder.NAME -> null
+            // Divide in floating point: completed * 1e6 overflows Long above ~9.2 TB.
             TransferOrder.PROGRESS -> item.completedBytes.coerceIn(0, item.sizeBytes)
-                .takeIf { item.sizeBytes > 0 }?.let { it * 1_000_000 / item.sizeBytes }
+                .takeIf { item.sizeBytes > 0 }?.let { (it.toDouble() / item.sizeBytes * 1_000_000).toLong() }
             TransferOrder.SIZE -> item.sizeBytes.takeIf { it > 0 }
             TransferOrder.SPEED -> item.downBytesPerSecond?.takeIf { it >= 0 }
         }

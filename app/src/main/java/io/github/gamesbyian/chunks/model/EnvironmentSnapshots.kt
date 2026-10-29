@@ -13,6 +13,13 @@ import java.security.MessageDigest
 object EnvironmentSnapshots {
     val PHONE = EnvironmentId("phone")
 
+    /** The ID for an authenticated alias scope (endpoint + NUL + username); null if malformed. */
+    fun serverIdOfAliasScope(aliasScope: String): EnvironmentId? {
+        val separator = aliasScope.indexOf('\u0000')
+        if (separator <= 0 || separator != aliasScope.lastIndexOf('\u0000')) return null
+        return serverId(aliasScope.substring(0, separator), aliasScope.substring(separator + 1))
+    }
+
     fun serverId(endpoint: String, username: String): EnvironmentId = EnvironmentId(
         MessageDigest.getInstance("SHA-256")
             .digest((endpoint.trim() + "\u0000" + username.trim()).toByteArray(Charsets.UTF_8))

@@ -86,4 +86,16 @@ class CombinedBatchLifecycleTest {
         assertEquals(listOf("Server · ian @ box: 1 confirmed stopped.",
             "On this phone: 1 not attempted (phone engine is not running)."), report.describe { labels.getValue(it) })
     }
+
+    @Test fun nonV1ServerIdentityIsRefusedBeforeAnyRpcAndDoesNotHaltTheBatch() = runBlocking {
+        val gate = FakeGate(grant = true)
+        val v2 = UnifiedTransferObservation(UnifiedTransferKey.of(server, "e".repeat(64)), "n", "n",
+            1, 0, true, null, null, null)
+        val v1 = row(server, true)
+        val report = runCombinedLifecycle(setOf(v2.key, v1.key), false,
+            listOf(source(server, v1, v2)), gate.lifecycle, server, phoneEngine = { null })
+        assertEquals(listOf(hash to false), gate.calls)
+        assertNull(report.haltedOn)
+        assertEquals(setOf(CommandEvidence.VERIFIED, CommandEvidence.REFUSED), report.items.map { it.evidence }.toSet())
+    }
 }
