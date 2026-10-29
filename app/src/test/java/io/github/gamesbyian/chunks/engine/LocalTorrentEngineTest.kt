@@ -104,6 +104,50 @@ class LocalTorrentEngineTest {
         waitFor { (seeder.status(seeded.infoHash)?.payloadUploadedBytes ?: 0) >= done.doneBytes }
     }
 
+    /**
+     * #568 feasibility evidence: libtorrent4j exposes a built-in POSIX disk
+     * backend. This tests only ordinary seekable File paths in a disposable
+     * native JVM fixture, NOT Android SAF, public Downloads or provider FDs.
+     */
+    @Test fun posixDiskIoDownloadsRealMultiFileBytesAndRestoresStopped() {
+        val fixture = fixture()
+        val seeder = engine()
+        val source = added(seeder.addStopped(fixture.torrent, fixture.root.parentFile))
+        assertEquals(LocalCommandOutcome.VERIFIED, seeder.resume(source.infoHash).outcome)
+        waitFor { seeder.status(source.infoHash)?.state == LocalTransferState.SEEDING }
+
+        val state = temp.newFolder("posix-resume-state")
+        val destination = temp.newFolder("posix-destination")
+        fun posixEngine(): LocalTorrentEngine = LocalTorrentEngine(LocalEngineConfig(
+            listenInterfaces = "127.0.0.1:0",
+            allowMultipleConnectionsPerIp = true,
+            stateDirectory = state,
+            diskIoMode = LocalDiskIoMode.POSIX
+        )).also { it.start(); engines += it }
+
+        val first = posixEngine()
+        val target = added(first.addStopped(fixture.torrent, destination,
+            listOf(InetSocketAddress("127.0.0.1", seeder.listenPort()))))
+        assertEquals(LocalCommandOutcome.VERIFIED, first.resume(target.infoHash).outcome)
+        requireFlushed(first, target.infoHash)
+        for ((name, bytes) in fixture.files) {
+            assertArrayEquals(name, bytes, File(destination, "Chunks public fixture/$name").readBytes())
+        }
+        assertEquals(1_000_000, first.status(target.infoHash)?.progressPpm)
+        assertEquals(1, first.saveResumeData())
+        first.close()
+
+        val reopened = posixEngine()
+        assertTrue("No resume restore should fail", reopened.restoreProblems.isEmpty())
+        val observed = requireNotNull(reopened.status(target.infoHash))
+        assertTrue("Restored POSIX-backed torrent must be stopped", observed.stopped)
+        assertEquals(destination.absolutePath, observed.savePath)
+        waitFor { reopened.status(target.infoHash)?.progressPpm == 1_000_000 }
+        for ((name, bytes) in fixture.files) {
+            assertArrayEquals(name, bytes, File(destination, "Chunks public fixture/$name").readBytes())
+        }
+    }
+
     @Test fun stoppedAddWritesNothingAndPauseResumeReadBack() {
         val fixture = fixture()
         val destination = temp.newFolder("dest")
