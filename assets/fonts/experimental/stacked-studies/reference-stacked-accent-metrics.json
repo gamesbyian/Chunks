@@ -14,12 +14,12 @@
           ],
           "mark_contours": 3,
           "x_shift": 80,
-          "y_shift": 0,
+          "y_shift": 7,
           "bbox": [
-            102,
-            55,
-            708,
-            919
+            75,
+            28,
+            735,
+            926
           ]
         },
         {
@@ -31,12 +31,12 @@
           ],
           "mark_contours": 3,
           "x_shift": 72,
-          "y_shift": 20,
+          "y_shift": 48,
           "bbox": [
-            102,
-            126,
-            592,
-            821
+            75,
+            85,
+            619,
+            849
           ]
         },
         {
@@ -48,12 +48,12 @@
           ],
           "mark_contours": 3,
           "x_shift": 80,
-          "y_shift": 0,
+          "y_shift": 7,
           "bbox": [
-            102,
-            55,
-            708,
-            967
+            75,
+            28,
+            735,
+            974
           ]
         },
         {
@@ -65,12 +65,12 @@
           ],
           "mark_contours": 3,
           "x_shift": 72,
-          "y_shift": 20,
+          "y_shift": 48,
           "bbox": [
-            102,
-            126,
-            592,
-            859
+            75,
+            85,
+            619,
+            887
           ]
         },
         {
@@ -82,12 +82,12 @@
           ],
           "mark_contours": 3,
           "x_shift": 80,
-          "y_shift": 0,
+          "y_shift": 7,
           "bbox": [
-            102,
-            55,
-            708,
-            961
+            75,
+            28,
+            735,
+            968
           ]
         },
         {
@@ -99,12 +99,12 @@
           ],
           "mark_contours": 3,
           "x_shift": 72,
-          "y_shift": 20,
+          "y_shift": 48,
           "bbox": [
-            102,
-            126,
-            592,
-            855
+            75,
+            85,
+            619,
+            883
           ]
         },
         {
@@ -116,12 +116,12 @@
           ],
           "mark_contours": 3,
           "x_shift": 80,
-          "y_shift": 0,
+          "y_shift": 7,
           "bbox": [
-            102,
-            55,
-            708,
-            967
+            75,
+            28,
+            735,
+            974
           ]
         },
         {
@@ -133,12 +133,12 @@
           ],
           "mark_contours": 3,
           "x_shift": 72,
-          "y_shift": 20,
+          "y_shift": 48,
           "bbox": [
-            102,
-            126,
-            592,
-            859
+            75,
+            85,
+            619,
+            887
           ]
         },
         {
@@ -149,13 +149,13 @@
             "U+0301"
           ],
           "mark_contours": 3,
-          "x_shift": 99,
-          "y_shift": 15,
+          "x_shift": 98,
+          "y_shift": 13,
           "bbox": [
-            103,
-            36,
-            688,
-            1033
+            107,
+            43,
+            683,
+            1031
           ]
         },
         {
@@ -167,12 +167,12 @@
           ],
           "mark_contours": 3,
           "x_shift": 121,
-          "y_shift": 54,
+          "y_shift": 81,
           "bbox": [
-            102,
-            112,
-            611,
-            946
+            74,
+            85,
+            639,
+            973
           ]
         },
         {
@@ -183,12 +183,12 @@
             "U+0304"
           ],
           "mark_contours": 3,
-          "x_shift": 71,
+          "x_shift": 70,
           "y_shift": 0,
           "bbox": [
-            103,
-            16,
-            727,
+            75,
+            -10,
+            754,
             919
           ]
         },
@@ -200,13 +200,13 @@
             "U+0304"
           ],
           "mark_contours": 3,
-          "x_shift": 89,
-          "y_shift": 20,
+          "x_shift": 90,
+          "y_shift": 48,
           "bbox": [
-            102,
-            93,
-            629,
-            821
+            75,
+            66,
+            658,
+            849
           ]
         },
         {
@@ -217,12 +217,12 @@
             "U+0304"
           ],
           "mark_contours": 2,
-          "x_shift": 71,
+          "x_shift": 70,
           "y_shift": 0,
           "bbox": [
-            103,
-            16,
-            727,
+            75,
+            -10,
+            754,
             919
           ]
         },
@@ -234,13 +234,13 @@
             "U+0304"
           ],
           "mark_contours": 2,
-          "x_shift": 89,
-          "y_shift": 22,
+          "x_shift": 90,
+          "y_shift": 50,
           "bbox": [
-            102,
-            93,
-            629,
-            823
+            75,
+            66,
+            658,
+            851
           ]
         },
         {
@@ -251,12 +251,12 @@
             "U+0304"
           ],
           "mark_contours": 2,
-          "x_shift": 71,
+          "x_shift": 70,
           "y_shift": 0,
           "bbox": [
-            103,
-            16,
-            727,
+            75,
+            -10,
+            754,
             919
           ]
         },
@@ -268,13 +268,13 @@
             "U+0304"
           ],
           "mark_contours": 2,
-          "x_shift": 89,
-          "y_shift": 15,
+          "x_shift": 90,
+          "y_shift": 43,
           "bbox": [
-            102,
-            93,
-            629,
-            816
+            75,
+            66,
+            658,
+            844
           ]
         },
         {
@@ -285,13 +285,13 @@
             "U+0300"
           ],
           "mark_contours": 2,
-          "x_shift": 64,
-          "y_shift": 0,
+          "x_shift": 66,
+          "y_shift": 23,
           "bbox": [
-            103,
-            55,
-            592,
-            967
+            84,
+            31,
+            616,
+            990
           ]
         },
         {
@@ -302,13 +302,13 @@
             "U+0300"
           ],
           "mark_contours": 2,
-          "x_shift": 92,
-          "y_shift": 29,
+          "x_shift": 91,
+          "y_shift": 25,
           "bbox": [
-            95,
-            106,
-            617,
-            864
+            99.253,
+            102.162,
+            610,
+            860
           ]
         },
         {
@@ -319,13 +319,13 @@
             "U+0301"
           ],
           "mark_contours": 2,
-          "x_shift": 64,
-          "y_shift": 0,
+          "x_shift": 66,
+          "y_shift": 23,
           "bbox": [
-            103,
-            55,
-            592,
-            967
+            84,
+            31,
+            616,
+            990
           ]
         },
         {
@@ -336,13 +336,13 @@
             "U+0301"
           ],
           "mark_contours": 2,
-          "x_shift": 92,
-          "y_shift": 29,
+          "x_shift": 91,
+          "y_shift": 25,
           "bbox": [
-            95,
-            106,
-            617,
-            864
+            99.253,
+            102.162,
+            610,
+            860
           ]
         },
         {
@@ -354,12 +354,12 @@
           ],
           "mark_contours": 3,
           "x_shift": 92,
-          "y_shift": 18,
+          "y_shift": 46,
           "bbox": [
             88,
-            95,
+            65,
             359,
-            985
+            1013
           ]
         },
         {
@@ -370,12 +370,12 @@
             "U+0301"
           ],
           "mark_contours": 2,
-          "x_shift": 71,
+          "x_shift": 70,
           "y_shift": 0,
           "bbox": [
-            103,
-            16,
-            727,
+            75,
+            -10,
+            754,
             967
           ]
         },
@@ -387,13 +387,13 @@
             "U+0301"
           ],
           "mark_contours": 2,
-          "x_shift": 89,
-          "y_shift": 22,
+          "x_shift": 90,
+          "y_shift": 50,
           "bbox": [
-            102,
-            93,
-            629,
-            857
+            75,
+            66,
+            658,
+            885
           ]
         },
         {
@@ -404,12 +404,12 @@
             "U+0308"
           ],
           "mark_contours": 3,
-          "x_shift": 71,
+          "x_shift": 70,
           "y_shift": 0,
           "bbox": [
-            103,
-            16,
-            727,
+            75,
+            -10,
+            754,
             936
           ]
         },
@@ -421,13 +421,13 @@
             "U+0308"
           ],
           "mark_contours": 3,
-          "x_shift": 89,
-          "y_shift": 22,
+          "x_shift": 90,
+          "y_shift": 50,
           "bbox": [
-            102,
-            93,
-            629,
-            843
+            75,
+            66,
+            658,
+            871
           ]
         },
         {
@@ -438,12 +438,12 @@
             "U+0300"
           ],
           "mark_contours": 2,
-          "x_shift": 71,
+          "x_shift": 70,
           "y_shift": 0,
           "bbox": [
-            103,
-            16,
-            727,
+            75,
+            -10,
+            754,
             967
           ]
         },
@@ -455,13 +455,13 @@
             "U+0300"
           ],
           "mark_contours": 2,
-          "x_shift": 89,
-          "y_shift": 3,
+          "x_shift": 90,
+          "y_shift": 31,
           "bbox": [
-            102,
-            93,
-            629,
-            838
+            75,
+            66,
+            658,
+            866
           ]
         },
         {
@@ -472,12 +472,12 @@
             "U+0301"
           ],
           "mark_contours": 2,
-          "x_shift": 71,
+          "x_shift": 70,
           "y_shift": 0,
           "bbox": [
-            103,
-            16,
-            727,
+            75,
+            -10,
+            754,
             967
           ]
         },
@@ -489,13 +489,13 @@
             "U+0301"
           ],
           "mark_contours": 2,
-          "x_shift": 89,
-          "y_shift": 3,
+          "x_shift": 90,
+          "y_shift": 31,
           "bbox": [
-            102,
-            93,
-            629,
-            838
+            75,
+            66,
+            658,
+            866
           ]
         },
         {
@@ -507,12 +507,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 102,
-          "y_shift": 24,
+          "y_shift": 15,
           "bbox": [
-            103,
-            36,
-            631,
-            844
+            104,
+            24.703,
+            629.559,
+            835
           ]
         },
         {
@@ -526,9 +526,9 @@
           "x_shift": 86,
           "y_shift": 76,
           "bbox": [
-            103,
-            115,
-            516,
+            98,
+            96.665,
+            520.742,
             763
           ]
         },
@@ -541,12 +541,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 102,
-          "y_shift": 28,
+          "y_shift": 19,
           "bbox": [
-            103,
-            36,
-            631,
-            967
+            104,
+            24.703,
+            629.559,
+            958
           ]
         },
         {
@@ -560,9 +560,9 @@
           "x_shift": 86,
           "y_shift": 70,
           "bbox": [
-            103,
-            115,
-            516,
+            98,
+            96.665,
+            520.742,
             888
           ]
         },
@@ -575,12 +575,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 80,
-          "y_shift": 0,
+          "y_shift": 11,
           "bbox": [
-            102,
-            55,
-            708,
-            967
+            75,
+            28,
+            735,
+            978
           ]
         },
         {
@@ -592,12 +592,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 72,
-          "y_shift": 22,
+          "y_shift": 50,
           "bbox": [
-            102,
-            126,
-            592,
-            857
+            75,
+            85,
+            619,
+            885
           ]
         },
         {
@@ -609,12 +609,12 @@
           ],
           "mark_contours": 3,
           "x_shift": 80,
-          "y_shift": 0,
+          "y_shift": 7,
           "bbox": [
-            102,
-            55,
-            708,
-            936
+            75,
+            28,
+            735,
+            943
           ]
         },
         {
@@ -626,12 +626,12 @@
           ],
           "mark_contours": 3,
           "x_shift": 72,
-          "y_shift": 3,
+          "y_shift": 31,
           "bbox": [
-            102,
-            126,
-            592,
-            793
+            75,
+            85,
+            619,
+            821
           ]
         },
         {
@@ -642,13 +642,13 @@
             "U+0301"
           ],
           "mark_contours": 2,
-          "x_shift": 99,
-          "y_shift": 20,
+          "x_shift": 98,
+          "y_shift": 18,
           "bbox": [
-            103,
-            36,
-            688,
-            935
+            107,
+            43,
+            683,
+            933
           ]
         },
         {
@@ -660,12 +660,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 121,
-          "y_shift": 53,
+          "y_shift": 80,
           "bbox": [
-            102,
-            112,
-            611,
-            844
+            74,
+            85,
+            639,
+            871
           ]
         },
         {
@@ -676,13 +676,13 @@
             "U+0300"
           ],
           "mark_contours": 2,
-          "x_shift": 99,
-          "y_shift": 20,
+          "x_shift": 98,
+          "y_shift": 18,
           "bbox": [
-            103,
-            36,
-            688,
-            935
+            107,
+            43,
+            683,
+            933
           ]
         },
         {
@@ -694,12 +694,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 121,
-          "y_shift": 53,
+          "y_shift": 80,
           "bbox": [
-            102,
-            112,
-            611,
-            844
+            74,
+            85,
+            639,
+            871
           ]
         },
         {
@@ -710,13 +710,13 @@
             "U+0309"
           ],
           "mark_contours": 2,
-          "x_shift": 99,
-          "y_shift": 20,
+          "x_shift": 98,
+          "y_shift": 18,
           "bbox": [
-            103,
-            36,
-            688,
-            938
+            107,
+            43,
+            683,
+            936
           ]
         },
         {
@@ -728,12 +728,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 121,
-          "y_shift": 53,
+          "y_shift": 80,
           "bbox": [
-            102,
-            112,
-            611,
-            847
+            74,
+            85,
+            639,
+            874
           ]
         },
         {
@@ -744,13 +744,13 @@
             "U+0303"
           ],
           "mark_contours": 2,
-          "x_shift": 99,
-          "y_shift": 20,
+          "x_shift": 98,
+          "y_shift": 18,
           "bbox": [
-            103,
-            36,
-            688,
-            956
+            107,
+            43,
+            683,
+            954
           ]
         },
         {
@@ -762,12 +762,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 121,
-          "y_shift": 57,
+          "y_shift": 84,
           "bbox": [
-            102,
-            112,
-            611,
-            865
+            74,
+            85,
+            639,
+            892
           ]
         },
         {
@@ -778,13 +778,13 @@
             "U+0301"
           ],
           "mark_contours": 2,
-          "x_shift": 99,
-          "y_shift": 6,
+          "x_shift": 98,
+          "y_shift": 4,
           "bbox": [
-            103,
-            36,
-            688,
-            942
+            107,
+            43,
+            683,
+            940
           ]
         },
         {
@@ -796,12 +796,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 121,
-          "y_shift": 36,
+          "y_shift": 63,
           "bbox": [
-            102,
-            112,
-            611,
-            851
+            74,
+            85,
+            639,
+            878
           ]
         },
         {
@@ -812,13 +812,13 @@
             "U+0300"
           ],
           "mark_contours": 2,
-          "x_shift": 99,
-          "y_shift": 6,
+          "x_shift": 98,
+          "y_shift": 4,
           "bbox": [
-            103,
-            36,
-            688,
-            942
+            107,
+            43,
+            683,
+            940
           ]
         },
         {
@@ -830,12 +830,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 121,
-          "y_shift": 36,
+          "y_shift": 63,
           "bbox": [
-            102,
-            112,
-            611,
-            851
+            74,
+            85,
+            639,
+            878
           ]
         },
         {
@@ -846,13 +846,13 @@
             "U+0309"
           ],
           "mark_contours": 2,
-          "x_shift": 99,
-          "y_shift": 7,
+          "x_shift": 98,
+          "y_shift": 5,
           "bbox": [
-            103,
-            36,
-            688,
-            956
+            107,
+            43,
+            683,
+            954
           ]
         },
         {
@@ -864,12 +864,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 121,
-          "y_shift": 36,
+          "y_shift": 63,
           "bbox": [
-            102,
-            112,
-            611,
-            859
+            74,
+            85,
+            639,
+            886
           ]
         },
         {
@@ -880,13 +880,13 @@
             "U+0303"
           ],
           "mark_contours": 2,
-          "x_shift": 99,
-          "y_shift": 7,
+          "x_shift": 98,
+          "y_shift": 5,
           "bbox": [
-            103,
-            36,
-            688,
-            943
+            107,
+            43,
+            683,
+            941
           ]
         },
         {
@@ -898,12 +898,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 121,
-          "y_shift": 32,
+          "y_shift": 59,
           "bbox": [
-            102,
-            112,
-            611,
-            847
+            74,
+            85,
+            639,
+            874
           ]
         },
         {
@@ -914,13 +914,13 @@
             "U+0301"
           ],
           "mark_contours": 2,
-          "x_shift": 64,
-          "y_shift": 39,
+          "x_shift": 66,
+          "y_shift": 64,
           "bbox": [
-            103,
-            55,
-            594,
-            954
+            84,
+            31,
+            616,
+            979
           ]
         },
         {
@@ -931,13 +931,13 @@
             "U+0301"
           ],
           "mark_contours": 2,
-          "x_shift": 92,
-          "y_shift": 79,
+          "x_shift": 91,
+          "y_shift": 75,
           "bbox": [
-            95,
-            106,
-            617,
-            870
+            99.253,
+            102.162,
+            610,
+            866
           ]
         },
         {
@@ -948,13 +948,13 @@
             "U+0300"
           ],
           "mark_contours": 2,
-          "x_shift": 64,
-          "y_shift": 39,
+          "x_shift": 66,
+          "y_shift": 64,
           "bbox": [
-            103,
-            55,
-            592,
-            954
+            84,
+            31,
+            616,
+            979
           ]
         },
         {
@@ -965,13 +965,13 @@
             "U+0300"
           ],
           "mark_contours": 2,
-          "x_shift": 92,
-          "y_shift": 79,
+          "x_shift": 91,
+          "y_shift": 75,
           "bbox": [
-            95,
-            106,
-            617,
-            870
+            99.253,
+            102.162,
+            610,
+            866
           ]
         },
         {
@@ -982,13 +982,13 @@
             "U+0309"
           ],
           "mark_contours": 2,
-          "x_shift": 64,
-          "y_shift": 39,
+          "x_shift": 66,
+          "y_shift": 64,
           "bbox": [
-            103,
-            55,
-            592,
-            957
+            84,
+            31,
+            616,
+            982
           ]
         },
         {
@@ -999,13 +999,13 @@
             "U+0309"
           ],
           "mark_contours": 2,
-          "x_shift": 92,
-          "y_shift": 79,
+          "x_shift": 91,
+          "y_shift": 75,
           "bbox": [
-            95,
-            106,
-            617,
-            873
+            99.253,
+            102.162,
+            610,
+            869
           ]
         },
         {
@@ -1016,13 +1016,13 @@
             "U+0303"
           ],
           "mark_contours": 2,
-          "x_shift": 64,
-          "y_shift": 39,
+          "x_shift": 66,
+          "y_shift": 64,
           "bbox": [
-            103,
-            55,
-            592,
-            975
+            84,
+            31,
+            616,
+            1000
           ]
         },
         {
@@ -1033,13 +1033,13 @@
             "U+0303"
           ],
           "mark_contours": 2,
-          "x_shift": 92,
-          "y_shift": 79,
+          "x_shift": 91,
+          "y_shift": 75,
           "bbox": [
-            95,
-            106,
-            617,
-            891
+            99.253,
+            102.162,
+            610,
+            887
           ]
         },
         {
@@ -1050,13 +1050,13 @@
             "U+0301"
           ],
           "mark_contours": 2,
-          "x_shift": 71,
-          "y_shift": 1,
+          "x_shift": 70,
+          "y_shift": 28,
           "bbox": [
-            103,
-            16,
-            727,
-            916
+            75,
+            -10,
+            754,
+            943
           ]
         },
         {
@@ -1067,13 +1067,13 @@
             "U+0301"
           ],
           "mark_contours": 2,
-          "x_shift": 89,
-          "y_shift": 53,
+          "x_shift": 90,
+          "y_shift": 81,
           "bbox": [
-            102,
-            93,
-            629,
-            844
+            75,
+            66,
+            658,
+            872
           ]
         },
         {
@@ -1084,13 +1084,13 @@
             "U+0300"
           ],
           "mark_contours": 2,
-          "x_shift": 71,
-          "y_shift": 1,
+          "x_shift": 70,
+          "y_shift": 28,
           "bbox": [
-            103,
-            16,
-            727,
-            916
+            75,
+            -10,
+            754,
+            943
           ]
         },
         {
@@ -1101,13 +1101,13 @@
             "U+0300"
           ],
           "mark_contours": 2,
-          "x_shift": 89,
-          "y_shift": 53,
+          "x_shift": 90,
+          "y_shift": 81,
           "bbox": [
-            102,
-            93,
-            629,
-            844
+            75,
+            66,
+            658,
+            872
           ]
         },
         {
@@ -1118,13 +1118,13 @@
             "U+0309"
           ],
           "mark_contours": 2,
-          "x_shift": 71,
-          "y_shift": 1,
+          "x_shift": 70,
+          "y_shift": 28,
           "bbox": [
-            103,
-            16,
-            727,
-            919
+            75,
+            -10,
+            754,
+            946
           ]
         },
         {
@@ -1135,13 +1135,13 @@
             "U+0309"
           ],
           "mark_contours": 2,
-          "x_shift": 89,
-          "y_shift": 53,
+          "x_shift": 90,
+          "y_shift": 81,
           "bbox": [
-            102,
-            93,
-            629,
-            847
+            75,
+            66,
+            658,
+            875
           ]
         },
         {
@@ -1152,13 +1152,13 @@
             "U+0303"
           ],
           "mark_contours": 2,
-          "x_shift": 71,
-          "y_shift": 1,
+          "x_shift": 70,
+          "y_shift": 28,
           "bbox": [
-            103,
-            16,
-            727,
-            937
+            75,
+            -10,
+            754,
+            964
           ]
         },
         {
@@ -1169,13 +1169,13 @@
             "U+0303"
           ],
           "mark_contours": 2,
-          "x_shift": 89,
-          "y_shift": 57,
+          "x_shift": 90,
+          "y_shift": 85,
           "bbox": [
-            102,
-            93,
-            629,
-            869
+            75,
+            66,
+            658,
+            897
           ]
         }
       ],
@@ -1338,143 +1338,143 @@
       "weight": 400,
       "file": "ChunksReferencePanel-Regular-Stacked.otf",
       "source_sha256": "a31b5c8726a640beada2113e11002eaac75a79b575f6855fdd60e9dc5ecbf63e",
-      "input_consolidated_sha256": "f92e3ca7caef4eec208a16276150ff571c4e0b96e39df8c58925bf321d8d015a",
-      "output_sha256": "98221cc234ac8026cb2e46dc3ef6346e341f3e9f669a80d811dc4f8bc14c31b2",
+      "input_consolidated_sha256": "1e5908707d29c0a7f17f39c563b8dd0576cd448e05f6880fa98f634fd0f445d2",
+      "output_sha256": "e77037ddfe8fc166f8a69bb3dcd993e28a511f3ca779807f62b480fca8df17f5",
       "kerning": {
-        "input_sha256": "736d75903d3159f6ee3bb7c4ba3d3798ec39d9ef8aed37de940fd1807aab94a0",
+        "input_sha256": "2718e8441ec21c5f3e971d52e7011a0f271af90354a87e961537f7830e405c4d",
         "file": "ChunksReferencePanel-Regular-Stacked.otf",
         "reference_accent_glyphs": 69,
         "candidate_pairs": 13317,
         "adjusted_pairs": 13317,
         "bounded_subtables": 11,
         "max_correction_units": 120,
-        "clipped_pair_count": 796,
+        "clipped_pair_count": 358,
         "clipped_pair_examples": [
           {
-            "first": "E",
+            "first": "F",
             "second": "Ǻ",
-            "desired_units": -121,
-            "applied_units": -120
-          },
-          {
-            "first": "E",
-            "second": "ǻ",
             "desired_units": -124,
             "applied_units": -120
           },
           {
-            "first": "E",
-            "second": "Ȫ",
+            "first": "F",
+            "second": "ḕ",
             "desired_units": -124,
             "applied_units": -120
           },
           {
-            "first": "E",
-            "second": "Ȭ",
+            "first": "F",
+            "second": "ḗ",
             "desired_units": -124,
             "applied_units": -120
           },
           {
-            "first": "E",
-            "second": "Ȱ",
+            "first": "F",
+            "second": "Ṥ",
             "desired_units": -124,
             "applied_units": -120
           },
           {
-            "first": "E",
-            "second": "Ṍ",
+            "first": "F",
+            "second": "ṥ",
             "desired_units": -124,
             "applied_units": -120
           },
           {
-            "first": "E",
-            "second": "Ṏ",
+            "first": "F",
+            "second": "Ṧ",
             "desired_units": -124,
             "applied_units": -120
           },
           {
-            "first": "E",
-            "second": "Ṑ",
+            "first": "F",
+            "second": "ṧ",
             "desired_units": -124,
             "applied_units": -120
           },
           {
-            "first": "E",
-            "second": "Ṓ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "E",
+            "first": "F",
             "second": "Ấ",
-            "desired_units": -121,
-            "applied_units": -120
-          },
-          {
-            "first": "E",
-            "second": "ấ",
             "desired_units": -124,
             "applied_units": -120
           },
           {
-            "first": "E",
+            "first": "F",
             "second": "Ầ",
-            "desired_units": -121,
-            "applied_units": -120
-          },
-          {
-            "first": "E",
-            "second": "ầ",
             "desired_units": -124,
             "applied_units": -120
           },
           {
-            "first": "E",
+            "first": "F",
             "second": "Ẩ",
-            "desired_units": -121,
-            "applied_units": -120
-          },
-          {
-            "first": "E",
-            "second": "ẩ",
             "desired_units": -124,
             "applied_units": -120
           },
           {
-            "first": "E",
+            "first": "F",
             "second": "Ẫ",
-            "desired_units": -121,
-            "applied_units": -120
-          },
-          {
-            "first": "E",
-            "second": "ẫ",
             "desired_units": -124,
             "applied_units": -120
           },
           {
-            "first": "E",
+            "first": "F",
             "second": "Ắ",
-            "desired_units": -121,
-            "applied_units": -120
-          },
-          {
-            "first": "E",
-            "second": "ắ",
             "desired_units": -124,
             "applied_units": -120
           },
           {
-            "first": "E",
+            "first": "F",
             "second": "Ằ",
-            "desired_units": -121,
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "Ẳ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "Ẵ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "ế",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "ề",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "ể",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "ễ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "L",
+            "second": "ḕ",
+            "desired_units": -124,
             "applied_units": -120
           }
         ],
-        "mean_abs_correction_units": 86.26,
+        "mean_abs_correction_units": 69.63,
         "source_scripts_unchanged": true,
-        "pre_final_name_sha256": "405a4eac3421542e47a37f197ab9265d3a38097a8d15ab8d54245689c55b34c0",
-        "output_sha256": "98221cc234ac8026cb2e46dc3ef6346e341f3e9f669a80d811dc4f8bc14c31b2"
+        "pre_final_name_sha256": "5e15a4ff6607d52098301a2e61ad2cf4c9e87748d7912e17e9b581e68fb7784a",
+        "output_sha256": "e77037ddfe8fc166f8a69bb3dcd993e28a511f3ca779807f62b480fca8df17f5"
       }
     },
     "Medium": {
@@ -1489,12 +1489,12 @@
           ],
           "mark_contours": 3,
           "x_shift": 78,
-          "y_shift": 0,
+          "y_shift": 13,
           "bbox": [
-            96,
-            49,
-            714,
-            941
+            75,
+            28,
+            735,
+            954
           ]
         },
         {
@@ -1506,12 +1506,12 @@
           ],
           "mark_contours": 3,
           "x_shift": 68,
-          "y_shift": 28,
+          "y_shift": 49,
           "bbox": [
-            96,
-            118,
-            599,
-            851
+            75,
+            85,
+            619,
+            872
           ]
         },
         {
@@ -1523,12 +1523,12 @@
           ],
           "mark_contours": 3,
           "x_shift": 78,
-          "y_shift": 0,
+          "y_shift": 13,
           "bbox": [
-            96,
-            49,
-            714,
-            988
+            75,
+            28,
+            735,
+            1001
           ]
         },
         {
@@ -1540,12 +1540,12 @@
           ],
           "mark_contours": 3,
           "x_shift": 68,
-          "y_shift": 28,
+          "y_shift": 49,
           "bbox": [
-            96,
-            118,
-            599,
-            892
+            75,
+            85,
+            619,
+            913
           ]
         },
         {
@@ -1557,12 +1557,12 @@
           ],
           "mark_contours": 3,
           "x_shift": 78,
-          "y_shift": 0,
+          "y_shift": 13,
           "bbox": [
-            96,
-            49,
-            714,
-            984
+            75,
+            28,
+            735,
+            997
           ]
         },
         {
@@ -1574,12 +1574,12 @@
           ],
           "mark_contours": 3,
           "x_shift": 68,
-          "y_shift": 28,
+          "y_shift": 49,
           "bbox": [
-            96,
-            118,
-            599,
-            885
+            75,
+            85,
+            619,
+            906
           ]
         },
         {
@@ -1591,12 +1591,12 @@
           ],
           "mark_contours": 3,
           "x_shift": 78,
-          "y_shift": 0,
+          "y_shift": 13,
           "bbox": [
-            96,
-            49,
-            714,
-            988
+            75,
+            28,
+            735,
+            1001
           ]
         },
         {
@@ -1608,12 +1608,12 @@
           ],
           "mark_contours": 3,
           "x_shift": 68,
-          "y_shift": 28,
+          "y_shift": 49,
           "bbox": [
-            96,
-            118,
-            599,
-            892
+            75,
+            85,
+            619,
+            913
           ]
         },
         {
@@ -1625,12 +1625,12 @@
           ],
           "mark_contours": 3,
           "x_shift": 115,
-          "y_shift": 58,
+          "y_shift": 78,
           "bbox": [
-            95,
-            106,
-            618,
-            968
+            74,
+            85,
+            639,
+            988
           ]
         },
         {
@@ -1644,9 +1644,9 @@
           "x_shift": 68,
           "y_shift": 0,
           "bbox": [
-            95,
-            10,
-            733,
+            75,
+            -10,
+            754,
             944
           ]
         },
@@ -1658,13 +1658,13 @@
             "U+0304"
           ],
           "mark_contours": 3,
-          "x_shift": 85,
-          "y_shift": 28,
+          "x_shift": 86,
+          "y_shift": 49,
           "bbox": [
-            96,
-            86,
-            636,
-            851
+            75,
+            66,
+            658,
+            872
           ]
         },
         {
@@ -1678,9 +1678,9 @@
           "x_shift": 68,
           "y_shift": 0,
           "bbox": [
-            95,
-            10,
-            733,
+            75,
+            -10,
+            754,
             944
           ]
         },
@@ -1692,13 +1692,13 @@
             "U+0304"
           ],
           "mark_contours": 2,
-          "x_shift": 85,
-          "y_shift": 30,
+          "x_shift": 86,
+          "y_shift": 51,
           "bbox": [
-            96,
-            86,
-            636,
-            853
+            75,
+            66,
+            658,
+            874
           ]
         },
         {
@@ -1712,9 +1712,9 @@
           "x_shift": 68,
           "y_shift": 0,
           "bbox": [
-            95,
-            10,
-            733,
+            75,
+            -10,
+            754,
             944
           ]
         },
@@ -1726,13 +1726,13 @@
             "U+0304"
           ],
           "mark_contours": 2,
-          "x_shift": 85,
-          "y_shift": 25,
+          "x_shift": 86,
+          "y_shift": 46,
           "bbox": [
-            96,
-            86,
-            636,
-            848
+            75,
+            66,
+            658,
+            869
           ]
         },
         {
@@ -1743,13 +1743,13 @@
             "U+0300"
           ],
           "mark_contours": 2,
-          "x_shift": 62,
-          "y_shift": 4,
+          "x_shift": 64,
+          "y_shift": 23,
           "bbox": [
-            95,
-            48,
-            598,
-            992
+            82,
+            29,
+            617,
+            1011
           ]
         },
         {
@@ -1760,12 +1760,12 @@
             "U+0300"
           ],
           "mark_contours": 2,
-          "x_shift": 90,
+          "x_shift": 88,
           "y_shift": 35,
           "bbox": [
-            91,
-            101,
-            623,
+            89.115,
+            93.19,
+            620,
             892
           ]
         },
@@ -1777,13 +1777,13 @@
             "U+0301"
           ],
           "mark_contours": 2,
-          "x_shift": 62,
-          "y_shift": 4,
+          "x_shift": 64,
+          "y_shift": 23,
           "bbox": [
-            95,
-            48,
-            598,
-            992
+            82,
+            29,
+            617,
+            1011
           ]
         },
         {
@@ -1794,12 +1794,12 @@
             "U+0301"
           ],
           "mark_contours": 2,
-          "x_shift": 90,
+          "x_shift": 88,
           "y_shift": 35,
           "bbox": [
-            91,
-            101,
-            623,
+            89.115,
+            93.19,
+            620,
             892
           ]
         },
@@ -1812,12 +1812,12 @@
           ],
           "mark_contours": 3,
           "x_shift": 86,
-          "y_shift": 28,
+          "y_shift": 52,
           "bbox": [
             72,
-            87,
+            65,
             371,
-            1016
+            1040
           ]
         },
         {
@@ -1831,9 +1831,9 @@
           "x_shift": 68,
           "y_shift": 0,
           "bbox": [
-            95,
-            10,
-            733,
+            75,
+            -10,
+            754,
             988
           ]
         },
@@ -1845,13 +1845,13 @@
             "U+0301"
           ],
           "mark_contours": 2,
-          "x_shift": 85,
-          "y_shift": 30,
+          "x_shift": 86,
+          "y_shift": 51,
           "bbox": [
-            96,
-            86,
-            636,
-            887
+            75,
+            66,
+            658,
+            908
           ]
         },
         {
@@ -1865,9 +1865,9 @@
           "x_shift": 68,
           "y_shift": 0,
           "bbox": [
-            95,
-            10,
-            733,
+            75,
+            -10,
+            754,
             951
           ]
         },
@@ -1879,13 +1879,13 @@
             "U+0308"
           ],
           "mark_contours": 3,
-          "x_shift": 85,
-          "y_shift": 30,
+          "x_shift": 86,
+          "y_shift": 51,
           "bbox": [
-            96,
-            86,
-            636,
-            866
+            75,
+            66,
+            658,
+            887
           ]
         },
         {
@@ -1899,9 +1899,9 @@
           "x_shift": 68,
           "y_shift": 0,
           "bbox": [
-            95,
-            10,
-            733,
+            75,
+            -10,
+            754,
             988
           ]
         },
@@ -1913,13 +1913,13 @@
             "U+0300"
           ],
           "mark_contours": 2,
-          "x_shift": 85,
-          "y_shift": 11,
+          "x_shift": 86,
+          "y_shift": 32,
           "bbox": [
-            96,
-            86,
-            636,
-            868
+            75,
+            66,
+            658,
+            889
           ]
         },
         {
@@ -1933,9 +1933,9 @@
           "x_shift": 68,
           "y_shift": 0,
           "bbox": [
-            95,
-            10,
-            733,
+            75,
+            -10,
+            754,
             988
           ]
         },
@@ -1947,13 +1947,13 @@
             "U+0301"
           ],
           "mark_contours": 2,
-          "x_shift": 85,
-          "y_shift": 11,
+          "x_shift": 86,
+          "y_shift": 32,
           "bbox": [
-            96,
-            86,
-            636,
-            868
+            75,
+            66,
+            658,
+            889
           ]
         },
         {
@@ -1965,12 +1965,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 98,
-          "y_shift": 35,
+          "y_shift": 31,
           "bbox": [
-            98,
-            30,
-            635,
-            862
+            94,
+            11.741,
+            639.777,
+            858
           ]
         },
         {
@@ -1981,13 +1981,13 @@
             "U+0307"
           ],
           "mark_contours": 2,
-          "x_shift": 78,
-          "y_shift": 80,
+          "x_shift": 79,
+          "y_shift": 81,
           "bbox": [
-            96,
-            107,
-            522,
-            783
+            90,
+            87.407,
+            528.983,
+            784
           ]
         },
         {
@@ -1999,12 +1999,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 98,
-          "y_shift": 37,
+          "y_shift": 33,
           "bbox": [
-            98,
-            30,
-            635,
-            992
+            94,
+            11.741,
+            639.777,
+            988
           ]
         },
         {
@@ -2015,13 +2015,13 @@
             "U+0307"
           ],
           "mark_contours": 2,
-          "x_shift": 78,
-          "y_shift": 79,
+          "x_shift": 79,
+          "y_shift": 80,
           "bbox": [
-            96,
-            107,
-            522,
-            913
+            90,
+            87.407,
+            528.983,
+            914
           ]
         },
         {
@@ -2033,12 +2033,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 78,
-          "y_shift": 0,
+          "y_shift": 13,
           "bbox": [
-            96,
-            49,
-            714,
-            988
+            75,
+            28,
+            735,
+            1001
           ]
         },
         {
@@ -2050,12 +2050,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 68,
-          "y_shift": 30,
+          "y_shift": 51,
           "bbox": [
-            96,
-            118,
-            599,
-            887
+            75,
+            85,
+            619,
+            908
           ]
         },
         {
@@ -2067,12 +2067,12 @@
           ],
           "mark_contours": 3,
           "x_shift": 78,
-          "y_shift": 0,
+          "y_shift": 8,
           "bbox": [
-            96,
-            49,
-            714,
-            951
+            75,
+            28,
+            735,
+            959
           ]
         },
         {
@@ -2084,12 +2084,12 @@
           ],
           "mark_contours": 3,
           "x_shift": 68,
-          "y_shift": 11,
+          "y_shift": 32,
           "bbox": [
-            96,
-            118,
-            599,
-            816
+            75,
+            85,
+            619,
+            837
           ]
         },
         {
@@ -2100,13 +2100,13 @@
             "U+0301"
           ],
           "mark_contours": 2,
-          "x_shift": 93,
-          "y_shift": 28,
+          "x_shift": 94,
+          "y_shift": 31,
           "bbox": [
-            95,
-            29,
+            96,
+            31,
             694,
-            954
+            957
           ]
         },
         {
@@ -2118,12 +2118,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 115,
-          "y_shift": 56,
+          "y_shift": 76,
           "bbox": [
-            95,
-            106,
-            624,
-            864
+            74,
+            85,
+            639,
+            884
           ]
         },
         {
@@ -2134,13 +2134,13 @@
             "U+0300"
           ],
           "mark_contours": 2,
-          "x_shift": 93,
-          "y_shift": 28,
+          "x_shift": 94,
+          "y_shift": 31,
           "bbox": [
-            95,
-            29,
+            96,
+            31,
             694,
-            954
+            957
           ]
         },
         {
@@ -2152,12 +2152,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 115,
-          "y_shift": 56,
+          "y_shift": 76,
           "bbox": [
-            95,
-            106,
-            618,
-            864
+            74,
+            85,
+            639,
+            884
           ]
         },
         {
@@ -2168,13 +2168,13 @@
             "U+0309"
           ],
           "mark_contours": 2,
-          "x_shift": 93,
-          "y_shift": 28,
+          "x_shift": 94,
+          "y_shift": 31,
           "bbox": [
-            95,
-            29,
+            96,
+            31,
             694,
-            969
+            972
           ]
         },
         {
@@ -2186,12 +2186,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 115,
-          "y_shift": 56,
+          "y_shift": 76,
           "bbox": [
-            95,
-            106,
-            622,
-            879
+            74,
+            85,
+            639,
+            899
           ]
         },
         {
@@ -2202,13 +2202,13 @@
             "U+0303"
           ],
           "mark_contours": 2,
-          "x_shift": 93,
-          "y_shift": 28,
+          "x_shift": 94,
+          "y_shift": 31,
           "bbox": [
-            95,
-            29,
+            96,
+            31,
             694,
-            986
+            989
           ]
         },
         {
@@ -2220,12 +2220,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 115,
-          "y_shift": 59,
+          "y_shift": 79,
           "bbox": [
-            95,
-            106,
-            618,
-            897
+            74,
+            85,
+            639,
+            917
           ]
         },
         {
@@ -2236,13 +2236,13 @@
             "U+0301"
           ],
           "mark_contours": 2,
-          "x_shift": 93,
-          "y_shift": 13,
+          "x_shift": 94,
+          "y_shift": 16,
           "bbox": [
-            95,
-            29,
+            96,
+            31,
             694,
-            973
+            976
           ]
         },
         {
@@ -2254,12 +2254,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 115,
-          "y_shift": 39,
+          "y_shift": 59,
           "bbox": [
-            95,
-            106,
-            618,
-            881
+            74,
+            85,
+            639,
+            901
           ]
         },
         {
@@ -2270,13 +2270,13 @@
             "U+0300"
           ],
           "mark_contours": 2,
-          "x_shift": 93,
-          "y_shift": 13,
+          "x_shift": 94,
+          "y_shift": 16,
           "bbox": [
-            95,
-            29,
+            96,
+            31,
             694,
-            973
+            976
           ]
         },
         {
@@ -2288,12 +2288,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 115,
-          "y_shift": 39,
+          "y_shift": 59,
           "bbox": [
-            95,
-            106,
-            618,
-            881
+            74,
+            85,
+            639,
+            901
           ]
         },
         {
@@ -2304,13 +2304,13 @@
             "U+0309"
           ],
           "mark_contours": 2,
-          "x_shift": 93,
-          "y_shift": 15,
+          "x_shift": 94,
+          "y_shift": 18,
           "bbox": [
-            95,
-            29,
+            96,
+            31,
             694,
-            991
+            994
           ]
         },
         {
@@ -2322,12 +2322,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 115,
-          "y_shift": 39,
+          "y_shift": 59,
           "bbox": [
-            95,
-            106,
-            618,
-            894
+            74,
+            85,
+            639,
+            914
           ]
         },
         {
@@ -2338,13 +2338,13 @@
             "U+0303"
           ],
           "mark_contours": 2,
-          "x_shift": 93,
-          "y_shift": 15,
+          "x_shift": 94,
+          "y_shift": 18,
           "bbox": [
-            95,
-            29,
+            96,
+            31,
             694,
-            973
+            976
           ]
         },
         {
@@ -2356,12 +2356,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 115,
-          "y_shift": 36,
+          "y_shift": 56,
           "bbox": [
-            95,
-            106,
-            618,
-            878
+            74,
+            85,
+            639,
+            898
           ]
         },
         {
@@ -2372,13 +2372,13 @@
             "U+0301"
           ],
           "mark_contours": 2,
-          "x_shift": 62,
-          "y_shift": 47,
+          "x_shift": 64,
+          "y_shift": 66,
           "bbox": [
-            95,
-            48,
-            607,
-            973
+            82,
+            29,
+            617,
+            992
           ]
         },
         {
@@ -2389,12 +2389,12 @@
             "U+0301"
           ],
           "mark_contours": 2,
-          "x_shift": 90,
+          "x_shift": 88,
           "y_shift": 80,
           "bbox": [
-            91,
-            101,
-            623,
+            89.115,
+            93.19,
+            620,
             888
           ]
         },
@@ -2406,13 +2406,13 @@
             "U+0300"
           ],
           "mark_contours": 2,
-          "x_shift": 62,
-          "y_shift": 47,
+          "x_shift": 64,
+          "y_shift": 66,
           "bbox": [
-            95,
-            48,
-            598,
-            973
+            82,
+            29,
+            617,
+            992
           ]
         },
         {
@@ -2423,12 +2423,12 @@
             "U+0300"
           ],
           "mark_contours": 2,
-          "x_shift": 90,
+          "x_shift": 88,
           "y_shift": 80,
           "bbox": [
-            91,
-            101,
-            623,
+            89.115,
+            93.19,
+            620,
             888
           ]
         },
@@ -2440,13 +2440,13 @@
             "U+0309"
           ],
           "mark_contours": 2,
-          "x_shift": 62,
-          "y_shift": 47,
+          "x_shift": 64,
+          "y_shift": 66,
           "bbox": [
-            95,
-            48,
-            605,
-            988
+            82,
+            29,
+            617,
+            1007
           ]
         },
         {
@@ -2457,12 +2457,12 @@
             "U+0309"
           ],
           "mark_contours": 2,
-          "x_shift": 90,
+          "x_shift": 88,
           "y_shift": 80,
           "bbox": [
-            91,
-            101,
-            623,
+            89.115,
+            93.19,
+            620,
             903
           ]
         },
@@ -2474,13 +2474,13 @@
             "U+0303"
           ],
           "mark_contours": 2,
-          "x_shift": 62,
-          "y_shift": 47,
+          "x_shift": 64,
+          "y_shift": 66,
           "bbox": [
-            95,
-            48,
-            598,
-            1005
+            82,
+            29,
+            617,
+            1024
           ]
         },
         {
@@ -2491,12 +2491,12 @@
             "U+0303"
           ],
           "mark_contours": 2,
-          "x_shift": 90,
+          "x_shift": 88,
           "y_shift": 80,
           "bbox": [
-            91,
-            101,
-            623,
+            89.115,
+            93.19,
+            620,
             921
           ]
         },
@@ -2509,12 +2509,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 68,
-          "y_shift": 9,
+          "y_shift": 29,
           "bbox": [
-            95,
-            10,
-            733,
-            935
+            75,
+            -10,
+            754,
+            955
           ]
         },
         {
@@ -2525,13 +2525,13 @@
             "U+0301"
           ],
           "mark_contours": 2,
-          "x_shift": 85,
-          "y_shift": 56,
+          "x_shift": 86,
+          "y_shift": 77,
           "bbox": [
-            96,
-            86,
-            636,
-            864
+            75,
+            66,
+            658,
+            885
           ]
         },
         {
@@ -2543,12 +2543,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 68,
-          "y_shift": 9,
+          "y_shift": 29,
           "bbox": [
-            95,
-            10,
-            733,
-            935
+            75,
+            -10,
+            754,
+            955
           ]
         },
         {
@@ -2559,13 +2559,13 @@
             "U+0300"
           ],
           "mark_contours": 2,
-          "x_shift": 85,
-          "y_shift": 56,
+          "x_shift": 86,
+          "y_shift": 77,
           "bbox": [
-            96,
-            86,
-            636,
-            864
+            75,
+            66,
+            658,
+            885
           ]
         },
         {
@@ -2577,12 +2577,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 68,
-          "y_shift": 9,
+          "y_shift": 29,
           "bbox": [
-            95,
-            10,
-            733,
-            950
+            75,
+            -10,
+            754,
+            970
           ]
         },
         {
@@ -2593,13 +2593,13 @@
             "U+0309"
           ],
           "mark_contours": 2,
-          "x_shift": 85,
-          "y_shift": 56,
+          "x_shift": 86,
+          "y_shift": 77,
           "bbox": [
-            96,
-            86,
-            636,
-            879
+            75,
+            66,
+            658,
+            900
           ]
         },
         {
@@ -2611,12 +2611,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 68,
-          "y_shift": 9,
+          "y_shift": 29,
           "bbox": [
-            95,
-            10,
-            733,
-            967
+            75,
+            -10,
+            754,
+            987
           ]
         },
         {
@@ -2627,13 +2627,13 @@
             "U+0303"
           ],
           "mark_contours": 2,
-          "x_shift": 85,
-          "y_shift": 59,
+          "x_shift": 86,
+          "y_shift": 80,
           "bbox": [
-            96,
-            86,
-            636,
-            900
+            75,
+            66,
+            658,
+            921
           ]
         }
       ],
@@ -2800,143 +2800,143 @@
       "weight": 500,
       "file": "ChunksReferencePanel-Medium-Stacked.otf",
       "source_sha256": "50b68167346fa4dc5f8c6c8326c0668cfaa0e0c1dacb927b04acd2b31834d529",
-      "input_consolidated_sha256": "06805b8e2f4e0f8d3c333bb4c00c15d8f607846094d15adf1961b4c56547a9bc",
-      "output_sha256": "0bece5f230c1c80b55ff8e58952ca7a53f2d04179d66cb880b1b23f4bc308977",
+      "input_consolidated_sha256": "a735f8146300280792a40f2c0020f45cdbad28031d7c293c170bf6f38392328e",
+      "output_sha256": "df24dd93fe35e22ef11aad15b9a4aeec90ce022bef2625ed9ee6c56acbf7619e",
       "kerning": {
-        "input_sha256": "13f320b4c5136fe7960fa9f8d0080195e73bff5ee1d1c1288a08f657df8c4085",
+        "input_sha256": "7e4a15a1819d9344384a19865dd5d9061b277080e218ddc44f296ca6babe4994",
         "file": "ChunksReferencePanel-Medium-Stacked.otf",
         "reference_accent_glyphs": 68,
         "candidate_pairs": 13056,
         "adjusted_pairs": 13056,
         "bounded_subtables": 11,
         "max_correction_units": 120,
-        "clipped_pair_count": 461,
+        "clipped_pair_count": 211,
         "clipped_pair_examples": [
           {
-            "first": "E",
+            "first": "F",
+            "second": "Ṥ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "Ṧ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "Ấ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "Ầ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "Ẩ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "Ẫ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "Ắ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "Ằ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "Ẳ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "F",
+            "second": "Ẵ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "T",
             "second": "ǻ",
             "desired_units": -124,
             "applied_units": -120
           },
           {
-            "first": "E",
+            "first": "T",
             "second": "Ȫ",
             "desired_units": -124,
             "applied_units": -120
           },
           {
-            "first": "E",
+            "first": "T",
+            "second": "ȫ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "T",
             "second": "Ȭ",
             "desired_units": -124,
             "applied_units": -120
           },
           {
-            "first": "E",
+            "first": "T",
+            "second": "ȭ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "T",
             "second": "Ȱ",
             "desired_units": -124,
             "applied_units": -120
           },
           {
-            "first": "E",
+            "first": "T",
+            "second": "ȱ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "T",
+            "second": "ḕ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "T",
+            "second": "ḗ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "T",
             "second": "Ṍ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "E",
-            "second": "Ṏ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "E",
-            "second": "Ṑ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "E",
-            "second": "Ṓ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "E",
-            "second": "ấ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "E",
-            "second": "ầ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "E",
-            "second": "ẩ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "E",
-            "second": "ẫ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "E",
-            "second": "ắ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "E",
-            "second": "ằ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "E",
-            "second": "ẳ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "E",
-            "second": "ẵ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "E",
-            "second": "Ố",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "E",
-            "second": "Ồ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "E",
-            "second": "Ổ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "E",
-            "second": "Ỗ",
             "desired_units": -124,
             "applied_units": -120
           }
         ],
-        "mean_abs_correction_units": 83.6,
+        "mean_abs_correction_units": 70.23,
         "source_scripts_unchanged": true,
-        "pre_final_name_sha256": "415aec2b8ad9a6b02d998c25fe4831d796eb0f914397a13aa43c5e62381582e1",
-        "output_sha256": "0bece5f230c1c80b55ff8e58952ca7a53f2d04179d66cb880b1b23f4bc308977"
+        "pre_final_name_sha256": "b4fb943e9734b41fc2a725a9baaaf27b5a333c72a6e7c811792407350e9c7101",
+        "output_sha256": "df24dd93fe35e22ef11aad15b9a4aeec90ce022bef2625ed9ee6c56acbf7619e"
       }
     },
     "Semibold": {
@@ -2951,12 +2951,12 @@
           ],
           "mark_contours": 3,
           "x_shift": 76,
-          "y_shift": 6,
+          "y_shift": 19,
           "bbox": [
-            88,
-            41,
-            722,
-            968
+            75,
+            28,
+            735,
+            981
           ]
         },
         {
@@ -2967,13 +2967,13 @@
             "U+0304"
           ],
           "mark_contours": 3,
-          "x_shift": 66,
-          "y_shift": 36,
+          "x_shift": 64,
+          "y_shift": 50,
           "bbox": [
-            89,
-            108,
-            607,
-            879
+            75,
+            85,
+            619,
+            893
           ]
         },
         {
@@ -2985,12 +2985,12 @@
           ],
           "mark_contours": 3,
           "x_shift": 76,
-          "y_shift": 6,
+          "y_shift": 19,
           "bbox": [
-            88,
-            41,
-            722,
-            1013
+            75,
+            28,
+            735,
+            1026
           ]
         },
         {
@@ -3001,13 +3001,13 @@
             "U+0301"
           ],
           "mark_contours": 3,
-          "x_shift": 66,
-          "y_shift": 36,
+          "x_shift": 64,
+          "y_shift": 50,
           "bbox": [
-            89,
-            108,
-            607,
-            923
+            75,
+            85,
+            619,
+            937
           ]
         },
         {
@@ -3019,12 +3019,12 @@
           ],
           "mark_contours": 3,
           "x_shift": 76,
-          "y_shift": 6,
+          "y_shift": 19,
           "bbox": [
-            88,
-            41,
-            722,
-            1010
+            75,
+            28,
+            735,
+            1023
           ]
         },
         {
@@ -3035,13 +3035,13 @@
             "U+030C"
           ],
           "mark_contours": 3,
-          "x_shift": 66,
-          "y_shift": 36,
+          "x_shift": 64,
+          "y_shift": 50,
           "bbox": [
-            89,
-            108,
-            607,
-            912
+            75,
+            85,
+            619,
+            926
           ]
         },
         {
@@ -3053,12 +3053,12 @@
           ],
           "mark_contours": 3,
           "x_shift": 76,
-          "y_shift": 6,
+          "y_shift": 19,
           "bbox": [
-            88,
-            41,
-            722,
-            1013
+            75,
+            28,
+            735,
+            1026
           ]
         },
         {
@@ -3069,13 +3069,13 @@
             "U+0300"
           ],
           "mark_contours": 3,
-          "x_shift": 66,
-          "y_shift": 36,
+          "x_shift": 64,
+          "y_shift": 50,
           "bbox": [
-            89,
-            108,
-            607,
-            923
+            75,
+            85,
+            619,
+            937
           ]
         },
         {
@@ -3087,12 +3087,12 @@
           ],
           "mark_contours": 3,
           "x_shift": 109,
-          "y_shift": 63,
+          "y_shift": 76,
           "bbox": [
-            88,
-            99,
-            625,
-            989
+            74,
+            85,
+            639,
+            1002
           ]
         },
         {
@@ -3106,9 +3106,9 @@
           "x_shift": 67,
           "y_shift": 0,
           "bbox": [
-            88,
-            3,
-            741,
+            75,
+            -10,
+            754,
             967
           ]
         },
@@ -3121,12 +3121,12 @@
           ],
           "mark_contours": 3,
           "x_shift": 82,
-          "y_shift": 37,
+          "y_shift": 50,
           "bbox": [
-            88,
-            79,
-            645,
-            880
+            75,
+            66,
+            658,
+            893
           ]
         },
         {
@@ -3140,9 +3140,9 @@
           "x_shift": 67,
           "y_shift": 0,
           "bbox": [
-            88,
-            3,
-            741,
+            75,
+            -10,
+            754,
             967
           ]
         },
@@ -3155,12 +3155,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 82,
-          "y_shift": 38,
+          "y_shift": 51,
           "bbox": [
-            88,
-            79,
-            645,
-            881
+            75,
+            66,
+            658,
+            894
           ]
         },
         {
@@ -3174,9 +3174,9 @@
           "x_shift": 67,
           "y_shift": 0,
           "bbox": [
-            88,
-            3,
-            741,
+            75,
+            -10,
+            754,
             967
           ]
         },
@@ -3189,12 +3189,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 82,
-          "y_shift": 36,
+          "y_shift": 49,
           "bbox": [
-            88,
-            79,
-            645,
-            879
+            75,
+            66,
+            658,
+            892
           ]
         },
         {
@@ -3205,13 +3205,13 @@
             "U+0300"
           ],
           "mark_contours": 2,
-          "x_shift": 62,
-          "y_shift": 11,
+          "x_shift": 64,
+          "y_shift": 24,
           "bbox": [
-            88,
-            40,
-            607,
-            1018
+            80,
+            28,
+            619,
+            1031
           ]
         },
         {
@@ -3222,13 +3222,13 @@
             "U+0300"
           ],
           "mark_contours": 2,
-          "x_shift": 88,
-          "y_shift": 43,
+          "x_shift": 86,
+          "y_shift": 46,
           "bbox": [
-            84,
-            96,
-            629,
-            920
+            79.223,
+            84.15,
+            630,
+            923
           ]
         },
         {
@@ -3239,13 +3239,13 @@
             "U+0301"
           ],
           "mark_contours": 2,
-          "x_shift": 62,
-          "y_shift": 11,
+          "x_shift": 64,
+          "y_shift": 24,
           "bbox": [
-            88,
-            40,
-            607,
-            1018
+            80,
+            28,
+            619,
+            1031
           ]
         },
         {
@@ -3256,13 +3256,13 @@
             "U+0301"
           ],
           "mark_contours": 2,
-          "x_shift": 88,
-          "y_shift": 43,
+          "x_shift": 86,
+          "y_shift": 46,
           "bbox": [
-            84,
-            96,
-            629,
-            919
+            79.223,
+            84.15,
+            630,
+            922
           ]
         },
         {
@@ -3276,9 +3276,9 @@
           "x_shift": 67,
           "y_shift": 0,
           "bbox": [
-            88,
-            3,
-            741,
+            75,
+            -10,
+            754,
             1007
           ]
         },
@@ -3291,12 +3291,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 82,
-          "y_shift": 38,
+          "y_shift": 51,
           "bbox": [
-            88,
-            79,
-            645,
-            914
+            75,
+            66,
+            658,
+            927
           ]
         },
         {
@@ -3310,9 +3310,9 @@
           "x_shift": 67,
           "y_shift": 0,
           "bbox": [
-            88,
-            3,
-            741,
+            75,
+            -10,
+            754,
             964
           ]
         },
@@ -3325,12 +3325,12 @@
           ],
           "mark_contours": 3,
           "x_shift": 82,
-          "y_shift": 38,
+          "y_shift": 51,
           "bbox": [
-            88,
-            79,
-            645,
-            887
+            75,
+            66,
+            658,
+            900
           ]
         },
         {
@@ -3344,9 +3344,9 @@
           "x_shift": 67,
           "y_shift": 0,
           "bbox": [
-            88,
-            3,
-            741,
+            75,
+            -10,
+            754,
             1007
           ]
         },
@@ -3359,12 +3359,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 82,
-          "y_shift": 21,
+          "y_shift": 34,
           "bbox": [
-            88,
-            79,
-            645,
-            898
+            75,
+            66,
+            658,
+            911
           ]
         },
         {
@@ -3378,9 +3378,9 @@
           "x_shift": 67,
           "y_shift": 0,
           "bbox": [
-            88,
-            3,
-            741,
+            75,
+            -10,
+            754,
             1007
           ]
         },
@@ -3393,12 +3393,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 82,
-          "y_shift": 21,
+          "y_shift": 34,
           "bbox": [
-            88,
-            79,
-            645,
-            897
+            75,
+            66,
+            658,
+            910
           ]
         },
         {
@@ -3410,12 +3410,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 94,
-          "y_shift": 47,
+          "y_shift": 46,
           "bbox": [
-            89,
-            23,
-            645,
-            879
+            84,
+            -0.778,
+            649.996,
+            878
           ]
         },
         {
@@ -3427,12 +3427,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 72,
-          "y_shift": 84,
+          "y_shift": 87,
           "bbox": [
-            88,
-            98,
-            530,
-            802
+            82,
+            77.814,
+            537.224,
+            805
           ]
         },
         {
@@ -3444,12 +3444,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 94,
-          "y_shift": 48,
+          "y_shift": 47,
           "bbox": [
-            89,
-            23,
-            645,
-            1017
+            84,
+            -0.778,
+            649.996,
+            1016
           ]
         },
         {
@@ -3461,12 +3461,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 72,
-          "y_shift": 89,
+          "y_shift": 92,
           "bbox": [
-            88,
-            98,
-            530,
-            937
+            82,
+            77.814,
+            537.224,
+            940
           ]
         },
         {
@@ -3478,12 +3478,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 76,
-          "y_shift": 3,
+          "y_shift": 16,
           "bbox": [
-            88,
-            41,
-            722,
-            1010
+            75,
+            28,
+            735,
+            1023
           ]
         },
         {
@@ -3494,13 +3494,13 @@
             "U+0301"
           ],
           "mark_contours": 2,
-          "x_shift": 66,
-          "y_shift": 37,
+          "x_shift": 64,
+          "y_shift": 51,
           "bbox": [
-            89,
-            108,
-            607,
-            914
+            75,
+            85,
+            619,
+            928
           ]
         },
         {
@@ -3512,12 +3512,12 @@
           ],
           "mark_contours": 3,
           "x_shift": 76,
-          "y_shift": 0,
+          "y_shift": 10,
           "bbox": [
-            88,
-            41,
-            722,
-            964
+            75,
+            28,
+            735,
+            974
           ]
         },
         {
@@ -3528,13 +3528,13 @@
             "U+0308"
           ],
           "mark_contours": 3,
-          "x_shift": 66,
-          "y_shift": 20,
+          "x_shift": 64,
+          "y_shift": 34,
           "bbox": [
-            89,
-            108,
-            607,
-            838
+            75,
+            85,
+            619,
+            852
           ]
         },
         {
@@ -3546,12 +3546,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 88,
-          "y_shift": 36,
+          "y_shift": 43,
           "bbox": [
-            88,
-            21,
-            702,
-            971
+            85,
+            19,
+            705,
+            978
           ]
         },
         {
@@ -3563,12 +3563,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 109,
-          "y_shift": 60,
+          "y_shift": 73,
           "bbox": [
-            88,
-            99,
-            635,
-            884
+            74,
+            85,
+            639,
+            897
           ]
         },
         {
@@ -3580,12 +3580,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 88,
-          "y_shift": 36,
+          "y_shift": 43,
           "bbox": [
-            88,
-            21,
-            702,
-            971
+            85,
+            19,
+            705,
+            978
           ]
         },
         {
@@ -3597,12 +3597,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 109,
-          "y_shift": 60,
+          "y_shift": 73,
           "bbox": [
-            88,
-            99,
-            625,
-            884
+            74,
+            85,
+            639,
+            897
           ]
         },
         {
@@ -3614,12 +3614,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 88,
-          "y_shift": 36,
+          "y_shift": 43,
           "bbox": [
-            88,
-            21,
-            702,
-            997
+            85,
+            19,
+            705,
+            1004
           ]
         },
         {
@@ -3631,12 +3631,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 109,
-          "y_shift": 60,
+          "y_shift": 73,
           "bbox": [
-            88,
-            99,
-            635,
-            910
+            74,
+            85,
+            639,
+            923
           ]
         },
         {
@@ -3648,12 +3648,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 88,
-          "y_shift": 36,
+          "y_shift": 43,
           "bbox": [
-            88,
-            21,
-            702,
-            1015
+            85,
+            19,
+            705,
+            1022
           ]
         },
         {
@@ -3665,12 +3665,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 109,
-          "y_shift": 62,
+          "y_shift": 75,
           "bbox": [
-            88,
-            99,
-            625,
-            928
+            74,
+            85,
+            639,
+            941
           ]
         },
         {
@@ -3682,12 +3682,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 88,
-          "y_shift": 21,
+          "y_shift": 28,
           "bbox": [
-            88,
-            21,
-            702,
-            1002
+            85,
+            19,
+            705,
+            1009
           ]
         },
         {
@@ -3699,12 +3699,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 109,
-          "y_shift": 42,
+          "y_shift": 55,
           "bbox": [
-            88,
-            99,
-            625,
-            908
+            74,
+            85,
+            639,
+            921
           ]
         },
         {
@@ -3716,12 +3716,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 88,
-          "y_shift": 21,
+          "y_shift": 28,
           "bbox": [
-            88,
-            21,
-            702,
-            1003
+            85,
+            19,
+            705,
+            1010
           ]
         },
         {
@@ -3733,12 +3733,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 109,
-          "y_shift": 42,
+          "y_shift": 55,
           "bbox": [
-            88,
-            99,
-            625,
-            909
+            74,
+            85,
+            639,
+            922
           ]
         },
         {
@@ -3750,12 +3750,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 88,
-          "y_shift": 24,
+          "y_shift": 31,
           "bbox": [
-            88,
-            21,
-            702,
-            1024
+            85,
+            19,
+            705,
+            1031
           ]
         },
         {
@@ -3767,12 +3767,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 109,
-          "y_shift": 42,
+          "y_shift": 55,
           "bbox": [
-            88,
-            99,
-            625,
-            927
+            74,
+            85,
+            639,
+            940
           ]
         },
         {
@@ -3784,12 +3784,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 88,
-          "y_shift": 24,
+          "y_shift": 31,
           "bbox": [
-            88,
-            21,
-            702,
-            1003
+            85,
+            19,
+            705,
+            1010
           ]
         },
         {
@@ -3801,12 +3801,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 109,
-          "y_shift": 40,
+          "y_shift": 53,
           "bbox": [
-            88,
-            99,
-            625,
-            906
+            74,
+            85,
+            639,
+            919
           ]
         },
         {
@@ -3817,13 +3817,13 @@
             "U+0301"
           ],
           "mark_contours": 2,
-          "x_shift": 62,
-          "y_shift": 55,
+          "x_shift": 64,
+          "y_shift": 68,
           "bbox": [
-            88,
-            40,
-            620,
-            990
+            80,
+            28,
+            622,
+            1003
           ]
         },
         {
@@ -3834,13 +3834,13 @@
             "U+0301"
           ],
           "mark_contours": 2,
-          "x_shift": 88,
-          "y_shift": 83,
+          "x_shift": 86,
+          "y_shift": 86,
           "bbox": [
-            84,
-            96,
-            629,
-            907
+            79.223,
+            84.15,
+            630,
+            910
           ]
         },
         {
@@ -3851,13 +3851,13 @@
             "U+0300"
           ],
           "mark_contours": 2,
-          "x_shift": 62,
-          "y_shift": 55,
+          "x_shift": 64,
+          "y_shift": 68,
           "bbox": [
-            88,
-            40,
-            607,
-            990
+            80,
+            28,
+            619,
+            1003
           ]
         },
         {
@@ -3868,13 +3868,13 @@
             "U+0300"
           ],
           "mark_contours": 2,
-          "x_shift": 88,
-          "y_shift": 83,
+          "x_shift": 86,
+          "y_shift": 86,
           "bbox": [
-            84,
-            96,
-            629,
-            907
+            79.223,
+            84.15,
+            630,
+            910
           ]
         },
         {
@@ -3885,13 +3885,13 @@
             "U+0309"
           ],
           "mark_contours": 2,
-          "x_shift": 62,
-          "y_shift": 55,
+          "x_shift": 64,
+          "y_shift": 68,
           "bbox": [
-            88,
-            40,
-            620,
-            1016
+            80,
+            28,
+            622,
+            1029
           ]
         },
         {
@@ -3902,30 +3902,13 @@
             "U+0309"
           ],
           "mark_contours": 2,
-          "x_shift": 88,
-          "y_shift": 83,
+          "x_shift": 86,
+          "y_shift": 86,
           "bbox": [
-            84,
-            96,
-            629,
-            933
-          ]
-        },
-        {
-          "glyph": "Ễ",
-          "base": "E",
-          "marks_nfd": [
-            "U+0302",
-            "U+0303"
-          ],
-          "mark_contours": 2,
-          "x_shift": 62,
-          "y_shift": 55,
-          "bbox": [
-            88,
-            40,
-            607,
-            1034
+            79.223,
+            84.15,
+            630,
+            936
           ]
         },
         {
@@ -3936,13 +3919,13 @@
             "U+0303"
           ],
           "mark_contours": 2,
-          "x_shift": 88,
-          "y_shift": 83,
+          "x_shift": 86,
+          "y_shift": 86,
           "bbox": [
-            84,
-            96,
-            629,
-            951
+            79.223,
+            84.15,
+            630,
+            954
           ]
         },
         {
@@ -3954,12 +3937,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 67,
-          "y_shift": 17,
+          "y_shift": 30,
           "bbox": [
-            88,
-            3,
-            741,
-            952
+            75,
+            -10,
+            754,
+            965
           ]
         },
         {
@@ -3971,12 +3954,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 82,
-          "y_shift": 61,
+          "y_shift": 74,
           "bbox": [
-            88,
-            79,
-            645,
-            885
+            75,
+            66,
+            658,
+            898
           ]
         },
         {
@@ -3988,12 +3971,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 67,
-          "y_shift": 17,
+          "y_shift": 30,
           "bbox": [
-            88,
-            3,
-            741,
-            952
+            75,
+            -10,
+            754,
+            965
           ]
         },
         {
@@ -4005,12 +3988,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 82,
-          "y_shift": 61,
+          "y_shift": 74,
           "bbox": [
-            88,
-            79,
-            645,
-            885
+            75,
+            66,
+            658,
+            898
           ]
         },
         {
@@ -4022,12 +4005,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 67,
-          "y_shift": 17,
+          "y_shift": 30,
           "bbox": [
-            88,
-            3,
-            741,
-            978
+            75,
+            -10,
+            754,
+            991
           ]
         },
         {
@@ -4039,12 +4022,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 82,
-          "y_shift": 61,
+          "y_shift": 74,
           "bbox": [
-            88,
-            79,
-            645,
-            911
+            75,
+            66,
+            658,
+            924
           ]
         },
         {
@@ -4056,12 +4039,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 67,
-          "y_shift": 17,
+          "y_shift": 30,
           "bbox": [
-            88,
-            3,
-            741,
-            996
+            75,
+            -10,
+            754,
+            1009
           ]
         },
         {
@@ -4073,12 +4056,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 82,
-          "y_shift": 63,
+          "y_shift": 76,
           "bbox": [
-            88,
-            79,
-            645,
-            931
+            75,
+            66,
+            658,
+            944
           ]
         }
       ],
@@ -4146,6 +4129,10 @@
         {
           "glyph": "ặ",
           "reason": "unseparated_marks"
+        },
+        {
+          "glyph": "Ễ",
+          "reason": "vertical_limit"
         },
         {
           "glyph": "Ệ",
@@ -4244,50 +4231,38 @@
           "reason": "unseparated_marks"
         }
       ],
-      "built_count": 67,
-      "skipped_count": 40,
+      "built_count": 66,
+      "skipped_count": 41,
       "weight": 600,
       "file": "ChunksReferencePanel-Semibold-Stacked.otf",
       "source_sha256": "8261803c2870f91db32f3c0506475a31189c5f16a2dfba35a5c0371faee890ef",
-      "input_consolidated_sha256": "5dd044fe0908c6285e4570a12a934be8df014d35b9a963253ec91be18eb29257",
-      "output_sha256": "cb0f3d13e8c106501a6ebdab958c31d866c602b543fd00c7a0f8d751d0d057ab",
+      "input_consolidated_sha256": "02cf5194b375d03184abdaa05e5a296ad06df37ee76920bb5649d358b2c9a0f2",
+      "output_sha256": "a8aeed851bb7225a7d3150ec298a1b5fe43bf6055259645da8f19d5ab513f2fe",
       "kerning": {
-        "input_sha256": "f952d5fc5ea55cc736415ab9508ebfd053c982ea278eb6b5f147864fec9223b5",
+        "input_sha256": "1d4f710535dbb8733957771b9db78185a21b656ea486dd3b31110ba2c9d9a00c",
         "file": "ChunksReferencePanel-Semibold-Stacked.otf",
-        "reference_accent_glyphs": 67,
-        "candidate_pairs": 12797,
-        "adjusted_pairs": 12797,
+        "reference_accent_glyphs": 66,
+        "candidate_pairs": 12540,
+        "adjusted_pairs": 12540,
         "bounded_subtables": 11,
         "max_correction_units": 120,
-        "clipped_pair_count": 176,
+        "clipped_pair_count": 158,
         "clipped_pair_examples": [
           {
             "first": "F",
-            "second": "ǻ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "F",
             "second": "Ṥ",
-            "desired_units": -123,
+            "desired_units": -124,
             "applied_units": -120
           },
           {
             "first": "F",
             "second": "Ṧ",
-            "desired_units": -123,
-            "applied_units": -120
-          },
-          {
-            "first": "F",
-            "second": "Ấ",
             "desired_units": -124,
             "applied_units": -120
           },
           {
             "first": "F",
-            "second": "ấ",
+            "second": "Ấ",
             "desired_units": -124,
             "applied_units": -120
           },
@@ -4299,19 +4274,7 @@
           },
           {
             "first": "F",
-            "second": "ầ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "F",
             "second": "Ẩ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "F",
-            "second": "ẩ",
             "desired_units": -124,
             "applied_units": -120
           },
@@ -4323,19 +4286,7 @@
           },
           {
             "first": "F",
-            "second": "ẫ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "F",
             "second": "Ắ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "F",
-            "second": "ắ",
             "desired_units": -124,
             "applied_units": -120
           },
@@ -4347,19 +4298,7 @@
           },
           {
             "first": "F",
-            "second": "ằ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "F",
             "second": "Ẳ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "F",
-            "second": "ẳ",
             "desired_units": -124,
             "applied_units": -120
           },
@@ -4370,22 +4309,70 @@
             "applied_units": -120
           },
           {
-            "first": "F",
-            "second": "ẵ",
+            "first": "T",
+            "second": "ǻ",
             "desired_units": -124,
             "applied_units": -120
           },
           {
-            "first": "L",
-            "second": "Ṥ",
+            "first": "T",
+            "second": "Ȫ",
+            "desired_units": -122,
+            "applied_units": -120
+          },
+          {
+            "first": "T",
+            "second": "ȫ",
             "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "T",
+            "second": "Ȭ",
+            "desired_units": -122,
+            "applied_units": -120
+          },
+          {
+            "first": "T",
+            "second": "ȭ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "T",
+            "second": "Ȱ",
+            "desired_units": -122,
+            "applied_units": -120
+          },
+          {
+            "first": "T",
+            "second": "ȱ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "T",
+            "second": "Ṍ",
+            "desired_units": -122,
+            "applied_units": -120
+          },
+          {
+            "first": "T",
+            "second": "ṍ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "T",
+            "second": "Ṏ",
+            "desired_units": -122,
             "applied_units": -120
           }
         ],
-        "mean_abs_correction_units": 80.9,
+        "mean_abs_correction_units": 70.84,
         "source_scripts_unchanged": true,
-        "pre_final_name_sha256": "c009a627a1a0656bc2cd37adff8da7dbc05af2c6b53bde935aee27cad95703da",
-        "output_sha256": "cb0f3d13e8c106501a6ebdab958c31d866c602b543fd00c7a0f8d751d0d057ab"
+        "pre_final_name_sha256": "13ab1d5610589bc9d12001054e4418fe029a2aa58c20b58bcb70d1eb7a80b5b7",
+        "output_sha256": "a8aeed851bb7225a7d3150ec298a1b5fe43bf6055259645da8f19d5ab513f2fe"
       }
     },
     "Bold": {
@@ -4400,12 +4387,12 @@
           ],
           "mark_contours": 3,
           "x_shift": 75,
-          "y_shift": 20,
+          "y_shift": 25,
           "bbox": [
-            80,
-            32,
-            730,
-            1007
+            75,
+            28,
+            735,
+            1012
           ]
         },
         {
@@ -4417,12 +4404,12 @@
           ],
           "mark_contours": 3,
           "x_shift": 60,
-          "y_shift": 47,
+          "y_shift": 52,
           "bbox": [
-            80,
-            100,
-            615,
-            915
+            75,
+            85,
+            619,
+            920
           ]
         },
         {
@@ -4434,12 +4421,12 @@
           ],
           "mark_contours": 3,
           "x_shift": 60,
-          "y_shift": 47,
+          "y_shift": 52,
           "bbox": [
-            80,
-            100,
-            615,
-            962
+            75,
+            85,
+            619,
+            967
           ]
         },
         {
@@ -4451,12 +4438,12 @@
           ],
           "mark_contours": 3,
           "x_shift": 60,
-          "y_shift": 47,
+          "y_shift": 52,
           "bbox": [
-            80,
-            100,
-            615,
-            947
+            75,
+            85,
+            619,
+            952
           ]
         },
         {
@@ -4468,12 +4455,12 @@
           ],
           "mark_contours": 3,
           "x_shift": 60,
-          "y_shift": 47,
+          "y_shift": 52,
           "bbox": [
-            80,
-            100,
-            615,
-            961
+            75,
+            85,
+            619,
+            966
           ]
         },
         {
@@ -4485,12 +4472,12 @@
           ],
           "mark_contours": 3,
           "x_shift": 102,
-          "y_shift": 69,
+          "y_shift": 73,
           "bbox": [
-            80,
-            90,
-            633,
-            1015
+            74,
+            85,
+            639,
+            1019
           ]
         },
         {
@@ -4502,12 +4489,12 @@
           ],
           "mark_contours": 3,
           "x_shift": 64,
-          "y_shift": 0,
+          "y_shift": 5,
           "bbox": [
-            79,
-            -6,
-            749,
-            994
+            75,
+            -10,
+            754,
+            999
           ]
         },
         {
@@ -4519,12 +4506,12 @@
           ],
           "mark_contours": 3,
           "x_shift": 78,
-          "y_shift": 47,
+          "y_shift": 52,
           "bbox": [
-            81,
-            71,
-            653,
-            915
+            75,
+            66,
+            658,
+            920
           ]
         },
         {
@@ -4538,9 +4525,9 @@
           "x_shift": 64,
           "y_shift": 0,
           "bbox": [
-            79,
-            -6,
-            749,
+            75,
+            -10,
+            754,
             994
           ]
         },
@@ -4553,12 +4540,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 78,
-          "y_shift": 47,
+          "y_shift": 52,
           "bbox": [
-            81,
-            71,
-            653,
-            915
+            75,
+            66,
+            658,
+            920
           ]
         },
         {
@@ -4570,12 +4557,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 64,
-          "y_shift": 0,
+          "y_shift": 2,
           "bbox": [
-            79,
-            -6,
-            749,
-            994
+            75,
+            -10,
+            754,
+            996
           ]
         },
         {
@@ -4587,12 +4574,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 78,
-          "y_shift": 47,
+          "y_shift": 52,
           "bbox": [
-            81,
-            71,
-            653,
-            915
+            75,
+            66,
+            658,
+            920
           ]
         },
         {
@@ -4603,13 +4590,13 @@
             "U+0300"
           ],
           "mark_contours": 2,
-          "x_shift": 84,
-          "y_shift": 52,
+          "x_shift": 83,
+          "y_shift": 56,
           "bbox": [
-            78,
-            88,
-            635,
-            954
+            70.832,
+            76.155,
+            639,
+            958
           ]
         },
         {
@@ -4620,13 +4607,13 @@
             "U+0301"
           ],
           "mark_contours": 2,
-          "x_shift": 84,
-          "y_shift": 52,
+          "x_shift": 83,
+          "y_shift": 56,
           "bbox": [
-            78,
-            88,
-            635,
-            952
+            70.832,
+            76.155,
+            639,
+            956
           ]
         },
         {
@@ -4640,9 +4627,9 @@
           "x_shift": 64,
           "y_shift": 0,
           "bbox": [
-            79,
-            -6,
-            749,
+            75,
+            -10,
+            754,
             1030
           ]
         },
@@ -4655,12 +4642,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 78,
-          "y_shift": 47,
+          "y_shift": 52,
           "bbox": [
-            81,
-            71,
-            653,
-            947
+            75,
+            66,
+            658,
+            952
           ]
         },
         {
@@ -4674,9 +4661,9 @@
           "x_shift": 64,
           "y_shift": 0,
           "bbox": [
-            79,
-            -6,
-            749,
+            75,
+            -10,
+            754,
             981
           ]
         },
@@ -4689,12 +4676,12 @@
           ],
           "mark_contours": 3,
           "x_shift": 78,
-          "y_shift": 47,
+          "y_shift": 52,
           "bbox": [
-            81,
-            71,
-            653,
-            913
+            75,
+            66,
+            658,
+            918
           ]
         },
         {
@@ -4708,9 +4695,9 @@
           "x_shift": 64,
           "y_shift": 0,
           "bbox": [
-            79,
-            -6,
-            749,
+            75,
+            -10,
+            754,
             1031
           ]
         },
@@ -4723,12 +4710,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 78,
-          "y_shift": 31,
+          "y_shift": 36,
           "bbox": [
-            81,
-            71,
-            653,
-            933
+            75,
+            66,
+            658,
+            938
           ]
         },
         {
@@ -4742,9 +4729,9 @@
           "x_shift": 64,
           "y_shift": 0,
           "bbox": [
-            79,
-            -6,
-            749,
+            75,
+            -10,
+            754,
             1030
           ]
         },
@@ -4757,12 +4744,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 78,
-          "y_shift": 31,
+          "y_shift": 36,
           "bbox": [
-            81,
-            71,
-            653,
-            931
+            75,
+            66,
+            658,
+            936
           ]
         },
         {
@@ -4773,13 +4760,13 @@
             "U+0307"
           ],
           "mark_contours": 2,
-          "x_shift": 90,
-          "y_shift": 59,
+          "x_shift": 91,
+          "y_shift": 60,
           "bbox": [
-            80,
-            13,
-            653,
-            899
+            75,
+            -11.557,
+            659.045,
+            900
           ]
         },
         {
@@ -4790,13 +4777,13 @@
             "U+0307"
           ],
           "mark_contours": 2,
-          "x_shift": 64,
-          "y_shift": 89,
+          "x_shift": 65,
+          "y_shift": 92,
           "bbox": [
-            79,
-            90,
-            538,
-            825
+            75,
+            69.481,
+            544.423,
+            828
           ]
         },
         {
@@ -4807,13 +4794,13 @@
             "U+0307"
           ],
           "mark_contours": 2,
-          "x_shift": 64,
-          "y_shift": 100,
+          "x_shift": 65,
+          "y_shift": 103,
           "bbox": [
-            79,
-            90,
-            538,
-            965
+            75,
+            69.481,
+            544.423,
+            968
           ]
         },
         {
@@ -4825,12 +4812,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 60,
-          "y_shift": 47,
+          "y_shift": 52,
           "bbox": [
-            80,
-            100,
-            615,
-            948
+            75,
+            85,
+            619,
+            953
           ]
         },
         {
@@ -4842,12 +4829,12 @@
           ],
           "mark_contours": 3,
           "x_shift": 75,
-          "y_shift": 7,
+          "y_shift": 12,
           "bbox": [
-            80,
-            32,
-            730,
-            988
+            75,
+            28,
+            735,
+            993
           ]
         },
         {
@@ -4859,12 +4846,12 @@
           ],
           "mark_contours": 3,
           "x_shift": 60,
-          "y_shift": 31,
+          "y_shift": 36,
           "bbox": [
-            80,
-            100,
-            615,
-            866
+            75,
+            85,
+            619,
+            871
           ]
         },
         {
@@ -4875,13 +4862,13 @@
             "U+0301"
           ],
           "mark_contours": 2,
-          "x_shift": 84,
-          "y_shift": 47,
+          "x_shift": 82,
+          "y_shift": 55,
           "bbox": [
-            80,
-            13,
-            711,
-            994
+            75,
+            10,
+            714,
+            1002
           ]
         },
         {
@@ -4893,12 +4880,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 102,
-          "y_shift": 65,
+          "y_shift": 69,
           "bbox": [
-            80,
-            90,
+            74,
+            85,
             648,
-            908
+            912
           ]
         },
         {
@@ -4909,13 +4896,13 @@
             "U+0300"
           ],
           "mark_contours": 2,
-          "x_shift": 84,
-          "y_shift": 47,
+          "x_shift": 82,
+          "y_shift": 55,
           "bbox": [
-            80,
-            13,
-            711,
-            994
+            75,
+            10,
+            714,
+            1002
           ]
         },
         {
@@ -4927,29 +4914,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 102,
-          "y_shift": 65,
+          "y_shift": 69,
           "bbox": [
-            80,
-            90,
-            633,
-            908
-          ]
-        },
-        {
-          "glyph": "Ẩ",
-          "base": "A",
-          "marks_nfd": [
-            "U+0302",
-            "U+0309"
-          ],
-          "mark_contours": 2,
-          "x_shift": 84,
-          "y_shift": 47,
-          "bbox": [
-            80,
-            13,
-            711,
-            1033
+            74,
+            85,
+            639,
+            912
           ]
         },
         {
@@ -4961,12 +4931,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 102,
-          "y_shift": 65,
+          "y_shift": 69,
           "bbox": [
-            80,
-            90,
+            74,
+            85,
             651,
-            947
+            951
           ]
         },
         {
@@ -4978,29 +4948,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 102,
-          "y_shift": 66,
+          "y_shift": 70,
           "bbox": [
-            80,
-            90,
-            633,
-            965
-          ]
-        },
-        {
-          "glyph": "Ắ",
-          "base": "A",
-          "marks_nfd": [
-            "U+0306",
-            "U+0301"
-          ],
-          "mark_contours": 2,
-          "x_shift": 84,
-          "y_shift": 31,
-          "bbox": [
-            80,
-            13,
-            711,
-            1038
+            74,
+            85,
+            639,
+            969
           ]
         },
         {
@@ -5012,29 +4965,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 102,
-          "y_shift": 47,
+          "y_shift": 51,
           "bbox": [
-            80,
-            90,
-            633,
-            943
-          ]
-        },
-        {
-          "glyph": "Ằ",
-          "base": "A",
-          "marks_nfd": [
-            "U+0306",
-            "U+0300"
-          ],
-          "mark_contours": 2,
-          "x_shift": 84,
-          "y_shift": 31,
-          "bbox": [
-            80,
-            13,
-            711,
-            1039
+            74,
+            85,
+            639,
+            947
           ]
         },
         {
@@ -5046,12 +4982,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 102,
-          "y_shift": 47,
+          "y_shift": 51,
           "bbox": [
-            80,
-            90,
-            633,
-            944
+            74,
+            85,
+            639,
+            948
           ]
         },
         {
@@ -5063,29 +4999,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 102,
-          "y_shift": 47,
+          "y_shift": 51,
           "bbox": [
-            80,
-            90,
-            633,
-            968
-          ]
-        },
-        {
-          "glyph": "Ẵ",
-          "base": "A",
-          "marks_nfd": [
-            "U+0306",
-            "U+0303"
-          ],
-          "mark_contours": 2,
-          "x_shift": 84,
-          "y_shift": 35,
-          "bbox": [
-            80,
-            13,
-            711,
-            1039
+            74,
+            85,
+            639,
+            972
           ]
         },
         {
@@ -5097,12 +5016,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 102,
-          "y_shift": 46,
+          "y_shift": 50,
           "bbox": [
-            80,
-            90,
-            633,
-            942
+            74,
+            85,
+            639,
+            946
           ]
         },
         {
@@ -5113,13 +5032,13 @@
             "U+0301"
           ],
           "mark_contours": 2,
-          "x_shift": 60,
-          "y_shift": 66,
+          "x_shift": 62,
+          "y_shift": 71,
           "bbox": [
-            80,
-            32,
-            634,
-            1013
+            77,
+            26,
+            636,
+            1018
           ]
         },
         {
@@ -5130,13 +5049,13 @@
             "U+0301"
           ],
           "mark_contours": 2,
-          "x_shift": 84,
-          "y_shift": 86,
+          "x_shift": 83,
+          "y_shift": 90,
           "bbox": [
-            78,
-            88,
-            644,
-            929
+            70.832,
+            76.155,
+            643,
+            933
           ]
         },
         {
@@ -5147,13 +5066,13 @@
             "U+0300"
           ],
           "mark_contours": 2,
-          "x_shift": 60,
-          "y_shift": 66,
+          "x_shift": 62,
+          "y_shift": 71,
           "bbox": [
-            80,
-            32,
-            615,
-            1013
+            77,
+            26,
+            620,
+            1018
           ]
         },
         {
@@ -5164,13 +5083,13 @@
             "U+0300"
           ],
           "mark_contours": 2,
-          "x_shift": 84,
-          "y_shift": 86,
+          "x_shift": 83,
+          "y_shift": 90,
           "bbox": [
-            78,
-            88,
-            635,
-            929
+            70.832,
+            76.155,
+            639,
+            933
           ]
         },
         {
@@ -5181,13 +5100,13 @@
             "U+0309"
           ],
           "mark_contours": 2,
-          "x_shift": 84,
-          "y_shift": 86,
+          "x_shift": 83,
+          "y_shift": 90,
           "bbox": [
-            78,
-            88,
-            647,
-            968
+            70.832,
+            76.155,
+            646,
+            972
           ]
         },
         {
@@ -5198,13 +5117,13 @@
             "U+0303"
           ],
           "mark_contours": 2,
-          "x_shift": 84,
-          "y_shift": 86,
+          "x_shift": 83,
+          "y_shift": 90,
           "bbox": [
-            78,
-            88,
-            635,
-            986
+            70.832,
+            76.155,
+            639,
+            990
           ]
         },
         {
@@ -5216,12 +5135,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 64,
-          "y_shift": 27,
+          "y_shift": 32,
           "bbox": [
-            79,
-            -6,
-            749,
-            974
+            75,
+            -10,
+            754,
+            979
           ]
         },
         {
@@ -5233,12 +5152,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 78,
-          "y_shift": 65,
+          "y_shift": 70,
           "bbox": [
-            81,
-            71,
-            653,
-            908
+            75,
+            66,
+            658,
+            913
           ]
         },
         {
@@ -5250,12 +5169,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 64,
-          "y_shift": 27,
+          "y_shift": 32,
           "bbox": [
-            79,
-            -6,
-            749,
-            974
+            75,
+            -10,
+            754,
+            979
           ]
         },
         {
@@ -5267,12 +5186,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 78,
-          "y_shift": 65,
+          "y_shift": 70,
           "bbox": [
-            81,
-            71,
-            653,
-            908
+            75,
+            66,
+            658,
+            913
           ]
         },
         {
@@ -5284,12 +5203,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 64,
-          "y_shift": 27,
+          "y_shift": 32,
           "bbox": [
-            79,
-            -6,
-            749,
-            1013
+            75,
+            -10,
+            754,
+            1018
           ]
         },
         {
@@ -5301,12 +5220,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 78,
-          "y_shift": 65,
+          "y_shift": 70,
           "bbox": [
-            81,
-            71,
-            653,
-            947
+            75,
+            66,
+            658,
+            952
           ]
         },
         {
@@ -5318,12 +5237,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 64,
-          "y_shift": 27,
+          "y_shift": 32,
           "bbox": [
-            79,
-            -6,
-            749,
-            1031
+            75,
+            -10,
+            754,
+            1036
           ]
         },
         {
@@ -5335,12 +5254,12 @@
           ],
           "mark_contours": 2,
           "x_shift": 78,
-          "y_shift": 66,
+          "y_shift": 71,
           "bbox": [
-            81,
-            71,
-            653,
-            966
+            75,
+            66,
+            658,
+            971
           ]
         }
       ],
@@ -5422,6 +5341,10 @@
           "reason": "vertical_limit"
         },
         {
+          "glyph": "Ẩ",
+          "reason": "vertical_limit"
+        },
+        {
           "glyph": "Ẫ",
           "reason": "vertical_limit"
         },
@@ -5434,7 +5357,19 @@
           "reason": "unseparated_marks"
         },
         {
+          "glyph": "Ắ",
+          "reason": "vertical_limit"
+        },
+        {
+          "glyph": "Ằ",
+          "reason": "vertical_limit"
+        },
+        {
           "glyph": "Ẳ",
+          "reason": "vertical_limit"
+        },
+        {
+          "glyph": "Ẵ",
           "reason": "vertical_limit"
         },
         {
@@ -5550,78 +5485,24 @@
           "reason": "unseparated_marks"
         }
       ],
-      "built_count": 56,
-      "skipped_count": 51,
+      "built_count": 52,
+      "skipped_count": 55,
       "weight": 700,
       "file": "ChunksReferencePanel-Bold-Stacked.otf",
       "source_sha256": "4c4d514999eae9192313499e31b5e69b84a348e7fac2b1554a7728c6a14aa5ae",
-      "input_consolidated_sha256": "c75eff65b923cb5d281b4b8913f9cea17ba4a9679d18476d382d5eebc6d42c3e",
-      "output_sha256": "4eb71b1238929a101e8a58f01fb15b6cdb30c1a0fd5c5d891b40916479c01f06",
+      "input_consolidated_sha256": "5fa324b8d51fc409c450c974fdbe621734b5590212dba1f5635c268ebc628ea8",
+      "output_sha256": "0b7c8643b5bf41448f778c27d4cc9c1f42bc7cbaaf0112caff7436a58c42427b",
       "kerning": {
-        "input_sha256": "338375229d7c913ad81a5514ce987caee0f8cee8b2228ec89560a18f05c5b81f",
+        "input_sha256": "e47ea981aed9cd7ec6462f6efa4395a98371f21891897b7138bc6ba53b09c8cb",
         "file": "ChunksReferencePanel-Bold-Stacked.otf",
-        "reference_accent_glyphs": 56,
-        "candidate_pairs": 10080,
-        "adjusted_pairs": 10080,
+        "reference_accent_glyphs": 52,
+        "candidate_pairs": 9152,
+        "adjusted_pairs": 9152,
         "bounded_subtables": 10,
         "max_correction_units": 120,
-        "clipped_pair_count": 78,
+        "clipped_pair_count": 29,
         "clipped_pair_examples": [
           {
-            "first": "F",
-            "second": "ǻ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "F",
-            "second": "ấ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "F",
-            "second": "ầ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "F",
-            "second": "ẩ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "F",
-            "second": "ẫ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "F",
-            "second": "ắ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "F",
-            "second": "ằ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "F",
-            "second": "ẳ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "F",
-            "second": "ẵ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
             "first": "T",
             "second": "Ấ",
             "desired_units": -124,
@@ -5630,30 +5511,6 @@
           {
             "first": "T",
             "second": "Ầ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "T",
-            "second": "Ẩ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "T",
-            "second": "Ắ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "T",
-            "second": "Ằ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "T",
-            "second": "Ẵ",
             "desired_units": -124,
             "applied_units": -120
           },
@@ -5670,28 +5527,106 @@
             "applied_units": -120
           },
           {
-            "first": "V",
-            "second": "Ẩ",
-            "desired_units": -122,
+            "first": "Y",
+            "second": "Ấ",
+            "desired_units": -124,
             "applied_units": -120
           },
           {
-            "first": "V",
-            "second": "Ắ",
-            "desired_units": -122,
+            "first": "Y",
+            "second": "Ầ",
+            "desired_units": -124,
             "applied_units": -120
           },
           {
-            "first": "V",
-            "second": "Ằ",
-            "desired_units": -122,
+            "first": "ȫ",
+            "second": "7",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "ȭ",
+            "second": "7",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "ȱ",
+            "second": "7",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "ṍ",
+            "second": "7",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "ṏ",
+            "second": "7",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "ṑ",
+            "second": "7",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "ṓ",
+            "second": "7",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "ṥ",
+            "second": "7",
+            "desired_units": -123,
+            "applied_units": -120
+          },
+          {
+            "first": "ṧ",
+            "second": "7",
+            "desired_units": -123,
+            "applied_units": -120
+          },
+          {
+            "first": "Ấ",
+            "second": "T",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "Ấ",
+            "second": "V",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "Ấ",
+            "second": "Y",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "Ầ",
+            "second": "T",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "Ầ",
+            "second": "V",
+            "desired_units": -124,
             "applied_units": -120
           }
         ],
-        "mean_abs_correction_units": 76.08,
+        "mean_abs_correction_units": 70.87,
         "source_scripts_unchanged": true,
-        "pre_final_name_sha256": "30d8a516a9a021a30ba6aab43521a9c34d954dc233766aba786cf7f61f29dafb",
-        "output_sha256": "4eb71b1238929a101e8a58f01fb15b6cdb30c1a0fd5c5d891b40916479c01f06"
+        "pre_final_name_sha256": "4555bfa80cb8573d38d9efb25d7ed93d5abe0228b764a4f7c0fe6ab137b02d33",
+        "output_sha256": "0b7c8643b5bf41448f778c27d4cc9c1f42bc7cbaaf0112caff7436a58c42427b"
       }
     },
     "ExtraBold": {

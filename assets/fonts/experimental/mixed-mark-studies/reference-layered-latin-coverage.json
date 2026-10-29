@@ -3,9 +3,9 @@
   "mapped_unicode": 856,
   "mapped_latin_letters": 495,
   "baseline_source_status": "Consolidated original + reference reconstructed characters",
-  "baseline_manifest_sha256": "ec7a6ccca12eb97f634e81f4143a5b28feb13cccb9432fe4aed1f26a95088d34",
-  "stacked_manifest_sha256": "b8b56655e845648ae82cdadd5588581f0f7e38df124a06b76dbffc4f133bb58c",
-  "mixed_manifest_sha256": "ea76fcece4aad82e0fc39a88be430b1ec86e71ff5f9a01a6c7cfdbeee63d5a06",
+  "baseline_manifest_sha256": "8aaa3c7a3881e3704789c49cd36a96e547a23020b757df28ba78948c98f7c196",
+  "stacked_manifest_sha256": "8ba9806008340e78617f27fd240ceec42b40e440272ce43141dd53668db0f4e8",
+  "mixed_manifest_sha256": "153880757ded0588350fd7c83d4d684d991b1daf956bb5b944f960aeed177fb4",
   "weights": {
     "Regular": {
       "mapped_latin_letters": 495,
@@ -16,8 +16,8 @@
       "remaining_simple_mark": 24,
       "remaining_stacked_marks": 25,
       "remaining_other_latin": 53,
-      "stacked_font_sha256": "98221cc234ac8026cb2e46dc3ef6346e341f3e9f669a80d811dc4f8bc14c31b2",
-      "mixed_font_sha256": "e2fdedda31ef115ebac977c1f8f5e17fc40da836e43c8aa5c0b974d102cd3cff"
+      "stacked_font_sha256": "e77037ddfe8fc166f8a69bb3dcd993e28a511f3ca779807f62b480fca8df17f5",
+      "mixed_font_sha256": "b320f909cc2daabc651d040bbc738274ff3c3a36921037a049f14970362df9c3"
     },
     "Medium": {
       "mapped_latin_letters": 495,
@@ -28,32 +28,32 @@
       "remaining_simple_mark": 25,
       "remaining_stacked_marks": 26,
       "remaining_other_latin": 53,
-      "stacked_font_sha256": "0bece5f230c1c80b55ff8e58952ca7a53f2d04179d66cb880b1b23f4bc308977",
-      "mixed_font_sha256": "ead826beaf7547a0b11fd0606060b456b06efe0410662ce4d613033fba6d8e1e"
+      "stacked_font_sha256": "df24dd93fe35e22ef11aad15b9a4aeec90ce022bef2625ed9ee6c56acbf7619e",
+      "mixed_font_sha256": "4e733ab6383dcc4f591bc1731665c0ef545cb03b880679b427781e94ef26cb3d"
     },
     "Semibold": {
       "mapped_latin_letters": 495,
       "unresolved_before": 186,
-      "reconstructed_stacked_above": 67,
+      "reconstructed_stacked_above": 66,
       "reconstructed_mixed_above_below": 14,
-      "unresolved_after": 105,
+      "unresolved_after": 106,
       "remaining_simple_mark": 25,
-      "remaining_stacked_marks": 27,
+      "remaining_stacked_marks": 28,
       "remaining_other_latin": 53,
-      "stacked_font_sha256": "cb0f3d13e8c106501a6ebdab958c31d866c602b543fd00c7a0f8d751d0d057ab",
-      "mixed_font_sha256": "d2c2a4466a8c8316b950fa84810cabb33f10e35778da7aa0c87c9def6989b1cb"
+      "stacked_font_sha256": "a8aeed851bb7225a7d3150ec298a1b5fe43bf6055259645da8f19d5ab513f2fe",
+      "mixed_font_sha256": "bd3e66fcb370ec05c217bb6078a0db4610ef6edb4b7c8e7ff2c88017efb46834"
     },
     "Bold": {
       "mapped_latin_letters": 495,
       "unresolved_before": 186,
-      "reconstructed_stacked_above": 56,
+      "reconstructed_stacked_above": 52,
       "reconstructed_mixed_above_below": 14,
-      "unresolved_after": 116,
+      "unresolved_after": 120,
       "remaining_simple_mark": 25,
-      "remaining_stacked_marks": 38,
+      "remaining_stacked_marks": 42,
       "remaining_other_latin": 53,
-      "stacked_font_sha256": "4eb71b1238929a101e8a58f01fb15b6cdb30c1a0fd5c5d891b40916479c01f06",
-      "mixed_font_sha256": "1984a9bda7d3a1d6391cfb96a25c75ce2b9cfa82f0dbbe9bfcb50c70f524be3e"
+      "stacked_font_sha256": "0b7c8643b5bf41448f778c27d4cc9c1f42bc7cbaaf0112caff7436a58c42427b",
+      "mixed_font_sha256": "8136b7f72a2a44e946dada2ace4034a92e3410c79185dcaba7acdb52528d2294"
     },
     "ExtraBold": {
       "mapped_latin_letters": 495,
@@ -11903,10 +11903,11 @@
         "Regular": "stacked_above",
         "Medium": "stacked_above",
         "Semibold": "stacked_above",
-        "Bold": "stacked_above",
+        "Bold": "unrebuilt_stacked_marks",
         "ExtraBold": "unrebuilt_stacked_marks"
       },
       "layered_unresolved_weights": [
+        "Bold",
         "ExtraBold"
       ]
     },
@@ -12106,10 +12107,11 @@
         "Regular": "stacked_above",
         "Medium": "stacked_above",
         "Semibold": "stacked_above",
-        "Bold": "stacked_above",
+        "Bold": "unrebuilt_stacked_marks",
         "ExtraBold": "unrebuilt_stacked_marks"
       },
       "layered_unresolved_weights": [
+        "Bold",
         "ExtraBold"
       ]
     },
@@ -12174,10 +12176,11 @@
         "Regular": "stacked_above",
         "Medium": "stacked_above",
         "Semibold": "stacked_above",
-        "Bold": "stacked_above",
+        "Bold": "unrebuilt_stacked_marks",
         "ExtraBold": "unrebuilt_stacked_marks"
       },
       "layered_unresolved_weights": [
+        "Bold",
         "ExtraBold"
       ]
     },
@@ -12311,10 +12314,11 @@
         "Regular": "stacked_above",
         "Medium": "stacked_above",
         "Semibold": "stacked_above",
-        "Bold": "stacked_above",
+        "Bold": "unrebuilt_stacked_marks",
         "ExtraBold": "unrebuilt_stacked_marks"
       },
       "layered_unresolved_weights": [
+        "Bold",
         "ExtraBold"
       ]
     },
@@ -12801,11 +12805,12 @@
       "layered_status_by_weight": {
         "Regular": "stacked_above",
         "Medium": "stacked_above",
-        "Semibold": "stacked_above",
+        "Semibold": "unrebuilt_stacked_marks",
         "Bold": "unrebuilt_stacked_marks",
         "ExtraBold": "unrebuilt_stacked_marks"
       },
       "layered_unresolved_weights": [
+        "Semibold",
         "Bold",
         "ExtraBold"
       ]

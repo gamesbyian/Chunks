@@ -1,6 +1,6 @@
 {
   "status": "NONSHIPPING conservative mixed above/below accent CFF study",
-  "stacked_source_metrics_sha256": "b8b56655e845648ae82cdadd5588581f0f7e38df124a06b76dbffc4f133bb58c",
+  "stacked_source_metrics_sha256": "8ba9806008340e78617f27fd240ceec42b40e440272ce43141dd53668db0f4e8",
   "policy": "NFD class 230 above, 202/220 below, source-only detached contours, ±font bbox",
   "weights": {
     "Regular": {
@@ -17,14 +17,14 @@
           ],
           "separated_above": 1,
           "separated_below": 1,
-          "x_shift": 50,
-          "above_y_shift": 18,
+          "x_shift": 48,
+          "above_y_shift": 43,
           "below_y_shift": 0,
           "bbox": [
-            54,
+            52,
             -179,
-            554,
-            773
+            571,
+            798
           ]
         },
         {
@@ -38,13 +38,13 @@
           "separated_above": 1,
           "separated_below": 1,
           "x_shift": 80,
-          "above_y_shift": 103,
+          "above_y_shift": 121,
           "below_y_shift": 0,
           "bbox": [
             60,
             -179,
             330,
-            878
+            896
           ]
         },
         {
@@ -57,13 +57,13 @@
           ],
           "separated_above": 1,
           "separated_below": 1,
-          "x_shift": 49,
+          "x_shift": 48,
           "above_y_shift": 0,
           "below_y_shift": 0,
           "bbox": [
-            103,
+            104,
             -179,
-            631,
+            628,
             755
           ]
         },
@@ -78,13 +78,13 @@
           "separated_above": 1,
           "separated_below": 1,
           "x_shift": 61,
-          "above_y_shift": 10,
+          "above_y_shift": 6,
           "below_y_shift": 0,
           "bbox": [
-            94,
+            96,
             -179,
-            466,
-            645
+            464,
+            641
           ]
         },
         {
@@ -98,13 +98,13 @@
           "separated_above": 1,
           "separated_below": 1,
           "x_shift": 102,
-          "above_y_shift": 7,
+          "above_y_shift": 0,
           "below_y_shift": 0,
           "bbox": [
-            103,
+            104,
             -179,
-            631,
-            787
+            629.56,
+            780
           ]
         },
         {
@@ -121,9 +121,9 @@
           "above_y_shift": 34,
           "below_y_shift": 0,
           "bbox": [
-            103,
+            98,
             -179,
-            516,
+            520.74,
             691
           ]
         },
@@ -137,14 +137,14 @@
           ],
           "separated_above": 1,
           "separated_below": 1,
-          "x_shift": 99,
-          "above_y_shift": 10,
+          "x_shift": 98,
+          "above_y_shift": 8,
           "below_y_shift": 0,
           "bbox": [
-            103,
+            107,
             -179,
-            688,
-            824
+            683,
+            822
           ]
         },
         {
@@ -158,13 +158,13 @@
           "separated_above": 1,
           "separated_below": 1,
           "x_shift": 121,
-          "above_y_shift": 53,
+          "above_y_shift": 80,
           "below_y_shift": 0,
           "bbox": [
-            102,
+            74,
             -179,
-            611,
-            733
+            639,
+            760
           ]
         },
         {
@@ -177,14 +177,14 @@
           ],
           "separated_above": 1,
           "separated_below": 1,
-          "x_shift": 99,
-          "above_y_shift": 2,
+          "x_shift": 98,
+          "above_y_shift": 0,
           "below_y_shift": 0,
           "bbox": [
-            103,
+            107,
             -179,
-            688,
-            795
+            683,
+            793
           ]
         },
         {
@@ -198,13 +198,13 @@
           "separated_above": 1,
           "separated_below": 1,
           "x_shift": 121,
-          "above_y_shift": 32,
+          "above_y_shift": 59,
           "below_y_shift": 0,
           "bbox": [
-            102,
+            74,
             -179,
-            611,
-            699
+            639,
+            726
           ]
         },
         {
@@ -217,14 +217,14 @@
           ],
           "separated_above": 1,
           "separated_below": 1,
-          "x_shift": 64,
-          "above_y_shift": 29,
+          "x_shift": 66,
+          "above_y_shift": 54,
           "below_y_shift": 0,
           "bbox": [
-            103,
+            84,
             -179,
-            592,
-            843
+            616,
+            868
           ]
         },
         {
@@ -237,14 +237,14 @@
           ],
           "separated_above": 1,
           "separated_below": 1,
-          "x_shift": 92,
-          "above_y_shift": 79,
+          "x_shift": 91,
+          "above_y_shift": 75,
           "below_y_shift": 0,
           "bbox": [
-            95,
+            99.25,
             -179,
-            617,
-            759
+            610,
+            755
           ]
         },
         {
@@ -257,14 +257,14 @@
           ],
           "separated_above": 1,
           "separated_below": 1,
-          "x_shift": 71,
-          "above_y_shift": 0,
+          "x_shift": 70,
+          "above_y_shift": 18,
           "below_y_shift": 0,
           "bbox": [
-            103,
+            75,
             -179,
-            727,
-            814
+            754,
+            832
           ]
         },
         {
@@ -277,14 +277,14 @@
           ],
           "separated_above": 1,
           "separated_below": 1,
-          "x_shift": 89,
-          "above_y_shift": 53,
+          "x_shift": 90,
+          "above_y_shift": 81,
           "below_y_shift": 0,
           "bbox": [
-            102,
+            75,
             -179,
-            629,
-            733
+            658,
+            761
           ]
         }
       ],
@@ -401,55 +401,19 @@
       },
       "weight": 400,
       "input_original_sha256": "a31b5c8726a640beada2113e11002eaac75a79b575f6855fdd60e9dc5ecbf63e",
-      "input_stacked_sha256": "98221cc234ac8026cb2e46dc3ef6346e341f3e9f669a80d811dc4f8bc14c31b2",
-      "output_sha256": "e2fdedda31ef115ebac977c1f8f5e17fc40da836e43c8aa5c0b974d102cd3cff",
+      "input_stacked_sha256": "e77037ddfe8fc166f8a69bb3dcd993e28a511f3ca779807f62b480fca8df17f5",
+      "output_sha256": "b320f909cc2daabc651d040bbc738274ff3c3a36921037a049f14970362df9c3",
       "file": "ChunksReferenceMixedMarks-Regular.otf",
       "kerning": {
-        "input_sha256": "0eb5a78dc299443ad5c3caacbc07b26ad5f64cde8fd98ccb9257c4a182be1ddf",
+        "input_sha256": "539bf26a742855b5abf55b075f038430db73eb66720dc5250eaaa71007535814",
         "file": "ChunksReferenceMixedMarks-Regular.otf",
         "reference_accent_glyphs": 14,
         "candidate_pairs": 1932,
         "adjusted_pairs": 1932,
         "bounded_subtables": 7,
         "max_correction_units": 120,
-        "clipped_pair_count": 146,
+        "clipped_pair_count": 98,
         "clipped_pair_examples": [
-          {
-            "first": "E",
-            "second": "Ậ",
-            "desired_units": -121,
-            "applied_units": -120
-          },
-          {
-            "first": "E",
-            "second": "ậ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "E",
-            "second": "Ặ",
-            "desired_units": -121,
-            "applied_units": -120
-          },
-          {
-            "first": "E",
-            "second": "ặ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "E",
-            "second": "Ộ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "F",
-            "second": "ṝ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
           {
             "first": "F",
             "second": "Ṩ",
@@ -470,19 +434,7 @@
           },
           {
             "first": "F",
-            "second": "ậ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "F",
             "second": "Ặ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "F",
-            "second": "ặ",
             "desired_units": -124,
             "applied_units": -120
           },
@@ -493,32 +445,26 @@
             "applied_units": -120
           },
           {
-            "first": "F",
-            "second": "Ộ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "F",
-            "second": "ộ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
             "first": "L",
+            "second": "ệ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "T",
+            "second": "ṝ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "T",
             "second": "Ṩ",
             "desired_units": -124,
             "applied_units": -120
           },
           {
-            "first": "L",
-            "second": "Ậ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "L",
-            "second": "Ặ",
+            "first": "T",
+            "second": "ṩ",
             "desired_units": -124,
             "applied_units": -120
           },
@@ -533,12 +479,66 @@
             "second": "ậ",
             "desired_units": -124,
             "applied_units": -120
+          },
+          {
+            "first": "T",
+            "second": "Ặ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "T",
+            "second": "ặ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "T",
+            "second": "ệ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "T",
+            "second": "Ộ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "T",
+            "second": "ộ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "V",
+            "second": "Ậ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "V",
+            "second": "Ặ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "X",
+            "second": "ṩ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "Y",
+            "second": "Ậ",
+            "desired_units": -124,
+            "applied_units": -120
           }
         ],
-        "mean_abs_correction_units": 87.83,
+        "mean_abs_correction_units": 77.34,
         "source_scripts_unchanged": true,
-        "pre_family_name_sha256": "cd6820364c437343d164eeecffe4a699b80852b26506bba667f5b6d4756ecaf7",
-        "output_sha256": "e2fdedda31ef115ebac977c1f8f5e17fc40da836e43c8aa5c0b974d102cd3cff"
+        "pre_family_name_sha256": "eb46638b147a55819943304ef35aec5857e6663e35cd50d15910f9a392f23675",
+        "output_sha256": "b320f909cc2daabc651d040bbc738274ff3c3a36921037a049f14970362df9c3"
       }
     },
     "Medium": {
@@ -556,13 +556,13 @@
           "separated_above": 1,
           "separated_below": 1,
           "x_shift": 49,
-          "above_y_shift": 23,
+          "above_y_shift": 43,
           "below_y_shift": 0,
           "bbox": [
             52,
             -191,
-            559,
-            795
+            574,
+            815
           ]
         },
         {
@@ -575,14 +575,14 @@
           ],
           "separated_above": 1,
           "separated_below": 1,
-          "x_shift": 75,
-          "above_y_shift": 106,
+          "x_shift": 76,
+          "above_y_shift": 120,
           "below_y_shift": 0,
           "bbox": [
-            52,
+            53,
             -191,
-            338,
-            898
+            339,
+            912
           ]
         },
         {
@@ -599,9 +599,9 @@
           "above_y_shift": 0,
           "below_y_shift": 0,
           "bbox": [
-            96,
+            94,
             -191,
-            636,
+            638,
             772
           ]
         },
@@ -616,13 +616,13 @@
           "separated_above": 1,
           "separated_below": 1,
           "x_shift": 60,
-          "above_y_shift": 16,
+          "above_y_shift": 15,
           "below_y_shift": 0,
           "bbox": [
-            89,
+            88,
             -191,
-            471,
-            665
+            472,
+            664
           ]
         },
         {
@@ -636,13 +636,13 @@
           "separated_above": 1,
           "separated_below": 1,
           "x_shift": 98,
-          "above_y_shift": 16,
+          "above_y_shift": 12,
           "below_y_shift": 0,
           "bbox": [
-            98,
+            94,
             -191,
-            635,
-            813
+            639.78,
+            809
           ]
         },
         {
@@ -655,14 +655,14 @@
           ],
           "separated_above": 1,
           "separated_below": 1,
-          "x_shift": 78,
-          "above_y_shift": 46,
+          "x_shift": 79,
+          "above_y_shift": 47,
           "below_y_shift": 0,
           "bbox": [
-            96,
+            90,
             -194,
-            522,
-            717
+            528.98,
+            718
           ]
         },
         {
@@ -675,14 +675,14 @@
           ],
           "separated_above": 1,
           "separated_below": 1,
-          "x_shift": 93,
-          "above_y_shift": 19,
+          "x_shift": 94,
+          "above_y_shift": 22,
           "below_y_shift": 0,
           "bbox": [
-            95,
+            96,
             -191,
             694,
-            841
+            844
           ]
         },
         {
@@ -696,13 +696,13 @@
           "separated_above": 1,
           "separated_below": 1,
           "x_shift": 115,
-          "above_y_shift": 56,
+          "above_y_shift": 76,
           "below_y_shift": 0,
           "bbox": [
-            95,
+            74,
             -191,
-            618,
-            752
+            639,
+            772
           ]
         },
         {
@@ -715,14 +715,14 @@
           ],
           "separated_above": 1,
           "separated_below": 1,
-          "x_shift": 93,
-          "above_y_shift": 10,
+          "x_shift": 94,
+          "above_y_shift": 13,
           "below_y_shift": 0,
           "bbox": [
-            95,
+            96,
             -191,
             694,
-            815
+            818
           ]
         },
         {
@@ -736,13 +736,13 @@
           "separated_above": 1,
           "separated_below": 1,
           "x_shift": 115,
-          "above_y_shift": 36,
+          "above_y_shift": 56,
           "below_y_shift": 0,
           "bbox": [
-            95,
+            74,
             -191,
-            618,
-            719
+            639,
+            739
           ]
         },
         {
@@ -755,14 +755,14 @@
           ],
           "separated_above": 1,
           "separated_below": 1,
-          "x_shift": 62,
-          "above_y_shift": 38,
+          "x_shift": 64,
+          "above_y_shift": 57,
           "below_y_shift": 0,
           "bbox": [
-            95,
+            82,
             -193,
-            598,
-            860
+            617,
+            879
           ]
         },
         {
@@ -775,13 +775,13 @@
           ],
           "separated_above": 1,
           "separated_below": 1,
-          "x_shift": 90,
+          "x_shift": 88,
           "above_y_shift": 80,
           "below_y_shift": 0,
           "bbox": [
-            91,
+            89.11,
             -191,
-            623,
+            620,
             776
           ]
         },
@@ -796,13 +796,13 @@
           "separated_above": 1,
           "separated_below": 1,
           "x_shift": 68,
-          "above_y_shift": 0,
+          "above_y_shift": 20,
           "below_y_shift": 0,
           "bbox": [
-            95,
+            75,
             -191,
-            733,
-            822
+            754,
+            842
           ]
         },
         {
@@ -815,14 +815,14 @@
           ],
           "separated_above": 1,
           "separated_below": 1,
-          "x_shift": 85,
-          "above_y_shift": 56,
+          "x_shift": 86,
+          "above_y_shift": 77,
           "below_y_shift": 0,
           "bbox": [
-            96,
+            75,
             -191,
-            636,
-            752
+            658,
+            773
           ]
         }
       ],
@@ -943,38 +943,20 @@
       },
       "weight": 500,
       "input_original_sha256": "50b68167346fa4dc5f8c6c8326c0668cfaa0e0c1dacb927b04acd2b31834d529",
-      "input_stacked_sha256": "0bece5f230c1c80b55ff8e58952ca7a53f2d04179d66cb880b1b23f4bc308977",
-      "output_sha256": "ead826beaf7547a0b11fd0606060b456b06efe0410662ce4d613033fba6d8e1e",
+      "input_stacked_sha256": "df24dd93fe35e22ef11aad15b9a4aeec90ce022bef2625ed9ee6c56acbf7619e",
+      "output_sha256": "4e733ab6383dcc4f591bc1731665c0ef545cb03b880679b427781e94ef26cb3d",
       "file": "ChunksReferenceMixedMarks-Medium.otf",
       "kerning": {
-        "input_sha256": "f83f03e49bc2f4a4e24320304b476619635e8d44718c6b5dcfae9bce1fc6656c",
+        "input_sha256": "1fc36347f05c8b100b7a159930c4f296e76374828fb1d8fd1ff917d800eb9f87",
         "file": "ChunksReferenceMixedMarks-Medium.otf",
         "reference_accent_glyphs": 14,
         "candidate_pairs": 1932,
         "adjusted_pairs": 1932,
         "bounded_subtables": 7,
         "max_correction_units": 120,
-        "clipped_pair_count": 96,
+        "clipped_pair_count": 61,
         "clipped_pair_examples": [
           {
-            "first": "E",
-            "second": "ậ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "E",
-            "second": "ặ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "E",
-            "second": "Ộ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
             "first": "F",
             "second": "Ṩ",
             "desired_units": -124,
@@ -988,37 +970,19 @@
           },
           {
             "first": "F",
-            "second": "ậ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "F",
             "second": "Ặ",
             "desired_units": -124,
             "applied_units": -120
           },
           {
-            "first": "F",
-            "second": "ặ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "L",
+            "first": "T",
             "second": "Ṩ",
             "desired_units": -124,
             "applied_units": -120
           },
           {
-            "first": "L",
-            "second": "Ậ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "L",
-            "second": "Ặ",
+            "first": "T",
+            "second": "ṩ",
             "desired_units": -124,
             "applied_units": -120
           },
@@ -1048,7 +1012,19 @@
           },
           {
             "first": "T",
+            "second": "ệ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "T",
             "second": "Ộ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "T",
+            "second": "ộ",
             "desired_units": -124,
             "applied_units": -120
           },
@@ -1062,12 +1038,6 @@
             "first": "V",
             "second": "Ặ",
             "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "X",
-            "second": "Ộ",
-            "desired_units": -121,
             "applied_units": -120
           },
           {
@@ -1075,16 +1045,46 @@
             "second": "Ậ",
             "desired_units": -124,
             "applied_units": -120
+          },
+          {
+            "first": "Y",
+            "second": "Ặ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "Z",
+            "second": "ệ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "4",
+            "second": "ệ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "4",
+            "second": "ộ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "7",
+            "second": "Ậ",
+            "desired_units": -124,
+            "applied_units": -120
           }
         ],
-        "mean_abs_correction_units": 84.86,
+        "mean_abs_correction_units": 75.67,
         "source_scripts_unchanged": true,
-        "pre_family_name_sha256": "8d88498eccb1f2323e08ca4244fc38c5d60186a2e9bd3b0aca8035851114a951",
-        "output_sha256": "ead826beaf7547a0b11fd0606060b456b06efe0410662ce4d613033fba6d8e1e"
+        "pre_family_name_sha256": "4a5c0e50b81a450ebe9a8ba72ae45a6c4cc8445e1b0db83a1af51bc5042f0f24",
+        "output_sha256": "4e733ab6383dcc4f591bc1731665c0ef545cb03b880679b427781e94ef26cb3d"
       }
     },
     "Semibold": {
-      "previously_skipped": 40,
+      "previously_skipped": 41,
       "rebuilt_count": 14,
       "rebuilt": [
         {
@@ -1098,13 +1098,13 @@
           "separated_above": 1,
           "separated_below": 1,
           "x_shift": 50,
-          "above_y_shift": 31,
+          "above_y_shift": 45,
           "below_y_shift": 0,
           "bbox": [
             51,
             -203,
-            568,
-            818
+            577,
+            832
           ]
         },
         {
@@ -1117,14 +1117,14 @@
           ],
           "separated_above": 1,
           "separated_below": 1,
-          "x_shift": 70,
-          "above_y_shift": 111,
+          "x_shift": 72,
+          "above_y_shift": 119,
           "below_y_shift": 0,
           "bbox": [
-            43,
+            45,
             -203,
-            345,
-            918
+            347,
+            926
           ]
         },
         {
@@ -1141,9 +1141,9 @@
           "above_y_shift": 0,
           "below_y_shift": 0,
           "bbox": [
-            88,
+            84,
             -203,
-            644,
+            648,
             787
           ]
         },
@@ -1158,13 +1158,13 @@
           "separated_above": 1,
           "separated_below": 1,
           "x_shift": 58,
-          "above_y_shift": 24,
+          "above_y_shift": 26,
           "below_y_shift": 0,
           "bbox": [
-            83,
+            81,
             -203,
-            476,
-            686
+            479,
+            688
           ]
         },
         {
@@ -1178,13 +1178,13 @@
           "separated_above": 1,
           "separated_below": 1,
           "x_shift": 94,
-          "above_y_shift": 26,
+          "above_y_shift": 25,
           "below_y_shift": 0,
           "bbox": [
-            89,
+            84,
             -203,
-            645,
-            838
+            650.0,
+            837
           ]
         },
         {
@@ -1198,13 +1198,13 @@
           "separated_above": 1,
           "separated_below": 1,
           "x_shift": 72,
-          "above_y_shift": 58,
+          "above_y_shift": 61,
           "below_y_shift": 0,
           "bbox": [
-            88,
+            82,
             -208,
-            530,
-            741
+            537.22,
+            744
           ]
         },
         {
@@ -1218,13 +1218,13 @@
           "separated_above": 1,
           "separated_below": 1,
           "x_shift": 88,
-          "above_y_shift": 29,
+          "above_y_shift": 36,
           "below_y_shift": 0,
           "bbox": [
-            88,
+            85,
             -203,
-            702,
-            859
+            705,
+            866
           ]
         },
         {
@@ -1238,13 +1238,13 @@
           "separated_above": 1,
           "separated_below": 1,
           "x_shift": 109,
-          "above_y_shift": 60,
+          "above_y_shift": 73,
           "below_y_shift": 0,
           "bbox": [
-            88,
+            74,
             -203,
-            625,
-            771
+            639,
+            784
           ]
         },
         {
@@ -1258,13 +1258,13 @@
           "separated_above": 1,
           "separated_below": 1,
           "x_shift": 88,
-          "above_y_shift": 19,
+          "above_y_shift": 26,
           "below_y_shift": 0,
           "bbox": [
-            88,
+            85,
             -203,
-            702,
-            834
+            705,
+            841
           ]
         },
         {
@@ -1278,13 +1278,13 @@
           "separated_above": 1,
           "separated_below": 1,
           "x_shift": 109,
-          "above_y_shift": 40,
+          "above_y_shift": 53,
           "below_y_shift": 0,
           "bbox": [
-            88,
+            74,
             -203,
-            625,
-            738
+            639,
+            751
           ]
         },
         {
@@ -1297,14 +1297,14 @@
           ],
           "separated_above": 1,
           "separated_below": 1,
-          "x_shift": 62,
-          "above_y_shift": 48,
+          "x_shift": 64,
+          "above_y_shift": 61,
           "below_y_shift": 0,
           "bbox": [
-            88,
+            80,
             -205,
-            607,
-            878
+            619,
+            891
           ]
         },
         {
@@ -1317,14 +1317,14 @@
           ],
           "separated_above": 1,
           "separated_below": 1,
-          "x_shift": 88,
-          "above_y_shift": 83,
+          "x_shift": 86,
+          "above_y_shift": 86,
           "below_y_shift": 0,
           "bbox": [
-            84,
+            79.22,
             -203,
-            629,
-            794
+            630,
+            797
           ]
         },
         {
@@ -1338,13 +1338,13 @@
           "separated_above": 1,
           "separated_below": 1,
           "x_shift": 67,
-          "above_y_shift": 10,
+          "above_y_shift": 23,
           "below_y_shift": 0,
           "bbox": [
-            88,
+            75,
             -203,
-            741,
-            840
+            754,
+            853
           ]
         },
         {
@@ -1358,17 +1358,17 @@
           "separated_above": 1,
           "separated_below": 1,
           "x_shift": 82,
-          "above_y_shift": 61,
+          "above_y_shift": 74,
           "below_y_shift": 0,
           "bbox": [
-            88,
+            75,
             -203,
-            645,
-            772
+            658,
+            785
           ]
         }
       ],
-      "skipped_count": 26,
+      "skipped_count": 27,
       "skipped": [
         {
           "glyph": "Ǻ",
@@ -1400,6 +1400,10 @@
         },
         {
           "glyph": "Ḯ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ễ",
           "reason": "mixed_direction_not_supported"
         },
         {
@@ -1484,28 +1488,28 @@
         }
       ],
       "skip_reasons": {
-        "mixed_direction_not_supported": 22,
+        "mixed_direction_not_supported": 23,
         "unseparated_directional_marks": 4
       },
       "weight": 600,
       "input_original_sha256": "8261803c2870f91db32f3c0506475a31189c5f16a2dfba35a5c0371faee890ef",
-      "input_stacked_sha256": "cb0f3d13e8c106501a6ebdab958c31d866c602b543fd00c7a0f8d751d0d057ab",
-      "output_sha256": "d2c2a4466a8c8316b950fa84810cabb33f10e35778da7aa0c87c9def6989b1cb",
+      "input_stacked_sha256": "a8aeed851bb7225a7d3150ec298a1b5fe43bf6055259645da8f19d5ab513f2fe",
+      "output_sha256": "bd3e66fcb370ec05c217bb6078a0db4610ef6edb4b7c8e7ff2c88017efb46834",
       "file": "ChunksReferenceMixedMarks-Semibold.otf",
       "kerning": {
-        "input_sha256": "b47d3103f1053434ec0539e809a861e9eb4da75bcd88fb30d2638beef3f1fe0b",
+        "input_sha256": "a909412d83cc42a80ac5f5241f647fdd2166c58b2a42292d539c638c32453541",
         "file": "ChunksReferenceMixedMarks-Semibold.otf",
         "reference_accent_glyphs": 14,
         "candidate_pairs": 1932,
         "adjusted_pairs": 1932,
         "bounded_subtables": 7,
         "max_correction_units": 120,
-        "clipped_pair_count": 51,
+        "clipped_pair_count": 43,
         "clipped_pair_examples": [
           {
             "first": "F",
             "second": "Ṩ",
-            "desired_units": -123,
+            "desired_units": -124,
             "applied_units": -120
           },
           {
@@ -1516,25 +1520,7 @@
           },
           {
             "first": "F",
-            "second": "ậ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "F",
             "second": "Ặ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "F",
-            "second": "ặ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "L",
-            "second": "Ṩ",
             "desired_units": -124,
             "applied_units": -120
           },
@@ -1565,6 +1551,12 @@
           {
             "first": "T",
             "second": "Ộ",
+            "desired_units": -122,
+            "applied_units": -120
+          },
+          {
+            "first": "T",
+            "second": "ộ",
             "desired_units": -124,
             "applied_units": -120
           },
@@ -1593,24 +1585,6 @@
             "applied_units": -120
           },
           {
-            "first": "f",
-            "second": "Ậ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "f",
-            "second": "Ặ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "4",
-            "second": "Ṩ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
             "first": "7",
             "second": "Ậ",
             "desired_units": -124,
@@ -1619,18 +1593,48 @@
           {
             "first": "7",
             "second": "Ặ",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "Ḹ",
+            "second": "T",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "Ḹ",
+            "second": "V",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "Ḹ",
+            "second": "Y",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "Ḹ",
+            "second": "f",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "Ḹ",
+            "second": "t",
             "desired_units": -124,
             "applied_units": -120
           }
         ],
-        "mean_abs_correction_units": 81.26,
+        "mean_abs_correction_units": 74.2,
         "source_scripts_unchanged": true,
-        "pre_family_name_sha256": "3ddb714ab0b5e50dad7a19eb4a8471130a2f6de0544a9bf1494c3252f1c244c8",
-        "output_sha256": "d2c2a4466a8c8316b950fa84810cabb33f10e35778da7aa0c87c9def6989b1cb"
+        "pre_family_name_sha256": "8159d2247ebeb7dcbd5222e77b20ca529bc4317b71edb80ff467d44248a48a9f",
+        "output_sha256": "bd3e66fcb370ec05c217bb6078a0db4610ef6edb4b7c8e7ff2c88017efb46834"
       }
     },
     "Bold": {
-      "previously_skipped": 51,
+      "previously_skipped": 55,
       "rebuilt_count": 14,
       "rebuilt": [
         {
@@ -1643,14 +1647,14 @@
           ],
           "separated_above": 1,
           "separated_below": 1,
-          "x_shift": 51,
-          "above_y_shift": 38,
+          "x_shift": 50,
+          "above_y_shift": 44,
           "below_y_shift": 0,
           "bbox": [
-            50,
+            49,
             -217,
-            576,
-            843
+            580,
+            849
           ]
         },
         {
@@ -1663,14 +1667,14 @@
           ],
           "separated_above": 1,
           "separated_below": 1,
-          "x_shift": 66,
-          "above_y_shift": 116,
+          "x_shift": 67,
+          "above_y_shift": 118,
           "below_y_shift": 0,
           "bbox": [
-            35,
+            36,
             -217,
-            356,
-            942
+            357,
+            944
           ]
         },
         {
@@ -1684,13 +1688,13 @@
           "separated_above": 1,
           "separated_below": 1,
           "x_shift": 44,
-          "above_y_shift": 0,
+          "above_y_shift": 4,
           "below_y_shift": 0,
           "bbox": [
-            79,
+            75,
             -217,
-            653,
-            805
+            657,
+            809
           ]
         },
         {
@@ -1703,14 +1707,14 @@
           ],
           "separated_above": 1,
           "separated_below": 1,
-          "x_shift": 58,
-          "above_y_shift": 33,
+          "x_shift": 57,
+          "above_y_shift": 35,
           "below_y_shift": 0,
           "bbox": [
-            78,
+            75,
             -217,
-            483,
-            711
+            485,
+            713
           ]
         },
         {
@@ -1723,14 +1727,14 @@
           ],
           "separated_above": 1,
           "separated_below": 1,
-          "x_shift": 90,
-          "above_y_shift": 36,
+          "x_shift": 91,
+          "above_y_shift": 37,
           "below_y_shift": 0,
           "bbox": [
-            80,
+            75,
             -217,
-            653,
-            867
+            659.04,
+            868
           ]
         },
         {
@@ -1743,14 +1747,14 @@
           ],
           "separated_above": 1,
           "separated_below": 1,
-          "x_shift": 64,
-          "above_y_shift": 72,
+          "x_shift": 65,
+          "above_y_shift": 75,
           "below_y_shift": 0,
           "bbox": [
-            79,
+            75,
             -225,
-            538,
-            770
+            544.42,
+            773
           ]
         },
         {
@@ -1763,14 +1767,14 @@
           ],
           "separated_above": 1,
           "separated_below": 1,
-          "x_shift": 84,
-          "above_y_shift": 41,
+          "x_shift": 82,
+          "above_y_shift": 49,
           "below_y_shift": 0,
           "bbox": [
-            80,
+            75,
             -217,
-            711,
-            880
+            714,
+            888
           ]
         },
         {
@@ -1784,13 +1788,13 @@
           "separated_above": 1,
           "separated_below": 1,
           "x_shift": 102,
-          "above_y_shift": 65,
+          "above_y_shift": 69,
           "below_y_shift": 0,
           "bbox": [
-            80,
+            74,
             -217,
-            633,
-            794
+            639,
+            798
           ]
         },
         {
@@ -1803,14 +1807,14 @@
           ],
           "separated_above": 1,
           "separated_below": 1,
-          "x_shift": 84,
-          "above_y_shift": 30,
+          "x_shift": 82,
+          "above_y_shift": 38,
           "below_y_shift": 0,
           "bbox": [
-            80,
+            75,
             -217,
-            711,
-            858
+            714,
+            866
           ]
         },
         {
@@ -1824,13 +1828,13 @@
           "separated_above": 1,
           "separated_below": 1,
           "x_shift": 102,
-          "above_y_shift": 46,
+          "above_y_shift": 50,
           "below_y_shift": 0,
           "bbox": [
-            80,
+            74,
             -217,
-            633,
-            762
+            639,
+            766
           ]
         },
         {
@@ -1843,14 +1847,14 @@
           ],
           "separated_above": 1,
           "separated_below": 1,
-          "x_shift": 60,
-          "above_y_shift": 60,
+          "x_shift": 62,
+          "above_y_shift": 65,
           "below_y_shift": 0,
           "bbox": [
-            80,
+            77,
             -221,
-            615,
-            899
+            620,
+            904
           ]
         },
         {
@@ -1863,14 +1867,14 @@
           ],
           "separated_above": 1,
           "separated_below": 1,
-          "x_shift": 84,
-          "above_y_shift": 86,
+          "x_shift": 83,
+          "above_y_shift": 90,
           "below_y_shift": 0,
           "bbox": [
-            78,
+            70.83,
             -217,
-            635,
-            815
+            639,
+            819
           ]
         },
         {
@@ -1884,13 +1888,13 @@
           "separated_above": 1,
           "separated_below": 1,
           "x_shift": 64,
-          "above_y_shift": 21,
+          "above_y_shift": 26,
           "below_y_shift": 0,
           "bbox": [
-            79,
+            75,
             -217,
-            749,
-            860
+            754,
+            865
           ]
         },
         {
@@ -1904,17 +1908,17 @@
           "separated_above": 1,
           "separated_below": 1,
           "x_shift": 78,
-          "above_y_shift": 65,
+          "above_y_shift": 70,
           "below_y_shift": 0,
           "bbox": [
-            81,
+            75,
             -217,
-            653,
-            794
+            658,
+            799
           ]
         }
       ],
-      "skipped_count": 37,
+      "skipped_count": 41,
       "skipped": [
         {
           "glyph": "Ǘ",
@@ -1977,11 +1981,27 @@
           "reason": "mixed_direction_not_supported"
         },
         {
+          "glyph": "Ẩ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
           "glyph": "Ẫ",
           "reason": "mixed_direction_not_supported"
         },
         {
+          "glyph": "Ắ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ằ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
           "glyph": "Ẳ",
+          "reason": "mixed_direction_not_supported"
+        },
+        {
+          "glyph": "Ẵ",
           "reason": "mixed_direction_not_supported"
         },
         {
@@ -2074,36 +2094,24 @@
         }
       ],
       "skip_reasons": {
-        "mixed_direction_not_supported": 33,
+        "mixed_direction_not_supported": 37,
         "unseparated_directional_marks": 4
       },
       "weight": 700,
       "input_original_sha256": "4c4d514999eae9192313499e31b5e69b84a348e7fac2b1554a7728c6a14aa5ae",
-      "input_stacked_sha256": "4eb71b1238929a101e8a58f01fb15b6cdb30c1a0fd5c5d891b40916479c01f06",
-      "output_sha256": "1984a9bda7d3a1d6391cfb96a25c75ce2b9cfa82f0dbbe9bfcb50c70f524be3e",
+      "input_stacked_sha256": "0b7c8643b5bf41448f778c27d4cc9c1f42bc7cbaaf0112caff7436a58c42427b",
+      "output_sha256": "8136b7f72a2a44e946dada2ace4034a92e3410c79185dcaba7acdb52528d2294",
       "file": "ChunksReferenceMixedMarks-Bold.otf",
       "kerning": {
-        "input_sha256": "953cc749f74453e84a0e3111450034316ff6e6ce23fe171eaa201217f725a1f8",
+        "input_sha256": "f53845e5627f0b75d57036eed5d1f2333865a57910aa69cc43a4ed6accc1b6e1",
         "file": "ChunksReferenceMixedMarks-Bold.otf",
         "reference_accent_glyphs": 14,
         "candidate_pairs": 1932,
         "adjusted_pairs": 1932,
         "bounded_subtables": 7,
         "max_correction_units": 120,
-        "clipped_pair_count": 27,
+        "clipped_pair_count": 23,
         "clipped_pair_examples": [
-          {
-            "first": "F",
-            "second": "ậ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
-          {
-            "first": "F",
-            "second": "ặ",
-            "desired_units": -124,
-            "applied_units": -120
-          },
           {
             "first": "T",
             "second": "Ậ",
@@ -2166,13 +2174,13 @@
           },
           {
             "first": "Ḹ",
-            "second": "1",
+            "second": "y",
             "desired_units": -124,
             "applied_units": -120
           },
           {
-            "first": "ṝ",
-            "second": "Z",
+            "first": "Ḹ",
+            "second": "1",
             "desired_units": -124,
             "applied_units": -120
           },
@@ -2183,8 +2191,8 @@
             "applied_units": -120
           },
           {
-            "first": "Ṩ",
-            "second": "1",
+            "first": "ṩ",
+            "second": "7",
             "desired_units": -123,
             "applied_units": -120
           },
@@ -2211,12 +2219,24 @@
             "second": "T",
             "desired_units": -124,
             "applied_units": -120
+          },
+          {
+            "first": "Ặ",
+            "second": "V",
+            "desired_units": -124,
+            "applied_units": -120
+          },
+          {
+            "first": "Ặ",
+            "second": "Y",
+            "desired_units": -124,
+            "applied_units": -120
           }
         ],
-        "mean_abs_correction_units": 77.19,
+        "mean_abs_correction_units": 71.8,
         "source_scripts_unchanged": true,
-        "pre_family_name_sha256": "634aec9e7a935f950d436fef4cb3c65dc7e67c525b62f9dbdb4279125fd3c15f",
-        "output_sha256": "1984a9bda7d3a1d6391cfb96a25c75ce2b9cfa82f0dbbe9bfcb50c70f524be3e"
+        "pre_family_name_sha256": "299443d07a8a4c3679008e3beaf7acde24666b9c83a7cbd9a96fd0084e9d0cbd",
+        "output_sha256": "8136b7f72a2a44e946dada2ace4034a92e3410c79185dcaba7acdb52528d2294"
       }
     },
     "ExtraBold": {
