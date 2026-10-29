@@ -29,6 +29,9 @@ class PublicTrackerHandoffTest {
             "https://tracker.example/announce#private",
             "https://tracker.example/%70asskey/announce",
             "https://tracker.example/a1b2c3d4e5f6a7b8c9d0/announce",
+            "https://tracker.example/abc123/announce",
+            "https://tracker.example/account/announce",
+            "https://tracker.example/announce/abc123",
             "https://user:pw@tracker.example/announce",
             "ftp://tracker.example/announce",
             "https://tracker.example/announce\nx",
@@ -37,6 +40,8 @@ class PublicTrackerHandoffTest {
         for (url in rejected) assertFalse(url, PublicTrackerHandoff.usable(url))
         assertEquals(base, PublicTrackerHandoff.withTrackers(base, rejected))
         assertTrue(PublicTrackerHandoff.usable("http://tracker.example:6969/announce"))
+        assertTrue(PublicTrackerHandoff.usable("https://tracker.example/announce.php"))
+        assertTrue(PublicTrackerHandoff.usable("https://tracker.example/tracker/announce"))
     }
 
     @Test fun explicitQueryOrFragmentCannotEscapeIntoPhoneMagnet() {
