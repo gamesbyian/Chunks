@@ -3,7 +3,9 @@ package io.github.gamesbyian.chunks
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Alignment
@@ -69,7 +71,9 @@ internal fun ActionTile(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     /** Library icon (generated VectorDrawable); decorative, the label carries meaning. */
-    @DrawableRes icon: Int? = null
+    @DrawableRes icon: Int? = null,
+    /** Icon above the label (tiles in a row) or beside it (full-width tiles). */
+    stacked: Boolean = true
 ) {
     Button(
         onClick = onClick, enabled = enabled,
@@ -78,11 +82,16 @@ internal fun ActionTile(
         colors = ButtonDefaults.buttonColors(containerColor = color, contentColor = ChunksColors.OnAccent),
         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        val image: @Composable () -> Unit = {
             if (icon != null) Image(painterResource(icon), contentDescription = null,
-                modifier = Modifier.size(28.dp).alpha(if (enabled) 1f else 0.38f))
+                modifier = Modifier.size(if (stacked) 28.dp else 24.dp).alpha(if (enabled) 1f else 0.38f))
+        }
+        val text: @Composable () -> Unit = {
             Text(label, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.ExtraBold,
                 textAlign = TextAlign.Center)
         }
+        if (stacked) Column(horizontalAlignment = Alignment.CenterHorizontally) { image(); text() }
+        else Row(verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)) { image(); text() }
     }
 }

@@ -97,15 +97,16 @@ fun TransferLifecycleControl(
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (!confirmationFresh && canOfferAction) {
-            OutlinedButton(
+            ActionTile((if (transfer.started) "Stop" else "Start") + " transfer…",
+                if (transfer.started) ChunksColors.Purple else ChunksColors.Green,
                 onClick = {
                     resumeInactive = false
                     confirmingAtRevision = snapshotRevision
                     confirming = true
                 },
                 enabled = !snapshotStale,
-                modifier = Modifier.height(48.dp)
-            ) { Text((if (transfer.started) "Stop" else "Start") + " transfer…") }
+                modifier = Modifier.fillMaxWidth(),
+                icon = if (transfer.started) R.drawable.chunks_ic_stop else R.drawable.chunks_ic_play, stacked = false)
             // A torrent can have d.state=1 while d.is_active=0. Give a
             // deliberate, exact-hash Open/Start/Resume review only after a
             // CURRENT read-only activity report proves it is inactive.

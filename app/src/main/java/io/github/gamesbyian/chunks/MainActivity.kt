@@ -1432,7 +1432,7 @@ private fun TransferCard(
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
-            Text(alias ?: transfer.name, fontWeight = FontWeight.Bold,
+            Text(alias ?: transfer.name, style = MaterialTheme.typography.titleMedium,
                 maxLines = 2, overflow = TextOverflow.Ellipsis)
             if (alias != null) {
                 Text("Original torrent: " + transfer.name,
@@ -1452,12 +1452,21 @@ private fun TransferCard(
                     else -> ChunksTone.ACTIVE
                 }
             )
-            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically) {
                 Text((transfer.fractionComplete * 100).toInt().toString() + "% · " +
                     Units.bytes(transfer.completedBytes) + " of " + Units.bytes(transfer.sizeBytes),
                     style = MaterialTheme.typography.bodySmall)
-                Text(if (transfer.started) "Start state set" else "Stopped",
-                    style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+                // rTorrent's started flag is a requested state, not proof of activity.
+                StatusPill(when {
+                    transfer.fractionComplete >= 1f -> "Complete"
+                    transfer.started -> "Start state set"
+                    else -> "Stopped"
+                }, when {
+                    transfer.fractionComplete >= 1f -> ChunksTone.COMPLETE
+                    transfer.started -> ChunksTone.ACTIVE
+                    else -> ChunksTone.PAUSED
+                })
             }
             if (transfer.started && transfer.downBytesPerSecond == 0L &&
                 transfer.fractionComplete < 1f) {
@@ -1488,14 +1497,12 @@ private fun TransferCard(
                     (suggestion.collection?.let { " / " + it } ?: ""),
                     style = MaterialTheme.typography.labelLarge, color = Blue)
             }
-            OutlinedButton(onClick = onInspect, modifier = Modifier.height(48.dp)) {
-                Text(if (expanded) "Hide files" else "Inspect files")
-            }
+            ActionTile(if (expanded) "Hide files" else "Inspect files", ChunksColors.Cyan,
+                onClick = onInspect, modifier = Modifier.fillMaxWidth(), icon = R.drawable.chunks_ic_folder, stacked = false)
             if (TorrentIdentityHandoff.prepare(transfer.hash, transfer.name) != null) {
-                OutlinedButton(onClick = { confirmPhoneHandoff = true },
-                    enabled = !stale, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                    Text("Copy Transfer to phone…")
-                }
+                ActionTile("Copy Transfer to phone…", ChunksColors.Blue,
+                    onClick = { confirmPhoneHandoff = true }, enabled = !stale,
+                    modifier = Modifier.fillMaxWidth(), icon = R.drawable.chunks_ic_copy, stacked = false)
                 if (confirmPhoneHandoff) {
                     Text("This torrent's v1 hash and name, plus its public tracker " +
                         "addresses, become a magnet Add draft on your phone. Private " +
