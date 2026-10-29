@@ -89,3 +89,14 @@ UI distinguishes rule **selected**, **applied to Chunks**, **acknowledged by eng
 
 Evidence: JVM tests, including acceptance case 1. `SeedingRuleStore` persists rules and per-environment defaults as versioned Chunks-only JSON with domains and numbers only: no tracker URLs, passkeys or infohashes. A URL-shaped domain, duplicate ID, unknown version or corruption never loads, and an unreadable record is reported and never silently overwritten (Robolectric tests). Not yet: Add/detail UI, or local/remote enforcement adapters with readback.
 
+## Implementation note: rule editor (2026-10-29)
+
+**Seeding rules…** opens from the Server tab and the phone screen. It shows ordered rules, each with its exact **Applies to** environments, and a default per environment. The editor provides:
+- tracker domains, rejecting anything URL-shaped;
+- an any/private/public filter;
+- independent ratio, maximum days, minimum hours and an upload limit with live exact-unit feedback, plus ANY/ALL when both stop conditions are set;
+- explicit environment checkboxes (phone, each saved server, the connected server) and a separate "Also apply to servers added later";
+- an editable generated name with "Use suggested name".
+
+Environment IDs are `phone` and `remote:` plus the saved-profile ID, so renaming a server never changes rule scope. A yellow **Saved, not applied yet** banner states that this version does not apply rules to transfers. Evidence: Compose tests (create, scope, persistence, refused URL and ambiguous unit, delete confirmation) and renders. Not yet: the enforcement controller, Add-review preview, remote adapters, and TalkBack/handset review.
+
