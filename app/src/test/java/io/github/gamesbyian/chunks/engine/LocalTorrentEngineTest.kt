@@ -355,6 +355,93 @@ class LocalTorrentEngineTest {
             File(destination, "Chunks public fixture/episode.bin").readBytes())
     }
 
+    @Test fun resolvedMagnetIsPersistedImmediatelyAndRestoresStopped() {
+        val fixture = fixture()
+        val seeder = engine()
+        val seed = added(seeder.addStopped(fixture.torrent, fixture.root.parentFile))
+        assertEquals(LocalCommandOutcome.VERIFIED, seeder.resume(seed.infoHash).outcome)
+        waitFor { seeder.status(seed.infoHash)?.state == LocalTransferState.SEEDING }
+
+        val state = temp.newFolder("magnet immediate resume state")
+        val destination = temp.newFolder("magnet immediate resume destination")
+        val first = persistentEngine(state)
+        val magnet = "magnet:?xt=urn:btih:${seed.infoHash}"
+        assertTrue(first.addMagnet(magnet, destination,
+            listOf(InetSocketAddress("127.0.0.1", seeder.listenPort()))) is LocalAddResult.FetchingMetadata)
+        waitFor {
+            val current = first.status(seed.infoHash)
+            current != null && current.metadataKnown && current.stopped
+        }
+        // Do not call saveResumeData(), wait for a periodic UI poll or close:
+        // the metadata callback itself must independently persist a usable
+        // resume witness before the engine is shut down.
+        waitFor(15_000L) {
+            File(state, seed.infoHash + ".resume").let { it.isFile && it.length() > 0L }
+        }
+        first.close()
+        val second = persistentEngine(state)
+        assertTrue(second.restoreProblems.isEmpty())
+        val restored = requireNotNull(second.status(seed.infoHash))
+        assertTrue("Metadata-ready magnet must restore stopped", restored.stopped)
+        assertTrue(restored.metadataKnown)
+        assertEquals(destination.absolutePath, restored.savePath)
+    }
+
+    @Test fun metadataReadyMagnetWithForeignFileRefusesPayloadUntilCollisionCleared() {
+        val fixture = fixture()
+        val seeder = engine()
+        val seed = added(seeder.addStopped(fixture.torrent, fixture.root.parentFile))
+        assertEquals(LocalCommandOutcome.VERIFIED, seeder.resume(seed.infoHash).outcome)
+        waitFor { seeder.status(seed.infoHash)?.state == LocalTransferState.SEEDING }
+
+        val destination = temp.newFolder("magnet-collision-destination")
+        val collision = File(destination, "Chunks public fixture/episode.bin")
+        assertTrue(collision.parentFile.mkdirs())
+        val unrelated = ByteArray(fixture.files.getValue("episode.bin").size)
+        java.util.Random(568L).nextBytes(unrelated)
+        collision.writeBytes(unrelated)
+        val magnet = "magnet:?xt=urn:btih:" + seed.infoHash
+
+        val state = temp.newFolder("magnet-blocked-resume-state")
+        val leecher = persistentEngine(state)
+        assertTrue(leecher.addMagnet(magnet, destination,
+            listOf(InetSocketAddress("127.0.0.1", seeder.listenPort())),
+            autoStartAfterMetadata = true) is LocalAddResult.FetchingMetadata)
+        waitFor {
+            leecher.status(seed.infoHash)?.let { it.metadataKnown && it.stopped } == true
+        }
+        val blocked = requireNotNull(leecher.status(seed.infoHash))
+        assertTrue("Blocked magnet must remain upload-only", blocked.uploadOnly)
+        assertTrue("Collision must be visible", blocked.error.orEmpty().contains("Existing files"))
+        assertArrayEquals("Early Start consent cannot overwrite unrelated bytes",
+            unrelated, collision.readBytes())
+        assertEquals(LocalCommandOutcome.UNCERTAIN, leecher.resume(seed.infoHash).outcome)
+        assertArrayEquals(unrelated, collision.readBytes())
+
+        // A blocked magnet must be restorable without making a previously
+        // rejected payload collision writable after process restart.
+        waitFor(15_000L) {
+            File(state, seed.infoHash + ".resume").let { it.isFile && it.length() > 0L }
+        }
+        leecher.close()
+        val restarted = persistentEngine(state)
+        val paused = requireNotNull(restarted.status(seed.infoHash))
+        assertTrue("Blocked magnet must restore stopped", paused.stopped)
+        assertTrue("Persistent upload-only gate must survive a process restart", paused.uploadOnly)
+        assertTrue(paused.metadataKnown)
+        assertEquals(LocalCommandOutcome.UNCERTAIN, restarted.resume(seed.infoHash).outcome)
+        assertArrayEquals("Failed re-Start after process death must not overwrite foreign bytes",
+            unrelated, collision.readBytes())
+
+        // Test-only recovery: remove our synthetic foreign fixture, then retry
+        // Start against an independently observed clean path.
+        assertTrue(collision.delete())
+        assertEquals(LocalCommandOutcome.VERIFIED, restarted.resume(seed.infoHash).outcome)
+        waitFor { restarted.status(seed.infoHash)?.progressPpm == 1_000_000 }
+        requireFlushed(restarted, seed.infoHash)
+        assertArrayEquals(fixture.files.getValue("episode.bin"), collision.readBytes())
+    }
+
     @Test fun manualStartBeforeMagnetMetadataPersistsThroughDiscoveryAndDownloadsBytes() {
         val fixture = fixture()
         val seeder = engine()
