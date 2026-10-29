@@ -25,7 +25,7 @@
 4. **Architecture/security:** data models, commands, trust boundaries, authorization, recovery, portability and test seams. Distinguish capability existence, permission and verification.
 5. **Decision ledger:** stable ID, classification (owner/binding, provisional, open, superseded), rationale, alternatives, implications and link to authoritative contract. Append a new decision for a material reversal rather than silently rewriting history.
 6. **Coverage/evidence:** requirement ID, planned/partial/implemented status, tested SHA and test tier, gaps and linked issue. “Implemented” must identify the precise slice, not imply whole-feature completion.
-7. **Work queue:** executable next steps with prerequisite, owner/lane, validation gate, blocker, issue/PR and order. Time-sensitive snapshots get dated checkpoint sections or separate archives, never an unconditional present-tense assertion.
+7. **Work queue:** concise executable next steps with prerequisite, owner/lane, validation gate, blocker, issue/PR and order. Preserve substantial time-sensitive snapshots in dated archives and point to them; do not place chronological milestones or PR-by-PR narratives in the active queue.
 8. **Reference/operations/handoff:** factual usage instructions and exact reproduction commands; do not introduce new product requirements incidentally.
 
 ## Required feature-contract template
