@@ -29,7 +29,7 @@ Use the same advanced Add, queue, network, diagnostics and settings flows in pho
 
 ## Discovery and secondary infrastructure navigation
 
-The integrated [Discover experience](INTAKE-QUEUE-AND-POLICIES.md) is a **Chunks-wide opt-in interface** with an immediate global off switch; any discovery-based Add still requires choosing an exact phone/remote environment, with per-environment limits, Places and seeding rules previewed. Disabled Discovery stops source polling and unattended Add independently of which environments are connected, but never stops existing torrents or manual Add. On/Off is not silently overridden by a newly added remote profile or an imported settings file.
+The integrated [Discover experience](INTAKE-QUEUE-AND-POLICIES.md) is a **Chunks-wide opt-in interface** with an immediate global off switch; any discovery-based Add still requires choosing an exact phone/remote environment, with per-environment limits, Places and seeding rules previewed. Disabled Discovery stops **discovery-source** polling and discovery-triggered unattended Add independently of which environments are connected, but never stops existing torrents or manual Add. On/Off is not silently overridden by a newly added remote profile or an imported settings file.
 
 [Server tools](REMOTE-INTEGRATIONS-AND-PREFERENCES.md) are **remote-profile-specific and secondary** under Servers → selected remote → Server tools. No privileged admin actions or dashboard tiles become first-class Transfers/Add/Details controls; remote-only mode still emphasizes torrent use. Local-only mode has no Server tools screen. Multiple remote profiles never inherit one another's admin credentials/permissions, and a disconnected/unverified profile cannot present an optimistic management action.
 
