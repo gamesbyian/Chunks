@@ -30,7 +30,7 @@ class RemoteHiddenDuplicateAddTest {
         <member><name>faultString</name><value><string>Fixture failed exact-hash lookup</string></value></member>
         </struct></value></fault></methodResponse>"""
 
-    private class Gateway(private val nameReply: String) : AutoCloseable {
+    private inner class Gateway(private val nameReply: String) : AutoCloseable {
         private val server = HttpServer.create(
             InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0)
         val calls: MutableList<String> = Collections.synchronizedList(mutableListOf())
