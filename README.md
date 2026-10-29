@@ -1,5 +1,7 @@
 # chunks.
 
+**For agents and maintainers:** Begin at the [documentation index](docs/INDEX.md). The [documentation architecture standard](docs/DOCUMENTATION-STANDARD.md) specifies source-of-truth precedence, feature-contract structure, change protocol, evidence requirements and how to prevent conflicting duplicate guidance. [Unified phone/remote experience](docs/UNIFIED-ENVIRONMENTS.md) is a binding contract; implementation acceptance remains open.
+
 > **Owner correction (2026-10-28):** Cross-engine **Copy Transfer** and **Move Transfer** operate on torrent **jobs only**, never downloaded file bytes. Move adds and verifies the target job, then separately confirms session-only removal of the source job, leaving all source files untouched. Destination downloads independently. Prior text proposing payload transfer, file migration or waiting for target seeding under these names is superseded by [the authoritative transfer-job contract](docs/CROSS-ENGINE-TRANSFER-JOBS.md).
 
 **Your downloads have places to be.**
