@@ -75,6 +75,42 @@ class UnifiedBatchLifecycleTest {
         assertTrue(report.items.all { it.evidence == CommandEvidence.REFUSED })
     }
 
+    @Test fun incompleteAndUnobservedSourcesNeverReceiveCommandsButHealthySourceCan() = runBlocking {
+        val onA = observation(serverA, "1".repeat(40), false)
+        val onB = observation(serverB, "2".repeat(40), false)
+        val onPhone = observation(phone, "3".repeat(40), false)
+        val aAdapter = Recording { LifecycleReply.VERIFIED }
+        val bAdapter = Recording { LifecycleReply.VERIFIED }
+        val phoneAdapter = Recording { LifecycleReply.VERIFIED }
+        val incomplete = source(serverA, onA).copy(inventoryComplete = false)
+        val unobserved = source(serverB, onB).copy(observedAtEpochMillis = null)
+        val report = UnifiedBatchLifecycle.run(
+            listOf(target(onA), target(onB), target(onPhone)), start = true,
+            sources = listOf(incomplete, unobserved, source(phone, onPhone)),
+            adapters = mapOf(serverA to aAdapter, serverB to bAdapter, phone to phoneAdapter)
+        )
+        assertTrue(aAdapter.calls.isEmpty())
+        assertTrue(bAdapter.calls.isEmpty())
+        assertEquals(listOf(onPhone.key.infoHash to true), phoneAdapter.calls)
+        assertEquals(listOf(CommandEvidence.REFUSED, CommandEvidence.REFUSED,
+            CommandEvidence.VERIFIED), report.items.map { it.evidence })
+        assertTrue(report.items[0].reason!!.contains("incomplete"))
+        assertTrue(report.items[1].reason!!.contains("no verified observation"))
+        assertNull(report.haltedOn)
+    }
+
+    @Test fun changedStateBetweenSelectionAndExecutionRefusesWithoutSendingCommand() = runBlocking {
+        val selected = observation(serverA, hash, false)
+        val nowRunning = selected.copy(started = true)
+        val adapter = Recording { LifecycleReply.VERIFIED }
+        val report = UnifiedBatchLifecycle.run(
+            listOf(target(selected)), true, listOf(source(serverA, nowRunning)),
+            mapOf(serverA to adapter))
+        assertEquals(CommandEvidence.REFUSED, report.items.single().evidence)
+        assertTrue(report.items.single().reason!!.contains("changed"))
+        assertTrue(adapter.calls.isEmpty())
+    }
+
     @Test fun firstUncertainHaltsEveryLaterItemAcrossEnvironmentsWithoutRetry() = runBlocking {
         val first = observation(phone, "1".repeat(40), true)
         val second = observation(phone, "2".repeat(40), true)
