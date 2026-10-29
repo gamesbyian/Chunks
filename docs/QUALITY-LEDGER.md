@@ -1,5 +1,26 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-29 session close-out (app lane): merges, fixes and evidence
+
+- **Merged (squash, exact-head CI green):** #463 `ea5833e`, #468 `992d506`, #406 `8f7a034`, #472 `bf5df95`, #475 `4912ba3`, #423 `85a7388`, #478 `13b2303`, #479 `66c319b`, #476 `b41b65f`, #477 `099c36f`, #480 `cc824fc`, #499 `b4f6183`, #481 `707692c`, #473 `c829b57`, #474 `fdf8a21`; #482 and #501 see their PRs.
+- **Main-red root causes fixed:** API35 instrumentation only triggered on androidTest paths, so #460 (new read-only RPC) and #463 (renamed field) broke it unseen (#472, #479; trigger now includes `app/src/main/**`). `assembleRelease` never built because lintVitalRelease failed on `network_security_config.xml` (#480). Android 10/11 foreground-service crash (#481, reproduced run 40773235821).
+- **Local real-rTorrent rig:** the agent container can run `rtorrent` 0.9.8 + `nginx` SCGI exactly like `disposable-rtorrent-probe.yml`; it exposed that rTorrent 0.9.8 `f.completed_chunks` over-counts at file boundaries (#501 uses `d.bitfield` + `f.range_*`).
+- **Cross-lane hazard:** the font accent-study workflow commits regenerated, non-deterministic OTFs to *any* branch whose push touches font sources (including app branches after a main merge). Bot commits don't trigger CI, leaving PR heads untested; app PRs had to drop those outputs before merging. Font lane: consider restricting that commit step to font branches.
+
+## 2026-10-28 Android 10/11 foreground-service crash (found by lint, reproduced on API 29)
+
+- `LocalEngineService` called API 31-only `Notification.Builder.setForegroundServiceBehavior` with minSdk 29. With the new API 29 service test and **without** the fix, run [40773235821](https://github.com/gamesbyian/Chunks/actions/runs/40773235821) failed with `NoSuchMethodError` from `onStartCommand`: starting any phone download on Android 10/11 crashed the app. Earlier "API 29 native write/resume/seed" evidence never started the foreground service. The fix PR's exact-head API 29 run (3 service tests, skip-intolerant) is the acceptance record; a physical Android 10/11 handset is still unverified.
+
+## 2026-10-28 Move Transfer (job-only) single-transfer slice (source evidence only)
+
+- Local agent-container run: `gradle :app:testDebugUnitTest --tests '*TransferMoveTest*'` 6/6 passed (stage machine: target before removal, fresh pre-removal target check, crash → UNCERTAIN, observation-only resolution, messages never claim files moved, codec). `:app:compileDebugAndroidTestKotlin` OK for `TransferMoveControlInstrumentedTest` (2 API35 Compose flows, fake ports); exact-head CI is the gate and is recorded on the PR.
+- **Not established:** real rTorrent `d.erase` via this UI, real phone engine removal via this UI, Seedhost, physical handset, batch.
+
+## 2026-10-28 batch Copy Transfer to server (source evidence only)
+
+- `BatchServerCopy` + phone batch panel section: JVM `BatchServerCopyTest` 3/3 locally (order, duplicate skip, missing/mismatched definition never sent, stop at first unconfirmed Add with no retry, selection validation); 2 API35 Compose tests added. Uses the existing `loadStoppedTorrentBytes` at the server default Place with readback. Real rTorrent 0.9.8 batch run: `RTorrentDisposableBatchCopyTest` passed against a local rTorrent 0.9.8 + nginx SCGI rig in the agent container (ALREADY_ON_SERVER then ADDED, both stopped at `directory.default`, other jobs unchanged) and is a skip-intolerant step of `disposable-rtorrent-probe.yml`. **Not established:** Seedhost, handset.
+
+
 ## 2026-10-28 Finish in Order local scheduler (source evidence only)
 
 - Local run in the agent container (JDK 21, Gradle 9.3.1, Android SDK platform 37.0): `gradle :app:testDebugUnitTest --tests '*FinishInOrder*'` **15/15 passed** (planner/record 9, runner 6 including a real libtorrent4j 2.1.0-39 Linux session that hash-checks piece-aligned episodes, advances past verified files and refuses a stale replay with `STALE_REVIEW`); the full JVM suite earlier compiled the same sources with all pre-existing tests passing. `:app:compileDebugAndroidTestKotlin` and `:app:assembleDebug` succeeded. Exact PR-head GitHub Android/JVM and API35 runs are the merge gate and are recorded on the PR.
