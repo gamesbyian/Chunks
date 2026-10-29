@@ -56,6 +56,14 @@ class RemoteCapabilitiesTest {
         assertEquals(listOf("d.hash"), graded.getValue("Remove from server session").missing)
     }
 
+    @Test fun missingActivityGetterCannotAdvertiseVerifiableLifecycle() {
+        val graded = RemoteCapabilities.grade(RemoteProbe("0.16", all - "d.is_active"))
+            .associateBy { it.feature.label }
+        assertEquals(RemoteCapabilities.Status.MISSING,
+            graded.getValue("Start and stop").status)
+        assertEquals(listOf("d.is_active"), graded.getValue("Start and stop").missing)
+    }
+
     @Test fun noIntrospectionMeansUnknownNotMissing() {
         val probe = RemoteProbe("0.9.6", null)
         val graded = RemoteCapabilities.grade(probe)
