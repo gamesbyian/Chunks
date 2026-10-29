@@ -125,4 +125,18 @@ class LocalQueueCatalogTest {
         assertEquals("Z–A", LocalQueueOrder.NAME.directionLabel(UnifiedSortDirection.DESCENDING))
         assertEquals("Fewest peers first", LocalQueueOrder.PEERS.directionLabel(UnifiedSortDirection.ASCENDING))
     }
+
+    @Test fun addedSortsNewestFirstByDefaultAndUnknownAddedTimeStaysLast() {
+        val old = transfer("Old", "1".repeat(40)).copy(addedAtEpochMillis = 1_000)
+        val new = transfer("New", "2".repeat(40)).copy(addedAtEpochMillis = 9_000)
+        val unknown = transfer("Unknown", "3".repeat(40)).copy(addedAtEpochMillis = null)
+        val rows = listOf(unknown, old, new)
+        fun order(direction: UnifiedSortDirection) =
+            LocalQueueCatalog.visible(rows, "", LocalQueueFilter.ALL, LocalQueueOrder.ADDED, direction).map { it.name }
+        assertEquals(UnifiedSortDirection.DESCENDING, LocalQueueOrder.ADDED.naturalDirection)
+        assertEquals(listOf("New", "Old", "Unknown"), order(UnifiedSortDirection.DESCENDING))
+        assertEquals(listOf("Old", "New", "Unknown"), order(UnifiedSortDirection.ASCENDING))
+        assertEquals("Newest first", LocalQueueOrder.ADDED.directionLabel(UnifiedSortDirection.DESCENDING))
+        assertEquals(9_000L, UnifiedTransferObservations.fromPhone(EnvironmentId("phone"), new).addedAtEpochMillis)
+    }
 }
