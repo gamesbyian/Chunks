@@ -63,5 +63,45 @@ class RemotePublicTrackersRpcTest {
         assertEquals(RTorrentRemote.PublicTrackers.Urls(listOf("udp://tracker.example:80/announce")),
             remote.readPublicTrackers(hash))
         assertEquals("identity guarded before and after", 2, methods.count { it == "d.hash" })
+        assertEquals("privacy must be checked before fetching and before returning URLs", 2,
+            methods.count { it == "d.is_private" })
+        assertEquals(listOf("d.hash", "d.is_private", "d.tracker_size",
+            "t.multicall", "d.is_private", "d.hash"), methods)
+    }
+
+    @Test fun newlyPrivateTorrentMustNeverReturnPreviouslyFetchedTrackerUrls() {
+        var privacyReads = 0
+        withServer({ method ->
+            when (method) {
+                "d.hash" -> str(hash)
+                "d.is_private" -> {
+                    privacyReads++
+                    num(if (privacyReads == 1) 0 else 1)
+                }
+                "d.tracker_size" -> num(1)
+                "t.multicall" -> "<value><array><data>" +
+                    "<value><array><data>${str("https://private.example/announce?passkey=SECRET")}${num(1)}</data></array></value>" +
+                    "</data></array></value>"
+                else -> error("Unexpected $method")
+            }
+        }) { remote, methods ->
+            assertSame(RTorrentRemote.PublicTrackers.Private, remote.readPublicTrackers(hash))
+            assertEquals(2, privacyReads)
+            assertEquals(listOf("d.hash", "d.is_private", "d.tracker_size",
+                "t.multicall", "d.is_private"), methods)
+        }
+    }
+
+    @Test fun initiallyPrivateTorrentStillReturnsWithoutReadingAnyTrackerUrl() {
+        withServer({ method ->
+            when (method) {
+                "d.hash" -> str(hash)
+                "d.is_private" -> num(1)
+                else -> error("Read-only private transfer must not fetch $method")
+            }
+        }) { remote, methods ->
+            assertSame(RTorrentRemote.PublicTrackers.Private, remote.readPublicTrackers(hash))
+            assertEquals(listOf("d.hash", "d.is_private"), methods)
+        }
     }
 }
