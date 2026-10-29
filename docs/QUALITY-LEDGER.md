@@ -18,7 +18,15 @@ A code review of everything merged this session (`a8cb13f..2103fc7`) found these
   - **Phase A** uses the app's own engine and state directory to download part of the sanitized Debian netinst from ordinary peers, then SIGKILLs itself mid-transfer, with no Stop and no explicit save.
   - **Phase B**, in a fresh process, requires: restored stopped, no restore problems, metadata kept, and continued hash-verified growth past the pre-kill amount.
   - It **records** whether the recheck recovered the pre-kill pieces from disk (`RECOVERED`) or had to fetch them again (`REDOWNLOAD`).
-- **Evidence:** pending a manual dispatch from main after merge. Emulator behind NAT only.
+- **Merged:** [#584](https://github.com/gamesbyian/Chunks/pull/584), squash `2103fc71a4babf7953bd752c5f958cc9eff3a718`.
+- **Observed** ([run 40934164720](https://github.com/gamesbyian/Chunks/actions/runs/40934164720), API35 emulator behind the runner's NAT, from main at `2103fc7`, budget 16 MiB):
+  - **Phase A:** 20,971,520 hash-verified bytes of Debian netinst `7acf8fb5…` (792,723,456 wanted) came from ordinary peers, then the process ended `Process crashed` by its own SIGKILL.
+  - **Phase B** (fresh process):
+    - restored **stopped** with no restore problems;
+    - on Start, the recheck **RECOVERED 21,495,808 verified bytes from disk**, a little more than the last pre-kill observation, because further pieces were written in between;
+    - it then continued to 25,427,968 verified bytes.
+  - So resume data saved only at Add was enough for libtorrent to recheck the on-disk pieces after sudden death, with nothing lost or re-fetched.
+  - One emulator run; not a physical handset, a reboot, or storage revocation.
 
 ## 2026-10-29 Open in its list from All environments (#567)
 
