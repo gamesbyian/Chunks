@@ -2,6 +2,11 @@
 
 > **Authority:** shared domain model, capability and mutation boundaries. Product rules are in [PRODUCT](PRODUCT.md); implementation receipts and current task priority live in [QUALITY-LEDGER](QUALITY-LEDGER.md) and [WORK-QUEUE](WORK-QUEUE.md). Design notes do not imply physical acceptance.
 
+## Recovery of torrent backing files after external filesystem changes
+
+Model verified original torrent file index/path and effective backing-file path separately, with versioned per-profile mapping generation and read-only discovery/hash evidence. Rebinding to existing data must not be conflated with libtorrent rename_file/move_storage or generic rTorrent directory setters, which may mutate data or offer only root-level functionality. Capability-gate each implementation, quiesce/revalidate as required, journal uncertain execution, recheck pieces and confirm actual engine readback/resume. [TRANSFER-FILE-RECOVERY](TRANSFER-FILE-RECOVERY.md).
+
+
 ## Architecture: shared semantics, independent capabilities
 
 Android Compose UI and share intents → application command coordinator → Transfer / Place / Collection / Operation domain model → explicit local engine adapter OR rTorrent RPC adapter. Organization produces **proposals**, not filesystem side effects. Storage providers and the optional Companion execute only authorized, capability-proven operations.
