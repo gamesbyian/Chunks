@@ -1,5 +1,15 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-29 read-only phone file-on-disk check (TRANSFER-FILE-RECOVERY stage 1)
+
+- **Source slice:** `LocalFileDiskCheck` and its UI, "Check files on disk (read-only)", in a phone transfer's Files panel.
+  - It runs only when tapped, on the IO dispatcher, and stats each torrent file under the transfer's own save folder.
+  - Each file is reported as present at the expected size, not started, skipped, partly on disk, **missing** (engine has bytes, no file), **size mismatch**, **not a file**, **unreadable** or **unsafe path**.
+  - A path that escapes the save folder (`..` or a symlink) is refused, not followed.
+  - It never hashes, creates, renames or deletes anything, and the summary says it checks presence and size only, not contents.
+  - Non-file-path folders (for example a SAF tree URI) are explained instead of checked.
+- **Evidence:** JVM `LocalFileDiskCheckTest` (every status, read-only assertion, symlink escape) and Robolectric `LocalFilesOnDiskCheckTest` (runs only on tap, lists the missing file, creates nothing). No device, no remote and no hash verification. Search, match, rebind and recheck stages remain open.
+
 ## 2026-10-29 opt-in device reboot repro (#569)
 
 - **Source slice:** `LocalEngineRebootInstrumentedTest` + `tools/reboot_repro.sh` are added to the path-scoped opt-in lifecycle job.
