@@ -13,7 +13,18 @@ The 58 previously under-specified ecosystem items are assigned to canonical cont
 3. **Portable settings and expert UX:** versioned redacted server/profile export, import preview and identity mapping, responsive expert columns, adaptive remote read-only polling and help/report redact-by-default. Prove no secret disclosure or remote auto-mutation after restore, then validate 320×700, 412×892, 200% font and TalkBack.
 4. **Opt-in external adapters:** feed/indexer sources, verified media completion handoff, independent cloud backup and advanced peer/protocol settings only once source/service-specific safety and capability evidence exist. No privileged seedbox admin panel is authorized by this queue.
 
-Open product-boundary choices go through D-ADVANCED-OPS-20261029 in [DECISIONS](DECISIONS.md) before implementing broader native indexer searching or privileged service management. Record completed code slices in SPEC-COVERAGE/QUALITY-LEDGER, not another running plan.
+**Owner scope is now decided:** integrated discovery with a master disable switch, and secondary limited server tools, are binding under D-DISCOVERY-20261029 and D-SEEDBOX-TOOLS-20261029. The implementation slices and acceptance are below; unrestricted privileged host management remains out of scope. Record completed code slices in SPEC-COVERAGE/QUALITY-LEDGER, not another running plan.
+
+## Approved Discovery and secondary Server tools: implementation slices
+
+These are requirements under [DISCOVERY (intake contract)](INTAKE-QUEUE-AND-POLICIES.md#integrated-torrent-discovery-and-its-master-off-switch) and [SERVER TOOLS (remote contract)](REMOTE-INTEGRATIONS-AND-PREFERENCES.md#secondary-seedbox-tools-owner-binding), **not** evidence or a mandate to displace current P0/P1 work. No new app-level cloud infrastructure is authorized.
+
+1. **Discovery state and off switch (independently executable, before network connector):** persistent default-off state, accessible Settings → Discovery master control, source-level consent, race-safe dispatch gate, cancellation of scheduled jobs and auto-intake on disable, preservation of existing transfers and manual Add. Gate at every worker, network action and exact target Add submission. Verify zero disabled egress, process death/restore/reenable, cancellation race and redaction.
+2. **Integrated discovery UI and adapters:** native search screen and in-Add Find torrents entry, normalized public/private provider adapter results with origin, filters, dedupe, saved searches and RSS/Atom subscriptions. Use authenticated provider fixtures; independently opt-in auto-add and auto-start, source limits and safe stale-backlog handling. Verify existing Add scope, provider privacy and no mandatory account; test 320×700, 412×892, 200% type/TalkBack. Do not bypass CAPTCHA or deploy a central search backend.
+3. **Read-only server tools:** Servers → named remote → Server tools, with provider capability model, separately authenticated nonprivileged service/health/quota endpoints, source/freshness labels, local-only absence and strict screen real-estate regression checks.
+4. **Optional limited service controls:** enable per-profile only with separately verified provider permission, fixed allowlist, impact warning for live torrents, confirmation and postcondition/reconciliation. Test unsupported managed hosts, independent tenants, disconnect mid-restart and prohibitions on generic shell/reboot/firewall/user/package operations. Keep server administration out of default notification/background monitoring.
+
+Do not let these slices create admin-focused primary navigation or silently reenable discovery through import/auto-start. The existing seeding rules, remote Smart Connect and unified local/remote acceptance remain separate prerequisites.
 
 ## Planned slice: Smart Seeding Rules
 
