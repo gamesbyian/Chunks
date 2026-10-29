@@ -2,6 +2,14 @@
 
 > **Authority:** user-visible behavior, interaction state and accessibility requirements. Dated implementation notes describe bounded evidence only; the live [coverage map](SPEC-COVERAGE.md), [quality ledger](QUALITY-LEDGER.md) and [work queue](WORK-QUEUE.md) determine present status and next work.
 
+## Restore transfer from relocated/renamed files
+
+Broken/missing-file transfer details and eligible multi-select lists expose **Find files to restore transfer**. Open with expected source paths and precise phone/server scope, let the user choose an authorized search root, preview likely and hash-verified matches, show a zero-mutation path mapping plan and required engine/filesystem capabilities, and request separate approval for any link/copy operation. Preserve chosen names and distinguish found, verified, relinked and resumed. Unknown remote file access or insufficient per-file mapping yields an honest limitation, never simulated success. [TRANSFER-FILE-RECOVERY](TRANSFER-FILE-RECOVERY.md).
+
+## Fix for Plex in rename and bulk-rename flows
+
+Expose **Fix for Plex** as an optional preset within file rename, bulk rename and folder scan, operating on actual accessible local/remote files. Show original name, minimal changed spans, exact reason, retained technical/release metadata, confidence and sidecar impacts. Separate **No change needed**, **Safe minimal suggestions**, **Needs review** and **Unavailable**. Require explicit review before physical mutations; explain that Chunks display aliases do not change Plex's scan filenames, and distinguish engine-backed rename from independent library publication. [PLEX-FILENAME-REPAIR](PLEX-FILENAME-REPAIR.md) governs behavior.
+
 ## Open files in other Android apps
 
 Provide a consistent file action surface within transfer file trees and phone/remote Place browsing: **Open**, **Open with…**, **Share/Send**, **Download to device**, and **Properties**, capability-gated and scoped to the visible phone/server profile. Prefer an Android resolver and bounded on-demand remote reading over forced full local download; show when streaming, random seeking, credentials, source permissions or recipient compatibility prevent the operation. Never silently materialize a large file. **Opening .torrent/magnet links in Chunks is the separate inbound workflow** described below. Canonical [external-file-access UX and behavior](EXTERNAL-FILE-ACCESS.md) governs both source views.
