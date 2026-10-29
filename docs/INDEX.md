@@ -11,6 +11,7 @@ The [documentation architecture and authoring standard](DOCUMENTATION-STANDARD.m
 - [QUALITY-LEDGER](QUALITY-LEDGER.md): dated test evidence and limitations; not a current task queue.
 - [SPEC-COVERAGE](SPEC-COVERAGE.md): required versus implemented capability and acceptance gaps.
 - [CI-POLICY](CI-POLICY.md): runner costs, test gates and workflows.
+- [Physical handset acceptance](PHYSICAL-HANDSET-ACCEPTANCE.md): receipt template, the opt-in scripts that run unchanged on a handset, and manual lifecycle/accessibility checks.
 
 ## Advanced operations (normative feature contracts)
 
