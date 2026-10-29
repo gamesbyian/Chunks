@@ -75,4 +75,17 @@ class LocalResumeSaveRequestsTest {
             worker.shutdownNow()
         }
     }
+    @Test fun shutdownCancelsAllUnresolvedWaiters() {
+        val saves = LocalResumeSaveRequests()
+        val one = saves.acquire("one") {}
+        val two = saves.acquire("two") {}
+        saves.cancelAll()
+        assertFalse(one.awaitConfirmed(0))
+        assertFalse(two.awaitConfirmed(0))
+        val next = saves.acquire("one") {}
+        assertFalse(next.awaitConfirmed(0))
+        saves.complete("one", true)
+        assertTrue(next.awaitConfirmed(0))
+    }
+
 }
