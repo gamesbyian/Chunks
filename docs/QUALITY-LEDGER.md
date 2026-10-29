@@ -1,5 +1,15 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-29 Smart Seeding on the phone and server Add Finish in Order (app lane)
+
+- **Merged (squash, exact-head CI green):**
+  - #557 versioned seeding rule store that keeps no tracker URLs or passkeys `6c25ee6` (head `e11c5512`: API35 40855813812, build 40855813790, check 40855813759, minified-smoke 40855813830);
+  - #559 phone enforcement primitives (cap with readback, counters, stop decision) `339f212` (head `c0be3b7a`: API35 40856371185, build 40856371413, check 40856371219, minified-smoke 40856371309, legacy/modern real-engine 40856371155). Desktop libtorrent loopback: cap readback and real counters;
+  - #558 Finish in Order option on the server Add review `df43b4a` (head `8a0a63e0`: API35 40857535184, build 40857535032, atlas 40857535012, check 40857535157, minified-smoke 40857535125);
+  - #561 rule editor with explicit environment scope `8370b86` (head `cd7d357b`, after merging main: API35 40859296452, API29 40859296438, build 40859296350, atlas 40859296414, check 40859296625, minified-smoke 40859296463).
+- **Docs:** owner specs #555 (MF02/MF04/MF31 task outcomes and effective-policy explanations) and #562 (five niche workflows) merged; both are planned contracts, not implementation evidence.
+- **Evidence tier:** JVM/Robolectric, desktop libtorrent on loopback, API35/API29 emulators and the CI real-rTorrent jobs. No handset, Doze, real tracker, TalkBack or human visual acceptance of Smart Seeding.
+
 ## 2026-10-29 Create & Share seeding, remote Finish this next, Smart Seeding and Discovery foundations (app lane)
 
 - **Merged (squash, exact-head CI green):**
