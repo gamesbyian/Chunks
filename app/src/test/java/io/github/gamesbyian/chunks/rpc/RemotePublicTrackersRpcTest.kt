@@ -21,8 +21,13 @@ class RemotePublicTrackersRpcTest {
                 val request = exchange.requestBody.bufferedReader().use { it.readText() }
                 val method = Regex("<methodName>([^<]+)</methodName>").find(request)?.groupValues?.get(1).orEmpty()
                 synchronized(methods) { methods.add(method); requests.append(request) }
-                val body = ("<methodResponse><params><param>" + handler(method) +
-                    "</param></params></methodResponse>").toByteArray(Charsets.UTF_8)
+                val responseValue = handler(method)
+                // The fault-injection case must exercise a real XML-RPC fault
+                // rather than accidentally wrapping it as an ordinary value.
+                val response = if (responseValue.startsWith("<methodResponse>")) responseValue
+                    else "<methodResponse><params><param>" + responseValue +
+                        "</param></params></methodResponse>"
+                val body = response.toByteArray(Charsets.UTF_8)
                 exchange.sendResponseHeaders(200, body.size.toLong())
                 exchange.responseBody.use { it.write(body) }
             }
@@ -86,6 +91,36 @@ class RemotePublicTrackersRpcTest {
             }
         }) { remote, methods ->
             assertSame(RTorrentRemote.PublicTrackers.Private, remote.readPublicTrackers(hash))
+            assertEquals(2, privacyReads)
+            assertEquals(listOf("d.hash", "d.is_private", "d.tracker_size",
+                "t.multicall", "d.is_private"), methods)
+        }
+    }
+
+    @Test fun finalPrivacyGetterFaultNeverReleasesTrackerUrls() {
+        var privacyReads = 0
+        withServer({ method ->
+            when (method) {
+                "d.hash" -> str(hash)
+                "d.is_private" -> {
+                    privacyReads++
+                    if (privacyReads == 1) num(0)
+                    else """<methodResponse><fault><value><struct>
+                        <member><name>faultCode</name><value><int>-503</int></value></member>
+                        <member><name>faultString</name><value><string>Unable to verify privacy</string></value></member>
+                        </struct></value></fault></methodResponse>"""
+                }
+                "d.tracker_size" -> num(1)
+                "t.multicall" -> "<value><array><data>" +
+                    "<value><array><data>${str("udp://public.example/announce")}${num(1)}</data></array></value>" +
+                    "</data></array></value>"
+                else -> error("Unexpected $method")
+            }
+        }) { remote, methods ->
+            val received = assertThrows(RpcFault::class.java) {
+                runBlocking { remote.readPublicTrackers(hash) }
+            }
+            assertEquals("-503", received.code)
             assertEquals(2, privacyReads)
             assertEquals(listOf("d.hash", "d.is_private", "d.tracker_size",
                 "t.multicall", "d.is_private"), methods)
