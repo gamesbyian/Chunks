@@ -4,6 +4,11 @@
 
 [Agent instructions](../AGENTS.md) · [Documentation index](INDEX.md) · [Product contract](PRODUCT.md) · [Coverage gaps](SPEC-COVERAGE.md) · [Evidence](QUALITY-LEDGER.md) · [Documentation authoring standard](DOCUMENTATION-STANDARD.md)
 
+## Combined Transfers / environment identity implementation slice (specified, not implemented)
+
+Build a persistent environment-ID palette assignment and user colour picker, with contrast-safe name/badge rendering in Add, settings, rules, lists, details and confirmations. Implement the multi-select environment-scope Transfers query with selected-union search/filter, global sorting, optional Group by environment, and one shared **reversible** secondary comparator/direction within all groups. Keep exact (environment, infohash) job identity, independently identified offline/stale snapshots and partial totals; test multi-profile duplicates, changing profile membership, sort reversals and safe cross-profile batch selection. Add mobile and accessibility screenshot/TalkBack acceptance. This is a distinct product UI slice, not proof of implementation; retain existing P0/P1 device/host validation priorities. Canonical acceptance: [UNIFIED-ENVIRONMENTS](UNIFIED-ENVIRONMENTS.md).
+
+
 ## Owner-approved specialist-workflow pipeline (below active P0/P1)
 
 Owner has approved **specifying** five useful niche areas; do not displace live Android transfer reliability, unified modes, seedbox compatibility, Smart Seeding Rules or other already-claimed app lanes. Check current PRs and [AGENT-LANES](AGENT-LANES.md) before choosing any independent slice. Each domain contract is the single source of technical/UX requirements. These are **candidate implementation stages**, not a commitment to install external services, create a new primary tab or run a central backend.
