@@ -27,6 +27,24 @@ Expose **Fix for Plex** as an optional preset within file rename, bulk rename an
 Provide a consistent file action surface within transfer file trees and phone/remote Place browsing: **Open**, **Open with…**, **Share/Send**, **Download to device**, and **Properties**, capability-gated and scoped to the visible phone/server profile. Prefer an Android resolver and bounded on-demand remote reading over forced full local download; show when streaming, random seeking, credentials, source permissions or recipient compatibility prevent the operation. Never silently materialize a large file. **Opening .torrent/magnet links in Chunks is the separate inbound workflow** described below. Canonical [external-file-access UX and behavior](EXTERNAL-FILE-ACCESS.md) governs both source views.
 
 
+## Specialist tools: deliberately secondary, consistent and accessible
+
+The owner has approved five optional workflows but **no new primary navigation destinations**, main Transfers cards, permanent banners, compulsory discovery/setup steps or always-on network processes as their price of entry. Their exact journeys, failure states, local/remote boundaries and acceptance live in the five canonical contracts; this is only the shared information-architecture rule.
+
+| User intention | Contextual entry (one or two steps from relevant object) | First action / default |
+|---|---|---|
+| Share to a browser or publish a feed | **Create & Share → More sharing options** | Account-free normal .torrent/magnet share; advanced panel collapsed |
+| Find another torrent for existing bytes | **Transfer → More → Find compatible torrents**, or **Places → More** | Read-only search, with per-source authorization |
+| Copy actual bytes between servers/phone | **Places → selected files/folder → Copy files to…** or transfer **More → Copy payload files…** | Manual source/target/Place selection and byte/cost estimate; distinct from **Copy Transfer** |
+| See video/audio details or thumbnail | **File → Properties → Media details** | Read-only bounded inspection on demand |
+| Make an event rule or webhook | **Settings → Automation** or transfer **More → Make a rule from this…** | Generated editable rule name and inert dry-run preview |
+| Reuse Prowlarr sources | **Settings → Discovery → Sources → Connect existing service** | Read-only source/permission review; no queries while Discovery off |
+| Synchronize owned remote files | **Places → folder → More → Copy / Sync → Set up synchronization…** | Copy once first; scheduling off, no deletion |
+
+**UX invariants:** always identify exact phone/remote profile and file-vs-torrent-job identity; show **Configured / Requires access / Scanning / Candidate / Verified / Partial / Uncertain / Unsupported** accurately. Read-only suggestions never become Adds, renames, file copies, seeding changes, publication or webhooks without separate permission. A secondary screen returns to its parent's state and scrolled position. Enable Discovery remains the only global source search switch, with other source/auto-add/auto-start consents independent; non-discovery event rules and local-file auto-load remain independent. Server tools are still under **Servers → profile → Server tools**, with no new privileged entrypoints.
+
+At **320×700**, **412×892**, **200% text**, TalkBack and keyboard, every secondary action must remain reachable without clipping or replacing Transfer, File, Place and Add essentials. An unsupported adapter does not leave a dead primary UI affordance; it explains what exact capability or authorization is absent. Domain contracts: [CREATE-AND-SHARE](CREATE-AND-SHARE.md), [CROSS-SEED-AND-PAYLOAD-COPY](CROSS-SEED-AND-PAYLOAD-COPY.md), [MEDIA-INSPECTION](MEDIA-INSPECTION.md), [EVENT-AUTOMATION](EVENT-AUTOMATION.md), [EXISTING-SERVICE-INTEGRATIONS](EXISTING-SERVICE-INTEGRATIONS.md).
+
 ## Mental model, first-run and navigation
 
 - **Transfers**: what is downloading, completed, uploading, stuck and awaiting a safe move.

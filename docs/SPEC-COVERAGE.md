@@ -2,6 +2,20 @@
 
 > **Interpretation:** each row states a specific requirement, bounded implementation observation and what still needs acceptance. Older run/PR references are historical snapshots, not automatic proof of the latest main branch. Reconcile against live code/PRs and the [QUALITY-LEDGER](QUALITY-LEDGER.md) before changing a status. Product intent belongs in [PRODUCT](PRODUCT.md) and feature contracts; task ordering only in [WORK-QUEUE](WORK-QUEUE.md).
 
+## Five owner-approved niche workflows: specification versus evidence
+
+**Scope approved, implementation and independent acceptance OPEN unless a narrower existing slice already has separate ledger proof.** Five thematic initiatives from the non-eliminated ecosystem inventory are now canonically specified without implying the entire external 64-item class is approved or implemented. The ordinary torrent manager, Add/transfer actions, phone/rTorrent parity and the Discovery master off switch stay first-class. Five specialist UX flows live behind contextual More, Properties, Settings or source connection routes.
+
+| Owner outcome (decision) | Canonical contract | Required proof before claiming feature available |
+|---|---|---|
+| Optional embedded tracker, browser peer compatibility and public-share subscriptions (D-NICHE-SHARE-20261029) | [Create & Share advanced](CREATE-AND-SHARE.md#optional-advanced-sharing-embedded-tracker-browser-peers-and-subscription-feeds) | Independent seeder/WebRTC/WSS reachability across positive/negative networks; tracker listener and Android lifecycle; RSS/Atom privacy + publish proof; standard Create unaffected |
+| Cross-seed candidates and verified resumable **actual-payload** copy (D-NICHE-REUSE-20261029) | [Cross-seed and payload copy](CROSS-SEED-AND-PAYLOAD-COPY.md) | Exact file/piece mapping for v1/v2/hybrid, false-match rejection, source seeding preservation, independent local/remote file permission, interrupted verified copy and safe restart; distinguish job-only Copy/Move Transfer |
+| On-demand MediaInfo and optional thumbnails (D-NICHE-MEDIA-20261029) | [Media inspection](MEDIA-INSPECTION.md) | Real container/track fixtures and hostile input limits, Android reader, authorized remote ranges, privacy/cache invalidation, partial/unknown states; no bulk scans |
+| Optional event rules, saved filters and trusted handoffs (D-NICHE-AUTOMATION-20261029) | [Event automation](EVENT-AUTOMATION.md) | Pure rule/dedupe/retry/DST fixtures, execution receipts and spoofed event tests; redacted webhook SSRF denial and explicit LAN auth; offline/lifecycle truth; no duplicated seeding policy |
+| Existing indexers and remote storage sync (D-NICHE-SERVICES-20261029) | [Existing services](EXISTING-SERVICE-INTEGRATIONS.md) | Prowlarr read-only API + torrent/Usenet separation, Discovery-off no egress, file-adapter auth/tenant protection, quota/conflict/copy verification and server-side executor proof where claimed |
+
+**Evidence principle:** New specification sections have no green/physical testing by themselves. Existing partial implementation notes (for example the standard Create journey and some file-copy mechanisms) remain narrow and must not be promoted to the advanced end-to-end capabilities above. New feature tiers need exact checked SHA, protocol fixture, Android/emulator, independent approved remote host and human UX as relevant in [QUALITY-LEDGER](QUALITY-LEDGER.md). Cross-links deliberately avoid copying each domain's test matrices.
+
 ## Ecosystem implied-capability specification closure (58 research items)
 
 **Specification-only, implementation/acceptance OPEN.** The preliminary B-classified capabilities in the external 240-item research inventory have 58 unique Fxx.yy IDs. The three feature contracts now define per-item scope, default UX, capability/security boundaries and test gates: [21 intake/queue/policies](INTAKE-QUEUE-AND-POLICIES.md), [27 files/protocol/diagnostics](FILES-PROTOCOL-AND-DIAGNOSTICS.md), [10 remote/integrations/preferences](REMOTE-INTEGRATIONS-AND-PREFERENCES.md). This does not demonstrate implementation or compel immediate implementation of optional third-party connectors.
