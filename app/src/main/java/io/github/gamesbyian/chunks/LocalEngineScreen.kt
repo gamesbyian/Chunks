@@ -831,12 +831,16 @@ internal fun LocalEngineScreen(
                 onDefault = { on -> if (finishInOrderStore.setDefaultForNewAdds(on)) finishInOrderDefault = on }
             )
         }
+        val seedingPreview = remember(add?.preview?.infoHashV1) {
+            add?.preview?.let { phoneSeedingPreview(context, it) }
+        }
         if (add != null && destination != null) LocalAddReview(
             add.preview, proposedAddDestination ?: destination,
             placeTitle = place?.title,
             busy = busy || inventoryStale || proposedAddDestination == null,
             startAfterAdd = startAfterAdd,
             storagePreflight = addStorage?.takeIf { it.first == add.preview.infoHashV1 }?.second,
+            seeding = seedingPreview,
             onConfirm = {
                 val selectedDraft = addFolderDraft
                 val selectedPlace = place
@@ -1548,6 +1552,8 @@ internal fun LocalAddReview(
     busy: Boolean,
     startAfterAdd: Boolean = false,
     storagePreflight: LocalAddStoragePreflight? = null,
+    /** What Smart Seeding will apply on this phone; null when no rule store is readable. */
+    seeding: io.github.gamesbyian.chunks.seeding.SeedingResolution? = null,
     onConfirm: () -> Unit,
     onCancel: () -> Unit
 ) {
@@ -1561,6 +1567,15 @@ internal fun LocalAddReview(
             Text(if (placeTitle == null)
                 "Saves into: Chunks' folder on phone storage (" + destination.absolutePath + "). Files here are removed if Chunks is uninstalled."
             else "Saves into: " + placeTitle + " (" + destination.absolutePath + ").")
+            seeding?.let { s ->
+                Text("Seeding: " + when (s.source) {
+                    io.github.gamesbyian.chunks.seeding.SeedingResolution.Source.RULE -> "rule"
+                    else -> "default for this phone"
+                } + " · " + s.policy.describe(), style = MaterialTheme.typography.bodyMedium)
+                s.reasons.firstOrNull()?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+                if (s.conflicts.isNotEmpty()) Text("Other matching rules not used: " + s.conflicts.joinToString(),
+                    style = MaterialTheme.typography.bodySmall)
+            }
             Text("Storage preflight (advisory; no automatic blocking or deletion)",
                 style = MaterialTheme.typography.titleSmall)
             val space = storagePreflight
@@ -2122,3 +2137,18 @@ internal suspend fun enableFinishInOrderAfterAdd(
         else -> "Finish in Order is saved and will apply once the engine reports this transfer."
     }
 }
+
+/**
+ * What Smart Seeding will snapshot for this phone Add, resolved from the
+ * reviewed metadata's tracker hosts. Null when the saved rules are unreadable.
+ */
+internal fun phoneSeedingPreview(context: Context, preview: io.github.gamesbyian.chunks.rpc.TorrentMetainfoPreview):
+    io.github.gamesbyian.chunks.seeding.SeedingResolution? {
+    val snapshot = io.github.gamesbyian.chunks.seeding.SeedingRuleStore(context).load()
+    if (snapshot.unreadable) return null
+    val env = io.github.gamesbyian.chunks.seeding.PhoneSeeding.ENVIRONMENT
+    return io.github.gamesbyian.chunks.seeding.SeedingRuleEngine.resolve(
+        io.github.gamesbyian.chunks.seeding.TransferFacts(env, preview.trackerHosts.map { "https://$it/" }, preview.isPrivate),
+        snapshot.rules, snapshot.defaults[env] ?: io.github.gamesbyian.chunks.seeding.SeedingPolicy())
+}
+
