@@ -2,6 +2,18 @@
 
 > **Interpretation:** each row states a specific requirement, bounded implementation observation and what still needs acceptance. Older run/PR references are historical snapshots, not automatic proof of the latest main branch. Reconcile against live code/PRs and the [QUALITY-LEDGER](QUALITY-LEDGER.md) before changing a status. Product intent belongs in [PRODUCT](PRODUCT.md) and feature contracts; task ordering only in [WORK-QUEUE](WORK-QUEUE.md).
 
+## Ecosystem implied-capability specification closure (58 research items)
+
+**Specification-only, implementation/acceptance OPEN.** The preliminary B-classified capabilities in the external 240-item research inventory have 58 unique Fxx.yy IDs. The three feature contracts now define per-item scope, default UX, capability/security boundaries and test gates: [21 intake/queue/policies](INTAKE-QUEUE-AND-POLICIES.md), [27 files/protocol/diagnostics](FILES-PROTOCOL-AND-DIAGNOSTICS.md), [10 remote/integrations/preferences](REMOTE-INTEGRATIONS-AND-PREFERENCES.md). This does not demonstrate implementation or compel immediate implementation of optional third-party connectors.
+
+| Contract | Required implementation slices | Independent evidence still needed |
+|---|---|---|
+| Intake/queue/policies (21) | URL/conditional feed intake, queue priorities/slots, retry/observation ledger, network/time quotas, conditional scheduling and source filters, local notes/pins | Pure policy fixtures, physical Android network/process-death, approved rTorrent queue/limits, accessibility |
+| Files/protocol/diagnostics (27) | Nested archive/checksum/path/link mapping, verified piece/peer/privacy controls, scope-safe diagnostics/audit and partial preview | Native engine v1/v2/hybrid, remote path/permission adapter, actual swarm, storage/VPN/port tests |
+| Remote/integrations/preferences (10) | Redacted profile settings import/export, CA/pairing/tunnel and role limits, opt-in media/cloud adapters, expert view/polling/report | Android Keystore/restore; read-only proxy and role fixtures; real compatible target services and visual/physical access |
+
+**Status rule:** classify each implementation slice individually after exact-head tests in [QUALITY-LEDGER](QUALITY-LEDGER.md), rather than promoting an entire inventory row from a screenshot, a saved setting or an API method. Existing [SMART-SEEDING-RULES](SMART-SEEDING-RULES.md), [STORAGE-AND-EXTRACTION](STORAGE-AND-EXTRACTION.md) and other domain contracts retain their own authority. No new device, peer or server verification was performed by this documentation work.
+
 ## Smart Seeding Rules: ratio, bandwidth and scoped automatic assignment
 
 **Required; implementation and acceptance OPEN.** [SMART-SEEDING-RULES](SMART-SEEDING-RULES.md) governs named/editable seeding groups, generated default labels, stable ID and explicit phone/per-remote environment scopes, ratio/duration/rate semantics, tracker matches, precedence, Add workflow, unattended intake opt-in, and truthful capability-specific enforcement. Test unit normalization (kbps vs KiB/s), missing/multiple tracker provenance, manual override, new/offline/renamed profiles, future-environment opt-in, shared-versus-per-job caps, auto-start hold/fallback, local/rTorrent readbacks, service disconnection, persisted rules and scoped batch changes. No source, emulator, Seedhost or physical-device implementation evidence is claimed.
