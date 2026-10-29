@@ -4,6 +4,11 @@
 
 [Agent instructions](../AGENTS.md) · [Documentation index](INDEX.md) · [Product contract](PRODUCT.md) · [Coverage gaps](SPEC-COVERAGE.md) · [Evidence](QUALITY-LEDGER.md) · [Documentation authoring standard](DOCUMENTATION-STANDARD.md)
 
+## Planned organization slice: Plex filename repairs
+
+Under existing organization priority and ownership, implement [PLEX-FILENAME-REPAIR](PLEX-FILENAME-REPAIR.md) in stages: deterministic conservative analyzer/minimal character-span diffs, batch review, alias-vs-physical-vs-published-copy distinction, safe exact-scope execution and recovery. Do not strip codec/release metadata or claim alias changes affect Plex; no backing-file mutation without engine mapping/integrity proof. Defer physical operations until corresponding storage adapter acceptance is available.
+
+
 ## How agents select and complete work
 
 1. Inspect current main, open PRs, claimed lanes, relevant issues and exact-head CI. Resolve obvious red integration issues before starting another overlapping change.
