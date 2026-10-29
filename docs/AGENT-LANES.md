@@ -1,6 +1,6 @@
 # Chunks: agent concurrency and ownership
 
-**These are capability areas, never fixed agent jobs.** On 2026-10-26 the owner had not assigned a persistent multi-agent roster. All agents choose from the **one** [ranked workboard](WORK-QUEUE.md), after reconciling live main, PRs, issues and active branches. No agent is presumed to be running because an old prompt mentions one. One agent may deliver multiple compatible slices; multiple agents must avoid the same source ownership.
+**These are capability areas, never fixed agent jobs.** No permanent app-development roster is established by this document; inspect actual live agent/branch ownership. All agents choose from the **one** [ranked workboard](WORK-QUEUE.md), after reconciling live main, PRs, issues and active branches. No agent is presumed to be running because an old prompt mentions one. One agent may deliver multiple compatible slices; multiple agents must avoid the same source ownership.
 
 | Expertise needed | Typical workboard issues | Coordination boundary |
 |---|---|---|

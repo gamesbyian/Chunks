@@ -1,5 +1,7 @@
 # Chunks security, privacy and operation authority
 
+> **Authority:** trust boundaries, credentials, privacy and destructive-operation safeguards. Historical acceptance notes below are limited evidence, not permission to bypass capability checks. [Agent instructions](../AGENTS.md) and [documentation standard](DOCUMENTATION-STANDARD.md) apply.
+
 **Tracker URLs in Copy Transfer to phone (2026-10-28):** `RTorrentRemote.readPublicTrackers` reads `t.url` only for an explicit user Copy of a transfer whose `d.is_private` is 0, with identity guarded before and after; private transfers return before any tracker URL is read. `PublicTrackerHandoff` additionally drops any URL with user info, passkey-style query keys or long opaque tokens before it reaches the phone's editable Add field. Tracker-health diagnostics still never read `t.url`.
 
 > **Owner correction (2026-10-28):** Cross-engine **Copy Transfer** and **Move Transfer** operate on torrent **jobs only**, never downloaded file bytes. Move adds and verifies the target job, then separately confirms session-only removal of the source job, leaving all source files untouched. Destination downloads independently. Prior text proposing payload transfer, file migration or waiting for target seeding under these names is superseded by [the authoritative transfer-job contract](CROSS-ENGINE-TRANSFER-JOBS.md).
@@ -8,15 +10,53 @@
 
 **Cross-media/privacy expansion:** Category inference must not accidentally trigger remote queries; adult catalogs and explicit thumbnails require separate affirmative switches and safe default art. General image search may send only sanitized and consented inferred title/edition/platform/artist terms to a compliant image API; never expose raw filename, infohash, tracker, paths, server details, credentials, private content or user IDs. Treat search-engine results as untrusted candidates with independent license, host, pixel and safety validation, never blindly download arbitrary image URLs. See [TRANSFER-ARTWORK](TRANSFER-ARTWORK.md).
 
-## External artwork privacy and untrusted-image boundary (planned)
+## Trust boundaries and threats
 
-All provider-based movie/TV artwork requests must be **disabled until explicit opt-in** and disclose that minimally normalized media search text plus network IP may be visible to external services. Do not transmit torrent infohash/magnets, passkey-bearing trackers, remote host/profile, original unsanitized filenames, paths or account data. Bound query text, escape/strip token and URL fragments, and allow user-entered search instead of auto-matching. No enrichment in locked/private views, notifications or diagnostic reports that could expose protected media identity. Images are untrusted HTTPS downloads requiring bounded redirects, content length, decode size, allowed raster formats, timeouts and safe cache storage; API credentials and provider license/attribution duties must be verified before enabling. Clear cache/disable settings required. This is presentation-only, never a remote mutation. See [TRANSFER-ARTWORK](TRANSFER-ARTWORK.md) and [#403](https://github.com/gamesbyian/Chunks/issues/403). **Planned.**
+1. Android UI/import boundary: an untrusted magnet link, torrent metainfo, file name or tracker URL can carry malicious paths, giant strings, Unicode, private tracker passkeys or URLs. Never use torrent-provided paths for raw file writes without engine + filesystem containment checks.
+2. Chunks ↔ rTorrent RPC: the endpoint may permit execution as the torrent user's OS account. Do not expose generic RPC method invocation through UI, intents, external deep links, logs or plugins. Authenticate and minimize methods.
+3. Chunks ↔ companion or alternative remote filesystem provider: default deny outside configured roots. Authorize each operation by server-side identity, permission and current target state, not by client-supplied classification suggestions.
+4. User storage: active torrent backing bytes, resume/session state, library copies and metadata catalogs have distinct ownership and deletion rights.
+5. Third-party metadata, crash reports and telemetry: potentially reveal private content, trackers, file paths and behaviors. Local-first, opt-in and with inspectable redacted output.
+
+## Connection and credentials
+
+- Never expose unauthenticated rTorrent SCGI to the public network. Prefer loopback/unix-socket SCGI behind a protected authenticated reverse proxy, private VPN or carefully scoped tunnel.
+- Require certificate-validated HTTPS for non-loopback remote access. Do not offer “ignore certificate” as a persistent fix. Evaluate Basic/Digest/provider session schemes without credential leakage or cross-origin redirect following.
+- Bound DNS resolution/response time, connection count, XML size and nesting, redirects, session retries, method concurrency and error display. Never print Authorization headers or full request/response bodies.
+- Never publish server login URLs, credentials, auth headers, cookie/session tokens or tracker passkeys in public CI, PRs, issues, fixtures or logs. The owner explicitly designated the Chunks development Seedhost torrent inventory as nonconfidential: its **nonsecret** transfer names, hashes, file paths and states may be captured in reviewable test fixtures and native screenshot atlases. This authorization does not cover any unrelated server or embedded reusable tracker/authentication secrets.
+- One device-local remembered remote login now defaults ON (#232): Android Keystore AES-GCM protects endpoint, username and password as app-private ciphertext with backups disabled. Only a successfully verified connection saves credentials; users may opt out before Connect or Forget at any time. A missing/tampered encryption key fails closed and erases unusable ciphertext. The native API35 vault tests cover save, load after new instance, plaintext absence, corruption and Forget. Multi-profile rotation/revocation, threat-model review and physical loss/device-restore acceptance remain outstanding; do not interpret this prototype as a password manager.
+- Avoid untrusted content injection from torrent titles, HTML-like file names and RPC fault strings. User-visible errors should sanitize remote-controlled text.
+
+## Session privacy gate and biometric trust boundary (owner requirement)
+
+[TRANSFER-PRIVACY-LOCK.md](TRANSFER-PRIVACY-LOCK.md) governs the optional local-transfer and per-remote-profile interface privacy lock. Enabled scopes default to one authentication per **app process session**, never persisted across a process restart. Use Android BiometricPrompt (supported strong biometrics and/or device credentials); biometric success is a scoped UI authorization, **not rTorrent server authentication** and not proof that a remote password is securely encrypted. Protect content at route/action boundaries before first render, including recents, deep links, intents, notifications, widgets and accessibility exposure. Authenticate again for sensitive operations according to policy, while preserving separate exact-target destructive confirmation. A locked UI must not stop local seeding or approved background work. Merged #232 now remembers one rTorrent login by default with Android Keystore-backed encryption, explicit opt-out/Forget, failure recovery and unbacked-up storage, with JVM/API35 evidence in QUALITY-LEDGER. The **optional BiometricPrompt privacy lock itself** remains specification only: actual gate enforcement, per-scope access, PIN fallback and physical authentication acceptance are still pending.
 
 ## Current multi-profile and support-report privacy boundaries (2026-10-27)
 
 Merged #332 implements Android Keystore AES-GCM encrypted remembered rTorrent credentials for at most 12 account-scoped profiles. Saved account selection never contacts the server; successful authenticated Connect is required before adding saved credentials. Device-local opt-out and profile forget remain distinct from the still-unimplemented biometric transfer-view lock. Tested with JVM/native API35, not physical phone or actual fingerprint/PIN. Merged #331 offers bounded local inventory-only snapshots without payloads, credentials or restorable .torrent records, with historical paths excluded unless explicitly selected. Proposed #335 local/remote download-health reports are default-redacted one-frame observations, intentionally omitting hashes, paths, endpoints, usernames, tracker details and raw errors; optional names require user opt-in, and any exported artifact should be handled privately. Never call an observed Start flag or zero rate proof of verified payload movement.
 
 Updated after CRITICAL-REVIEW-2026-10-24.md. Public source repository, untrusted torrent metadata, powerful rTorrent RPC and destructive filesystem operations create a combined trust problem. The primary objective is protecting users' private server credentials and valuable already-seeding data.
+
+## Secure rTorrent connection discovery (2026-10-28)
+
+[SMART-REMOTE-CONNECTION](SMART-REMOTE-CONNECTION.md) controls provider detection. Any automatic candidate must retain the user's HTTPS origin, prevent embedded credentials/query/fragment and reject traversal. Do not follow redirects or silently turn certificate failures into HTTP fallback, global trust-all or disabled hostname verification. Authentication rejection terminates the path search to avoid account lockouts. The connection handshake uses read-only `system.client_version` plus validated bounded `main` inventory; no Add/Erase/Start/Stop or speculative probes of unrelated service hosts. Store only successfully authenticated credentials in the reviewed Android Keystore-backed profile. Insecure public SCGI endpoints are potentially full rTorrent code-execution access: never recommend exposing raw SCGI to the Internet; use authenticated HTTPS reverse proxies or protected tunnels. Custom CA and certificate pinning need an explicit independently verified trust workflow, not bypass toggles. As provider support expands, threat-model redirects, proxy 401/403/407, credential scope, impersonating HTML, long XML and tenant-safe multiple instances before shipping.
+
+## Destination defaults and recent-Place safety
+
+The owner-directed on-device public **Downloads/Chunks Downloads** default is a product target, not a grant to bypass Android scoped storage. Modern Android restricts picking the Downloads root as an SAF tree, and torrent payload writes require engine-compatible durable random access. Do not request broad all-files permissions solely as a shortcut; validate API-compliant access, seekability, permissions, collisions, source/target identity and actual readback before advertising an active public folder. Never silently relabel app-private storage as public Downloads. For remote profiles, use only verified existing server defaults and do **not** create Chunks directories. Treat recents as scoped sensitive local metadata; keep per-engine/account, validate permissions/existence/capability on reuse, and prevent malicious saved paths or stale remote permissions from bypassing normal destination authorization. Full requirements: [PRODUCT.md](PRODUCT.md), [ARCHITECTURE.md](ARCHITECTURE.md).
+
+## Chrome-independent Android Downloads authorization
+
+The chosen local folder may coincide with Chrome's usual Android Downloads location, but Chunks must never scrape Chrome private data, request invasive permissions to discover another app's preference, or trust filenames as proof of Chrome's configured directory. Device-folder authority belongs to Android grants/public storage APIs and to Chunks' verified backing-store adapter. Treat SD card changes, URI grant expiry, absent volumes, unexpected providers and symlink/path collisions as invalidation events requiring checked recovery. The public Downloads target is not grounds for all-files-access permission by itself. Protect remembered location identifiers and avoid leaking sensitive paths in unauthenticated UI. See [ARCHITECTURE.md](ARCHITECTURE.md) for engine compatibility acceptance.
+
+## Companion authorization and destructive file operations
+
+- Separate the companion from rTorrent's unrestricted RPC privilege; no arbitrary shell command/execute endpoint. Fixed typed operations (inventory/prepare/move/copy/rename/verify/recover) with server-side target validation.
+- Restrict operations to independently configured allowed roots. Use symlink-resistant directory handles and ownership/ACL checks, refuse traversal, reserved paths, special files, conflicting mount/container path translations, case-insensitive collisions and stale/incomplete inventories.
+- Durable request IDs, restricted capabilities and fencing/locks are essential. A client disconnection is **not** a mutation failure. Resume only after reading the server's authoritative journal and reconciling a possibly committed operation.
+- Never delete data while another torrent may reference the same underlying bytes, while copy verification is incomplete, or while rTorrent's mapped path is uncertain.
+- An alternative SFTP/SSH transport might browse/copy files but does not automatically confer safe live torrent rebind capability; verify coordination or refuse.
+- Automatic category suggestions do not create user authorization to alter files. Confirm destructive actions at exact target granularity, with batch dry-run and understandable recovery options.
 
 ## Local ↔ remote copy/move and archive-delete threat boundaries
 
@@ -28,61 +68,27 @@ Deleting a torrent-backed archive after extraction can invalidate torrent hashes
 
 Bulk selection must not amplify authority: each transfer and destination is independently scoped, authenticated, permission-checked, preflighted and journaled. Handle mixed profiles, duplicate infohashes, overlapping payload files/hardlinks and stale selections without cross-account leakage or double deletion. Do not auto-retry ambiguous remote Adds or deletes; observe authoritative state first. Limit concurrent transfers and disk/network pressure. Provide aggregate and per-item cancellation and clear partial-success reporting. For batch Move, never delete any source merely because another child succeeded: require that exact child's destination integrity/resume/seeding proof and explicit, reviewable destructive approval. A batch-wide checkbox cannot bypass precise target confirmation or the separate archive deletion safety contract. No credentials in metadata transfers, manifests or logs.
 
-## Trust boundaries and threats
-
-1. Android UI/import boundary: an untrusted magnet link, torrent metainfo, file name or tracker URL can carry malicious paths, giant strings, Unicode, private tracker passkeys or URLs. Never use torrent-provided paths for raw file writes without engine + filesystem containment checks.
-2. Chunks ↔ rTorrent RPC: the endpoint may permit execution as the torrent user's OS account. Do not expose generic RPC method invocation through UI, intents, external deep links, logs or plugins. Authenticate and minimize methods.
-3. Chunks ↔ companion or alternative remote filesystem provider: default deny outside configured roots. Authorize each operation by server-side identity, permission and current target state, not by client-supplied classification suggestions.
-4. User storage: active torrent backing bytes, resume/session state, library copies and metadata catalogs have distinct ownership and deletion rights.
-5. Third-party metadata, crash reports and telemetry: potentially reveal private content, trackers, file paths and behaviors. Local-first, opt-in and with inspectable redacted output.
-
-## Session privacy gate and biometric trust boundary (owner requirement)
-
-[TRANSFER-PRIVACY-LOCK.md](TRANSFER-PRIVACY-LOCK.md) governs the optional local-transfer and per-remote-profile interface privacy lock. Enabled scopes default to one authentication per **app process session**, never persisted across a process restart. Use Android BiometricPrompt (supported strong biometrics and/or device credentials); biometric success is a scoped UI authorization, **not rTorrent server authentication** and not proof that a remote password is securely encrypted. Protect content at route/action boundaries before first render, including recents, deep links, intents, notifications, widgets and accessibility exposure. Authenticate again for sensitive operations according to policy, while preserving separate exact-target destructive confirmation. A locked UI must not stop local seeding or approved background work. Merged #232 now remembers one rTorrent login by default with Android Keystore-backed encryption, explicit opt-out/Forget, failure recovery and unbacked-up storage, with JVM/API35 evidence in QUALITY-LEDGER. The **optional BiometricPrompt privacy lock itself** remains specification only: actual gate enforcement, per-scope access, PIN fallback and physical authentication acceptance are still pending.
-
-## Destination defaults and recent-Place safety
-
-The owner-directed on-device public **Downloads/Chunks Downloads** default is a product target, not a grant to bypass Android scoped storage. Modern Android restricts picking the Downloads root as an SAF tree, and torrent payload writes require engine-compatible durable random access. Do not request broad all-files permissions solely as a shortcut; validate API-compliant access, seekability, permissions, collisions, source/target identity and actual readback before advertising an active public folder. Never silently relabel app-private storage as public Downloads. For remote profiles, use only verified existing server defaults and do **not** create Chunks directories. Treat recents as scoped sensitive local metadata; keep per-engine/account, validate permissions/existence/capability on reuse, and prevent malicious saved paths or stale remote permissions from bypassing normal destination authorization. Full requirements: [PRODUCT.md](PRODUCT.md), [ARCHITECTURE.md](ARCHITECTURE.md).
-
-## Chrome-independent Android Downloads authorization
-
-The chosen local folder may coincide with Chrome's usual Android Downloads location, but Chunks must never scrape Chrome private data, request invasive permissions to discover another app's preference, or trust filenames as proof of Chrome's configured directory. Device-folder authority belongs to Android grants/public storage APIs and to Chunks' verified backing-store adapter. Treat SD card changes, URI grant expiry, absent volumes, unexpected providers and symlink/path collisions as invalidation events requiring checked recovery. The public Downloads target is not grounds for all-files-access permission by itself. Protect remembered location identifiers and avoid leaking sensitive paths in unauthenticated UI. See [ARCHITECTURE.md](ARCHITECTURE.md) for engine compatibility acceptance.
-
-## Connection and credentials
-
-- Never expose unauthenticated rTorrent SCGI to the public network. Prefer loopback/unix-socket SCGI behind a protected authenticated reverse proxy, private VPN or carefully scoped tunnel.
-- Require certificate-validated HTTPS for non-loopback remote access. Do not offer “ignore certificate” as a persistent fix. Evaluate Basic/Digest/provider session schemes without credential leakage or cross-origin redirect following.
-- Bound DNS resolution/response time, connection count, XML size and nesting, redirects, session retries, method concurrency and error display. Never print Authorization headers or full request/response bodies.
-- Never publish server login URLs, credentials, auth headers, cookie/session tokens or tracker passkeys in public CI, PRs, issues, fixtures or logs. The owner explicitly designated the Chunks development Seedhost torrent inventory as nonconfidential: its **nonsecret** transfer names, hashes, file paths and states may be captured in reviewable test fixtures and native screenshot atlases. This authorization does not cover any unrelated server or embedded reusable tracker/authentication secrets.
-- One device-local remembered remote login now defaults ON (#232): Android Keystore AES-GCM protects endpoint, username and password as app-private ciphertext with backups disabled. Only a successfully verified connection saves credentials; users may opt out before Connect or Forget at any time. A missing/tampered encryption key fails closed and erases unusable ciphertext. The native API35 vault tests cover save, load after new instance, plaintext absence, corruption and Forget. Multi-profile rotation/revocation, threat-model review and physical loss/device-restore acceptance remain outstanding; do not interpret this prototype as a password manager.
-- Avoid untrusted content injection from torrent titles, HTML-like file names and RPC fault strings. User-visible errors should sanitize remote-controlled text.
-
-## Companion authorization and destructive file operations
-
-- Separate the companion from rTorrent's unrestricted RPC privilege; no arbitrary shell command/execute endpoint. Fixed typed operations (inventory/prepare/move/copy/rename/verify/recover) with server-side target validation.
-- Restrict operations to independently configured allowed roots. Use symlink-resistant directory handles and ownership/ACL checks, refuse traversal, reserved paths, special files, conflicting mount/container path translations, case-insensitive collisions and stale/incomplete inventories.
-- Durable request IDs, restricted capabilities and fencing/locks are essential. A client disconnection is **not** a mutation failure. Resume only after reading the server's authoritative journal and reconciling a possibly committed operation.
-- Never delete data while another torrent may reference the same underlying bytes, while copy verification is incomplete, or while rTorrent's mapped path is uncertain.
-- An alternative SFTP/SSH transport might browse/copy files but does not automatically confer safe live torrent rebind capability; verify coordination or refuse.
-- Automatic category suggestions do not create user authorization to alter files. Confirm destructive actions at exact target granularity, with batch dry-run and understandable recovery options.
-
-## Data collection and consent
-
-No default telemetry, network metadata enrichment, tracker discovery, content upload, or diagnostics upload. If logs are requested, provide preview and redaction before export; redact file paths, info hashes and hostnames by default. Allow user inspection and deletion of locally recorded rules/preferences.
-
-## Acceptance
-
-Security review must include RPC method allowlists, XXE/deep XML fuzz cases on Android, TLS/auth behavior, malicious path and symlink races, concurrent ruTorrent/external script modifications, large response exhaustion, cross-user root isolation, storage deletion semantics and failure recovery. Do not use production seedboxes for destructive fault injection. Report each tested attack surface against exact source SHA, server topology and platform version.
-
 ## Storage cleanup and archive threat boundary
 
 Treat torrent file names and archive entries as untrusted. The cleanup wizard must be dry-run first; destructive changes require exact file ownership, scope, shared-reference/active-writer validation, separate confirmation of seeding loss, journal and observed postconditions. Never treat extraction success as permission to delete the original torrent-backed archive. An apparent duplicate can share an inode or torrent pieces and may release no physical bytes on removal.
 
 Extraction must bound total actual output bytes, ratio, member count, depth, CPU/time and staging space, and prevent traversal, links, Unicode/case collisions, special file writes, malicious multipart archives and decompression bombs. Android SAF roots and remote storage credentials have distinct grants; no broad arbitrary remote deletion/extraction shell. Exact requirements and adversarial QA: [STORAGE-AND-EXTRACTION.md](STORAGE-AND-EXTRACTION.md).
 
+## External artwork privacy and untrusted-image boundary (planned)
+
+All provider-based movie/TV artwork requests must be **disabled until explicit opt-in** and disclose that minimally normalized media search text plus network IP may be visible to external services. Do not transmit torrent infohash/magnets, passkey-bearing trackers, remote host/profile, original unsanitized filenames, paths or account data. Bound query text, escape/strip token and URL fragments, and allow user-entered search instead of auto-matching. No enrichment in locked/private views, notifications or diagnostic reports that could expose protected media identity. Images are untrusted HTTPS downloads requiring bounded redirects, content length, decode size, allowed raster formats, timeouts and safe cache storage; API credentials and provider license/attribution duties must be verified before enabling. Clear cache/disable settings required. This is presentation-only, never a remote mutation. See [TRANSFER-ARTWORK](TRANSFER-ARTWORK.md) and [#403](https://github.com/gamesbyian/Chunks/issues/403). **Planned.**
+
+## Data collection and consent
+
+No default telemetry, network metadata enrichment, tracker discovery, content upload, or diagnostics upload. If logs are requested, provide preview and redaction before export; redact file paths, info hashes and hostnames by default. Allow user inspection and deletion of locally recorded rules/preferences.
+
 ## Display alias privacy boundary
 
 Locally entered labels can reveal torrent contents. Keep them in app-private preferences, unbacked-up in the current prototype, and never transmit them via rTorrent RPC, tracker requests or external metadata enrichment. Hash-based preference keys are identifiers, not encryption; never include passwords, session cookies or tracker passkeys in the key input. Bound and validate aliases, reject hidden bidi/control characters and render them only as inert text. Suggestions derive exclusively from supplied filename facts; any future external title/guest lookup requires explicit, informed, revocable consent and source provenance. An alias must never authorize physical file operations or replace the exact hash/path mutation preflight.
+
+## Acceptance
+
+Security review must include RPC method allowlists, XXE/deep XML fuzz cases on Android, TLS/auth behavior, malicious path and symlink races, concurrent ruTorrent/external script modifications, large response exhaustion, cross-user root isolation, storage deletion semantics and failure recovery. Do not use production seedboxes for destructive fault injection. Report each tested attack surface against exact source SHA, server topology and platform version.
 
 ## Literal-loopback-only Android HTTP test boundary
 
@@ -105,7 +111,3 @@ The local engine's default save area remains app-private. A finished transfer ma
 ## SAF storage read-back integrity (merged #164; 2026-10-26)
 
 Never infer durable destination bytes solely from successful `OutputStream.write`, flush or provider-created document names. Chunks now requires an independent post-write read of newly created SAF output before publishing the new folder: CRC/actual length for ZIP and SHA-256/actual length for independent local library copies. Unsupported/changed readback fails closed and rolls back only journaled output. [#164](https://github.com/gamesbyian/Chunks/pull/164) passed source/JVM fault tests, not physical provider verification; permissions, post-rename races, SD/cloud durability and process death still require separate acceptance. [#163](https://github.com/gamesbyian/Chunks/pull/163) additionally refuses a truncated (>10,000) local torrent file inventory before copying. Neither change permits deleting original torrent payloads.
-
-## Secure rTorrent connection discovery (2026-10-28)
-
-[SMART-REMOTE-CONNECTION](SMART-REMOTE-CONNECTION.md) controls provider detection. Any automatic candidate must retain the user's HTTPS origin, prevent embedded credentials/query/fragment and reject traversal. Do not follow redirects or silently turn certificate failures into HTTP fallback, global trust-all or disabled hostname verification. Authentication rejection terminates the path search to avoid account lockouts. The connection handshake uses read-only `system.client_version` plus validated bounded `main` inventory; no Add/Erase/Start/Stop or speculative probes of unrelated service hosts. Store only successfully authenticated credentials in the reviewed Android Keystore-backed profile. Insecure public SCGI endpoints are potentially full rTorrent code-execution access: never recommend exposing raw SCGI to the Internet; use authenticated HTTPS reverse proxies or protected tunnels. Custom CA and certificate pinning need an explicit independently verified trust workflow, not bypass toggles. As provider support expands, threat-model redirects, proxy 401/403/407, credential scope, impersonating HTML, long XML and tenant-safe multiple instances before shipping.
