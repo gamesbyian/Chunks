@@ -46,6 +46,10 @@ The normal primary navigation remains **Transfers / Places / Collections / Serve
 5. Authorized private-indexer credentials are isolated and redacted; request limits, unsupported services, lost permissions, malicious feeds and Android background restrictions are handled explicitly.
 6. Discover toggle and Add entry pass 320×700, 412×892, 200% font, TalkBack and keyboard tests without demoting core torrent controls.
 
+## Connected indexer services and optional cross-seed search
+
+Existing-service adapters (such as an independently authorized Prowlarr-compatible source) are specified **only** in [EXISTING-SERVICE-INTEGRATIONS](EXISTING-SERVICE-INTEGRATIONS.md). They may contribute provider-labelled results to the standard Discover source picker and may be manually refreshed when Discovery is on; they are never general-purpose server administrators, NZB download engines or a reason to weaken the master off switch. Disabling Discovery also disables background indexer-source synchronization and discovery-driven cross-seed searches; a user can still import and locally compare an explicitly provided .torrent file without network discovery. Exact source/credential scope and tests are in that canonical contract and [CROSS-SEED-AND-PAYLOAD-COPY](CROSS-SEED-AND-PAYLOAD-COPY.md). These integrations are specialist secondary controls, not first-run mandatory setup.
+
 ## Queue, retries, history and liveness
 
 - **F02.05 queue ordering:** Present readable user priority (Sooner / Normal / Later), optional explicit up/down/top/bottom reorder and queue position when the selected engine actually exposes mutable ordering. Moving a transfer within a filtered view must not reorder a hidden different transfer inadvertently. A Chunks-only visual order is never labelled as an enforced engine queue order. Distinguish queue priority from per-file priority and [Finish in Order](PRODUCT.md#multi-file-completion-order-finish-in-order-owner-direction-2026-10-27).
