@@ -735,6 +735,23 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         return uploadLimit(infoHash) == wanted
     }
 
+    /**
+     * Smart Seeding facts for every transfer: when it was added, its tracker URLs
+     * (null until metadata is known) and the private flag. Tracker URLs stay in
+     * memory for matching only; callers must never store or log them.
+     */
+    internal fun seedingFacts(): List<io.github.gamesbyian.chunks.seeding.SeedingController.Facts> = try {
+        synchronized(this) {
+            handles.entries.toList().mapNotNull { (key, handle) ->
+                if (!handle.isValid) return@mapNotNull null
+                val status = handle.status()
+                val info = handle.torrentFile()?.takeIf { it.isValid && status.hasMetadata() }
+                io.github.gamesbyian.chunks.seeding.SeedingController.Facts(key, status.addedTime() * 1000L,
+                    info?.let { handle.trackers().map { t -> t.url() } }, info?.isPrivate)
+            }
+        }
+    } catch (_: Exception) { emptyList() }
+
     /** Counters for Smart Seeding decisions, read from one status snapshot. */
     internal fun seedingObservation(infoHash: String): io.github.gamesbyian.chunks.seeding.SeedingObservation? = try {
         synchronized(this) {

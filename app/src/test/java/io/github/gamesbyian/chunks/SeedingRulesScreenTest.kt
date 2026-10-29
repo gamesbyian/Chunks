@@ -35,7 +35,7 @@ class SeedingRulesScreenTest {
 
     @Test fun createAScopedRuleWithExactUnitsAndItPersists() {
         rule.setContent { ChunksTheme { Surface(color = ChunksColors.Background) { SeedingRulesScreen(environments) {} } } }
-        rule.onNodeWithText("Saved, not applied yet").assertExists()
+        rule.onNodeWithText("What these rules do today").assertExists()
         rule.onNodeWithText("New rule").performClick()
         field("Tracker domains").performTextReplacement("https://tracker.example/announce")
         rule.onNodeWithText("is not a tracker domain", substring = true).assertExists()

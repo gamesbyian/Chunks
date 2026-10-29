@@ -73,9 +73,11 @@ internal fun SeedingRulesScreen(environments: List<SeedingEnvironment>, onBack: 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Seeding rules", style = MaterialTheme.typography.headlineSmall)
-        ChunksBanner("Saved, not applied yet",
-            "Chunks saves these rules but does not yet apply them to transfers. Nothing is stopped or limited " +
-                "because of a rule in this version.", ChunksTone.PAUSED)
+        ChunksBanner("What these rules do today",
+            "On this phone, rules apply to transfers added from now on, while Chunks is running: upload limits " +
+                "are set and confirmed, and a reached stop condition pauses the transfer once. Transfers you already " +
+                "have are not changed, and editing a rule does not change transfers it was already applied to. " +
+                "Server rules are saved but not applied yet. Nothing is ever removed or deleted.", ChunksTone.PAUSED)
         if (snapshot.unreadable) {
             ChunksBanner("Saved rules could not be read",
                 "They are kept as they are. Start over only if you are sure; that replaces them.", ChunksTone.ERROR)
