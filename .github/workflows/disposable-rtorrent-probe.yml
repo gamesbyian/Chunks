@@ -20,9 +20,13 @@ on:
       - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalTorrentEngine.kt"
 permissions:
   contents: read
+# GitHub concurrency allows only one running and one pending run per group.
+# A global group silently cancels older pending PRs when a third arrives,
+# leaving those source heads without their real-engine acceptance gate.
+# Keep one current attempt per PR; distinct PRs must not evict one another.
 concurrency:
-  group: chunks-disposable-probe
-  cancel-in-progress: false
+  group: chunks-disposable-probe-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   legacy-real-engine:
     runs-on: ubuntu-latest
