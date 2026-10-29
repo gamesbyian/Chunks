@@ -146,55 +146,14 @@ object RemoteSmartConnect {
             return entries.values.toList()
         }
 
-        val host = uri.host.lowercase()
         val safeUser = username.trim().takeIf {
             it.length in 1..64 && Regex("[A-Za-z0-9_.-]+").matches(it) &&
                 it != "." && it != ".."
         }
-        when {
-            host == "seedhost.eu" || host.endsWith(".seedhost.eu") -> {
-                // SeedHost documents both /username/RPC1 and an HTTP-RPC
-                // route under the ruTorrent root, with deployment variance.
-                // Some provider installations put the account in the host,
-                // others in the path. Keep the exact host the user entered.
-                if (safeUser != null && host.startsWith(safeUser.lowercase() + ".")) {
-                    add("/rutorrent/plugins/httprpc/action.php", "SeedHost ruTorrent")
-                    add("/RPC1", "SeedHost direct RPC")
-                }
-                if (safeUser != null) {
-                    add("/$safeUser/rutorrent/plugins/httprpc/action.php", "SeedHost account ruTorrent")
-                    add("/$safeUser/RPC1", "SeedHost account SCGI")
-                }
-                add("/rutorrent/plugins/httprpc/action.php", "SeedHost ruTorrent")
-                add("/RPC1", "SeedHost direct RPC")
-            }
-            host == "usbx.me" || host.endsWith(".usbx.me") -> {
-                add("/RPC2", "Ultra.cc direct RPC")
-                add("/rutorrent/plugins/httprpc/action.php", "ruTorrent HTTP-RPC")
-            }
-            host == "whatbox.ca" || host.endsWith(".whatbox.ca") -> {
-                add("/xmlrpc", "Whatbox XML-RPC")
-                add("/rutorrent/plugins/httprpc/action.php", "ruTorrent HTTP-RPC")
-            }
-            host == "appboxes.co" || host.endsWith(".appboxes.co") -> {
-                add("/RPC2", "Appbox direct RPC")
-                add("/rutorrent/plugins/httprpc/action.php", "ruTorrent HTTP-RPC")
-            }
-            // RapidSeedbox's dedicated HTTPS rt-* service uses rpc.php,
-            // not the usual httprpc/action.php name.
-            host.endsWith(".seedbox.vip") && host.startsWith("rt-") -> {
-                add("/plugins/rpc/rpc.php", "RapidSeedbox ruTorrent RPC")
-                add("/rutorrent/plugins/rpc/rpc.php", "RapidSeedbox prefixed RPC")
-            }
-            else -> {
-                // Bounded generic nginx/Apache patterns. Custom providers
-                // remain possible through an explicit, user-pasted full URL.
-                add("/rutorrent/plugins/httprpc/action.php", "ruTorrent HTTP-RPC")
-                add("/RPC2", "Common direct SCGI")
-                add("/xmlrpc", "Common XML-RPC")
-                if (safeUser != null) add("/$safeUser", "Account SCGI mount")
-            }
-        }
+        // Reviewed provider templates (source URL + date in the catalog), or
+        // bounded generic nginx/Apache patterns. Custom providers remain
+        // possible through an explicit, user-pasted full URL.
+        for ((path, description) in RemoteProviderCatalog.plan(uri.host, safeUser)) add(path, description)
         return entries.values.toList()
     }
 

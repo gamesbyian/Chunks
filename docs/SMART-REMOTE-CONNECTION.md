@@ -79,6 +79,19 @@ profile. Unit tests cover tenant boundaries, provider patterns,
 unsupported/insecure input, credential failure and fallback. This does
 **not** claim all provider families have live acceptance.
 
+**Provider catalog (2026-10-29):** hostname-only plans now come from
+`rpc/RemoteProviderCatalog.kt`, a data-only list whose entries carry the
+reference URL, review date, DNS domains matched on whole labels, optional
+first-label prefix, ordered path templates (account placeholders only from
+a validated username, never for Feral slots) and a `liveAccepted` flag that
+stays `false` until a ledger-recorded handset journey exists. A JVM test pins
+every plan exactly, so catalog edits are deliberate. The Connect form shows a
+credential-free "Recognised <provider>" hint (polite live region) stating the
+match is based on reviewed docs and not yet tested by Chunks. Feral and
+Bytesized entries carry only a paste-your-full-address tip; self-hosted
+families (Swizzin, QuickBox) and Seedbox.io's numbered RPC paths have no
+host pattern and keep using an exact pasted URL.
+
 **Known first-slice limitations:** No explicit provider selector; no live
 capability grading beyond version+main view; no cancel/progress details
 for discovery; no DNS-SRV, Zeroconf, QR pairing, browser extension

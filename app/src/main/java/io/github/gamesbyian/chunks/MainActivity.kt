@@ -52,6 +52,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -74,6 +77,7 @@ import io.github.gamesbyian.chunks.organize.Classifier
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
 import io.github.gamesbyian.chunks.rpc.RemoteSmartConnect
+import io.github.gamesbyian.chunks.rpc.RemoteProviderCatalog
 import io.github.gamesbyian.chunks.rpc.RemoteFile
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
 import io.github.gamesbyian.chunks.rpc.RemoteQueueActivityContext
@@ -954,6 +958,9 @@ private fun ConnectionScreen(
                 placeholder = { Text("server.example or https://server.example/rutorrent/") },
                 singleLine = true, modifier = Modifier.fillMaxWidth()
             )
+            val providerHint = remember(endpoint) { RemoteProviderCatalog.hint(endpoint) }
+            if (providerHint != null) Text(providerHint, style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 4.dp).semantics { liveRegion = LiveRegionMode.Polite })
         }
         item {
             OutlinedTextField(
