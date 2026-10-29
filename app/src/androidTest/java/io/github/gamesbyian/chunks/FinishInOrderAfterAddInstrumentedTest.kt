@@ -47,4 +47,26 @@ class FinishInOrderAfterAddInstrumentedTest {
         assertTrue("still stopped", requireNotNull(local.status(added.status.infoHash)).stopped)
         assertNotNull(FinishInOrderStore(context).get(added.status.infoHash))
     }
+
+    @Test fun magnetRequestIsSetUpOnTheFirstTickAfterTheFileListExists() {
+        val season = File(work, "Season 2").apply { mkdirs() }
+        for (n in 1..3) File(season, "Public S02E0$n.mkv").writeBytes(ByteArray(32 * 1024) { (n * 7 + it).toByte() })
+        val bytes = TorrentBuilder().path(season).pieceSize(16 * 1024).generate().entry().bencode()
+        val target = File(work, "target2").apply { mkdirs() }
+        val shared = LocalEngineHolder.get(context)
+        val added = shared.addStopped(bytes, target) as LocalAddResult.AddedStopped
+        hash = added.status.infoHash
+        try {
+            val store = FinishInOrderStore(context)
+            assertTrue(store.requestAfterMetadata(added.status.infoHash))
+            FinishInOrderController.tick(context, shared.list())
+            assertNotNull("policy created once metadata is known", store.get(added.status.infoHash))
+            assertTrue(store.afterMetadataRequests().isEmpty())
+            val first = requireNotNull(shared.files(added.status.infoHash))
+                .single { it.path.endsWith("Public S02E01.mkv") }
+            assertEquals(7, first.priority)
+        } finally {
+            shared.removeKeepingData(added.status.infoHash)
+        }
+    }
 }

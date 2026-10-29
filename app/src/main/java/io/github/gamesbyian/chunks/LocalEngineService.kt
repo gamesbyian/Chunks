@@ -172,7 +172,7 @@ class LocalEngineService : Service() {
         // Finish in Order advances on this same single poll lane, throttled
         // per transfer; it never starts an engine or blocks the stop lane.
         if (observed != null) {
-            try { FinishInOrderController.tick(this, observed.map { it.infoHash }) }
+            try { FinishInOrderController.tick(this, observed) }
             catch (_: Exception) {}
         }
         val poll = LocalServicePoll.classify(observed)

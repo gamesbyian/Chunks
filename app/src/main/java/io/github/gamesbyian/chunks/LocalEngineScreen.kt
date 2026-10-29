@@ -632,7 +632,16 @@ internal fun LocalEngineScreen(
         OutlinedTextField(value = magnet, onValueChange = { magnet = it.trim() },
             label = { Text("Or paste a magnet link") }, singleLine = true,
             modifier = Modifier.fillMaxWidth())
+        var magnetFinishInOrder by remember(magnet) { mutableStateOf(false) }
         if (magnet.isNotEmpty() && destination != null) {
+            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                .toggleable(value = magnetFinishInOrder, enabled = !busy && !inventoryStale,
+                    role = Role.Checkbox, onValueChange = { magnetFinishInOrder = it }),
+                verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(checked = magnetFinishInOrder, enabled = !busy && !inventoryStale, onCheckedChange = null)
+                Text("Finish in Order once the file list arrives (episodes or numbered files)",
+                    modifier = Modifier.padding(start = 8.dp))
+            }
             Text("Saves into the download location shown above. Magnets first discover metadata via peers/trackers; if Start after Add is selected, payload downloading begins after metadata arrives. Without peers, downloading cannot begin.",
                 style = MaterialTheme.typography.bodySmall)
             LocalMagnetDiscoveryPrompt(
@@ -647,6 +656,7 @@ internal fun LocalEngineScreen(
                 val selectedPlace = place
                 val selectedMagnet = magnet
                 val autoStart = startAfterAdd
+                val orderLater = magnetFinishInOrder
                 performLocalMutation {
                     try {
                         val result = withContext(Dispatchers.IO) {
@@ -656,6 +666,9 @@ internal fun LocalEngineScreen(
                                 "The download location or subfolder is unavailable, nonempty or unsafe. Nothing was added.")
                             else LocalEngineHolder.get(context).addMagnet(
                                 selectedMagnet, chosen, autoStartAfterMetadata = autoStart)
+                        }
+                        if (orderLater && result is LocalAddResult.FetchingMetadata) withContext(Dispatchers.IO) {
+                            finishInOrderStore.requestAfterMetadata(result.status.infoHash)
                         }
                         message = when (result) {
                             is LocalAddResult.Refused -> result.reason
