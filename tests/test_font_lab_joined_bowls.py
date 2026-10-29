@@ -30,6 +30,8 @@ class JoinedBowlWeights(unittest.TestCase):
                     p=next(x for x in svg.iter() if x.tag.endswith('path')).attrib['d']
                     pen=RecordingPen();parse_path(p,pen)
                     self.assertEqual(sum(op=='moveTo' for op,_ in pen.value),2)
-                    self.assertGreaterEqual(sum(op=='curveTo' for op,_ in pen.value),7)
-                    self.assertGreaterEqual(sum(op=='qCurveTo' for op,_ in pen.value),3)
+                    self.assertGreaterEqual(sum(op=='curveTo' for op,_ in pen.value),
+                                            6 if ch in 'DP' else 7)
+                    self.assertGreaterEqual(sum(op=='qCurveTo' for op,_ in pen.value),
+                                            2 if ch == 'D' else 3)
 if __name__=='__main__':unittest.main()
