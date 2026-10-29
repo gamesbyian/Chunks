@@ -77,3 +77,15 @@ UI distinguishes rule **selected**, **applied to Chunks**, **acknowledged by eng
 8. Unit, property, lifecycle, controller-offline, duplicate/uncertain-command, policy collision, persistence/process-death, accessibility and 200% type tests; test on approved public torrent fixtures only.
 9. Rules are clearly selectable per one, several or all named environments; adding a new profile does not unexpectedly include it; disabled/offline scope and capability differences are explicit. Generated descriptive names are editable and stable, with a separate immutable rule identity and no secret leakage.
 10. Native engine and Seedhost remote capabilities are reported from evidence, not from aspirational UI. Maintain SPEC-COVERAGE and QUALITY-LEDGER separately when implementation/test evidence exists.
+
+## Implementation note: domain model (2026-10-29)
+
+`app/src/main/java/io/github/gamesbyian/chunks/seeding/SeedingRules.kt` holds the shared, offline rule domain:
+- `RateLimit.parse` with exact units, showing bits beside bytes;
+- `SeedingPolicy`, with independent ratio, duration and cap, ANY/ALL combination, contradiction warnings, and a plain-language description that says stopping never removes or deletes;
+- `TrackerHosts`, matching whole labels and never keeping credentials or paths;
+- `SeedingRule`, with a stable ID, generated names that follow conditions until the user renames, and explicit environment membership where future environments are opt-in;
+- `SeedingRuleEngine.resolve`.
+
+Evidence: JVM tests, including acceptance case 1. Not yet: persistence, Add/detail UI, or local/remote enforcement adapters with readback.
+
