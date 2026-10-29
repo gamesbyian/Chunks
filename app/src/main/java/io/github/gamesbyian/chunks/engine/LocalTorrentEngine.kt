@@ -198,6 +198,10 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                         persisted = true
                     }
                 }
+            } catch (_: Exception) {
+                // Corrupt native data or a failed fsync/atomic rename is not a
+                // confirmed save. Do not let an exception escape the alert
+                // dispatcher or overwrite the previous verified resume file.
             } finally {
                 pendingSaves.complete(key, persisted)
             }
