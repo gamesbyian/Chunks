@@ -115,9 +115,15 @@ The server label comes from the authenticated alias scope via the same address f
   - the phone, server, Add-review and Seeding-rule environment badges.
 - **Still uncoloured:** notifications.
 
+**Other saved servers, read-only (PARTIAL).** *Load other saved servers (read-only)* fetches each other saved profile's `main` list with that profile's own saved credentials. HTTPS is enforced by `RTorrentRemote`.
+- **Consent and scope:** it runs only when pressed, on each press, and never signs in, switches the active server or sends a command.
+- **Privacy and failures:** a privacy-locked profile is neither fetched nor shown. Failures read "Could not load (…)".
+- **Freshness:** a listing older than two minutes is marked out of date.
+- **Actions:** batch Start/Stop refuses rows from these servers: "only listed here; sign in to this server to change it".
+
 Not yet built:
 - other actions from this view;
-- simultaneous connection to several servers;
+- commands on any server other than the signed-in one (others are read-only listings);
 - an environment settings screen.
 
 Evidence: [QUALITY-LEDGER](QUALITY-LEDGER.md).

@@ -30,7 +30,9 @@ class CombinedTransfersScreenTest {
     @get:Rule val rule = createComposeRule()
     private val context get() = ApplicationProvider.getApplicationContext<android.content.Context>()
     private val aliasScope = "https://box.example/rutorrent2/plugins/httprpc/action.php\u0000ian"
-    private val other = CombinedSavedProfile("e".repeat(64), "seed @ other.example/RPC2")
+    private val otherScope = "https://other.example/RPC2\u0000seed"
+    private val other = CombinedSavedProfile(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverId(
+        "https://other.example/RPC2", "seed").value, "seed @ other.example/RPC2", otherScope)
     private val rows = listOf(
         RemoteTransfer("1".repeat(40), "Big Archive", 900, 900, true, "/d", 0, 10),
         RemoteTransfer("2".repeat(40), "Small Episode", 10, 5, false, "/d", null, null))
