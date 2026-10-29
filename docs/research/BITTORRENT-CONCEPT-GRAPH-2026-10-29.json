@@ -9,8 +9,8 @@
     "aversionAtlas": "https://github.com/gamesbyian/Chunks/blob/e5f89506c50ff64e8e96a3c080dbd7a218e2b11f/docs/BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md"
   },
   "statistics": {
-    "nodes": 782,
-    "edges": 3456,
+    "nodes": 839,
+    "edges": 3658,
     "nodeTypes": {
       "activity": 240,
       "existing_inventory_feature": 240,
@@ -25,7 +25,8 @@
       "friction_domain": 6,
       "reported_friction_factor": 55,
       "possible_exit_or_alternative": 18,
-      "evidence_source": 10
+      "evidence_source": 10,
+      "aversion_evidence_source": 57
     },
     "edgeTypes": {
       "classified_as": 240,
@@ -46,7 +47,9 @@
       "may_interrupt_activity": 55,
       "may_lead_to_alternative_path": 55,
       "relates_to_choice_or_retained_goal": 18,
-      "offers_context_for": 11
+      "offers_context_for": 11,
+      "motivates_gap_investigation": 55,
+      "cites_source_entry": 147
     },
     "baseAtlas": {
       "activityCount": 240,
@@ -93,7 +96,10 @@
       "factors": 55,
       "exitRoutes": 18,
       "newHypotheses": 12,
-      "additionalSources": 10
+      "additionalSources": 10,
+      "sourceCatalogueRecords": 57,
+      "newFactorToHypothesisEdges": 55,
+      "allFactorToSourceLinks": 147
     }
   },
   "nodes": [
@@ -5875,6 +5881,519 @@
       "label": "Ubuntu verifies publisher authenticity separately",
       "url": "https://documentation.ubuntu.com/security/software-integrity/",
       "summary": "Official software integrity guide"
+    },
+    {
+      "id": "AVS-S01",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S01",
+      "evidenceKind": "PT · voice in interview",
+      "label": "Vice interview: avoids torrents due to being traceable",
+      "url": "https://www.vice.com/pt/article/a-gen-z-esta-liderando-uma-nova-onda-de-pirataria-na-internet/",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S02",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S02",
+      "evidenceKind": "EN · voice",
+      "label": "Stopped torrenting after repeated ISP notices despite VPN steps",
+      "url": "https://www.reddit.com/r/Piracy/comments/1nf4p0e/what_am_i_doing_wrong_i_keep_getting_caught_by_my/",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S03",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S03",
+      "evidenceKind": "EN · voices",
+      "label": "VPN binding is easily missed by beginners",
+      "url": "https://www.reddit.com/r/Piracy/comments/1waqgiw/stupid_question_is_a_vpn_enough/",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S04",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S04",
+      "evidenceKind": "FR · voices",
+      "label": "Fear of fines and notices when seeding",
+      "url": "https://www.reddit.com/r/FrancePirate/comments/1ojbbus/a_quel_point_cest_risqu%C3%A9_le_torrenting_en_france/",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S05",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S05",
+      "evidenceKind": "DE · voice",
+      "label": "Household account holder receives alleged BitTorrent copyright demand",
+      "url": "https://www.reddit.com/r/de_EDV/comments/x0jc65/",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S06",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S06",
+      "evidenceKind": "EN · voice",
+      "label": "ISP letters make BitTorrent not worth the hassle",
+      "url": "https://www.reddit.com/r/HomeNetworking/comments/1g112nd/att_fiber_need_to_ditch_their_router/",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S07",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S07",
+      "evidenceKind": "FR · voice",
+      "label": "User fears malicious downloaded files and prefers streaming/yt-dlp",
+      "url": "https://www.reddit.com/r/FrancePirate/comments/1phh1aj/comment_faitesvous_pour_%C3%AAtre_serein_en/",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S08",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S08",
+      "evidenceKind": "EN · voices",
+      "label": "Why people distrust a poorly moderated torrent index",
+      "url": "https://www.reddit.com/r/Piracy/comments/16lvruh",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S09",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S09",
+      "evidenceKind": "TR · voices",
+      "label": "Turkish torrent thread: client security and loss of trusted sources",
+      "url": "https://eksisozluk.com/torrent--584130?p=59",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S10",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S10",
+      "evidenceKind": "EN · voice",
+      "label": "Beginner overwhelmed by stack/network terminology",
+      "url": "https://www.reddit.com/r/torrents/comments/1ag8orj/why_is_the_community_harsh_toward_beginners/",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S11",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S11",
+      "evidenceKind": "EN · voices",
+      "label": "Comparing direct downloads vs torrents, setup friction",
+      "url": "https://www.reddit.com/r/Piracy/comments/1wxg51h/life_of_a_pirate/",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S12",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S12",
+      "evidenceKind": "EN · voice",
+      "label": "Veteran public seeder hates private-tracker admission barriers",
+      "url": "https://www.reddit.com/r/trackers/comments/1lcka0u/private_trackers_i_think_i_hate_you/",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S13",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S13",
+      "evidenceKind": "EN · voice",
+      "label": "Single missing seeder strands a solid 7z archive at 99.9%",
+      "url": "https://www.reddit.com/r/torrents/comments/rpyy6x",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S14",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S14",
+      "evidenceKind": "EN · voices",
+      "label": "99.9% near-complete; missing small file, disk pressure",
+      "url": "https://www.reddit.com/r/torrents/comments/1hrihdi",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S15",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S15",
+      "evidenceKind": "EN · voice",
+      "label": "Four months waiting on an elusive final 2 MiB",
+      "url": "https://www.reddit.com/r/qBittorrent/comments/1twxmkx/this_is_really_frustrating/",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S16",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S16",
+      "evidenceKind": "EN · voice",
+      "label": "First-time VPN user questions whether setup is enough",
+      "url": "https://www.reddit.com/r/Piracy/comments/1waqgiw/stupid_question_is_a_vpn_enough/",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S17",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S17",
+      "evidenceKind": "EN · voice",
+      "label": "Missing supplementary files and apparent incomplete seeding",
+      "url": "https://www.reddit.com/r/qBittorrent/comments/1rnyw93/reseeding_file_changed_to_999_stalled/",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S18",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S18",
+      "evidenceKind": "ES · voice",
+      "label": "First-person “odio y recontra odio”: moved files and stalled at ~80%",
+      "url": "https://lesliemishigan.blogspot.com/2013/05/la-crisis-de-las-descargas_6.html",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S19",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S19",
+      "evidenceKind": "EN · voices",
+      "label": "Magnets stick at metadata; VPN interface renaming and proxy issues",
+      "url": "https://www.reddit.com/r/qBittorrent/comments/1iau4bu/new_magnet_links_stuck_on_downloading_metadata/",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S20",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S20",
+      "evidenceKind": "EN · voices",
+      "label": "Metadata problems sometimes disappear only after restarting",
+      "url": "https://www.reddit.com/r/qBittorrent/comments/qn5b6s",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S21",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S21",
+      "evidenceKind": "DE · voice",
+      "label": "“Ich hasse Torrents”: far faster upload than download",
+      "url": "https://www.hardwareluxx.de/community/threads/battlefield-3.734942/page-344",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S22",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S22",
+      "evidenceKind": "EN · voice",
+      "label": "Antivirus/permission interference with writes",
+      "url": "https://www.reddit.com/r/qBittorrent/comments/13d8qoi",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S23",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S23",
+      "evidenceKind": "EN · voice",
+      "label": "Music organization requires breaking seeding to rearrange folder structure",
+      "url": "https://www.reddit.com/r/qBittorrent/comments/1hndsel",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S24",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S24",
+      "evidenceKind": "ZH · voices",
+      "label": "V2EX: upload chokes browsing, old habit, disk wear and electricity",
+      "url": "https://v2ex.com/t/449809?p=1",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S25",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S25",
+      "evidenceKind": "ID · voice",
+      "label": "Indonesian ISP fair-use ceiling: seeding forgotten overnight/monthly",
+      "url": "https://www.reddit.com/r/indotech/comments/1tn1mbv/sedikit_was_was_jadi_seeder_pakai_isp_yang/",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S26",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S26",
+      "evidenceKind": "EN · voices",
+      "label": "Low upload, laptop performance, shared household and data cap make seeding hard",
+      "url": "https://www.reddit.com/r/Piracy/comments/1qi0ras/why_is_the_seedspeers_ratio_this_bad_on_one_of/",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S27",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S27",
+      "evidenceKind": "EN · voice",
+      "label": "Seeding requires expensive upstream and scarce storage",
+      "url": "https://www.reddit.com/r/Piracy/comments/1b3y9d6",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S28",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S28",
+      "evidenceKind": "EN · voices",
+      "label": "Full upstream leaves other Internet actions unresponsive",
+      "url": "https://www.reddit.com/r/Piracy/comments/1nglzyk/average_4chan_take/",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S29",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S29",
+      "evidenceKind": "FR · voice",
+      "label": "Moved to DDL after repeated notices, unwilling to pay for VPN",
+      "url": "https://www.reddit.com/r/FrancePirate/comments/1gud1jm",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S30",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S30",
+      "evidenceKind": "RU · voice",
+      "label": "Russian user explicitly opposes torrent-associated unauthorized distribution",
+      "url": "https://www.trv-science.ru/2010/03/torrenty-za-i-protiv/",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S31",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S31",
+      "evidenceKind": "FR · voice",
+      "label": "Former P2P user prefers DDL; tracker centralization, rules and upload rejection",
+      "url": "https://www.reddit.com/r/yggTorrents/comments/1pxx4kk/pourquoi_le_p2p_est_peu_%C3%A0_peu_mort_en_france/",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S32",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S32",
+      "evidenceKind": "FR · voices",
+      "label": "Tracker barriers: DNS/VPN login, bans, payment and site distrust",
+      "url": "https://www.reddit.com/r/yggTorrents/comments/1fvha4z/bon_en_vrai/",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S33",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S33",
+      "evidenceKind": "EN · voice",
+      "label": "Leaves seedbox due to money/time; stranded partial jobs require migration",
+      "url": "https://www.reddit.com/r/seedboxes/comments/jskfdp",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S34",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S34",
+      "evidenceKind": "EN · voice",
+      "label": "Seedbox competition and low uploading make ratio feel impossible",
+      "url": "https://www.reddit.com/r/torrents/comments/1laskpo",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S35",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S35",
+      "evidenceKind": "EN · voice",
+      "label": "“HOURS of work” troubleshooting stuck metadata and warning icon",
+      "url": "https://www.reddit.com/r/qBittorrent/comments/1revv0m/downloading_metadata/",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S36",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S36",
+      "evidenceKind": "EN · voice",
+      "label": "Renamed/moved files, failed to seed 1 TB; learning the model later",
+      "url": "https://www.reddit.com/r/Torrenting/comments/1w6dg93/why_not_seed/",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S37",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S37",
+      "evidenceKind": "EN · voice",
+      "label": "100%-complete peer repeatedly glimpsed but unreachable",
+      "url": "https://www.reddit.com/r/qBittorrent/comments/1qdp5sn/torrent_stuck_at_999_single_seed_wont_connect/",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S38",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S38",
+      "evidenceKind": "EN · voices",
+      "label": "Private tracker ratio penalties and inability to upload",
+      "url": "https://www.reddit.com/r/Piracy/comments/19begk9/im_about_to_get_banned_cuz_my_seeding_ratio_is/",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S39",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S39",
+      "evidenceKind": "EN · voice",
+      "label": "Uploader says seedbox slow and poor peering for the price",
+      "url": "https://www.reddit.com/r/seedboxes/comments/1jrx7g9/rapidseedbox_review/",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S40",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S40",
+      "evidenceKind": "EN · voice",
+      "label": "Version 5 UI contrast/theme regression pushes user to leave client",
+      "url": "https://www.reddit.com/r/unRAID/comments/1ftsi1y",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S41",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S41",
+      "evidenceKind": "PT · voice",
+      "label": "Wrong TV episode discovered after download",
+      "url": "https://pausaparaumcafe.com.br/series-5-situacoes-de-crise-de-todo-seriador/",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S42",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S42",
+      "evidenceKind": "TR · voices",
+      "label": "Torrent index shutdowns, weak seeds, subtitles and malware fears",
+      "url": "https://eksisozluk.com/torrent--584130?p=60",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S43",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S43",
+      "evidenceKind": "EN · voice",
+      "label": "Unexpected suspicious .exe payload despite filtering",
+      "url": "https://www.reddit.com/r/qBittorrent/comments/1wsh47n/almostcertainlymalicious_exe_files_still_getting/",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S44",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S44",
+      "evidenceKind": "EN · voice",
+      "label": "File access denied and antivirus/debugging confusion",
+      "url": "https://www.reddit.com/r/qBittorrent/comments/13d8qoi",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S45",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S45",
+      "evidenceKind": "EN · voice",
+      "label": "Huge slow collection and hit-and-run penalty trap",
+      "url": "https://www.reddit.com/r/trackers/comments/sg7nyi",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S46",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S46",
+      "evidenceKind": "PL · voice/context",
+      "label": "Polish ethical opposition to piracy, not to the transport as such",
+      "url": "https://onetech.pl/brzydze-sie-piractwem/",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S47",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S47",
+      "evidenceKind": "EN · voice",
+      "label": "VueTorrent bulk folder reorganization needed without losing seeds",
+      "url": "https://github.com/VueTorrent/VueTorrent/issues/2698",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S48",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S48",
+      "evidenceKind": "EN · bug report",
+      "label": "qBittorrent filename case collisions cause missing files after restart",
+      "url": "https://github.com/qbittorrent/qBittorrent/issues/24292",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S49",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S49",
+      "evidenceKind": "EN · voices",
+      "label": "Trash-vs-permanent-delete surprise after qBittorrent upgrade",
+      "url": "https://www.reddit.com/r/qBittorrent/comments/1fuc2wv",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S50",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S50",
+      "evidenceKind": "EN · first-person question",
+      "label": "Seeding versus finished downloading concept confusion",
+      "url": "https://www.reddit.com/r/IndianGaming/comments/14vmc9k",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S51",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S51",
+      "evidenceKind": "ES · Google Play reviews",
+      "label": "Paid Android client hides filenames, forces remote warnings; magnet failure",
+      "url": "https://play.google.com/store/apps/details?hl=es&id=com.utorrent.client.pro",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S52",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S52",
+      "evidenceKind": "EN · bug report",
+      "label": "Transmission 4 cannot rename at initial add; crash/regression",
+      "url": "https://github.com/transmission/transmission/issues/5353",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S53",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S53",
+      "evidenceKind": "EN · voices",
+      "label": "Seedbox costs, caps and learning curve despite benefits",
+      "url": "https://www.reddit.com/r/Piracy/comments/17jqm59/torrenters_do_you_use_a_seedbox_why_or_why_not/",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S54",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S54",
+      "evidenceKind": "EN · voice",
+      "label": "Paid seedbox upload/peering disappointing",
+      "url": "https://www.reddit.com/r/seedboxes/comments/1jrx7g9/rapidseedbox_review/",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S55",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S55",
+      "evidenceKind": "EN · voice",
+      "label": "Too many seedbox providers/options, confusing evaluation",
+      "url": "https://www.reddit.com/r/Torrenting/comments/1ux1z71/seedbox_recommendation/",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S56",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S56",
+      "evidenceKind": "EN · first-person question",
+      "label": "Create-torrent flags, trackers/web seeds and piece size overwhelm",
+      "url": "https://www.reddit.com/r/qBittorrent/comments/1hu310c",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
+    },
+    {
+      "id": "AVS-S57",
+      "type": "aversion_evidence_source",
+      "sourceCode": "S57",
+      "evidenceKind": "ZH · developer framing, *not independent user evidence*",
+      "label": "Chinese open-source project describes ads/bloat, steep learning, unclear errors",
+      "url": "https://github.com/koi-apps/koi-bt",
+      "warning": "Document-source entry, not necessarily an independent person or primary firsthand testimony"
     }
   ],
   "edges": [
@@ -27273,6 +27792,1218 @@
       "to": "H60",
       "type": "offers_context_for",
       "confidence": "external_source"
+    },
+    {
+      "from": "AV-A01",
+      "to": "H60",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-A01",
+      "to": "AVS-S01",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-A01",
+      "to": "AVS-S02",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-A01",
+      "to": "AVS-S03",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-A01",
+      "to": "AVS-S04",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-A01",
+      "to": "AVS-S05",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-A01",
+      "to": "AVS-S29",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-A02",
+      "to": "H60",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-A02",
+      "to": "AVS-S01",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-A02",
+      "to": "AVS-S03",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-A02",
+      "to": "AVS-S05",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-A02",
+      "to": "AVS-S16",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-A03",
+      "to": "H60",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-A03",
+      "to": "AVS-S02",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-A03",
+      "to": "AVS-S03",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-A03",
+      "to": "AVS-S06",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-A03",
+      "to": "AVS-S16",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-A03",
+      "to": "AVS-S35",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-A04",
+      "to": "H60",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-A04",
+      "to": "AVS-S07",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-A04",
+      "to": "AVS-S08",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-A04",
+      "to": "AVS-S09",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-A04",
+      "to": "AVS-S43",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-A05",
+      "to": "H64",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-A05",
+      "to": "AVS-S09",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-A05",
+      "to": "AVS-S40",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-A06",
+      "to": "H55",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-A06",
+      "to": "AVS-S30",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-A06",
+      "to": "AVS-S46",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-A07",
+      "to": "H62",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-A07",
+      "to": "AVS-S10",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-A07",
+      "to": "AVS-S11",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-A07",
+      "to": "AVS-S16",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-A07",
+      "to": "AVS-S36",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-A08",
+      "to": "H62",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-A08",
+      "to": "AVS-S11",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-A08",
+      "to": "AVS-S12",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-A08",
+      "to": "AVS-S31",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-A09",
+      "to": "H60",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-A09",
+      "to": "AVS-S08",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-A09",
+      "to": "AVS-S12",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-A09",
+      "to": "AVS-S30",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-A09",
+      "to": "AVS-S40",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-B01",
+      "to": "H63",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-B01",
+      "to": "AVS-S09",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-B01",
+      "to": "AVS-S12",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-B01",
+      "to": "AVS-S31",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-B01",
+      "to": "AVS-S42",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-B02",
+      "to": "H63",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-B02",
+      "to": "AVS-S13",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-B02",
+      "to": "AVS-S14",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-B02",
+      "to": "AVS-S15",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-B02",
+      "to": "AVS-S31",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-B02",
+      "to": "AVS-S42",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-B03",
+      "to": "H63",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-B03",
+      "to": "AVS-S14",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-B03",
+      "to": "AVS-S15",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-B03",
+      "to": "AVS-S37",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-B04",
+      "to": "H56",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-B04",
+      "to": "AVS-S41",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-B04",
+      "to": "AVS-S42",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-B04",
+      "to": "AVS-S51",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-B05",
+      "to": "H56",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-B05",
+      "to": "AVS-S31",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-B05",
+      "to": "AVS-S42",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-B06",
+      "to": "H61",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-B06",
+      "to": "AVS-S12",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-B06",
+      "to": "AVS-S31",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-B06",
+      "to": "AVS-S32",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-B07",
+      "to": "H62",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-B07",
+      "to": "AVS-S19",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-B07",
+      "to": "AVS-S50",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-B07",
+      "to": "AVS-S56",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-B08",
+      "to": "H55",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-B08",
+      "to": "AVS-S19",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-B08",
+      "to": "AVS-S20",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-B08",
+      "to": "AVS-S31",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-C01",
+      "to": "H63",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-C01",
+      "to": "AVS-S13",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-C01",
+      "to": "AVS-S14",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-C01",
+      "to": "AVS-S15",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-C01",
+      "to": "AVS-S17",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-C02",
+      "to": "H56",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-C02",
+      "to": "AVS-S14",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-C02",
+      "to": "AVS-S15",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-C02",
+      "to": "AVS-S17",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-C03",
+      "to": "H63",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-C03",
+      "to": "AVS-S19",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-C03",
+      "to": "AVS-S20",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-C03",
+      "to": "AVS-S35",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-C04",
+      "to": "H13",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-C04",
+      "to": "AVS-S10",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-C04",
+      "to": "AVS-S17",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-C04",
+      "to": "AVS-S19",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-C04",
+      "to": "AVS-S35",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-C04",
+      "to": "AVS-S44",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-C05",
+      "to": "H13",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-C05",
+      "to": "AVS-S19",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-C05",
+      "to": "AVS-S20",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-C05",
+      "to": "AVS-S35",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-C06",
+      "to": "H25",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-C06",
+      "to": "AVS-S21",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-C06",
+      "to": "AVS-S24",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-C06",
+      "to": "AVS-S39",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-C06",
+      "to": "AVS-S42",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-C07",
+      "to": "H53",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-C07",
+      "to": "AVS-S20",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-C07",
+      "to": "AVS-S35",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-C08",
+      "to": "H64",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-C08",
+      "to": "AVS-S19",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-C08",
+      "to": "AVS-S35",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-C09",
+      "to": "H22",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-C09",
+      "to": "AVS-S22",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-C09",
+      "to": "AVS-S44",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-C10",
+      "to": "H14",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-C10",
+      "to": "AVS-S37",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-D01",
+      "to": "H57",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-D01",
+      "to": "AVS-S24",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-D01",
+      "to": "AVS-S25",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-D01",
+      "to": "AVS-S26",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-D01",
+      "to": "AVS-S27",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-D01",
+      "to": "AVS-S28",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-D02",
+      "to": "H57",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-D02",
+      "to": "AVS-S25",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-D02",
+      "to": "AVS-S27",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-D02",
+      "to": "AVS-S28",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-D03",
+      "to": "H57",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-D03",
+      "to": "AVS-S24",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-D03",
+      "to": "AVS-S26",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-D03",
+      "to": "AVS-S27",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-D03",
+      "to": "AVS-S33",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-D04",
+      "to": "H20",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-D04",
+      "to": "AVS-S14",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-D04",
+      "to": "AVS-S26",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-D04",
+      "to": "AVS-S33",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-D05",
+      "to": "H58",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-D05",
+      "to": "AVS-S34",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-D05",
+      "to": "AVS-S38",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-D06",
+      "to": "H59",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-D06",
+      "to": "AVS-S32",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-D06",
+      "to": "AVS-S33",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-D06",
+      "to": "AVS-S34",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-D06",
+      "to": "AVS-S38",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-D06",
+      "to": "AVS-S45",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-D07",
+      "to": "H59",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-D07",
+      "to": "AVS-S45",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-D08",
+      "to": "H57",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-D08",
+      "to": "AVS-S26",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-D08",
+      "to": "AVS-S28",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-D08",
+      "to": "AVS-S38",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-D09",
+      "to": "H58",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-D09",
+      "to": "AVS-S24",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-D10",
+      "to": "H59",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-D10",
+      "to": "AVS-S17",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-D10",
+      "to": "AVS-S38",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-E01",
+      "to": "H22",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-E01",
+      "to": "AVS-S18",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-E01",
+      "to": "AVS-S23",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-E01",
+      "to": "AVS-S36",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-E01",
+      "to": "AVS-S47",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-E02",
+      "to": "H45",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-E02",
+      "to": "AVS-S23",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-E02",
+      "to": "AVS-S47",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-E03",
+      "to": "H09",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-E03",
+      "to": "AVS-S23",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-E04",
+      "to": "H09",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-E04",
+      "to": "AVS-S48",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-E05",
+      "to": "H08",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-E05",
+      "to": "AVS-S23",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-E05",
+      "to": "AVS-S47",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-E06",
+      "to": "H61",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-E06",
+      "to": "AVS-S33",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-E07",
+      "to": "H21",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-E07",
+      "to": "AVS-S49",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-E08",
+      "to": "H64",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-E08",
+      "to": "AVS-S51",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-E09",
+      "to": "H64",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-E09",
+      "to": "AVS-S52",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-E10",
+      "to": "H56",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-E10",
+      "to": "AVS-S13",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-F01",
+      "to": "H64",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-F01",
+      "to": "AVS-S40",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-F01",
+      "to": "AVS-S51",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-F02",
+      "to": "H49",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-F02",
+      "to": "AVS-S50",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-F03",
+      "to": "H65",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-F03",
+      "to": "AVS-S33",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-F03",
+      "to": "AVS-S53",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-F03",
+      "to": "AVS-S54",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-F04",
+      "to": "H61",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-F04",
+      "to": "AVS-S33",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-F05",
+      "to": "H65",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-F05",
+      "to": "AVS-S54",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-F06",
+      "to": "H62",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-F06",
+      "to": "AVS-S53",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-F06",
+      "to": "AVS-S55",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-F07",
+      "to": "H62",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-F07",
+      "to": "AVS-S56",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-F07",
+      "to": "AVS-S12",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-F08",
+      "to": "H64",
+      "type": "motivates_gap_investigation",
+      "confidence": "qualitative_interpretation"
+    },
+    {
+      "from": "AV-F08",
+      "to": "AVS-S51",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
+    },
+    {
+      "from": "AV-F08",
+      "to": "AVS-S57",
+      "type": "cites_source_entry",
+      "confidence": "source_coded"
     }
   ]
 }
