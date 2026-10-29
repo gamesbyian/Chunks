@@ -477,6 +477,8 @@ internal fun CombinedTransfersScreen(
                     "${result.missingSelectedEnvironments.size} selected environment(s) are no longer set up. " +
                         "Choose All or reselect environments.", style = MaterialTheme.typography.bodySmall,
                     color = ChunksColors.Yellow)
+                Text(combinedTotalsText(io.github.gamesbyian.chunks.model.UnifiedTransferTotals.of(result)),
+                    style = MaterialTheme.typography.bodySmall)
                 Text("Showing ${result.transfers.size}" +
                     if (result.hasIncompleteOrStaleSource) " · some environments are missing or out of date" else "",
                     style = MaterialTheme.typography.titleSmall)
@@ -586,6 +588,10 @@ private fun CombinedTransferRow(
                 .semantics { contentDescription = "Open ${row.displayName} in $environmentLabel" }) {
                 Text("Open in its list")
             }
+            // Say why no action is offered rather than leaving the user to hunt for one.
+            else if (row.key.environment != EnvironmentSnapshots.PHONE) Text(
+                "Listed only. Sign in to this server to open or change it.",
+                style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary)
         }
     }
 }
@@ -752,3 +758,10 @@ private fun EnvironmentColourChooser(
         }
     }
 }
+
+/** Live-only totals in words, saying what is unknown or left out. */
+internal fun combinedTotalsText(t: io.github.gamesbyian.chunks.model.UnifiedTransferTotals): String =
+    "Live total: ↓ " + Units.bytes(t.downloadBytesPerSecond) + "/s · ↑ " + Units.bytes(t.uploadBytesPerSecond) +
+        "/s across ${t.liveRows} transfers" +
+        (if (t.rowsWithUnknownRate > 0) " · ${t.rowsWithUnknownRate} with rates not reported" else "") +
+        (if (t.excludedEnvironments > 0) " · ${t.excludedEnvironments} environment(s) not included (not live)" else "")

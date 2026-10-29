@@ -1,5 +1,21 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-29 opt-in network loss and return with real peers (#569)
+
+- **Source slice:** `netflap=true` on the manual `android-public-swarm.yml` runs `tools/android_public_swarm_netflap.sh` (`AndroidPublicSwarmNetworkFlapInstrumentedTest`).
+  - During a foreground-service download, Wi-Fi and mobile data go off for 30 s and then back on, with the test signalled at each edge.
+  - **Required:** the job is not silently stopped, verified growth of ≥2 MiB resumes on the same engine, and the service survives.
+  - **Recorded:** bytes during the outage and time to recovery. Connectivity is always restored on exit.
+- **Evidence:** pending a manual dispatch after merge. Emulator networking only; this does not cover a real Wi-Fi↔cellular handover, a VPN or captive portals.
+
+## 2026-10-29 opt-in Doze observation with real peers (#569)
+
+- **Source slice:** the manual `android-public-swarm.yml` gains `doze=true`, which runs `tools/android_public_swarm_doze.sh` (`AndroidPublicSwarmDozeInstrumentedTest`).
+  - A Debian netinst download runs under the foreground service.
+  - Once ≥4 MiB of verified bytes have arrived, the script unplugs the virtual battery, runs `dumpsys deviceidle force-idle`, confirms deep `IDLE` and signals the test.
+  - Over 90 s the test records `GROWTH` or `STALLED` in verified bytes while idle. It requires only that the service and engine stay alive and answering.
+  - The idle and battery state is restored on exit, and whether the app was on the system allowlist is logged.
+- **Evidence:** pending a manual dispatch after merge. Emulator only; it does not cover OEM power managers or natural idle entry on a handset.
 ## 2026-10-29 solo-agent batch safety and G2 plan reconciliation
 
 - **Merged #586 (P0 combined-batch safety):** [PR #586](https://github.com/gamesbyian/Chunks/pull/586), squash `d88d03a11c7f59ef199151fc302944c42a896686`, exact head `989077fe60f02d3717cfe3a0376f9e2cf357d44e`. [Android foundation/JVM 40944402686](https://github.com/gamesbyian/Chunks/actions/runs/40944402686), [R8 40944402821](https://github.com/gamesbyian/Chunks/actions/runs/40944402821) and [API35 native Add instrumentation 40944402760](https://github.com/gamesbyian/Chunks/actions/runs/40944402760) all passed. The shared batch controller now refuses incomplete live inventories, missing verified observation timestamps, and targets whose observed Start/Stop state differs from the reviewed state. Pure tests assert no command dispatch on these invalid sources, while healthy independent sources continue. Does **not** add command capability to saved-but-not-signed-in remotes or prove handset/network behavior.
@@ -17,7 +33,7 @@ A code review of everything merged this session (`a8cb13f..2103fc7`) found these
 - **Per-frame recomputation:** combined privacy decisions and sources were rebuilt on every recomposition, because profile and server objects carry fresh lambdas. They are now keyed on data.
 - **Duplicated parsing:** environment-ID parsing from an alias scope existed in four copies; it is now one `EnvironmentSnapshots.serverIdOfAliasScope`. A dead `compareKnown` wrapper was also removed.
 
-**Evidence:** new JVM tests for scope parsing, overflow ordering, malformed subsets and the non-v1 refusal; full local suite green. Not changed: badge colours are read once per composition, so a colour change shows on the next screen entry.
+**Merged:** [#585](https://github.com/gamesbyian/Chunks/pull/585), squash `4b9b839fceeab1c4c040b1096385085547d3dd37`, exact head `f64ca5af5294e370c7a106eed570bf37dd38b095`: [Android/JVM 40937046942](https://github.com/gamesbyian/Chunks/actions/runs/40937046942), [R8 40937046588](https://github.com/gamesbyian/Chunks/actions/runs/40937046588), [API35 native instrumentation 40937046886](https://github.com/gamesbyian/Chunks/actions/runs/40937046886), [atlas 40937046865](https://github.com/gamesbyian/Chunks/actions/runs/40937046865). **Evidence:** new JVM tests for scope parsing, overflow ordering, malformed subsets and the non-v1 refusal; full local suite green. Not changed: badge colours are read once per composition, so a colour change shows on the next screen entry.
 
 ## 2026-10-29 opt-in interrupted real-swarm download (#568, #5)
 
