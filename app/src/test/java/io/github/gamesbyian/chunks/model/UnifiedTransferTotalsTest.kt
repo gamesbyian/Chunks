@@ -26,7 +26,7 @@ class UnifiedTransferTotalsTest {
         assertEquals(1, totals.rowsWithUnknownRate)
         assertEquals(1, totals.excludedEnvironments)
         assertEquals("Live total: ↓ 1.0 KiB/s · ↑ 10 B/s across 3 transfers · 1 with rates not reported · " +
-            "1 environment(s) not included (not live)", combinedTotalsText(totals))
+            "1 environment(s) excluded (not fully observed)", combinedTotalsText(totals))
     }
 
     @Test fun aMissingSavedEnvironmentIsCountedAsNotIncluded() {
