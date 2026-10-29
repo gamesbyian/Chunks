@@ -68,6 +68,7 @@ class ResponsiveActionGroupTest {
         assertEquals(labels, calls)
     }
 
+    @Config(qualifiers = "w600dp-h700dp-mdpi")
     @Test fun ordinaryWideTextRetainsCompactHorizontalActions() {
         val calls = mutableListOf<String>()
         show(width = 500, fontScale = 1f, calls = calls)
