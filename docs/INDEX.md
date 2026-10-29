@@ -21,6 +21,14 @@ The [documentation architecture and authoring standard](DOCUMENTATION-STANDARD.m
 - [Task outcomes and continuity](TASK-OUTCOMES-AND-CONTINUITY.md): MF02 end-to-end evidence receipts and MF04 non-destructive human task resumption (planned, binding).
 - [Effective-policy explanations](EFFECTIVE-POLICY-EXPLANATIONS.md): MF31 rule winners, conflicts, precedence traces and safe simulations (planned, binding).
 
+## Owner-approved niche workflow contracts
+
+- [Create & Share advanced options](CREATE-AND-SHARE.md#optional-advanced-sharing-embedded-tracker-browser-peers-and-subscription-feeds): optional tracker, WebRTC/browser-peer compatibility and share subscription feeds, without changing the core wizard.
+- [Cross-seeding and verified payload copy](CROSS-SEED-AND-PAYLOAD-COPY.md): compare existing bytes against new torrent metadata and copy actual payloads safely; distinct from job-only Copy/Move Transfer.
+- [Media inspection](MEDIA-INSPECTION.md): on-demand container/codec/track properties and bounded local/remote preview thumbnails.
+- [Event automation](EVENT-AUTOMATION.md): opt-in conditional rules, saved filters, redacted webhooks and Android handoffs without unrestricted scripts.
+- [Existing-service integrations](EXISTING-SERVICE-INTEGRATIONS.md): Prowlarr-compatible torrent indexer connections and narrowly authorized remote storage sync; secondary flows.
+
 ## Normative foundations
 
 - [PRODUCT](PRODUCT.md): feature scope and user promises.
