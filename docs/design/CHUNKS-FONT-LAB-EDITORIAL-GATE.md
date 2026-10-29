@@ -19,3 +19,13 @@ The core reference-family **engineering build is complete**, but the source artw
 4. **Explicit shipping authorisation:** deliberate owner confirmation of visual style and acceptance of licensing/provenance, followed by a single frozen batch promotion PR that includes the applicable CI. Do not replace `app/src/main/res/font/**` simply because the lab technically compiles.
 
 The correct current receipts, build instructions and isolation contract live in [CHUNKS-FONT-LAB-STATUS](CHUNKS-FONT-LAB-STATUS.md), [CHUNKS-FONT-LAB-OFFLINE-BUILD](CHUNKS-FONT-LAB-OFFLINE-BUILD.md) and [CHUNKS-FONT-LAB-OPERATIONS](CHUNKS-FONT-LAB-OPERATIONS.md). The final actual-font specimen images are in [GitHub Actions run #40812996755](https://github.com/gamesbyian/Chunks/actions/runs/40812996755) under `chunks-font-lab-all-families`.
+
+## Actual-font artifact inspection, 2026-10-28 (Calgary)
+
+The final run's actual CFF raster exports were retrieved and inspected directly, not inferred from geometry or CI alone: `reference-panel-five-weights.png`, `reference-panel-glyph-grid-24px.png`, the 82px uppercase/lowercase/digit grid, and `chunks-font-variants-14px.png`. This is **a preliminary engineering visual inspection, not owner approval or full accessibility acceptance**.
+
+Observed successes: O/0/o, B/8, D/P/Q, a/e/g, and other multi-contour forms retain their visible counters after the nonzero-winding repair; C/c retain their open apertures; j's detached dot and hooked descender appear distinct; numeric 5 is no longer rendered with an accidental enclosed pocket. Across 400/500/600/700 the family has a recognisable cohesive rounded, chunky voice, and the original reference 800 remains distinguishable.
+
+Observed optical risks: at the 24px glyph grid and smaller, some A/B/O/0/8 and lowercase bowl counters approach pinholes in heavier weights, and certain 400-to-700 differences are subtle relative to the heavy overall display style. Small text can therefore appear dense. This font should **not be treated as a signed-off general Android body font** merely because its kerning gap metrics and shaping tests pass. Review these visual concerns against the owner's intended reference at the real Android physical sizes and in light/dark contrast conditions before any promotion.
+
+The frozen raw source/Bézier CFFs and the complete atlas can be retrieved from [full-family acceptance #40812996755](https://github.com/gamesbyian/Chunks/actions/runs/40812996755), artifact `chunks-font-lab-all-families`.
