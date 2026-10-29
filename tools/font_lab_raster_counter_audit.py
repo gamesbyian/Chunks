@@ -4,9 +4,9 @@
 Unlike geometry-only source counters, this measures the rendered hole islands
 at 14, 24, 48 and 82 px from four *compiled* weight-study OTFs.
 
-The 24px minimum (>=2 high-contrast interior pixels per true counter)
-is a nonregression gate. 14px is diagnostic because the original reference
-is a very heavy display face and some 14px counters are subpixel.
+The 14px and 24px minimum (>=2 high-contrast interior pixels per true counter)
+is a nonregression gate after the original display face's tiny counter fixes.
+48/82px are also recorded; this is not a substitute for editorial approval.
 """
 from __future__ import annotations
 import argparse
@@ -66,14 +66,14 @@ def audit():
                 measurements[ch]={'expected_counters':expected,
                                   'interior_pixel_areas':areas,
                                   'visible_counters_at_2px':visible}
-                if px==24 and visible<expected:
+                if px in (14,24) and visible<expected:
                     failures.append(f'{style} {ch!r} @24px: '
                                     f'expected {expected} >=2px holes, got {areas}')
             results[f'{style}-{px}px']=measurements
     return {'status':'nonshipping raster counter audit',
             'threshold':'128/255 grayscale (ink >127), 4-neighbour hole connectivity',
-            'strict_24px_failure_count':len(failures),
-            'strict_24px_failures':failures,
+            'strict_small_pixel_failure_count':len(failures),
+            'strict_small_pixel_failures':failures,
             'measurements':results}
 
 if __name__=='__main__':
@@ -81,7 +81,7 @@ if __name__=='__main__':
     p.add_argument('--output',type=Path,
                    default=Path('font-lab-raster-counters.json'))
     p.add_argument('--strict',action='store_true',
-                   help='fail if any real 24px counter has <2 pixels')
+                   help='fail if any real 14px or 24px counter has <2 pixels')
     args=p.parse_args()
     data=audit()
     args.output.write_text(json.dumps(data,indent=2,ensure_ascii=False)+'\n')
@@ -90,5 +90,5 @@ if __name__=='__main__':
                  if v['visible_counters_at_2px']<v['expected_counters']]
         print(f'{key}: {len(rows)} counter glyphs, {len(missing)} subpixel warnings: '
               + ''.join(missing))
-    if args.strict and data['strict_24px_failures']:
-        p.exit(1,'\n'.join(data['strict_24px_failures'])+'\n')
+    if args.strict and data['strict_small_pixel_failures']:
+        p.exit(1,'\n'.join(data['strict_small_pixel_failures'])+'\n')
