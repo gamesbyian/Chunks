@@ -53,3 +53,37 @@ internal fun RemoteTransfersPrimaryActions(
         }
     }
 }
+
+/**
+ * Keeping a potentially long sort criterion beside the shown count clips the
+ * sort target at 320dp / 200% text. Both facts remain visible when stacked.
+ * Sorting is a view-only callback: never a server operation or target selector.
+ */
+@Composable
+internal fun RemoteTransfersSortSummary(
+    count: Int,
+    sortLabel: String,
+    onCycleSort: () -> Unit
+) {
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val stacked = maxWidth < 380.dp || LocalDensity.current.fontScale >= 1.5f
+        if (stacked) {
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("$count shown", style = androidx.compose.material3.MaterialTheme.typography.titleMedium)
+                OutlinedButton(onClick = onCycleSort,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                    Text("Sort: $sortLabel")
+                }
+            }
+        } else {
+            Row(Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                Text("$count shown", style = androidx.compose.material3.MaterialTheme.typography.titleMedium)
+                OutlinedButton(onClick = onCycleSort, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text("Sort: $sortLabel")
+                }
+            }
+        }
+    }
+}
