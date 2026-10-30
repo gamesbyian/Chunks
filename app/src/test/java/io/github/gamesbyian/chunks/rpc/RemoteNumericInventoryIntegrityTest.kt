@@ -108,6 +108,43 @@ class RemoteNumericInventoryIntegrityTest {
         }
     }
 
+    @Test fun standardIntI4AndI8WireIntegersRemainReadable() = runBlocking {
+        // Older XML-RPC gateways use <int> or <i4> instead of <i8>.
+        // The codec must normalize all three without admitting <double>.
+        val wire = listOf("int", "i4", "i8")
+        for (tag in wire) {
+            fun value(n: Int) = "<value><$tag>$n</$tag></value>"
+            val transfer = validTransfer().toMutableList().also {
+                it[2] = value(100)
+                it[3] = value(50)
+                it[4] = value(1)
+                it[6] = value(2)
+                it[7] = value(3)
+                it[8] = value(1500)
+            }
+            val file = validFile().toMutableList().also {
+                it[1] = value(50)
+                it[2] = value(1)
+            }
+            Gateway { method -> when (method) {
+                "d.multicall2" -> rpc(arrayRow(transfer))
+                "f.multicall" -> rpc(arrayRow(file))
+                else -> error("Unexpected method $method")
+            } }.use { gateway ->
+                val client = RTorrentRemote(RemoteCredentials(gateway.endpoint, "", ""))
+                val item = client.listTransfers().single()
+                assertEquals("Wire $tag size", 100L, item.sizeBytes)
+                assertEquals("Wire $tag progress", 50L, item.completedBytes)
+                assertTrue("Wire $tag started", item.started)
+                assertEquals("Wire $tag rate", 2L, item.downBytesPerSecond)
+                val selected = client.listFiles(hash).single()
+                assertEquals("Wire $tag file size", 50L, selected.sizeBytes)
+                assertEquals("Wire $tag priority", 1, selected.priority)
+                assertEquals(listOf("d.multicall2", "f.multicall"), gateway.methods)
+            }
+        }
+    }
+
     @Test fun legitimateLegacyIntegralFieldsRemainReadable() = runBlocking {
         Gateway { method -> when (method) {
             "d.multicall2" -> rpc(arrayRow(validTransfer()))
