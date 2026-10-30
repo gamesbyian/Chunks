@@ -128,6 +128,61 @@ void exercise(bool plant_foreign) {
 }
 
 
+
+// Process-boundary native receipt proof. First session stops before writing
+// any payload but saves pending path ownership; an unrelated external actor
+// then occupies the same destination before a second real native session.
+// The second session must fail, never adopt or overwrite the occupant.
+void exerciseRestartedPendingCollision() {
+  Sandbox box;
+  auto torrent_bytes = fixtureTorrent();
+  auto run = [&](bool expect_refusal) {
+    lt::settings_pack settings;
+    settings.set_str(lt::settings_pack::listen_interfaces, "127.0.0.1:0");
+    settings.set_bool(lt::settings_pack::enable_dht, false);
+    settings.set_bool(lt::settings_pack::enable_lsd, false);
+    lt::session_params owned(settings);
+    owned.disk_io_constructor =
+        chunks::MakeOwnedDiskConstructor(box.receipts.string());
+    lt::session session(owned);
+    auto atp = lt::load_torrent_buffer(
+        {torrent_bytes.data(), static_cast<std::ptrdiff_t>(torrent_bytes.size())});
+    atp.save_path = box.public_root.string();
+    atp.flags |= lt::torrent_flags::paused;
+    atp.flags &= ~lt::torrent_flags::auto_managed;
+    lt::error_code error;
+    auto handle = session.add_torrent(std::move(atp), error);
+    CHECK(!error && handle.is_valid());
+    bool noticed = false;
+    for (int i = 0; i < 150; ++i) {
+      if (expect_refusal) {
+        if (handle.status().errc) { noticed = true; break; }
+      } else {
+        for (auto const& entry : fs::directory_iterator(box.receipts)) {
+          if (entry.path().extension() == ".pending") noticed = true;
+        }
+        if (noticed) break;
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    }
+    CHECK(noticed);
+  };
+  run(false);
+  CHECK(!fs::exists(box.public_root / "probe.bin"));
+  const std::string foreign(16 * 1024, 'F');
+  {
+    std::ofstream injected(box.public_root / "probe.bin", std::ios::binary);
+    CHECK(static_cast<bool>(injected));
+    injected.write(foreign.data(), static_cast<std::streamsize>(foreign.size()));
+    CHECK(static_cast<bool>(injected));
+  }
+  run(true);
+  std::ifstream occupant(box.public_root / "probe.bin", std::ios::binary);
+  CHECK(static_cast<bool>(occupant));
+  CHECK(std::string(std::istreambuf_iterator<char>(occupant), {}) == foreign);
+  std::cout << "CHUNKS_OWNED_RESTARTED_PENDING_COLLISION=PASS\n";
+}
+
 // Positive proof: a real native libtorrent seed sends a piece over loopback
 // to a second native libtorrent session using the receipt-owned disk backend.
 // Completion must be observed from libtorrent AND compared to exact file bytes.
@@ -224,5 +279,6 @@ int main(int argc, char** argv) {
   exercise(false);
   exercise(true);
   exerciseLoopbackTransfer();
-  std::cout << "CHUNKS_REAL_LIBTORRENT_HOST_SESSION=PASS cases=3\n";
+  exerciseRestartedPendingCollision();
+  std::cout << "CHUNKS_REAL_LIBTORRENT_HOST_SESSION=PASS cases=4\n";
 }
