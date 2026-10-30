@@ -7,7 +7,10 @@ object RemoteEndpointHints {
     private val rutorrentRoot = Regex("(?i)/rutorrent[0-9]{0,3}$")
 
     fun rpcAddress(input: String): String {
-        val uri = URI(input.trim())
+        // URI parsing errors embed the original input, which may contain a
+        // pasted token or password. Refuse with a fixed, nonsecret message.
+        val uri = try { URI(input.trim()) }
+            catch (_: Exception) { throw IllegalArgumentException("Invalid ruTorrent address") }
         require(uri.scheme.equals("https", true) ||
             (uri.scheme.equals("http", true) &&
               uri.host in listOf("localhost", "127.0.0.1", "[::1]"))) {
