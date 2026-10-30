@@ -1,10 +1,11 @@
 package io.github.gamesbyian.chunks.engine
 
 import java.io.File
-import java.io.FileOutputStream
+import java.nio.ByteBuffer
+import java.nio.channels.FileChannel
 import java.nio.file.Files
 import java.nio.file.LinkOption
-import java.nio.file.StandardCopyOption
+import java.nio.file.StandardOpenOption
 
 /**
  * Persisted admission *type*, not filesystem ownership. A resumed native
@@ -52,22 +53,42 @@ internal object LocalAdmissionProvenance {
     fun persist(directory: File?, hash: String, mode: Mode): Boolean {
         if (directory == null) return true // No native session restoration.
         if (!identity.matches(hash) || !directory.isDirectory) return false
-        val target = receipt(directory, hash)
-        val path = target.toPath()
-        try {
+        val path = receipt(directory, hash).toPath()
+        val root = directory.toPath()
+        var temporary: java.nio.file.Path? = null
+        return try {
+            if (!Files.isDirectory(root, LinkOption.NOFOLLOW_LINKS) ||
+                Files.isSymbolicLink(root)) return false
             if (Files.exists(path, LinkOption.NOFOLLOW_LINKS) ||
                 !Files.notExists(path, LinkOption.NOFOLLOW_LINKS))
                 return read(directory, hash) == mode
-            val temporary = File(directory, "$hash.admission.tmp")
-            if (Files.isSymbolicLink(temporary.toPath())) return false
-            FileOutputStream(temporary).use {
-                it.write(bytes(hash, mode))
-                it.fd.sync()
+
+            // Never truncate a predictable .tmp path: an interrupted prior
+            // transaction may have left a hardlink to unrelated bytes there.
+            // CREATE_NEW selects a fresh, exclusive file in this private root.
+            val fresh = Files.createTempFile(root, "$hash.admission.", ".tmp")
+            temporary = fresh
+            FileChannel.open(fresh, StandardOpenOption.WRITE, LinkOption.NOFOLLOW_LINKS).use {
+                val contents = ByteBuffer.wrap(bytes(hash, mode))
+                while (contents.hasRemaining()) it.write(contents)
+                it.force(true)
             }
-            Files.move(temporary.toPath(), path, StandardCopyOption.ATOMIC_MOVE)
-            return read(directory, hash) == mode
+            // A link is an atomic NO-REPLACE publication within one filesystem:
+            // unlike ATOMIC_MOVE, it can never replace a concurrently installed
+            // receipt, even on Linux where atomic rename replaces by default.
+            Files.createLink(path, fresh)
+            // Receipt must survive a crash before native resume state is
+            // permitted to claim its admission mode after process restoration.
+            FileChannel.open(root, StandardOpenOption.READ).use { it.force(true) }
+            read(directory, hash) == mode
+        } catch (_: java.nio.file.FileAlreadyExistsException) {
+            // Another writer won publication; accept only the exact same
+            // immutable mode. Never convert checked to reviewed-existing.
+            read(directory, hash) == mode
         } catch (_: Exception) {
-            return false
+            false
+        } finally {
+            temporary?.let { runCatching { Files.deleteIfExists(it) } }
         }
     }
 
