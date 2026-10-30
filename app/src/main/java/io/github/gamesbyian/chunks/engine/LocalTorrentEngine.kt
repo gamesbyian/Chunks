@@ -1362,7 +1362,9 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             if (params == null) { problems += file.name; continue }
             // Refuse BEFORE native add_torrent: even a paused restored handle
             // must not be trusted to open arbitrary shared/legacy paths.
-            if (nativeBackingRefusal(File(params.getSavePath())) != null) {
+            val restoredPath = try { params.getSavePath()?.let(::File) }
+                catch (_: Exception) { null }
+            if (restoredPath == null || nativeBackingRefusal(restoredPath) != null) {
                 problems += "${file.name}: native backing outside Chunks-private storage; resume preserved"
                 continue
             }
