@@ -1214,7 +1214,7 @@ private fun ConnectionScreen(
                 onClick = onConnect,
                 enabled = !loading && endpoint.isNotBlank(),
                 shape = RoundedCornerShape(18.dp),
-                modifier = Modifier.fillMaxWidth().height(56.dp)
+                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
             ) { Text(if (loading) "Finding secure rTorrent…" else "Connect to rTorrent") }
         }
         item { ConnectionDiagnosticsPanel(diagnostics, loading, onCancelConnect) }
@@ -1307,16 +1307,10 @@ private fun TransfersScreen(
                 OutlinedButton(onClick = onCombined, modifier = Modifier.heightIn(min = 48.dp)) {
                     Text("All environments…")
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = onAdd, enabled = !loading && !stale,
-                        modifier = Modifier.weight(1f).height(52.dp)) {
-                        Text("+ Add torrent")
-                    }
-                    OutlinedButton(onClick = onRefresh, enabled = !loading,
-                        modifier = Modifier.height(52.dp)) {
-                        Text(if (loading) "Refreshing…" else "Refresh")
-                    }
-                }
+                RemoteTransfersPrimaryActions(
+                    loading = loading, stale = stale,
+                    onAdd = onAdd, onRefresh = onRefresh
+                )
                 val wideText = LocalDensity.current.fontScale >= 1.5f
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1407,21 +1401,16 @@ private fun TransfersScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 for (option in TransferFilter.entries) {
                     FilterChip(selected = filter == option, onClick = { onFilter(option) },
-                        label = { Text(option.label) }, modifier = Modifier.height(48.dp))
+                        label = { Text(option.label) }, modifier = Modifier.heightIn(min = 48.dp))
                 }
             }
         }
         item {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(visible.size.toString() + " shown", style = MaterialTheme.typography.titleMedium)
-                OutlinedButton(onClick = {
-                    val choices = TransferOrder.entries
-                    val next = choices[(choices.indexOf(order) + 1) % choices.size]
-                    onSort(next, next.naturalDirection)
-                }, modifier = Modifier.height(48.dp)) {
-                    Text("Sort: " + order.label)
-                }
-            }
+            RemoteTransfersSortSummary(visible.size, order.label, onCycleSort = {
+                val choices = TransferOrder.entries
+                val next = choices[(choices.indexOf(order) + 1) % choices.size]
+                onSort(next, next.naturalDirection)
+            })
         }
         item {
             TransferSortDirectionButton(
@@ -1832,7 +1821,7 @@ private fun PlacesScreen(list: List<RemoteTransfer>, onUsePlace: (String) -> Uni
                     Text(place.second.toString() + " transfers",
                         style = MaterialTheme.typography.bodySmall)
                     OutlinedButton(onClick = { onUsePlace(place.first) },
-                        modifier = Modifier.height(48.dp)) { Text("Use in Add preview") }
+                        modifier = Modifier.heightIn(min = 48.dp)) { Text("Use in Add preview") }
                 }
             }
         }
@@ -2045,7 +2034,7 @@ private fun ServerScreen(
                 for (view in listOf("main", "default", "started", "stopped")) {
                     FilterChip(selected = requestedView == view,
                         onClick = { onRequestedView(view) },
-                        label = { Text(view) }, modifier = Modifier.height(48.dp))
+                        label = { Text(view) }, modifier = Modifier.heightIn(min = 48.dp))
                 }
             }
         }
@@ -2055,7 +2044,7 @@ private fun ServerScreen(
                 style = MaterialTheme.typography.bodyMedium)
         }
         item {
-            Button(onClick = onRefresh, enabled = !loading, modifier = Modifier.fillMaxWidth().height(54.dp)) {
+            Button(onClick = onRefresh, enabled = !loading, modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp)) {
                 Text(if (loading) "Refreshing…" else "Load selected view")
             }
         }
@@ -2073,7 +2062,7 @@ private fun ServerScreen(
             }
         }
         item {
-            OutlinedButton(onClick = onDisconnect, modifier = Modifier.fillMaxWidth().height(54.dp)) {
+            OutlinedButton(onClick = onDisconnect, modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp)) {
                 Text("Disconnect")
             }
         }
