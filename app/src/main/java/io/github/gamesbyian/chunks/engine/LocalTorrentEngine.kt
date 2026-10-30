@@ -180,6 +180,11 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     // Every native handle reconstructed from saved resume state must
     // revalidate its path claim on Start, even reviewed-existing seeding jobs.
     private val restoredNativeJobs: MutableSet<String> = ConcurrentHashMap.newKeySet()
+    // A reviewed existing-data Add may legitimately own non-empty source
+    // paths. Keep it in the session path namespace, but never subject it to
+    // the *checked download's* zero-progress means foreign rule. Unknown
+    // provenance remains refused and is NOT added to this set.
+    private val reviewedExistingNativeJobs: MutableSet<String> = ConcurrentHashMap.newKeySet()
     // Metadata-ready upload-only magnets are intentionally persisted paused;
     // native UPLOAD_MODE remains their durable don't-write-payload marker.
     // The next explicit Start rechecks paths, including after process restart.
@@ -565,6 +570,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         }
         val handle = TorrentHandle(raw)
         handles[hash] = handle
+        if (!nestedChecked) reviewedExistingNativeJobs.add(hash)
         // The asynchronous SAVE_RESUME_DATA callback writes the same
         // "$hash.resume.tmp". Serialize the initial Add commit with that
         // callback and Remove using the already established handle fence.
@@ -709,7 +715,8 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                 checkedStartProblems.remove(key)
             }
             if (state.hasMetadata() && checkedFirstStarts[key] == null &&
-                checkedPayloadReservations.hasReservation(key)) {
+                checkedPayloadReservations.hasReservation(key) &&
+                !reviewedExistingNativeJobs.contains(key)) {
                 val problem = inspectCheckedRestartCollision(key, handle)
                 if (problem != null) {
                     checkedStartProblems[key] = problem
@@ -1354,6 +1361,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         restoredFirstStarts.remove(key)
         restoredUnknownAdmissions.remove(key)
         restoredNativeJobs.remove(key)
+        reviewedExistingNativeJobs.remove(key)
         checkedStartProblems.remove(key)
         // remove_torrent is non-blocking: the old native handle may still
         // have queued payload I/O. Keep its path claim as a tombstone until
@@ -1462,6 +1470,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         restoredFirstStarts.clear()
         restoredUnknownAdmissions.clear()
         restoredNativeJobs.clear()
+        reviewedExistingNativeJobs.clear()
         checkedStartProblems.clear()
         session.stop()
         // The native session has stopped before its in-process path claims
@@ -1508,7 +1517,8 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             // provenance is stopped and requires a fresh user review.
             when (LocalAdmissionProvenance.read(config.stateDirectory, key)) {
                 LocalAdmissionProvenance.Mode.CHECKED -> restoredFirstStarts.add(key)
-                LocalAdmissionProvenance.Mode.REVIEWED_EXISTING -> Unit
+                LocalAdmissionProvenance.Mode.REVIEWED_EXISTING ->
+                    reviewedExistingNativeJobs.add(key)
                 null -> {
                     restoredUnknownAdmissions.add(key)
                     checkedStartProblems[key] =
