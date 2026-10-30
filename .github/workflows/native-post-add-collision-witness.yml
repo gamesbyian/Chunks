@@ -76,11 +76,24 @@ jobs:
               for key in ("foreign_file_replaced", "expected_torrent_data_present"):
                   if not any(re.fullmatch(rf"{prefix} {key}=(true|false)", s) for s in found):
                       raise SystemExit(f"Missing {key} for {prefix}")
-              if prefix == "CHUNKS_RESTORE_COLLISION" and not any(
-                  re.fullmatch(rf"{prefix} restore_changed_foreign=(true|false)", line)
-                  for line in found
-              ):
-                  raise SystemExit("Missing native restore-before-Start mutation witness")
+              if prefix == "CHUNKS_RESTORE_COLLISION":
+                  before, expected, at_restore, after = re.findall(
+                      r"(?:before_sha256|expected_sha256|after_restore_sha256|after_sha256)=([a-f0-9]{64})",
+                      hashes
+                  )
+                  def witnessed_bool(field):
+                      matches = [re.fullmatch(rf"{prefix} {field}=(true|false)", line)
+                                 for line in found]
+                      present = [m.group(1) == "true" for m in matches if m]
+                      if len(present) != 1:
+                          raise SystemExit(f"Missing or duplicate native receipt: {field}")
+                      return present[0]
+                  if witnessed_bool("restore_changed_foreign") != (before != at_restore):
+                      raise SystemExit("Restore mutation receipt contradicts its SHA-256 values")
+                  if witnessed_bool("foreign_file_replaced") != (before != after):
+                      raise SystemExit("Final foreign-file receipt contradicts its SHA-256 values")
+                  if witnessed_bool("expected_torrent_data_present") != (expected == after):
+                      raise SystemExit("Expected torrent data receipt contradicts SHA-256 values")
               diagnostic = (
                   rf"{prefix} native_start_outcome=(VERIFIED|UNCERTAIN)"
                   if prefix == "CHUNKS_POST_ADD_COLLISION" else
