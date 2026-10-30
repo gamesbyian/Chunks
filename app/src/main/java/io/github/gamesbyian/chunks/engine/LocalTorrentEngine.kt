@@ -991,6 +991,11 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                         change.requestedPriority !in setOf(FinishInOrderPlanner.LOW,
                             FinishInOrderPlanner.NORMAL, FinishInOrderPlanner.HIGH)
                 }) return LocalFileBatchOutcome.STALE_REVIEW
+            // Finish in Order is an independent native filePriority writer.
+            // Apply the same no-foreign-zero-progress fence before the first
+            // write; an earlier read-only planner result is not authorization.
+            if (checkedPriorityMutationProblem(key, handle) != null)
+                return LocalFileBatchOutcome.STALE_REVIEW
             try {
                 changes.forEach { change ->
                     handle.filePriority(change.index, when (change.requestedPriority) {
