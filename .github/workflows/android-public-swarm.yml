@@ -44,6 +44,17 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
+      - name: Select exactly one acceptance experiment (offline, fail closed)
+        id: mode
+        env:
+          CHUNKS_INTERRUPT: ${{ inputs.interrupt }}
+          CHUNKS_DOZE: ${{ inputs.doze }}
+          CHUNKS_NETFLAP: ${{ inputs.netflap }}
+        run: |
+          set -euo pipefail
+          script="$(bash tools/select_android_public_swarm_mode.sh "$CHUNKS_INTERRUPT" "$CHUNKS_DOZE" "$CHUNKS_NETFLAP")"
+          printf 'script=%s\\n' "$script" >> "$GITHUB_OUTPUT"
+          printf 'CHUNKS_SWARM_MODE selected=%s\\n' "$script"
       - name: Collect the Debian netinst torrent (no web seeds, Debian tracker only)
         env:
           BUDGET_MIB: ${{ inputs.budget_mib }}
@@ -88,4 +99,4 @@ jobs:
           profile: pixel_6
           emulator-boot-timeout: 600
           disable-animations: true
-          script: bash tools/${{ inputs.netflap && 'android_public_swarm_netflap.sh' || (inputs.doze && 'android_public_swarm_doze.sh' || (inputs.interrupt && 'android_public_swarm_interrupt.sh' || 'android_public_swarm.sh')) }}
+          script: bash tools/${{ steps.mode.outputs.script }}
