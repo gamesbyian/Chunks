@@ -1,10 +1,11 @@
 package io.github.gamesbyian.chunks.engine
 
 import java.io.File
-import java.io.FileOutputStream
+import java.nio.ByteBuffer
+import java.nio.channels.FileChannel
 import java.nio.file.Files
 import java.nio.file.LinkOption
-import java.nio.file.StandardCopyOption
+import java.nio.file.StandardOpenOption
 
 /**
  * Persisted admission *type*, not filesystem ownership. A resumed native
@@ -44,29 +45,38 @@ internal object LocalAdmissionProvenance {
     }
 
     /**
-     * Called before native Add. The app-private record is synced and atomically
-     * installed before a restorable native job can exist. A conflicting prior
-     * mode refuses rather than rewriting evidence of an earlier admission.
-     * A crash that loses this record causes conservative UNKNOWN restoration.
+     * Called before native Add. CREATE_NEW is an atomic exclusion boundary
+     * for the target *name*: two engines cannot race separate shared temporary
+     * files and overwrite one another's existing admission evidence. A reader
+     * observing a partially written record returns UNKNOWN, never an adoption
+     * grant. The channel must be synced before native Add can proceed.
+     *
+     * Unlike ATOMIC_MOVE, CREATE_NEW never replaces an already-existing target
+     * whose admission mode differs. There is deliberately no fallback to a
+     * truncating open or a replacement rename. A crash midway through writing
+     * leaves an incomplete receipt that blocks restoration until re-review.
      */
     fun persist(directory: File?, hash: String, mode: Mode): Boolean {
         if (directory == null) return true // No native session restoration.
         if (!identity.matches(hash) || !directory.isDirectory) return false
-        val target = receipt(directory, hash)
-        val path = target.toPath()
+        val path = receipt(directory, hash).toPath()
         try {
             if (Files.exists(path, LinkOption.NOFOLLOW_LINKS) ||
                 !Files.notExists(path, LinkOption.NOFOLLOW_LINKS))
                 return read(directory, hash) == mode
-            val temporary = File(directory, "$hash.admission.tmp")
-            if (Files.isSymbolicLink(temporary.toPath())) return false
-            FileOutputStream(temporary).use {
-                it.write(bytes(hash, mode))
-                it.fd.sync()
+            FileChannel.open(path, StandardOpenOption.CREATE_NEW,
+                StandardOpenOption.WRITE).use { channel ->
+                val payload = ByteBuffer.wrap(bytes(hash, mode))
+                while (payload.hasRemaining()) {
+                    if (channel.write(payload) <= 0)
+                        return false
+                }
+                channel.force(true)
             }
-            Files.move(temporary.toPath(), path, StandardCopyOption.ATOMIC_MOVE)
             return read(directory, hash) == mode
         } catch (_: Exception) {
+            // A conflicting creator, interrupted record or I/O error is
+            // uncertainty, not permission to overwrite/adopt the prior mode.
             return false
         }
     }
