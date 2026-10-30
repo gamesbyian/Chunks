@@ -50,6 +50,22 @@ jobs:
           test "$(git -C "$RUNNER_TEMP/chunks-libtorrent" rev-parse HEAD)" = "24a3adf35d3e689bde700371337aad61b160bafa"
       - name: Verify source-only SWIG and Java fork patch is safe and idempotent
         run: python3 -m unittest discover -s experiments/native-owned-writer/bridge -p 'test_apply_to_libtorrent4j_fork.py' -v
+      - name: Stage custom disk sources into exact libtorrent4j 2.1.0-39 upstream checkout
+        run: |
+          set -euo pipefail
+          upstream="$RUNNER_TEMP/chunks-libtorrent4j"
+          mkdir -p "$upstream"
+          git -C "$upstream" init
+          git -C "$upstream" remote add origin https://github.com/aldenml/libtorrent4j.git
+          git -C "$upstream" fetch --depth 1 origin da7d2403f06a0939bc2c51a88e67a6c4a85512ef
+          git -C "$upstream" checkout --detach FETCH_HEAD
+          test "$(git -C "$upstream" rev-parse HEAD)" = "da7d2403f06a0939bc2c51a88e67a6c4a85512ef"
+          python3 experiments/native-owned-writer/bridge/apply_to_libtorrent4j_fork.py "$upstream"
+          python3 experiments/native-owned-writer/bridge/apply_to_libtorrent4j_fork.py "$upstream"
+          grep -F '%include "chunks/bridge/owned_disk_extension.i"' "$upstream/swig/libtorrent.i"
+          grep -F 'setOwnedDiskIO' "$upstream/src/main/java/org/libtorrent4j/SessionParams.java"
+          grep -F 'chunks/bridge/owned_libtorrent_disk.cc' "$upstream/swig/CMakeLists.txt"
+          git -C "$upstream" diff --check
       - name: Compile all custom disk_interface overrides against pinned C++ API
         run: |
           set -euo pipefail
