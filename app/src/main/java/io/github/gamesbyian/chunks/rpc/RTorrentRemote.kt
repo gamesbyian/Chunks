@@ -347,14 +347,12 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             val params: List<Any> = if (plan.useServerDefault) listOf("", plan.source)
                 else listOf("", plan.source, "d.directory.set=" + plan.destination)
             call("load.verbose", params)
-        } catch (_: IOException) {
-            // Timeout or gateway loss can occur *after* load was applied.
-            // Never repeat the call automatically: duplicates or path drift
-            // must be reconciled by a later explicit inventory refresh.
-            return RemoteAddOutcome.Uncertain(plan.expectedInfoHash)
-        } catch (_: RpcFault) {
-            // The server may apply a load before reporting a fault. A fault is
-            // not evidence of rollback or a safe invitation to repeat Add.
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            // The backend may apply load before returning a timeout, fault,
+            // truncated XML, or other malformed acknowledgement. None proves
+            // rollback or authorizes a second Add.
             return RemoteAddOutcome.Uncertain(plan.expectedInfoHash)
         }
         return awaitFreshStoppedAddReadback(plan)
@@ -385,9 +383,11 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             val params: List<Any> = if (plan.useServerDefault) listOf("", torrentBytes)
                 else listOf("", torrentBytes, "d.directory.set=" + plan.destination)
             call("load.raw_verbose", params)
-        } catch (_: IOException) {
-            return RemoteAddOutcome.Uncertain(hash)
-        } catch (_: RpcFault) {
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            // A malformed acknowledgement may arrive after load.raw_verbose
+            // was applied. Never retry an uncertain non-idempotent Add.
             return RemoteAddOutcome.Uncertain(hash)
         }
         return awaitFreshStoppedAddReadback(plan)
@@ -432,7 +432,10 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         if (lookupName(hash) != null) return RemoteAddOutcome.AlreadyPresent(hash)
         try {
             postRuTorrentUpload(upload, plan.destination, torrentBytes)
-        } catch (_: IOException) {
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            // Upload may have been applied despite a broken gateway response.
             return RemoteAddOutcome.Uncertain(hash)
         }
         // ruTorrent's reply text is not proof; only the server's own state is.
@@ -539,10 +542,14 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                     RemoteAddOutcome.PendingVerification(plan.expectedInfoHash)
                 }
             }
-        } catch (_: IOException) {
-            RemoteAddOutcome.Uncertain(plan.expectedInfoHash)
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
         } catch (_: RpcFault) {
             RemoteAddOutcome.PendingVerification(plan.expectedInfoHash)
+        } catch (_: Exception) {
+            // A successful Add followed by a malformed readback is uncertain,
+            // not a failure that invites a duplicate load.
+            RemoteAddOutcome.Uncertain(plan.expectedInfoHash)
         }
     }
 
@@ -602,20 +609,20 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         check(sessionContainsExactHash(hash)) { "Torrent disappeared before removal; refresh" }
         try {
             call("d.erase", listOf(hash))
-        } catch (_: IOException) {
-            return SessionEraseOutcome.Uncertain(hash)
-        } catch (_: RpcFault) {
-            // A server fault cannot prove that a destructive session command
-            // was not applied. Reconcile read-only; never issue a second erase.
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            // Even a malformed success/fault envelope may follow an applied
+            // erase. Never repeat an ambiguous session mutation.
             return SessionEraseOutcome.Uncertain(hash)
         }
         return try {
             if (sessionContainsExactHash(hash)) SessionEraseOutcome.PendingRemoval(hash)
             else SessionEraseOutcome.VerifiedRemoved(hash)
-        } catch (_: IOException) {
-            SessionEraseOutcome.Uncertain(hash)
-        } catch (_: RpcFault) {
-            // An unknown-method/server fault does not establish absence.
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            // Invalid or unavailable readback never proves absence.
             SessionEraseOutcome.Uncertain(hash)
         }
     }
@@ -746,10 +753,11 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         try {
             call("f.priority.set", listOf(hash + ":f" + fileIndex, desiredPriority))
             call("d.update_priorities", listOf(hash))
-        } catch (_: IOException) {
-            return FilePriorityOutcome.Uncertain(hash, fileIndex)
-        } catch (_: RpcFault) {
-            // The first command may have applied before the second faulted.
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            // Either priority write may have applied before a malformed
+            // acknowledgement. Do not repeat either command automatically.
             return FilePriorityOutcome.Uncertain(hash, fileIndex)
         }
 
@@ -764,10 +772,13 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             } else {
                 FilePriorityOutcome.PendingVerification(hash, fileIndex)
             }
-        } catch (_: IOException) {
-            FilePriorityOutcome.Uncertain(hash, fileIndex)
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
         } catch (_: RpcFault) {
             FilePriorityOutcome.PendingVerification(hash, fileIndex)
+        } catch (_: Exception) {
+            // A malformed post-write file snapshot cannot establish success.
+            FilePriorityOutcome.Uncertain(hash, fileIndex)
         }
     }
 
