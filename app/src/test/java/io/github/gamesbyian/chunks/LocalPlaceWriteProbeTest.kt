@@ -60,4 +60,31 @@ class LocalPlaceWriteProbeTest {
         assertNull(LocalPlaceWriteProbe.ensureChild(parent, "planted"))
         assertTrue(elsewhere.list()!!.isEmpty())
     }
+
+    @Test fun occupiedTemporaryProbeIsNeverOpenedForWriteOrDeleted() {
+        val root = temp.newFolder("probe-collision")
+        val probe = File(root, ".chunks-write-probe-0000000000000000.tmp")
+        val unrelated = byteArrayOf(4, 8, 15, 16, 23, 42)
+        probe.writeBytes(unrelated)
+        val predictable = object : java.util.Random() {
+            override fun nextBytes(bytes: ByteArray) { bytes.fill(0) }
+        }
+        assertNotNull(LocalPlaceWriteProbe.verify(root, predictable))
+        assertTrue(probe.isFile)
+        assertTrue(unrelated.contentEquals(probe.readBytes()))
+        assertTrue(File(root, ".chunks-write-probe-0000000000000000.ok").notExists())
+    }
+
+    @Test fun occupiedRenameTargetRemainsIntactAndNoTemporaryProbeIsLeft() {
+        val root = temp.newFolder("rename-target-collision")
+        val other = File(root, ".chunks-write-probe-0000000000000000.ok")
+        val bytes = byteArrayOf(2, 7, 1, 8, 2, 8)
+        other.writeBytes(bytes)
+        val predictable = object : java.util.Random() {
+            override fun nextBytes(buffer: ByteArray) { buffer.fill(0) }
+        }
+        assertNotNull(LocalPlaceWriteProbe.verify(root, predictable))
+        assertTrue(bytes.contentEquals(other.readBytes()))
+        assertTrue(File(root, ".chunks-write-probe-0000000000000000.tmp").notExists())
+    }
 }
