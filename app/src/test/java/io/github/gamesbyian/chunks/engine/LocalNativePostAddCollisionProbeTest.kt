@@ -198,4 +198,94 @@ class LocalNativePostAddCollisionProbeTest {
             actual.contentEquals(unrelated) || expectedPresent)
         assertArrayEquals(expected, File(sourceRoot, "payload.bin").readBytes())
     }
+
+    @Test fun stoppedPartialJobThenForeignSkippedFileAndRestartCharacterizesNativeWrites() {
+        // Independently exercise the post-Stop/re-Start window (P0 #568).
+        // The receiver first downloads ONLY "initial.bin"; the second file
+        // remains intentionally skipped, without any native payload authority.
+        val sourceRoot = File(temp.newFolder("post-stop-source"),
+            "Post-stop timing fixture").apply { assertTrue(mkdirs()) }
+        val first = ByteArray(256 * 1024).also { Random(5681L).nextBytes(it) }
+        val delayed = ByteArray(768 * 1024).also { Random(5682L).nextBytes(it) }
+        File(sourceRoot, "initial.bin").writeBytes(first)
+        File(sourceRoot, "delayed.bin").writeBytes(delayed)
+        val metainfo = TorrentBuilder().path(sourceRoot).pieceSize(32 * 1024)
+            .flags(TorrentBuilder.V1_ONLY).generate().entry().bencode()
+
+        val seed = engine()
+        val source = seed.addStopped(metainfo, sourceRoot.parentFile)
+        assertTrue(source is LocalAddResult.AddedStopped)
+        val hash = (source as LocalAddResult.AddedStopped).status.infoHash
+        assertTrue(seed.resume(hash).outcome == LocalCommandOutcome.VERIFIED)
+        await("post-Stop native seed") {
+            seed.status(hash)?.state == LocalTransferState.SEEDING
+        }
+
+        val destination = temp.newFolder("post-stop-destination")
+        val receiver = engine()
+        val registered = receiver.addStopped(metainfo, destination,
+            listOf(InetSocketAddress("127.0.0.1", seed.listenPort())))
+        assertTrue(registered is LocalAddResult.AddedStopped)
+        val skippedIndex = receiver.files(hash).orEmpty()
+            .single { it.path.endsWith("/delayed.bin") }.index
+        assertTrue(receiver.setFileWanted(hash, skippedIndex, false) ==
+            LocalCommandOutcome.VERIFIED)
+        val firstStart = receiver.resume(hash)
+        assertTrue(firstStart.outcome == LocalCommandOutcome.VERIFIED)
+        await("selected first file finishes") {
+            receiver.status(hash)?.let { it.progressPpm == 1_000_000 &&
+                it.state in setOf(LocalTransferState.FINISHED, LocalTransferState.SEEDING) } == true
+        }
+        assertTrue("Flush first file before independent inspection",
+            receiver.flushCompletedForLibraryRead(hash, 30_000L))
+        assertArrayEquals("Selected file must really arrive from the native peer",
+            first, File(destination, "Post-stop timing fixture/initial.bin").readBytes())
+        val stopped = receiver.pause(hash)
+        assertTrue("Stop must be read back before external path substitution",
+            stopped.outcome == LocalCommandOutcome.VERIFIED)
+        assertTrue(requireNotNull(receiver.status(hash)).stopped)
+
+        val foreign = File(destination, "Post-stop timing fixture/delayed.bin")
+        assertTrue(foreign.parentFile.isDirectory || foreign.parentFile.mkdirs())
+        val unrelated = ByteArray(delayed.size).also { Random(9878L).nextBytes(it) }
+        foreign.writeBytes(unrelated)
+        val beforeSha = sha(foreign.readBytes())
+        val expectedSha = sha(delayed)
+        assertFalse(beforeSha == expectedSha)
+
+        // Toggling priorities is itself an independently observed mutation.
+        // The fixture can record a write even before the second explicit Start.
+        val wanted = receiver.setFileWanted(hash, skippedIndex, true)
+        assertTrue("Priority transition must be observed or uncertain, never absent",
+            wanted in setOf(LocalCommandOutcome.VERIFIED, LocalCommandOutcome.UNCERTAIN))
+        val afterPrioritySha = sha(foreign.readBytes())
+        val restart = receiver.resume(hash)
+        assertTrue("A future safe native engine may refuse this Start",
+            restart.outcome in setOf(LocalCommandOutcome.VERIFIED,
+                LocalCommandOutcome.UNCERTAIN, LocalCommandOutcome.REFUSED))
+        if (restart.outcome != LocalCommandOutcome.REFUSED) {
+            receiver.connectPeer(hash, InetSocketAddress("127.0.0.1", seed.listenPort()))
+            await("post-Stop restarted peer transfer") {
+                receiver.status(hash)?.progressPpm == 1_000_000
+            }
+            assertTrue("Flush after unskipping before reading backing bytes",
+                receiver.flushCompletedForLibraryRead(hash, 30_000L))
+        }
+
+        val actual = foreign.readBytes()
+        println("CHUNKS_POST_STOP_COLLISION before_sha256=$beforeSha expected_sha256=$expectedSha " +
+            "after_priority_sha256=$afterPrioritySha after_sha256=${sha(actual)}")
+        println("CHUNKS_POST_STOP_COLLISION foreign_file_replaced=${!actual.contentEquals(unrelated)}")
+        println("CHUNKS_POST_STOP_COLLISION expected_torrent_data_present=${actual.contentEquals(delayed)}")
+        println("CHUNKS_POST_STOP_COLLISION first_start_outcome=${firstStart.outcome} " +
+            "stop_outcome=${stopped.outcome} selection_outcome=$wanted restart_outcome=${restart.outcome}")
+        // This diagnostic is expected to remain green even if future native
+        // owned-descriptor protection safely refuses the replacement.
+        assertTrue("Only the synthetic torrent bytes or exact planted foreign bytes may survive",
+            actual.contentEquals(unrelated) || actual.contentEquals(delayed))
+        assertArrayEquals("Original source payload must not be modified", delayed,
+            File(sourceRoot, "delayed.bin").readBytes())
+        assertArrayEquals(first, File(sourceRoot, "initial.bin").readBytes())
+    }
+
 }
