@@ -42,7 +42,7 @@ class CombinedSharedDetailNavigationTest {
     private val savedScope = "https://source.example/rutorrent3/RPC2\u0000ian"
     private val savedId = io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverId(
         savedScope.substringBefore('\u0000'), "ian").value
-    private val savedLabel = "Server · Instance three"
+    private val savedLabel = "Instance three"
     private val connected = RemoteTransfer(hash, "Instance two download", 2048, 1024,
         true, "/two", 0, null)
     private val saved = RemoteTransfer(hash, "Instance three download", 4096, 2048,
@@ -81,17 +81,18 @@ class CombinedSharedDetailNavigationTest {
         rule.onNode(hasScrollToIndexAction())
             .performScrollToNode(hasText("Instance two download"))
         rule.onNodeWithContentDescription("Details for Instance two download on $connectedName")
-            .performClick()
+            .performScrollTo().performClick()
         rule.onNodeWithText("Environment: $connectedName").assertExists()
         rule.onNodeWithText("Instance two download").assertExists()
         rule.onNodeWithText("Instance three download").assertDoesNotExist()
         rule.onNodeWithText("Exact infohash: $hash").assertExists()
         rule.onNodeWithText("Download rate: 0 B/s").assertExists()
         rule.onNodeWithText("Upload rate: not reported").assertExists()
-        rule.onNodeWithText("Capability has not been checked recently", substring = true)
+        rule.onNodeWithText("Start and stop: Capability has not been checked recently for this exact environment.")
             .performScrollTo().assertExists()
         rule.onNodeWithText("Back to transfers").performClick()
         // Open detail never changed filter, login, selection or underlying engine.
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Filter transfers"))
         rule.onNodeWithText("Filter transfers").assertExists()
 
         rule.onNode(hasScrollToIndexAction())
@@ -102,7 +103,7 @@ class CombinedSharedDetailNavigationTest {
         rule.onNode(hasScrollToIndexAction())
             .performScrollToNode(hasText("Instance three download"))
         rule.onNodeWithContentDescription(
-            "Details for Instance three download on Server · $savedLabel").performClick()
+            "Details for Instance three download on Server · $savedLabel").performScrollTo().performClick()
         rule.onNodeWithText("Environment: Server · $savedLabel").assertExists()
         rule.onNodeWithText("Instance three download").assertExists()
         rule.onNodeWithText("Instance two download").assertDoesNotExist()
@@ -129,11 +130,14 @@ class CombinedSharedDetailNavigationTest {
         }
         val origin = serverEnvironmentLabel(connectedScope)
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Instance two download"))
-        rule.onNodeWithContentDescription("Details for Instance two download on $origin").performClick()
+        rule.onNodeWithContentDescription("Details for Instance two download on $origin")
+            .performScrollTo().performClick()
         rule.onNodeWithText("Observation: The last transfer observation is out of date.", substring = true)
             .assertExists()
         rule.onNodeWithText("Instance two download").assertExists()
         rule.onNodeWithText("Back to transfers").performClick()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(
+            hasText(origin + ": Out of date, showing last list · 1 transfers"))
         rule.onNodeWithText(origin + ": Out of date, showing last list · 1 transfers").assertExists()
     }
 }
