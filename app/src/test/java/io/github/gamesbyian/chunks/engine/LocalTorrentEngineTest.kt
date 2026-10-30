@@ -235,6 +235,22 @@ class LocalTorrentEngineTest {
         assertFalse(File(dest, "Chunks public fixture/episode.bin").exists())
     }
 
+    @Test fun nativeRemoveTombstoneCannotBeEvadedThroughRawAdd() {
+        val fixture = fixture()
+        val root = temp.newFolder("removed-tombstone-raw-destination")
+        val native = engine()
+        val checked = added(native.addStoppedChecked(fixture.torrent, root))
+        assertTrue(checked.stopped)
+        assertTrue(native.removeKeepingData(checked.infoHash))
+        assertNull(native.status(checked.infoHash))
+        val bypass = native.addStopped(fixture.torrent, root)
+        assertTrue("A raw Add must not resurrect an asynchronously removed native writer: $bypass",
+            bypass is LocalAddResult.Refused)
+        assertTrue((bypass as LocalAddResult.Refused).reason.contains("reserves"))
+        assertTrue(native.list().isEmpty())
+        assertFalse(File(root, "Chunks public fixture/episode.bin").exists())
+    }
+
     @Test fun missingAdmissionReceiptNeverSilentlyUpgradesRestoredJobToReviewedSeed() {
         val fixture = fixture()
         val state = temp.newFolder("unknown-admission-state")
