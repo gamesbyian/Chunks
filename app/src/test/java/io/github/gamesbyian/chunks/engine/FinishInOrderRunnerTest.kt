@@ -69,6 +69,44 @@ class FinishInOrderRunnerTest {
         assertTrue(port.files.all { it.priority == 4 })
     }
 
+    @Test fun safetyStalePreflightPersistsSuspensionAndDoesNotRetryAutomatically() =
+        kotlinx.coroutines.runBlocking {
+            val port = FakePort(episodes(3))
+            port.outcome = { LocalFileBatchOutcome.STALE_REVIEW }
+            val stopped = FinishInOrderRunner(port).step(hash, record(port)) as Step.Suspended
+            assertTrue("The UI must explain safety/preflight review instead of silent idle",
+                stopped.record.suspendedReason.orEmpty().contains("backing-file safety"))
+            assertTrue("Native preflight refusal never leaves a pending applied batch",
+                stopped.record.pending.isEmpty())
+            assertEquals("The entire scheduling write must be attempted only once",
+                1, port.log.count { it.startsWith("apply:") })
+            assertEquals("Persisted suspension must preserve actual file priorities",
+                setOf(4), port.files.map { it.priority }.toSet())
+            port.log.clear()
+            assertTrue(FinishInOrderRunner(port).step(hash, stopped.record) is Step.Suspended)
+            assertTrue("Periodic poll must not repeat a blocked native write",
+                port.log.none { it.startsWith("apply:") })
+        }
+
+    @Test fun failingToPersistNativePreflightRefusalDoesNotClaimDurableSuspension() =
+        kotlinx.coroutines.runBlocking {
+            val port = FakePort(episodes(3))
+            port.outcome = { LocalFileBatchOutcome.STALE_REVIEW }
+            // A write-ahead journal can be saved but saving the later
+            // suspension fails. Never claim that persisted recovery succeeded.
+            var attempts = 0
+            val baseSave = port.outcome
+            val failing = object : FinishInOrderRunner.Port by port {
+                override fun save(infoHash: String, record: FinishInOrderRecord): Boolean {
+                    attempts++
+                    return if (attempts == 2) false else port.save(infoHash, record)
+                }
+            }
+            assertTrue(FinishInOrderRunner(failing).step(hash, record(port))
+                is Step.StorageFailed)
+            assertEquals(1, port.log.count { it.startsWith("apply:") })
+        }
+
     @Test fun uncertainApplySuspendsAndIsNeverRetried() = kotlinx.coroutines.runBlocking {
         val port = FakePort(episodes(3))
         port.outcome = { LocalFileBatchOutcome.UNCERTAIN }
