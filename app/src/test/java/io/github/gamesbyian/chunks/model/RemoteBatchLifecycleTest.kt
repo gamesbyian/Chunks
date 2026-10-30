@@ -42,13 +42,17 @@ class RemoteBatchLifecycleTest {
         assertEquals(listOf(hash('d')), report.notAttempted)
     }
 
-    @Test fun failureAlsoHalts() = runBlocking {
+    @Test fun unexpectedExceptionAfterSubmissionHaltsAsUncertainWithoutRetry() = runBlocking {
+        val calls = mutableListOf<String>()
         val report = RemoteBatchLifecycle.run(listOf(a, c), true) { h, _ ->
-            if (h == hash('a')) error("fault") else LifecycleOutcome.Verified(true)
+            calls += h
+            if (h == hash('a')) error("Reply parser failed after sending command")
+            else LifecycleOutcome.Verified(true)
         }
         assertEquals(hash('a'), report.haltedOn)
-        assertFalse(report.haltedUncertain)
+        assertTrue(report.haltedUncertain)
         assertEquals(listOf(hash('c')), report.notAttempted)
+        assertEquals(listOf(hash('a')), calls)
         assertTrue(report.verified.isEmpty())
     }
 
