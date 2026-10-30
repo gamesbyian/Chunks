@@ -105,6 +105,35 @@ class LocalPublicDownloadsPlaceInstrumentedTest {
         assertNull(app.failure)
     }
 
+    @Test fun checkedAddAcceptsCleanPublicDownloadsOnActualAndroidRoot() {
+        allowSharedDownloads()
+        val public = LocalDownloadPlaces.choices(context)
+            .single { it.place.kind == LocalPlaceKind.PUBLIC_DOWNLOADS }
+        val root = requireNotNull(LocalDownloadPlaces.materialize(public.place)) {
+            "Public Downloads could not be verified"
+        }
+        val destination = requireNotNull(LocalOwnedAddFolder.prepare(root,
+            "clean-checked-" + System.nanoTime()))
+        publicTestFolder = destination
+
+        val source = File(work, "checked-source/Clean checked fixture").apply { mkdirs() }
+        File(source, "payload.bin").writeBytes(ByteArray(16_384) { (it % 251).toByte() })
+        val torrent = TorrentBuilder().path(source).pieceSize(16 * 1024)
+            .generate().entry().bencode()
+
+        // Uses the production checked Add against the actual Android path,
+        // catching indirect /storage ancestor compatibility regressions.
+        val native = engine()
+        val result = native.addStoppedChecked(torrent, destination)
+        assertTrue("Fresh Android public Downloads path was rejected: " + result,
+            result is LocalAddResult.AddedStopped)
+        val added = (result as LocalAddResult.AddedStopped).status
+        assertTrue("Checked Add must be stopped", added.stopped)
+        assertEquals(1, native.list().size)
+        assertTrue("Stopped Add should not create any payload bytes",
+            !File(destination, "Clean checked fixture/payload.bin").exists())
+    }
+
     @Test fun checkedAddRejectsUnrelatedCollisionInSharedDownloadsWithoutMutation() {
         allowSharedDownloads()
         val public = LocalDownloadPlaces.choices(context)

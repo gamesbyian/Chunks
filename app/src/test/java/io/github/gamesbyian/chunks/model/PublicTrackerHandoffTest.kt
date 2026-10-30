@@ -21,7 +21,17 @@ class PublicTrackerHandoffTest {
         val rejected = listOf(
             "https://tracker.example/announce?passkey=abc",
             "https://tracker.example/announce.php?pk=x",
+            "https://tracker.example/announce?x=short",
+            "https://tracker.example/announce?unexpected=secret",
+            "https://tracker.example/announce?%70asskey=short",
+            "https://tracker.example/announce?harmless=true",
+            "https://tracker.example/announce?",
+            "https://tracker.example/announce#private",
+            "https://tracker.example/%70asskey/announce",
             "https://tracker.example/a1b2c3d4e5f6a7b8c9d0/announce",
+            "https://tracker.example/abc123/announce",
+            "https://tracker.example/account/announce",
+            "https://tracker.example/announce/abc123",
             "https://user:pw@tracker.example/announce",
             "ftp://tracker.example/announce",
             "https://tracker.example/announce\nx",
@@ -30,5 +40,18 @@ class PublicTrackerHandoffTest {
         for (url in rejected) assertFalse(url, PublicTrackerHandoff.usable(url))
         assertEquals(base, PublicTrackerHandoff.withTrackers(base, rejected))
         assertTrue(PublicTrackerHandoff.usable("http://tracker.example:6969/announce"))
+        assertTrue(PublicTrackerHandoff.usable("https://tracker.example/announce.php"))
+        assertTrue(PublicTrackerHandoff.usable("https://tracker.example/tracker/announce"))
+    }
+
+    @Test fun explicitQueryOrFragmentCannotEscapeIntoPhoneMagnet() {
+        val urls = listOf(
+            "udp://tracker.example:6969/announce?u=shortsecret",
+            "https://tracker.example/announce?session=abc123",
+            "http://tracker.example/announce#private"
+        )
+        assertEquals(base, PublicTrackerHandoff.withTrackers(base, urls))
+        assertTrue(PublicTrackerHandoff.withTrackers(base,
+            listOf("udp://tracker.opentrackr.org:1337/announce")).contains("&tr="))
     }
 }

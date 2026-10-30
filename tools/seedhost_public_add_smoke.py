@@ -19,6 +19,11 @@ from public_fixture_collector import archive_fixture, commons_fixture, fetch, cr
 
 HASH = re.compile(r"^[0-9a-fA-F]{40}$")
 MAX_RESPONSE = 4_194_304
+# These repository secrets belong to ONE owner-approved development instance.
+# A separate numbered tenant needs separate credentials and an explicit tool.
+PRIMARY_SEEDHOST = "ianseeds.wood.seedhost.eu"
+PRIMARY_WEB_PATH = "/rutorrent"
+PRIMARY_RPC_PATH = "/rutorrent/plugins/httprpc/action.php"
 
 def destination(value):
     if not value.startswith("/") or len(value) < 2 or len(value) > 1024:
@@ -30,16 +35,20 @@ def destination(value):
     return value
 
 def rpc_endpoint(value):
+    """Bind primary repository secrets to their ONE approved HTTPS/RPC mount.
+
+    The manual workflow also pins the URL, but this transport may be invoked
+    directly. Never let a supplied URL select a sibling tenant or numbered
+    rTorrent instance. Validate the *raw* path before any decoding/rewriting.
+    """
     uri = urllib.parse.urlsplit(value)
-    if (uri.scheme != "https" or not uri.hostname or not uri.hostname.endswith(".seedhost.eu") or
-        uri.port not in (None, 443) or uri.username or uri.password or uri.query or uri.fragment):
-        raise ValueError("Invalid Seedhost HTTPS URL")
-    path = uri.path.rstrip("/")
-    if path.lower().endswith("/rutorrent"):
-        path += "/plugins/httprpc/action.php"
-    if not (path.endswith("/plugins/httprpc/action.php") or path.endswith("/RPC1") or path.endswith("/RPC2")):
-        raise ValueError("Not an approved Seedhost RPC path")
-    return urllib.parse.urlunsplit(("https", uri.netloc, path, "", ""))
+    if (uri.scheme != "https" or uri.hostname != PRIMARY_SEEDHOST or
+        uri.port not in (None, 443) or uri.username is not None or
+        uri.password is not None or uri.query or uri.fragment):
+        raise ValueError("Primary Seedhost credentials require the exact approved HTTPS origin")
+    if uri.path not in (PRIMARY_WEB_PATH, PRIMARY_WEB_PATH + "/", PRIMARY_RPC_PATH):
+        raise ValueError("Primary Seedhost credentials require the exact approved ruTorrent mount")
+    return urllib.parse.urlunsplit(("https", uri.netloc, PRIMARY_RPC_PATH, "", ""))
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
@@ -81,6 +90,26 @@ def main_hashes(client):
         result.add(row[0].lower())
     return result
 
+def exact_hash_is_present(client, infohash):
+    """Ask the unfiltered session for the exact hash before issuing any Add.
+
+    A missing row in rTorrent's "main" view is NOT proof of absence from
+    the session. Only the documented legacy/modern unknown-hash faults
+    establish absence; unsupported, malformed and other faults stop here.
+    """
+    try:
+        name = client.call("d.name", infohash)
+    except xmlrpc.client.Fault as fault:
+        detail = fault.faultString.lower()
+        if (fault.faultCode == -501 and "could not find info-hash" in detail or
+                fault.faultCode == -500 and "info-hash not found" in detail):
+            return False
+        raise
+    if not isinstance(name, str):
+        raise ValueError("Invalid exact-session name reply")
+    return True
+
+
 def public_fixture(args):
     if args.archive_id:
         return archive_fixture(args.archive_id, args.max_total_mib * 1048576)
@@ -108,7 +137,7 @@ def execute(args, factory=ProtectedRpc):
     if args.confirm_hash.lower() != expected:
         raise ValueError("Confirm the exact public fixture infohash before executing")
     client = factory(args.rutorrent_url, os.environ.get("RT_USER"), os.environ.get("RT_PASS"))
-    if expected in main_hashes(client):
+    if expected in main_hashes(client) or exact_hash_is_present(client, expected):
         receipt["result"] = "already_present_no_write"
         print("CHUNKS_PUBLIC_ADD: duplicate hash; no write attempted")
         return receipt
@@ -128,15 +157,22 @@ def execute(args, factory=ProtectedRpc):
             print("CHUNKS_PUBLIC_ADD: metadata not yet visible in main view")
             return receipt
         observed = client.call("d.directory", expected)
-        multi = int(client.call("d.is_multi_file", expected)) != 0
+        raw_multi = client.call("d.is_multi_file", expected)
+        # Never let int(0.9), int("0") or int(False) turn an invalid RPC
+        # field into authoritative binary state after an applied Add.
+        if type(raw_multi) is not int or raw_multi not in (0, 1):
+            raise ValueError("Invalid rTorrent multi-file flag")
+        multi = raw_multi == 1
         torrent_name = client.call("d.name", expected)
         valid_name = (isinstance(torrent_name, str) and torrent_name not in ("", ".", "..") and
                       "/" not in torrent_name and "\\" not in torrent_name and
                       all(ord(c) >= 32 for c in torrent_name))
         expected_root = (planned + "/" + torrent_name) if multi and valid_name else planned
         state = client.call("d.state", expected)
+        if type(state) is not int or state not in (0, 1):
+            raise ValueError("Invalid rTorrent lifecycle flag")
         if isinstance(observed, str) and observed == expected_root and (
-                not multi or valid_name) and int(state) == 0:
+                not multi or valid_name) and state == 0:
             receipt["result"] = "verified_stopped_in_destination"
             receipt["observed_directory"] = observed
             print("CHUNKS_PUBLIC_ADD: verified exact hash, chosen parent destination, stopped")

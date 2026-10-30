@@ -2,6 +2,18 @@
 
 **Documentation-only changes:** validate repository-local targets offline with `python3 tools/check_docs.py` and its unit tests. Do not dispatch Android, native, host or font Actions merely to validate Markdown. A docs PR merged to main does not justify an unrelated font fan-out; retain path-specific workflow triggers and the [font-lab isolation contract](design/CHUNKS-FONT-LAB-OPERATIONS.md). See [documentation standard](DOCUMENTATION-STANDARD.md).
 
+## Source-audit guardrails and future checks (2026-10-30)
+
+The [AUD-01–15 register](ANDROID-ARCHITECTURE-AUDIT-2026-10-30.md) and [WORK-QUEUE](WORK-QUEUE.md) place integrity and reproducibility ahead of cosmetic CI expansion. These are **required future acceptance criteria, not checks claimed already running**:
+
+- **Native/storage P0:** independent before/after foreign SHA256; occupied files, symlinks and unknown-path negative cases; early/late magnet metadata, manual Start, persisted stopped upload-only restart; real peer and Android tiers. Passing an intentionally reproducing overwrite test is **negative product evidence**.
+- **Protected workflows P0:** exact approved credential-to-endpoint origin/mount/ref; negative tampered URL/redirect/ref controls run offline with no live secrets in PR CI. A trusted-main manual live test is a separate tier, not required for docs.
+- **Resume/service P1:** forced concurrent native resume writes, inaccessible inventory, interrupted fsync/rename, actual Doze/netflap/FGS timeout/reboot and status witness. Skip/inconclusive never becomes success.
+- **Governance P1:** main was observed unprotected at the audited SHA; an authorized maintainer must enable appropriate review and consistently emitted required checks. Path-skipped/manual opt-in jobs cannot be blanket requirements. Exact-source candidate evidence and post-merge main proof differ.
+- **Reproducibility P2:** version-compatible Gradle Wrapper checksums and dependency provenance, focused lint baseline, R8-native-device and signed-install proof before changing shrink/release claims. Avoid unnecessary toolchain upgrades or workflow fan-out.
+
+Retain the historical/physical evidence tiers and cost controls below. Do not turn architecture audit into unrelated static-analysis tooling until there is a measured defect to catch.
+
 Updated after Chunks critical review. Borrow Glimpse's native build proof, ROYGBIV's cheap focused gates and UR-Recomp's exact source/evidence accounting, without transplanting their expensive workflows.
 
 ## Font-lab exception: one quiet branch (owner, 2026-10-28)
@@ -48,6 +60,12 @@ A peer shortfall is reported as INCONCLUSIVE, never as engine acceptance. Each r
 - Filesystem changes: independent fault injection using disposable datasets, multiple volumes and process kills at each journal checkpoint. Fail closed if recovery cannot be proved.
 - Android UI changes: occasional targeted emulator screenshot/hierarchy atlas and real handset walkthrough, not a permanent broad screenshot job.
 - Local engine background: device tests across Android background/service types and network conditions; do not use one green assembly to infer reliability.
+
+## False-positive safeguards: physical installation and reboot
+
+The physical Android APK preflight (`tools/physical_android_preflight.sh`) must pin one selected non-emulator ADB device, exhaust the `dumpsys package` output without `grep -m1`/SIGPIPE, reject missing or conflicting version identities, require explicit package-manager `Success` and an exact-activity launch receipt. Its fake-ADB regression is an offline negative control, **never** evidence of physical handset installation or publisher signing.
+
+The opt-in `tools/reboot_repro.sh` must record a syntactically valid kernel `/proc/sys/kernel/random/boot_id` before phase A and require a **different** valid boot ID plus Android boot-complete before phase B. `sys.boot_completed=1` alone does not prove reboot. A mock-ADB suite rejects unchanged and invalid identities before any expensive emulator phase.
 
 ## Receipts and stopping rules
 

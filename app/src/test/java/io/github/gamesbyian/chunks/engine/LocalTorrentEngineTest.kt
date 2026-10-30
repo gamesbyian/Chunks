@@ -205,6 +205,37 @@ class LocalTorrentEngineTest {
         listenInterfaces = "127.0.0.1:0", allowMultipleConnectionsPerIp = true, stateDirectory = state
     )).also { it.start(); engines += it }
 
+    @Test fun lostResumeDirectoryDuringAddIsObservableWithoutDeletingPayload() {
+        val fixture = fixture()
+        val state = temp.newFolder("state-disappears-on-add")
+        val moved = File(temp.root, "state-preserved-on-add")
+        val instance = persistentEngine(state)
+        // Simulate access loss AFTER startup preflight, but BEFORE the initial
+        // app-private resume write. This must not become a false successful Add.
+        assertTrue(state.renameTo(moved))
+        state.writeText("temporary inaccessible state placeholder")
+        val destination = temp.newFolder("lost-resume-destination")
+        try {
+            instance.addStopped(fixture.torrent, destination)
+            fail("Add without durable resume state must not be reported successful")
+        } catch (_: java.io.IOException) {
+            // A native handle may already have been registered. The caller
+            // correctly treats this exception as uncertain and refreshes inventory.
+        }
+        val observed = instance.list().single()
+        assertTrue("A partial Add must remain inspectable, not disappear", observed.stopped)
+        assertEquals(destination.absolutePath, observed.savePath)
+        assertEquals("temporary inaccessible state placeholder", state.readText())
+        // Restore the original private storage directory before a confirmed,
+        // session-only Remove. Neither path should ever delete payload bytes.
+        assertTrue(state.delete())
+        assertTrue(moved.renameTo(state))
+        assertTrue(instance.removeKeepingData(observed.infoHash))
+        assertTrue(instance.list().isEmpty())
+        for ((name, bytes) in fixture.files)
+            assertArrayEquals(bytes, File(fixture.root, name).readBytes())
+    }
+
     @Test fun completedTransferSurvivesRestartAndReturnsStopped() {
         val fixture = fixture()
         val seeder = engine()
@@ -304,6 +335,30 @@ class LocalTorrentEngineTest {
             assertTrue("re-downloaded $fetchedAgain after restoring ${restored.doneBytes}",
                 fetchedAgain <= payload.size - restored.doneBytes + 8L * pieceSize)
         }
+    }
+
+    @Test fun inaccessibleStatePathCannotStartNativeSessionAndMayBeRetriedSafely() {
+        val state = File(temp.root, "state-path-is-a-file").apply {
+            writeText("existing state sentinel")
+        }
+        val instance = LocalTorrentEngine(LocalEngineConfig(
+            listenInterfaces = "127.0.0.1:0", stateDirectory = state
+        ))
+        engines += instance
+        try {
+            instance.start()
+            fail("An invalid state directory must refuse startup")
+        } catch (expected: IllegalStateException) {
+            assertTrue(expected.message.orEmpty().contains("unavailable"))
+        }
+        assertEquals("existing state sentinel", state.readText())
+        assertTrue(state.delete())
+        assertTrue(state.mkdirs())
+        // The failed attempt must not have started JNI or marked the engine
+        // active. A retry on the SAME instance must now start normally.
+        instance.start()
+        assertTrue(instance.list().isEmpty())
+        assertTrue(instance.restoreProblems.isEmpty())
     }
 
     @Test fun unusableResumeFilesAreReportedAndLeftUntouched() {

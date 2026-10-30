@@ -18,8 +18,19 @@ export ANDROID_SERIAL="$serial"
 if ! device_state="$(adb get-state | tr -d '\r\n')" || [[ "$device_state" != device ]]; then
   echo "CHUNKS_SWARM_DOZE: selected adb device unavailable" >&2; exit 2
 fi
-adb install -r app/build/outputs/apk/debug/app-debug.apk >/dev/null
-adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk >/dev/null
+# An adb process can exit zero even when package-manager output says Failure.
+install_verified() {
+  local output
+  output="$(adb install -r "$1" 2>&1)" || {
+    echo "CHUNKS_SWARM_DOZE: adb install failed" >&2; return 1;
+  }
+  grep -Fxq 'Success' <<< "$(printf '%s\n' "$output" | tr -d '\r')" || {
+    echo "CHUNKS_SWARM_DOZE: package manager did not confirm install" >&2
+    return 1
+  }
+}
+install_verified app/build/outputs/apk/debug/app-debug.apk
+install_verified app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 adb exec-in run-as "$pkg" sh -c 'mkdir -p cache && cat > cache/public-swarm.torrent' < "$CHUNKS_PUBLIC_SWARM_TORRENT"
 log=""
 idle_touched=0
@@ -71,13 +82,14 @@ if [ "$ready" -eq 1 ]; then
 fi
 set +e
 wait "$inst"
+instrument_status=$?
 set -e
 adb logcat -d -s ChunksSwarm:I | grep -o 'CHUNKS_SWARM_DOZE: .*' | tee -a "${GITHUB_STEP_SUMMARY:-/dev/null}" || true
 if [[ "$ready" -ne 1 ]]; then
   echo "::error::Doze test never reached ready state; no forced-idle proof" >&2
   exit 1
 fi
-if ! grep -q '^OK (1 test)' "$log" || grep -qE '^INSTRUMENTATION_STATUS_CODE: -(1|2|3|4)' "$log"; then
+if [[ "$instrument_status" -ne 0 ]] || ! grep -Fxq 'OK (1 test)' "$log" || grep -qE '^INSTRUMENTATION_STATUS_CODE: -[1-9]|^FAILURES' "$log"; then
   grep -A12 '^INSTRUMENTATION_STATUS: stack=' "$log" | head -40 || true
   echo "::error::Doze test failed or was skipped (INCONCLUSIVE means peer availability)"
   exit 1

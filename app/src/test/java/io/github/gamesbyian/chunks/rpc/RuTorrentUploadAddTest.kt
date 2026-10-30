@@ -16,6 +16,11 @@ class RuTorrentUploadAddTest {
 
     private fun value(xml: String) = "<methodResponse><params><param><value>$xml</value></param></params></methodResponse>"
 
+    private fun unknownHashFault(): String = """<methodResponse><fault><value><struct>
+        <member><name>faultCode</name><value><int>-501</int></value></member>
+        <member><name>faultString</name><value><string>Could not find info-hash.</string></value></member>
+        </struct></value></fault></methodResponse>"""
+
     private class Server(val retain: Boolean, val uploadStatus: Int = 200) : AutoCloseable {
         val server: HttpServer = HttpServer.create(InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0)
         val uploads: MutableList<String> = Collections.synchronizedList(mutableListOf())
@@ -36,6 +41,7 @@ class RuTorrentUploadAddTest {
         server.createContext("/rutorrent/plugins/httprpc/action.php") { exchange ->
             val request = exchange.requestBody.bufferedReader().readText()
             val reply = when {
+                request.contains("<methodName>d.name</methodName>") -> unknownHashFault()
                 request.contains("<methodName>d.multicall2</methodName>") -> value("<array><data>" + (if (loaded)
                     "<value><array><data><value><string>${hash.uppercase()}</string></value><value><string>test.txt</string></value>" +
                     "<value><i8>5</i8></value><value><i8>0</i8></value><value><i8>0</i8></value><value><string>/home/dev/downloads</string></value>" +

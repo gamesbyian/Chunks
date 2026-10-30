@@ -10,7 +10,15 @@ cls="$pkg.AndroidPublicSwarmInterruptInstrumentedTest"
 # Resolve one authorized device and pin every later ADB operation to it.
 serial="${ADB_SERIAL:-${ANDROID_SERIAL:-}}"
 if [[ -z "$serial" ]]; then
-  mapfile -t attached < <(adb devices | awk 'NR > 1 && $2 == "device" { print $1 }')
+  # A process-substitution mapfile can succeed after adb printed a plausible
+  # inventory and exited nonzero; refuse before any APK or peer operation.
+  devices="$(adb devices)" || {
+    echo "::error::ADB device inventory failed" >&2; exit 2;
+  }
+  attached=()
+  while read -r candidate state _; do
+    [[ "$state" != device || -z "$candidate" ]] || attached+=("$candidate")
+  done <<< "$devices"
   [[ "${#attached[@]}" -eq 1 ]] || { echo "::error::Exactly one authorized Android device required" >&2; exit 2; }
   serial="${attached[0]}"
 fi
@@ -52,7 +60,11 @@ outB=$(adb shell am instrument -w -r -e class "$cls#phaseB_restoredStoppedRechec
 echo "$outB" | tail -8
 logB="$(adb logcat -d -s ChunksSwarm:I)"
 grep -o 'CHUNKS_SWARM_INTERRUPT: .*' <<< "$logB" | tee -a "${GITHUB_STEP_SUMMARY:-/dev/null}" || true
-grep -q "^OK (1 test)" <<< "$outB" || { echo "::error::phase B did not pass"; exit 1; }
-if grep -Eq "INSTRUMENTATION_STATUS_CODE: -(1|2|3|4)" <<< "$outB"; then
-  echo "::error::phase B failed or was skipped"; exit 1
+# Nested output may quote OK (1 test) without terminal success. A failed
+# adb command is already fatal under set -e; require exactly one full-line
+# terminal result and reject every negative test status or skip.
+if [[ "$(grep -Fxc 'OK (1 test)' <<< "$outB" || true)" != 1 ]] ||
+   grep -Eq '^INSTRUMENTATION_STATUS_CODE: -[1-9]|^FAILURES|AssumptionViolatedException' <<< "$outB"; then
+  echo "::error::phase B did not verify exactly one executed, passing test"
+  exit 1
 fi

@@ -1,5 +1,16 @@
 # Chunks interaction and accessibility contract
 
+## External destination on local Add (planned, secondary)
+
+Keep the usual **On phone** Add and default `Downloads/Chunks Downloads` unchanged. An optional **Deliver files to…** selector can target a specifically authorized Google Drive/SAF or FTP-family Place; explicitly show **Downloaded on phone** and **Delivered to [destination]** as independent statuses. Show local staging space, remote permission/capability and whether destination verification is possible before approval. Delivery failure/restart offers Retry, Change destination, Keep on phone and Cancel delivery without changing the torrent job. Default seeding and retention persist; optional stop-seeding/remove-owned-staging control requires separate informed consent after verified delivery. Do not surface cloud seeding or direct random-write claims. [Full UX and failure matrix](EXTERNAL-DESTINATION-DELIVERY.md).
+
+
+
+## Future Android TV and protocol-agnostic remote UX (binding, deferred)
+
+Use a separate TV-first Compose presentation over the same transfer/core contracts; never ship a stretched touchscreen layout as TV support. D-pad focus/restoration, Select/Back navigation, readable high-contrast transfer rows and recognizable source/server identifiers, remote-friendly Add and file selection, focus-safe dialogs and independent TV accessibility/device acceptance are binding. Any supported remote backend must fit the same user-visible environment/select/sort/filter/details/Add/command vocabulary with accurate capability limits and no cross-server leakage. Full specification: [Android TV and remote backends](ANDROID-TV-AND-REMOTE-BACKENDS.md). This is not current implementation evidence.
+
+
 > **Authority:** user-visible behavior, interaction state and accessibility requirements. Dated implementation notes describe bounded evidence only; the live [coverage map](SPEC-COVERAGE.md), [quality ledger](QUALITY-LEDGER.md) and [work queue](WORK-QUEUE.md) determine present status and next work.
 
 ## Combined Transfers and environment colour language (binding, 2026-10-29)
@@ -251,3 +262,7 @@ From the disconnected connection form, **Inspect a local ZIP without connecting*
 ## Current SAF UX capability boundary (2026-10-26)
 
 Verified finished local data may be **copied**, never silently moved, to a selected SAF library destination while the original remains seedable. A verified ZIP can be manually extracted into a **new** SAF folder, with unknown-capacity acknowledgement, journal recovery and no source deletion. These are API35 fixture-provider paths rather than blanket SD/cloud support. Disclose actual source/derivative identities and ongoing seeding consequences. The user's auto-extract preference remains disabled until independent device safety proof.
+
+## Individual transfer home-screen surfaces (planned, post-foundation)
+
+The transfer menu offers **Pin to home screen**: one separately positionable widget per job, not a shared transfer grid. Compact icon-like progress/status, optionally artwork-backed, and expanded resize layouts follow the same explicit local/remote identity and privacy cues as transfer detail. Tap opens the bound transfer. Seeding and completion retain the widget; verified job deletion should ideally remove it without user cleanup, subject to Android launcher restrictions that must be honestly exposed and tested. See [canonical home-screen widget UX/acceptance](PER-TRANSFER-HOME-WIDGETS.md).

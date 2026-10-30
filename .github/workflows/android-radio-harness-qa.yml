@@ -4,9 +4,16 @@ on:
   pull_request:
     paths:
       - "tools/android_public_swarm_netflap.sh"
+      - "tools/android_public_swarm.sh"
+      - "tools/android_public_swarm_interrupt.sh"
+      - "tools/test_android_public_swarm_interrupt_mock.sh"
+      - "tools/test_android_public_swarm_mock.sh"
       - "tools/android_radio_baseline.sh"
       - "tools/test_android_radio_baseline.sh"
       - "tools/test_android_public_swarm_netflap_mock.sh"
+      - "tools/select_android_public_swarm_mode.sh"
+      - "tools/test_android_public_swarm_mode.sh"
+      - ".github/workflows/android-public-swarm.yml"
       - ".github/workflows/android-radio-harness-qa.yml"
   workflow_dispatch:
 
@@ -33,3 +40,9 @@ jobs:
         run: bash tools/test_android_radio_baseline.sh
       - name: Verify network-flap controller with fake adb
         run: bash tools/test_android_public_swarm_netflap_mock.sh
+      - name: Reject false baseline public-peer acceptance (offline)
+        run: bash tools/test_android_public_swarm_mock.sh
+      - name: Reject false interrupted-peer recovery (offline)
+        run: bash tools/test_android_public_swarm_interrupt_mock.sh
+      - name: Refuse ambiguous public peer acceptance modes (offline)
+        run: bash tools/test_android_public_swarm_mode.sh

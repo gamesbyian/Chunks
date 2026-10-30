@@ -65,6 +65,7 @@ import io.github.gamesbyian.chunks.engine.LocalEpisodeFocusPlanner
 import io.github.gamesbyian.chunks.engine.LocalFileBatchOutcome
 import io.github.gamesbyian.chunks.engine.LocalEngineConfig
 import io.github.gamesbyian.chunks.engine.LocalRateLimits
+import io.github.gamesbyian.chunks.engine.LocalRestoreDiscovery
 import io.github.gamesbyian.chunks.engine.LocalTrackerRepairOutcome
 import io.github.gamesbyian.chunks.engine.LocalTorrentEngine
 import io.github.gamesbyian.chunks.engine.LocalTransferState
@@ -194,7 +195,7 @@ internal object LocalEngineHolder {
     /** Start only if an earlier session left transfers to restore. */
     @Synchronized
     fun restoreIfSaved(context: Context): LocalTorrentEngine? = engine
-        ?: if (stateDirectory(context).listFiles().orEmpty().any { it.name.endsWith(".resume") }) get(context) else null
+        ?: if (LocalRestoreDiscovery.shouldAttemptRestore(stateDirectory(context))) get(context) else null
 
     private fun stateDirectory(context: Context) = File(context.filesDir, "local-engine")
 
@@ -1840,17 +1841,13 @@ internal fun LocalTransferCard(
                         "identity is used, which may not find peers. No payload bytes move; " +
                         "the server downloads from peers itself. The phone transfer is untouched.",
                         style = MaterialTheme.typography.bodySmall)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = {
-                            confirmHandoff = false
-                            onPrepareRemote()
-                        }, enabled = !busy, modifier = Modifier.weight(1f)
-                            .heightIn(min = 48.dp)) { Text("Review server Add") }
-                        OutlinedButton(onClick = { confirmHandoff = false },
-                            modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
-                            Text("Cancel")
-                        }
-                    }
+                    LocalTransferConfirmationActions(
+                        confirmLabel = "Review server Add",
+                        cancelLabel = "Cancel",
+                        enabled = !busy,
+                        onConfirm = { confirmHandoff = false; onPrepareRemote() },
+                        onCancel = { confirmHandoff = false }
+                    )
                 }
             }
             move?.invoke()
@@ -1864,13 +1861,13 @@ internal fun LocalTransferCard(
             if (filesShown && files != null) LocalFilesOnDiskCheck(transfer.infoHash, transfer.savePath, files)
             if (confirmRemove) {
                 Text("Remove from the phone engine only. Downloaded files stay in Chunks' folder; sharing of this torrent stops.")
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = { confirmRemove = false; onRemove() }, enabled = !busy,
-                        modifier = Modifier.heightIn(min = 48.dp)) { Text("Remove, keep files") }
-                    OutlinedButton(onClick = { confirmRemove = false }, modifier = Modifier.heightIn(min = 48.dp)) {
-                        Text("Keep")
-                    }
-                }
+                LocalTransferConfirmationActions(
+                    confirmLabel = "Remove, keep files",
+                    cancelLabel = "Keep",
+                    enabled = !busy,
+                    onConfirm = { confirmRemove = false; onRemove() },
+                    onCancel = { confirmRemove = false }
+                )
             }
         }
     }

@@ -5,7 +5,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -17,9 +17,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import io.github.gamesbyian.chunks.model.Units
 import io.github.gamesbyian.chunks.rpc.RemoteFile
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 
@@ -72,12 +70,12 @@ internal fun TransferFilePager(
                 OutlinedButton(
                     onClick = { requestedPage = current.number - 1 },
                     enabled = current.number > 0,
-                    modifier = Modifier.weight(1f).height(48.dp)
+                    modifier = Modifier.weight(1f).heightIn(min = 48.dp)
                 ) { Text("Previous 40") }
                 OutlinedButton(
                     onClick = { requestedPage = current.number + 1 },
                     enabled = current.number < current.count - 1,
-                    modifier = Modifier.weight(1f).height(48.dp)
+                    modifier = Modifier.weight(1f).heightIn(min = 48.dp)
                 ) { Text("Next 40") }
             }
             Text("Page ${current.number + 1} of ${current.count}",
@@ -94,26 +92,12 @@ internal fun TransferFilePager(
                     2 -> "High"
                     else -> "Priority unknown"
                 }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        "${i + 1}. ${file.path} · ${Units.bytes(file.sizeBytes)} · $priority",
-                        modifier = Modifier.weight(1f),
-                        style = MaterialTheme.typography.bodySmall,
-                        maxLines = 3,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    OutlinedButton(
-                        onClick = { selectedIndex = if (selectedIndex == i) -1 else i },
-                        enabled = mainView && !snapshotStale && file.priority in 0..2,
-                        modifier = Modifier.height(48.dp)
-                    ) {
-                        Text(if (selectedIndex == i) "Close" else "Priority")
-                    }
-                }
+                RemoteFilePageRow(
+                    index = i, file = file, priorityLabel = priority,
+                    expanded = selectedIndex == i,
+                    actionEnabled = mainView && !snapshotStale && file.priority in 0..2,
+                    onToggle = { selectedIndex = if (selectedIndex == i) -1 else i }
+                )
                 if (selectedIndex == i) {
                     TransferFilePriorityControl(
                         remote = remote,

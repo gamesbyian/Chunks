@@ -1,5 +1,11 @@
 # Chunks: canonical decision ledger
 
+## External destination delivery decision (2026-10-30)
+
+**D-EXTERNAL-DELIVERY-20261030 | Owner, binding scope; planned implementation.** Support unusual local-torrent workflows whose *final* payload destination is user-authorized Google Drive/SAF or FTP-family storage. Optimize for safe download → verified delivery → optional explicitly approved cleanup, not operating a cloud-backed seedbox from Android. Local engine execution is independent of destination Place; seeding remains local while retained; direct cloud-backed torrent random writes and seeding are excluded from initial scope. Prioritize after core integrity and release quality, using [EXTERNAL-DESTINATION-DELIVERY](EXTERNAL-DESTINATION-DELIVERY.md) as the canonical feature contract.
+
+
+
 **Purpose:** retain why binding owner choices, engineering selections and open choices were made. This is a decision registry, not a second product spec or a chronological implementation report. [Documentation authority](DOCUMENTATION-STANDARD.md) · [Product contract](PRODUCT.md) · [Current coverage](SPEC-COVERAGE.md).
 
 **Status vocabulary:** **Owner, binding** = explicit product choice; **Adopted/provisional** = engineering decision subject to evidence; **Open** = undecided; **Superseded/amended** = historical choice that no longer governs. The table's last column describes reopening/verification requirements, **not a blanket statement of implementation**.

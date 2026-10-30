@@ -62,9 +62,20 @@ class StoppedRemoteAddPlan private constructor(
             torrentUrl: String, verifiedInfoHash: String, destination: String
         ): StoppedRemoteAddPlan {
             val uri = URI(torrentUrl)
-            require(uri.scheme == "https" && uri.host == "archive.org" &&
-                uri.userInfo == null && uri.rawQuery == null && uri.rawFragment == null &&
-                uri.path.startsWith("/download/") && uri.path.endsWith(".torrent")) {
+            // This URL is executed by rTorrent on the SERVER, not fetched by
+            // Android. Keep it on archive.org's ordinary HTTPS service. A
+            // nondefault port or escaped separator/dot can change the path
+            // after a reverse proxy performs another decoding pass.
+            val rawPath = uri.rawPath.orEmpty()
+            val segments = rawPath.split('/')
+            val ambiguous = Regex("(?i)%(?:25|2e|2f|5c|0[0-9a-f]|1[0-9a-f]|7f)")
+            require(uri.scheme.equals("https", true) &&
+                uri.host.equals("archive.org", true) && uri.port in setOf(-1, 443) &&
+                uri.rawUserInfo == null && uri.rawQuery == null && uri.rawFragment == null &&
+                rawPath.startsWith("/download/") && rawPath.endsWith(".torrent") &&
+                segments.size >= 4 &&
+                segments.drop(1).all { it.isNotBlank() && it != "." && it != ".." } &&
+                !ambiguous.containsMatchIn(rawPath)) {
                 "Archive test input must be a direct official .torrent URL"
             }
             require(hashPattern.matches(verifiedInfoHash)) { "Expected verified v1 infohash" }

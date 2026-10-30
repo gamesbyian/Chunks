@@ -60,15 +60,27 @@ internal class RemoteFinishInOrderPort(
     override fun save(infoHash: String, record: FinishInOrderRecord) = saveRecord(infoHash, record)
 
     companion object {
-        fun toPlanner(remote: Int): Int = when (remote) {
-            0 -> 0
-            2 -> FinishInOrderPlanner.HIGH
-            else -> FinishInOrderPlanner.NORMAL
+        fun toPlanner(remote: Int): Int {
+            // An unexpected value is not a Normal priority. Refuse the
+            // observation so Finish in Order cannot write against a false
+            // priority baseline supplied by a gateway or malformed response.
+            require(remote in 0..2) { "Unsupported rTorrent file priority" }
+            return when (remote) {
+                0 -> 0
+                2 -> FinishInOrderPlanner.HIGH
+                else -> FinishInOrderPlanner.NORMAL
+            }
         }
-        fun toRemote(planner: Int): Int = when {
-            planner == 0 -> 0
-            planner >= FinishInOrderPlanner.HIGH -> 2
-            else -> 1
+
+        fun toRemote(planner: Int): Int {
+            require(planner in 0..FinishInOrderPlanner.HIGH) {
+                "Unsupported Finish in Order priority"
+            }
+            return when {
+                planner == 0 -> 0
+                planner >= FinishInOrderPlanner.HIGH -> 2
+                else -> 1
+            }
         }
     }
 }

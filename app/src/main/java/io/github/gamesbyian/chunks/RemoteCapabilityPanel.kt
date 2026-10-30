@@ -14,6 +14,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.model.RemoteCapabilities
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
@@ -28,6 +31,7 @@ internal fun RemoteCapabilityPanel(remote: RTorrentRemote) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         OutlinedButton(onClick = {
             checking = true
+            lines = null // A new check cannot reuse a prior result as current evidence.
             scope.launch {
                 lines = try {
                     val probe = remote.probe()
@@ -42,7 +46,7 @@ internal fun RemoteCapabilityPanel(remote: RTorrentRemote) {
         }, enabled = !checking, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
             Text(if (checking) "Checking server…" else "Check server capabilities")
         }
-        lines?.forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
+        RemoteCapabilityResultAnnouncements(lines)
     }
 }
 
@@ -54,4 +58,17 @@ internal fun capabilityEvidenceLabel(graded: RemoteCapabilities.Graded): String 
         "Not advertised: ${graded.feature.label} (missing ${graded.missing.joinToString()})"
     RemoteCapabilities.Status.UNKNOWN ->
         "Unknown: ${graded.feature.label} (server did not expose a method list)"
+}
+
+/**
+ * Keep a persistent, polite live region even before the first probe.
+ * TalkBack can then announce a newly completed result or a read-only error
+ * without treating a stale prior probe as current evidence.
+ */
+@Composable
+internal fun RemoteCapabilityResultAnnouncements(lines: List<String>?) {
+    Column(Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
+        verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        lines.orEmpty().forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
+    }
 }

@@ -266,6 +266,9 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     @Synchronized
     fun start() {
         if (started) return
+        // Verify the complete app-private resume inventory before starting JNI.
+        // A failed File.listFiles() must never masquerade as zero saved jobs.
+        val resumeFiles = config.stateDirectory?.let(LocalResumeDirectoryInventory::prepare)
         val pack = SettingsPack().listenInterfaces(config.listenInterfaces)
         pack.setEnableDht(config.enableDht)
         pack.setEnableLsd(config.enableLsd)
@@ -287,10 +290,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             session.swig().set_peer_class_filter(filter)
         }
         started = true
-        config.stateDirectory?.let { directory ->
-            require(directory.isDirectory || directory.mkdirs()) { "Engine state directory is unavailable" }
-            restore(directory)
-        }
+        if (resumeFiles != null) restore(resumeFiles)
     }
 
     /**
@@ -420,8 +420,16 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             return LocalAddResult.Refused("The local engine refused this torrent: " + error.message())
         val handle = TorrentHandle(raw)
         handles[hash] = handle
-        // Persist the explicit Add immediately; later saves refresh piece state.
-        if (config.stateDirectory != null) writeResume(hash, AddTorrentParams.writeResumeDataBuf(params))
+        // The asynchronous SAVE_RESUME_DATA callback writes the same
+        // "$hash.resume.tmp". Serialize the initial Add commit with that
+        // callback and Remove using the already established handle fence.
+        // Never let two writers concurrently truncate the same temp file.
+        if (config.stateDirectory != null) {
+            val resumeBytes = AddTorrentParams.writeResumeDataBuf(params)
+            check(LocalResumeWriteFence.writeIfCurrent(handles, hash, handle) {
+                writeResume(hash, resumeBytes)
+            }) { "Initial resume write lost its native handle" }
+        }
         val status = snapshot(hash, handle)
             ?: return LocalAddResult.Refused("Added torrent could not be read back")
         if (!status.stopped) {
@@ -1171,9 +1179,9 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     }
 
     /** Restore every well-formed resume file, always stopped and unmanaged. */
-    private fun restore(directory: File) {
+    private fun restore(resumeFiles: List<File>) {
         val problems = ArrayList<String>()
-        for (file in directory.listFiles().orEmpty().sortedBy { it.name }) {
+        for (file in resumeFiles) {
             val key = file.name.removeSuffix(".resume")
             if (!file.name.endsWith(".resume") || !identityPattern.matches(key)) continue
             val bytes = LocalResumeFileReader.read(file, MAX_RESUME_BYTES)
