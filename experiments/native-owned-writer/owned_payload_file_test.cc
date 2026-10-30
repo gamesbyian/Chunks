@@ -237,7 +237,7 @@ int main() {
     assert(owned->WriteAt(0, "OWNED", 5, &error));
     // Device and inode identities still match, but loss of the creation
     // marker must revoke native writing without damaging the existing data.
-    assert(::fremovexattr((s.payload / "episode.bin").c_str(),
+    assert(::removexattr((s.payload / "episode.bin").c_str(),
                          "user.chunks.owned-payload") == 0);
     assert(!owned->WriteAt(0, "OTHER", 5, &error));
     owned.reset();
