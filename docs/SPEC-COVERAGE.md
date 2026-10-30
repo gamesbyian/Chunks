@@ -1,5 +1,17 @@
 # Chunks specification coverage and acceptance map
 
+## External destination delivery coverage (planned)
+
+| Requirement | Status | Acceptance outstanding |
+| --- | --- | --- |
+| Local torrent → optional Google Drive/SAF or FTP-family destination via verified staged publication | **Planned; not accepted as an end-to-end workflow**. Existing independent local-to-SAF copy is only a partial prerequisite. | Dedicated delivery plan/journal, adapter capability and credential boundaries, resume/restart/failure proofs, independent full destination readback/checksum, collision safety and physical Android/provider tests. |
+| Local staging cleanup after verified external delivery | **Planned; opt-in only** | Separate consent; owned-source revalidation; no shared or sole-copy deletion; seeding stop and restart correctness. |
+| Direct cloud-backed download or cloud-backed seeding | **Excluded from initial scope** | New owner authorization and feasibility/security proof required before entering executable queue. |
+
+[Canonical contract](EXTERNAL-DESTINATION-DELIVERY.md). This does not change G0–G2 priorities.
+
+
+
 ## Deferred product coverage: additional remote engines and Android TV (2026-10-29)
 
 | Requirement | Status | Acceptance still required |
