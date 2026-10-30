@@ -65,7 +65,9 @@ data class LocalEngineConfig(
      */
     val rateLimitLocalPeers: Boolean = false,
     /** For controlled compatibility tests. The app continues using libtorrent's default backend. */
-    val diskIoMode: LocalDiskIoMode = LocalDiskIoMode.DEFAULT
+    val diskIoMode: LocalDiskIoMode = LocalDiskIoMode.DEFAULT,
+    /** Production-only enforced private writer sandbox; null for isolated JNI fixtures. */
+    val nativeBackingRoot: File? = null
 )
 
 enum class LocalTransferState { CHECKING, DOWNLOADING_METADATA, DOWNLOADING, FINISHED, SEEDING, UNKNOWN }
@@ -134,6 +136,9 @@ sealed class LocalAddResult {
 }
 
 class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConfig()) : AutoCloseable {
+    private fun nativeBackingRefusal(path: File): String? = config.nativeBackingRoot?.let {
+        LocalNativeBackingBoundary.refusal(it, path)
+    }
     private val session = SessionManager(false)
     // Guarded by its own monitor so the alert thread never needs the engine lock.
     private val handles: MutableMap<String, TorrentHandle> = Collections.synchronizedMap(LinkedHashMap())
@@ -241,6 +246,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     }
 
     private fun inspectMagnetCollision(key: String, handle: TorrentHandle): String? {
+        nativeBackingRefusal(File(handle.savePath()))?.let { return it }
         val paths = try {
             val info = handle.torrentFile() ?: return "Metadata file layout is unavailable"
             val files = info.files()
@@ -376,6 +382,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         peers: List<InetSocketAddress> = emptyList()
     ): LocalAddResult {
         check(started) { "Engine not started" }
+        nativeBackingRefusal(saveDirectory)?.let { return LocalAddResult.Refused(it) }
         if (!saveDirectory.isAbsolute || !saveDirectory.isDirectory)
             return LocalAddResult.Refused("Choose an existing folder for this download")
         val info = try { TorrentInfo.bdecode(torrentBytes) } catch (_: Exception) { null }
@@ -441,6 +448,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     @Synchronized
     fun addStopped(torrentBytes: ByteArray, saveDirectory: File, peers: List<InetSocketAddress> = emptyList()): LocalAddResult {
         check(started) { "Engine not started" }
+        nativeBackingRefusal(saveDirectory)?.let { return LocalAddResult.Refused(it) }
         if (!saveDirectory.isAbsolute || !saveDirectory.isDirectory)
             return LocalAddResult.Refused("Choose an existing folder for this download")
         val info = try { TorrentInfo.bdecode(torrentBytes) } catch (_: IllegalArgumentException) {
@@ -510,6 +518,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         autoStartAfterMetadata: Boolean = false
     ): LocalAddResult {
         check(started) { "Engine not started" }
+        nativeBackingRefusal(saveDirectory)?.let { return LocalAddResult.Refused(it) }
         if (!saveDirectory.isAbsolute || !saveDirectory.isDirectory)
             return LocalAddResult.Refused("Choose an existing folder for this download")
         val hash = magnetIdentity(magnet) ?: return LocalAddResult.Refused("Use a magnet link with exactly one v1 info hash")
@@ -561,6 +570,10 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     fun resume(infoHash: String, readbackTimeoutMs: Long = 5_000): LocalCommandResult =
         command(infoHash, wantStopped = false, readbackTimeoutMs) { handle ->
             val key = normal(infoHash)
+            nativeBackingRefusal(File(handle.savePath()))?.let { problem ->
+                checkedStartProblems[key] = problem
+                return@command false
+            }
             // status() caches metadata for 500 ms. Query the same fresh native
             // flags as snapshot(), including persisted upload-only on restart.
             val state = handle.status(TorrentHandle.QUERY_NAME)
@@ -1347,6 +1360,12 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                 }
             } catch (_: Exception) { null }
             if (params == null) { problems += file.name; continue }
+            // Refuse BEFORE native add_torrent: even a paused restored handle
+            // must not be trusted to open arbitrary shared/legacy paths.
+            if (nativeBackingRefusal(File(params.getSavePath())) != null) {
+                problems += "${file.name}: native backing outside Chunks-private storage; resume preserved"
+                continue
+            }
             // A single invalid native record must not abort restoration of
             // unrelated, valid transfers. Preserve every failed input on disk.
             val restored = try {
