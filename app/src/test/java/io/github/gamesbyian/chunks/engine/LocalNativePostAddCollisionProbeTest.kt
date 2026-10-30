@@ -99,6 +99,7 @@ class LocalNativePostAddCollisionProbeTest {
         assertArrayEquals("No mutation before Start", unrelated, foreign.readBytes())
 
         val start = receiver.resume(infoHash)
+        println("CHUNKS_POST_ADD_COLLISION native_start_outcome=${start.outcome}")
         // The current raw Add path demonstrates the original unsafe native
         // behavior. A future checked-Start implementation MUST be allowed to
         // refuse without making this characterization test obsolete.
@@ -171,6 +172,8 @@ class LocalNativePostAddCollisionProbeTest {
                     (!status.stopped && !status.uploadOnly))
         }
         val outcome = requireNotNull(receiver.status(hash))
+        println("CHUNKS_MAGNET_COLLISION observed_metadata=${outcome.metadataKnown} " +
+            "stopped=${outcome.stopped} upload_only=${outcome.uploadOnly}")
         if (outcome.stopped && outcome.uploadOnly) {
             // A fail-closed implementation leaves the supplied foreign
             // bytes alone. Do not require unsafe auto-Start to pass a test.
