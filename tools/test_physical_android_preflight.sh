@@ -26,8 +26,14 @@ case "${1:-}" in
     devices)
         printf 'List of devices attached\nTEST\tdevice\n'
         if [[ "${MOCK_MULTIPLE:-0}" == 1 ]]; then printf 'SECOND\tdevice\n'; fi
+        # A failed producer can still emit a plausible complete inventory.
+        [[ "${MOCK_DEVICES_FAILURE:-0}" != 1 ]] || exit 19
         ;;
-    get-state) printf 'device\n' ;;
+    get-state)
+        printf 'device\n'
+        # A status comparison must not hide the producer's nonzero exit.
+        [[ "${MOCK_GET_STATE_FAILURE:-0}" != 1 ]] || exit 23
+        ;;
     install)
         if [[ "${MOCK_INSTALL_FAILURE_TEXT:-0}" == 1 ]]; then
             printf 'Failure [INSTALL_FAILED_INVALID_APK]\n'
@@ -112,6 +118,25 @@ fi
 
 if MOCK_MULTIPLE=1 bash "$repo/tools/physical_android_preflight.sh" "$apk" >/dev/null 2>&1; then
     echo "Ambiguous device selection was accepted" >&2
+    exit 1
+fi
+[[ ! -e "$MOCK_INSTALL_FILE" ]]
+
+# Device inventory and state readbacks must fail closed even when adb
+# prints a complete-looking success value and exits unsuccessfully.
+for condition in MOCK_DEVICES_FAILURE MOCK_GET_STATE_FAILURE; do
+    if env "$condition=1" MOCK_REQUIRE_SERIAL=1 bash "$repo/tools/physical_android_preflight.sh" "$apk" >"$temp/failed-adb.log" 2>&1; then
+        echo "Failed adb readback was accepted: $condition" >&2
+        exit 1
+    fi
+    [[ ! -e "$MOCK_INSTALL_FILE" ]] || {
+        echo "An APK was installed after a failed adb readback: $condition" >&2
+        exit 1
+    }
+done
+# Explicit-target get-state is equally unsafe if only output is checked.
+if ADB_SERIAL=TEST MOCK_GET_STATE_FAILURE=1 bash "$repo/tools/physical_android_preflight.sh" "$apk" >"$temp/failed-adb.log" 2>&1; then
+    echo "Explicit device accepted failed adb get-state" >&2
     exit 1
 fi
 [[ ! -e "$MOCK_INSTALL_FILE" ]]
