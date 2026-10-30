@@ -78,6 +78,68 @@ class CombinedBatchLifecycleTest {
         assertEquals(2, begins)
     }
 
+    @Test fun retiredReviewRefusesWithoutTakingAnyCommandLease() = runBlocking {
+        val gate = FakeGate(grant = true)
+        val chosen = row(server, true)
+        val result = runCombinedLifecycle(setOf(chosen.key), false,
+            listOf(source(server, chosen)), gate.lifecycle, server,
+            phoneEngine = { null }, reviewStillCurrent = { false })
+        assertEquals(0, gate.begins)
+        assertEquals(0, gate.settles)
+        assertTrue(gate.calls.isEmpty())
+        assertEquals(CommandEvidence.REFUSED, result.items.single().evidence)
+        assertTrue(result.items.single().reason!!.contains("Reviewed session"))
+    }
+
+    @Test fun reviewRetiredDuringCapabilityProbeNeverDispatchesWrite() = runBlocking {
+        var reviewValid = true
+        var begins = 0
+        var writes = 0
+        val chosen = row(server, true)
+        val lifecycle = CombinedServerLifecycle(
+            begin = { begins++; true }, settled = {},
+            setStarted = { _, on -> writes++; LifecycleOutcome.Verified(on) },
+            probe = {
+                reviewValid = false
+                io.github.gamesbyian.chunks.rpc.RemoteProbe("0.9.8", null)
+            })
+        val result = runCombinedLifecycle(setOf(chosen.key), false,
+            listOf(source(server, chosen)), lifecycle, server,
+            phoneEngine = { null }, reviewStillCurrent = { reviewValid })
+        assertEquals(0, begins)
+        assertEquals(0, writes)
+        assertEquals(CommandEvidence.REFUSED, result.items.single().evidence)
+        assertTrue(result.items.single().reason!!.contains("Reviewed session"))
+    }
+
+    @Test fun privacyOrSessionChangeAfterFirstWritePreventsEveryLaterWriteOrNoOpClaim() = runBlocking {
+        for (laterAlreadyStopped in listOf(false, true)) {
+            var reviewValid = true
+            val first = row(server, true)
+            val later = first.copy(key = UnifiedTransferKey.of(server, "d".repeat(40)),
+                started = !laterAlreadyStopped)
+            val writes = ArrayList<String>()
+            var begins = 0
+            var settles = 0
+            val lifecycle = CombinedServerLifecycle(
+                begin = { begins++; true }, settled = { settles++ },
+                setStarted = { hash, on ->
+                    writes += hash
+                    reviewValid = false // Account/lock/roster changed during suspension.
+                    LifecycleOutcome.Verified(on)
+                })
+            val result = runCombinedLifecycle(setOf(later.key, first.key), false,
+                listOf(source(server, first, later)), lifecycle, server,
+                phoneEngine = { null }, reviewStillCurrent = { reviewValid })
+            assertEquals(listOf(first.key.infoHash), writes)
+            assertEquals(listOf(CommandEvidence.VERIFIED, CommandEvidence.REFUSED),
+                result.items.map { it.evidence })
+            assertFalse(result.fullyVerified)
+            assertEquals(1, begins)
+            assertEquals(1, settles)
+        }
+    }
+
     @Test fun busyGateStaleSourceAndUnconnectedProfileNeverReceiveCommands() = runBlocking {
         val busy = FakeGate(grant = false)
         val report = runCombinedLifecycle(setOf(row(server, true).key), false,

@@ -553,7 +553,8 @@ internal fun CombinedTransfersScreen(
                         if (latestBatchIdentity.value != owner) return@launch
                         try {
                             val report = describeCombinedBatchSafely({ labels[it] ?: it.value }) {
-                                runCombinedLifecycle(chosen, start, snapshot, lifecycle, targetServer)
+                                runCombinedLifecycle(chosen, start, snapshot, lifecycle, targetServer,
+                                    reviewStillCurrent = { latestBatchIdentity.value == owner })
                             }
                             // A late completion is evidence about the OLD owner only.
                             if (latestBatchIdentity.value == owner) batchResult = report
@@ -866,7 +867,9 @@ internal suspend fun runCombinedLifecycle(
     serverLifecycle: CombinedServerLifecycle?,
     serverId: EnvironmentId?,
     phoneEngine: () -> io.github.gamesbyian.chunks.engine.LocalTorrentEngine? = { LocalEngineHolder.current() },
-    nowEpochMillis: () -> Long = { System.currentTimeMillis() }
+    nowEpochMillis: () -> Long = { System.currentTimeMillis() },
+    /** Old session, privacy or saved-profile review cannot authorize another mutation. */
+    reviewStillCurrent: () -> Boolean = { true }
 ): UnifiedBatchLifecycle.Report {
     // Confirmation can arrive between clock ticks, after the displayed source
     // expired. Re-evaluate it before acquiring any command lane.
@@ -884,6 +887,7 @@ internal suspend fun runCombinedLifecycle(
     val refusals = HashMap<EnvironmentId, String>()
     var phoneLeased = false
     var serverLeased = false
+    val expiredReview = "Reviewed session, privacy or profile scope changed; select transfers again"
     try {
         // An unavailable, incomplete or unobserved inventory cannot authorize
         // a batch, so never even acquire its engine's mutation gate. The pure
@@ -892,6 +896,10 @@ internal suspend fun runCombinedLifecycle(
             .map { it.environment }.toSet()
         for (environment in targets.map { it.key.environment }.toSet()) {
             if (environment !in actionable) continue
+            if (!reviewStillCurrent()) {
+                refusals[environment] = expiredReview
+                continue
+            }
             if (environment == EnvironmentSnapshots.PHONE) {
                 val engine = phoneEngine()
                 when {
@@ -914,7 +922,11 @@ internal suspend fun runCombinedLifecycle(
                 val capability = serverCapabilities(environment, serverLifecycle.probe)
                     .decide(EnvironmentOperation.START_STOP, EnvironmentAvailability.LIVE)
                 val source = currentSources.first { it.environment == environment }
-                if (EnvironmentSnapshots.serverInventoryIsOutOfDate(source.observedAtEpochMillis, nowEpochMillis()))
+                // The read-only method probe can suspend while the user changes
+                // accounts or locks privacy. Check again before taking a lease.
+                if (!reviewStillCurrent())
+                    refusals[environment] = expiredReview
+                else if (EnvironmentSnapshots.serverInventoryIsOutOfDate(source.observedAtEpochMillis, nowEpochMillis()))
                     refusals[environment] = "Transfer list is out of date; refresh first"
                 else if (!capability.allowed) refusals[environment] = capability.explanation
                 else if (!serverLifecycle.begin()) refusals[environment] = "server is busy or refreshing"
@@ -930,8 +942,13 @@ internal suspend fun runCombinedLifecycle(
             } else refusals[environment] = "only listed here; sign in to this server to change it"
         }
         return UnifiedBatchLifecycle.run(targets, start, currentSources, adapters, refusals,
-            sourceIsFresh = { source -> source.environment == EnvironmentSnapshots.PHONE ||
-                !EnvironmentSnapshots.serverInventoryIsOutOfDate(source.observedAtEpochMillis, nowEpochMillis()) })
+            // Check at each target, including no-ops, after any previous
+            // command or read-only probe may have suspended. A write already
+            // sent keeps its own reported result, but no later write escapes
+            // a retired session/selection/privacy review.
+            sourceIsFresh = { source -> reviewStillCurrent() &&
+                (source.environment == EnvironmentSnapshots.PHONE ||
+                    !EnvironmentSnapshots.serverInventoryIsOutOfDate(source.observedAtEpochMillis, nowEpochMillis())) })
     } finally {
         if (phoneLeased) PhoneMutationFence.revision.settledMutation()
         if (serverLeased) serverLifecycle?.settled?.invoke()
