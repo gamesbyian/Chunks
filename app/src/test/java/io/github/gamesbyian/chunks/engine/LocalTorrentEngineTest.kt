@@ -174,7 +174,7 @@ class LocalTorrentEngineTest {
         val target = engine()
         val added = added(target.addStoppedChecked(fixture.torrent, destination))
         val foreign = File(destination, "Chunks public fixture/episode.bin")
-        assertTrue(foreign.parentFile.mkdirs())
+        assertTrue(foreign.parentFile.isDirectory || foreign.parentFile.mkdirs())
         val original = ByteArray(fixture.files.getValue("episode.bin").size)
             .also { Random(568).nextBytes(it) }
         foreign.writeBytes(original)
@@ -217,7 +217,7 @@ class LocalTorrentEngineTest {
         val partial = target.list().single()
         assertTrue(partial.stopped)
         val foreign = File(destination, "Chunks public fixture/episode.bin")
-        assertTrue(foreign.parentFile.mkdirs())
+        assertTrue(foreign.parentFile.isDirectory || foreign.parentFile.mkdirs())
         val bytes = byteArrayOf(8, 6, 7, 5, 3, 0, 9)
         foreign.writeBytes(bytes)
         assertEquals(LocalCommandOutcome.REFUSED, target.resume(partial.infoHash).outcome)
@@ -231,6 +231,13 @@ class LocalTorrentEngineTest {
         val target = engine()
         val added = added(target.addStoppedChecked(fixture.torrent, destination))
         val link = File(destination, "Chunks public fixture")
+        // Paused libtorrent versions may materialize an empty parent directory
+        // before Start. Replace only our own disposable empty test directory.
+        if (link.exists()) {
+            assertTrue(link.isDirectory)
+            assertTrue(link.list().orEmpty().isEmpty())
+            assertTrue(link.delete())
+        }
         Files.createSymbolicLink(link.toPath(), external.toPath())
 
         val refused = target.resume(added.infoHash)
