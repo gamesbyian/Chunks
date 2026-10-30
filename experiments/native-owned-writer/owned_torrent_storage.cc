@@ -39,6 +39,18 @@ std::unique_ptr<OwnedTorrentStorage> OwnedTorrentStorage::Open(
     slots.push_back(Slot{std::move(file), total, nullptr});
     total += slots.back().spec.size;
   }
+  // A declared file cannot also be another file's parent; reject before
+  // creating any private reservation or payload object.
+  for (const auto& path : paths) {
+    size_t slash = path.find('/');
+    while (slash != std::string::npos) {
+      if (paths.count(path.substr(0, slash)) != 0) {
+        Fail(error, "Torrent declares a backing file as another file's parent");
+        return nullptr;
+      }
+      slash = path.find('/', slash + 1);
+    }
+  }
   // Persist prospective file claims before a stopped Add crosses a process
   // boundary. Skipped/unwritten files have receipts but no payload bytes.
   if (mode == Admission::FRESH) {
