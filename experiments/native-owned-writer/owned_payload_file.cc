@@ -17,7 +17,7 @@
 
 namespace chunks {
 namespace {
-constexpr char kMagic[] = "CHUNKS-OWNED-PAYLOAD-V2";
+constexpr char kMagic[] = "CHUNKS-OWNED-PAYLOAD-V3";
 constexpr char kOwnerXattr[] = "user.chunks.owned-payload";
 constexpr char kUncreatedToken[] =
     "0000000000000000000000000000000000000000000000000000000000000000";
@@ -89,13 +89,14 @@ bool ParentPath(int root, const std::vector<std::string>& parts, bool create,
 
 struct Receipt {
   std::string commitment;
+  std::string relative_path;
   std::uint64_t root_dev, root_ino, parent_dev, parent_ino, dev, ino;
   std::string owner_token;
 };
 
 std::string Encode(const Receipt& v) {
   std::ostringstream os;
-  os << kMagic << '\n' << v.commitment << '\n' << v.root_dev << '\n' << v.root_ino << '\n'
+  os << kMagic << '\n' << v.commitment << '\n' << v.relative_path << '\n' << v.root_dev << '\n' << v.root_ino << '\n'
      << v.parent_dev << '\n' << v.parent_ino << '\n' << v.dev << '\n' << v.ino << '\n'
      << v.owner_token << '\n';
   return os.str();
@@ -105,8 +106,11 @@ bool Parse(const std::string& s, Receipt* out) {
   std::istringstream is(s);
   std::string magic, commitment;
   Receipt result{};
-  if (!std::getline(is, magic) || magic != kMagic || !std::getline(is, commitment) ||
-      commitment.size() != 64) return false;
+  if (!std::getline(is, magic) || magic != kMagic ||
+      !std::getline(is, commitment) || commitment.size() != 64 ||
+      !std::getline(is, result.relative_path)) return false;
+  std::vector<std::string> segments;
+  if (!ValidRelative(result.relative_path, &segments)) return false;
   for (char c : commitment) if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))) return false;
   if (!(is >> result.root_dev >> result.root_ino >> result.parent_dev >> result.parent_ino
            >> result.dev >> result.ino >> result.owner_token)) return false;
@@ -201,7 +205,7 @@ bool LoadReceipt(int dir, const std::string& id, Receipt* receipt, std::string* 
   Fd fd(::openat(dir, id.c_str(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC));
   if (fd.v < 0) return Fail(err, "No durable owned-file receipt");
   struct stat st{};
-  if (!S_ISREG((::fstat(fd.v, &st) == 0) ? st.st_mode : 0) || st.st_size <= 0 || st.st_size > 512)
+  if (!S_ISREG((::fstat(fd.v, &st) == 0) ? st.st_mode : 0) || st.st_size <= 0 || st.st_size > 8192)
     return Fail(err, "Owned-file receipt type or size invalid");
   std::string content(static_cast<size_t>(st.st_size), '\0');
   if (::read(fd.v, content.data(), content.size()) != static_cast<ssize_t>(content.size()) ||
@@ -253,7 +257,7 @@ std::unique_ptr<OwnedPayloadFile> OwnedPayloadFile::OpenImpl(
     if (!ReadOwnerToken(file.v, &owner_token))
       return reject("Native file owner token unavailable; reopen refused");
   }
-  Receipt record{commitment, static_cast<uint64_t>(rs.st_dev), static_cast<uint64_t>(rs.st_ino),
+  Receipt record{commitment, relative, static_cast<uint64_t>(rs.st_dev), static_cast<uint64_t>(rs.st_ino),
                  static_cast<uint64_t>(ps.st_dev), static_cast<uint64_t>(ps.st_ino),
                  static_cast<uint64_t>(fs.st_dev), static_cast<uint64_t>(fs.st_ino),
                  owner_token};
@@ -264,7 +268,8 @@ std::unique_ptr<OwnedPayloadFile> OwnedPayloadFile::OpenImpl(
   } else {
     Receipt saved{};
     if (!LoadReceipt(receipt_fd.v, id, &saved, error)) return nullptr;
-    if (saved.commitment != record.commitment || saved.root_dev != record.root_dev ||
+    if (saved.commitment != record.commitment ||
+        saved.relative_path != record.relative_path || saved.root_dev != record.root_dev ||
         saved.root_ino != record.root_ino || saved.parent_dev != record.parent_dev ||
         saved.parent_ino != record.parent_ino || saved.dev != record.dev || saved.ino != record.ino)
       return reject("Payload identity differs from durable ownership receipt");
@@ -305,7 +310,7 @@ bool OwnedPayloadFile::Reserve(
   // Never reserve already-existing physical bytes, even identical-sized files.
   if (::fstatat(parent.v, parts.back().c_str(), &foreign, AT_SYMLINK_NOFOLLOW) == 0 ||
       errno != ENOENT) return Fail(error, "Prospective payload path already occupied or uncertain");
-  Receipt target{commitment, static_cast<uint64_t>(rs.st_dev),
+  Receipt target{commitment, relative, static_cast<uint64_t>(rs.st_dev),
       static_cast<uint64_t>(rs.st_ino), static_cast<uint64_t>(ps.st_dev),
       static_cast<uint64_t>(ps.st_ino), 0, 0, kUncreatedToken};
   const std::string pending = id + ".pending";
@@ -313,6 +318,7 @@ bool OwnedPayloadFile::Reserve(
   std::string ignored;
   if (LoadReceipt(receipt_fd.v, pending, &existing, &ignored)) {
     return (existing.commitment == target.commitment &&
+        existing.relative_path == target.relative_path &&
         existing.root_dev == target.root_dev && existing.root_ino == target.root_ino &&
         existing.parent_dev == target.parent_dev && existing.parent_ino == target.parent_ino &&
         existing.dev == 0 && existing.ino == 0 &&
@@ -338,7 +344,8 @@ std::unique_ptr<OwnedPayloadFile> OwnedPayloadFile::CreateFromReservation(
   Receipt pending{};
   if (receipt_fd.v < 0 || !LoadReceipt(receipt_fd.v, id + ".pending", &pending, error))
     return nullptr;
-  if (pending.commitment != commitment || pending.dev != 0 || pending.ino != 0 ||
+  if (pending.commitment != commitment || pending.relative_path != relative ||
+      pending.dev != 0 || pending.ino != 0 ||
       pending.owner_token != kUncreatedToken ||
       !Reserve(root, relative, receipts, id, commitment, error)) return nullptr;
   // Reserve validated the original identity and absence. O_EXCL rechecks
