@@ -43,7 +43,7 @@ case "$1" in
           *Android10StoragePermissionDialogInstrumentedTest*) printf 'OK (1 test)\n' ;;
           *LocalPublicDownloadsPlaceInstrumentedTest*)
             [[ "$MOCK_SKIP" != 1 ]] || echo 'INSTRUMENTATION_STATUS_CODE: -3'
-            printf 'OK (15 tests)\n'
+            printf 'OK (16 tests)\n'
             ;;
           *LocalEngineServiceInstrumentedTest*) printf 'OK (3 tests)\n' ;;
           *) exit 1 ;;
