@@ -15,6 +15,8 @@ on:
       - 'tests/test_verify_release_apk_identity.py'
       - 'tools/check_pr_exact_head.py'
       - 'tests/test_check_pr_exact_head.py'
+      - 'tools/require_post_stop_nonclobber.py'
+      - 'tests/test_require_post_stop_nonclobber.py'
       - '.github/workflows/release-apk.yml'
       - '.github/workflows/documentation-validation.yml'
   pull_request:
@@ -29,6 +31,8 @@ on:
       - 'tests/test_verify_release_apk_identity.py'
       - 'tools/check_pr_exact_head.py'
       - 'tests/test_check_pr_exact_head.py'
+      - 'tools/require_post_stop_nonclobber.py'
+      - 'tests/test_require_post_stop_nonclobber.py'
       - '.github/workflows/release-apk.yml'
       - '.github/workflows/documentation-validation.yml'
   workflow_dispatch:
@@ -54,3 +58,5 @@ jobs:
         run: python3 -m unittest discover -s tests -p 'test_verify_release_apk_identity.py'
       - name: Refuse stale, cancelled and mismatched PR CI receipts (offline)
         run: python3 -m unittest discover -s tests -p 'test_check_pr_exact_head.py'
+      - name: Refuse overwritten synthetic bytes in post-Stop native safety receipts (offline)
+        run: python3 -m unittest discover -s tests -p 'test_require_post_stop_nonclobber.py'
