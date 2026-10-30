@@ -12,6 +12,10 @@ Every readable file surfaced within a transfer's file tree, a local filesystem P
 
 A file's context is an exact **environment/profile + stable file identity + storage backing/Place + authorization + observed state**. Do not mistake a transfer registration or relative torrent pathname for permission to read bytes; a transfer job may refer to missing, moved, partially downloaded or inaccessible backing data. Do not conflate **Copy/Move Transfer** (job-only) with file reads, copying, export or materialization.
 
+## Obvious next action without prior file-access configuration (owner UX, 2026-10-30)
+
+Once Chunks has verified actual available files, surface **Open**, **Open with**, or **Show files** in context. If the bytes live on a server, distinguish **Open remotely** where genuinely supported from **Get files on this phone**, which requires an independently verified retrieval path and permission. Skipping an optional streaming-app choice must not make the completed download impossible to locate; offer the ordinary Android chooser when appropriate and remember only explicit app preferences. When an opening method is unsupported, unavailable, too large for the selected path, or would disclose private data, show a safe alternative without falsely claiming files are local. Make these actions available later from Files/detail, with truthful status after reconnect. [Default and continuity UX](UX.md#visible-options-automatic-defaults-and-nondecision-continuity-binding-owner-direction-2026-10-30).
+
 ## User experience
 
 - The same contextual file actions and Android system resolver apply in transfer-file lists and local/remote filesystem browsing. Clearly display **Phone** or the exact **server profile**, read progress, completeness, accessibility and where relevant cached/offline state. Local-only, remote-only and combined configurations behave the same where capabilities permit.
