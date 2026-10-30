@@ -58,13 +58,17 @@ jobs:
           witnessed = []
           for prefix in ("CHUNKS_POST_ADD_COLLISION", "CHUNKS_MAGNET_COLLISION", "CHUNKS_POST_STOP_COLLISION", "CHUNKS_RESTORE_COLLISION"):
               found = [s.strip() for s in lines if s.startswith(prefix + " ")]
-              if len(found) != 4:
+              expected_lines = 5 if prefix == "CHUNKS_RESTORE_COLLISION" else 4
+              if len(found) != expected_lines:
                   raise SystemExit(f"Missing or ambiguous synthetic witness for {prefix}: {len(found)} lines")
               hashes = next((s for s in found if "before_sha256=" in s), "")
               hashes_pattern = (
                   rf"{prefix} before_sha256=[a-f0-9]{{64}} expected_sha256=[a-f0-9]{{64}} "
                   rf"after_priority_sha256=[a-f0-9]{{64}} after_sha256=[a-f0-9]{{64}}"
                   if prefix == "CHUNKS_POST_STOP_COLLISION" else
+                  rf"{prefix} before_sha256=[a-f0-9]{{64}} expected_sha256=[a-f0-9]{{64}} "
+                  rf"after_restore_sha256=[a-f0-9]{{64}} after_sha256=[a-f0-9]{{64}}"
+                  if prefix == "CHUNKS_RESTORE_COLLISION" else
                   rf"{prefix} before_sha256=[a-f0-9]{{64}} expected_sha256=[a-f0-9]{{64}} after_sha256=[a-f0-9]{{64}}"
               )
               if not re.fullmatch(hashes_pattern, hashes):
@@ -72,6 +76,11 @@ jobs:
               for key in ("foreign_file_replaced", "expected_torrent_data_present"):
                   if not any(re.fullmatch(rf"{prefix} {key}=(true|false)", s) for s in found):
                       raise SystemExit(f"Missing {key} for {prefix}")
+              if prefix == "CHUNKS_RESTORE_COLLISION" and not any(
+                  re.fullmatch(rf"{prefix} restore_changed_foreign=(true|false)", line)
+                  for line in found
+              ):
+                  raise SystemExit("Missing native restore-before-Start mutation witness")
               diagnostic = (
                   rf"{prefix} native_start_outcome=(VERIFIED|UNCERTAIN)"
                   if prefix == "CHUNKS_POST_ADD_COLLISION" else
