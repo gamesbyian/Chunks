@@ -15,6 +15,7 @@ on:
       - "tools/test_fgs_timeout_repro.sh"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalEngineProcessDeathInstrumentedTest.kt"
       - "tools/process_death_repro.sh"
+      - "tools/test_process_death_repro.sh"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalEngineRebootInstrumentedTest.kt"
       - "tools/reboot_repro.sh"
       - "tools/test_reboot_repro.sh"
@@ -38,6 +39,8 @@ jobs:
         run: bash tools/test_fgs_timeout_repro.sh
       - name: Negative-control reboot witness (no emulator)
         run: bash tools/test_reboot_repro.sh
+      - name: Negative-control process death witness (no emulator)
+        run: bash tools/test_process_death_repro.sh
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
