@@ -39,6 +39,15 @@ std::unique_ptr<OwnedTorrentStorage> OwnedTorrentStorage::Open(
     slots.push_back(Slot{std::move(file), total, nullptr});
     total += slots.back().spec.size;
   }
+  // Persist prospective file claims before a stopped Add crosses a process
+  // boundary. Skipped/unwritten files have receipts but no payload bytes.
+  if (mode == Admission::FRESH) {
+    for (const auto& slot : slots) {
+      if (slot.spec.pad_file || slot.spec.size == 0) continue;
+      if (!OwnedPayloadFile::Reserve(root, slot.spec.relative_path, receipts,
+              slot.spec.receipt_id, slot.spec.mapping_commitment, error)) return nullptr;
+    }
+  }
   return std::unique_ptr<OwnedTorrentStorage>(new OwnedTorrentStorage(
       std::move(root), std::move(receipts), mode, std::move(slots), total));
 }
@@ -55,11 +64,15 @@ bool OwnedTorrentStorage::Preopen(std::uint64_t offset, size_t bytes,
     if (slot.start >= last || slot.start + slot.spec.size <= offset) continue;
     if (slot.spec.pad_file || slot.owned) continue;
     const auto& s = slot.spec;
-    slot.owned = (mode_ == Admission::FRESH)
-        ? OwnedPayloadFile::Create(root_, s.relative_path, receipts_,
-                                   s.receipt_id, s.mapping_commitment, error)
-        : OwnedPayloadFile::Reopen(root_, s.relative_path, receipts_,
-                                   s.receipt_id, s.mapping_commitment, error);
+    if (mode_ == Admission::FRESH) {
+      slot.owned = OwnedPayloadFile::CreateFromReservation(root_, s.relative_path,
+                        receipts_, s.receipt_id, s.mapping_commitment, error);
+    } else {
+      slot.owned = OwnedPayloadFile::Reopen(root_, s.relative_path, receipts_,
+                        s.receipt_id, s.mapping_commitment, error);
+      if (!slot.owned) slot.owned = OwnedPayloadFile::CreateFromReservation(
+          root_, s.relative_path, receipts_, s.receipt_id, s.mapping_commitment, error);
+    }
     if (!slot.owned) return false;
   }
   return true;
