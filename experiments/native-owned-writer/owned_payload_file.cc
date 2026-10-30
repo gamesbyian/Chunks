@@ -209,6 +209,66 @@ std::unique_ptr<OwnedPayloadFile> OwnedPayloadFile::OpenImpl(
   return opened;
 }
 
+bool OwnedPayloadFile::Reserve(
+    const std::string& root, const std::string& relative,
+    const std::string& receipts, const std::string& id,
+    const std::string& commitment, std::string* error) {
+  if (!ValidId(id) || !ValidId(commitment))
+    return Fail(error, "Invalid prospective ownership identity");
+  std::vector<std::string> parts;
+  if (!ValidRelative(relative, &parts))
+    return Fail(error, "Unsafe prospective payload path");
+  Fd root_fd(::open(root.c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC));
+  Fd receipt_fd(::open(receipts.c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC));
+  if (root_fd.v < 0 || receipt_fd.v < 0)
+    return Fail(error, "Prospective payload or receipt root inaccessible");
+  struct stat rs{}, ps{}, foreign{};
+  if (!GetDirectory(root_fd.v, &rs)) return Fail(error, "Invalid prospective root");
+  Fd parent;
+  if (!ParentPath(root_fd.v, parts, true, &parent, error) ||
+      !GetDirectory(parent.v, &ps)) return false;
+  // Never reserve already-existing physical bytes, even identical-sized files.
+  if (::fstatat(parent.v, parts.back().c_str(), &foreign, AT_SYMLINK_NOFOLLOW) == 0 ||
+      errno != ENOENT) return Fail(error, "Prospective payload path already occupied or uncertain");
+  Receipt target{commitment, static_cast<uint64_t>(rs.st_dev),
+      static_cast<uint64_t>(rs.st_ino), static_cast<uint64_t>(ps.st_dev),
+      static_cast<uint64_t>(ps.st_ino), 0, 0};
+  const std::string pending = id + ".pending";
+  Receipt existing{};
+  std::string ignored;
+  if (LoadReceipt(receipt_fd.v, pending, &existing, &ignored)) {
+    return (existing.commitment == target.commitment &&
+        existing.root_dev == target.root_dev && existing.root_ino == target.root_ino &&
+        existing.parent_dev == target.parent_dev && existing.parent_ino == target.parent_ino &&
+        existing.dev == 0 && existing.ino == 0) ||
+        Fail(error, "Prospective ownership changed since reservation");
+  }
+  // If a pending receipt exists but cannot be read, it is untrusted, not free.
+  struct stat marker{};
+  if (::fstatat(receipt_fd.v, pending.c_str(), &marker, AT_SYMLINK_NOFOLLOW) == 0 ||
+      errno != ENOENT) return Fail(error, "Prospective receipt is corrupt or inaccessible");
+  return PublishReceipt(receipt_fd.v, pending, target, error);
+}
+
+std::unique_ptr<OwnedPayloadFile> OwnedPayloadFile::CreateFromReservation(
+    const std::string& root, const std::string& relative,
+    const std::string& receipts, const std::string& id,
+    const std::string& commitment, std::string* error) {
+  if (!ValidId(id) || !ValidId(commitment)) {
+    Fail(error, "Invalid saved reservation identity");
+    return nullptr;
+  }
+  Fd receipt_fd(::open(receipts.c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC));
+  Receipt pending{};
+  if (receipt_fd.v < 0 || !LoadReceipt(receipt_fd.v, id + ".pending", &pending, error))
+    return nullptr;
+  if (pending.commitment != commitment || pending.dev != 0 || pending.ino != 0 ||
+      !Reserve(root, relative, receipts, id, commitment, error)) return nullptr;
+  // Reserve validated the original identity and absence. O_EXCL rechecks
+  // physical absence at the actual writer open, never trusting observation.
+  return Create(root, relative, receipts, id, commitment, error);
+}
+
 std::unique_ptr<OwnedPayloadFile> OwnedPayloadFile::Create(
     const std::string& root, const std::string& rel, const std::string& receipts,
     const std::string& id, const std::string& mapping, std::string* error) {
