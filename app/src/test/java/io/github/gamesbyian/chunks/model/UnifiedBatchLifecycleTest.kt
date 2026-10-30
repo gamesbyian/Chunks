@@ -128,6 +128,24 @@ class UnifiedBatchLifecycleTest {
             CommandEvidence.NOT_ATTEMPTED, CommandEvidence.NOT_ATTEMPTED), report.items.map { it.evidence })
     }
 
+    @Test fun explicitPhoneRefusalHaltsCrossEnvironmentBatchWithoutRetry() = runBlocking {
+        val phoneTransfer = observation(phone, "1".repeat(40), false)
+        val remoteTransfer = observation(serverA, "2".repeat(40), false)
+        val phoneAdapter = Recording { LifecycleReply.REFUSED }
+        val serverAdapter = Recording { LifecycleReply.VERIFIED }
+        val report = UnifiedBatchLifecycle.run(
+            listOf(target(phoneTransfer), target(remoteTransfer)), true,
+            sources = listOf(source(phone, phoneTransfer), source(serverA, remoteTransfer)),
+            adapters = mapOf(phone to phoneAdapter, serverA to serverAdapter)
+        )
+        assertEquals(listOf(phoneTransfer.key.infoHash to true), phoneAdapter.calls)
+        assertTrue(serverAdapter.calls.isEmpty())
+        assertEquals(phoneTransfer.key, report.haltedOn)
+        assertEquals(listOf(CommandEvidence.REFUSED, CommandEvidence.NOT_ATTEMPTED),
+            report.items.map { it.evidence })
+        assertTrue(report.describe { it.value }.last().contains("explicitly refused"))
+    }
+
     @Test fun thrownFailureIsUncertainAndAlreadySatisfiedSendsNoCommand() = runBlocking {
         val running = observation(phone, "1".repeat(40), true)
         val stopped = observation(phone, "2".repeat(40), false)
@@ -156,6 +174,7 @@ class UnifiedBatchLifecycleTest {
 class LifecycleReplyMappingTest {
     @Test fun engineOutcomesMapWithoutUpgradingEvidence() {
         assertEquals(LifecycleReply.VERIFIED, io.github.gamesbyian.chunks.engine.LocalCommandOutcome.VERIFIED.toLifecycleReply())
+        assertEquals(LifecycleReply.REFUSED, io.github.gamesbyian.chunks.engine.LocalCommandOutcome.REFUSED.toLifecycleReply())
         assertEquals(LifecycleReply.UNCERTAIN, io.github.gamesbyian.chunks.engine.LocalCommandOutcome.UNCERTAIN.toLifecycleReply())
         assertEquals(LifecycleReply.NOT_FOUND, io.github.gamesbyian.chunks.engine.LocalCommandOutcome.NOT_FOUND.toLifecycleReply())
         assertEquals(LifecycleReply.VERIFIED, io.github.gamesbyian.chunks.rpc.LifecycleOutcome.Verified(true).toLifecycleReply(true))
