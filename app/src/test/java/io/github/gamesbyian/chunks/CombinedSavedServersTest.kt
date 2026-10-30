@@ -1,6 +1,8 @@
 package io.github.gamesbyian.chunks
 
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
@@ -62,6 +64,72 @@ class CombinedSavedServersTest {
         // Listed-only rows have no live list to open.
         rule.onNodeWithText("Open in its list").assertDoesNotExist()
         rule.onNodeWithText("Listed only. Sign in to this server to open or change it.").assertExists()
+    }
+
+    @Test fun lateReadFromPreviousAccountCannotPublishIntoReconfiguredServerSlot() {
+        CombinedViewPreferences(androidx.test.core.app.ApplicationProvider
+            .getApplicationContext()).save(io.github.gamesbyian.chunks.model.UnifiedTransferQuery())
+        val sameSlot = id(scopeA)
+        val pending = kotlinx.coroutines.CompletableDeferred<List<RemoteTransfer>>()
+        val entered = java.util.concurrent.atomic.AtomicInteger(0)
+        var current by androidx.compose.runtime.mutableStateOf(
+            CombinedSavedProfile(sameSlot, "Account slot", scopeA) {
+                entered.incrementAndGet()
+                pending.await()
+            }
+        )
+        val newReads = java.util.concurrent.atomic.AtomicInteger(0)
+        rule.setContent {
+            ChunksTheme { Surface(color = ChunksColors.Background) {
+                CombinedTransfersScreen(server = null, savedProfiles = listOf(current),
+                    onOpenPhone = {}, onOpenServer = null, onBack = {})
+            } }
+        }
+
+        val name = "Server · Account slot"
+        rule.onNodeWithText("Load other saved servers (read-only)").performScrollTo().performClick()
+        rule.waitUntil(5_000) { entered.get() == 1 }
+        rule.runOnIdle {
+            // Simulate a restored/edited profile retaining the same list slot
+            // but switching the exact authenticated account behind it.
+            current = CombinedSavedProfile(sameSlot, "Account slot", scopeB) {
+                newReads.incrementAndGet()
+                listOf(RemoteTransfer("b".repeat(40), "New account ISO",
+                    2048, 1024, true, "/new"))
+            }
+        }
+        rule.waitForIdle()
+        pending.complete(listOf(RemoteTransfer("a".repeat(40),
+            "Old account private payload", 100, 100, true, "/old")))
+        // A stale completion may finish on another dispatcher. Even after it
+        // has had time to return, the view stays unconnected to account A.
+        rule.waitUntil(5_000) {
+            rule.onAllNodesWithText(name + ": Not connected · 0 transfers")
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithText("Old account private payload").assertDoesNotExist()
+        rule.onNodeWithText("Load other saved servers (read-only)").performScrollTo().performClick()
+        rule.waitUntil(5_000) {
+            newReads.get() == 1 &&
+                rule.onAllNodesWithText(name + ": Live · 1 transfers")
+                    .fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithText("New account ISO").performScrollTo().assertExists()
+        rule.onNodeWithText("Old account private payload").assertDoesNotExist()
+        // Returning to the first identity must not resurrect an earlier reply.
+        rule.runOnIdle {
+            current = CombinedSavedProfile(sameSlot, "Account slot", scopeA) {
+                entered.incrementAndGet()
+                emptyList()
+            }
+        }
+        rule.waitUntil(5_000) {
+            rule.onAllNodesWithText(name + ": Not connected · 0 transfers")
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithText("New account ISO").assertDoesNotExist()
+        assertEquals("No silent read of the new account", 1, newReads.get())
+        assertEquals("No automatic replay of the old request", 1, entered.get())
     }
 
     @Test fun failedRefreshImmediatelyInvalidatesOldLiveSnapshotWithoutDeletingRows() {
