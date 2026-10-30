@@ -1,5 +1,17 @@
 # Chunks evidence and release gate ledger
 
+## rTorrent lifecycle outcome and capability consistency
+
+Candidate [#623](https://github.com/gamesbyian/Chunks/pull/623) integrates the independently reviewed #615/#623/#644 changes while retaining their commits. Stop requires both stopped state and an inactive engine; missing activity readback stays pending. Faults or malformed replies after dispatch remain uncertain without retry. Lifecycle flags accept only integer `0`/`1`, preventing fractional or non-finite values from falsely verifying Start/Stop. Capability prechecks require the getters used by the actual operations.
+
+The original combined source `93dfb86e5fbbb9869cbc0d53a640c97ce9bdd6af` passed full local JVM/Robolectric/native-loopback tests and debug assembly: **817 tests, 788 passed, 29 skipped, zero failures/errors**. Final source `246439df4f812945b7a1615c1372b7a1d9a15369` passed all selected RPC and capability suites plus assembly: **205 tests, 182 passed, 23 skipped, zero failures/errors**. The six new fixture methods exercise 64 real loopback gateway scenarios; red controls demonstrate escaping parser exceptions and a NaN reply falsely verifying Stop before the fixes. Cancellation still propagates and invalid hashes are refused before dispatch. Exact-head PR checks remain required before merge; no live lifecycle writes or physical-device acceptance are claimed.
+
+## Primary rTorrent read-only compatibility after observation safeguards
+
+Protected [run 40985804258](https://github.com/gamesbyian/Chunks/actions/runs/40985804258) passed at merged main `6ba2d79458fe021045bc5a443db9c31681fe3aee`, selecting only the owner-approved `primary-rutorrent-https` profile with its existing secret bindings. The actual Kotlin adapter authenticated and validated the version and main-view inventory. The workflow required its test success marker and zero failures, errors or skips before emitting `CHUNKS_SEEDHOST_ENDPOINT: selected profile verified by Kotlin version and main-view reads`.
+
+This separately verifies the stricter decoder against that real endpoint. No Add, Start, Stop, Remove, tracker disclosure or payload access was performed. It does not establish lifecycle mutation postconditions, peer-byte growth, Android TLS or physical-handset acceptance; the ordinary local suite's opt-in skips remain skipped.
+
 ## 2026-10-29 P0 native payload collision, confirmed unsafe (#568)
 
 - **Real observed overwrite, not safety acceptance:** synthetic licensed desktop native peer fixture [#633](https://github.com/gamesbyian/Chunks/pull/633), exact source `2c0f64221d02fa7c30abed1e0d0f208668058806`, [workflow 40973832152](https://github.com/gamesbyian/Chunks/actions/runs/40973832152). A stopped Add left an unrelated same-relative-path file intact, but Start **replaced** its bytes. Original SHA-256 `cc0e692ae196745f10abefef20afa2344d22226532465af49c20c38559c16442`; expected torrent and final SHA-256 `bbf2369f3db6526b02c08a33f18d7f6d38ad705d787db5ceebdc14dffe0e36ac`; `foreign_file_replaced=true`. The green experiment proves a desktop-native hazard, not protection.
