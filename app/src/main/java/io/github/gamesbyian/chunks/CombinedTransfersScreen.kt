@@ -217,12 +217,33 @@ internal fun CombinedTransfersScreen(
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
-    val preferences = remember(context) { CombinedViewPreferences(context) }
     val aliases = remember(context) { TransferAliasStore(context) }
-    var query by remember { mutableStateOf(preferences.load()) }
+    // Do not open or read persistent preferences while composing this view.
+    // A slow first read must never replace scope/search chosen in the meantime.
+    var query by remember { mutableStateOf(UnifiedTransferQuery()) }
+    var queryTouched by remember { mutableStateOf(false) }
+    var loadedPreferences by remember { mutableStateOf<CombinedViewPreferences?>(null) }
+    LaunchedEffect(context) {
+        try {
+            val (store, saved) = withContext(Dispatchers.IO) {
+                val store = CombinedViewPreferences(context)
+                store to store.load()
+            }
+            query = CombinedViewPreferences.reconcileLoadedView(query, saved, queryTouched)
+            loadedPreferences = store
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            // Keep usable defaults/current edits; saving can be retried on
+            // the next explicit user action. Never guess a stored subset.
+        }
+    }
     fun update(next: UnifiedTransferQuery) {
+        queryTouched = true
         query = next
-        preferences.save(next.copy(search = ""))
+        // Existing event-time synchronous commit preserves chosen view state
+        // when the user immediately navigates away. No write during Compose.
+        (loadedPreferences ?: CombinedViewPreferences(context)).save(next.copy(search = ""))
     }
 
     // Phone: read only an engine already running in this process. Opening this
@@ -546,7 +567,10 @@ internal fun CombinedTransfersScreen(
             }
         }
         item {
-            OutlinedTextField(value = query.search, onValueChange = { query = query.copy(search = it) },
+            OutlinedTextField(value = query.search, onValueChange = {
+                    queryTouched = true
+                    query = query.copy(search = it)
+                },
                 label = { Text("Search all selected") }, singleLine = true, modifier = Modifier.fillMaxWidth())
         }
         item {
