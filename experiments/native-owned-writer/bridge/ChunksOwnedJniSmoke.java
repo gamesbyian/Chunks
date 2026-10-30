@@ -7,6 +7,7 @@ import org.libtorrent4j.SettingsPack;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.attribute.PosixFilePermissions;
 
 public final class ChunksOwnedJniSmoke {
@@ -16,7 +17,7 @@ public final class ChunksOwnedJniSmoke {
 
     public static void main(String[] args) throws Exception {
         check(args.length == 1, "Expected one disposable test root");
-        Path root = Path.of(args[0]);
+        Path root = Paths.get(args[0]);
         Path receipts = Files.createDirectories(root.resolve("app-private-receipts"));
         Files.setPosixFilePermissions(receipts, PosixFilePermissions.fromString("rwx------"));
         SettingsPack settings = new SettingsPack().listenInterfaces("127.0.0.1:0");
