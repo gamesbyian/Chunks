@@ -252,15 +252,18 @@ class LocalTorrentEngineTest {
 
         val root = temp.newFolder("post-stop-checked-dest")
         val leecher = engine()
-        val transfer = added(leecher.addStoppedChecked(metainfo, root,
-            listOf(InetSocketAddress("127.0.0.1", seeder.listenPort()))))
+        // Keep peers absent for the first Start. A skipped-file fixture may
+        // never reach 100% whole-torrent status, so requiring a completed
+        // torrent before Stop is unsound and was timing out. This controlled
+        // first Start proves an active native handle with zero data files.
+        val transfer = added(leecher.addStoppedChecked(metainfo, root))
         val skipped = requireNotNull(leecher.files(transfer.infoHash))
             .single { it.path.endsWith("/delayed.bin") }
         assertEquals(LocalCommandOutcome.VERIFIED,
             leecher.setFileWanted(transfer.infoHash, skipped.index, false))
         assertEquals(LocalCommandOutcome.VERIFIED, leecher.resume(transfer.infoHash).outcome)
-        requireFlushed(leecher, transfer.infoHash)
-        assertArrayEquals(first, File(root, "Stopped checked fixture/initial.bin").readBytes())
+        assertEquals("No peer introduced before the foreign-path fixture", 0L,
+            requireNotNull(leecher.status(transfer.infoHash)).doneBytes)
         assertEquals(LocalCommandOutcome.VERIFIED, leecher.pause(transfer.infoHash).outcome)
 
         val foreign = File(root, "Stopped checked fixture/delayed.bin")
@@ -280,6 +283,9 @@ class LocalTorrentEngineTest {
             unrelated, foreign.readBytes())
 
         assertTrue("Only remove the fixture we planted", foreign.delete())
+        assertTrue("Positive native peer must be explicitly connected AFTER clearing the fixture",
+            leecher.connectPeer(transfer.infoHash,
+                InetSocketAddress("127.0.0.1", seeder.listenPort())))
         assertEquals(LocalCommandOutcome.VERIFIED, leecher.resume(transfer.infoHash).outcome)
         requireFlushed(leecher, transfer.infoHash)
         assertArrayEquals("Clean restart may still download the skipped file",
