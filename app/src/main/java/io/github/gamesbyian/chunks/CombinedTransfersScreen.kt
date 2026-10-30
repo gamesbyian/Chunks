@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
@@ -20,6 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FilterChip
@@ -37,6 +39,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.heading
@@ -340,7 +343,22 @@ internal fun CombinedTransfersScreen(
         onDispose { if (secure) activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_SECURE) }
     }
 
-    LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    val listState = rememberLazyListState()
+    // Reading LazyListState.layoutInfo during composition creates a feedback
+    // loop: layout publishes info, composition reads it, then remeasures.
+    // Capture only actual size changes and use stable scroll state for visibility.
+    var viewportHeightPx by remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    val showReturnToTop = ReturnToTopPolicy.remote(
+        firstVisibleIndex = listState.firstVisibleItemIndex,
+        firstVisibleOffsetPx = listState.firstVisibleItemScrollOffset,
+        viewportHeightPx = viewportHeightPx,
+        hasTransfers = result.transfers.isNotEmpty()
+    )
+    Box(Modifier.fillMaxSize()) {
+        LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp)
+                .onSizeChanged { viewportHeightPx = it.height },
+            state = listState, contentPadding = PaddingValues(bottom = 88.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item {
             CombinedTransfersHeader(onBack)
             Text("Browse every environment together. Start and Stop can be applied to a selection " +
@@ -539,6 +557,13 @@ internal fun CombinedTransfersScreen(
                     modifier = actionModifier) { Text("Open server list") }
             }
         }
+        }
+        ReturnToTopControl(visible = showReturnToTop, onClick = {
+            batchScope.launch {
+                if (ReturnToTopPolicy.animationsEnabled(context)) listState.animateScrollToItem(0)
+                else listState.scrollToItem(0)
+            }
+        }, modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 16.dp))
     }
 }
 
