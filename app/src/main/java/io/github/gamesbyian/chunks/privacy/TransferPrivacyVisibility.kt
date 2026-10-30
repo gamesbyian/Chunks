@@ -16,9 +16,12 @@ internal object TransferPrivacyVisibility {
     /** Pure rule. A failed configure falls back to a locking mode, never to NEVER. */
     fun decide(savedMode: TransferLockMode, synchronized: Boolean, deviceSecure: Boolean,
                sessionMayView: Boolean): Decision {
-        val mode = if (synchronized) savedMode else TransferLockMode.ONCE_PER_PROCESS
-        val show = mode == TransferLockMode.NEVER || (deviceSecure && sessionMayView)
-        return Decision(show, needsSecureWindow = mode != TransferLockMode.NEVER)
+        // A live session refusing a stored policy is a conflicting identity/
+        // authorization boundary. Its old grant is not evidence for the new
+        // policy, even when the device is secure and mayView() returns true.
+        if (!synchronized) return Decision(mayShow = false, needsSecureWindow = true)
+        val show = savedMode == TransferLockMode.NEVER || (deviceSecure && sessionMayView)
+        return Decision(show, needsSecureWindow = savedMode != TransferLockMode.NEVER)
     }
 
     fun current(context: Context, activity: Activity?, scope: String): Decision {
