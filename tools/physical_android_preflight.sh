@@ -55,14 +55,31 @@ else
     # Count and select in the same snapshot, then pin every subsequent command
     # to that serial. An unscoped adb install could target another handset if
     # attachments change after enumeration.
-    mapfile -t attached_serials < <(adb devices | awk 'NR > 1 && $2 == "device" { print $1 }')
+    # Process substitutions do not propagate their producer's exit status.
+    # A failed adb device inventory can still print a plausible serial.
+    devices_output="$(adb devices)" || {
+        echo "adb devices failed: refusing device selection" >&2
+        exit 2
+    }
+    attached_serials=()
+    while read -r serial state _; do
+        if [[ "$state" == "device" && -n "$serial" ]]; then
+            attached_serials+=("$serial")
+        fi
+    done <<< "$devices_output"
     [[ "${#attached_serials[@]}" -eq 1 ]] || {
         echo "Connect exactly one authorized physical Android device, or set ADB_SERIAL" >&2
         exit 2
     }
     adb_command+=(-s "${attached_serials[0]}")
 fi
-[[ "$("${adb_command[@]}" get-state | tr -d '\r\n')" == "device" ]] || {
+# Comparing text inside [[ ... ]] discards the command-substitution exit
+# status. Require a successful adb response as well as the exact state.
+device_state="$("${adb_command[@]}" get-state | tr -d '\r\n')" || {
+    echo "adb get-state failed: refusing device selection" >&2
+    exit 2
+}
+[[ "$device_state" == "device" ]] || {
     echo "The selected device is not authorized for adb" >&2
     exit 2
 }
