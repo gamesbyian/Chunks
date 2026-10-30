@@ -1,6 +1,7 @@
 package io.github.gamesbyian.chunks.privacy
 
 import android.content.Context
+import androidx.compose.runtime.mutableIntStateOf
 import java.security.MessageDigest
 
 /**
@@ -10,6 +11,18 @@ import java.security.MessageDigest
  * every new process.
  */
 internal class TransferPrivacyPolicyStore(context: Context) {
+    companion object {
+        // One shared revision for all store instances in this process. The
+        // combined view observes it to invalidate old off-main-thread reads.
+        private val policyRevision = mutableIntStateOf(0)
+        val revision: Int get() = policyRevision.intValue
+        private fun changed() {
+            synchronized(policyRevision) {
+                policyRevision.intValue++
+            }
+        }
+    }
+
     private val prefs = context.applicationContext.getSharedPreferences(
         "chunks_transfer_privacy_policy_v1", Context.MODE_PRIVATE
     )
@@ -44,7 +57,9 @@ internal class TransferPrivacyPolicyStore(context: Context) {
             val editor = prefs.edit()
             if (mode == TransferLockMode.NEVER) editor.remove(key(scope))
             else editor.putString(key(scope), mode.name)
-            editor.commit()
+            val committed = editor.commit()
+            if (committed) changed()
+            committed
         } catch (_: RuntimeException) {
             false
         }
