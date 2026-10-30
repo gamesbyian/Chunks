@@ -13,6 +13,14 @@ import java.security.MessageDigest
 object EnvironmentSnapshots {
     val PHONE = EnvironmentId("phone")
 
+    /** Read-on-demand server inventories are not live indefinitely after a successful fetch. */
+    const val SERVER_INVENTORY_FRESH_MS = 120_000L
+
+    /** A missing timestamp remains unconfirmed; a future one fails closed after a clock change. */
+    fun serverInventoryIsOutOfDate(observedAtEpochMillis: Long?, nowEpochMillis: Long): Boolean =
+        observedAtEpochMillis != null && (observedAtEpochMillis < 0 || nowEpochMillis < observedAtEpochMillis ||
+            nowEpochMillis - observedAtEpochMillis > SERVER_INVENTORY_FRESH_MS)
+
     /** The ID for an authenticated alias scope (endpoint + NUL + username); null if malformed. */
     fun serverIdOfAliasScope(aliasScope: String): EnvironmentId? {
         val separator = aliasScope.indexOf('\u0000')
@@ -60,7 +68,8 @@ object EnvironmentSnapshots {
         stale: Boolean,
         locked: Boolean,
         fullView: Boolean,
-        observedAtEpochMillis: Long?
+        observedAtEpochMillis: Long?,
+        nowEpochMillis: Long = System.currentTimeMillis()
     ): EnvironmentTransferSnapshot {
         if (locked || !connected) return EnvironmentTransferSnapshot(environment,
             if (locked) EnvironmentAvailability.LOCKED else EnvironmentAvailability.OFFLINE,
@@ -69,7 +78,8 @@ object EnvironmentSnapshots {
             UnifiedTransferObservations.fromRTorrent(environment, it)
         }
         return EnvironmentTransferSnapshot(environment,
-            if (stale) EnvironmentAvailability.STALE else EnvironmentAvailability.LIVE,
+            if (stale || serverInventoryIsOutOfDate(observedAtEpochMillis, nowEpochMillis))
+                EnvironmentAvailability.STALE else EnvironmentAvailability.LIVE,
             inventoryComplete = fullView && clean && observedAtEpochMillis != null,
             observedAtEpochMillis = observedAtEpochMillis, transfers = rows)
     }
