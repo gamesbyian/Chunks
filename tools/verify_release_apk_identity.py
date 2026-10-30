@@ -10,7 +10,7 @@ import subprocess
 import sys
 
 EXPECTED_PACKAGE = "io.github.gamesbyian.chunks"
-ATTRIBUTE = re.compile(r"(?<!\\S)([A-Za-z][A-Za-z0-9]*)='([^']*)'")
+ATTRIBUTE = re.compile(r"(?<!\S)([A-Za-z][A-Za-z0-9]*)='([^']*)'")
 
 
 def verify_badging(output: str, version_name: str, version_code: str) -> None:
