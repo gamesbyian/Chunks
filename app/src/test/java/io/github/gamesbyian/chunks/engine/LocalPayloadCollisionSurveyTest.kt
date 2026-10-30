@@ -124,6 +124,39 @@ class LocalPayloadCollisionSurveyTest {
         }
     }
 
+    @Test fun caseInsensitiveVolumeCannotAliasTwoDifferentTorrentIndices() {
+        val root = temp.newFolder("folding-alias")
+        val paths = listOf("Show/Episode.mkv", "show/episode.MKV")
+        assertTrue(LocalPayloadCollisionSurvey.inspect(root, paths)
+            is LocalPayloadCollisionSurvey.Result.Unknown)
+        assertTrue(root.listFiles().orEmpty().isEmpty())
+    }
+
+    @Test fun caseFoldedFileCannotAlsoBeItsOwnDirectoryParent() {
+        val root = temp.newFolder("folding-ancestor")
+        for (paths in listOf(
+            listOf("SeRiEs", "series/episode.mkv"),
+            listOf("series/episode.mkv", "SeRiEs")
+        )) {
+            assertTrue(LocalPayloadCollisionSurvey.inspect(root, paths)
+                is LocalPayloadCollisionSurvey.Result.Unknown)
+        }
+        assertTrue(root.listFiles().orEmpty().isEmpty())
+    }
+
+    @Test fun compatibilityAndCanonicalUnicodeAliasesAreNotDistinctFiles() {
+        val root = temp.newFolder("unicode-alias")
+        for (paths in listOf(
+            listOf("Cafe\u0301/episode.mkv", "Caf\u00e9/episode.mkv"),
+            listOf("Wei\u00df/episode.mkv", "WEISS/episode.mkv"),
+            listOf("\u212b/episode.mkv", "\u00c5/episode.mkv")
+        )) {
+            assertTrue(paths.toString(), LocalPayloadCollisionSurvey.inspect(root, paths)
+                is LocalPayloadCollisionSurvey.Result.Unknown)
+        }
+        assertTrue(root.listFiles().orEmpty().isEmpty())
+    }
+
     @Test fun overlongSinglePathFailsClosedWithoutFilesystemMutation() {
         assertTrue(LocalPayloadCollisionSurvey.inspect(
             temp.root, listOf("a".repeat(4097)))
