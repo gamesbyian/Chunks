@@ -1052,8 +1052,41 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             val request = XmlRpcCodec.request(method, params).toByteArray(Charsets.UTF_8)
             val requestTarget = (endpoint.rawPath?.ifEmpty { "/" } ?: "/") +
                 (endpoint.rawQuery?.let { "?" + it } ?: "")
-            var authorization: String? = null
-            var attemptedChallenge = false
+            val mutation = isMutatingRpcMethod(method)
+            // A 401 may arrive after a broken gateway has applied a write.
+            // Learn a fresh Basic/Digest challenge using a read-only RPC on
+            // this same endpoint, then send the mutation only once.
+            var authorization: String? = if (mutation && auth.username.isNotEmpty()) {
+                val probeBody = XmlRpcCodec.request("system.client_version").toByteArray(Charsets.UTF_8)
+                val probe = endpoint.toURL().openConnection() as HttpURLConnection
+                probe.connectTimeout = 8_000
+                probe.readTimeout = 15_000
+                probe.instanceFollowRedirects = false
+                probe.requestMethod = "POST"
+                probe.setRequestProperty("Content-Type", "text/xml; charset=utf-8")
+                probe.setRequestProperty("Accept", "text/xml")
+                probe.doOutput = true
+                probe.setFixedLengthStreamingMode(probeBody.size)
+                try {
+                    probe.outputStream.use { it.write(probeBody) }
+                    val status = probe.responseCode
+                    when {
+                        status == HttpURLConnection.HTTP_UNAUTHORIZED -> {
+                            val challenges = probe.headerFields.entries
+                                .filter { (name, _) -> name?.equals("WWW-Authenticate", true) == true }
+                                .flatMap { it.value }
+                            HttpRpcAuthorization.fromChallenge(challenges, auth, "POST", requestTarget)
+                        }
+                        status in 200..299 -> null
+                        else -> throw IOException("rTorrent authentication preflight returned HTTP $status")
+                    }
+                } finally {
+                    probe.disconnect()
+                }
+            } else null
+            // Read-only RPCs retain their one challenge retry. For writes,
+            // even a 401 with WWW-Authenticate proves nothing about rollback.
+            var attemptedChallenge = mutation
             while (true) {
                 val connection = endpoint.toURL().openConnection() as HttpURLConnection
                 connection.connectTimeout = 8_000
@@ -1105,6 +1138,12 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         }
 
     private companion object {
+        // Explicitly classify the adapter's supported mutations. A future
+        // mutator must be included here to inherit single-dispatch handling.
+        fun isMutatingRpcMethod(method: String): Boolean =
+            method.startsWith("load.") || method.endsWith(".set") ||
+                method in setOf("d.erase", "d.open", "d.start", "d.resume",
+                    "d.stop", "d.close", "d.update_priorities")
         const val MAX_TRANSFERS = 12_000
         const val PAGE_SIZE = 250
         val MINIMUM_FIELDS = listOf("d.hash=", "d.name=", "d.size_bytes=", "d.completed_bytes=",
