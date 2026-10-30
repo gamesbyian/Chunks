@@ -198,6 +198,32 @@ class LocalTorrentEngineTest {
             target.status(added.infoHash)?.error)
     }
 
+    @Test fun checkedPartialAddStillRequiresFreshSurveyBeforeFirstStart() {
+        val fixture = fixture()
+        val state = temp.newFolder("checked-partial-state")
+        val moved = File(temp.root, "checked-state-still-preserved")
+        val target = persistentEngine(state)
+        assertTrue(state.renameTo(moved))
+        state.writeText("no longer a writable resume directory")
+
+        val destination = temp.newFolder("checked-partial-destination")
+        try {
+            target.addStoppedChecked(fixture.torrent, destination)
+            fail("A failed initial resume write cannot report a complete Add")
+        } catch (_: java.io.IOException) {
+            // The native job was registered but its resume write failed.
+            // A later UI Start must still have the original collision fence.
+        }
+        val partial = target.list().single()
+        assertTrue(partial.stopped)
+        val foreign = File(destination, "Chunks public fixture/episode.bin")
+        assertTrue(foreign.parentFile.mkdirs())
+        val bytes = byteArrayOf(8, 6, 7, 5, 3, 0, 9)
+        foreign.writeBytes(bytes)
+        assertEquals(LocalCommandOutcome.REFUSED, target.resume(partial.infoHash).outcome)
+        assertArrayEquals("Uncertain Add cannot bypass protection", bytes, foreign.readBytes())
+    }
+
     @Test fun checkedTorrentRefusesSymlinkParentIntroducedAfterAdd() {
         val fixture = fixture()
         val destination = temp.newFolder("checked-symlink-start")
