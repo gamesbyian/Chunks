@@ -265,8 +265,9 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         // before removing UPLOAD_MODE. Otherwise a checked .torrent can hold
         // the same currently empty names and both native handles may write.
         // Rechecking an already reserved magnet at Start must not block itself.
-        if (checkedPayloadReservations.hasReservation(key)) return null
-        return when (val admission = checkedPayloadReservations.reserve(key, root, paths)) {
+        return when (val admission = checkedPayloadReservations.reserve(
+            key, root, paths, allowExistingOwner = true
+        )) {
             LocalCheckedPayloadReservations.Result.Reserved -> null
             is LocalCheckedPayloadReservations.Result.Refused -> admission.problem
         }
@@ -513,6 +514,11 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             return LocalAddResult.Refused("Choose an existing folder for this download")
         val hash = magnetIdentity(magnet) ?: return LocalAddResult.Refused("Use a magnet link with exactly one v1 info hash")
         if (handles.containsKey(hash)) return LocalAddResult.Refused("This torrent is already in the local engine")
+        // The previous handle may have been removed from the visible list
+        // while native disk I/O still holds it. Its path claims are tombstoned
+        // until session shutdown; do not resurrect the same hash via a magnet.
+        if (checkedPayloadReservations.hasReservation(hash))
+            return LocalAddResult.Refused("A previous download still reserves this destination until the engine restarts")
         val params = try { AddTorrentParams.parseMagnetUri(magnet) } catch (_: RuntimeException) {
             return LocalAddResult.Refused("This magnet link could not be read")
         }
