@@ -27,12 +27,12 @@
 #include <vector>
 
 // Deliberately remains active under -O3 -DNDEBUG used by CI Release builds.
-// Every safety witness MUST use this, never libc CHECK(), whose side effects
+// Every safety witness MUST use this, never libc assert(), whose side effects
 // and checks disappear in the actual test configuration.
 #define CHECK(condition) do { \
   if (!(condition)) { \
     std::cerr << "CHUNKS_NATIVE_SESSION_CHECK_FAILED " << __FILE__ \
-              << ":" << __LINE__ << " " << #condition << "\\n"; \
+              << ":" << __LINE__ << " " << #condition << "\n"; \
     std::exit(86); \
   } \
 } while (false)
