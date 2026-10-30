@@ -267,6 +267,19 @@ class LocalTorrentEngineTest {
         assertFalse(activeForeign.exists())
         val activeBytes = ByteArray(delayed.size).also { Random(9982L).nextBytes(it) }
         activeForeign.writeBytes(activeBytes)
+        val beforeOrder = requireNotNull(leecher.files(transfer.infoHash))
+        val firstSelected = beforeOrder.single { it.path.endsWith("/initial.bin") }
+        val orderRecord = FinishInOrderRecord(FinishInOrderPlanner.policyFor(
+            FinishInOrderPlanner.Mode.BALANCED, beforeOrder, listOf(firstSelected.index)))
+        // Automatic Finish in Order is a separate JNI file-priority writer.
+        // Its existing journal/planner preflight must not bypass the shared
+        // native foreign-path gate, even when only a different file is targeted.
+        assertEquals(LocalFileBatchOutcome.STALE_REVIEW,
+            leecher.applyFinishInOrder(transfer.infoHash, orderRecord,
+                listOf(FinishInOrderPlanner.Change(firstSelected.index,
+                    firstSelected.priority, 7))))
+        assertEquals(firstSelected.priority, requireNotNull(leecher.files(transfer.infoHash))
+            .single { it.index == firstSelected.index }.priority)
         assertEquals(LocalCommandOutcome.REFUSED,
             leecher.setFileWanted(transfer.infoHash, skipped.index, true))
         assertArrayEquals("Active file selection cannot clobber planted bytes",
