@@ -236,7 +236,9 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         val paths = try {
             val info = handle.torrentFile() ?: return "Metadata file layout is unavailable"
             val files = info.files()
-            (0 until files.numFiles()).asSequence()
+            val count = files.numFiles()
+            if (count !in 1..100_000) return "Torrent payload path count is unsupported"
+            (0 until count).asSequence()
                 .filterNot { files.padFileAt(it) }.map { files.filePath(it) }.toList()
         } catch (_: Exception) { return "Torrent file layout cannot be inspected" }
         if (paths.isEmpty()) return "Torrent has no inspectable payload files"
@@ -490,17 +492,24 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         return if (hash.matches(Regex("^[0-9a-fA-F]{40}$"))) hash.lowercase(Locale.ROOT) else null
     }
 
+    /**
+     * The magnet collision survey, upload-only transition, pending consent and
+     * native resume() must be one serialized command. An intervening Stop may
+     * never be followed by a Start from an older preflight.
+     */
     fun resume(infoHash: String, readbackTimeoutMs: Long = 5_000): LocalCommandResult {
+        require(readbackTimeoutMs in 0..60_000)
         val key = normal(infoHash)
         synchronized(this) {
             val handle = handles[key]
                 ?: return LocalCommandResult(LocalCommandOutcome.NOT_FOUND, null)
-            // Upload-only is also preserved in the native resume file. That
-            // makes the collision gate survive process death without relying
-            // on this object's in-memory collision map.
-            val flags = handle.getFlags()
-            if (handle.status().hasMetadata() &&
-                flags.and_(org.libtorrent4j.TorrentFlags.UPLOAD_MODE).non_zero()) {
+            // Snapshot flags and the native getter may disagree while an
+            // asynchronous pause/metadata transition is settling. The same
+            // status() flags drive the visible UPLOAD_MODE state.
+            val state = handle.status()
+            if (state.hasMetadata() &&
+                (state.flags().and_(org.libtorrent4j.TorrentFlags.UPLOAD_MODE).non_zero() ||
+                    magnetCollisionProblems.containsKey(key))) {
                 val problem = inspectMagnetCollision(handle)
                 if (problem != null) {
                     magnetCollisionProblems[key] = problem
@@ -510,18 +519,12 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                 handle.unsetFlags(org.libtorrent4j.TorrentFlags.UPLOAD_MODE)
                 requestMetadataResumeSave(key, handle)
             }
-        }
-        return command(infoHash, wantStopped = false, readbackTimeoutMs) {
-            // A magnet initially runs in upload-only mode so it can fetch
-            // metadata without downloading payload. If the user manually
-            // presses Start while that metadata is pending, preserve that
-            // explicit intent across the METADATA_RECEIVED callback. Otherwise
-            // the callback would pause the torrent even though Start was
-            // acknowledged earlier. A later explicit Stop clears this intent.
-            val key = normal(infoHash)
+            // Until metadata arrives this is permission to fetch metadata,
+            // not a claim that any payload is being downloaded.
             if (awaitingMetadata.contains(key)) startWhenMetadataArrives.add(key)
-            it.resume()
+            handle.resume()
         }
+        return waitForCommandReadback(key, wantStopped = false, readbackTimeoutMs)
     }
 
     fun pause(infoHash: String, readbackTimeoutMs: Long = 5_000): LocalCommandResult =
@@ -544,10 +547,15 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             val handle = handles[key] ?: return LocalCommandResult(LocalCommandOutcome.NOT_FOUND, null)
             action(handle)
         }
+        return waitForCommandReadback(key, wantStopped, readbackTimeoutMs)
+    }
+
+    private fun waitForCommandReadback(
+        key: String, wantStopped: Boolean, readbackTimeoutMs: Long
+    ): LocalCommandResult {
         val deadline = System.nanoTime() + readbackTimeoutMs * 1_000_000
-        var latest: LocalTransferStatus? = null
         while (true) {
-            latest = status(key) ?: return LocalCommandResult(LocalCommandOutcome.NOT_FOUND, null)
+            val latest = status(key) ?: return LocalCommandResult(LocalCommandOutcome.NOT_FOUND, null)
             if (latest.stopped == wantStopped) return LocalCommandResult(LocalCommandOutcome.VERIFIED, latest)
             if (System.nanoTime() >= deadline) return LocalCommandResult(LocalCommandOutcome.UNCERTAIN, latest)
             Thread.sleep(25)
