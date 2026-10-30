@@ -1,0 +1,76 @@
+import importlib.util
+from pathlib import Path
+import tempfile
+import unittest
+
+MODULE = Path(__file__).with_name("apply_to_libtorrent4j_fork.py")
+spec = importlib.util.spec_from_file_location("chunks_fork_patch", MODULE)
+patch = importlib.util.module_from_spec(spec)
+assert spec.loader is not None
+spec.loader.exec_module(patch)
+NATIVE = MODULE.parent.parent
+
+
+class ForkPatchTest(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        for rel, text in (
+            ("build.gradle.kts", 'version = "2.1.0-39"\n'),
+            ("swig/libtorrent/session_params.i",
+             "%ignore libtorrent::session_params::disk_io_constructor;\n"),
+            ("swig/libtorrent.i", '%include "libtorrent/session_params.i"\n'),
+            ("swig/CMakeLists.txt",
+             "target_link_libraries(torrent4j PRIVATE torrent-rasterbar)\n"),
+            ("src/main/java/org/libtorrent4j/SessionParams.java",
+             'public final class SessionParams {\n'
+             '    private static session_params bdecode0(File file) {\n'
+             '       return null;\n    }\n}\n'),
+        ):
+            path = self.root / rel
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(text)
+
+    def test_stages_every_source_and_is_idempotent(self):
+        patch.stage(self.root, NATIVE)
+        path = self.root / "src/main/java/org/libtorrent4j/SessionParams.java"
+        java = path.read_text()
+        self.assertIn("setOwnedDiskIO", java)
+        self.assertLess(java.index("setOwnedDiskIO"), java.index("bdecode0"))
+        self.assertIn('chunks/bridge/owned_disk_extension.i',
+                      (self.root / "swig/libtorrent.i").read_text())
+        self.assertIn('chunks/owned_torrent_storage.cc',
+                      (self.root / "swig/CMakeLists.txt").read_text())
+        snapshots = {path: path.read_bytes() for path in self.root.rglob("*")
+                     if path.is_file()}
+        patch.stage(self.root, NATIVE)
+        self.assertEqual(snapshots, {path: path.read_bytes()
+                                    for path in self.root.rglob("*") if path.is_file()})
+        self.assertTrue((self.root / "swig/chunks/bridge/owned_libtorrent_disk.cc").is_file())
+
+    def test_rejects_wrong_version_before_mutation(self):
+        (self.root / "build.gradle.kts").write_text('version = "2.2"\n')
+        with self.assertRaises(ValueError):
+            patch.stage(self.root, NATIVE)
+        self.assertFalse((self.root / "swig/chunks").exists())
+
+    def test_rejects_existing_divergent_source_before_mutation(self):
+        existing = self.root / "swig/chunks/owned_payload_file.cc"
+        existing.parent.mkdir(parents=True)
+        existing.write_text("CUSTOM FORK IMPLEMENTATION")
+        with self.assertRaises(ValueError):
+            patch.stage(self.root, NATIVE)
+        self.assertEqual("CUSTOM FORK IMPLEMENTATION", existing.read_text())
+        self.assertNotIn("setOwnedDiskIO",
+                         (self.root / "src/main/java/org/libtorrent4j/SessionParams.java").read_text())
+
+    def test_rejects_missing_swig_seam_before_mutation(self):
+        (self.root / "swig/libtorrent.i").write_text("%module different\n")
+        with self.assertRaises(ValueError):
+            patch.stage(self.root, NATIVE)
+        self.assertFalse((self.root / "swig/chunks").exists())
+
+
+if __name__ == "__main__":
+    unittest.main()
