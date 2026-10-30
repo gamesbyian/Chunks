@@ -266,6 +266,8 @@ class LocalTorrentEngineTest {
         val activeForeign = File(root, "Stopped checked fixture/delayed.bin")
         assertFalse(activeForeign.exists())
         val activeBytes = ByteArray(delayed.size).also { Random(9982L).nextBytes(it) }
+        assertTrue("Create only the disposable backing parent", activeForeign.parentFile.mkdirs() ||
+            activeForeign.parentFile.isDirectory)
         activeForeign.writeBytes(activeBytes)
         val beforeOrder = requireNotNull(leecher.files(transfer.infoHash))
         val firstSelected = beforeOrder.single { it.path.endsWith("/initial.bin") }
