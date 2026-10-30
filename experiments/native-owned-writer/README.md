@@ -4,7 +4,7 @@
 
 Run: bash experiments/native-owned-writer/test.sh --sanitizers
 
-On October 30 the corresponding source compiled with strict C++17 warnings and with ASan/UBSan on a disposable Linux host: **21/21 cases passed across the two suites**. Cases include an already-existing foreign file, symlink parents, live file/root/ancestor replacement, hardlink alias, corrupt receipt, invalid path, overflowing offset, receipt collision, concurrent same-path Create (exactly one winner), and durable reopen. The second 8-case suite exercises multi-file piece offsets, cross-file preflight, padding that never creates a file, preserved foreign contents, resumable absent-file reservations and readback from durable receipts. This is not BitTorrent traffic, Android FUSE, API29/API35, or physical-device evidence.
+On October 30 the corresponding source compiled with strict C++17 warnings and with ASan/UBSan on a disposable Linux host: **22/22 cases passed across the two suites**. Cases include an already-existing foreign file, symlink parents, live file/root/ancestor replacement, hardlink alias, corrupt receipt, invalid path, overflowing offset, receipt collision, concurrent same-path Create (exactly one winner), and durable reopen. The second 9-case suite exercises multi-file piece offsets, cross-file preflight, padding that never creates a file, preserved foreign contents, resumable absent-file reservations, file-as-parent alias refusal and readback from durable receipts. This is not BitTorrent traffic, Android FUSE, API29/API35, or physical-device evidence.
 
 ## Reason for the native seam
 
