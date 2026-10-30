@@ -38,6 +38,7 @@ NativeAdmissionMode ClassifyNativeAdmission(
     return NativeAdmissionMode::REFUSED;
   }
   std::size_t claimed = 0;
+  std::size_t finalized = 0;
   std::size_t eligible = 0;
   for (auto const& file : layout) {
     if (file.pad_file || file.size == 0) continue;
@@ -53,6 +54,7 @@ NativeAdmissionMode ClassifyNativeAdmission(
       return NativeAdmissionMode::REFUSED;
     }
     if (final == Presence::YES || pending == Presence::YES) ++claimed;
+    if (final == Presence::YES) ++finalized;
   }
   if (eligible == 0) {
     if (error) *error = "Torrent has no physical backing files";
@@ -62,11 +64,16 @@ NativeAdmissionMode ClassifyNativeAdmission(
     if (error) error->clear();
     return NativeAdmissionMode::RESTORED;
   }
-  if (claimed == 0) {
+  if (claimed == 0 || finalized == 0) {
+    // An interrupted zero-progress Add can leave *some* pending path claims.
+    // It is safe to retry a FRESH reservation pass: Reserve checks every
+    // existing pending receipt against the exact path, parent and mapping,
+    // and O_EXCL still refuses any subsequently planted physical file.
+    // Never use this path once even one finalized physical receipt exists.
     if (error) error->clear();
     return NativeAdmissionMode::FRESH;
   }
-  if (error) *error = "Interrupted partial native receipt inventory requires review";
+  if (error) *error = "Incomplete native receipt inventory includes finalized payload; manual recovery required";
   return NativeAdmissionMode::REFUSED;
 }
 } // namespace chunks
