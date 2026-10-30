@@ -70,9 +70,14 @@ bool ParentPath(int root, const std::vector<std::string>& parts, bool create,
   for (size_t i = 0; i + 1 < parts.size(); ++i) {
     int next = ::openat(current.v, parts[i].c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
     if (next < 0 && create && errno == ENOENT) {
-      if (::mkdirat(current.v, parts[i].c_str(), 0700) != 0 && errno != EEXIST)
+      const int made = ::mkdirat(current.v, parts[i].c_str(), 0700);
+      if (made != 0 && errno != EEXIST)
         return Fail(err, "Cannot create payload parent");
       next = ::openat(current.v, parts[i].c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+      // Ensure every newly made ancestor exists durably before the private
+      // receipt claims its path. Never silently downgrade unsupported fsync.
+      if (made == 0 && ::fsync(current.v) != 0)
+        return Fail(err, "Payload parent directory sync unsupported");
     }
     if (next < 0) return Fail(err, "Payload parent unavailable or indirect");
     ::close(current.release());
