@@ -22,17 +22,30 @@ internal object HttpRpcAuthorization {
     ): String {
         if (credentials.username.isEmpty()) throw IOException("RPC authentication required")
         val challenges = supportedChallenges(headers)
-        val digest = challenges.firstOrNull { it.startsWith("Digest ", true) }
+        val digest = challenges.firstOrNull { schemeOf(it) == "Digest" }
         if (digest != null) {
-            val values = parse(digest.trimStart().substring(7))
+            val values = parse(digest.trimStart().substring(6).trimStart(' ', '\t'))
             return digestHeader(values, credentials, method, requestTarget)
         }
-        val basic = challenges.firstOrNull { it.startsWith("Basic ", true) }
+        val basic = challenges.firstOrNull { schemeOf(it) == "Basic" }
         if (basic != null) {
             val bytes = (credentials.username + ":" + credentials.password).toByteArray(Charsets.UTF_8)
             return "Basic " + Base64.getEncoder().encodeToString(bytes)
         }
         throw IOException("Unsupported RPC authentication challenge")
+    }
+
+    /**
+     * HTTP auth-scheme is separated from credentials by SP / HTAB. Recognize
+     * the scheme only at a challenge boundary, never in a Digest quoted value
+     * or as a prefix of a longer authentication token.
+     */
+    private fun schemeOf(candidate: String): String? {
+        val value = candidate.trimStart()
+        return listOf("Digest", "Basic").firstOrNull { name ->
+            value.length > name.length && value.regionMatches(0, name, 0, name.length, true) &&
+                (value[name.length] == ' ' || value[name.length] == '\t')
+        }
     }
 
     /**
@@ -67,24 +80,21 @@ internal object HttpRpcAuthorization {
                 }
                 if (ch != ',') continue
                 val next = header.substring(index + 1).trimStart()
-                if (next.startsWith("Digest ", true) || next.startsWith("Basic ", true)) {
-                    boundaries += index + 1
-                }
+                if (schemeOf(next) != null) boundaries += index + 1
             }
             if (inQuotes || escaped) throw IOException("Malformed RPC authentication challenge")
             for (index in boundaries.indices) {
                 val end = if (index == boundaries.lastIndex) header.length else boundaries[index + 1] - 1
                 val candidate = header.substring(boundaries[index], end).trim()
-                if (candidate.startsWith("Digest ", true) || candidate.startsWith("Basic ", true)) {
-                    choices += candidate
-                }
+                if (schemeOf(candidate) != null) choices += candidate
             }
         }
         return choices
     }
 
     private fun parse(header: String): Map<String, String> {
-        if (header.length !in 1..8192 || header.any { it == '\r' || it == '\n' || it.code < 32 }) {
+        if (header.length !in 1..8192 ||
+            header.any { it == '\r' || it == '\n' || (it.code < 32 && it != '\t') }) {
             throw IOException("Invalid RPC authentication challenge")
         }
         val out = linkedMapOf<String, String>()
