@@ -36,6 +36,7 @@ def verify(root: ET.Element) -> tuple[bool, list[str]]:
 
     tests = failures = skipped = 0
     matches = []
+    recorded_cases = 0
     for suite in suites:
         try:
             tests += int(suite.attrib["tests"])
@@ -44,9 +45,12 @@ def verify(root: ET.Element) -> tuple[bool, list[str]]:
         except (ValueError, KeyError):
             errors.append("JUnit suite has invalid/incomplete execution counters")
             continue
-        matches.extend(tc for tc in suite.findall(".//testcase")
+        recorded_cases += len(suite.findall("testcase"))
+        matches.extend(tc for tc in suite.findall("testcase")
                        if TEST_CLASS in tc.get("classname", "")
                        and tc.get("name") == TEST_METHOD)
+    if recorded_cases != tests:
+        errors.append(f"JUnit case count mismatch: declared={tests}, actual={recorded_cases}")
     if tests < 1 or failures != 0 or skipped != 0:
         errors.append(f"JUnit execution not clean: tests={tests}, failures/errors={failures}, skipped={skipped}")
     if len(matches) != 1:
