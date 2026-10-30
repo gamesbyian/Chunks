@@ -50,9 +50,9 @@ class LocalPublicDownloadsPlaceInstrumentedTest {
         publicTestFolder?.deleteRecursively()
     }
 
-    private fun engine(state: File? = null) = LocalTorrentEngine(LocalEngineConfig(
+    private fun engine(state: File? = null, privateRoot: File? = null) = LocalTorrentEngine(LocalEngineConfig(
         listenInterfaces = "127.0.0.1:0", allowMultipleConnectionsPerIp = true,
-        stateDirectory = state)).also { it.start(); engines += it }
+        stateDirectory = state, nativeBackingRoot = privateRoot)).also { it.start(); engines += it }
 
     private fun waitFor(what: String, timeoutMs: Long = 90_000, condition: () -> Boolean) {
         val deadline = System.currentTimeMillis() + timeoutMs
@@ -78,38 +78,31 @@ class LocalPublicDownloadsPlaceInstrumentedTest {
      * plus the user's storage permissions; the test grants exactly what the
      * "Allow storage access" button requests. Android 11+ needs nothing.
      */
+    // All executable payload tests below target the private root; public
+    // Downloads permission cannot confer authority to the unsafe JNI writer.
     private fun allowSharedDownloads() {
         assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
-        if (Build.VERSION.SDK_INT != Build.VERSION_CODES.Q) return
-        @Suppress("DEPRECATION")
-        assertTrue("requestLegacyExternalStorage was not honored on Android 10",
-            Environment.isExternalStorageLegacy())
-        val before = LocalDownloadPlaces.choices(context)
-            .single { it.place.kind == LocalPlaceKind.PUBLIC_DOWNLOADS }
-        if (before.failure != null) assertTrue("Unexpected Android 10 refusal: ${before.failure}",
-            before.needsStoragePermission)
-        val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
-        LocalDownloadPlaces.ANDROID_10_STORAGE_PERMISSIONS.forEach {
-            automation.grantRuntimePermission(context.packageName, it)
-        }
     }
 
-    @Test fun publicDownloadsIsTheVerifiedDefaultWhereAndroidAllowsIt() {
+    @Test fun privateStorageIsDefaultAndPublicWriterIsDisabled() {
         allowSharedDownloads()
         val choices = LocalDownloadPlaces.choices(context)
-        val public = choices.single { it.place.kind == LocalPlaceKind.PUBLIC_DOWNLOADS }
-        assertNull("Public Downloads write probe failed: ${public.failure}", public.failure)
-        assertEquals(LocalPlaceKind.PUBLIC_DOWNLOADS,
+        val shared = choices.single { it.place.kind == LocalPlaceKind.PUBLIC_DOWNLOADS }
+        assertTrue("Unprotected native public writer must stay disabled", !shared.verified)
+        assertNull("Cannot materialize an unsafe native public destination",
+            LocalDownloadPlaces.materialize(shared.place))
+        val private = choices.single { it.place.kind == LocalPlaceKind.APP_STORAGE }
+        assertNull(private.failure)
+        assertEquals(LocalPlaceKind.APP_STORAGE,
             LocalDownloadPlacePolicy.resolve(null, choices).selected?.kind)
-        val app = choices.single { it.place.kind == LocalPlaceKind.APP_STORAGE }
-        assertNull(app.failure)
+        assertTrue(private.place.root.absolutePath.startsWith(context.filesDir.absolutePath))
     }
 
-    @Test fun checkedAddAcceptsCleanPublicDownloadsOnActualAndroidRoot() {
+    @Test fun checkedAddAcceptsCleanPrivateNativeBacking() {
         allowSharedDownloads()
-        val public = LocalDownloadPlaces.choices(context)
-            .single { it.place.kind == LocalPlaceKind.PUBLIC_DOWNLOADS }
-        val root = requireNotNull(LocalDownloadPlaces.materialize(public.place)) {
+        val app = LocalDownloadPlaces.choices(context)
+            .single { it.place.kind == LocalPlaceKind.APP_STORAGE }
+        val root = requireNotNull(LocalDownloadPlaces.materialize(app.place)) {
             "Public Downloads could not be verified"
         }
         val destination = requireNotNull(LocalOwnedAddFolder.prepare(root,
@@ -134,11 +127,11 @@ class LocalPublicDownloadsPlaceInstrumentedTest {
             !File(destination, "Clean checked fixture/payload.bin").exists())
     }
 
-    @Test fun checkedAddRejectsUnrelatedCollisionInSharedDownloadsWithoutMutation() {
+    @Test fun checkedAddRejectsUnrelatedCollisionInPrivateRootWithoutMutation() {
         allowSharedDownloads()
-        val public = LocalDownloadPlaces.choices(context)
-            .single { it.place.kind == LocalPlaceKind.PUBLIC_DOWNLOADS }
-        val root = requireNotNull(LocalDownloadPlaces.materialize(public.place)) {
+        val app = LocalDownloadPlaces.choices(context)
+            .single { it.place.kind == LocalPlaceKind.APP_STORAGE }
+        val root = requireNotNull(LocalDownloadPlaces.materialize(app.place)) {
             "Public Downloads could not be verified"
         }
         val destination = requireNotNull(LocalOwnedAddFolder.prepare(root,
@@ -165,11 +158,11 @@ class LocalPublicDownloadsPlaceInstrumentedTest {
             original, foreign.readBytes())
     }
 
-    @Test fun twoCheckedHashesCannotReserveOneEmptyPublicDownloadsBackingPath() {
+    @Test fun twoCheckedHashesCannotReserveOneEmptyPrivateBackingPath() {
         allowSharedDownloads()
-        val public = LocalDownloadPlaces.choices(context)
-            .single { it.place.kind == LocalPlaceKind.PUBLIC_DOWNLOADS }
-        val root = requireNotNull(LocalDownloadPlaces.materialize(public.place)) {
+        val app = LocalDownloadPlaces.choices(context)
+            .single { it.place.kind == LocalPlaceKind.APP_STORAGE }
+        val root = requireNotNull(LocalDownloadPlaces.materialize(app.place)) {
             "Public Downloads could not be verified"
         }
         val destination = requireNotNull(LocalOwnedAddFolder.prepare(root,
@@ -207,11 +200,11 @@ class LocalPublicDownloadsPlaceInstrumentedTest {
         assertTrue("No payload created after admission refusal", !path.exists())
     }
 
-    @Test fun checkedFirstStartRefusesLateForeignFileInSharedDownloads() {
+    @Test fun checkedFirstStartRefusesLateForeignFileInPrivateStorage() {
         allowSharedDownloads()
-        val public = LocalDownloadPlaces.choices(context)
-            .single { it.place.kind == LocalPlaceKind.PUBLIC_DOWNLOADS }
-        val root = requireNotNull(LocalDownloadPlaces.materialize(public.place)) {
+        val app = LocalDownloadPlaces.choices(context)
+            .single { it.place.kind == LocalPlaceKind.APP_STORAGE }
+        val root = requireNotNull(LocalDownloadPlaces.materialize(app.place)) {
             "Public Downloads could not be verified"
         }
         val destination = requireNotNull(LocalOwnedAddFolder.prepare(root,
@@ -244,12 +237,12 @@ class LocalPublicDownloadsPlaceInstrumentedTest {
             original, foreign.readBytes())
     }
 
-    @Test fun magnetMetadataCollisionPreservesPublicDownloadsAcrossStartAndRestart() {
+    @Test fun magnetMetadataCollisionPreservesPrivateBackingAcrossStartAndRestart() {
         allowSharedDownloads()
-        val public = LocalDownloadPlaces.choices(context)
-            .single { it.place.kind == LocalPlaceKind.PUBLIC_DOWNLOADS }
-        val root = requireNotNull(LocalDownloadPlaces.materialize(public.place)) {
-            "Public Downloads could not be verified: ${public.failure}"
+        val app = LocalDownloadPlaces.choices(context)
+            .single { it.place.kind == LocalPlaceKind.APP_STORAGE }
+        val root = requireNotNull(LocalDownloadPlaces.materialize(app.place)) {
+            "Public Downloads could not be verified: ${app.failure}"
         }
         val destination = requireNotNull(LocalOwnedAddFolder.prepare(root,
             "magnet-collision-" + System.nanoTime()))
@@ -327,14 +320,14 @@ class LocalPublicDownloadsPlaceInstrumentedTest {
             original, foreign.readBytes())
     }
 
-    @Test fun nativeEngineWritesResumesAndSeedsFromPublicChunksDownloads() {
+    @Test fun nativeEngineWritesResumesAndSeedsFromPrivateChunksStorage() {
         allowSharedDownloads()
-        val public = LocalDownloadPlaces.choices(context)
-            .single { it.place.kind == LocalPlaceKind.PUBLIC_DOWNLOADS }
-        val root = requireNotNull(LocalDownloadPlaces.materialize(public.place)) {
-            "Downloads/Chunks Downloads could not be created and verified: ${public.failure}"
+        val app = LocalDownloadPlaces.choices(context)
+            .single { it.place.kind == LocalPlaceKind.APP_STORAGE }
+        val root = requireNotNull(LocalDownloadPlaces.materialize(app.place)) {
+            "Downloads/Chunks Downloads could not be created and verified: ${app.failure}"
         }
-        assertTrue(root.absolutePath.endsWith("/Download/" + LocalDownloadPlaces.PUBLIC_FOLDER_NAME))
+        assertTrue(root.absolutePath.startsWith(context.filesDir.absolutePath + File.separator))
         val destination = requireNotNull(LocalOwnedAddFolder.prepare(root,
             "instrumented-" + System.nanoTime())) { "Unique test subfolder was refused" }
         publicTestFolder = destination
@@ -353,7 +346,7 @@ class LocalPublicDownloadsPlaceInstrumentedTest {
 
         // 1. Download into the public folder and read the bytes back independently.
         val state = File(work, "leecher-state").apply { mkdirs() }
-        val leecher = engine(state)
+        val leecher = engine(state, privateRoot = root)
         val leech = (leecher.addStopped(torrent, destination,
             listOf(InetSocketAddress("127.0.0.1", seeder.listenPort()))) as LocalAddResult.AddedStopped).status
         assertEquals(LocalCommandOutcome.VERIFIED, leecher.resume(leech.infoHash).outcome)
@@ -370,7 +363,7 @@ class LocalPublicDownloadsPlaceInstrumentedTest {
         seeder.close()
 
         // 2. Restart with no peer at all: completion can only come from the public files.
-        val restarted = engine(state)
+        val restarted = engine(state, privateRoot = root)
         assertTrue(restarted.restoreProblems.isEmpty())
         val restored = requireNotNull(restarted.status(leech.infoHash))
         assertTrue(restored.stopped)
