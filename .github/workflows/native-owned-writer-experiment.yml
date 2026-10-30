@@ -17,4 +17,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Strict C++17 non-clobber and ASan/UBSan negatives
-        run: bash experiments/native-owned-writer/test.sh --sanitizers
+        run: |
+          bash experiments/native-owned-writer/test.sh --sanitizers
+          CXX=clang++ bash experiments/native-owned-writer/test.sh
