@@ -387,11 +387,23 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                 return LocalAddResult.Refused("Cannot verify download file paths: " +
                     survey.problem + ". Nothing added.")
         }
-        val added = addStopped(torrentBytes, saveDirectory, peers)
-        if (added is LocalAddResult.AddedStopped) {
-            checkedFirstStarts[added.status.infoHash] = CheckedFirstStart(saveDirectory, paths)
+        val key = identity(info)
+        if (handles.containsKey(key) || session.find(info.infoHash())?.isValid == true)
+            return LocalAddResult.Refused("This torrent is already in the local engine")
+        // Register BEFORE native Add. A failed resume-file fsync may throw after
+        // libtorrent registered a stopped handle: the UI can still discover it.
+        // That partially admitted handle must never evade the first-Start fence.
+        val admission = CheckedFirstStart(saveDirectory, paths)
+        checkedFirstStarts[key] = admission
+        try {
+            val added = addStopped(torrentBytes, saveDirectory, peers)
+            if (added !is LocalAddResult.AddedStopped && !handles.containsKey(key))
+                checkedFirstStarts.remove(key, admission)
+            return added
+        } catch (failure: Exception) {
+            if (!handles.containsKey(key)) checkedFirstStarts.remove(key, admission)
+            throw failure
         }
-        return added
     }
 
     /**
