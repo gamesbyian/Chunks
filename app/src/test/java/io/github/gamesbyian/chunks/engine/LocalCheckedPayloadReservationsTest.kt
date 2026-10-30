@@ -102,6 +102,26 @@ class LocalCheckedPayloadReservationsTest {
             index.reserve("valid", root, listOf("elsewhere")))
     }
 
+    @Test fun metadataMagnetCanRevalidateOnlyItsOriginalPhysicalPathSet() {
+        val root = temp.newFolder("magnet-stable")
+        val other = temp.newFolder("magnet-swapped")
+        val index = LocalCheckedPayloadReservations()
+        assertEquals(LocalCheckedPayloadReservations.Result.Reserved,
+            index.reserve("magnet", root, listOf("S01/episode.bin")))
+        assertEquals(LocalCheckedPayloadReservations.Result.Reserved,
+            index.reserve("magnet", root, listOf("S01/episode.bin"),
+                allowExistingOwner = true))
+        assertTrue("Retargeted native save root must not reuse a stale reservation",
+            index.reserve("magnet", other, listOf("S01/episode.bin"),
+                allowExistingOwner = true) is LocalCheckedPayloadReservations.Result.Refused)
+        assertTrue("Retargeted native relative file must not reuse a stale reservation",
+            index.reserve("magnet", root, listOf("S02/episode.bin"),
+                allowExistingOwner = true) is LocalCheckedPayloadReservations.Result.Refused)
+        assertTrue("A same-hash new Add after Remove must not reuse a native tombstone",
+            index.reserve("magnet", root, listOf("S01/episode.bin"))
+                is LocalCheckedPayloadReservations.Result.Refused)
+    }
+
     @Test fun concurrentAdmissionsCannotBothClaimOneStillAbsentPath() {
         val root = temp.newFolder("parallel")
         val index = LocalCheckedPayloadReservations()
