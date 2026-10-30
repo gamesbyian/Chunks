@@ -238,11 +238,31 @@ internal fun CombinedTransfersScreen(
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
-    val preferences = remember(context) { CombinedViewPreferences(context) }
-    var query by remember { mutableStateOf(preferences.load()) }
+    // Persistent preference reads run off the composition thread. A saved
+    // snapshot cannot replace a scope/filter/search chosen while it loads.
+    var query by remember { mutableStateOf(UnifiedTransferQuery()) }
+    var queryTouched by remember { mutableStateOf(false) }
+    var loadedPreferences by remember { mutableStateOf<CombinedViewPreferences?>(null) }
+    LaunchedEffect(context) {
+        try {
+            val (store, saved) = withContext(Dispatchers.IO) {
+                val store = CombinedViewPreferences(context)
+                store to store.load()
+            }
+            query = CombinedViewPreferences.reconcileLoadedView(query, saved, queryTouched)
+            loadedPreferences = store
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            // Unknown or unreadable persisted view cannot replace user input.
+        }
+    }
     fun update(next: UnifiedTransferQuery) {
+        queryTouched = true
         query = next
-        preferences.save(next.copy(search = ""))
+        // Save at the explicit event, not during composition; no queued write
+        // can reorder a newer choice behind a late preference read.
+        (loadedPreferences ?: CombinedViewPreferences(context)).save(next.copy(search = ""))
     }
 
     // Phone: read only an engine already running in this process. Opening this
@@ -638,7 +658,10 @@ internal fun CombinedTransfersScreen(
             }
         }
         item {
-            OutlinedTextField(value = query.search, onValueChange = { query = query.copy(search = it) },
+            OutlinedTextField(value = query.search, onValueChange = {
+                    queryTouched = true
+                    query = query.copy(search = it)
+                },
                 label = { Text("Search all selected") }, singleLine = true, modifier = Modifier.fillMaxWidth())
         }
         item {
