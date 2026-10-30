@@ -1,6 +1,6 @@
 # Libtorrent 2.1 JNI bridge: executable contract slice
 
-**Integration status:** this stacked experiment adds a checked decoder for libtorrent's `peer_request` (piece/start/length), builds under the existing native prototype CMake target and the strict/sanitizer test runner. It does NOT yet replace libtorrent4j's disk backend, install a SWIG extension or protect production transfers. The parent writer experiment is PR #774.
+**Integration status:** this stacked experiment adds a checked decoder for libtorrent's `peer_request` (piece/start/length) and an **unlinked C++ adapter candidate** implementing all 19 required `disk_interface` method signatures. The adapter routes reads/writes and SHA-1/SHA-256 hashing through the owned writer and returns explicit failures for unsafe rename/move/priority/deletion operations; it does not delegate to the default writer. It is compiled only in a dedicated exact-upstream-header ABI check, never installed into the Android app. This remains experimental, synchronous on the network thread, with missing partfile/priorities/move/rename semantics and no verified real network traffic. The parent ownership primitive is PR #774.
 
 ## Exact pinned upstream baseline
 
@@ -43,3 +43,14 @@ All callbacks must dispatch completion on libtorrent's network thread. Unsupport
 4. Keep private-only #765 as a temporary fallback until direct native writer or verified no-replace publication is demonstrated. Do not merge this bridge or close #568 based on pure unit tests.
 
 Reference: https://www.libtorrent.org/reference-Custom_Storage.html and https://www.libtorrent.org/upgrade_to_2.1-ref.html
+
+## Adapter candidate and ABI validation
+
+- Source: `bridge/owned_libtorrent_disk.cc`. Its factory `MakeOwnedDiskConstructor(private_receipts)` is suitable only for a future rebuilt libtorrent4j SWIG extension; nothing invokes it today.
+- `new_torrent` derives independent physical path receipt IDs from the destination root and relative path; mapping commitment separately includes the torrent v1 hash, file index and declared length. Full v2 identity and renamed-files overlay must be added before accepting v2-only torrents.
+- `async_check_files` never adopts linked pre-existing files; fresh jobs make durable prospective claims, restored jobs require existing receipts and demand a full hash check. Unknown file identity refuses.
+- `async_read`, `async_write`, `async_hash` and `async_hash2` use owned-storage range operations. Final v2 partial blocks are bounded to the actual transfer length. Completion is posted through the libtorrent I/O context.
+- Rename, move, priority changes and payload deletion return explicit refusal in this prototype. That is essential safety containment, but these operations remain P0 incomplete. `async_stop_torrent` flushes synchronously, lacks a direct error callback, and records failures for future operations. There is no bounded job queue, thread pool, or backpressure yet; synchronous writes and hashing on the network thread are not production-acceptable.
+- CI includes syntax-only compilation of every override against **the exact 24a3adf3 libtorrent source embedded by libtorrent4j**, in addition to standalone geometry tests. A clean syntax check proves API compatibility only, not successful JNI linking or BitTorrent operation.
+
+The production plan is to build a maintained replacement libtorrent4j JNI artifact, expose the constructor in its SWIG session params and select this custom backend before any session starts. Do not attempt to inject it via a second, separately linked libtorrent .so.
