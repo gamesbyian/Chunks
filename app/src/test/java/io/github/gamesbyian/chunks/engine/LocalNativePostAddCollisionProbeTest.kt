@@ -103,8 +103,16 @@ class LocalNativePostAddCollisionProbeTest {
         // The current raw Add path demonstrates the original unsafe native
         // behavior. A future checked-Start implementation MUST be allowed to
         // refuse without making this characterization test obsolete.
-        assertTrue("Start must be confirmed or explicitly uncertain: $start",
-            start.outcome in setOf(LocalCommandOutcome.VERIFIED, LocalCommandOutcome.UNCERTAIN))
+        // A correct checked native writer may explicitly refuse an unsafe raw
+        // Start after another actor has placed foreign bytes in its path.
+        // The characterization must never punish that safer outcome.
+        assertTrue("Start must be observed, uncertain or safely refused: $start",
+            start.outcome in setOf(LocalCommandOutcome.VERIFIED,
+                LocalCommandOutcome.UNCERTAIN, LocalCommandOutcome.REFUSED))
+        if (start.outcome == LocalCommandOutcome.REFUSED) {
+            assertTrue("Refusing the colliding native Start must leave it stopped",
+                requireNotNull(receiver.status(infoHash)).stopped)
+        }
         if (start.outcome == LocalCommandOutcome.VERIFIED) {
             await("native peer transfer completion") {
                 receiver.status(infoHash)?.progressPpm == 1_000_000
@@ -112,7 +120,7 @@ class LocalNativePostAddCollisionProbeTest {
             assertTrue("Flush before independent backing-file readback",
                 receiver.flushCompletedForLibraryRead(infoHash, 30_000L))
         } else {
-            assertArrayEquals("Refused Start must preserve the foreign file",
+            assertArrayEquals("Unverified or refused Start must preserve the foreign file",
                 unrelated, foreign.readBytes())
         }
 
