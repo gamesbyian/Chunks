@@ -180,13 +180,15 @@ fun TransferLifecycleControl(
                                     if (requestedStarted) {
                                         checkingActivity = true
                                         try {
-                                            val fresh = observeActivity(transfer.hash)
-                                            if (!snapshotStale) {
+                                            val fresh = remoteObservationOrUnknown {
+                                                observeActivity(transfer.hash)
+                                            }
+                                            if (fresh == null) activity = null
+                                            else if (!snapshotStale) {
                                                 activity = fresh
                                                 activityAtRevision = snapshotRevision
                                             }
-                                        } catch (_: Exception) { activity = null }
-                                        finally { checkingActivity = false }
+                                        } finally { checkingActivity = false }
                                     }
                                 }
                                 } else {
@@ -215,13 +217,15 @@ fun TransferLifecycleControl(
                     val observedRevision = snapshotRevision
                     scope.launch {
                         try {
-                            val observed = observeActivity(transfer.hash)
-                            if (!snapshotStale && observedRevision == snapshotRevision) {
+                            val observed = remoteObservationOrUnknown {
+                                observeActivity(transfer.hash)
+                            }
+                            if (observed == null) activity = null
+                            else if (!snapshotStale && observedRevision == snapshotRevision) {
                                 activity = observed
                                 activityAtRevision = observedRevision
                             }
-                        } catch (_: Exception) { activity = null }
-                        finally { checkingActivity = false }
+                        } finally { checkingActivity = false }
                     }
                 },
                 enabled = !checkingActivity && !pending,

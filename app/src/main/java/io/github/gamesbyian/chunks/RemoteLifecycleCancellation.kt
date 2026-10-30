@@ -18,3 +18,19 @@ internal suspend fun remoteLifecycleOutcomeOrUnknown(
 } catch (_: Exception) {
     null
 }
+
+
+/**
+ * One read-only remote observation after a lifecycle attempt or user-requested
+ * diagnosis. An unavailable observation is UNKNOWN. Cancellation is terminal:
+ * never publish stale activity from a canceled Compose scope.
+ */
+internal suspend fun <T> remoteObservationOrUnknown(
+    action: suspend () -> T
+): T? = try {
+    action()
+} catch (cancel: CancellationException) {
+    throw cancel
+} catch (_: Exception) {
+    null
+}

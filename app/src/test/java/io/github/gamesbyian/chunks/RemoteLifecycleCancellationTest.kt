@@ -29,6 +29,33 @@ class RemoteLifecycleCancellationTest {
         assertEquals(1, calls)
     }
 
+    @Test fun canceledReadOnlyActivityDoesNotReturnStaleEvidenceOrRetry() = runBlocking {
+        var calls = 0
+        try {
+            remoteObservationOrUnknown {
+                calls++
+                throw CancellationException("Activity scope was retired")
+            }
+            fail("A canceled remote observation must propagate cancellation")
+        } catch (_: CancellationException) { }
+        assertEquals(1, calls)
+    }
+
+    @Test fun ambiguousActivityReadIsUnknownAfterExactlyOneObservation() = runBlocking {
+        var calls = 0
+        val result = remoteObservationOrUnknown {
+            calls++
+            throw java.io.IOException("Network response was incomplete")
+        }
+        assertNull(result)
+        assertEquals(1, calls)
+    }
+
+    @Test fun successfulActivityEvidenceIsReturnedUnchanged() = runBlocking {
+        val result = remoteObservationOrUnknown { "exact-hash activity read" }
+        assertEquals("exact-hash activity read", result)
+    }
+
     @Test fun pendingAndVerifiedResultsAreNeverUpgradedOrChanged() = runBlocking {
         val verified = LifecycleOutcome.Verified(true)
         assertEquals(verified, remoteLifecycleOutcomeOrUnknown { verified })
