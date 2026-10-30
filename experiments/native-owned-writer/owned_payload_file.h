@@ -20,6 +20,13 @@ class OwnedPayloadFile final {
                       const std::string& private_receipt_root,
                       const std::string& receipt_id,
                       const std::string& commitment, std::string* error);
+  // Validate an existing pending claim without creating directories,
+  // modifying receipts, adopting physical bytes, or writing payload.
+  static bool VerifyReservation(const std::string& payload_root,
+                                const std::string& relative_path,
+                                const std::string& private_receipt_root,
+                                const std::string& receipt_id,
+                                const std::string& commitment, std::string* error);
   static std::unique_ptr<OwnedPayloadFile> CreateFromReservation(
       const std::string& payload_root, const std::string& relative_path,
       const std::string& private_receipt_root, const std::string& receipt_id,
