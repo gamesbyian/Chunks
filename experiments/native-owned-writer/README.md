@@ -4,11 +4,13 @@
 
 Run: bash experiments/native-owned-writer/test.sh --sanitizers
 
-On October 30 the corresponding source compiled with strict C++17 warnings and with ASan/UBSan on a disposable Linux host: **12/12 cases passed**. Cases include an already-existing foreign file, symlink parents, live file/root/ancestor replacement, hardlink alias, corrupt receipt, invalid path, overflowing offset, receipt collision and durable reopen. This is not BitTorrent traffic, Android FUSE, API29/API35, or physical-device evidence.
+On October 30 the corresponding source compiled with strict C++17 warnings and with ASan/UBSan on a disposable Linux host: **13/13 cases passed**. Cases include an already-existing foreign file, symlink parents, live file/root/ancestor replacement, hardlink alias, corrupt receipt, invalid path, overflowing offset, receipt collision, concurrent same-path Create (exactly one winner), and durable reopen. This is not BitTorrent traffic, Android FUSE, API29/API35, or physical-device evidence.
 
 ## Reason for the native seam
 
 The current checked Start and Java path guards are time-of-check observers. Native libtorrent can still open and overwrite names after the checks. P0 #715 and #733 reproduce these failure modes. libtorrent 2.1's actual extensibility point is the session-level disk_interface configured via session_params.disk_io_constructor, not a Java wrapper around default mmap/POSIX async_write.
+
+Binding check: libtorrent4j 2.1.0-39's upstream swig/libtorrent/session_params.i explicitly ignores disk_io_constructor. Its %extend session_params currently exposes only set_posix_disk_io_constructor() and set_default_disk_io_constructor(). The 2024 upstream issue aldenml/libtorrent4j#269 requesting a custom disk_interface is still open (checked 2026-10-30). Merely defining a second Android .so cannot change the already-linked libtorrent4j session's native constructor; a maintained rebuilt JNI/SWIG binding/fork is necessary for direct integration.
 
 Upstream contracts:
 - https://www.libtorrent.org/reference-Custom_Storage.html
