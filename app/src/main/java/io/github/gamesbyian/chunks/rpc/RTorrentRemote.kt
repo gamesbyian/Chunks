@@ -1052,7 +1052,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             val request = XmlRpcCodec.request(method, params).toByteArray(Charsets.UTF_8)
             val requestTarget = (endpoint.rawPath?.ifEmpty { "/" } ?: "/") +
                 (endpoint.rawQuery?.let { "?" + it } ?: "")
-            val mutation = isMutatingRpcMethod(method)
+            val mutation = !isReadOnlyRpcMethod(method, params)
             // A 401 may arrive after a broken gateway has applied a write.
             // Learn a fresh Basic/Digest challenge using a read-only RPC on
             // this same endpoint, then send the mutation only once.
@@ -1138,12 +1138,53 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         }
 
     private companion object {
-        // Explicitly classify the adapter's supported mutations. A future
-        // mutator must be included here to inherit single-dispatch handling.
-        fun isMutatingRpcMethod(method: String): Boolean =
-            method.startsWith("load.") || method.endsWith(".set") ||
-                method in setOf("d.erase", "d.open", "d.start", "d.resume",
-                    "d.stop", "d.close", "d.update_priorities")
+        // No method is retryable just because its name *looks* like a getter.
+        // A future setter, or a setter smuggled inside a multicall, must never
+        // inherit the read-only HTTP 401 challenge/replay path.
+        private val DIRECT_READ_METHODS = setOf(
+            "system.client_version", "system.listMethods", "directory.default",
+            "download_list", "network.local_address", "network.bind_address",
+            "network.listen.port", "d.hash", "d.name", "d.size_bytes",
+            "d.completed_bytes", "d.state", "d.directory", "d.down.rate",
+            "d.up.rate", "d.ratio", "d.is_multi_file", "d.size_chunks",
+            "d.bitfield", "d.is_private", "d.is_active", "d.is_open",
+            "d.peers_connected", "d.down.total", "d.tracker_size"
+        )
+        private val FILE_READ_FIELDS = setOf(
+            "f.path=", "f.size_bytes=", "f.priority=",
+            "f.completed_chunks=", "f.size_chunks="
+        )
+        private val TRACKER_READ_FIELDS = setOf(
+            "t.url=", "t.is_enabled=", "t.success_counter=",
+            "t.failed_counter=", "t.latest_sum_peers="
+        )
+
+        private fun isReadOnlyRpcMethod(method: String, params: List<Any>): Boolean {
+            if (method in DIRECT_READ_METHODS) return true
+            if (method == "d.multicall2") {
+                return params.size in 3..(2 + EXTENDED_FIELDS.size) &&
+                    params.drop(2).all { it is String && it in EXTENDED_FIELDS }
+            }
+            if (method == "f.multicall" || method == "t.multicall") {
+                val allowed = if (method == "f.multicall") FILE_READ_FIELDS else TRACKER_READ_FIELDS
+                return params.size in 3..8 &&
+                    params.drop(2).all { it is String && it in allowed }
+            }
+            if (method == "system.multicall") {
+                val nested = params.singleOrNull() as? List<*> ?: return false
+                // Production paging emits one exact-hash getter per entry.
+                // Refuse nested multicall recursion and unrecognized methods.
+                return nested.isNotEmpty() && nested.size <= PAGE_SIZE * EXTENDED_FIELDS.size &&
+                    nested.all { item ->
+                        val fields = item as? Map<*, *> ?: return@all false
+                        val name = fields["methodName"] as? String ?: return@all false
+                        val args = fields["params"] as? List<*> ?: return@all false
+                        name in DIRECT_READ_METHODS && name.startsWith("d.") &&
+                            args.size == 1 && args.single() is String
+                    }
+            }
+            return false // all unknown future RPCs are single-dispatch
+        }
         const val MAX_TRANSFERS = 12_000
         const val PAGE_SIZE = 250
         val MINIMUM_FIELDS = listOf("d.hash=", "d.name=", "d.size_bytes=", "d.completed_bytes=",
