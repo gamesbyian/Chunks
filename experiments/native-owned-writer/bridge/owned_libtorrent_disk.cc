@@ -291,40 +291,50 @@ class NativeDisk final : public lt::disk_interface, public lt::buffer_allocator_
       int offset, lt::disk_job_flags_t,
       std::function<void(lt::piece_index_t, lt::sha256_hash const&,
                          lt::storage_error const&)> callback) override {
-    auto& state = *torrents_[index];
-    lt::sha256_hash result{};
-    lt::storage_error problem;
-    std::string reason;
-    CheckedPieceRange bounds{};
-    auto const total = static_cast<std::uint64_t>(state.files.total_size());
-    auto const piece_len = static_cast<std::uint32_t>(state.files.piece_length());
-    auto const requested = offset < 0 || offset >= static_cast<int>(piece_len)
-        ? 0 : std::min(lt::default_block_size, static_cast<int>(piece_len) - offset);
-    if (!state.checked || !DecodePieceRange(total, piece_len,
-            static_cast<int>(piece), offset, 1, false, &bounds, &reason)) {
-      problem = Denied(lt::operation_t::file_read);
-    } else {
-      // A v2 block at the final partial piece may be smaller than 16KiB.
-      auto const available = total - bounds.absolute_offset;
-      auto const length = std::min<std::uint64_t>(requested, available);
-      if (!DecodePieceRange(total, piece_len, static_cast<int>(piece),
-                            offset, static_cast<std::int64_t>(length),
-                            false, &bounds, &reason)) {
-        problem = Denied(lt::operation_t::file_read);
-      }
-    }
-    if (!problem.ec) {
-      std::vector<char> block(bounds.length);
-      if (!state.storage->ReadRange(bounds.absolute_offset, block.data(),
-                                    block.size(), &reason)) {
+    auto state = torrents_[index];
+    auto failure = [this, piece, callback] {
+      auto denied = Denied(lt::operation_t::file_read);
+      boost::asio::post(io_, [piece, callback, denied] {
+        callback(piece, lt::sha256_hash{}, denied);
+      });
+    };
+    if (!queue_.Submit([this, state, piece, offset, callback] {
+      lt::sha256_hash result{};
+      lt::storage_error problem;
+      std::string reason;
+      CheckedPieceRange bounds{};
+      auto const total = state ? static_cast<std::uint64_t>(state->files.total_size()) : 0;
+      auto const piece_len = state ? static_cast<std::uint32_t>(state->files.piece_length()) : 0;
+      auto const requested = offset < 0 || offset >= static_cast<int>(piece_len)
+          ? 0 : std::min(lt::default_block_size, static_cast<int>(piece_len) - offset);
+      if (!state || !state->checked || !state->refusal.empty() ||
+          offset % lt::default_block_size != 0 ||
+          !DecodePieceRange(total, piece_len, static_cast<int>(piece),
+                            offset, 1, false, &bounds, &reason)) {
         problem = Denied(lt::operation_t::file_read);
       } else {
-        lt::hasher256 h;
-        h.update({block.data(), static_cast<std::ptrdiff_t>(block.size())});
-        result = h.final();
+        auto const available = total - bounds.absolute_offset;
+        auto const length = std::min<std::uint64_t>(requested, available);
+        if (!DecodePieceRange(total, piece_len, static_cast<int>(piece),
+                              offset, static_cast<std::int64_t>(length),
+                              false, &bounds, &reason)) {
+          problem = Denied(lt::operation_t::file_read);
+        } else {
+          std::vector<char> block(bounds.length);
+          if (!state->storage->ReadRange(bounds.absolute_offset, block.data(),
+                                         block.size(), &reason)) {
+            problem = Denied(lt::operation_t::file_read);
+          } else {
+            lt::hasher256 hash;
+            hash.update({block.data(), static_cast<std::ptrdiff_t>(block.size())});
+            result = hash.final();
+          }
+        }
       }
-    }
-    boost::asio::post(io_, [callback, piece, result, problem] { callback(piece, result, problem); });
+      boost::asio::post(io_, [callback, piece, result, problem] {
+        callback(piece, result, problem);
+      });
+    }, failure)) failure();
   }
 
   void async_move_storage(lt::storage_index_t, std::string place, lt::move_flags_t,
