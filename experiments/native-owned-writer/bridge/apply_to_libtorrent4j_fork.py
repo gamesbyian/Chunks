@@ -42,6 +42,14 @@ def patch_once(s: str, anchor: str, insertion: str) -> str:
     return s.replace(anchor, anchor + insertion, 1)
 
 
+def patch_before_once(s: str, anchor: str, insertion: str) -> str:
+    if insertion in s:
+        return s
+    if s.count(anchor) != 1:
+        raise ValueError("Missing/duplicated upstream patch seam, abort")
+    return s.replace(anchor, insertion + anchor, 1)
+
+
 def stage(fork: Path, native: Path) -> None:
     fork, native = fork.resolve(strict=True), native.resolve(strict=True)
     if 'version = "2.1.0-39"' not in (fork / "build.gradle.kts").read_text():
@@ -60,7 +68,7 @@ def stage(fork: Path, native: Path) -> None:
         cmake: patch_once(cmake.read_text(),
             'target_link_libraries(torrent4j PRIVATE torrent-rasterbar)\n',
             CMAKE_SOURCES),
-        java: patch_once(java.read_text(),
+        java: patch_before_once(java.read_text(),
             '    private static session_params bdecode0(File file) {\n',
             JAVA_METHOD),
     }
