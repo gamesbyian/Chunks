@@ -750,6 +750,13 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
      */
     suspend fun setStarted(hash: String, desiredStarted: Boolean): LifecycleOutcome {
         require(Regex("[0-9a-fA-F]{40}").matches(hash)) { "Invalid v1 torrent hash" }
+        fun lifecycleFlag(value: Any?): Boolean {
+            // XML-RPC int/i4/i8 all decode to Long. Engine flags must be
+            // exactly 0 or 1: Number.toLong() would turn NaN/0.5 into stopped
+            // and 1.9 into started, fabricating a verified postcondition.
+            require(value is Long && value in 0L..1L) { "Invalid rTorrent lifecycle flag" }
+            return value == 1L
+        }
         try {
             // Mirror ruTorrent's proven lifecycle commands. d.start alone
             // can leave state=1 yet paused/inactive; the server UI sends
@@ -759,17 +766,16 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             val commands = if (desiredStarted) listOf("d.open", "d.start", "d.resume")
                 else listOf("d.stop", "d.close")
             for (method in commands) call(method, listOf(hash))
-        } catch (_: IOException) {
-            // The gateway may lose its reply after rTorrent applied the mutation.
-            // Conservatively report uncertainty, and never retry automatically.
-            return LifecycleOutcome.Uncertain(desiredStarted)
-        } catch (_: RpcFault) {
-            // A previous step in a multi-command Start/Stop sequence may already
-            // have applied. Even a fault from one step cannot undo earlier ACKs.
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            // A lost, faulting or malformed reply may follow an applied write.
+            // A previous step may also have applied before this one failed.
+            // No exception here proves rollback or authorizes a retry.
             return LifecycleOutcome.Uncertain(desiredStarted)
         }
         return try {
-            val observed = number(call("d.state", listOf(hash))) != 0L
+            val observed = lifecycleFlag(call("d.state", listOf(hash)))
             if (observed != desiredStarted) {
                 LifecycleOutcome.Pending(desiredStarted, observed)
             } else {
@@ -777,16 +783,17 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                 // starting/stopping. Acknowledged commands may settle later.
                 // Unknown activity does not become a verified postcondition.
                 val active = try {
-                    number(call("d.is_active", listOf(hash))) != 0L
+                    lifecycleFlag(call("d.is_active", listOf(hash)))
                 } catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
                   catch (_: RpcFault) { null }
                 if (active == desiredStarted) LifecycleOutcome.Verified(desiredStarted)
                 else LifecycleOutcome.Pending(desiredStarted, observed)
             }
-        } catch (_: java.io.IOException) {
-            LifecycleOutcome.Uncertain(desiredStarted)
-        } catch (_: RpcFault) {
-            // After accepted writes, inability to read state is inconclusive.
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            // After accepted writes, unavailable, malformed or nonnumeric
+            // state readback cannot establish the requested postcondition.
             LifecycleOutcome.Uncertain(desiredStarted)
         }
     }
