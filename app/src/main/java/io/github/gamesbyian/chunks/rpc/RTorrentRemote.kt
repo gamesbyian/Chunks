@@ -161,6 +161,14 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
      */
     suspend fun peerSource(hash: String): RemotePeerSource {
         require(Regex("[0-9a-fA-F]{40}").matches(hash)) { "Invalid v1 torrent hash" }
+        suspend fun guardIdentity() {
+            check((call("d.hash", listOf(hash)) as? String)?.equals(hash, ignoreCase = true) == true) {
+                "rTorrent peer-source identity not confirmed; refresh"
+            }
+        }
+        // Global listen settings and exact-torrent flags are read at different
+        // instants. Verify the selected hash on both sides of that interval.
+        guardIdentity()
         val announced = try {
             (call("network.local_address") as? String)?.trim()?.takeIf { it.isNotEmpty() && it.length <= 253 }
         } catch (_: RpcFault) { null }
@@ -181,6 +189,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         }
         val isPrivate = exactFlag("privacy", number(call("d.is_private", listOf(hash))))
         val isActive = exactFlag("activity", number(call("d.is_active", listOf(hash))))
+        guardIdentity()
         return RemotePeerSource(
             rpcHost = endpoint.host.removePrefix("[").removeSuffix("]"),
             announcedAddress = announced,
