@@ -73,6 +73,7 @@ class RemoteBatchLifecycleLargeTextTest {
         assertEquals(start.right, stop.right)
         rule.onNodeWithText("Start 1").performClick()
 
+        rule.onNodeWithText("Cancel").performScrollTo()
         val confirm = rule.onNode(hasText("Confirm Start") and hasClickAction()).getUnclippedBoundsInRoot()
         val cancel = rule.onNode(hasText("Cancel") and hasClickAction()).getUnclippedBoundsInRoot()
         assertTrue("Confirm/Cancel must stack at 200% text", cancel.top >= confirm.bottom)
