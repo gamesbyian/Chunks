@@ -134,12 +134,18 @@ class LocalAdmissionProvenanceTest {
 
     @Test fun receiptDirectorySymlinkCannotAuthorizeOrPublishAdmission() {
         val actualState = temp.newFolder("actual-state")
+        assertTrue(LocalAdmissionProvenance.persist(actualState, hash,
+            LocalAdmissionProvenance.Mode.CHECKED))
+        val original = File(actualState, "$hash.admission").readBytes()
         val alias = File(temp.root, "symlink-state")
         Files.createSymbolicLink(alias.toPath(), actualState.toPath())
         assertFalse(LocalAdmissionProvenance.persist(alias, hash,
             LocalAdmissionProvenance.Mode.REVIEWED_EXISTING))
-        assertNull(LocalAdmissionProvenance.read(alias, hash))
-        assertFalse(File(actualState, "$hash.admission").exists())
+        assertNull("Even a valid receipt through a linked parent is unknown",
+            LocalAdmissionProvenance.read(alias, hash))
+        assertArrayEquals(original, File(actualState, "$hash.admission").readBytes())
+        assertEquals(LocalAdmissionProvenance.Mode.CHECKED,
+            LocalAdmissionProvenance.read(actualState, hash))
     }
 
 }
