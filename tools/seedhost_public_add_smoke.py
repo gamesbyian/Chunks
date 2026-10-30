@@ -90,6 +90,26 @@ def main_hashes(client):
         result.add(row[0].lower())
     return result
 
+def exact_hash_is_present(client, infohash):
+    """Ask the unfiltered session for the exact hash before issuing any Add.
+
+    A missing row in rTorrent's "main" view is NOT proof of absence from
+    the session. Only the documented legacy/modern unknown-hash faults
+    establish absence; unsupported, malformed and other faults stop here.
+    """
+    try:
+        name = client.call("d.name", infohash)
+    except xmlrpc.client.Fault as fault:
+        detail = fault.faultString.lower()
+        if (fault.faultCode == -501 and "could not find info-hash" in detail or
+                fault.faultCode == -500 and "info-hash not found" in detail):
+            return False
+        raise
+    if not isinstance(name, str):
+        raise ValueError("Invalid exact-session name reply")
+    return True
+
+
 def public_fixture(args):
     if args.archive_id:
         return archive_fixture(args.archive_id, args.max_total_mib * 1048576)
@@ -117,7 +137,7 @@ def execute(args, factory=ProtectedRpc):
     if args.confirm_hash.lower() != expected:
         raise ValueError("Confirm the exact public fixture infohash before executing")
     client = factory(args.rutorrent_url, os.environ.get("RT_USER"), os.environ.get("RT_PASS"))
-    if expected in main_hashes(client):
+    if expected in main_hashes(client) or exact_hash_is_present(client, expected):
         receipt["result"] = "already_present_no_write"
         print("CHUNKS_PUBLIC_ADD: duplicate hash; no write attempted")
         return receipt
