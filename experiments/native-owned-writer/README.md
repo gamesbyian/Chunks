@@ -4,7 +4,7 @@
 
 Run: bash experiments/native-owned-writer/test.sh --sanitizers
 
-On October 30 the corresponding source compiled with strict C++17 warnings and with ASan/UBSan on a disposable Linux host: **19/19 cases passed across the two suites**. Cases include an already-existing foreign file, symlink parents, live file/root/ancestor replacement, hardlink alias, corrupt receipt, invalid path, overflowing offset, receipt collision, concurrent same-path Create (exactly one winner), and durable reopen. The second 6-case suite exercises multi-file piece offsets, cross-file preflight, padding that never creates a file, preserved foreign contents and readback from durable receipts. This is not BitTorrent traffic, Android FUSE, API29/API35, or physical-device evidence.
+On October 30 the corresponding source compiled with strict C++17 warnings and with ASan/UBSan on a disposable Linux host: **21/21 cases passed across the two suites**. Cases include an already-existing foreign file, symlink parents, live file/root/ancestor replacement, hardlink alias, corrupt receipt, invalid path, overflowing offset, receipt collision, concurrent same-path Create (exactly one winner), and durable reopen. The second 8-case suite exercises multi-file piece offsets, cross-file preflight, padding that never creates a file, preserved foreign contents, resumable absent-file reservations and readback from durable receipts. This is not BitTorrent traffic, Android FUSE, API29/API35, or physical-device evidence.
 
 ## Reason for the native seam
 
@@ -22,6 +22,7 @@ Upstream contracts:
 
 - New payload: pins root + parent directory descriptors and opens the file with openat(O_CREAT|O_EXCL|O_NOFOLLOW). It refuses any pre-existing file, parent symlink, unknown layout or multi-hardlink file.
 - Receipt: commits a private, synced record bound to transfer/file mapping commitment and exact root/parent/file device + inode. It claims publication with linkat rather than a replacing rename. On uncertain publication, it leaves bytes untouched for recovery.
+- Stopped Add before first file: durably reserves prospective relative paths in private pending receipts without creating payload files. After process restart, such a file can be created only when the pending claim matches the original directory identities and its physical path is still absent. A planted foreign file is refused by exclusive creation without touching bytes.
 - Restart: requires the original private receipt, the caller's exact mapping commitment, and matching stable inode/device identity. Never infers permission to adopt by matching file names, sizes or hashes.
 - Read/write/flush: uses the original pinned file FD. Revalidates the named root, intermediate parent directories and actual file inode before and after IO; refuses unrelated path substitution. No payload deletion or automatic repair.
 - Piece-offset routing: each cross-file operation opens all affected files before the first piece write. Padding files consume logical byte offsets and read as zeros without creating physical payload. Zero-length metadata entries do not receive writes. This is a lightweight mapping experiment, not a full libtorrent piece cache, v2 hash engine or SAF implementation.
