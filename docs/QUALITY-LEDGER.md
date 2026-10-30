@@ -1,5 +1,13 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-30 QA provenance reconciliation: physical APK and reboot (#9, #10, #569)
+
+- **[#610](https://github.com/gamesbyian/Chunks/pull/610), MERGED physical APK preflight:** early `grep -m1` over delayed large `adb dumpsys package` output could close the pipe and produce SIGPIPE **141** despite a valid installed package. Corrected full-consumption extraction rejects failed/missing/conflicting identity and requires explicit installation/launch witnesses. Offline fake-ADB controls and the Android foundation workflow [40965915542](https://github.com/gamesbyian/Chunks/actions/runs/40965915542) passed at exact source head `2bc58e070303be8cdd1d459c350b5570afe1aa50`. **No physical handset** or signed publisher APK was tested by that workflow.
+- **[#614](https://github.com/gamesbyian/Chunks/pull/614), MERGED reboot witness:** `sys.boot_completed=1` could still be inherited from the original boot. The opt-in reproduction now requires a valid pre-boot kernel `boot_id`, a different post-boot ID and boot-complete before recovery phase B; offline mock negatives reject unchanged/missing identity. Superseded earlier PR-head emulator receipt: [40966289115](https://github.com/gamesbyian/Chunks/actions/runs/40966289115) at `2f9b50f2ea45bbeb4eb481d7eeea19770ee5c5ac`; **final merged source head** `80541cbc63a24e47fe6cc7f5e2d6d28ac309fca0` independently passed [lifecycle run 40980891088](https://github.com/gamesbyian/Chunks/actions/runs/40980891088). That is emulator-tier evidence, **not** physical OEM lifecycle, indefinite dataSync/seeding or real-peer reliability.
+- These receipts document source PR verification only. Current release/device acceptance remains governed by the latest exact-main evidence, [SPEC-COVERAGE](SPEC-COVERAGE.md) and [WORK-QUEUE](WORK-QUEUE.md).
+
+
+
 ## 2026-10-30 continued G0/G1 integration and native draft handoff
 
 **Method/limits:** these are lead source-reviews followed by exact-head GitHub Actions checks performed before guarded PR squash merges; no source checkout/Gradle execution, actual installed handset, real protected Seedhost write, or combined-main build has been run in this handoff. Each PR has an explicit source review comment, scoped tests and limitations. A green diagnostic proves only its named code-path/fixture, not universal race freedom.

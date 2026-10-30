@@ -61,6 +61,12 @@ A peer shortfall is reported as INCONCLUSIVE, never as engine acceptance. Each r
 - Android UI changes: occasional targeted emulator screenshot/hierarchy atlas and real handset walkthrough, not a permanent broad screenshot job.
 - Local engine background: device tests across Android background/service types and network conditions; do not use one green assembly to infer reliability.
 
+## False-positive safeguards: physical installation and reboot
+
+The physical Android APK preflight (`tools/physical_android_preflight.sh`) must pin one selected non-emulator ADB device, exhaust the `dumpsys package` output without `grep -m1`/SIGPIPE, reject missing or conflicting version identities, require explicit package-manager `Success` and an exact-activity launch receipt. Its fake-ADB regression is an offline negative control, **never** evidence of physical handset installation or publisher signing.
+
+The opt-in `tools/reboot_repro.sh` must record a syntactically valid kernel `/proc/sys/kernel/random/boot_id` before phase A and require a **different** valid boot ID plus Android boot-complete before phase B. `sys.boot_completed=1` alone does not prove reboot. A mock-ADB suite rejects unchanged and invalid identities before any expensive emulator phase.
+
 ## Receipts and stopping rules
 
 Each experiment records source SHA, build/test variant, environment, questions, inputs (redacted), what was actually measured, outcome and missing coverage. A run can be success, meaningful negative result, inconclusive or infrastructure failure. Stop when more experiments will not change an active design/release decision. One job summary plus a small reproducible result suffices; raw media/file inventories never enter public artifacts.
