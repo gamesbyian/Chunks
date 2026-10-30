@@ -225,6 +225,14 @@ std::unique_ptr<OwnedPayloadFile> OwnedPayloadFile::OpenImpl(
   Fd root_fd(::open(root.c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC));
   Fd receipt_fd(::open(receipts.c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC));
   if (root_fd.v < 0 || receipt_fd.v < 0) return reject("Payload or private receipt root unavailable");
+  // Existing or unreadable app-private ownership claims must be resolved
+  // before touching a new public payload path. Publication is still the
+  // authoritative no-replace check after O_EXCL creation.
+  if (create) {
+    struct stat claimed{};
+    if (::fstatat(receipt_fd.v, id.c_str(), &claimed, AT_SYMLINK_NOFOLLOW) == 0 ||
+        errno != ENOENT) return reject("Native ownership receipt already exists or is uncertain");
+  }
   struct stat rs{}, ps{}, fs{};
   if (!GetDirectory(root_fd.v, &rs)) return reject("Invalid payload root");
   Fd parent;
