@@ -8,6 +8,7 @@
 #include <iostream>
 #include <limits>
 #include <string>
+#include <sys/xattr.h>
 #include <thread>
 #include <unistd.h>
 
@@ -225,6 +226,40 @@ int main() {
     a.join(); b.join();
     assert(accepted == 1);
     assert(fs::exists(s.receipts / kId));
+    passed();
+  }
+  {
+    Sandbox s;
+    std::string error;
+    auto owned = chunks::OwnedPayloadFile::Create(s.payload.string(), "episode.bin",
+        s.receipts.string(), kId, kMapping, &error);
+    assert(owned);
+    assert(owned->WriteAt(0, "OWNED", 5, &error));
+    // Device and inode identities still match, but loss of the creation
+    // marker must revoke native writing without damaging the existing data.
+    assert(::fremovexattr((s.payload / "episode.bin").c_str(),
+                         "user.chunks.owned-payload") == 0);
+    assert(!owned->WriteAt(0, "OTHER", 5, &error));
+    owned.reset();
+    assert(!chunks::OwnedPayloadFile::Reopen(s.payload.string(), "episode.bin",
+        s.receipts.string(), kId, kMapping, &error));
+    assert(s.read(s.payload / "episode.bin") == "OWNED");
+    passed();
+  }
+  {
+    Sandbox s;
+    std::string error;
+    auto owned = chunks::OwnedPayloadFile::Create(s.payload.string(), "episode.bin",
+        s.receipts.string(), kId, kMapping, &error);
+    assert(owned);
+    assert(owned->WriteAt(0, "OWNED", 5, &error));
+    owned.reset();
+    const std::string wrong(64, 'f');
+    assert(::setxattr((s.payload / "episode.bin").c_str(),
+                      "user.chunks.owned-payload", wrong.data(), wrong.size(), 0) == 0);
+    assert(!chunks::OwnedPayloadFile::Reopen(s.payload.string(), "episode.bin",
+        s.receipts.string(), kId, kMapping, &error));
+    assert(s.read(s.payload / "episode.bin") == "OWNED");
     passed();
   }
   std::cout << "CHUNKS_PINNED_WRITER_CASES=" << cases << " PASSED\n";
