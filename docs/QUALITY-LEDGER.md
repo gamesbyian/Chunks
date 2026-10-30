@@ -1,5 +1,22 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-30 latest six guarded integrations and Android native experiment (G0 RED)
+
+These six changes were individually reviewed and squash-merged with expected-head guards after successful exact-head workflows. No physical-device or protected-host acceptance is implied. The older seven-merge table below remains historical evidence; the top [work queue](WORK-QUEUE.md) owns the current priorities.
+
+| PR | Exact reviewed head | Main squash | Exact-head CI |
+| --- | --- | --- | --- |
+| [#789](https://github.com/gamesbyian/Chunks/pull/789) | 0c657a79a6368e1b448e7aa1d63318e19a9f6dea | 9aef5af6706b2b16d615dd45d1895e9fe9bbae71 | Disposable rTorrent 41139941705; Android foundation/R8/API35 all green |
+| [#797](https://github.com/gamesbyian/Chunks/pull/797) | f7b30e4fc225fefe7b5126e103238607cc6a16f0 | 26f5f5035374cd1ff5f64f3c66b314ee8c16acb0 | Canonical UX docs 41143596066 green |
+| [#799](https://github.com/gamesbyian/Chunks/pull/799) | 49b49c69a195f88697643cd412c6d1f67d169d49 | c69d40476f963cdab10f4d3c0fe36d21b90fc7ec | Specialist UX/research docs 41144390024 green |
+| [#800](https://github.com/gamesbyian/Chunks/pull/800) | e6c870f08dcbc3fe839ea477cc96442f5a9c56b6 | ed778fbe68a307fa8f951506f3df82c1d890eda5 | Active work queue docs 41145497009 green |
+| [#792](https://github.com/gamesbyian/Chunks/pull/792) | f089d764e312e763be56ece8e8eefd2f01825957 | f8d30dfb36ea2e58c27b9054f0b809619b11e72c | Docs 41144636042; foundation 41144636005; R8 41144636135; API35 41144636099 all green |
+| [#788](https://github.com/gamesbyian/Chunks/pull/788) | 9e67ced5cb1830eff47f602145226d4cbca0fe5a | c45eac3726a77320efdf8b6e89e3127e85314fc5 | Foundation 41144669907; targeted R8 rerun 41144669687; API35 41144669670 all green |
+
+**Superseded branches closed unmerged:** #742/#743 after seven unchanged Git source/test blobs were verified on main via #789; #783/#795 after specialist UX contracts and full multilingual research were integrated by #797/#799; #764/#770 after four exact privacy/identity helper/test blobs matched merged #792 and the Compose privacy region was reconciled; #773 after #788 fixed actual offscreen reachability without removing tests.
+
+**Native ABI proof only:** draft [#798](https://github.com/gamesbyian/Chunks/pull/798), exact head 5e5b18739472ba7b048160ea01d855742dc97518, [run 41144718281](https://github.com/gamesbyian/Chunks/actions/runs/41144718281), linked full Android API29 libtorrent4j.so with the owned disk constructor and JNI exports on both arm64-v8a and x86_64. A previous failing run was a shell llvm-nm/grep -m1 SIGPIPE under pipefail after successful compilation. Test-only binary **has TLS disabled, is not packaged or installed**, and supplies no real Android public/SD/SAF foreign-file proof. The independently executed production native [run 41130188712](https://github.com/gamesbyian/Chunks/actions/runs/41130188712) remains **3/4 destructive**; [#568](https://github.com/gamesbyian/Chunks/issues/568) G0 remains RED.
+
 ## 2026-10-30 subsequent integration checkpoint: seven guarded merges, G0 still RED
 
 This checkpoint supersedes older open/pending descriptions for these exact PRs. All reviewed PR heads passed their applicable GitHub Actions jobs and were squash-merged with expected-head SHA guards. These are head-level CI receipts, not new physical-handset or protected-host acceptance.
