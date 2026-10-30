@@ -155,6 +155,7 @@ void exerciseRestartedPendingCollision() {
     lt::error_code error;
     auto handle = session.add_torrent(std::move(atp), error);
     CHECK(!error && handle.is_valid());
+    if (expect_refusal) handle.resume(); // actual Start after stopped session
     bool noticed = false;
     for (int i = 0; i < 150; ++i) {
       if (expect_refusal) {
@@ -311,11 +312,23 @@ void exerciseLoopbackTransfer() {
     revived.flags &= ~lt::torrent_flags::auto_managed;
     auto handle = second.add_torrent(std::move(revived), ec);
     CHECK(!ec && handle.is_valid());
+    // A paused restored seed may not touch disk. Explicitly Start, then
+    // require the native disk adapter to refuse the substituted inode.
+    handle.resume();
     bool refused = false;
-    for (int i = 0; i < 150; ++i) {
-      if (handle.status().errc) { refused = true; break; }
+    bool false_seeding = false;
+    for (int i = 0; i < 300; ++i) {
+      auto const status = handle.status();
+      if (status.errc) { refused = true; break; }
+      if (status.is_seeding) { false_seeding = true; break; }
       std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
+    if (!refused) std::cerr << "CHUNKS_RESTARTED_RESUME_UNVERIFIED"
+                            << " false_seeding=" << false_seeding
+                            << " state=" << static_cast<int>(handle.status().state)
+                            << " complete=" << handle.status().is_seeding
+                            << " err=" << handle.status().errc.message() << "\n";
+    CHECK(!false_seeding);
     CHECK(refused);
   }
   std::ifstream planted(box.public_root / "probe.bin", std::ios::binary);
