@@ -210,5 +210,66 @@ int main() {
     assert(fs::exists(s.receipts / (std::string(A) + ".pending")));
     ++count;
   }
+  {
+    Sandbox s;
+    std::string error;
+    auto created = Storage::Open(s.payload.string(), s.receipts.string(), files(),
+                                 Storage::Admission::FRESH, &error);
+    assert(created); // stopped transfer: all paths are pending-only
+    created.reset();
+    auto restored = Storage::Open(s.payload.string(), s.receipts.string(), files(),
+                                  Storage::Admission::RESTORED, &error);
+    assert(restored && restored->VerifyRestoredOwnership(&error));
+    assert(!fs::exists(s.payload / "show/partA.bin"));
+    assert(!fs::exists(s.payload / "show/partB.bin"));
+    ++count;
+  }
+  {
+    Sandbox s;
+    std::string error;
+    auto created = Storage::Open(s.payload.string(), s.receipts.string(), files(),
+                                 Storage::Admission::FRESH, &error);
+    assert(created && created->WriteRange(0, "ABCDE", 5, &error));
+    assert(created->Flush(&error));
+    created.reset();
+    auto restored = Storage::Open(s.payload.string(), s.receipts.string(), files(),
+                                  Storage::Admission::RESTORED, &error);
+    assert(restored && restored->VerifyRestoredOwnership(&error));
+    assert(s.read(s.payload / "show/partA.bin") == "ABCDE");
+    assert(!fs::exists(s.payload / "show/partB.bin"));
+    ++count;
+  }
+  {
+    Sandbox s;
+    std::string error;
+    auto created = Storage::Open(s.payload.string(), s.receipts.string(), files(),
+                                 Storage::Admission::FRESH, &error);
+    assert(created && created->WriteRange(0, "ABCDE", 5, &error));
+    assert(created->Flush(&error));
+    created.reset();
+    fs::rename(s.payload / "show/partA.bin", s.payload / "show/original-retained.bin");
+    { std::ofstream f(s.payload / "show/partA.bin"); f << "FOREIGN"; }
+    auto restored = Storage::Open(s.payload.string(), s.receipts.string(), files(),
+                                  Storage::Admission::RESTORED, &error);
+    assert(restored && !restored->VerifyRestoredOwnership(&error));
+    assert(s.read(s.payload / "show/partA.bin") == "FOREIGN");
+    assert(s.read(s.payload / "show/original-retained.bin") == "ABCDE");
+    ++count;
+  }
+  {
+    Sandbox s;
+    std::string error;
+    auto created = Storage::Open(s.payload.string(), s.receipts.string(), files(),
+                                 Storage::Admission::FRESH, &error);
+    assert(created);
+    created.reset();
+    { std::ofstream f(s.payload / "show/partB.bin"); f << "SOMEONE ELSE"; }
+    auto restored = Storage::Open(s.payload.string(), s.receipts.string(), files(),
+                                  Storage::Admission::RESTORED, &error);
+    assert(restored && !restored->VerifyRestoredOwnership(&error));
+    assert(s.read(s.payload / "show/partB.bin") == "SOMEONE ELSE");
+    assert(!fs::exists(s.payload / "show/partA.bin"));
+    ++count;
+  }
   std::cout << "CHUNKS_MULTIFILE_WRITER_CASES=" << count << " PASSED\n";
 }
