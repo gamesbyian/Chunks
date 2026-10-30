@@ -90,4 +90,4 @@ if MOCK_SKIP=1 bash "$root/android10_downloads_instrumentation.sh" > "$temp/skip
   exit 1
 fi
 [[ "$(wc -l < "$MOCK_DIR/instruments")" -eq 2 ]]
-echo 'CHUNKS_ANDROID10_HARNESS_TEST: valid 1+15+3 case passed; stale install, failed adb readbacks, zero-exit install Failure and skipped instrumentation refused'
+echo 'CHUNKS_ANDROID10_HARNESS_TEST: valid 1+16+3 case passed; stale install, failed adb readbacks, zero-exit install Failure and skipped instrumentation refused'
