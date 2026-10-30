@@ -35,7 +35,7 @@ jobs:
           if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
             ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
           fi
-      - name: Run three disposable native loopback collision probes
+      - name: Run four disposable native loopback collision probes
         run: |
           gradle --no-daemon :app:testDebugUnitTest \
             --tests io.github.gamesbyian.chunks.engine.LocalNativePostAddCollisionProbeTest
@@ -51,12 +51,12 @@ jobs:
           if len(paths) != 1:
               raise SystemExit(f"Expected one targeted JUnit XML report, found {len(paths)}")
           root = ET.parse(paths[0]).getroot()
-          if int(root.get("tests", "0")) != 3 or int(root.get("failures", "0")) or int(root.get("errors", "0")):
-              raise SystemExit("All three native collision probes must execute without failures")
+          if int(root.get("tests", "0")) != 4 or int(root.get("failures", "0")) or int(root.get("errors", "0")):
+              raise SystemExit("All four native collision probes must execute without failures")
           stdout = "\n".join((e.text or "") for e in root.iter("system-out"))
           lines = stdout.splitlines()
           witnessed = []
-          for prefix in ("CHUNKS_POST_ADD_COLLISION", "CHUNKS_MAGNET_COLLISION", "CHUNKS_POST_STOP_COLLISION"):
+          for prefix in ("CHUNKS_POST_ADD_COLLISION", "CHUNKS_MAGNET_COLLISION", "CHUNKS_POST_STOP_COLLISION", "CHUNKS_RESTORE_COLLISION"):
               found = [s.strip() for s in lines if s.startswith(prefix + " ")]
               if len(found) != 4:
                   raise SystemExit(f"Missing or ambiguous synthetic witness for {prefix}: {len(found)} lines")
@@ -77,6 +77,8 @@ jobs:
                   if prefix == "CHUNKS_POST_ADD_COLLISION" else
                   rf"{prefix} observed_metadata=true stopped=(true|false) upload_only=(true|false)"
                   if prefix == "CHUNKS_MAGNET_COLLISION" else
+                  rf"{prefix} observed_stopped=true resumed_outcome=(VERIFIED|UNCERTAIN|REFUSED)"
+                  if prefix == "CHUNKS_RESTORE_COLLISION" else
                   rf"{prefix} first_start_outcome=VERIFIED stop_outcome=VERIFIED "
                   rf"selection_outcome=(VERIFIED|UNCERTAIN) restart_outcome=(VERIFIED|UNCERTAIN|REFUSED)"
               )
