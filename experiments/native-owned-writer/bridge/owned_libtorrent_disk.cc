@@ -60,6 +60,7 @@ struct Torrent {
   std::unique_ptr<OwnedTorrentStorage> storage;
   std::string refusal;
   bool checked = false;
+  bool has_restored_payload = false; // worker-owned, set only after receipt verification
   std::atomic<bool> retired{false};
   std::atomic<bool> disk_fault{false};
 };
@@ -121,11 +122,10 @@ class NativeDisk final : public lt::disk_interface, public lt::buffer_allocator_
     free_.push_back(index);
   }
 
-  void async_check_files(lt::storage_index_t index, lt::add_torrent_params const* resume,
+  void async_check_files(lt::storage_index_t index, lt::add_torrent_params const*,
       lt::aux::vector<std::string, lt::file_index_t> links,
       std::function<void(lt::status_t, lt::storage_error const&)> callback) override {
     auto state = torrents_[index];
-    const bool had_resume = resume != nullptr;
     auto failure = [this, callback] {
       auto denied = Denied(lt::operation_t::file_open);
       boost::asio::post(io_, [callback, denied] {
@@ -134,7 +134,7 @@ class NativeDisk final : public lt::disk_interface, public lt::buffer_allocator_
     };
     // Never run receipt discovery, directory traversal or reservation on
     // libtorrent's network thread. The queue serializes admission and writes.
-    if (!queue_.Submit([this, state, links=std::move(links), had_resume, callback] {
+    if (!queue_.Submit([this, state, links=std::move(links), callback] {
       lt::storage_error problem;
       if (!state || state->retired.load() || state->disk_fault.load() ||
           !state->refusal.empty()) {
@@ -154,6 +154,8 @@ class NativeDisk final : public lt::disk_interface, public lt::buffer_allocator_
                 : OwnedTorrentStorage::Admission::RESTORED;
             state->storage = OwnedTorrentStorage::Open(state->save_path, receipts_,
                                                       state->layout, mode, &reason);
+            if (state->storage) state->has_restored_payload =
+                admission == NativeAdmissionMode::RESTORED;
           }
           if (!problem.ec && !state->storage) {
             state->refusal = reason;
@@ -162,8 +164,12 @@ class NativeDisk final : public lt::disk_interface, public lt::buffer_allocator_
           if (!problem.ec && state->storage) state->checked = true;
         }
       }
+      // libtorrent passes non-null add_torrent_params for fresh jobs too.
+      // No physical receipt means nothing exists to hash-check: a forced
+      // full check on a zero-progress Add can prevent the first download.
       auto const status = problem.ec ? lt::disk_status::fatal_disk_error
-          : had_resume ? lt::disk_status::need_full_check : lt::status_t{};
+          : (state && state->has_restored_payload)
+              ? lt::disk_status::need_full_check : lt::status_t{};
       boost::asio::post(io_, [callback, status, problem] {
         callback(status, problem);
       });
