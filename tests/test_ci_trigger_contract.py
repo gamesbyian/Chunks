@@ -16,13 +16,13 @@ def pull_request_paths(source: str) -> set[str]:
     # lists of checkout steps, artifacts, or workflow_dispatch entries.
     match = re.search(
         r"(?m)^  pull_request:\s*\n    paths:\s*\n"
-        r"((?:      - [^\n]+\n)+)", source
+        r"((?:      (?:- [^\n]+|#[^\n]*)\n)+)", source
     )
     if not match:
         raise AssertionError("Android workflow has no pull_request.paths allowlist")
     return {
         line.split("-", 1)[1].strip().strip("'\"")
-        for line in match.group(1).splitlines()
+        for line in match.group(1).splitlines() if line.strip().startswith("- ")
     }
 
 
@@ -37,6 +37,25 @@ class AndroidCiTriggerContract(unittest.TestCase):
         ):
             with self.subTest(path=path):
                 self.assertIn(path, allowed)
+
+    def test_engine_collision_edits_trigger_real_api29_downloads_acceptance(self):
+        source = (ROOT / ".github/workflows/android10-downloads-instrumentation.yml"
+                  ).read_text(encoding="utf-8")
+        allowed = pull_request_paths(source)
+        for path in (
+            "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalTorrentEngine.kt",
+            "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalCheckedPayloadReservations.kt",
+            "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalPayloadCollisionSurvey.kt",
+        ):
+            with self.subTest(path=path):
+                self.assertIn(path, allowed)
+
+    def test_yaml_comments_do_not_masquerade_as_paths(self):
+        sample = ("on:\n  pull_request:\n    paths:\n"
+                  "      # safety test comment\n"
+                  "      - 'app/src/main/**'\n"
+                  "jobs:\n")
+        self.assertEqual({"app/src/main/**"}, pull_request_paths(sample))
 
     def test_missing_pull_request_allowlist_fails_closed(self):
         with self.assertRaisesRegex(AssertionError, "no pull_request.paths"):
