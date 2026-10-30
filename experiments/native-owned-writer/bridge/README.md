@@ -44,6 +44,14 @@ All callbacks must dispatch completion on libtorrent's network thread. Unsupport
 
 Reference: https://www.libtorrent.org/reference-Custom_Storage.html and https://www.libtorrent.org/upgrade_to_2.1-ref.html
 
+## Durable fresh/restored admission
+
+Native `add_torrent_params*` is not a reliable indicator of whether a job was freshly added or restored. The bridge now classifies the complete, app-private **physical-path receipt inventory** before selecting an owned-storage mode: no claims means FRESH (exclusive future creation), every claimed path means RESTORED (all real receipts/inodes/tokens individually revalidated on read/write), and a partial/missing/uncertain inventory refuses. The classification is observational only and cannot itself grant write authority. Corrupt/symlinked receipts are still rejected by the underlying V3 receipt parser, never adopted by matching names or hashes. Nine dedicated tests include fresh, stopped pending, finished, mixed/partial, unsafe IDs, symlinked receipt directory and corrupt receipt presence.
+
+This conservative bridge deliberately lacks a general legacy-data adoption path. A user who explicitly wants to seed pre-existing bytes will need a separate hash-verified, atomically journaled review flow before the disk layer can treat those bytes as owned.
+
+To stage the native sources, SWIG extension and Java declaration in an **explicitly reviewed** libtorrent4j 2.1.0-39 source checkout, run `python3 experiments/native-owned-writer/bridge/apply_to_libtorrent4j_fork.py /path/to/your-fork`. This is an idempotent source patch helper with strict version/seam and divergent-source refusal. It does **not** compile, install or safely enable the fork. The native code must be linked into the rebuilt `torrent4j` library and SWIG generated before any app integration. Its four synthetic staging tests are CI-gated.
+
 ## Adapter candidate and ABI validation
 
 - Source: `bridge/owned_libtorrent_disk.cc`. Its factory `MakeOwnedDiskConstructor(private_receipts)` is suitable only for a future rebuilt libtorrent4j SWIG extension; nothing invokes it today.
