@@ -253,7 +253,9 @@ object RemoteSmartConnect {
                             .containsMatchIn(failure.message.orEmpty()) ->
                         Category.AUTH
                     failure is IOException && (failure.message.orEmpty().contains("authentication challenge", true) ||
-                            failure.message.orEmpty().contains("authentication required", true)) ->
+                            failure.message.orEmpty().contains("authentication required", true) ||
+                            failure.message.orEmpty().contains("authentication identity", true) ||
+                            failure.message.orEmpty().contains("Digest", true)) ->
                         Category.AUTH
                     else -> Category.ENDPOINT
                 }
