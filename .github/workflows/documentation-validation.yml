@@ -17,6 +17,8 @@ on:
       - 'tests/test_check_pr_exact_head.py'
       - 'tools/require_post_stop_nonclobber.py'
       - 'tests/test_require_post_stop_nonclobber.py'
+      - 'tools/require_restore_nonclobber.py'
+      - 'tests/test_require_restore_nonclobber.py'
       - 'tools/check_gradle_toolchain_pins.py'
       - 'tests/test_check_gradle_toolchain_pins.py'
       - 'build.gradle.kts'
@@ -48,6 +50,8 @@ on:
       - 'tests/test_check_pr_exact_head.py'
       - 'tools/require_post_stop_nonclobber.py'
       - 'tests/test_require_post_stop_nonclobber.py'
+      - 'tools/require_restore_nonclobber.py'
+      - 'tests/test_require_restore_nonclobber.py'
       - 'tools/check_gradle_toolchain_pins.py'
       - 'tests/test_check_gradle_toolchain_pins.py'
       - 'build.gradle.kts'
@@ -90,6 +94,8 @@ jobs:
         run: python3 -m unittest discover -s tests -p 'test_check_pr_exact_head.py'
       - name: Refuse overwritten synthetic bytes in post-Stop native safety receipts (offline)
         run: python3 -m unittest discover -s tests -p 'test_require_post_stop_nonclobber.py'
+      - name: Refuse destructive checked-torrent restoration receipts (offline)
+        run: python3 -m unittest discover -s tests -p 'test_require_restore_nonclobber.py'
       - name: Reject Gradle, JDK and native dependency pin drift (offline)
         run: |
           python3 tools/check_gradle_toolchain_pins.py
