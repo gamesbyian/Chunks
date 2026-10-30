@@ -306,6 +306,42 @@ class LocalTorrentEngineTest {
         assertFalse("Both stopped native jobs must leave payload absent", firstPath.exists())
     }
 
+    @Test fun distinctRawReviewedAddsCannotClaimOneStillEmptyNativeDestination() {
+        val firstFixture = fixture()
+        val secondFixture = conflictingFixture()
+        val root = temp.newFolder("dual-raw-empty-destination")
+        val engine = engine()
+        val first = added(engine.addStopped(firstFixture.torrent, root))
+        assertTrue(first.stopped)
+        assertFalse(File(root, "Chunks public fixture/episode.bin").exists())
+        val refused = engine.addStopped(secondFixture.torrent, root)
+        assertTrue("A second raw reviewed Add may not share the first writer path: $refused",
+            refused is LocalAddResult.Refused)
+        assertTrue((refused as LocalAddResult.Refused).reason.contains("reserves"))
+        assertEquals(1, engine.list().size)
+        assertFalse("No rejected Add may materialize a native payload",
+            File(root, "Chunks public fixture/episode.bin").exists())
+        val independentRoot = temp.newFolder("independent-raw-destination")
+        val independent = added(engine.addStopped(secondFixture.torrent, independentRoot))
+        assertTrue(independent.stopped)
+        assertEquals(2, engine.list().size)
+    }
+
+    @Test fun rawReviewedAddCannotBypassDifferentCheckedHashPathReservation() {
+        val firstFixture = fixture()
+        val secondFixture = conflictingFixture()
+        val root = temp.newFolder("checked-versus-raw-empty-destination")
+        val engine = engine()
+        val checked = added(engine.addStoppedChecked(firstFixture.torrent, root))
+        assertTrue(checked.stopped)
+        val blocked = engine.addStopped(secondFixture.torrent, root)
+        assertTrue("Reviewed raw admission still cannot take another checked job's paths: $blocked",
+            blocked is LocalAddResult.Refused)
+        assertTrue((blocked as LocalAddResult.Refused).reason.contains("reserves"))
+        assertEquals(1, engine.list().size)
+        assertFalse(File(root, "Chunks public fixture/episode.bin").exists())
+    }
+
     @Test fun competingReviewedExistingRestoresCannotBypassRejectedPathClaimAtStart() {
         val left = fixture()
         val right = conflictingFixture()
