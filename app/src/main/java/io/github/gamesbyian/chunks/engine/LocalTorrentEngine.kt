@@ -641,6 +641,12 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                         "Restored path admission requires review: $problem"
                     return@command false
                 }
+                // A previously inaccessible root may have become available.
+                // Do not keep an obsolete admission error after fresh native
+                // paths have been reserved; preserve unrelated safety notices.
+                if (checkedStartProblems[key]?.startsWith(
+                        "Restored path admission requires review:") == true)
+                    checkedStartProblems.remove(key)
             }
             if (restoredUnknownAdmissions.contains(key)) {
                 checkedStartProblems[key] =
