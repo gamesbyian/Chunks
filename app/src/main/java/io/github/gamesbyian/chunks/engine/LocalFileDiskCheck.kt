@@ -99,7 +99,14 @@ object LocalFileDiskCheck {
         })
     }
 
-    internal fun observe(root: File, relativePath: String): Observation? {
+    internal fun observe(
+        root: File,
+        relativePath: String,
+        readAttrs: (Path) -> BasicFileAttributes = {
+            Files.readAttributes(it, BasicFileAttributes::class.java,
+                LinkOption.NOFOLLOW_LINKS)
+        }
+    ): Observation? {
         if (relativePath.isBlank() || relativePath.startsWith('/') ||
             relativePath.contains('\\') ||
             relativePath.any { it.code < 32 || it.code == 127 })
@@ -112,8 +119,7 @@ object LocalFileDiskCheck {
             path = path.resolve(segment)
             if (!path.startsWith(base)) return null
             val attrs = try {
-                Files.readAttributes(path, BasicFileAttributes::class.java,
-                    LinkOption.NOFOLLOW_LINKS)
+                readAttrs(path)
             } catch (_: NoSuchFileException) {
                 return Observation(exists = false, isFile = false, length = 0)
             } catch (_: Exception) {
