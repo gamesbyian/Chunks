@@ -46,6 +46,7 @@ class AndroidCiTriggerContract(unittest.TestCase):
             "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalTorrentEngine.kt",
             "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalCheckedPayloadReservations.kt",
             "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalPayloadCollisionSurvey.kt",
+            "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalAdmissionProvenance.kt",
         ):
             with self.subTest(path=path):
                 self.assertIn(path, allowed)
