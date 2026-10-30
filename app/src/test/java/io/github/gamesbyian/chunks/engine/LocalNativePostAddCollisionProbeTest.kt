@@ -288,4 +288,89 @@ class LocalNativePostAddCollisionProbeTest {
         assertArrayEquals(first, File(sourceRoot, "initial.bin").readBytes())
     }
 
+
+    @Test fun checkedStoppedAddLosesFirstStartCollisionFenceAcrossEngineRestart() {
+        // Distinct from the raw native Add witness: this uses production
+        // addStoppedChecked, saves the stopped job, shuts down the engine,
+        // then lets a different actor plant a same-size foreign file before
+        // the *restored* checked job receives its first Start. All files live
+        // in disposable JUnit TemporaryFolder; no user Downloads involved.
+        val source = File(temp.newFolder("restore-seed"), "Restore checked fixture")
+            .apply { assertTrue(mkdirs()) }
+        val expected = ByteArray(512 * 1024).also { Random(579L).nextBytes(it) }
+        File(source, "payload.bin").writeBytes(expected)
+        val metainfo = TorrentBuilder().path(source).pieceSize(32 * 1024)
+            .flags(TorrentBuilder.V1_ONLY).generate().entry().bencode()
+        val seed = engine()
+        val seeded = seed.addStopped(metainfo, source.parentFile)
+        assertTrue(seeded is LocalAddResult.AddedStopped)
+        val hash = (seeded as LocalAddResult.AddedStopped).status.infoHash
+        assertTrue(seed.resume(hash).outcome == LocalCommandOutcome.VERIFIED)
+        await("restore diagnostic real seeder") {
+            seed.status(hash)?.state == LocalTransferState.SEEDING
+        }
+
+        val state = temp.newFolder("restore-state")
+        val destination = temp.newFolder("restore-data")
+        fun persistentEngine(): LocalTorrentEngine = LocalTorrentEngine(LocalEngineConfig(
+            listenInterfaces = "127.0.0.1:0",
+            allowMultipleConnectionsPerIp = true,
+            enableDht = false, enableLsd = false, enablePortMapping = false,
+            stateDirectory = state
+        )).also { it.start(); engines += it }
+
+        val beforeProcessDeath = persistentEngine()
+        val checked = beforeProcessDeath.addStoppedChecked(metainfo, destination)
+        assertTrue("Production checked Add must admit the originally clean path: $checked",
+            checked is LocalAddResult.AddedStopped)
+        assertTrue((checked as LocalAddResult.AddedStopped).status.stopped)
+        val payload = File(destination, "Restore checked fixture/payload.bin")
+        assertFalse(payload.exists())
+        beforeProcessDeath.close()
+        assertTrue("A fully stopped checked job must persist before engine restart",
+            File(state, "$hash.resume").isFile)
+
+        assertTrue(payload.parentFile.isDirectory || payload.parentFile.mkdirs())
+        val foreign = ByteArray(expected.size).also { Random(979L).nextBytes(it) }
+        payload.writeBytes(foreign)
+        val before = sha(payload.readBytes())
+        val sourceSha = sha(expected)
+        assertFalse(before == sourceSha)
+
+        val restored = persistentEngine()
+        assertTrue("The engine must report any invalid resume data instead of losing it",
+            restored.restoreProblems.isEmpty())
+        val record = requireNotNull(restored.status(hash))
+        assertTrue("Native resume must restore stopped", record.stopped)
+        // At this point an in-process first-Start reservation from the
+        // previous LocalTorrentEngine instance is no longer present.
+        val started = restored.resume(hash)
+        assertTrue("Future safety may explicitly refuse the unowned file: $started",
+            started.outcome in setOf(LocalCommandOutcome.REFUSED,
+                LocalCommandOutcome.VERIFIED, LocalCommandOutcome.UNCERTAIN))
+        if (started.outcome != LocalCommandOutcome.REFUSED) {
+            assertTrue(restored.connectPeer(hash,
+                InetSocketAddress("127.0.0.1", seed.listenPort())))
+            await("restored checked job finishes real peer transfer") {
+                restored.status(hash)?.progressPpm == 1_000_000
+            }
+            assertTrue("Flush exact completed native handle before disk readback",
+                restored.flushCompletedForLibraryRead(hash, 30_000L))
+        } else {
+            assertArrayEquals("Refused restoration Start leaves planted bytes intact",
+                foreign, payload.readBytes())
+        }
+
+        val after = payload.readBytes()
+        println("CHUNKS_RESTORE_COLLISION observed_stopped=true resumed_outcome=${started.outcome}")
+        println("CHUNKS_RESTORE_COLLISION before_sha256=$before expected_sha256=$sourceSha " +
+            "after_sha256=${sha(after)}")
+        println("CHUNKS_RESTORE_COLLISION foreign_file_replaced=${!after.contentEquals(foreign)}")
+        println("CHUNKS_RESTORE_COLLISION expected_torrent_data_present=${after.contentEquals(expected)}")
+        // Characterization: a future native writer can refuse and preserve,
+        // but a current overwrite is a RED product result despite green CI.
+        assertTrue("Diagnostic must never leave unrelated third-party bytes",
+            after.contentEquals(foreign) || after.contentEquals(expected))
+        assertArrayEquals(expected, File(source, "payload.bin").readBytes())
+    }
 }
