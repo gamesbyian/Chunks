@@ -23,6 +23,14 @@ internal object LocalPlaceWriteProbe {
     private const val SPARSE_OFFSET = 1L shl 20
     private const val BLOCK = 4096
 
+    /** A false/unknown absence probe must never count as successful cleanup. */
+    internal fun bothNamesDefinitelyAbsent(
+        probe: java.nio.file.Path,
+        renamed: java.nio.file.Path,
+        notExists: (java.nio.file.Path) -> Boolean =
+            { Files.notExists(it, LinkOption.NOFOLLOW_LINKS) }
+    ): Boolean = notExists(probe) && notExists(renamed)
+
     /**
      * Lazily and idempotently creates exactly one folder level inside an
      * existing [parent]. A symlink, a non-directory or anything resolving
@@ -140,8 +148,7 @@ internal object LocalPlaceWriteProbe {
             if (ownsProbe) try { Files.deleteIfExists(probePath) } catch (_: Exception) {}
             if (ownsRenamed) try { Files.deleteIfExists(renamedPath) } catch (_: Exception) {}
         }
-        return if (Files.exists(probePath, LinkOption.NOFOLLOW_LINKS) ||
-            Files.exists(renamedPath, LinkOption.NOFOLLOW_LINKS))
-            "Probe file could not be removed" else null
+        return if (bothNamesDefinitelyAbsent(probePath, renamedPath)) null
+            else "Probe cleanup could not be independently verified"
     }
 }
