@@ -198,6 +198,41 @@ class LocalTorrentEngineTest {
             target.status(added.infoHash)?.error)
     }
 
+    @Test fun checkedDifferentInfohashesCannotReserveOneStillEmptyNativePayload() {
+        val fixture = fixture()
+        // Two distinct torrent identities with IDENTICAL relative output
+        // paths. No disk file yet exists, so a file-existence survey alone
+        // would approve both jobs before either native writer is started.
+        val otherParent = temp.newFolder("second-seed")
+        val otherRoot = File(otherParent, "Chunks public fixture").apply { mkdirs() }
+        File(otherRoot, "episode.bin").writeBytes(
+            ByteArray(1_300_000).also { Random(569).nextBytes(it) })
+        File(otherRoot, "extras/notes.txt").apply {
+            parentFile.mkdirs()
+            writeText("Different bytes for a different exact infohash")
+        }
+        val secondTorrent = TorrentBuilder().path(otherRoot)
+            .pieceSize(64 * 1024).generate().entry().bencode()
+        val dest = temp.newFolder("shared-stopped-target")
+        val native = engine()
+        val first = added(native.addStoppedChecked(fixture.torrent, dest))
+        val refused = native.addStoppedChecked(secondTorrent, dest)
+        assertTrue("A second checked job must not claim the same future writer paths: $refused",
+            refused is LocalAddResult.Refused)
+        assertTrue((refused as LocalAddResult.Refused).reason.contains("reserves"))
+        assertEquals("Refused Add may not register a second native handle", 1,
+            native.list().size)
+        assertTrue(native.status(first.infoHash)?.stopped == true)
+        assertFalse(File(dest, "Chunks public fixture/episode.bin").exists())
+
+        // Session-only removal relinquishes the stopped job's name claim and
+        // never authorizes deletion of any backing bytes.
+        assertTrue(native.removeKeepingData(first.infoHash))
+        val second = added(native.addStoppedChecked(secondTorrent, dest))
+        assertTrue(second.stopped)
+        assertFalse(File(dest, "Chunks public fixture/episode.bin").exists())
+    }
+
     @Test fun checkedPartialAddStillRequiresFreshSurveyBeforeFirstStart() {
         val fixture = fixture()
         val state = temp.newFolder("checked-partial-state")
