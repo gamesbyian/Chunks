@@ -45,7 +45,8 @@ class OwnedPayloadFile final {
       const std::string& private_receipt_root, const std::string& receipt_id,
       const std::string& commitment, bool create, std::string* error);
   OwnedPayloadFile(int root_fd, int parent_fd, int file_fd,
-                   std::string root_path, std::string relative_path, std::string leaf, std::uint64_t dev, std::uint64_t ino,
+                   std::string root_path, std::string relative_path, std::string leaf,
+                   std::string owner_token, std::uint64_t dev, std::uint64_t ino,
                    std::uint64_t root_dev, std::uint64_t root_ino,
                    std::uint64_t parent_dev, std::uint64_t parent_ino);
   bool StillOwned(std::string* error) const;
@@ -55,6 +56,7 @@ class OwnedPayloadFile final {
   std::string root_path_;
   std::string relative_path_;
   std::string leaf_;
+  std::string owner_token_;
   std::uint64_t dev_;
   std::uint64_t ino_;
   std::uint64_t root_dev_;
