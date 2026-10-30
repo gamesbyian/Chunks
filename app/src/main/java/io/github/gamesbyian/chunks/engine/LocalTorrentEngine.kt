@@ -503,10 +503,12 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         synchronized(this) {
             val handle = handles[key]
                 ?: return LocalCommandResult(LocalCommandOutcome.NOT_FOUND, null)
-            // Snapshot flags and the native getter may disagree while an
-            // asynchronous pause/metadata transition is settling. The same
-            // status() flags drive the visible UPLOAD_MODE state.
-            val state = handle.status()
+            // libtorrent4j's no-argument status() is cached. A UI snapshot
+            // may have already observed the upload-only metadata transition
+            // through an uncached query while Start still sees the older
+            // cached pre-metadata status. Read native state immediately here:
+            // stale metadata=false would bypass collision protection.
+            val state = handle.status(TorrentHandle.QUERY_NAME)
             if (state.hasMetadata() &&
                 (state.flags().and_(org.libtorrent4j.TorrentFlags.UPLOAD_MODE).non_zero() ||
                     magnetCollisionProblems.containsKey(key))) {
