@@ -99,6 +99,14 @@ import kotlinx.coroutines.withContext
 
 /** The connected server's latest accepted list, as the server screen holds it. */
 /** Ephemeral selection owner. Never save credentials, sessions or selections to instance state. */
+/** A completed off-main-thread read, valid only for this exact privacy/session view. */
+private data class CombinedAliasLoad(
+    val witness: CombinedBatchViewIdentity,
+    val requests: Set<CombinedAliasRequest>,
+    val revision: Int,
+    val values: Map<CombinedAliasRequest, String>
+)
+
 private data class CombinedBatchViewIdentity(
     val signedInServer: EnvironmentId?,
     val authenticatedScope: String?,
@@ -231,7 +239,6 @@ internal fun CombinedTransfersScreen(
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
     val preferences = remember(context) { CombinedViewPreferences(context) }
-    val aliases = remember(context) { TransferAliasStore(context) }
     var query by remember { mutableStateOf(preferences.load()) }
     fun update(next: UnifiedTransferQuery) {
         query = next
@@ -375,7 +382,7 @@ internal fun CombinedTransfersScreen(
             ({ onOpenTransfer(key) }) else null
 
     // Keyed on data only: MainActivity rebuilds the server source (and its lifecycle lambdas) each frame.
-    val sources = remember(phoneFrame, phoneConfirmed, phoneRunning, phoneObservedAt, phonePrivacy,
+    val rawSources = remember(phoneFrame, phoneConfirmed, phoneRunning, phoneObservedAt, phonePrivacy,
         server?.aliasScope, server?.transfers, server?.stale, server?.fullView, server?.observedAtEpochMillis,
         serverPrivacy, savedPrivacy, activeSavedScopes, listings, now, batchRunning,
         PhoneMutationFence.revision.blocksMutations()) { buildList {
@@ -389,13 +396,13 @@ internal fun CombinedTransfersScreen(
         else EnvironmentTransferSnapshot(EnvironmentSnapshots.PHONE,
             if (phonePrivacy.mayShow) EnvironmentAvailability.OFFLINE else EnvironmentAvailability.LOCKED,
             false, null, emptyList())
-        add(phone.withAliases { hash -> aliases.get(TransferCollectionStore.LOCAL_ENGINE_SCOPE, hash) })
+        add(phone)
         if (server != null && serverId != null) {
             add(EnvironmentSnapshots.server(serverId, server.transfers, connected = true,
                 stale = server.stale || batchRunning,
                 locked = serverPrivacy?.mayShow != true, fullView = server.fullView,
                 observedAtEpochMillis = server.observedAtEpochMillis, nowEpochMillis = snapshotNow)
-                .withAliases { hash -> aliases.get(server.aliasScope, hash) })
+            )
         }
         savedProfiles.filter { EnvironmentId(it.id) != serverId }.forEach { profile ->
             val id = EnvironmentId(profile.id)
@@ -407,9 +414,53 @@ internal fun CombinedTransfersScreen(
             add(EnvironmentSnapshots.server(id, listing?.transfers.orEmpty(), connected = observed != null,
                 stale = listing?.let { savedListingIsStale(it, snapshotNow) } == true,
                 locked = locked, fullView = true, observedAtEpochMillis = observed, nowEpochMillis = snapshotNow)
-                .withAliases { hash -> profile.aliasScope?.let { aliases.get(it, hash) } })
+            )
         }
     }
+    }
+    // Resolve labels only from explicitly authorized owner scopes. An account
+    // or privacy change makes a previous alias map unusable immediately, even
+    // before the new asynchronous read has finished.
+    val aliasScopes = buildMap<EnvironmentId, String> {
+        if (phonePrivacy.mayShow) put(EnvironmentSnapshots.PHONE, TransferCollectionStore.LOCAL_ENGINE_SCOPE)
+        if (serverId != null && server != null && serverPrivacy?.mayShow == true) {
+            put(serverId, server.aliasScope)
+        }
+        savedProfiles.forEach { profile ->
+            val scope = profile.aliasScope ?: return@forEach
+            val id = EnvironmentId(profile.id)
+            if (id != serverId && savedPrivacy[id]?.mayShow == true &&
+                activeSavedScopes[id] == scope &&
+                EnvironmentSnapshots.serverIdOfAliasScope(scope) == id) {
+                put(id, scope)
+            }
+        }
+    }
+    val aliasRequests = remember(rawSources, aliasScopes) {
+        CombinedAliasProjection.requests(rawSources, aliasScopes)
+    }
+    val aliasRevision = TransferAliasStore.revision
+    var loadedAliases by remember { mutableStateOf<CombinedAliasLoad?>(null) }
+    LaunchedEffect(context, aliasRequests, aliasRevision, batchIdentity) {
+        loadedAliases = null
+        if (aliasRequests.isEmpty()) return@LaunchedEffect
+        try {
+            val found = withContext(Dispatchers.IO) {
+                TransferAliasStore(context).getBatch(aliasRequests)
+            }
+            loadedAliases = CombinedAliasLoad(batchIdentity, aliasRequests, aliasRevision, found)
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            // Raw observed torrent titles remain readable; never use stale
+            // aliases or accidentally import a different account's labels.
+        }
+    }
+    val currentAliases = loadedAliases?.takeIf {
+        it.witness == batchIdentity && it.requests == aliasRequests && it.revision == aliasRevision
+    }?.values.orEmpty()
+    val sources = remember(rawSources, aliasScopes, currentAliases) {
+        CombinedAliasProjection.apply(rawSources, aliasScopes, currentAliases)
     }
     val result = remember(sources, query) { UnifiedTransferCatalog.query(sources, query) }
 
@@ -789,9 +840,6 @@ internal fun toggleScope(scope: EnvironmentViewScope, id: EnvironmentId): Enviro
         if (next.isEmpty()) EnvironmentViewScope.All else EnvironmentViewScope.Only(next)
     }
 }
-
-private fun EnvironmentTransferSnapshot.withAliases(alias: (String) -> String?): EnvironmentTransferSnapshot =
-    copy(transfers = transfers.map { item -> alias(item.key.infoHash)?.let { item.copy(displayName = it) } ?: item })
 
 /** Text summary of one row; unknown facts are said as unknown, never as zero. */
 internal fun combinedRowFacts(row: UnifiedTransferObservation): String = listOf(
