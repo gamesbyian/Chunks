@@ -749,7 +749,10 @@ internal fun CombinedTransfersScreen(
                     modifier = Modifier.weight(1f))
                 Switch(checked = query.groupByEnvironment,
                     onCheckedChange = { update(query.copy(groupByEnvironment = it)) },
-                    modifier = Modifier.semantics { contentDescription = "Group by environment" })
+                    // The Switch itself, not only its enclosing Row, must have
+                    // an accessible 48dp semantics/touch surface at large text.
+                    modifier = Modifier.heightIn(min = 48.dp)
+                        .semantics { contentDescription = "Group by environment" })
             }
         }
         item {
