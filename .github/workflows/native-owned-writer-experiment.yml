@@ -1,0 +1,20 @@
+name: Native owned-writer G0 experiment
+
+on:
+  pull_request:
+    paths:
+      - "experiments/native-owned-writer/**"
+      - ".github/workflows/native-owned-writer-experiment.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pinned-file-ownership-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Strict C++17 non-clobber and ASan/UBSan negatives
+        run: bash experiments/native-owned-writer/test.sh --sanitizers
