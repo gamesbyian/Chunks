@@ -1,5 +1,6 @@
 #include "owned_torrent_storage.h"
 
+#include <cstring>
 #include <limits>
 #include <set>
 #include <utility>
@@ -28,10 +29,10 @@ std::unique_ptr<OwnedTorrentStorage> OwnedTorrentStorage::Open(
   std::set<std::string> paths, ids;
   std::uint64_t total = 0;
   for (auto& file : layout) {
-    if (file.size == 0 ||
-        std::numeric_limits<std::uint64_t>::max() - total < file.size ||
-        !paths.insert(file.relative_path).second ||
-        !ids.insert(file.receipt_id).second) {
+    if (std::numeric_limits<std::uint64_t>::max() - total < file.size ||
+        (!file.pad_file &&
+           (!paths.insert(file.relative_path).second ||
+            !ids.insert(file.receipt_id).second))) {
       Fail(error, "Ambiguous duplicate, zero-size, or overflowing native layout");
       return nullptr;
     }
@@ -52,7 +53,7 @@ bool OwnedTorrentStorage::Preopen(std::uint64_t offset, size_t bytes,
   // in file B must not leave file A with half a submitted native block.
   for (auto& slot : slots_) {
     if (slot.start >= last || slot.start + slot.spec.size <= offset) continue;
-    if (slot.owned) continue;
+    if (slot.spec.pad_file || slot.owned) continue;
     const auto& s = slot.spec;
     slot.owned = (mode_ == Admission::FRESH)
         ? OwnedPayloadFile::Create(root_, s.relative_path, receipts_,
@@ -76,7 +77,8 @@ bool OwnedTorrentStorage::WriteRange(std::uint64_t offset, const void* input,
     const auto begin = offset > slot.start ? offset : slot.start;
     const auto end = last < slot.start + slot.spec.size ? last : slot.start + slot.spec.size;
     const auto chunk = static_cast<size_t>(end - begin);
-    if (!slot.owned->WriteAt(begin - slot.start, data + done, chunk, error)) return false;
+    if (!slot.spec.pad_file &&
+        !slot.owned->WriteAt(begin - slot.start, data + done, chunk, error)) return false;
     done += chunk;
   }
   return done == bytes || Fail(error, "Incomplete piece-to-file mapping");
@@ -94,7 +96,8 @@ bool OwnedTorrentStorage::ReadRange(std::uint64_t offset, void* output,
     const auto begin = offset > slot.start ? offset : slot.start;
     const auto end = last < slot.start + slot.spec.size ? last : slot.start + slot.spec.size;
     const auto chunk = static_cast<size_t>(end - begin);
-    if (!slot.owned->ReadAt(begin - slot.start, data + done, chunk, error)) return false;
+    if (slot.spec.pad_file) std::memset(data + done, 0, chunk);
+    else if (!slot.owned->ReadAt(begin - slot.start, data + done, chunk, error)) return false;
     done += chunk;
   }
   return done == bytes || Fail(error, "Incomplete piece read mapping");
