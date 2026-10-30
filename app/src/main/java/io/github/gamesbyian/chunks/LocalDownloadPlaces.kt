@@ -53,24 +53,10 @@ internal object LocalDownloadPlaces {
         val result = ArrayList<LocalPlaceChoice>()
         val parent = publicParent()
         if (parent != null) {
-            val place = publicPlace(parent)
-            val access = LocalPublicDownloadsAccess.refusal(Build.VERSION.SDK_INT,
-                legacyStorage = Build.VERSION.SDK_INT > Build.VERSION_CODES.Q || legacyStorage(),
-                storagePermissionGranted = Build.VERSION.SDK_INT > Build.VERSION_CODES.Q ||
-                    ANDROID_10_STORAGE_PERMISSIONS.all {
-                        context.checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED
-                    })
-            val failure = when {
-                access != null -> access
-                Environment.getExternalStorageState() != Environment.MEDIA_MOUNTED ->
-                    "Shared storage is not mounted"
-                // Lazy creation: probe the existing folder, else its parent,
-                // so viewing the phone screen never creates Chunks Downloads.
-                place.root.exists() -> LocalPlaceWriteProbe.verify(place.root)
-                else -> LocalPlaceWriteProbe.verify(parent)
-            }
-            result += LocalPlaceChoice(place, failure,
-                needsStoragePermission = failure == LocalPublicDownloadsAccess.NEEDS_PERMISSION)
+            // An earlier pathname survey cannot stop the native disk backend
+            // overwriting an unrelated inode after Stop, restore or file swap.
+            result += LocalPlaceChoice(publicPlace(parent),
+                "Native writes to shared Downloads are disabled to protect existing files")
         }
         LocalEngineHolder.appDownloads(context)?.let { root ->
             result += LocalPlaceChoice(LocalDownloadPlace(LocalPlaceKind.APP_STORAGE, root,
@@ -87,9 +73,8 @@ internal object LocalDownloadPlaces {
             val ready = removable.isDirectory || removable.mkdirs()
             result += LocalPlaceChoice(LocalDownloadPlace(LocalPlaceKind.REMOVABLE_APP_STORAGE, removable,
                 "SD card (Chunks app folder)",
-                "Chunks' folder on removable storage. Transfers fail while the card is " +
-                    "removed, and the folder is deleted if Chunks is uninstalled."),
-                if (ready) LocalPlaceWriteProbe.verify(removable) else "SD card folder could not be created")
+                "Direct native writes are unavailable until non-clobbering storage is implemented."),
+                "Native writes to removable storage are disabled to protect existing files")
         }
         return result
     }
@@ -123,6 +108,8 @@ internal object LocalDownloadPlaces {
      * the engine uses the folder. Returns null instead of a false success.
      */
     fun materialize(place: LocalDownloadPlace): File? {
+        // A saved public preference or stale caller must not bypass containment.
+        if (place.kind != LocalPlaceKind.APP_STORAGE) return null
         val root = when (place.kind) {
             LocalPlaceKind.PUBLIC_DOWNLOADS -> place.root.parentFile
                 ?.let { LocalPlaceWriteProbe.ensureChild(it, place.root.name) }
