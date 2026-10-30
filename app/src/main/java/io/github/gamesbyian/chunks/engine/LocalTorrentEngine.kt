@@ -502,12 +502,38 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             return LocalAddResult.Refused(
                 "A previous checked transfer still reserves native storage until session shutdown")
 
-        val provenance = if (checkedFirstStarts.containsKey(hash))
+        val nestedChecked = checkedFirstStarts.containsKey(hash)
+        // A reviewed-existing Add is still a native writer. It cannot bypass
+        // another checked or reviewed job's session-local path reservation
+        // simply by using the raw Add overload with a distinct infohash.
+        // Existing verified seed bytes are permitted; this ONLY reserves the
+        // declared names, it does not infer ownership from file existence.
+        if (!nestedChecked) {
+            val paths = try {
+                val files = info.files()
+                val count = files.numFiles()
+                if (!LocalPayloadCollisionSurvey.supportsNativeFileCount(count))
+                    return LocalAddResult.Refused("Torrent file count is unsupported")
+                (0 until count).asSequence()
+                    .filterNot { files.padFileAt(it) }
+                    .map { files.filePath(it) }.toList()
+            } catch (_: Exception) {
+                return LocalAddResult.Refused("Torrent backing paths cannot be inspected")
+            }
+            when (val claim = checkedPayloadReservations.reserve(hash, saveDirectory, paths)) {
+                LocalCheckedPayloadReservations.Result.Reserved -> Unit
+                is LocalCheckedPayloadReservations.Result.Refused ->
+                    return LocalAddResult.Refused(claim.problem + "; nothing added")
+            }
+        }
+        val provenance = if (nestedChecked)
             LocalAdmissionProvenance.Mode.CHECKED
         else LocalAdmissionProvenance.Mode.REVIEWED_EXISTING
-        if (!LocalAdmissionProvenance.persist(config.stateDirectory, hash, provenance))
+        if (!LocalAdmissionProvenance.persist(config.stateDirectory, hash, provenance)) {
+            if (!nestedChecked) checkedPayloadReservations.release(hash)
             return LocalAddResult.Refused(
                 "Could not securely persist the native Add review; nothing added")
+        }
         val params = AddTorrentParams()
         params.setTorrentInfo(info)
         params.setSavePath(saveDirectory.absolutePath)
@@ -530,8 +556,13 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             params.peers(peers.map { TcpEndpoint(requireNotNull(it.address?.hostAddress), it.port) })
         val error = error_code()
         val raw = session.swig().add_torrent(params.swig(), error)
-        if (error.value() != 0 || !raw.is_valid)
+        if (error.value() != 0 || !raw.is_valid) {
+            // Never release a path claim while an uncertain native handle can
+            // still retain asynchronous I/O. Release only on confirmed absence.
+            if (!nestedChecked && session.find(info.infoHash())?.isValid != true)
+                checkedPayloadReservations.release(hash)
             return LocalAddResult.Refused("The local engine refused this torrent: " + error.message())
+        }
         val handle = TorrentHandle(raw)
         handles[hash] = handle
         // The asynchronous SAVE_RESUME_DATA callback writes the same
