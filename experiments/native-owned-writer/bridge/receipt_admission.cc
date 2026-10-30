@@ -33,8 +33,11 @@ NativeAdmissionMode ClassifyNativeAdmission(
     std::string* error) {
   ScopedFd root(::open(private_receipts.c_str(),
                        O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC));
-  if (root.value < 0) {
-    if (error) *error = "Private receipt directory inaccessible";
+  struct stat privacy{};
+  if (root.value < 0 || ::fstat(root.value, &privacy) != 0 ||
+      !S_ISDIR(privacy.st_mode) || privacy.st_uid != ::geteuid() ||
+      (privacy.st_mode & 0077) != 0) {
+    if (error) *error = "Private receipt directory missing or accessible by another UID";
     return NativeAdmissionMode::REFUSED;
   }
   std::size_t claimed = 0;
