@@ -200,6 +200,28 @@ class LocalPlaceWriteProbeTest {
         assertFalse(File(root, ".chunks-write-probe-0000000000000000.tmp").exists())
     }
 
+    @Test fun sourceSubstitutedAfterFinalSurveyIsNeverDeletedAsOwned() {
+        val root = temp.newFolder("post-survey-source-substitution")
+        val source = File(root, ".chunks-write-probe-0000000000000000.tmp").toPath()
+        val displaced = File(root, "previous-owned-inode").toPath()
+        val target = File(root, ".chunks-write-probe-0000000000000000.ok").toPath()
+        val foreign = byteArrayOf(9, 9, 8, 8, 7, 7)
+        val predictable = object : java.util.Random() {
+            override fun nextBytes(buffer: ByteArray) { buffer.fill(0) }
+        }
+        val result = verify(root, predictable, beforePublish = {
+            Files.move(source, displaced)
+            Files.write(source, foreign, StandardOpenOption.CREATE_NEW)
+        })
+        assertNotNull("Changed source ownership must refuse publication", result)
+        assertTrue("Foreign replacement must not be cleaned by the probe",
+            foreign.contentEquals(Files.readAllBytes(source)))
+        assertTrue("Displaced owned staging must remain available for diagnosis",
+            Files.size(displaced) > foreign.size)
+        assertFalse("Any exclusively created destination must be cleaned",
+            Files.exists(target))
+    }
+
     @Test fun replacedSourceBeforeRenameIsNeverMovedOrDeleted() {
         val root = temp.newFolder("interleaved-source-replacement")
         val originalName = File(root, ".chunks-write-probe-0000000000000000.tmp").toPath()
