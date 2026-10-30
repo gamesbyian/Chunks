@@ -6,6 +6,7 @@ import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -109,6 +110,10 @@ class CombinedDetailSessionCapabilityTest {
         rule.onNodeWithContentDescription(check).performScrollTo().performClick()
         rule.waitUntil(5_000) { secondStarted.get() == 1 }
         secondReply.complete(RemoteProbe("new-session", emptySet()))
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithText("Start and stop: Not advertised by rTorrent new-session.")
+                .fetchSemanticsNodes().isNotEmpty()
+        }
         rule.onNodeWithText("Start and stop: Not advertised by rTorrent new-session.")
             .performScrollTo().assertExists()
         rule.onNodeWithText("Not advertised by rTorrent old-session.", substring = true)
