@@ -486,8 +486,10 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                 write("\r\n--$boundary--\r\n".toByteArray(Charsets.UTF_8))
             }.toByteArray()
             val requestTarget = (upload.rawPath ?: "/") + (upload.rawQuery?.let { "?" + it } ?: "")
-            var authorization: String? = null
-            var attemptedChallenge = false
+            // The upload form is non-idempotent. Learn a challenge by a
+            // read-only RPC on the same ruTorrent origin before posting the
+            // form; never replay an upload after any HTTP 401 response.
+            val authorization = preauthorizeWrite(requestTarget)
             while (true) {
                 val connection = upload.toURL().openConnection() as HttpURLConnection
                 connection.connectTimeout = 8_000
@@ -501,14 +503,6 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                 try {
                     connection.outputStream.use { it.write(body) }
                     val status = connection.responseCode
-                    if (status == HttpURLConnection.HTTP_UNAUTHORIZED && !attemptedChallenge && auth.username.isNotEmpty()) {
-                        val challenges = connection.headerFields.entries
-                            .filter { (name, _) -> name?.equals("WWW-Authenticate", true) == true }
-                            .flatMap { it.value }
-                        authorization = HttpRpcAuthorization.fromChallenge(challenges, auth, "POST", requestTarget)
-                        attemptedChallenge = true
-                        continue
-                    }
                     // ruTorrent answers the form with 200 or a same-page redirect; never follow it.
                     if (status !in 200..399) throw IOException("ruTorrent upload returned HTTP $status")
                     val stream = if (status in 200..299) connection.inputStream else null
@@ -1044,6 +1038,45 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
     private fun nonNegativeNumber(value: Any?, field: String): Long =
         number(value).also { require(it >= 0L) { "Invalid negative rTorrent $field" } }
 
+    /**
+     * Obtain Basic/Digest authorization using an immutable read-only RPC
+     * challenge, scoped to this exact HTTPS/loopback endpoint. The returned
+     * value is formatted for the target POST path, which may be ruTorrent's
+     * same-origin multipart upload rather than the XML-RPC mount.
+     *
+     * Never challenge-negotiate by repeating an already-sent write.
+     * This helper is called only from Dispatchers.IO.
+     */
+    private fun preauthorizeWrite(requestTarget: String): String? {
+        if (auth.username.isEmpty()) return null
+        val probeBody = XmlRpcCodec.request("system.client_version").toByteArray(Charsets.UTF_8)
+        val probe = endpoint.toURL().openConnection() as HttpURLConnection
+        probe.connectTimeout = 8_000
+        probe.readTimeout = 15_000
+        probe.instanceFollowRedirects = false
+        probe.requestMethod = "POST"
+        probe.setRequestProperty("Content-Type", "text/xml; charset=utf-8")
+        probe.setRequestProperty("Accept", "text/xml")
+        probe.doOutput = true
+        probe.setFixedLengthStreamingMode(probeBody.size)
+        try {
+            probe.outputStream.use { it.write(probeBody) }
+            val status = probe.responseCode
+            return when {
+                status == HttpURLConnection.HTTP_UNAUTHORIZED -> {
+                    val challenges = probe.headerFields.entries
+                        .filter { (name, _) -> name?.equals("WWW-Authenticate", true) == true }
+                        .flatMap { it.value }
+                    HttpRpcAuthorization.fromChallenge(challenges, auth, "POST", requestTarget)
+                }
+                status in 200..299 -> null
+                else -> throw IOException("rTorrent authentication preflight returned HTTP $status")
+            }
+        } finally {
+            probe.disconnect()
+        }
+    }
+
     internal suspend fun call(method: String, params: List<Any> = emptyList()): Any? =
         withContext(Dispatchers.IO) {
             // A challenge-based credential exchange is scoped to the *same*
@@ -1056,34 +1089,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             // A 401 may arrive after a broken gateway has applied a write.
             // Learn a fresh Basic/Digest challenge using a read-only RPC on
             // this same endpoint, then send the mutation only once.
-            var authorization: String? = if (mutation && auth.username.isNotEmpty()) {
-                val probeBody = XmlRpcCodec.request("system.client_version").toByteArray(Charsets.UTF_8)
-                val probe = endpoint.toURL().openConnection() as HttpURLConnection
-                probe.connectTimeout = 8_000
-                probe.readTimeout = 15_000
-                probe.instanceFollowRedirects = false
-                probe.requestMethod = "POST"
-                probe.setRequestProperty("Content-Type", "text/xml; charset=utf-8")
-                probe.setRequestProperty("Accept", "text/xml")
-                probe.doOutput = true
-                probe.setFixedLengthStreamingMode(probeBody.size)
-                try {
-                    probe.outputStream.use { it.write(probeBody) }
-                    val status = probe.responseCode
-                    when {
-                        status == HttpURLConnection.HTTP_UNAUTHORIZED -> {
-                            val challenges = probe.headerFields.entries
-                                .filter { (name, _) -> name?.equals("WWW-Authenticate", true) == true }
-                                .flatMap { it.value }
-                            HttpRpcAuthorization.fromChallenge(challenges, auth, "POST", requestTarget)
-                        }
-                        status in 200..299 -> null
-                        else -> throw IOException("rTorrent authentication preflight returned HTTP $status")
-                    }
-                } finally {
-                    probe.disconnect()
-                }
-            } else null
+            var authorization: String? = if (mutation) preauthorizeWrite(requestTarget) else null
             // Read-only RPCs retain their one challenge retry. For writes,
             // even a 401 with WWW-Authenticate proves nothing about rollback.
             var attemptedChallenge = mutation
