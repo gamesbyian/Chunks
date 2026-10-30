@@ -1,5 +1,10 @@
 # Chunks canonical product contract
 
+## Future platform reach: all practical remote backends and Android TV (binding, deferred)
+
+Once rTorrent is release-quality and independently verified, Chunks shall expand remote control beyond rTorrent to all practical maintainable BitTorrent backends using isolated capability-aware adapters (initial targets Transmission and qBittorrent, then Deluge and BiglyBT/Vuze). Chunks shall also support an appropriately designed Android TV/Google TV app for on-device torrenting and remote-only management, sharing the core with the phone but using a D-pad-first television UI. Neither expansion may bypass present data-integrity, rTorrent or phone acceptance gates. Complete behavior, safety, legal reuse and acceptance: [Android TV and remote backends](ANDROID-TV-AND-REMOTE-BACKENDS.md); roadmap [#660](https://github.com/gamesbyian/Chunks/issues/660). **Planned, not shipped.**
+
+
 > **Authority:** binding owner product outcomes. Detailed feature rules live in the linked canonical contracts; feature completion and evidence live in [SPEC-COVERAGE](SPEC-COVERAGE.md) and [QUALITY-LEDGER](QUALITY-LEDGER.md). This document does not set implementation priority.
 
 ## Combined transfer browsing and environment colour identity (owner direction, 2026-10-29)
