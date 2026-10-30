@@ -154,6 +154,12 @@ class NativeDisk final : public lt::disk_interface, public lt::buffer_allocator_
                 : OwnedTorrentStorage::Admission::RESTORED;
             state->storage = OwnedTorrentStorage::Open(state->save_path, receipts_,
                                                       state->layout, mode, &reason);
+            // A trusted fastresume piece map cannot authorize a different
+            // physical inode. Validate every finalized receipt (and every
+            // never-created pending claim) before reporting disk admission.
+            if (state->storage && mode == OwnedTorrentStorage::Admission::RESTORED &&
+                !state->storage->VerifyRestoredOwnership(&reason))
+              state->storage.reset();
             if (state->storage) state->has_restored_payload =
                 admission == NativeAdmissionMode::RESTORED;
           }
