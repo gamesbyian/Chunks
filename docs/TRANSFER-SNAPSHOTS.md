@@ -39,6 +39,10 @@ Snapshots are for manual and optionally repeatable inventory backup. Never autom
 5. Persist a journal of pending imports and target-scoped completed hashes to survive process death. On timeout, reconcile by fresh inventory before deciding whether to retry; never blindly reissue an uncertain remote Add. Support safe resume and export of results.
 6. The result summary clearly states `torrent definitions imported; payload data not transferred`, warns that old completion percentages are historical, and explains the user may re-download or independently transfer existing payloads and recheck them on the new server.
 
+## Skip-safe snapshot defaults and return path (owner UX, 2026-10-30)
+
+Preselect a plainly labelled, privacy-preserving set of transfer **definitions only** and a clearly identified export location; expose optional profiles, transfer subset and sensitive field handling as compact, reachable choices. Never imply an export contains file bytes or account secrets, and do not infer that importing definitions grants access to saved content. When imported definitions do not resolve to a safe destination or authorized exact environment, retain the preview and request one bounded choice instead of silently rebinding jobs or starting them. Later edit/retry/rebind must be discoverable without recreating the export, and the user should understand the next action after import. [Default and continuity UX](UX.md#visible-options-automatic-defaults-and-nondecision-continuity-binding-owner-direction-2026-10-30).
+
 ## UX/accessibility
 
 - Local and remote transfer list overflow: **Export snapshot**, **Restore snapshot**. Also expose Export for selected transfers from bulk selection and profile settings. Import destination must always be explicit.
