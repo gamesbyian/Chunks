@@ -100,7 +100,9 @@ internal data class CombinedServerSource(
     val fullView: Boolean,
     val observedAtEpochMillis: Long?,
     /** Start/Stop through the server screen's own mutation gate; null when not offered. */
-    val lifecycle: CombinedServerLifecycle? = null
+    val lifecycle: CombinedServerLifecycle? = null,
+    /** Live authenticated RTorrentRemote identity, never a saved profile string. */
+    val authenticatedSession: Any? = null
 )
 
 /** The connected server's lease, command and settle, exactly as its own list uses them. */
