@@ -2,9 +2,8 @@ package io.github.gamesbyian.chunks
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -119,7 +118,7 @@ fun TransferLifecycleControl(
                         confirming = true
                     },
                     enabled = !snapshotStale,
-                    modifier = Modifier.height(48.dp)
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                 ) { Text("Resume inactive transfer…") }
             }
         }
@@ -143,7 +142,8 @@ fun TransferLifecycleControl(
                         style = MaterialTheme.typography.bodySmall)
                     Text("The server will change this transfer's running state. Chunks will read it back and will not retry automatically.",
                         style = MaterialTheme.typography.bodySmall)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
                             onClick = {
                                 if (!snapshotStale && confirmingAtRevision == snapshotRevision &&
@@ -196,12 +196,12 @@ fun TransferLifecycleControl(
                                 }
                             },
                             enabled = !pending && !snapshotStale,
-                            modifier = Modifier.height(48.dp)
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                         ) { Text("Confirm " + verb.lowercase()) }
                         OutlinedButton(
                             onClick = { confirming = false },
                             enabled = !pending,
-                            modifier = Modifier.height(48.dp)
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                         ) { Text("Cancel") }
                     }
                 }
@@ -224,7 +224,7 @@ fun TransferLifecycleControl(
                     }
                 },
                 enabled = !checkingActivity && !pending,
-                modifier = Modifier.height(48.dp)
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
             ) { Text(if (checkingActivity) "Checking engine activity…" else "Diagnose download activity") }
             OutlinedButton(
                 onClick = {
@@ -250,7 +250,7 @@ fun TransferLifecycleControl(
                     }
                 },
                 enabled = !watchingTraffic && !checkingActivity && !pending,
-                modifier = Modifier.height(48.dp)
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
             ) { Text(if (watchingTraffic) "Measuring bytes…" else "Measure download progress (3 samples)") }
             if (watchingTraffic) {
                 OutlinedButton(
@@ -258,7 +258,7 @@ fun TransferLifecycleControl(
                         watchJob?.cancel()
                         trafficError = "Measurement cancelled. No progress conclusion recorded."
                     },
-                    modifier = Modifier.height(48.dp)
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                 ) { Text("Cancel measurement") }
             }
             trafficError?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
@@ -299,7 +299,7 @@ fun TransferLifecycleControl(
                         }
                     },
                     enabled = !checkingTrackers && !pending,
-                    modifier = Modifier.height(48.dp)
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                 ) { Text(if (checkingTrackers) "Checking trackers…" else "Diagnose tracker availability") }
                 trackerHealth?.let {
                     Text(it.summary(), style = MaterialTheme.typography.bodySmall)
