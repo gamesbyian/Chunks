@@ -261,6 +261,17 @@ class LocalTorrentEngineTest {
         assertEquals(LocalCommandOutcome.VERIFIED, leecher.resume(transfer.infoHash).outcome)
         requireFlushed(leecher, transfer.infoHash)
         assertArrayEquals(first, File(root, "Stopped checked fixture/initial.bin").readBytes())
+        // Even without an explicit Stop/Start, unskipping can schedule disk
+        // writes on an active native job. Reject foreign bytes BEFORE JNI.
+        val activeForeign = File(root, "Stopped checked fixture/delayed.bin")
+        assertFalse(activeForeign.exists())
+        val activeBytes = ByteArray(delayed.size).also { Random(9982L).nextBytes(it) }
+        activeForeign.writeBytes(activeBytes)
+        assertEquals(LocalCommandOutcome.REFUSED,
+            leecher.setFileWanted(transfer.infoHash, skipped.index, true))
+        assertArrayEquals("Active file selection cannot clobber planted bytes",
+            activeBytes, activeForeign.readBytes())
+        assertTrue(activeForeign.delete())
         assertEquals(LocalCommandOutcome.VERIFIED, leecher.pause(transfer.infoHash).outcome)
 
         val foreign = File(root, "Stopped checked fixture/delayed.bin")
@@ -268,7 +279,7 @@ class LocalTorrentEngineTest {
             foreign.exists())
         val unrelated = ByteArray(delayed.size).also { Random(9878L).nextBytes(it) }
         foreign.writeBytes(unrelated)
-        assertEquals(LocalCommandOutcome.VERIFIED,
+        assertEquals(LocalCommandOutcome.REFUSED,
             leecher.setFileWanted(transfer.infoHash, skipped.index, true))
         val refused = leecher.resume(transfer.infoHash)
         assertEquals(LocalCommandOutcome.REFUSED, refused.outcome)
@@ -280,6 +291,8 @@ class LocalTorrentEngineTest {
             unrelated, foreign.readBytes())
 
         assertTrue("Only remove the fixture we planted", foreign.delete())
+        assertEquals(LocalCommandOutcome.VERIFIED,
+            leecher.setFileWanted(transfer.infoHash, skipped.index, true))
         assertEquals(LocalCommandOutcome.VERIFIED, leecher.resume(transfer.infoHash).outcome)
         requireFlushed(leecher, transfer.infoHash)
         assertArrayEquals("Clean restart may still download the skipped file",
