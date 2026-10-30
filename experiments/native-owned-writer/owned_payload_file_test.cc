@@ -37,7 +37,6 @@ struct Sandbox {
 };
 
 constexpr auto kId = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-constexpr auto kOtherId = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 constexpr auto kMapping = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
 constexpr auto kOtherMapping = "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd";
 
