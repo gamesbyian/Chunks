@@ -238,14 +238,29 @@ private fun ChunksApp(
     val aliasSessions = remember { mutableMapOf<String, TransferAliasEditSession>() }
     var aliasScope by remember { mutableStateOf("") }
     var aliasRevision by remember { mutableStateOf(0) }
-    // Give every known environment its lasting identity colour before any screen shows it.
-    remember(savedProfiles, aliasScope) {
-        runCatching {
-            EnvironmentColourStore(context).ensure(buildList {
-                add(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE)
-                io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverIdOfAliasScope(aliasScope)?.let { add(it) }
-                savedProfiles.forEach { add(io.github.gamesbyian.chunks.model.EnvironmentId(it.id)) }
-            }.distinct())
+    // Purely derive the configured identities during composition. SharedPreferences
+    // writes must happen after composition, off the main thread, and only when
+    // the identity set changes. A malformed legacy profile cannot block phone.
+    val paletteIdentities = remember(savedProfiles, aliasScope) {
+        buildList {
+            add(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE)
+            io.github.gamesbyian.chunks.model.EnvironmentSnapshots
+                .serverIdOfAliasScope(aliasScope)?.let { add(it) }
+            savedProfiles.forEach { profile ->
+                runCatching { io.github.gamesbyian.chunks.model.EnvironmentId(profile.id) }
+                    .getOrNull()?.let { add(it) }
+            }
+        }.distinct()
+    }
+    val paletteStore = remember(context) { EnvironmentColourStore(context) }
+    LaunchedEffect(paletteStore, paletteIdentities) {
+        try {
+            withContext(Dispatchers.IO) { paletteStore.ensure(paletteIdentities) }
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            // The combined view has its own read/repair path. A failed preference
+            // write must never change server identity or block transfer controls.
         }
     }
     val sortStore = remember(context) { TransferListSortStore(context) }
