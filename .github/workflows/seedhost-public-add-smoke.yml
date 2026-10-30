@@ -53,6 +53,7 @@ jobs:
       - run: |
           python3 -m unittest discover -s tools -p 'test_public_fixture_collector.py' -v
           python3 -m unittest discover -s tools -p 'test_seedhost_public_add_smoke.py' -v
+          python3 -m unittest discover -s tools -p 'test_seedhost_secret_route_policy.py' -v
 
   manual-seedhost-add:
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
