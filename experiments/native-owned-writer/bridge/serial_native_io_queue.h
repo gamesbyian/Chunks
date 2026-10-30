@@ -36,9 +36,10 @@ class SerialNativeIoQueue final {
   mutable std::mutex mutex_;
   std::condition_variable ready_;
   std::deque<Entry> pending_;
-  std::thread worker_;
+  // Every worker-readable field must be initialized before thread launch.
   std::size_t limit_;
   bool stopping_ = false;
   bool faulted_ = false;
+  std::thread worker_;
 };
 } // namespace chunks
