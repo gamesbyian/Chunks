@@ -72,7 +72,7 @@ jobs:
           upstream="$RUNNER_TEMP/chunks-libtorrent4j"
           # The fork's exact pinned native submodule must be populated before
           # SWIG can parse the actual disk constructor extension.
-          git -C "$upstream" submodule update --init --depth 1 swig/deps/libtorrent
+          git -C "$upstream" submodule update --init --recursive --depth 1 swig/deps/libtorrent
           if ! command -v swig >/dev/null 2>&1; then
             sudo apt-get update -qq
             sudo apt-get install -y -qq swig
