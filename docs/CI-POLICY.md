@@ -45,6 +45,12 @@ Do not use Secrets in fork/PR builds. Never connect the CI runner to a private r
 
 **API35 instrumentation trigger (2026-10-28):** `native-add-instrumentation.yml` now also runs for `app/src/main/**` changes. Two production-only PRs the same day (#460 added a read-only RPC call; #463 renamed the Connect field) left the instrumented suite red on main because it only triggered on `app/src/androidTest/**`. The ~8-minute emulator run on app PRs is cheaper than diagnosing red main afterwards. Docs, font and design changes still do not trigger it.
 
+## API29 real shared-Downloads safety trigger (2026-10-30)
+
+The existing `android10-downloads-instrumentation.yml` remains a **single path-scoped emulator job**, not an all-Android-app fan-out. Changes to `LocalTorrentEngine.kt`, `LocalCheckedPayloadReservations.kt`, or `LocalPayloadCollisionSurvey.kt` now trigger its real API29 shared-Downloads tests even without edits to the instrumentation suite. Those production sources directly control checked Add, first Start, magnet metadata paths and same-path writer admission on user-visible Downloads. `tests/test_ci_trigger_contract.py` independently guards these trigger paths in the cheap foundation JVM workflow. Unrelated Compose screens, artwork, remote transport, docs and font changes remain excluded from the API29 trigger unless they match an independently justified existing path. For actual overlap, avoid dispatching additional manual duplicate runs.
+
+**Evidence limits:** a path trigger proves only that CI is scheduled. Require the exact PR-head run's actual non-skipped permission/native peer/collision test results, and independently distinguish that emulator evidence from handset/SAF/SD, persisted writer ownership and external path-substitution safety. This change does not close [#568](https://github.com/gamesbyian/Chunks/issues/568), [#9](https://github.com/gamesbyian/Chunks/issues/9) or [AUD-01](ANDROID-ARCHITECTURE-AUDIT-2026-10-30.md).
+
 ## Opt-in dataSync timeout repro (#569, 2026-10-29)
 
 `android-fgs-timeout-repro.yml` runs one class, `LocalEngineServiceTimeoutInstrumentedTest`, through `tools/fgs_timeout_repro.sh` on a disposable API35 emulator.
