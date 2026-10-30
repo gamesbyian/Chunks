@@ -25,11 +25,11 @@ object RemoteSmartConnect {
     // mount. An encoded separator/control must not change which rTorrent
     // instance an explicit user path actually reaches.
     private val ambiguousPathEscape =
-        Regex("(?i)%(?:25){0,2}(?:2f|5c|0[0-9a-f]|1[0-9a-f]|7f)")
+        Regex("(?i)%(?:25)*(?:2f|5c|0[0-9a-f]|1[0-9a-f]|7f)")
     // The transport already refuses traversal after repeated proxy decoding.
     // Reject the same aliases in discovery before sending any credentials.
     private val dotTraversalSegment =
-        Regex("(?i)(?:^|/)(?:\\.|%2e|%252e|%25252e){1,2}(?:/|$)")
+        Regex("(?i)(?:^|/)(?:\\.|%(?:25)*2e){1,2}(?:/|$)")
 
     data class Candidate(val endpoint: String, val description: String)
     data class Verified<T>(
