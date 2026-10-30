@@ -270,6 +270,8 @@ class LocalTorrentEngineTest {
         assertFalse("Skipped file had no verified bytes and may not be claimed",
             foreign.exists())
         val unrelated = ByteArray(delayed.size).also { Random(9878L).nextBytes(it) }
+        assertTrue("Create only the test-owned backing parent", foreign.parentFile.mkdirs() ||
+            foreign.parentFile.isDirectory)
         foreign.writeBytes(unrelated)
         assertEquals(LocalCommandOutcome.VERIFIED,
             leecher.setFileWanted(transfer.infoHash, skipped.index, true))
