@@ -88,4 +88,25 @@ class LocalPlaceWriteProbeTest {
         assertTrue(bytes.contentEquals(other.readBytes()))
         assertFalse(File(root, ".chunks-write-probe-0000000000000000.tmp").exists())
     }
+
+    @Test fun unknownPostCleanupExistenceNeverReportsVerifiedWriteProbe() {
+        val root = temp.newFolder("unavailable-probe-check")
+        val tmp = File(root, "probe.tmp").toPath()
+        val ok = File(root, "probe.ok").toPath()
+        assertTrue(LocalPlaceWriteProbe.bothNamesDefinitelyAbsent(tmp, ok))
+        var calls = 0
+        assertFalse(LocalPlaceWriteProbe.bothNamesDefinitelyAbsent(tmp, ok) {
+            calls++
+            // A provider may be unable to prove absence for the first name.
+            false
+        })
+        assertEquals(1, calls)
+        assertFalse(LocalPlaceWriteProbe.bothNamesDefinitelyAbsent(tmp, ok) {
+            // The first absence is proven, but the rename-target check is
+            // unavailable. It must still be an unverified result.
+            it == tmp
+        })
+        File(root, "probe.tmp").writeText("unrelated")
+        assertFalse(LocalPlaceWriteProbe.bothNamesDefinitelyAbsent(tmp, ok))
+    }
 }
