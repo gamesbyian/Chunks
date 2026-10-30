@@ -103,7 +103,9 @@ The server label comes from the authenticated alias scope via the same address f
 - **Before running:** Start…/Stop… shows a preview naming every target environment and its count.
 - **While running:** each environment runs under its own existing mutation gate: the server list's readback gate, or the process-wide `PhoneMutationFence` shared with the phone screen. Results are reported per environment.
 - **Refusals:** a stale, offline, locked, busy or signed-out environment refuses its items, never redirecting them.
-- **Uncertain results:** the first uncertain result halts the batch, with no retry.
+- **Attempted unresolved/failed command:** the first ACKNOWLEDGED (accepted without authoritative readback), UNCERTAIN, explicit backend REFUSED, or genuine backend NOT_FOUND halts every later target in all environments. No automatic retry or cross-account fallback.
+- **Pre-dispatch invalid target:** a locally unsupported rTorrent v2/64-hex infohash is refused **before any mutation RPC** using the exact environment+hash key. Unlike a backend NOT_FOUND after an attempt, this does not halt unrelated eligible targets; a valid v1 request in that account may continue only while every freshness/privacy/session fence remains true.
+- **Report honesty:** accepted but not verified is never counted as completed; a disappeared transfer must be reread in its owning environment. A failed or retired review never authorizes another command.
 
 **Environment colours (PARTIAL).** Each stable environment ID receives an automatic hue from Chunks' accent palette, never black or white.
 - **Automatic assignment:** a hue is assigned once and persisted, avoiding hues already used until all nine are taken. Error red and warning yellow come last.
