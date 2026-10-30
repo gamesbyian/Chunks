@@ -34,6 +34,11 @@ class OwnedTorrentStorage final {
   bool ReadRange(std::uint64_t torrent_offset, void* output,
                  size_t bytes, std::string* error);
   bool Flush(std::string* error);
+  // Before accepting restored resume state, verify every finalized physical
+  // receipt against its current inode and owner token. Pending-only entries
+  // are valid only while their claimed physical paths remain absent.
+  // Never adopts an unknown or replacement file; never writes payload bytes.
+  bool VerifyRestoredOwnership(std::string* error);
   std::uint64_t size() const { return total_bytes_; }
 
  private:
