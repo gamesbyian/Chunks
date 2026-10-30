@@ -1577,6 +1577,7 @@ private fun TransfersScreen(
                         overflow = TextOverflow.Ellipsis)
                 }
             }
+            RemoteTransferCompositionBoundary(aliasScope, transfer.hash) {
             TransferCard(
                 remote = remote, stale = stale || loading, mainView = view == "main",
                 onMutationStarted = onMutationStarted,
@@ -1602,6 +1603,7 @@ private fun TransfersScreen(
                 moveScope = aliasScope,
                 finishInOrderScope = aliasScope
             )
+            }
             }
         }
         item { RemoteCapabilityPanel(remote) }
