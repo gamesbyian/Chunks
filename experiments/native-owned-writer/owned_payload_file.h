@@ -14,6 +14,16 @@ class OwnedPayloadFile final {
       const std::string& payload_root, const std::string& relative_path,
       const std::string& private_receipt_root, const std::string& receipt_id,
       const std::string& commitment, std::string* error);
+  // Durable prospective claim without an actual payload for skipped files.
+  static bool Reserve(const std::string& payload_root,
+                      const std::string& relative_path,
+                      const std::string& private_receipt_root,
+                      const std::string& receipt_id,
+                      const std::string& commitment, std::string* error);
+  static std::unique_ptr<OwnedPayloadFile> CreateFromReservation(
+      const std::string& payload_root, const std::string& relative_path,
+      const std::string& private_receipt_root, const std::string& receipt_id,
+      const std::string& commitment, std::string* error);
   static std::unique_ptr<OwnedPayloadFile> Reopen(
       const std::string& payload_root, const std::string& relative_path,
       const std::string& private_receipt_root, const std::string& receipt_id,
