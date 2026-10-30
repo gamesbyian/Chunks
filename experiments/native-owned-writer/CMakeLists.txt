@@ -28,3 +28,18 @@ if(CHUNKS_OWNED_WRITER_HOST_TESTS AND NOT ANDROID)
     add_test(NAME owned_file_nonclobber COMMAND chunks_owned_file_test)
     add_test(NAME owned_multifile_nonclobber COMMAND chunks_owned_multifile_test)
 endif()
+
+# Compile-only bridge validation against the *pinned* libtorrent4j native
+# submodule headers. This never links a production Java/JNI library.
+option(CHUNKS_OWNED_LIBTORRENT_BRIDGE "Check libtorrent disk_interface adapter" OFF)
+if(CHUNKS_OWNED_LIBTORRENT_BRIDGE)
+    add_library(chunks_owned_libtorrent_bridge OBJECT
+        bridge/owned_libtorrent_disk.cc)
+    target_compile_features(chunks_owned_libtorrent_bridge PRIVATE cxx_std_17)
+    target_include_directories(chunks_owned_libtorrent_bridge PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}")
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        target_compile_options(chunks_owned_libtorrent_bridge PRIVATE
+            -Wall -Wextra -Werror -pedantic)
+    endif()
+endif()
