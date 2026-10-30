@@ -14,7 +14,10 @@ if [[ -z "$serial" ]]; then
   serial="${serials[0]}"
 fi
 export ANDROID_SERIAL="$serial"
-[[ "$(adb get-state | tr -d '\r\n')" == "device" ]] || { echo "CHUNKS_SWARM_DOZE: selected adb device unavailable" >&2; exit 2; }
+# Plausible stdout from a failed ADB request is not a verified device state.
+if ! device_state="$(adb get-state | tr -d '\r\n')" || [[ "$device_state" != device ]]; then
+  echo "CHUNKS_SWARM_DOZE: selected adb device unavailable" >&2; exit 2
+fi
 adb install -r app/build/outputs/apk/debug/app-debug.apk >/dev/null
 adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk >/dev/null
 adb exec-in run-as "$pkg" sh -c 'mkdir -p cache && cat > cache/public-swarm.torrent' < "$CHUNKS_PUBLIC_SWARM_TORRENT"

@@ -18,8 +18,9 @@ case "${1:-}" in
   get-state)
     [[ "${ANDROID_SERIAL:-}" == "MOCK_USB" ]] || exit 1
     printf 'device\n'
+    [[ "${MOCK_GET_STATE_FAILURE:-0}" != 1 ]] || exit 1
     ;;
-  install) : ;;
+  install) printf 'install\n' >> "$MOCK_DIR/commands" ;;
   exec-in) cat >/dev/null ;;
   exec-out)
     [[ "$*" == *"touch files/doze-on"* ]] || exit 1
@@ -37,6 +38,7 @@ case "${1:-}" in
   shell)
     shift
     if [[ "${1:-}" == "am" && "${2:-}" == "instrument" ]]; then
+      printf 'instrument\n' >> "$MOCK_DIR/commands"
       printf 'INSTRUMENTATION_RESULT: stream=OK (1 test)\nOK (1 test)\n'
       exit 0
     fi
@@ -74,6 +76,7 @@ reset() {
   printf 'normal\n' > "$MOCK_DIR/battery"
   printf 'ACTIVE\n' > "$MOCK_DIR/deep"
   : > "$MOCK_DIR/actions"
+  : > "$MOCK_DIR/commands"
 }
 bash -n "$repo/android_public_swarm_doze.sh"
 bash -n "$repo/test_android_public_swarm_doze_mock.sh"
@@ -126,4 +129,14 @@ if ADB_SERIAL=UNREACHABLE bash "$repo/android_public_swarm_doze.sh" > "$temp/wro
 fi
 [[ ! -s "$MOCK_DIR/actions" ]]
 
-echo 'CHUNKS_DOZE_HARNESS_TEST: selected target, success, no ready, failed idle, failed restore, multi-device negative controls passed'
+# A failed query may still print the expected state. Refuse before installation,
+# instrumentation or battery/idle changes, even with that plausible output.
+reset
+if ADB_SERIAL=MOCK_USB MOCK_GET_STATE_FAILURE=1 bash "$repo/android_public_swarm_doze.sh" > "$temp/state-failed.log" 2>&1; then
+  echo 'Failed adb get-state with plausible output was accepted' >&2; exit 1
+fi
+grep -q 'selected adb device unavailable' "$temp/state-failed.log"
+[[ ! -s "$MOCK_DIR/commands" && ! -s "$MOCK_DIR/actions" ]]
+[[ "$(cat "$MOCK_DIR/battery")" == normal && "$(cat "$MOCK_DIR/deep")" == ACTIVE ]]
+
+echo 'CHUNKS_DOZE_HARNESS_TEST: selected target, success, no ready, failed state query, failed idle, failed restore, multi-device negative controls passed'

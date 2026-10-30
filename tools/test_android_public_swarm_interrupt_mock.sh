@@ -19,8 +19,10 @@ case "${1:-}" in
   get-state)
     [[ "${ANDROID_SERIAL:-}" == MOCK_USB ]] || exit 1
     printf 'device\n'
+    [[ "${MOCK_GET_STATE_FAILURE:-0}" != 1 ]] || exit 1
     ;;
   install)
+    printf 'install\n' >> "$MOCK_DIR/commands"
     if [[ "${MOCK_INSTALL_BAD:-0}" == 1 ]]; then
       printf 'Failure [INSTALL_FAILED_INVALID_APK]\n'
     else
@@ -47,6 +49,7 @@ case "${1:-}" in
       [[ "${MOCK_ALIVE:-0}" == 1 ]] && exit 0 || exit 1
     fi
     if [[ "${1:-}" == am && "${2:-}" == instrument ]]; then
+      printf 'instrument\n' >> "$MOCK_DIR/commands"
       if [[ " $* " == *' chunksInterruptPhase a '* ]]; then
         if [[ "${MOCK_NO_CRASH:-0}" != 1 ]]; then printf 'Process crashed\n'; fi
         exit 0
@@ -98,4 +101,12 @@ if ADB_SERIAL=WRONG bash "$repo/android_public_swarm_interrupt.sh" >"$tmp/wrong.
   echo "Unavailable explicit ADB serial was accepted" >&2
   exit 1
 fi
-echo 'CHUNKS_INTERRUPT_HARNESS_TEST: large logs, positive recovery and seven fail-closed controls passed'
+# The device query's status must be successful even when stdout looks correct.
+: > "$MOCK_DIR/commands"
+rm -f "$tmp/b"
+if run_case MOCK_GET_STATE_FAILURE=1 >"$tmp/state-failed.log" 2>&1; then
+  echo 'Failed adb get-state with plausible output was accepted' >&2; exit 1
+fi
+grep -q 'Selected Android device unavailable' "$tmp/state-failed.log"
+[[ ! -s "$MOCK_DIR/commands" && ! -e "$tmp/b" ]]
+echo 'CHUNKS_INTERRUPT_HARNESS_TEST: large logs, positive recovery and failed-state-query negative controls passed'
