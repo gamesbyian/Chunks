@@ -783,7 +783,8 @@ private fun ChunksApp(
                 Notice("Refresh problem", error.orEmpty())
             }
             when (section) {
-                Section.TRANSFERS -> TransfersScreen(
+                Section.TRANSFERS -> RemoteEnvironmentCompositionBoundary(aliasScope, connectedRemote) {
+                    TransfersScreen(
                     remote = connectedRemote, onLifecycleSettled = settledRemoteMutation,
                     onMutationStarted = beginRemoteMutation,
                     aliasStore = aliasStore, aliasScope = aliasScope,
@@ -866,6 +867,7 @@ private fun ChunksApp(
                         }
                     }
                 )
+                }
                 Section.SNAPSHOT -> SnapshotInventoryExportScreen(
                     transfers = transfers, view = currentView,
                     snapshotRevision = snapshotRevision,
@@ -1577,6 +1579,7 @@ private fun TransfersScreen(
                         overflow = TextOverflow.Ellipsis)
                 }
             }
+            RemoteTransferCompositionBoundary(aliasScope, transfer.hash) {
             TransferCard(
                 remote = remote, stale = stale || loading, mainView = view == "main",
                 onMutationStarted = onMutationStarted,
@@ -1602,6 +1605,7 @@ private fun TransfersScreen(
                 moveScope = aliasScope,
                 finishInOrderScope = aliasScope
             )
+            }
             }
         }
         item { RemoteCapabilityPanel(remote) }
