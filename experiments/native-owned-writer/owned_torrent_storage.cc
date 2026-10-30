@@ -153,10 +153,13 @@ bool OwnedTorrentStorage::VerifyRestoredOwnership(std::string* error) {
     auto const& file = slot.spec;
     struct stat st{};
     if (::fstatat(root, file.receipt_id.c_str(), &st, AT_SYMLINK_NOFOLLOW) == 0) {
-      if (!slot.owned) slot.owned = OwnedPayloadFile::Reopen(
+      // Probe one descriptor at a time, rather than pinning every file in
+      // a large torrent at Add time (which could exhaust Android's FD cap).
+      // Actual ReadRange/WriteRange later reopens and rechecks the inode.
+      auto verified = OwnedPayloadFile::Reopen(
           root_, file.relative_path, receipts_, file.receipt_id,
           file.mapping_commitment, error);
-      if (!slot.owned) {
+      if (!verified) {
         ::close(root);
         return false;
       }
