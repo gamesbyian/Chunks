@@ -111,6 +111,44 @@ class UnifiedBatchLifecycleTest {
         assertTrue(adapter.calls.isEmpty())
     }
 
+    @Test fun acknowledgedWithoutReadbackHaltsEveryLaterAccountAndPreservesEvidence() = runBlocking {
+        val first = observation(serverA, "1".repeat(40), false)
+        val anotherOnSameServer = observation(serverA, "2".repeat(40), false)
+        val sameHashOnDifferentServer = observation(serverB, first.key.infoHash, false)
+        val aAdapter = Recording { LifecycleReply.ACKNOWLEDGED }
+        val bAdapter = Recording { LifecycleReply.VERIFIED }
+        val report = UnifiedBatchLifecycle.run(
+            listOf(first, anotherOnSameServer, sameHashOnDifferentServer).map(::target), true,
+            listOf(source(serverA, first, anotherOnSameServer), source(serverB, sameHashOnDifferentServer)),
+            mapOf(serverA to aAdapter, serverB to bAdapter))
+        assertEquals(listOf(first.key.infoHash to true), aAdapter.calls)
+        assertTrue("No other account can receive a follow-on command before readback", bAdapter.calls.isEmpty())
+        assertEquals(first.key, report.haltedOn)
+        assertEquals(listOf(CommandEvidence.ACKNOWLEDGED, CommandEvidence.NOT_ATTEMPTED,
+            CommandEvidence.NOT_ATTEMPTED), report.items.map { it.evidence })
+        assertFalse(report.fullyVerified)
+        assertTrue(report.describe { it.value }.last().contains("has not been verified"))
+        assertTrue(report.describe { it.value }.last().contains("nothing was retried"))
+    }
+
+    @Test fun actualNotFoundMutationHaltsBatchAcrossAccountsWithoutRetargeting() = runBlocking {
+        val first = observation(serverA, "3".repeat(40), true)
+        val duplicateHashOnOtherServer = observation(serverB, first.key.infoHash, true)
+        val aAdapter = Recording { LifecycleReply.NOT_FOUND }
+        val bAdapter = Recording { LifecycleReply.VERIFIED }
+        val report = UnifiedBatchLifecycle.run(
+            listOf(first, duplicateHashOnOtherServer).map(::target), false,
+            listOf(source(serverA, first), source(serverB, duplicateHashOnOtherServer)),
+            mapOf(serverA to aAdapter, serverB to bAdapter))
+        assertEquals(listOf(first.key.infoHash to false), aAdapter.calls)
+        assertTrue("An actual not-found on A must never redirect/retry on B", bAdapter.calls.isEmpty())
+        assertEquals(first.key, report.haltedOn)
+        assertEquals(listOf(CommandEvidence.REFUSED, CommandEvidence.NOT_ATTEMPTED),
+            report.items.map { it.evidence })
+        assertEquals("No longer in this environment", report.items[0].reason)
+        assertTrue(report.describe { it.value }.last().contains("transfer disappeared"))
+    }
+
     @Test fun firstUncertainHaltsEveryLaterItemAcrossEnvironmentsWithoutRetry() = runBlocking {
         val first = observation(phone, "1".repeat(40), true)
         val second = observation(phone, "2".repeat(40), true)
