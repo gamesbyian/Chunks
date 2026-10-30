@@ -134,7 +134,12 @@ internal object LocalEngineHolder {
     fun get(context: Context): LocalTorrentEngine {
         engine?.let { return it }
         val candidate = LocalTorrentEngine(
-            LocalEngineConfig(stateDirectory = stateDirectory(context))
+            LocalEngineConfig(
+                stateDirectory = stateDirectory(context),
+                nativeBackingRoot = requireNotNull(appDownloads(context)) {
+                    "Chunks-private native storage could not be prepared"
+                }
+            )
         )
         val verified = LocalEngineStartupSettings.open(
             candidate = candidate,
@@ -201,7 +206,7 @@ internal object LocalEngineHolder {
 
     /** The only destination offered in this slice: a real POSIX folder Chunks owns. */
     fun appDownloads(context: Context): File? =
-        context.getExternalFilesDir("Downloads")?.apply { mkdirs() }?.takeIf { it.isDirectory }
+        File(context.filesDir, "native-payloads").apply { mkdirs() }.takeIf { it.isDirectory }
 }
 
 private data class LocalScreenReadout(
