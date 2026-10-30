@@ -23,6 +23,8 @@ def assert_primary_binding(source: str, key: str, count: int) -> None:
         raise ValueError("Untrusted ruTorrent URL dispatch input")
     if "inputs.rutorrent_url" in source:
         raise ValueError("User-controlled credential destination")
+    if "github.ref == 'refs/heads/main'" not in source:
+        raise ValueError("Protected credential workflow can dispatch from a non-main ref")
     actual = re.findall(rf"(?m)^\s*{re.escape(key)}:\s*(.*)$", source)
     if actual != [f'"{PRIMARY}"'] * count:
         raise ValueError(f"Expected {count} exact primary bindings for {key}, got {actual!r}")
@@ -50,6 +52,11 @@ class ProtectedSeedhostCredentialRoutesTest(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     assert_primary_binding(source + "\n  rutorrent_url:\n    type: string\n",
                                            env_key, count)
+            with self.subTest(name=name, mode="non-main-execution"):
+                with self.assertRaises(ValueError):
+                    assert_primary_binding(source.replace(
+                        "github.ref == 'refs/heads/main'", "github.ref != 'refs/heads/main'"),
+                        env_key, count)
             with self.subTest(name=name, mode="url-expression"):
                 with self.assertRaises(ValueError):
                     assert_primary_binding(source.replace(f'"{PRIMARY}"',
