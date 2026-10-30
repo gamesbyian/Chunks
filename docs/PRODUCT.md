@@ -1,5 +1,11 @@
 # Chunks canonical product contract
 
+## Optional external destination delivery (owner-approved, planned)
+
+A locally executed torrent MAY deliver verified downloaded files to a separately authorized Google Drive/SAF or FTP-family destination without moving its execution environment. Use verified local staging and independently verified, recoverable destination publication; show download and delivery as separate outcomes. Keep original seeding and local retention by default; offer only separately consented post-verification cleanup. No required cloud-backed torrent engine or cloud seeding. This edge-case convenience remains deferred behind native integrity and primary release gates. [Canonical contract](EXTERNAL-DESTINATION-DELIVERY.md).
+
+
+
 ## Future platform reach: all practical remote backends and Android TV (binding, deferred)
 
 Once rTorrent is release-quality and independently verified, Chunks shall expand remote control beyond rTorrent to all practical maintainable BitTorrent backends using isolated capability-aware adapters (initial targets Transmission and qBittorrent, then Deluge and BiglyBT/Vuze). Chunks shall also support an appropriately designed Android TV/Google TV app for on-device torrenting and remote-only management, sharing the core with the phone but using a D-pad-first television UI. Neither expansion may bypass present data-integrity, rTorrent or phone acceptance gates. Complete behavior, safety, legal reuse and acceptance: [Android TV and remote backends](ANDROID-TV-AND-REMOTE-BACKENDS.md); roadmap [#660](https://github.com/gamesbyian/Chunks/issues/660). **Planned, not shipped.**
