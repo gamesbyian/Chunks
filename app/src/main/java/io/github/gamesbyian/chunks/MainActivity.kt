@@ -1345,13 +1345,19 @@ private fun TransfersScreen(
             }
         }
         item {
+            val down = remember(list) { RemoteRateEvidence.download(list) }
+            val up = remember(list) { RemoteRateEvidence.upload(list) }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                StatTile("Down", Units.bytes(list.sumOf { it.downBytesPerSecond ?: 0 }) + "/s", Lilac,
-                    Modifier.weight(1f))
-                StatTile("Up", Units.bytes(list.sumOf { it.upBytesPerSecond ?: 0 }) + "/s", Coral,
-                    Modifier.weight(1f))
+                StatTile("Down", down.tileLabel(), Lilac, Modifier.weight(1f))
+                StatTile("Up", up.tileLabel(), Coral, Modifier.weight(1f))
                 StatTile("Start set", list.count { it.started }.toString(),
                     Lime, Modifier.weight(1f))
+            }
+            down.caveat("Download")?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall)
+            }
+            up.caveat("Upload")?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall)
             }
         }
         item {
@@ -1698,11 +1704,8 @@ private fun TransferCard(
                     style = MaterialTheme.typography.bodySmall
                 )
             }
-            if (transfer.downBytesPerSecond != null) {
-                Text("↓ " + Units.bytes(transfer.downBytesPerSecond) + "/s" +
-                    "     ↑ " + Units.bytes(transfer.upBytesPerSecond ?: 0) + "/s" +
-                    "     ratio " + ((transfer.ratioThousandths ?: 0L) / 1000.0).toString(),
-                    style = MaterialTheme.typography.bodySmall)
+            RemoteRateEvidence.detailLines(transfer).forEach { fact ->
+                Text(fact, style = MaterialTheme.typography.bodySmall)
             }
             Text("Place: " + transfer.directory, style = MaterialTheme.typography.bodySmall,
                 color = ChunksColors.TextSecondary, maxLines = if (expanded) 5 else 2,
