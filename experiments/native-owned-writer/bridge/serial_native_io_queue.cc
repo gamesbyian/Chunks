@@ -42,6 +42,11 @@ void SerialNativeIoQueue::DrainAndStop() {
   }
 }
 
+void SerialNativeIoQueue::WaitIdle() {
+  std::unique_lock<std::mutex> lock(mutex_);
+  idle_.wait(lock, [this] { return pending_.empty() && !active_; });
+}
+
 std::size_t SerialNativeIoQueue::pending() const {
   std::lock_guard<std::mutex> lock(mutex_);
   return pending_.size();
@@ -55,36 +60,39 @@ bool SerialNativeIoQueue::faulted() const {
 void SerialNativeIoQueue::Run() {
   for (;;) {
     Entry entry;
+    bool unsafe = false;
     {
       std::unique_lock<std::mutex> lock(mutex_);
       ready_.wait(lock, [this] { return stopping_ || !pending_.empty(); });
-      if (pending_.empty()) return;
+      if (pending_.empty()) {
+        idle_.notify_all();
+        return;
+      }
       entry = std::move(pending_.front());
       pending_.pop_front();
-    }
-    bool unsafe = false;
-    {
-      std::lock_guard<std::mutex> lock(mutex_);
+      active_ = true;
       unsafe = faulted_;
     }
     if (unsafe) {
-      // Do not run another disk operation after an unreportable worker
-      // exception. Still issue each queued callback's error path.
+      // Previously unreportable native failure: skip every pending disk op.
       try { entry.on_error(); } catch (...) {}
-      continue;
-    }
-    try {
-      entry.task();
-    } catch (...) {
+    } else {
       try {
-        entry.on_error();
+        entry.task();
       } catch (...) {
-        // No further jobs may execute when callback failure is uncertain.
-        // Existing accepted tasks remain in memory and cannot be forgotten.
-        std::lock_guard<std::mutex> lock(mutex_);
-        faulted_ = true;
+        try {
+          entry.on_error();
+        } catch (...) {
+          std::lock_guard<std::mutex> lock(mutex_);
+          faulted_ = true;
+        }
       }
     }
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      active_ = false;
+    }
+    idle_.notify_all();
   }
 }
 
