@@ -37,6 +37,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -132,7 +133,9 @@ internal data class SavedServerListing(
     val transfers: List<RemoteTransfer> = emptyList(),
     val observedAtEpochMillis: Long? = null,
     val loading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    /** Source witness; a profile change must not reuse a previous account's rows. */
+    val sourceAliasScope: String? = null
 )
 
 internal fun listingFailure(failure: Throwable): String = when (failure) {
@@ -230,7 +233,9 @@ internal fun CombinedTransfersScreen(
     var phoneObservedAt by remember { mutableStateOf<Long?>(null) }
     // Explicit cross-environment selection; never derived from the view scope.
     var selecting by remember { mutableStateOf(false) }
-    var detailKey by remember { mutableStateOf<UnifiedTransferKey?>(null) }
+    // Restores only a read-only detail target, never an in-flight command or batch selection.
+    var savedDetailTarget by rememberSaveable { mutableStateOf<ArrayList<String>?>(null) }
+    val detailKey = restoreCombinedDetailTarget(savedDetailTarget)
     var selected by remember { mutableStateOf<Set<UnifiedTransferKey>>(emptySet()) }
     var batchRunning by remember { mutableStateOf(false) }
     var batchResult by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -291,6 +296,26 @@ internal fun CombinedTransfersScreen(
     val serverId = server?.let {
         EnvironmentSnapshots.serverIdOfAliasScope(it.aliasScope)
     }
+    // A saved source can be read only while this exact profile's privacy gate
+    // allows it. Both the server identity and visibility are checked again
+    // before a background read is allowed to publish its response.
+    val activeSavedScopes = savedProfiles.mapNotNull { profile ->
+        val id = EnvironmentId(profile.id)
+        profile.aliasScope?.takeIf { scope ->
+            id != serverId && profile.listOnly != null && savedPrivacy[id]?.mayShow == true
+        }?.let { id to it }
+    }.toMap()
+    val currentSavedScopes = rememberUpdatedState(activeSavedScopes)
+    val savedListingFence = remember { SavedListingResponseFence() }
+    LaunchedEffect(activeSavedScopes) {
+        savedListingFence.retireOutside(activeSavedScopes)
+        // A profile with changed credentials/endpoint or a locked gate must not
+        // leave its old rows or network status in this view.
+        listings = listings.filter { (id, listing) ->
+            activeSavedScopes[id] != null &&
+                activeSavedScopes[id] == listing.sourceAliasScope
+        }
+    }
     val labels = LinkedHashMap<EnvironmentId, String>().apply {
         put(EnvironmentSnapshots.PHONE, PHONE_ENVIRONMENT_LABEL)
         if (server != null && serverId != null) put(serverId, serverEnvironmentLabel(server.aliasScope))
@@ -308,7 +333,8 @@ internal fun CombinedTransfersScreen(
     // Keyed on data only: MainActivity rebuilds the server source (and its lifecycle lambdas) each frame.
     val sources = remember(phoneFrame, phoneConfirmed, phoneRunning, phoneObservedAt, phonePrivacy,
         server?.aliasScope, server?.transfers, server?.stale, server?.fullView, server?.observedAtEpochMillis,
-        serverPrivacy, savedPrivacy, listings, now, batchRunning, PhoneMutationFence.revision.blocksMutations()) { buildList {
+        serverPrivacy, savedPrivacy, activeSavedScopes, listings, now, batchRunning,
+        PhoneMutationFence.revision.blocksMutations()) { buildList {
         // The ticker invalidates old reads; use the actual clock when a newer
         // observation arrives between ticks so it is not mistaken for a future read.
         val snapshotNow = System.currentTimeMillis()
@@ -329,7 +355,9 @@ internal fun CombinedTransfersScreen(
         }
         savedProfiles.filter { EnvironmentId(it.id) != serverId }.forEach { profile ->
             val id = EnvironmentId(profile.id)
-            val listing = listings[id]
+            val listing = activeSavedScopes[id]?.let { witness ->
+                listings[id]?.takeIf { it.sourceAliasScope == witness }
+            }
             val observed = listing?.observedAtEpochMillis
             val locked = savedPrivacy[id]?.mayShow == false
             add(EnvironmentSnapshots.server(id, listing?.transfers.orEmpty(), connected = observed != null,
@@ -406,7 +434,7 @@ internal fun CombinedTransfersScreen(
         UnifiedTransferDetailPanel(
             detail = details,
             environmentLabel = labels[focusedKey.environment] ?: "Unconfigured environment",
-            onBack = { detailKey = null },
+            onBack = { savedDetailTarget = null },
             onOpenOwningList = openFor(focusedKey),
             onCheckCapabilities = readOnlyProbe?.let { probe ->
                 {
@@ -551,7 +579,9 @@ internal fun CombinedTransfersScreen(
         item {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 result.sources.forEach { source ->
-                    val listing = listings[source.environment]
+                    val listing = activeSavedScopes[source.environment]?.let { witness ->
+                        listings[source.environment]?.takeIf { it.sourceAliasScope == witness }
+                    }
                     val status = when {
                         listing?.loading == true -> "Loading list…"
                         listing?.error != null && listing.observedAtEpochMillis == null ->
@@ -563,32 +593,48 @@ internal fun CombinedTransfersScreen(
                     Text(labels[source.environment].orEmpty() + ": " + status + " · " +
                         source.transfers.size + " transfers", style = MaterialTheme.typography.bodySmall)
                 }
-                val loadable = savedProfiles.filter { EnvironmentId(it.id) != serverId && it.listOnly != null &&
-                    savedPrivacy[EnvironmentId(it.id)]?.mayShow == true }
-                if (loadable.isNotEmpty()) OutlinedButton(enabled = listings.values.none { it.loading },
+                val loadable = savedProfiles.filter { profile ->
+                    val id = EnvironmentId(profile.id)
+                    id != serverId && profile.listOnly != null && profile.aliasScope != null &&
+                        activeSavedScopes[id] == profile.aliasScope
+                }
+                if (loadable.isNotEmpty()) OutlinedButton(enabled = listings.none { (id, listing) ->
+                    listing.loading && activeSavedScopes[id] == listing.sourceAliasScope
+                },
                     onClick = {
                         loadable.forEach { profile ->
                             val id = EnvironmentId(profile.id)
                             val load = profile.listOnly ?: return@forEach
-                            listings = listings + (id to (listings[id] ?: SavedServerListing()).copy(loading = true))
+                            val identity = profile.aliasScope ?: return@forEach
+                            val ticket = savedListingFence.begin(
+                                SavedListingResponseFence.Source(id, identity))
+                            val previous = listings[id]?.takeIf { it.sourceAliasScope == identity }
+                                ?: SavedServerListing(sourceAliasScope = identity)
+                            listings = listings + (id to previous.copy(loading = true, error = null))
                             batchScope.launch {
+                                // Profile removal/lock may occur between the tap and dispatch.
+                                if (!savedListingFence.accepts(ticket, currentSavedScopes.value))
+                                    return@launch
                                 val next = try {
                                     val list = withContext(Dispatchers.IO) {
                                         kotlinx.coroutines.withTimeout(45_000) { load() }
                                     }
-                                    SavedServerListing(list, System.currentTimeMillis())
+                                    SavedServerListing(list, System.currentTimeMillis(),
+                                        sourceAliasScope = identity)
                                 } catch (cancel: kotlinx.coroutines.CancellationException) {
                                     if (cancel is kotlinx.coroutines.TimeoutCancellationException)
-                                        (listings[id] ?: SavedServerListing()).copy(loading = false,
-                                            error = listingFailure(cancel))
+                                        previous.copy(loading = false, error = listingFailure(cancel))
                                     else throw cancel
                                 } catch (failure: Exception) {
-                                    // Keep a previous listing, now aging toward out of date.
-                                    (listings[id] ?: SavedServerListing()).copy(loading = false,
-                                        error = listingFailure(failure))
+                                    // Keep last-known rows, never claim the failed read is live.
+                                    previous.copy(loading = false, error = listingFailure(failure))
                                 }
-                                listings = listings + (id to next)
-                                now = System.currentTimeMillis()
+                                // A slow response from another account or a pre-lock read may
+                                // neither replace current rows nor resurrect hidden content.
+                                if (savedListingFence.accepts(ticket, currentSavedScopes.value)) {
+                                    listings = listings + (id to next)
+                                    now = System.currentTimeMillis()
+                                }
                             }
                         }
                     }, modifier = Modifier.heightIn(min = 48.dp)) {
@@ -621,7 +667,7 @@ internal fun CombinedTransfersScreen(
                         selection = if (selecting) row.key in selected else null,
                         onSelect = { on -> selected = if (on) selected + row.key else selected - row.key },
                         onOpen = openFor(row.key),
-                        onDetails = { detailKey = row.key })
+                        onDetails = { savedDetailTarget = arrayListOf(row.key.environment.value, row.key.infoHash) })
                 }
             }
         } else {
@@ -630,7 +676,7 @@ internal fun CombinedTransfersScreen(
                     selection = if (selecting) row.key in selected else null,
                     onSelect = { on -> selected = if (on) selected + row.key else selected - row.key },
                     onOpen = openFor(row.key),
-                        onDetails = { detailKey = row.key })
+                        onDetails = { savedDetailTarget = arrayListOf(row.key.environment.value, row.key.infoHash) })
             }
         }
         item {
@@ -661,6 +707,15 @@ internal fun CombinedTransfersScreen(
     }
     }
 }
+
+/**
+ * Save only the exact read-only detail identity across rotation/process recreation.
+ * A malformed or obsolete saved value is discarded; command selection is not restored.
+ */
+internal fun restoreCombinedDetailTarget(saved: List<String>?): UnifiedTransferKey? =
+    saved?.takeIf { it.size == 2 }?.let { parts ->
+        runCatching { UnifiedTransferKey.of(EnvironmentId(parts[0]), parts[1]) }.getOrNull()
+    }
 
 /** All → only the tapped environment; otherwise toggle, and an emptied subset returns to All. */
 internal fun toggleScope(scope: EnvironmentViewScope, id: EnvironmentId): EnvironmentViewScope = when (scope) {
