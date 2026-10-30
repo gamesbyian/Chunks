@@ -97,6 +97,21 @@ class RemoteRpcReadOnlyRetryFenceTest {
         }
     }
 
+    @Test fun verifiedFileRangeGettersRetainReadOnlyChallengeRetry() = runBlocking {
+        Gateway { name, count, e ->
+            when (name) {
+                "f.multicall" -> if (count == 1) respond(e, 401) else respond(e, 200, ok)
+                else -> error("Unexpected RPC $name")
+            }
+        }.use { gateway ->
+            val remote = RTorrentRemote(RemoteCredentials(gateway.endpoint, "alice", "secret"))
+            val fields = listOf(hash, "", "f.path=", "f.size_bytes=", "f.priority=",
+                "f.range_first=", "f.range_second=")
+            assertEquals(0L, remote.call("f.multicall", fields))
+            assertEquals(listOf("f.multicall", "f.multicall"), gateway.methods.toList())
+        }
+    }
+
     @Test fun getterOnlyPagedMulticallRetainsReadOnlyChallengeRetry() = runBlocking {
         Gateway { name, count, e ->
             when (name) {
