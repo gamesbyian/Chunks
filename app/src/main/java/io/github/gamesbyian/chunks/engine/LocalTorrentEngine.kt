@@ -275,6 +275,48 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     fun listenPort(): Int = session.swig()?.listen_port() ?: 0
 
     /**
+     * Production Add: inspect torrent-relative payload paths before registering
+     * a job. The raw addStopped method remains for separately reviewed
+     * existing-file seeding and native interoperability fixtures.
+     *
+     * A clean survey is point-in-time only, not a race-free write capability.
+     * It does not authorize consuming a matching file merely by name.
+     */
+    @Synchronized
+    fun addStoppedChecked(
+        torrentBytes: ByteArray,
+        saveDirectory: File,
+        peers: List<InetSocketAddress> = emptyList()
+    ): LocalAddResult {
+        check(started) { "Engine not started" }
+        if (!saveDirectory.isAbsolute || !saveDirectory.isDirectory)
+            return LocalAddResult.Refused("Choose an existing folder for this download")
+        val info = try { TorrentInfo.bdecode(torrentBytes) } catch (_: Exception) { null }
+        if (info?.isValid != true)
+            return LocalAddResult.Refused("Torrent metadata is invalid")
+        val paths = try {
+            val files = info.files()
+            (0 until files.numFiles()).asSequence()
+                .filterNot { files.padFileAt(it) }
+                .map { files.filePath(it) }.toList()
+        } catch (_: Exception) {
+            return LocalAddResult.Refused("Torrent file paths could not be inspected. Nothing added.")
+        }
+        if (paths.isEmpty()) return LocalAddResult.Refused("Torrent has no inspectable payload")
+        when (val survey = LocalPayloadCollisionSurvey.inspect(saveDirectory, paths)) {
+            is LocalPayloadCollisionSurvey.Result.ClearAtObservation -> Unit
+            is LocalPayloadCollisionSurvey.Result.ExistingPaths ->
+                return LocalAddResult.Refused("Existing files conflict with this torrent (" +
+                    survey.total + " path(s)). Nothing added. Choose a new folder or use " +
+                    "an explicitly reviewed existing-files recovery workflow.")
+            is LocalPayloadCollisionSurvey.Result.Unknown ->
+                return LocalAddResult.Refused("Cannot verify download file paths: " +
+                    survey.problem + ". Nothing added.")
+        }
+        return addStopped(torrentBytes, saveDirectory, peers)
+    }
+
+    /**
      * Add a v1/v2 `.torrent` stopped. The save directory must be an existing,
      * explicitly chosen directory. A duplicate identity is refused, never merged.
      */

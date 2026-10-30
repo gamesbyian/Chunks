@@ -892,7 +892,7 @@ internal fun LocalEngineScreen(
                                     "The download location or subfolder is unavailable, nonempty or unsafe. Nothing was added.") to null
                             else {
                                 val engine = LocalEngineHolder.get(context)
-                                val added = engine.addStopped(add.bytes, chosen)
+                                val added = engine.addStoppedChecked(add.bytes, chosen)
                                 // While still stopped: set up the policy and apply its first verified
                                 // step, so the very first piece requests already follow the order.
                                 if (orderAfterAdd && added is LocalAddResult.AddedStopped) {

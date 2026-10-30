@@ -1,0 +1,27 @@
+name: Chunks Doze harness safety
+
+# Offline fake-adb checks only. The actual Doze/peer-download proof is an
+# independently dispatched public-swarm workflow, not an ordinary PR action.
+on:
+  pull_request:
+    paths:
+      - "tools/android_public_swarm_doze.sh"
+      - "tools/test_android_public_swarm_doze_mock.sh"
+      - ".github/workflows/android-doze-harness-qa.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chunks-doze-harness-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  offline-doze-harness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify Doze controller and compensating cleanup with fake adb
+        run: bash tools/test_android_public_swarm_doze_mock.sh
