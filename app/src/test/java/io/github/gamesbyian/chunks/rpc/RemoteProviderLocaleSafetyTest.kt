@@ -34,7 +34,9 @@ class RemoteProviderLocaleSafetyTest {
                 "/rutorrent/plugins/httprpc/action.php",
                 "/RPC1",
                 "/IANSEEDS/rutorrent/plugins/httprpc/action.php",
-                "/IANSEEDS/RPC1"
+                "/IANSEEDS/RPC1",
+                "/rutorrent/plugins/httprpc/action.php",
+                "/RPC1"
             ), actual)
             // None of these paths grants authority. Smart Connect must still
             // authenticate and verify the exact candidate's actual torrent view.
