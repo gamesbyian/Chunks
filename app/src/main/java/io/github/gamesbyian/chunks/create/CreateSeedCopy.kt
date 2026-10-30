@@ -90,8 +90,8 @@ internal object CreateSeedCopy {
                 // Exclusive directory creation prevents reusing a foreign
                 // folder (or a pre-existing dangling symlink).
                 Files.createDirectory(targetPath)
-                ownedDirs += targetPath
-                ownedDirSet += targetPath
+                ownedDirs.add(targetPath)
+                ownedDirSet.add(targetPath)
             }
             var copied = 0L
             request.entries.map { entry ->
@@ -101,7 +101,7 @@ internal object CreateSeedCopy {
                         parent = parent.resolve(segment)
                         if (ownedDirSet.add(parent)) {
                             Files.createDirectory(parent)
-                            ownedDirs += parent
+                            ownedDirs.add(parent)
                         }
                     }
                     parent.resolve(entry.path.last())
@@ -113,7 +113,7 @@ internal object CreateSeedCopy {
                 // descriptor. No predictable .chunks-part file or rename.
                 FileChannel.open(path, StandardOpenOption.CREATE_NEW,
                     StandardOpenOption.WRITE, LinkOption.NOFOLLOW_LINKS).use { out ->
-                    ownedFiles += path
+                    ownedFiles.add(path)
                     entry.open().use { input ->
                         val buffer = ByteArray(64 * 1024)
                         var zeroReads = 0
