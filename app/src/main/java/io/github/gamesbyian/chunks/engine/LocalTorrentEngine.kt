@@ -4,6 +4,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.net.InetSocketAddress
 import java.nio.file.Files
+import java.nio.file.LinkOption
 import java.nio.file.StandardCopyOption
 import java.util.Collections
 import java.util.Locale
@@ -139,6 +140,14 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     private fun nativeBackingRefusal(path: File): String? = config.nativeBackingRoot?.let {
         LocalNativeBackingBoundary.refusal(it, path)
     }
+
+    // Quarantined or malformed old resume records must not be clobbered by a
+    // fresh Add with the same hash. Only an explicitly reviewed recovery may
+    // migrate/remove these app-private records, never an ordinary Add.
+    private fun hasUnrestoredResume(key: String): Boolean =
+        config.stateDirectory?.let { directory ->
+            !Files.notExists(File(directory, "$key.resume").toPath(), LinkOption.NOFOLLOW_LINKS)
+        } == true && !handles.containsKey(key)
     private val session = SessionManager(false)
     // Guarded by its own monitor so the alert thread never needs the engine lock.
     private val handles: MutableMap<String, TorrentHandle> = Collections.synchronizedMap(LinkedHashMap())
@@ -411,6 +420,8 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                     survey.problem + ". Nothing added.")
         }
         val key = identity(info)
+        if (hasUnrestoredResume(key))
+            return LocalAddResult.Refused("An unresolved saved transfer with this hash must be reviewed before a new Add")
         if (handles.containsKey(key) || session.find(info.infoHash())?.isValid == true)
             return LocalAddResult.Refused("This torrent is already in the local engine")
         // Register BEFORE native Add. A failed resume-file fsync may throw after
@@ -456,6 +467,8 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         }
         if (!info.isValid) return LocalAddResult.Refused("Torrent metadata is invalid")
         val hash = identity(info)
+        if (hasUnrestoredResume(hash))
+            return LocalAddResult.Refused("An unresolved saved transfer with this hash must be reviewed before a new Add")
         if (handles.containsKey(hash) || session.find(info.infoHash())?.isValid == true)
             return LocalAddResult.Refused("This torrent is already in the local engine")
 
@@ -522,6 +535,8 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         if (!saveDirectory.isAbsolute || !saveDirectory.isDirectory)
             return LocalAddResult.Refused("Choose an existing folder for this download")
         val hash = magnetIdentity(magnet) ?: return LocalAddResult.Refused("Use a magnet link with exactly one v1 info hash")
+        if (hasUnrestoredResume(hash))
+            return LocalAddResult.Refused("An unresolved saved transfer with this hash must be reviewed before a new Add")
         if (handles.containsKey(hash)) return LocalAddResult.Refused("This torrent is already in the local engine")
         // The previous handle may have been removed from the visible list
         // while native disk I/O still holds it. Its path claims are tombstoned
