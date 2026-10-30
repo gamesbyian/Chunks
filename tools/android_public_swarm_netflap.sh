@@ -46,8 +46,20 @@ restore() {
   exit "$rc"
 }
 trap restore EXIT
-adb install -r app/build/outputs/apk/debug/app-debug.apk >/dev/null
-adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk >/dev/null
+# Command success alone cannot certify installation; adb sometimes exits zero
+# while printing a package-manager Failure.
+install_verified() {
+  local output
+  output="$(adb install -r "$1" 2>&1)" || {
+    echo "CHUNKS_SWARM_NETFLAP: adb install failed" >&2; return 1;
+  }
+  grep -Fxq 'Success' <<< "$(printf '%s\n' "$output" | tr -d '\r')" || {
+    echo "CHUNKS_SWARM_NETFLAP: package manager did not confirm install" >&2
+    return 1
+  }
+}
+install_verified app/build/outputs/apk/debug/app-debug.apk
+install_verified app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 adb exec-in run-as "$pkg" sh -c 'mkdir -p cache && cat > cache/public-swarm.torrent' < "$CHUNKS_PUBLIC_SWARM_TORRENT"
 adb logcat -c
 adb shell am instrument -w -r -e class "$pkg.AndroidPublicSwarmNetworkFlapInstrumentedTest" \
@@ -77,9 +89,10 @@ if [[ "$ready" -eq 1 ]]; then
 fi
 set +e
 wait "$inst"
+instrument_status=$?
 set -e
 adb logcat -d -s ChunksSwarm:I | grep -o 'CHUNKS_SWARM_NETFLAP: .*' | tee -a "${GITHUB_STEP_SUMMARY:-/dev/null}" || true
-if [[ "$ready" -ne 1 ]] || ! grep -q '^OK (1 test)' "$log" || grep -qE '^INSTRUMENTATION_STATUS_CODE: -(1|2|3|4)' "$log"; then
+if [[ "$instrument_status" -ne 0 || "$ready" -ne 1 ]] || ! grep -Fxq 'OK (1 test)' "$log" || grep -qE '^INSTRUMENTATION_STATUS_CODE: -[1-9]|^FAILURES' "$log"; then
   grep -A12 '^INSTRUMENTATION_STATUS: stack=' "$log" | head -40 || true
   echo "::error::Network flap was not independently executed and verified (peer availability may be inconclusive)"
   exit 1
