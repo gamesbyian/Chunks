@@ -155,7 +155,9 @@ fun TransferLifecycleControl(
                                 pending = true
                                 scope.launch {
                                     try {
-                                        val outcome = performLifecycle(transfer.hash, requestedStarted)
+                                        val outcome = remoteLifecycleOutcomeOrUnknown {
+                                            performLifecycle(transfer.hash, requestedStarted)
+                                        }
                                         verified = outcome is LifecycleOutcome.Verified
                                         feedback = when (outcome) {
                                             is LifecycleOutcome.Verified ->
@@ -168,10 +170,9 @@ fun TransferLifecycleControl(
                                                     ", not the requested state. Refresh before considering another action."
                                             is LifecycleOutcome.Uncertain ->
                                                 "RPC outcome uncertain. The operation may already have happened. Refresh before considering another action."
+                                            null ->
+                                                "Could not verify the operation. Inspect the latest server state before retrying."
                                         }
-                                    } catch (_: Exception) {
-                                        verified = false
-                                        feedback = "Could not verify the operation. Inspect the latest server state before retrying."
                                     } finally {
                                         pending = false
                                         onSettled()
