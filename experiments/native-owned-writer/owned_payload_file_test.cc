@@ -176,5 +176,31 @@ int main() {
     assert(s.read(s.receipts / kId).find(kMapping) != std::string::npos);
     passed();
   }
+  {
+    Sandbox s;
+    std::string error;
+    auto f = chunks::OwnedPayloadFile::Create(s.payload.string(), "episode.bin",
+        s.receipts.string(), kId, kMapping, &error);
+    assert(f);
+    fs::rename(s.payload, s.base / "old-root");
+    fs::create_directories(s.payload);
+    s.write(s.payload / "episode.bin", "FOREIGN");
+    assert(!f->WriteAt(0, "DENIED", 6, &error));
+    assert(s.read(s.payload / "episode.bin") == "FOREIGN");
+    passed();
+  }
+  {
+    Sandbox s;
+    std::string error;
+    auto f = chunks::OwnedPayloadFile::Create(s.payload.string(), "season/episode.bin",
+        s.receipts.string(), kId, kMapping, &error);
+    assert(f);
+    fs::rename(s.payload / "season", s.payload / "old-season");
+    fs::create_directories(s.payload / "season");
+    s.write(s.payload / "season/episode.bin", "FOREIGN");
+    assert(!f->WriteAt(0, "DENIED", 6, &error));
+    assert(s.read(s.payload / "season/episode.bin") == "FOREIGN");
+    passed();
+  }
   std::cout << "CHUNKS_PINNED_WRITER_CASES=" << cases << " PASSED\n";
 }
