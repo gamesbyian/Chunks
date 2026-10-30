@@ -187,6 +187,101 @@ void exerciseRestartedPendingCollision() {
   std::cout << "CHUNKS_OWNED_RESTARTED_PENDING_COLLISION=PASS\n";
 }
 
+
+// In-session late occupancy: a clean stopped Add reserves a destination;
+// while its libtorrent session is still active, an unrelated file is
+// installed at that pathname. Start must never send writes to that occupant.
+void exerciseLateOccupiedStart() {
+  Sandbox box;
+  fs::path const seed_dir = box.root / "late-seed";
+  fs::create_directories(seed_dir);
+  const std::string bytes(16 * 1024, 'x');
+  {
+    std::ofstream seed_file(seed_dir / "probe.bin", std::ios::binary);
+    CHECK(static_cast<bool>(seed_file));
+    seed_file.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+    CHECK(static_cast<bool>(seed_file));
+  }
+  auto const torrent_bytes = fixtureTorrent();
+  lt::settings_pack seed_options;
+  seed_options.set_str(lt::settings_pack::listen_interfaces, "127.0.0.1:0");
+  seed_options.set_bool(lt::settings_pack::enable_dht, false);
+  seed_options.set_bool(lt::settings_pack::enable_lsd, false);
+  seed_options.set_bool(lt::settings_pack::enable_upnp, false);
+  seed_options.set_bool(lt::settings_pack::enable_natpmp, false);
+  lt::session seed(seed_options);
+  auto source = lt::load_torrent_buffer(
+      {torrent_bytes.data(), static_cast<std::ptrdiff_t>(torrent_bytes.size())});
+  source.save_path = seed_dir.string();
+  source.flags &= ~lt::torrent_flags::paused;
+  source.flags &= ~lt::torrent_flags::auto_managed;
+  source.flags |= lt::torrent_flags::seed_mode;
+  lt::error_code ec;
+  auto seed_handle = seed.add_torrent(std::move(source), ec);
+  CHECK(!ec && seed_handle.is_valid());
+
+  lt::settings_pack settings;
+  settings.set_str(lt::settings_pack::listen_interfaces, "127.0.0.1:0");
+  settings.set_bool(lt::settings_pack::enable_dht, false);
+  settings.set_bool(lt::settings_pack::enable_lsd, false);
+  settings.set_bool(lt::settings_pack::enable_upnp, false);
+  settings.set_bool(lt::settings_pack::enable_natpmp, false);
+  lt::session_params owned(settings);
+  owned.disk_io_constructor =
+      chunks::MakeOwnedDiskConstructor(box.receipts.string());
+  {
+    lt::session session(owned);
+    auto atp = lt::load_torrent_buffer(
+        {torrent_bytes.data(), static_cast<std::ptrdiff_t>(torrent_bytes.size())});
+    atp.save_path = box.public_root.string();
+    atp.flags |= lt::torrent_flags::paused;
+    atp.flags &= ~lt::torrent_flags::auto_managed;
+    auto handle = session.add_torrent(std::move(atp), ec);
+    CHECK(!ec && handle.is_valid());
+    bool reserved = false;
+    for (int i = 0; i < 150; ++i) {
+      for (auto const& entry : fs::directory_iterator(box.receipts))
+        if (entry.path().extension() == ".pending") reserved = true;
+      if (reserved) break;
+      std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    }
+    CHECK(reserved);
+    CHECK(!fs::exists(box.public_root / "probe.bin"));
+    const std::string foreign(bytes.size(), 'F');
+    {
+      std::ofstream occupant(box.public_root / "probe.bin", std::ios::binary);
+      CHECK(static_cast<bool>(occupant));
+      occupant.write(foreign.data(), static_cast<std::streamsize>(foreign.size()));
+      CHECK(static_cast<bool>(occupant));
+    }
+    handle.resume();
+    bool tried_connect = false;
+    bool refused = false;
+    bool false_seeding = false;
+    for (int i = 0; i < 300; ++i) {
+      if (!tried_connect && seed.listen_port() != 0) {
+        try {
+          handle.connect_peer(lt::tcp::endpoint(
+              lt::address_v4::loopback(), seed.listen_port()));
+          tried_connect = true;
+        } catch (std::exception const&) {}
+      }
+      const auto status = handle.status();
+      if (status.errc) { refused = true; break; }
+      if (status.is_seeding) { false_seeding = true; break; }
+      std::this_thread::sleep_for(std::chrono::milliseconds(30));
+    }
+    CHECK(tried_connect);
+    CHECK(!false_seeding);
+    CHECK(refused);
+    std::ifstream check(box.public_root / "probe.bin", std::ios::binary);
+    CHECK(static_cast<bool>(check));
+    const std::string after{std::istreambuf_iterator<char>(check), {}};
+    CHECK(after == foreign);
+  }
+  std::cout << "CHUNKS_OWNED_LATE_START_COLLISION=PASS\n";
+}
+
 // Positive proof: a real native libtorrent seed sends a piece over loopback
 // to a second native libtorrent session using the receipt-owned disk backend.
 // Completion must be observed from libtorrent AND compared to exact file bytes.
@@ -353,5 +448,6 @@ int main(int argc, char** argv) {
   exercise(true);
   exerciseLoopbackTransfer();
   exerciseRestartedPendingCollision();
-  std::cout << "CHUNKS_REAL_LIBTORRENT_HOST_SESSION=PASS cases=5\n";
+  exerciseLateOccupiedStart();
+  std::cout << "CHUNKS_REAL_LIBTORRENT_HOST_SESSION=PASS cases=6\n";
 }
