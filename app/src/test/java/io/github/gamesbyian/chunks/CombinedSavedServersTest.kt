@@ -127,6 +127,20 @@ class CombinedSavedServersTest {
             hiddenSavedSlot(name)
         }
         rule.onNodeWithText("Old account private payload").assertDoesNotExist()
+        // An edited account cannot inherit the saved environment ID of A.
+        // Refuse both disclosure and fetching until account B has its own
+        // independently verifiable ID; a hidden load button is intentional.
+        rule.onNodeWithText("Load other saved servers (read-only)").assertDoesNotExist()
+        assertEquals("A mismatched saved identity cannot fetch B", 0, newReads.get())
+
+        rule.runOnIdle {
+            // Authorized replacement: the environment ID now matches B.
+            current = CombinedSavedProfile(id(scopeB), "Account slot", scopeB) {
+                newReads.incrementAndGet()
+                listOf(RemoteTransfer("b".repeat(40), "New account ISO",
+                    2048, 1024, true, "/new"))
+            }
+        }
         rule.onNodeWithText("Load other saved servers (read-only)").performScrollTo().performClick()
         rule.waitUntil(5_000) {
             newReads.get() == 1 &&
