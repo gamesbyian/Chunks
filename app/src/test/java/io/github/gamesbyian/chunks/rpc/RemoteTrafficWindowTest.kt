@@ -51,6 +51,31 @@ class RemoteTrafficWindowTest {
         assertNull(RemoteTrafficWindow.evaluate(partial).receivedDelta)
     }
 
+    @Test fun interruptedCounterCollectionCannotProveNoProgress() {
+        // The middle getter failed, but the endpoints hint at a real recheck.
+        // We cannot call this zero progress without complete observations.
+        val missingMiddleVerified = listOf(
+            point(1, rx = 100, verified = 20),
+            point(2, rx = 100, verified = null),
+            point(3, rx = 100, verified = 30))
+        val result = RemoteTrafficWindow.evaluate(missingMiddleVerified)
+        assertEquals(TrafficVerdict.INSUFFICIENT_EVIDENCE, result.verdict)
+        assertEquals(0L, result.receivedDelta)
+        assertNull(result.verifiedDelta)
+        assertFalse(result.summary().contains("No positive byte growth"))
+
+        val missingMiddleReceived = listOf(
+            point(1, rx = 100, verified = 20),
+            point(2, rx = null, verified = 20),
+            point(3, rx = 140, verified = 20))
+        assertEquals(TrafficVerdict.INSUFFICIENT_EVIDENCE,
+            RemoteTrafficWindow.evaluate(missingMiddleReceived).verdict)
+
+        // Complete non-growing counters still support the existing verdict.
+        assertEquals(TrafficVerdict.NO_PROGRESS_OBSERVED,
+            RemoteTrafficWindow.evaluate(listOf(point(1), point(2), point(3))).verdict)
+    }
+
     @Test fun aCounterResetOrChangingSizeInvalidatesGrowth() {
         val resets = listOf(point(1, 100, 30), point(2, 50, 35), point(3, 150, 40))
         assertEquals(TrafficVerdict.COUNTER_RESET_OR_SIZE_CHANGED,
