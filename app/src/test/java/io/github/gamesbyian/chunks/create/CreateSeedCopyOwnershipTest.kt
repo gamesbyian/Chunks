@@ -79,6 +79,35 @@ class CreateSeedCopyOwnershipTest {
             File(root, "Shared set").isDirectory)
     }
 
+    @Test fun cancelledCopyDoesNotDeleteForeignReplacementOfOpenOutputFile() {
+        val root = temp.newFolder("output-identity-replacement")
+        val req = request("Shared set", "one.bin", 130_001)
+        val expected = TorrentMetainfoBuilder.build(req)
+        val output = File(root, "Shared set/one.bin")
+        val foreign = byteArrayOf(6, 2, 6, 4, 3, 3)
+        var replaced = false
+        val result = CreateSeedCopy.copyVerifyAndSeed(
+            req, expected, root, engine(),
+            onProgress = {
+                if (!replaced) {
+                    // The channel for the original inode is still open. Another
+                    // actor removes that path and installs unrelated regular bytes.
+                    assertTrue(Files.deleteIfExists(output.toPath()))
+                    output.writeBytes(foreign)
+                    replaced = true
+                }
+            },
+            isCancelled = { replaced }
+        )
+        assertTrue("Fixture must execute replacement", replaced)
+        assertTrue("Cancellation must refuse: $result",
+            result is CreateSeedCopy.Outcome.Refused)
+        assertArrayEquals("Path replacement belongs to another actor; never delete it",
+            foreign, output.readBytes())
+        assertTrue("Leave the folder for explicit manual review", output.parentFile.isDirectory)
+        assertTrue((result as CreateSeedCopy.Outcome.Refused).reason.contains("manual review"))
+    }
+
     @Test fun danglingSymlinkDestinationIsOccupiedEvenWhenFileExistsReturnsFalse() {
         val root = temp.newFolder("dangling-target-root")
         val absent = File(temp.root, "does-not-exist")
