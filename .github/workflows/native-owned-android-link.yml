@@ -52,6 +52,25 @@ jobs:
           script = script.replace("BOOST_ROOT=$DEVELOPMENT_ROOT/boost_1_90_0", "BOOST_ROOT=/usr/include")
           Path(sys.argv[2]).write_text(script)
           PY
+          # Upstream JNI helper imports OpenSSL version text even when
+          # native libtorrent is deliberately built without crypto.
+          # This guard applies ONLY to a disposable non-shipping checkout.
+          python3 - "$RUNNER_TEMP/chunks-libtorrent4j/swig/libtorrent.hpp" <<'PY'
+          from pathlib import Path
+          import sys
+          header = Path(sys.argv[1])
+          value = header.read_text()
+          old = '#include <openssl/opensslv.h>'
+          if value.count(old) != 1:
+              raise ValueError('Unexpected pinned upstream OpenSSL include')
+          value = value.replace(old,
+              '#if defined(TORRENT_USE_OPENSSL)\n'
+              '#include <openssl/opensslv.h>\n'
+              '#else\n'
+              '#define OPENSSL_VERSION_TEXT "NOT LINKED: JNI ABI experiment"\n'
+              '#endif')
+          header.write_text(value)
+          PY
           (cd "$RUNNER_TEMP/chunks-libtorrent4j/swig" && bash "$RUNNER_TEMP/run-chunks-swig-linux.sh")
           grep -F 'set_owned_disk_io_constructor' "$RUNNER_TEMP/chunks-libtorrent4j/swig/libtorrent_jni.cpp"
       - name: Cross-link actual libtorrent4j JNI using Android NDK (NON-SHIPPING, TLS DISABLED)
