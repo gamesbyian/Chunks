@@ -300,5 +300,16 @@ int main() {
     assert(s.read(s.payload / "one.bin") == "OWN");
     passed();
   }
+  {
+    Sandbox s;
+    std::string error;
+    fs::permissions(s.receipts, fs::perms::group_read | fs::perms::others_write,
+                    fs::perm_options::add);
+    assert(!chunks::OwnedPayloadFile::Create(s.payload.string(), "episode.bin",
+        s.receipts.string(), kId, kMapping, &error));
+    assert(!error.empty());
+    assert(!fs::exists(s.payload / "episode.bin"));
+    passed();
+  }
   std::cout << "CHUNKS_PINNED_WRITER_CASES=" << cases << " PASSED\n";
 }
