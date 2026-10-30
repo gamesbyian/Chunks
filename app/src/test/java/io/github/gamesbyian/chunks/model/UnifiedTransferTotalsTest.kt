@@ -57,6 +57,37 @@ class UnifiedTransferTotalsTest {
             io.github.gamesbyian.chunks.availabilityText(sources[2]))
     }
 
+    @Test fun hugeValidRatesCannotWrapToZeroOrClaimExactTotal() {
+        val result = UnifiedTransferCatalog.query(listOf(
+            EnvironmentTransferSnapshot(phone, EnvironmentAvailability.LIVE, true, 1L, listOf(
+                row(phone, '1', Long.MAX_VALUE, Long.MAX_VALUE),
+                row(phone, '2', 1L, 1L)
+            ))
+        ), UnifiedTransferQuery())
+        val totals = UnifiedTransferTotals.of(result)
+        assertEquals(Long.MAX_VALUE, totals.downloadBytesPerSecond)
+        assertEquals(Long.MAX_VALUE, totals.uploadBytesPerSecond)
+        assertTrue(totals.downloadTotalBeyondRange)
+        assertTrue(totals.uploadTotalBeyondRange)
+        assertEquals(
+            "Live total: ↓ exceeds reporting range · ↑ exceeds reporting range across 2 transfers",
+            combinedTotalsText(totals)
+        )
+    }
+
+    @Test fun exactLongMaximumIsStillAReportedKnownRate() {
+        val result = UnifiedTransferCatalog.query(listOf(
+            EnvironmentTransferSnapshot(phone, EnvironmentAvailability.LIVE, true, 1L,
+                listOf(row(phone, '3', Long.MAX_VALUE, 0L)))
+        ), UnifiedTransferQuery())
+        val totals = UnifiedTransferTotals.of(result)
+        assertEquals(Long.MAX_VALUE, totals.downloadBytesPerSecond)
+        assertFalse(totals.downloadTotalBeyondRange)
+        assertEquals(0L, totals.uploadBytesPerSecond)
+        assertFalse(totals.uploadTotalBeyondRange)
+        assertTrue(combinedTotalsText(totals).contains("↑ 0 B/s"))
+    }
+
     @Test fun aMissingSavedEnvironmentIsCountedAsNotIncluded() {
         val result = UnifiedTransferCatalog.query(emptyList(),
             UnifiedTransferQuery(scope = EnvironmentViewScope.Only(setOf(live))))

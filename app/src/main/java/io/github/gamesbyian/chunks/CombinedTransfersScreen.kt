@@ -810,7 +810,10 @@ private fun EnvironmentColourChooser(
 
 /** Live-only totals in words, saying what is unknown or left out. */
 internal fun combinedTotalsText(t: io.github.gamesbyian.chunks.model.UnifiedTransferTotals): String =
-    "Live total: ↓ " + Units.bytes(t.downloadBytesPerSecond) + "/s · ↑ " + Units.bytes(t.uploadBytesPerSecond) +
-        "/s across ${t.liveRows} transfers" +
+    "Live total: ↓ " + (if (t.downloadTotalBeyondRange) "exceeds reporting range"
+                         else Units.bytes(t.downloadBytesPerSecond) + "/s") +
+        " · ↑ " + (if (t.uploadTotalBeyondRange) "exceeds reporting range"
+                    else Units.bytes(t.uploadBytesPerSecond) + "/s") +
+        " across ${t.liveRows} transfers" +
         (if (t.rowsWithUnknownRate > 0) " · ${t.rowsWithUnknownRate} with rates not reported" else "") +
         (if (t.excludedEnvironments > 0) " · ${t.excludedEnvironments} environment(s) excluded (not fully observed)" else "")
