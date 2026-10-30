@@ -5,6 +5,8 @@
 
 The [documentation architecture and authoring standard](DOCUMENTATION-STANDARD.md) defines the authority of each document and how agents maintain it. This index is navigation, **not another specification**.
 
+**Start UX work with [the canonical interaction contract](UX.md)**: shared philosophy and state grammar → navigation/Add/transfers/files/privacy/accessibility journeys → focused feature contracts. The [2026-10-30 UX integration audit](UX-INTEGRATION-AUDIT-2026-10-30.md) records contradictions, migration coverage and overlapping PR reconciliation; it is an audit receipt, not a second UX authority.
+
 ## Agent entry points
 
 - [Android TV and multi-backend remote roadmap](ANDROID-TV-AND-REMOTE-BACKENDS.md): binding future TV UX, protocol adapter generalization, BiglyBT reuse/license audit, stage gates; deferred until foundational acceptance.
