@@ -25,7 +25,7 @@ import org.libtorrent4j.TorrentBuilder
 @RunWith(AndroidJUnit4::class)
 class CombinedPhoneBatchInstrumentedTest {
     private val context get() = InstrumentationRegistry.getInstrumentation().targetContext
-    private val work by lazy { File(context.filesDir, "combined-batch-test").apply { deleteRecursively(); mkdirs() } }
+    private val work by lazy { File(requireNotNull(LocalEngineHolder.appDownloads(context)), "combined-batch-test").apply { deleteRecursively(); mkdirs() } }
     private var hash: String? = null
 
     @After fun tearDown() {
