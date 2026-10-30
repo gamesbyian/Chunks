@@ -1,6 +1,9 @@
 package io.github.gamesbyian.chunks
 
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -169,6 +172,85 @@ class CombinedTransfersScreenTest {
         rule.onNodeWithText(serverEnvironmentLabel(aliasScope) + ": 1 confirmed stopped.").assertExists()
         assertEquals(listOf("1".repeat(40) to false), commands)
         rule.onRoot().captureRoboImage("build/chunks-visual/combined-batch-result.png")
+    }
+
+    @Test fun oldAccountBatchConfirmationCannotBeReusedForSameHashOnAnotherAccount() {
+        CombinedViewPreferences(context).save(io.github.gamesbyian.chunks.model.UnifiedTransferQuery())
+        val sessionA = Any()
+        val sessionB = Any()
+        val sourceA = CombinedServerSource(aliasScope, rows, stale = false, fullView = true,
+            observedAtEpochMillis = System.currentTimeMillis(), lifecycle = gate,
+            authenticatedSession = sessionA)
+        val bCommands = mutableListOf<Pair<String, Boolean>>()
+        var bSettles = 0
+        val gateB = CombinedServerLifecycle(begin = { true }, settled = { bSettles++ },
+            setStarted = { hash, on ->
+                bCommands += hash to on
+                io.github.gamesbyian.chunks.rpc.LifecycleOutcome.Verified(on)
+            })
+        var active by mutableStateOf(sourceA)
+        rule.setContent {
+            ChunksTheme { Surface(color = ChunksColors.Background) {
+                CombinedTransfersScreen(server = active, savedProfiles = emptyList(),
+                    onOpenPhone = {}, onOpenServer = {}, onBack = {})
+            } }
+        }
+        rule.onNodeWithText("Select…").performClick()
+        rule.onNodeWithContentDescription("Select Big Archive on " + serverEnvironmentLabel(aliasScope))
+            .performScrollTo().performClick()
+        rule.onNodeWithText("Stop…").performScrollTo().performClick()
+        rule.onNodeWithText("Stop selected").assertExists()
+        assertTrue(commands.isEmpty())
+        rule.runOnIdle {
+            active = CombinedServerSource(otherScope, rows, stale = false, fullView = true,
+                observedAtEpochMillis = System.currentTimeMillis(), lifecycle = gateB,
+                authenticatedSession = sessionB)
+        }
+        rule.onNodeWithText("Stop selected").assertDoesNotExist()
+        rule.onNodeWithText("1 selected").assertDoesNotExist()
+        rule.onNodeWithText("Select…").assertExists()
+        assertTrue("No command may follow an account switch without a new review", commands.isEmpty())
+        assertTrue(bCommands.isEmpty())
+
+        // Reconnect to the same account also retires the new session's
+        // selection even though both its hash and authenticated scope match.
+        rule.onNodeWithText("Select…").performClick()
+        rule.onNodeWithContentDescription("Select Big Archive on " + serverEnvironmentLabel(otherScope))
+            .performScrollTo().performClick()
+        rule.onNodeWithText("Stop…").performScrollTo().performClick()
+        rule.onNodeWithText("Stop selected").assertExists()
+        rule.runOnIdle { active = active.copy(authenticatedSession = Any()) }
+        rule.onNodeWithText("Stop selected").assertDoesNotExist()
+        rule.onNodeWithText("Select…").assertExists()
+        assertEquals(0, bSettles)
+        assertTrue(bCommands.isEmpty())
+    }
+
+    @Test fun changedSavedAccountScopeRetiresPendingServerSelection() {
+        CombinedViewPreferences(context).save(io.github.gamesbyian.chunks.model.UnifiedTransferQuery())
+        var profile by mutableStateOf(other)
+        rule.setContent {
+            ChunksTheme { Surface(color = ChunksColors.Background) {
+                CombinedTransfersScreen(
+                    server = CombinedServerSource(aliasScope, rows, stale = false, fullView = true,
+                        observedAtEpochMillis = System.currentTimeMillis(), lifecycle = gate,
+                        authenticatedSession = "live-session"),
+                    savedProfiles = listOf(profile),
+                    onOpenPhone = {}, onOpenServer = {}, onBack = {})
+            } }
+        }
+        rule.onNodeWithText("Select…").performClick()
+        rule.onNodeWithContentDescription("Select Big Archive on " + serverEnvironmentLabel(aliasScope))
+            .performScrollTo().performClick()
+        rule.onNodeWithText("Stop…").performScrollTo().performClick()
+        rule.onNodeWithText("Stop selected").assertExists()
+        rule.runOnIdle {
+            // Same saved roster slot, different authenticated endpoint/account.
+            profile = profile.copy(aliasScope = "https://rotated.example/RPC2\\u0000replacement")
+        }
+        rule.onNodeWithText("Stop selected").assertDoesNotExist()
+        rule.onNodeWithText("1 selected").assertDoesNotExist()
+        assertTrue(commands.isEmpty())
     }
 
     @Test fun environmentColourChoicePersistsAndRestores() {
