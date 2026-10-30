@@ -9,6 +9,7 @@ import java.nio.channels.FileChannel
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.StandardOpenOption
+import java.nio.file.attribute.BasicFileAttributes
 
 /**
  * "Seed a copy on this phone" for a created torrent. The phone engine can only
@@ -61,21 +62,39 @@ internal object CreateSeedCopy {
             return Outcome.Refused("Not enough free space here for a copy. Nothing was copied.")
 
         val single = request.entries.size == 1 && request.entries[0].path == listOf(request.name)
-        val ownedFiles = ArrayList<java.nio.file.Path>()
-        val ownedDirs = ArrayList<java.nio.file.Path>()
+        // A created pathname can be replaced by another process while a
+        // FileChannel is still open. Cleanup must prove the current entry is
+        // the one this invocation created, not simply trust the pathname.
+        data class OwnedPath(val path: java.nio.file.Path, val fileKey: Any?)
+        fun keyAt(path: java.nio.file.Path): Any? = try {
+            Files.readAttributes(path, BasicFileAttributes::class.java,
+                LinkOption.NOFOLLOW_LINKS).fileKey()
+        } catch (_: Exception) { null }
+        fun definitelyOwned(entry: OwnedPath, directory: Boolean): Boolean = try {
+            val attributes = Files.readAttributes(entry.path,
+                BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
+            entry.fileKey != null && entry.fileKey == attributes.fileKey() &&
+                (if (directory) attributes.isDirectory else attributes.isRegularFile)
+        } catch (_: Exception) { false }
+        val rootKey = keyAt(base) ?: return Outcome.Refused(
+            "The copy destination cannot prove filesystem identity. Nothing was copied.")
+        val ownedFiles = ArrayList<OwnedPath>()
+        val ownedDirs = ArrayList<OwnedPath>()
         val ownedDirSet = HashSet<java.nio.file.Path>()
         // A previously created directory may be replaced by a link while
         // copying. Refuse any further writes OR cleanup through that link.
         // This is an observation gate, not an atomic defense against races.
         fun parentChainStillDirect(path: java.nio.file.Path): Boolean = try {
             if (!Files.isDirectory(base, LinkOption.NOFOLLOW_LINKS) ||
-                Files.isSymbolicLink(base)) false
+                Files.isSymbolicLink(base) || keyAt(base) != rootKey) false
             else {
                 var parent = path.parent
                 var direct = true
                 while (parent != null && parent.startsWith(targetPath)) {
+                    val created = ownedDirs.firstOrNull { it.path == parent }
                     if (Files.isSymbolicLink(parent) ||
-                        !Files.isDirectory(parent, LinkOption.NOFOLLOW_LINKS)) {
+                        !Files.isDirectory(parent, LinkOption.NOFOLLOW_LINKS) ||
+                        (created != null && !definitelyOwned(created, directory = true))) {
                         direct = false
                         break
                     }
@@ -88,21 +107,26 @@ internal object CreateSeedCopy {
         // folder that could now contain someone else's files.
         fun cleanup(): Boolean {
             var clear = true
-            for (path in ownedFiles.asReversed()) {
+            for (entry in ownedFiles.asReversed()) {
                 try {
-                    if (!parentChainStillDirect(path) || Files.isSymbolicLink(path)) {
+                    if (!parentChainStillDirect(entry.path) ||
+                        !definitelyOwned(entry, directory = false)) {
                         clear = false
                         continue
                     }
-                    Files.deleteIfExists(path)
-                    if (!Files.notExists(path, LinkOption.NOFOLLOW_LINKS)) clear = false
+                    Files.deleteIfExists(entry.path)
+                    if (!Files.notExists(entry.path, LinkOption.NOFOLLOW_LINKS)) clear = false
                 } catch (_: Exception) { clear = false }
             }
-            for (path in ownedDirs.asReversed()) {
+            for (entry in ownedDirs.asReversed()) {
                 try {
-                    if (Files.isSymbolicLink(path)) { clear = false; continue }
-                    Files.deleteIfExists(path) // fails if unowned entries appeared
-                    if (!Files.notExists(path, LinkOption.NOFOLLOW_LINKS)) clear = false
+                    if (!parentChainStillDirect(entry.path) ||
+                        !definitelyOwned(entry, directory = true)) {
+                        clear = false
+                        continue
+                    }
+                    Files.deleteIfExists(entry.path) // fails if unowned entries appeared
+                    if (!Files.notExists(entry.path, LinkOption.NOFOLLOW_LINKS)) clear = false
                 } catch (_: Exception) { clear = false }
             }
             return clear
@@ -113,7 +137,8 @@ internal object CreateSeedCopy {
                 // Exclusive directory creation prevents reusing a foreign
                 // folder (or a pre-existing dangling symlink).
                 Files.createDirectory(targetPath)
-                ownedDirs.add(targetPath)
+                ownedDirs.add(OwnedPath(targetPath, keyAt(targetPath)))
+                check(ownedDirs.last().fileKey != null) { "New folder identity is unavailable" }
                 ownedDirSet.add(targetPath)
             }
             var copied = 0L
@@ -124,7 +149,10 @@ internal object CreateSeedCopy {
                         parent = parent.resolve(segment)
                         if (ownedDirSet.add(parent)) {
                             Files.createDirectory(parent)
-                            ownedDirs.add(parent)
+                            ownedDirs.add(OwnedPath(parent, keyAt(parent)))
+                            check(ownedDirs.last().fileKey != null) {
+                                "New folder identity is unavailable"
+                            }
                         }
                     }
                     parent.resolve(entry.path.last())
@@ -139,7 +167,10 @@ internal object CreateSeedCopy {
                 // descriptor. No predictable .chunks-part file or rename.
                 FileChannel.open(path, StandardOpenOption.CREATE_NEW,
                     StandardOpenOption.WRITE, LinkOption.NOFOLLOW_LINKS).use { out ->
-                    ownedFiles.add(path)
+                    ownedFiles.add(OwnedPath(path, keyAt(path)))
+                    check(ownedFiles.last().fileKey != null) {
+                        "New file identity is unavailable"
+                    }
                     entry.open().use { input ->
                         val buffer = ByteArray(64 * 1024)
                         var zeroReads = 0
@@ -172,8 +203,9 @@ internal object CreateSeedCopy {
                     }
                     out.force(true)
                 }
-                check(parentChainStillDirect(path)) {
-                    "Copy destination changed while writing"
+                check(parentChainStillDirect(path) &&
+                    definitelyOwned(ownedFiles.last(), directory = false)) {
+                    "Copy output or destination changed while writing"
                 }
                 val written = path.toFile()
                 TorrentMetainfoBuilder.Entry(entry.path, written.length()) { written.inputStream() }
