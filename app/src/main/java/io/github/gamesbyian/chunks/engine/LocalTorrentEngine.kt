@@ -156,6 +156,17 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     /** Explicit Add-and-start consent while magnet metadata is still unresolved. */
     private val startWhenMetadataArrives: MutableSet<String> = ConcurrentHashMap.newKeySet()
     private val magnetCollisionProblems = ConcurrentHashMap<String, String>()
+    // A checked .torrent Add is stopped; another writer may plant a foreign
+    // payload file before the FIRST Start. Keep that admission pending until
+    // native Start is actually submitted. This is session-only and does NOT
+    // prove post-Start/Stop or process-restart ownership.
+    private data class CheckedFirstStart(val saveDirectory: File, val paths: List<String>)
+    private val checkedFirstStarts = ConcurrentHashMap<String, CheckedFirstStart>()
+    private val checkedStartProblems = ConcurrentHashMap<String, String>()
+    // A different stopped checked job may target the same EMPTY native paths.
+    // Reserve declared paths through Start/Stop, not just until the first Start.
+    // This in-session exclusion is NOT a durable native ownership boundary.
+    private val checkedPayloadReservations = LocalCheckedPayloadReservations()
     // Metadata-ready upload-only magnets are intentionally persisted paused;
     // native UPLOAD_MODE remains their durable don't-write-payload marker.
     // The next explicit Start rechecks paths, including after process restart.
@@ -213,7 +224,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         synchronized(handles) {
             if (!started || handles[key] != handle || !handle.isValid || !awaitingMetadata.remove(key)) return
             val autoStart = startWhenMetadataArrives.remove(key)
-            val problem = inspectMagnetCollision(handle)
+            val problem = inspectMagnetCollision(key, handle)
             if (problem != null) magnetCollisionProblems[key] = problem
             else magnetCollisionProblems.remove(key)
             if (problem != null || !autoStart) {
@@ -229,7 +240,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         }
     }
 
-    private fun inspectMagnetCollision(handle: TorrentHandle): String? {
+    private fun inspectMagnetCollision(key: String, handle: TorrentHandle): String? {
         val paths = try {
             val info = handle.torrentFile() ?: return "Metadata file layout is unavailable"
             val files = info.files()
@@ -240,13 +251,25 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                 .filterNot { files.padFileAt(it) }.map { files.filePath(it) }.toList()
         } catch (_: Exception) { return "Torrent file layout cannot be inspected" }
         if (paths.isEmpty()) return "Torrent has no inspectable payload files"
-        return when (val survey = LocalPayloadCollisionSurvey.inspect(File(handle.savePath()), paths)) {
-            is LocalPayloadCollisionSurvey.Result.ClearAtObservation -> null
+        val root = File(handle.savePath())
+        when (val survey = LocalPayloadCollisionSurvey.inspect(root, paths)) {
+            is LocalPayloadCollisionSurvey.Result.ClearAtObservation -> Unit
             is LocalPayloadCollisionSurvey.Result.ExistingPaths ->
-                "Existing files conflict with this magnet (" + survey.total +
+                return "Existing files conflict with this magnet (" + survey.total +
                     " path(s)); choose a clean destination or review existing data"
             is LocalPayloadCollisionSurvey.Result.Unknown ->
-                "Cannot verify magnet payload paths: " + survey.problem
+                return "Cannot verify magnet payload paths: " + survey.problem
+        }
+        // Metadata becomes available asynchronously. The first metadata
+        // callback or explicit Start MUST reserve prospective writer paths
+        // before removing UPLOAD_MODE. Otherwise a checked .torrent can hold
+        // the same currently empty names and both native handles may write.
+        // Rechecking an already reserved magnet at Start must not block itself.
+        return when (val admission = checkedPayloadReservations.reserve(
+            key, root, paths, allowExistingOwner = true
+        )) {
+            LocalCheckedPayloadReservations.Result.Reserved -> null
+            is LocalCheckedPayloadReservations.Result.Refused -> admission.problem
         }
     }
 
@@ -380,7 +403,35 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                 return LocalAddResult.Refused("Cannot verify download file paths: " +
                     survey.problem + ". Nothing added.")
         }
-        return addStopped(torrentBytes, saveDirectory, peers)
+        val key = identity(info)
+        if (handles.containsKey(key) || session.find(info.infoHash())?.isValid == true)
+            return LocalAddResult.Refused("This torrent is already in the local engine")
+        // Register BEFORE native Add. A failed resume-file fsync may throw after
+        // libtorrent registered a stopped handle: the UI can still discover it.
+        // That partially admitted handle must never evade the first-Start fence.
+        when (val reservation = checkedPayloadReservations.reserve(key, saveDirectory, paths)) {
+            LocalCheckedPayloadReservations.Result.Reserved -> Unit
+            is LocalCheckedPayloadReservations.Result.Refused ->
+                return LocalAddResult.Refused(reservation.problem + ". Nothing added.")
+        }
+        val admission = CheckedFirstStart(saveDirectory, paths)
+        checkedFirstStarts[key] = admission
+        try {
+            val added = addStopped(torrentBytes, saveDirectory, peers)
+            if (added !is LocalAddResult.AddedStopped && !handles.containsKey(key)) {
+                checkedFirstStarts.remove(key, admission)
+                checkedPayloadReservations.release(key)
+            }
+            return added
+        } catch (failure: Exception) {
+            // A failed resume write can leave a real native handle registered.
+            // Retain BOTH fences unless the native job is definitely absent.
+            if (!handles.containsKey(key)) {
+                checkedFirstStarts.remove(key, admission)
+                checkedPayloadReservations.release(key)
+            }
+            throw failure
+        }
     }
 
     /**
@@ -463,6 +514,11 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             return LocalAddResult.Refused("Choose an existing folder for this download")
         val hash = magnetIdentity(magnet) ?: return LocalAddResult.Refused("Use a magnet link with exactly one v1 info hash")
         if (handles.containsKey(hash)) return LocalAddResult.Refused("This torrent is already in the local engine")
+        // The previous handle may have been removed from the visible list
+        // while native disk I/O still holds it. Its path claims are tombstoned
+        // until session shutdown; do not resurrect the same hash via a magnet.
+        if (checkedPayloadReservations.hasReservation(hash))
+            return LocalAddResult.Refused("A previous download still reserves this destination until the engine restarts")
         val params = try { AddTorrentParams.parseMagnetUri(magnet) } catch (_: RuntimeException) {
             return LocalAddResult.Refused("This magnet link could not be read")
         }
@@ -508,10 +564,34 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             // status() caches metadata for 500 ms. Query the same fresh native
             // flags as snapshot(), including persisted upload-only on restart.
             val state = handle.status(TorrentHandle.QUERY_NAME)
+            checkedFirstStarts[key]?.let { pending ->
+                // Add's earlier ClearAtObservation is not permission to write
+                // during a later Start. Re-survey the exact recorded native
+                // destination while the handle's Start and metadata callback
+                // share this monitor. Unknown also refuses.
+                val problem = if (File(handle.savePath()).absolutePath !=
+                    pending.saveDirectory.absolutePath) {
+                    "Download destination changed since Add; Start refused"
+                } else when (val survey = LocalPayloadCollisionSurvey.inspect(
+                    pending.saveDirectory, pending.paths
+                )) {
+                    is LocalPayloadCollisionSurvey.Result.ClearAtObservation -> null
+                    is LocalPayloadCollisionSurvey.Result.ExistingPaths ->
+                        "Files appeared since Add (" + survey.total +
+                            " path(s)); Start refused to protect existing data"
+                    is LocalPayloadCollisionSurvey.Result.Unknown ->
+                        "Cannot verify file paths before Start: " + survey.problem
+                }
+                if (problem != null) {
+                    checkedStartProblems[key] = problem
+                    return@command false
+                }
+                checkedStartProblems.remove(key)
+            }
             if (state.hasMetadata() &&
                 (state.flags().and_(org.libtorrent4j.TorrentFlags.UPLOAD_MODE).non_zero() ||
                     magnetCollisionProblems.containsKey(key))) {
-                val problem = inspectMagnetCollision(handle)
+                val problem = inspectMagnetCollision(key, handle)
                 if (problem != null) {
                     magnetCollisionProblems[key] = problem
                     return@command false
@@ -526,6 +606,9 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             }
             if (awaitingMetadata.contains(key)) startWhenMetadataArrives.add(key)
             handle.resume()
+            // Only after native Start submission: an exception keeps the gate.
+            // Future Stop/Start and process restoration remain separate P0.
+            checkedFirstStarts.remove(key)
             true
         }
 
@@ -1081,6 +1164,11 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         awaitingMetadata.remove(key)
         startWhenMetadataArrives.remove(key)
         magnetCollisionProblems.remove(key)
+        checkedFirstStarts.remove(key)
+        checkedStartProblems.remove(key)
+        // remove_torrent is non-blocking: the old native handle may still
+        // have queued payload I/O. Keep its path claim as a tombstone until
+        // session.stop() joins native work; immediate reuse is unsafe.
         pendingFlushes.cancel(key, handle)
         pendingSaves.cancel(key, handle)
         val saved = config.stateDirectory?.let { File(it, "$key.resume") } ?: return true
@@ -1179,7 +1267,12 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         awaitingMetadata.clear()
         startWhenMetadataArrives.clear()
         magnetCollisionProblems.clear()
+        checkedFirstStarts.clear()
+        checkedStartProblems.clear()
         session.stop()
+        // The native session has stopped before its in-process path claims
+        // are discarded. This does not grant ownership to any restored job.
+        checkedPayloadReservations.clear()
         started = false
     }
 
@@ -1256,7 +1349,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             metadataKnown = status.hasMetadata(),
             uploadOnly = status.flags().and_(org.libtorrent4j.TorrentFlags.UPLOAD_MODE).non_zero(),
             savePath = handle.savePath(),
-            error = magnetCollisionProblems[hash] ?: error,
+            error = checkedStartProblems[hash] ?: magnetCollisionProblems[hash] ?: error,
             trackers = trackerSummary(handle),
             downloadPayloadRateBytesPerSecond = status.downloadPayloadRate().coerceAtLeast(0),
             uploadPayloadRateBytesPerSecond = status.uploadPayloadRate().coerceAtLeast(0),
