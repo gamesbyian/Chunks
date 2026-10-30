@@ -304,8 +304,8 @@ internal fun CombinedTransfersScreen(
     val requestedPrivacyScopes = remember(serverPrivacyScope, savedPrivacyScopes) {
         buildSet {
             add(phonePrivacyScope)
-            serverPrivacyScope?.let(::add)
-            savedPrivacyScopes.values.filterNotNull().forEach(::add)
+            serverPrivacyScope?.let { add(it) }
+            savedPrivacyScopes.values.filterNotNull().forEach { add(it) }
         }
     }
     var loadedPrivacy by remember { mutableStateOf<CombinedPrivacyEvidence?>(null) }
