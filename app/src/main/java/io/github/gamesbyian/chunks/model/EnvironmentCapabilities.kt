@@ -61,7 +61,17 @@ data class EnvironmentCapabilitySnapshot(
             EnvironmentAvailability.STALE -> return Decision(false, "Transfer list is out of date; refresh first")
             EnvironmentAvailability.LIVE -> Unit
         }
-        return when (of(operation)) {
+        val proof = of(operation)
+        // This DTO can be constructed by callers and must not elevate a
+        // mistyped server snapshot into bundled-phone command authority.
+        if (proof == CapabilityEvidence.BUILT_IN &&
+            (environment != EnvironmentSnapshots.PHONE || source != "phone engine")) {
+            return Decision(false, "${operation.label}: capability evidence belongs to the wrong engine type")
+        }
+        if (proof == CapabilityEvidence.ADVERTISED && environment == EnvironmentSnapshots.PHONE) {
+            return Decision(false, "${operation.label}: a server advertisement cannot authorize the phone engine")
+        }
+        return when (proof) {
             CapabilityEvidence.BUILT_IN -> Decision(true, "${operation.label}: built into the phone engine")
             CapabilityEvidence.ADVERTISED -> Decision(true, "${operation.label}: advertised by $source; checked again when used")
             CapabilityEvidence.UNKNOWN -> Decision(true, "${operation.label}: not pre-checked on $source; the result is verified when used")
