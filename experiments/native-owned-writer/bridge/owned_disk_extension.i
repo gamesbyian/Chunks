@@ -10,7 +10,7 @@
 // Merely loading a second library is unsafe: the session constructor in the
 // original torrent4j binary would continue using default disk I/O.
 %{
-#include "chunks/owned_libtorrent_disk.h"
+#include "chunks/bridge/owned_libtorrent_disk.h"
 #include <stdexcept>
 %}
 
