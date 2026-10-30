@@ -7,14 +7,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import androidx.test.uiautomator.By
-import androidx.test.uiautomator.UiDevice
-import androidx.test.uiautomator.Until
-import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Rule
@@ -22,10 +18,10 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Android 10's REAL system permission dialog, reached from the phone screen's
- * own "Allow storage access" button: the user taps the button, then Allow, and
- * the picker re-probes and switches to Downloads/Chunks Downloads. Must run on
- * a fresh install (no prior grant); the API 29 workflow runs it first, alone.
+ * P0 non-clobber containment regression on Android 10. No user permission
+ * should grant the current native libtorrent backend authority to write
+ * arbitrary shared Downloads paths. This replaces the former permission-
+ * dialog test while direct public backing is quarantined.
  */
 @RunWith(AndroidJUnit4::class)
 class Android10StoragePermissionDialogInstrumentedTest {
@@ -36,28 +32,21 @@ class Android10StoragePermissionDialogInstrumentedTest {
         context.checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED
     }
 
-    @Test fun allowingTheSystemDialogSwitchesNewAddsToSharedDownloads() {
+    @Test fun publicNativeBackingDoesNotRequestStoragePermissionOrBecomeDefault() {
         assumeTrue("Android 10 only", Build.VERSION.SDK_INT == Build.VERSION_CODES.Q)
-        assumeTrue("Needs a fresh install without the storage grant", !granted())
+        assumeTrue("Permission-negative control requires a fresh ungranted install", !granted())
         rule.setContent { MaterialTheme { LocalEngineScreen() } }
-
         val button = "Allow storage access for Downloads/" + LocalDownloadPlaces.PUBLIC_FOLDER_NAME
-        rule.waitUntil(30_000) { rule.onAllNodesWithText(button).fetchSemanticsNodes().isNotEmpty() }
-        rule.onNodeWithText("Saves to: Chunks app folder").assertExists()
-        rule.onNodeWithText(button).performScrollTo().performClick()
-
-        // The platform permission controller, not Chunks, draws this dialog.
-        val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
-        val allow = device.wait(Until.findObject(
-            By.res("com.android.permissioncontroller", "permission_allow_button")), 20_000)
-        assertNotNull("Android's storage permission dialog did not appear", allow)
-        allow.click()
 
         rule.waitUntil(30_000) {
-            rule.onAllNodesWithText("Saves to: Downloads/" + LocalDownloadPlaces.PUBLIC_FOLDER_NAME)
+            rule.onAllNodesWithText("Saves to: Chunks app folder")
                 .fetchSemanticsNodes().isNotEmpty()
         }
-        assertTrue("Both storage permissions are granted after Allow", granted())
         rule.onNodeWithText(button).assertDoesNotExist()
+        val choices = LocalDownloadPlaces.choices(context)
+        val shared = choices.single { it.place.kind == LocalPlaceKind.PUBLIC_DOWNLOADS }
+        assertFalse("Shared writer must be disabled even when permissions could be granted", shared.verified)
+        assertNull(LocalDownloadPlaces.materialize(shared.place))
+        assertTrue("Viewing the screen must not request storage permissions", !granted())
     }
 }
