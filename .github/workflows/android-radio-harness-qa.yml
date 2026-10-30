@@ -5,6 +5,8 @@ on:
     paths:
       - "tools/android_public_swarm_netflap.sh"
       - "tools/android_public_swarm.sh"
+      - "tools/android_public_swarm_interrupt.sh"
+      - "tools/test_android_public_swarm_interrupt_mock.sh"
       - "tools/test_android_public_swarm_mock.sh"
       - "tools/android_radio_baseline.sh"
       - "tools/test_android_radio_baseline.sh"
@@ -37,3 +39,5 @@ jobs:
         run: bash tools/test_android_public_swarm_netflap_mock.sh
       - name: Reject false baseline public-peer acceptance (offline)
         run: bash tools/test_android_public_swarm_mock.sh
+      - name: Reject false interrupted-peer recovery (offline)
+        run: bash tools/test_android_public_swarm_interrupt_mock.sh
