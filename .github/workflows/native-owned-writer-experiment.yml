@@ -149,3 +149,18 @@ jobs:
           set -e
           test "$failure_status" -eq 86
           timeout 30 "$build/chunks_owned_session_smoke"
+      - name: Compile forked libtorrent4j Java sources and create real owned JNI session
+        run: |
+          set -euo pipefail
+          upstream="$RUNNER_TEMP/chunks-libtorrent4j"
+          build="$RUNNER_TEMP/chunks-owned-jni-host-build"
+          java_out="$RUNNER_TEMP/chunks-owned-java-classes"
+          mkdir -p "$java_out" "$RUNNER_TEMP/chunks-owned-java-fixture"
+          find "$upstream/src/main/java" -name '*.java' -print0 | \
+            xargs -0 javac --release 8 -d "$java_out" \
+              experiments/native-owned-writer/bridge/ChunksOwnedJniSmoke.java
+          timeout 35 java \
+            -Dlibtorrent4j.jni.path="$build/libtorrent4j.so" \
+            -cp "$java_out" ChunksOwnedJniSmoke \
+            "$RUNNER_TEMP/chunks-owned-java-fixture"
+
