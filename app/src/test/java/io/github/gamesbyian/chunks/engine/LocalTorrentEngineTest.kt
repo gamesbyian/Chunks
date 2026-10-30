@@ -466,6 +466,52 @@ class LocalTorrentEngineTest {
         assertArrayEquals(expected, File(source, "payload.bin").readBytes())
     }
 
+    @Test fun activeCheckedPriorityWritersRefuseNewForeignSkippedFileBeforeNativeWrite() {
+        val fixture = fixture()
+        val root = temp.newFolder("active-checked-priority-destination")
+        val receiver = engine()
+        val checked = added(receiver.addStoppedChecked(fixture.torrent, root))
+        val files = requireNotNull(receiver.files(checked.infoHash))
+        val skipped = files.single { it.path.endsWith("/extras/notes.txt") }
+        assertEquals(LocalCommandOutcome.VERIFIED,
+            receiver.setFileWanted(checked.infoHash, skipped.index, false))
+        assertEquals(LocalCommandOutcome.VERIFIED,
+            receiver.resume(checked.infoHash).outcome)
+
+        val foreign = File(root, "Chunks public fixture/extras/notes.txt")
+        assertTrue(foreign.parentFile.mkdirs() || foreign.parentFile.isDirectory)
+        val planted = "Unrelated local app data: not torrent payload".toByteArray()
+        foreign.writeBytes(planted)
+
+        val observed = requireNotNull(receiver.files(checked.infoHash))
+        val episode = observed.single { it.path.endsWith("/episode.bin") }
+        val policy = FinishInOrderPlanner.policyFor(
+            FinishInOrderPlanner.Mode.BALANCED, observed, observed.map { it.index })
+        val record = FinishInOrderRecord(policy)
+        assertEquals("Finish in Order must not bypass a blocked checked path",
+            LocalFileBatchOutcome.STALE_REVIEW,
+            receiver.applyFinishInOrder(checked.infoHash, record,
+                listOf(FinishInOrderPlanner.Change(episode.index, episode.priority, 7))))
+        assertEquals(episode.priority,
+            requireNotNull(receiver.files(checked.infoHash))
+                .single { it.index == episode.index }.priority)
+        assertEquals(LocalCommandOutcome.REFUSED,
+            receiver.setFileWanted(checked.infoHash, skipped.index, true))
+        assertTrue("The user must see an explicit safety refusal",
+            requireNotNull(receiver.status(checked.infoHash)).error.orEmpty()
+                .contains("no verified native bytes"))
+        assertArrayEquals("Neither active native-priority control may clobber unrelated bytes",
+            planted, foreign.readBytes())
+
+        assertEquals(LocalCommandOutcome.VERIFIED, receiver.pause(checked.infoHash).outcome)
+        assertEquals(LocalCommandOutcome.REFUSED,
+            receiver.setFileWanted(checked.infoHash, skipped.index, true))
+        assertArrayEquals(planted, foreign.readBytes())
+        assertEquals(LocalCommandOutcome.REFUSED, receiver.resume(checked.infoHash).outcome)
+        assertArrayEquals("Stop, selection and refused Start preserve foreign bytes",
+            planted, foreign.readBytes())
+    }
+
     @Test fun checkedPostStopRestartRefusesForeignSkippedFileThenDownloadsAfterClear() {
         val sourceParent = temp.newFolder("checked-post-stop-source")
         val sourceRoot = File(sourceParent, "Stopped checked fixture").apply { mkdirs() }
