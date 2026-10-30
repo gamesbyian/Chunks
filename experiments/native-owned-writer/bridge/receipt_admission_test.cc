@@ -22,6 +22,7 @@ struct Case {
     assert(path);
     base=path; receipts=base/"private";
     fs::create_directories(receipts);
+    fs::permissions(receipts, fs::perms::owner_all, fs::perm_options::replace);
   }
   ~Case() { fs::remove_all(base); }
   void add(std::string const& name) {
@@ -105,6 +106,13 @@ int main() {
   {
     Case c; c.add(A);
     std::string error;
+    assert(ClassifyNativeAdmission(c.receipts.string(),c.layout(),&error)==
+           NativeAdmissionMode::REFUSED);
+    assert(!error.empty()); ++passed;
+  }
+  {
+    Case c; std::string error;
+    fs::permissions(c.receipts, fs::perms::all, fs::perm_options::replace);
     assert(ClassifyNativeAdmission(c.receipts.string(),c.layout(),&error)==
            NativeAdmissionMode::REFUSED);
     assert(!error.empty()); ++passed;
