@@ -35,7 +35,7 @@ class LocalEngineProcessDeathInstrumentedTest {
     private val instrumentation get() = InstrumentationRegistry.getInstrumentation()
     private val context get() = instrumentation.targetContext
     private val phase get() = InstrumentationRegistry.getArguments().getString("chunksDeathPhase")
-    private val work get() = File(context.filesDir, "process-death-test")
+    private val work get() = File(requireNotNull(LocalEngineHolder.appDownloads(context)), "process-death-test")
     private val marker get() = File(context.filesDir, "process-death-test.marker")
     private val notifications get() = context.getSystemService(NotificationManager::class.java)
 
