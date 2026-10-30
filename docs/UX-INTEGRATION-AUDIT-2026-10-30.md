@@ -1,6 +1,6 @@
 # UX coherence and consolidation audit (2026-10-30)
 
-**Type:** dated non-normative reconciliation record; this is **not** another design authority or executable queue. **Base:** `main` as inspected 2026-10-30, before UX/docs PR #783 and #795 merged. **Canonical result:** [UX](UX.md), with the [original pre-reconciliation wording archived with relative links normalized](archive/UX-2026-10-30-pre-reconciliation.md). **Validation status:** documentation edit only; GitHub Actions/head checks and merging remain to be reviewed. No app code, user test, physical handset or actual host behavior has been changed or tested by this work.
+**Type:** dated non-normative reconciliation record; this is **not** another design authority or executable queue. **Base:** `main` as inspected 2026-10-30, before UX/docs PR #783 and #795 merged. **Canonical result:** [UX](UX.md), with the [original pre-reconciliation wording archived with relative links normalized](archive/UX-2026-10-30-pre-reconciliation.md). **Validation status:** documentation edit only; [documentation Actions run 41143468787](https://github.com/gamesbyian/Chunks/actions/runs/41143468787) passed at exact head `4ddb158333c1fd5daed8d9bd93b0c3150e567771` after archive-link correction. Independent review, reconciliation with #783/#795 and merging remain pending. No app code, user test, physical handset or actual host behavior has been changed or tested by this work.
 
 ## Review scope and methodology
 
@@ -29,7 +29,8 @@ Reviewed the repository's live document tree, [AGENTS](../AGENTS.md), [documenta
 - [x] Job-only Copy/Move Transfer, non-clobber, per-profile scope, explicit privacy/consent, honest uncertain writes, file/Place ownership, no remote Chunks folder and deferred physical acceptance retain priority.
 - [x] The two 2026-10-30 documentation branches' concepts are represented in the shared grammar, with compatibility headings for their prospective inbound UX anchors.
 - [ ] Integrate **all non-UX hunks** from #783 and #795 and reconcile overlapping UX text by meaning, rather than merging their appended `UX.md` sections on top of this restructure.
-- [ ] Verify the proposed PR's **exact head** through the path-scoped documentation link checker and tests, then independently review the diff and its compatibility anchors before merge.
+- [x] The archive-link repair was followed by a **green exact-head** documentation validation run ([41143468787](https://github.com/gamesbyian/Chunks/actions/runs/41143468787)); any subsequent edit requires a new exact-head check. 
+- [ ] Independently review the diff and its compatibility anchors before merge.
 - [ ] Reconcile the corresponding brief PRODUCT, DECISIONS, UNIFIED-ENVIRONMENTS, WORK-QUEUE and SPEC-COVERAGE cross-references once the two overlapping PRs have landed. Avoid a second UX queue or duplicated feature contracts.
 - [ ] Later migrate any remaining dated receipt fragments from feature-level contracts into QUALITY/COVERAGE, without silently altering requirements. This is documentation hygiene, not P0 application readiness work.
 
