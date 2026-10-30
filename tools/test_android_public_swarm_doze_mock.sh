@@ -20,7 +20,14 @@ case "${1:-}" in
     printf 'device\n'
     [[ "${MOCK_GET_STATE_FAILURE:-0}" != 1 ]] || exit 1
     ;;
-  install) printf 'install\n' >> "$MOCK_DIR/commands" ;;
+  install)
+    printf 'install\n' >> "$MOCK_DIR/commands"
+    if [[ "${MOCK_INSTALL_FAILURE:-0}" == 1 ]]; then
+      printf 'Failure [INSTALL_FAILED_INVALID_APK]\n'
+    else
+      printf 'Success\n'
+    fi
+    ;;
   exec-in) cat >/dev/null ;;
   exec-out)
     [[ "$*" == *"touch files/doze-on"* ]] || exit 1
@@ -40,6 +47,7 @@ case "${1:-}" in
     if [[ "${1:-}" == "am" && "${2:-}" == "instrument" ]]; then
       printf 'instrument\n' >> "$MOCK_DIR/commands"
       printf 'INSTRUMENTATION_RESULT: stream=OK (1 test)\nOK (1 test)\n'
+      [[ "${MOCK_INSTRUMENT_FAILURE:-0}" != 1 ]] || exit 19
       exit 0
     fi
     if [[ "${1:-}" != "dumpsys" ]]; then exit 1; fi
@@ -93,6 +101,23 @@ env -u ADB_SERIAL -u ANDROID_SERIAL MOCK_LARGE_LOGCAT=1 bash "$repo/android_publ
 [[ "$(cat "$MOCK_DIR/actions")" == $'unplug\nforce-idle\nflag\nunforce\nreset' ]]
 grep -q 'deep_state=IDLE' "$temp/large.log"
 
+# An adb install may print Failure on a successful command exit; refuse
+# before altering battery or idle state.
+reset
+if env -u ADB_SERIAL -u ANDROID_SERIAL MOCK_INSTALL_FAILURE=1 bash "$repo/android_public_swarm_doze.sh" > "$temp/install-failed.log" 2>&1; then
+  echo 'False-positive Doze install accepted' >&2; exit 1
+fi
+[[ ! -s "$MOCK_DIR/actions" ]]
+[[ "$(cat "$MOCK_DIR/battery")" == normal && "$(cat "$MOCK_DIR/deep")" == ACTIVE ]]
+
+# Even a plausible OK (1 test) cannot override failed instrumentation exit.
+reset
+if env -u ADB_SERIAL -u ANDROID_SERIAL MOCK_INSTRUMENT_FAILURE=1 bash "$repo/android_public_swarm_doze.sh" > "$temp/instrument-failed.log" 2>&1; then
+  echo 'False-positive Doze instrumentation accepted' >&2; exit 1
+fi
+[[ "$(cat "$MOCK_DIR/battery")" == normal && "$(cat "$MOCK_DIR/deep")" == ACTIVE ]]
+grep -q 'CHUNKS_SWARM_DOZE deep_state=IDLE' "$temp/instrument-failed.log"
+
 # When peer warmup never reaches ready, no synthetic battery/idle mutation.
 reset
 if env -u ADB_SERIAL -u ANDROID_SERIAL MOCK_READY=0 bash "$repo/android_public_swarm_doze.sh" > "$temp/unready.log" 2>&1; then
@@ -139,4 +164,4 @@ grep -q 'selected adb device unavailable' "$temp/state-failed.log"
 [[ ! -s "$MOCK_DIR/commands" && ! -s "$MOCK_DIR/actions" ]]
 [[ "$(cat "$MOCK_DIR/battery")" == normal && "$(cat "$MOCK_DIR/deep")" == ACTIVE ]]
 
-echo 'CHUNKS_DOZE_HARNESS_TEST: selected target, success, no ready, failed state query, failed idle, failed restore, multi-device negative controls passed'
+echo 'CHUNKS_DOZE_HARNESS_TEST: selected target, success, no ready, failed state query, failed idle, failed restore, multi-device, install and failed-instrumentation negative controls passed'
