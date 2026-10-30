@@ -682,10 +682,10 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         val bitfield = (call("d.bitfield", listOf(hash)) as? String).orEmpty().trim()
         require(bitfield.all { it.isDigit() || it.lowercaseChar() in 'a'..'f' } &&
             bitfield.length.toLong() * 4 >= totalChunks) { "Invalid chunk bitfield" }
-        fun have(chunk: Long): Boolean {
-            val nibble = Character.digit(bitfield[(chunk / 4).toInt()], 16)
-            return nibble and (8 shr (chunk % 4).toInt()) != 0
-        }
+        // Index each nibble once: a malicious/malformed overlapping file
+        // inventory must not turn a bounded bitfield read into billions of
+        // per-file piece checks. All ranges are still verified individually.
+        val checkedPieces = RemoteVerifiedChunkIndex(bitfield, totalChunks)
         val rows = extractRows(call("f.multicall", listOf(hash, "", "f.path=", "f.size_bytes=",
             "f.priority=", "f.range_first=", "f.range_second=")))
         require(rows.size <= 12000) { "Too many files in torrent" }
@@ -697,7 +697,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             require(first in 0..totalChunks && second in first..totalChunks) { "Invalid file chunk range" }
             FileCompletion((c[0] as? String ?: error("Missing file path")).take(4096),
                 number(c[1]).coerceAtLeast(0), number(c[2]).toInt(),
-                completedChunks = (first until second).count { have(it) }.toLong(),
+                completedChunks = checkedPieces.completedIn(first, second),
                 sizeChunks = second - first)
         }
         guardIdentity()
