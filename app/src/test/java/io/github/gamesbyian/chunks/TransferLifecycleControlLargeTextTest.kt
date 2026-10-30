@@ -1,6 +1,10 @@
 package io.github.gamesbyian.chunks
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Surface
+import androidx.compose.ui.Modifier
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
@@ -39,6 +43,7 @@ class TransferLifecycleControlLargeTextTest {
             CompositionLocalProvider(LocalDensity provides Density(1f, scale)) {
                 ChunksTheme {
                     Surface {
+                        Column(Modifier.verticalScroll(rememberScrollState())) {
                         TransferLifecycleControl(
                             remote = RTorrentRemote(RemoteCredentials(
                                 "https://unreachable.example/RPC2", "fixture", "placeholder")),
@@ -50,6 +55,7 @@ class TransferLifecycleControlLargeTextTest {
                             onMutationStarted = { attempts += "lease refused"; false },
                             onSettled = { attempts += "settled" }
                         )
+                        }
                     }
                 }
             }
@@ -61,6 +67,7 @@ class TransferLifecycleControlLargeTextTest {
         show(started = false, scale = 2f, attempts = attempts)
         rule.onNodeWithText("Start transfer…").performClick()
 
+        rule.onNodeWithText("Cancel").performScrollTo()
         val confirm = rule.onNodeWithText("Confirm start").getUnclippedBoundsInRoot()
         val cancel = rule.onNodeWithText("Cancel").getUnclippedBoundsInRoot()
         assertTrue("Confirmation must precede cancel vertically at narrow widths", cancel.top >= confirm.bottom)
@@ -82,6 +89,7 @@ class TransferLifecycleControlLargeTextTest {
         val diagnose = rule.onNodeWithText("Diagnose download activity")
         diagnose.assertExists()
         val measure = rule.onNodeWithText("Measure download progress (3 samples)")
+        measure.performScrollTo()
         val measureBounds = measure.getUnclippedBoundsInRoot()
         val diagnoseBounds = diagnose.getUnclippedBoundsInRoot()
         assertTrue(measureBounds.bottom - measureBounds.top >= 48.dp)
