@@ -95,7 +95,8 @@ class CombinedSharedDetailNavigationTest {
         rule.onNodeWithText("Upload rate: not reported").assertExists()
         rule.onNodeWithText("Start and stop: Capability has not been checked recently for this exact environment.")
             .performScrollTo().assertExists()
-        rule.onNodeWithText("Back to transfers").performClick()
+        rule.onNodeWithText("Back to transfers").performScrollTo()
+            .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
         // Open detail never changed filter, login, selection or underlying engine.
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Filter transfers"))
         rule.onNodeWithText("Filter transfers").assertExists()
@@ -142,7 +143,8 @@ class CombinedSharedDetailNavigationTest {
         rule.onNodeWithText("Observation: The last transfer observation is out of date.", substring = true)
             .assertExists()
         rule.onNodeWithText("Instance two download").assertExists()
-        rule.onNodeWithText("Back to transfers").performClick()
+        rule.onNodeWithText("Back to transfers").performScrollTo()
+            .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(
             hasText(origin + ": Out of date, showing last list · 1 transfers"))
         rule.onNodeWithText(origin + ": Out of date, showing last list · 1 transfers").assertExists()
