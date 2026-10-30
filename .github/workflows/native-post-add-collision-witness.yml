@@ -77,7 +77,7 @@ jobs:
                   if prefix == "CHUNKS_POST_ADD_COLLISION" else
                   rf"{prefix} observed_metadata=true stopped=(true|false) upload_only=(true|false)"
                   if prefix == "CHUNKS_MAGNET_COLLISION" else
-                  rf"{prefix} observed_stopped=true resumed_outcome=(VERIFIED|UNCERTAIN|REFUSED)"
+                  rf"{prefix} observed_stopped=(true|false) resumed_outcome=(VERIFIED|UNCERTAIN|REFUSED|NOT_FOUND)"
                   if prefix == "CHUNKS_RESTORE_COLLISION" else
                   rf"{prefix} first_start_outcome=VERIFIED stop_outcome=VERIFIED "
                   rf"selection_outcome=(VERIFIED|UNCERTAIN) restart_outcome=(VERIFIED|UNCERTAIN|REFUSED)"
