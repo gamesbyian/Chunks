@@ -160,31 +160,40 @@ class NativeDisk final : public lt::disk_interface, public lt::buffer_allocator_
     }, failure)) failure();
   }
 
-  void async_read(lt::storage_index_t index, lt::peer_request const& req,
+  void async_read(lt::storage_index_t index, lt::peer_request const& request,
       std::function<void(lt::disk_buffer_holder, lt::storage_error const&)> callback,
       lt::disk_job_flags_t) override {
-    auto& state = *torrents_[index];
-    lt::storage_error problem;
-    CheckedPieceRange bounds{};
-    std::string reason;
-    char* bytes = nullptr;
-    if (!state.checked || !state.refusal.empty() ||
-        !DecodePieceRange(static_cast<std::uint64_t>(state.files.total_size()),
-                          static_cast<std::uint32_t>(state.files.piece_length()),
-                          static_cast<int>(req.piece), req.start, req.length, false, &bounds, &reason)) {
-      problem = Denied(lt::operation_t::file_read);
-    } else {
-      bytes = static_cast<char*>(std::malloc(bounds.length));
-      if (bytes == nullptr || !state.storage->ReadRange(bounds.absolute_offset,
-                                bytes, bounds.length, &reason)) {
-        std::free(bytes);
-        bytes = nullptr;
+    auto state = torrents_[index];
+    auto failure = [this, callback] {
+      auto denied = Denied(lt::operation_t::file_read);
+      boost::asio::post(io_, [this, callback, denied] {
+        callback(lt::disk_buffer_holder(*this, nullptr, 0), denied);
+      });
+    };
+    if (!queue_.Submit([this, state, request, callback] {
+      lt::storage_error problem;
+      CheckedPieceRange bounds{};
+      std::string reason;
+      char* data = nullptr;
+      if (!state || !state->checked || !state->refusal.empty() ||
+          !DecodePieceRange(static_cast<std::uint64_t>(state->files.total_size()),
+                            static_cast<std::uint32_t>(state->files.piece_length()),
+                            static_cast<int>(request.piece), request.start, request.length,
+                            false, &bounds, &reason)) {
         problem = Denied(lt::operation_t::file_read);
+      } else {
+        data = static_cast<char*>(std::malloc(bounds.length));
+        if (!data || !state->storage->ReadRange(bounds.absolute_offset,
+                                                 data, bounds.length, &reason)) {
+          std::free(data);
+          data = nullptr;
+          problem = Denied(lt::operation_t::file_read);
+        }
       }
-    }
-    boost::asio::post(io_, [this, callback, problem, bytes, length=req.length] {
-      callback(lt::disk_buffer_holder(*this, bytes, bytes ? length : 0), problem);
-    });
+      boost::asio::post(io_, [this, callback, problem, data, length=request.length] {
+        callback(lt::disk_buffer_holder(*this, data, data ? length : 0), problem);
+      });
+    }, failure)) failure();
   }
 
   bool async_write(lt::storage_index_t index, lt::peer_request const& req,
