@@ -62,6 +62,17 @@ void SerialNativeIoQueue::Run() {
       entry = std::move(pending_.front());
       pending_.pop_front();
     }
+    bool unsafe = false;
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      unsafe = faulted_;
+    }
+    if (unsafe) {
+      // Do not run another disk operation after an unreportable worker
+      // exception. Still issue each queued callback's error path.
+      try { entry.on_error(); } catch (...) {}
+      continue;
+    }
     try {
       entry.task();
     } catch (...) {
