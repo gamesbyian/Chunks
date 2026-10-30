@@ -117,6 +117,7 @@ internal object CreateSeedCopy {
                     entry.open().use { input ->
                         val buffer = ByteArray(64 * 1024)
                         var zeroReads = 0
+                        var remaining = entry.sizeBytes
                         while (true) {
                             if (isCancelled()) throw TorrentMetainfoBuilder.Cancelled()
                             val count = input.read(buffer)
@@ -126,13 +127,22 @@ internal object CreateSeedCopy {
                                 continue
                             }
                             zeroReads = 0
+                            // A document/provider may change after the metainfo
+                            // was built. Never let it consume an unbounded
+                            // amount of space before the later hash check.
+                            check(count.toLong() <= remaining &&
+                                count.toLong() <= expected.totalBytes - copied) {
+                                "Copy source is larger than its reviewed torrent"
+                            }
                             val chunk = ByteBuffer.wrap(buffer, 0, count)
                             while (chunk.hasRemaining()) {
                                 check(out.write(chunk) > 0) { "Copy write stopped making progress" }
                             }
                             copied += count
+                            remaining -= count
                             onProgress(copied)
                         }
+                        check(remaining == 0L) { "Copy source is shorter than its reviewed torrent" }
                     }
                     out.force(true)
                 }
