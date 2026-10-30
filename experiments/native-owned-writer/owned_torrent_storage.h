@@ -45,7 +45,7 @@ class OwnedTorrentStorage final {
   OwnedTorrentStorage(std::string root, std::string receipts,
                       Admission mode, std::vector<Slot> slots,
                       std::uint64_t total_bytes);
-  bool Preopen(std::uint64_t offset, size_t bytes, std::string* error);
+  bool Preopen(std::uint64_t offset, size_t bytes, bool for_write, std::string* error);
   std::string root_;
   std::string receipts_;
   Admission mode_;
