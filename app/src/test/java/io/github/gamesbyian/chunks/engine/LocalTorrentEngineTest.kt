@@ -252,28 +252,52 @@ class LocalTorrentEngineTest {
 
         val root = temp.newFolder("post-stop-checked-dest")
         val leecher = engine()
-        // Keep peers absent for the first Start. A skipped-file fixture may
-        // never reach 100% whole-torrent status, so requiring a completed
-        // torrent before Stop is unsound and was timing out. This controlled
-        // first Start proves an active native handle with zero data files.
+        // A peer-free first Start makes the active-file-priority collision
+        // deterministic and avoids waiting for intentionally skipped data.
         val transfer = added(leecher.addStoppedChecked(metainfo, root))
         val skipped = requireNotNull(leecher.files(transfer.infoHash))
             .single { it.path.endsWith("/delayed.bin") }
         assertEquals(LocalCommandOutcome.VERIFIED,
             leecher.setFileWanted(transfer.infoHash, skipped.index, false))
         assertEquals(LocalCommandOutcome.VERIFIED, leecher.resume(transfer.infoHash).outcome)
-        assertEquals("No peer introduced before the foreign-path fixture", 0L,
-            requireNotNull(leecher.status(transfer.infoHash)).doneBytes)
+        assertEquals(0L, requireNotNull(leecher.status(transfer.infoHash)).doneBytes)
+        // Even without an explicit Stop/Start, unskipping can schedule disk
+        // writes on an active native job. Reject foreign bytes BEFORE JNI.
+        val activeForeign = File(root, "Stopped checked fixture/delayed.bin")
+        assertFalse(activeForeign.exists())
+        val activeBytes = ByteArray(delayed.size).also { Random(9982L).nextBytes(it) }
+        assertTrue("Create only the disposable backing parent", activeForeign.parentFile.mkdirs() ||
+            activeForeign.parentFile.isDirectory)
+        activeForeign.writeBytes(activeBytes)
+        val beforeOrder = requireNotNull(leecher.files(transfer.infoHash))
+        val firstSelected = beforeOrder.single { it.path.endsWith("/initial.bin") }
+        val orderRecord = FinishInOrderRecord(FinishInOrderPlanner.policyFor(
+            FinishInOrderPlanner.Mode.BALANCED, beforeOrder, beforeOrder.map { it.index }))
+        // Automatic Finish in Order is a separate JNI file-priority writer.
+        // Its existing journal/planner preflight must not bypass the shared
+        // native foreign-path gate, even when only a different file is targeted.
+        assertEquals(LocalFileBatchOutcome.STALE_REVIEW,
+            leecher.applyFinishInOrder(transfer.infoHash, orderRecord,
+                listOf(FinishInOrderPlanner.Change(firstSelected.index,
+                    firstSelected.priority, 7))))
+        assertEquals(firstSelected.priority, requireNotNull(leecher.files(transfer.infoHash))
+            .single { it.index == firstSelected.index }.priority)
+        assertTrue("A planner stale-review safety refusal must be explained on the transfer",
+            requireNotNull(leecher.status(transfer.infoHash)).error.orEmpty()
+                .contains("no verified native bytes"))
+        assertEquals(LocalCommandOutcome.REFUSED,
+            leecher.setFileWanted(transfer.infoHash, skipped.index, true))
+        assertArrayEquals("Active file selection cannot clobber planted bytes",
+            activeBytes, activeForeign.readBytes())
+        assertTrue(activeForeign.delete())
         assertEquals(LocalCommandOutcome.VERIFIED, leecher.pause(transfer.infoHash).outcome)
 
         val foreign = File(root, "Stopped checked fixture/delayed.bin")
         assertFalse("Skipped file had no verified bytes and may not be claimed",
             foreign.exists())
         val unrelated = ByteArray(delayed.size).also { Random(9878L).nextBytes(it) }
-        assertTrue("Create only the test-owned backing parent", foreign.parentFile.mkdirs() ||
-            foreign.parentFile.isDirectory)
         foreign.writeBytes(unrelated)
-        assertEquals(LocalCommandOutcome.VERIFIED,
+        assertEquals(LocalCommandOutcome.REFUSED,
             leecher.setFileWanted(transfer.infoHash, skipped.index, true))
         val refused = leecher.resume(transfer.infoHash)
         assertEquals(LocalCommandOutcome.REFUSED, refused.outcome)
