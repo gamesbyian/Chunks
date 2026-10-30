@@ -66,7 +66,10 @@ def stage(fork: Path, native: Path) -> None:
     cmake = swigdir / "CMakeLists.txt"
     java = fork / "src/main/java/org/libtorrent4j/SessionParams.java"
     updates = {
-        swig: patch_once(swig.read_text(),
+        swig: patch_once(
+            patch_once(swig.read_text(),
+                '#include "libtorrent/session_params.hpp"\n',
+                '#include "chunks/bridge/owned_libtorrent_disk.h"\n'),
             '%include "libtorrent/session_params.i"\n',
             '%include "chunks/bridge/owned_disk_extension.i"\n'),
         cmake: patch_once(cmake.read_text(),
