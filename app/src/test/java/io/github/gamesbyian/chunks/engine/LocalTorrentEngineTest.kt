@@ -1385,10 +1385,21 @@ class LocalTorrentEngineTest {
         assertArrayEquals(unrelated, foreign.readBytes())
         assertTrue(protected.list().isEmpty())
 
-        // A new private checked job still admits and starts normally.
-        val owned = added(protected.addStoppedChecked(payload.torrent, privateRoot))
+        // A same-hash re-Add must not overwrite the quarantined resume either.
+        val savedRecord = File(resumeState, prior.infoHash + ".resume")
+        val savedBytes = savedRecord.readBytes()
+        assertTrue(protected.addStoppedChecked(payload.torrent, privateRoot) is LocalAddResult.Refused)
+        assertArrayEquals(savedBytes, savedRecord.readBytes())
+
+        // A genuinely new private session can still Add/Start and transfer.
+        val independent = LocalTorrentEngine(LocalEngineConfig(
+            listenInterfaces = "127.0.0.1:0", allowMultipleConnectionsPerIp = true,
+            stateDirectory = temp.newFolder("new-private-resume"),
+            nativeBackingRoot = privateRoot
+        )).also { it.start(); engines += it }
+        val owned = added(independent.addStoppedChecked(payload.torrent, privateRoot))
         assertEquals(prior.infoHash, owned.infoHash)
-        assertEquals(LocalCommandOutcome.VERIFIED, protected.resume(owned.infoHash).outcome)
+        assertEquals(LocalCommandOutcome.VERIFIED, independent.resume(owned.infoHash).outcome)
         assertArrayEquals(unrelated, foreign.readBytes())
     }
 
