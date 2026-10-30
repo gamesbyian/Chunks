@@ -62,9 +62,9 @@ internal object CreateSeedCopy {
             return Outcome.Refused("Not enough free space here for a copy. Nothing was copied.")
 
         val single = request.entries.size == 1 && request.entries[0].path == listOf(request.name)
-        // A created pathname can be replaced by another process while a
-        // FileChannel is still open. Cleanup must prove the current entry is
-        // the one this invocation created, not simply trust the pathname.
+        // A created pathname can be replaced while FileChannel is still open.
+        // These observations fence subsequent writes/rebuild reads; they cannot
+        // prove creation ownership and never authorize cleanup.
         data class OwnedPath(val path: java.nio.file.Path, val fileKey: Any?)
         fun keyAt(path: java.nio.file.Path): Any? = try {
             Files.readAttributes(path, BasicFileAttributes::class.java,
@@ -82,7 +82,7 @@ internal object CreateSeedCopy {
         val ownedDirs = ArrayList<OwnedPath>()
         val ownedDirSet = HashSet<java.nio.file.Path>()
         // A previously created directory may be replaced by a link while
-        // copying. Refuse any further writes OR cleanup through that link.
+        // copying. Refuse subsequent writes and rebuild reads through that link.
         // This is an observation gate, not an atomic defense against races.
         fun parentChainStillDirect(path: java.nio.file.Path): Boolean = try {
             if (!Files.isDirectory(base, LinkOption.NOFOLLOW_LINKS) ||
@@ -103,34 +103,10 @@ internal object CreateSeedCopy {
                 direct
             }
         } catch (_: Exception) { false }
-        // Delete only known created entries. Never recursively traverse a
-        // folder that could now contain someone else's files.
-        fun cleanup(): Boolean {
-            var clear = true
-            for (entry in ownedFiles.asReversed()) {
-                try {
-                    if (!parentChainStillDirect(entry.path) ||
-                        !definitelyOwned(entry, directory = false)) {
-                        clear = false
-                        continue
-                    }
-                    Files.deleteIfExists(entry.path)
-                    if (!Files.notExists(entry.path, LinkOption.NOFOLLOW_LINKS)) clear = false
-                } catch (_: Exception) { clear = false }
-            }
-            for (entry in ownedDirs.asReversed()) {
-                try {
-                    if (!parentChainStillDirect(entry.path) ||
-                        !definitelyOwned(entry, directory = true)) {
-                        clear = false
-                        continue
-                    }
-                    Files.deleteIfExists(entry.path) // fails if unowned entries appeared
-                    if (!Files.notExists(entry.path, LinkOption.NOFOLLOW_LINKS)) clear = false
-                } catch (_: Exception) { clear = false }
-            }
-            return clear
-        }
+        // Path attributes are observations, not creation-scoped ownership.
+        // Another actor can substitute a file or directory between creation
+        // and keyAt(). Do not delete failed/cancelled copy paths on that basis.
+        // Preserve any partial output for explicit review instead.
 
         val copies = try {
             if (!single) {
@@ -207,13 +183,22 @@ internal object CreateSeedCopy {
                     definitelyOwned(ownedFiles.last(), directory = false)) {
                     "Copy output or destination changed while writing"
                 }
-                val written = path.toFile()
-                TorrentMetainfoBuilder.Entry(entry.path, written.length()) { written.inputStream() }
+                // The rebuild is a second read of the newly copied payload.
+                // A sibling-file copy may have allowed an earlier output to
+                // be replaced after its initial write/identity check. Refuse
+                // that path before opening, and never follow a planted link.
+                // This remains a pre-open gate, not an atomic open-by-inode.
+                val owned = ownedFiles.last()
+                TorrentMetainfoBuilder.Entry(entry.path, entry.sizeBytes) {
+                    check(parentChainStillDirect(path) &&
+                        definitelyOwned(owned, directory = false)) {
+                        "Copied file identity changed before hash verification"
+                    }
+                    Files.newInputStream(path, LinkOption.NOFOLLOW_LINKS)
+                }
             }
         } catch (e: Exception) {
-            val cleared = cleanup()
-            val suffix = if (cleared) "The partial copy was removed."
-                else "Partial files remain for manual review; no foreign directories were recursively deleted."
+            val suffix = "Any partial files were kept for manual review at ${target.path}."
             return Outcome.Refused(
                 (if (e is TorrentMetainfoBuilder.Cancelled) "Cancelled."
                     else "The copy failed (${e.message ?: "read or write error"}).") + " " + suffix
@@ -226,6 +211,13 @@ internal object CreateSeedCopy {
         if (rebuilt?.infoHashV1 != expected.infoHashV1) return Outcome.Refused(
             "The files changed after the torrent was created, so the copy does not match it. " +
                 "The copy is kept at ${target.path}; create the torrent again to seed it.")
+        // Revalidate every copy, not only the last file's path, before giving
+        // libtorrent its save root. External racing mutation after this point
+        // is still an unresolved native ownership/TOCTOU acceptance boundary.
+        if (ownedFiles.any { !parentChainStillDirect(it.path) ||
+                !definitelyOwned(it, directory = false) }) return Outcome.Refused(
+            "The copied files changed ownership before seeding. No torrent was started. " +
+                "Review the copy at ${target.path}.")
 
         val added = engine.addStopped(expected.torrent, root)
         if (added !is LocalAddResult.AddedStopped) return Outcome.Refused(
