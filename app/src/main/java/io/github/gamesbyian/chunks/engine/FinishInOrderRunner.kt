@@ -101,8 +101,19 @@ internal class FinishInOrderRunner(private val port: Port) {
                 port.persistNativeState()
                 syncSequential(infoHash, done)?.let { Step.Suspended(it) } ?: Step.Applied(done, plan)
             }
-            // Refused by the engine's own preflight before any native write.
-            LocalFileBatchOutcome.STALE_REVIEW, LocalFileBatchOutcome.NOT_FOUND -> {
+            // A stale reviewed file or safety-path refusal is an explicit
+            // preflight block, not an idle interval. Otherwise the service's
+            // periodic Finish in Order runner keeps reissuing the same blocked
+            // native mutation and hides the user's required re-review.
+            LocalFileBatchOutcome.STALE_REVIEW -> {
+                val blocked = record.copy(suspendedReason =
+                    "Chunks stopped Finish in Order because a reviewed file changed or " +
+                    "native backing-file safety could not be verified. " +
+                    "Review the transfer and its download location before resuming.")
+                if (port.save(infoHash, blocked)) Step.Suspended(blocked)
+                else Step.StorageFailed(record)
+            }
+            LocalFileBatchOutcome.NOT_FOUND -> {
                 port.save(infoHash, record)
                 Step.Idle(record, null)
             }
