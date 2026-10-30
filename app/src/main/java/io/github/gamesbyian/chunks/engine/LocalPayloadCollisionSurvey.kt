@@ -4,6 +4,8 @@ import java.io.File
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
+import java.text.Normalizer
+import java.util.Locale
 
 /**
  * Non-mutating, point-in-time survey of candidate libtorrent payload paths.
@@ -45,19 +47,24 @@ internal object LocalPayloadCollisionSurvey {
                     return Result.Unknown("Resolved download root is unavailable")
             }
         } catch (_: Exception) { return Result.Unknown("Download root cannot be inspected") }
-        // Conflicting torrent file indices cannot independently own the same
-        // destination, even when no filesystem object exists at Add time.
+        // Case-sensitive phone storage may distinguish these lexical names,
+        // while FAT/exFAT and providers may map them to a single file. Reject
+        // a conservative case-folded and Unicode-normalized namespace, not
+        // only byte-identical names. Actual provider rules can vary.
+        fun aliasKey(path: String) = Normalizer.normalize(
+            path, Normalizer.Form.NFKC
+        ).uppercase(Locale.ROOT).lowercase(Locale.ROOT)
         val declaredFiles = HashSet<String>()
         for (relative in relativePaths) {
             if (relative.length > 4096)
                 return Result.Unknown("Torrent payload path is too long")
-            if (!declaredFiles.add(relative))
-                return Result.Unknown("Torrent declares duplicate payload paths")
+            if (!declaredFiles.add(aliasKey(relative)))
+                return Result.Unknown("Torrent declares potentially aliased payload paths")
         }
         for (relative in relativePaths) {
             var slash = relative.indexOf('/')
             while (slash >= 0) {
-                if (declaredFiles.contains(relative.substring(0, slash)))
+                if (declaredFiles.contains(aliasKey(relative.substring(0, slash))))
                     return Result.Unknown("Torrent declares a file as another file's parent")
                 slash = relative.indexOf('/', slash + 1)
             }
