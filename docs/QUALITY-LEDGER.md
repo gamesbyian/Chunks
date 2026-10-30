@@ -1,5 +1,23 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-30 subsequent integration checkpoint: seven guarded merges, G0 still RED
+
+This checkpoint supersedes older open/pending descriptions for these exact PRs. All reviewed PR heads passed their applicable GitHub Actions jobs and were squash-merged with expected-head SHA guards. These are head-level CI receipts, not new physical-handset or protected-host acceptance.
+
+| PR and outcome | Reviewed head | Main squash | CI boundaries |
+| --- | --- | --- | --- |
+| [#759](https://github.com/gamesbyian/Chunks/pull/759) emulator disk capacity | fbc6175d | 28707744 | Docs and [API35](https://github.com/gamesbyian/Chunks/actions/runs/41127950658): 264 tests finished, 16 skipped, 0 failures |
+| [#769](https://github.com/gamesbyian/Chunks/pull/769) allow safe raw Start refusal in native diagnostic | 12942f2f | e7b5eb12 | Docs, foundation, [four native loopback probes](https://github.com/gamesbyian/Chunks/actions/runs/41130188712); **three cases still overwrite foreign bytes** |
+| [#767](https://github.com/gamesbyian/Chunks/pull/767) policy/session mismatch locks privacy | 76dd11ab | ea4adffb | Foundation rerun, R8 and API35 passed |
+| [#777](https://github.com/gamesbyian/Chunks/pull/777) cancel remote activity reads | 4835b9dd | aadb6834 | Foundation, R8 and API35 passed |
+| [#762](https://github.com/gamesbyian/Chunks/pull/762) async scoped aliases | 192677b1 | a0af7d98 | Foundation, R8 and API35 passed |
+| [#771](https://github.com/gamesbyian/Chunks/pull/771) incomplete bytes cannot prove no progress | 784a7f9c | dc8eab6c | Foundation, R8 and API35 passed; pure reducer only |
+| [#768](https://github.com/gamesbyian/Chunks/pull/768) exclusive no-replace write probe | 8deee82c | d08ccff0 | Foundation, R8, API29 and API35 passed; native rename and actual libtorrent writer not proved |
+
+Open CI/product blocks: [#764](https://github.com/gamesbyian/Chunks/pull/764) and [#770](https://github.com/gamesbyian/Chunks/pull/770) Android foundation fail CombinedSavedServersTest.kt line 112 because switching saved identity scope A to B under unchanged ID must fail closed, while the test still demands the obsolete Not connected text. [#773](https://github.com/gamesbyian/Chunks/pull/773) 200%-font Robolectric tests fail at line 57 (Sort by scroll reachability) and line 84 (group target smaller than 48dp). [#761](https://github.com/gamesbyian/Chunks/pull/761) API29 initial failure was corrupt Android emulator SDK ZIP before any app tests; one targeted job rerun requested.
+
+Native research has progressed: [#774](https://github.com/gamesbyian/Chunks/pull/774) repaired receipt owner-token comparison and passed standalone C++/Android cross-compile; [#778](https://github.com/gamesbyian/Chunks/pull/778) passed [pinned libtorrent 2.1 header/SWIG ABI experiment 41136602488](https://github.com/gamesbyian/Chunks/actions/runs/41136602488). Both are draft research, NOT installed in Chunks JNI, NOT proven with actual peer traffic or public Downloads/SD. Asynchronous callback ownership, complete disk_interface behavior, v2 hashing, file priorities/rename, Android FUSE and physical-device proof remain open. [#765](https://github.com/gamesbyian/Chunks/pull/765) is a temporary app-private-only containment draft with unacceptable permanent loss of public Places. **G0 #568 remains RED**: three real native collision scenarios overwrite planted foreign bytes despite green characterization jobs.
+
 ## 2026-10-30 G0 RED reaffirmed: four native collision cases, three destructive
 
 **Independent actual JNI/JUnit evidence:** [native collision run 41130188712](https://github.com/gamesbyian/Chunks/actions/runs/41130188712), on [PR #769](https://github.com/gamesbyian/Chunks/pull/769) exact head `12942f2f335f65bdf757698a9c1c8abba4bca2a5`; job `124318815519` SUCCESS **as a characterization, not product acceptance**. The workflow executes the production libtorrent native test class with real disposable loopback peers. The log contains these explicit before/after SHA-256 results, verified by independent inspection:
