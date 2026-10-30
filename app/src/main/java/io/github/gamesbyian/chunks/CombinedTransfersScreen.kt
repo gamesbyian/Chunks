@@ -70,6 +70,7 @@ import io.github.gamesbyian.chunks.rpc.RemoteTransfer
 import io.github.gamesbyian.chunks.model.LifecycleReply
 import io.github.gamesbyian.chunks.model.UnifiedBatchLifecycle
 import io.github.gamesbyian.chunks.model.UnifiedTransferKey
+import io.github.gamesbyian.chunks.model.UnifiedTransferDetails
 import io.github.gamesbyian.chunks.model.describe
 import io.github.gamesbyian.chunks.model.toLifecycleReply
 import io.github.gamesbyian.chunks.rpc.LifecycleOutcome
@@ -224,6 +225,7 @@ internal fun CombinedTransfersScreen(
     var phoneObservedAt by remember { mutableStateOf<Long?>(null) }
     // Explicit cross-environment selection; never derived from the view scope.
     var selecting by remember { mutableStateOf(false) }
+    var detailKey by remember { mutableStateOf<UnifiedTransferKey?>(null) }
     var selected by remember { mutableStateOf<Set<UnifiedTransferKey>>(emptySet()) }
     var batchRunning by remember { mutableStateOf(false) }
     var batchResult by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -354,6 +356,24 @@ internal fun CombinedTransfersScreen(
         viewportHeightPx = viewportHeightPx,
         hasTransfers = result.transfers.isNotEmpty()
     )
+    val focusedKey = detailKey
+    if (focusedKey != null) {
+        // The same observed source collection is the only detail authority.
+        // Saved servers remain read-only here, even when credentials enabled a
+        // manual listing. Never switch sign-in context or reuse a matching hash.
+        val details = UnifiedTransferDetails.resolve(
+            focusedKey, sources,
+            if (focusedKey.environment == EnvironmentSnapshots.PHONE)
+                EnvironmentCapabilities.phone() else null,
+            System.currentTimeMillis()
+        )
+        UnifiedTransferDetailPanel(
+            detail = details,
+            environmentLabel = labels[focusedKey.environment] ?: "Unconfigured environment",
+            onBack = { detailKey = null },
+            onOpenOwningList = openFor(focusedKey)
+        )
+    } else {
     Box(Modifier.fillMaxSize()) {
         LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp)
                 .onSizeChanged { viewportHeightPx = it.height },
@@ -528,7 +548,8 @@ internal fun CombinedTransfersScreen(
                     CombinedTransferRow(row, labels[row.key.environment].orEmpty(), palette.hueOf(row.key.environment),
                         selection = if (selecting) row.key in selected else null,
                         onSelect = { on -> selected = if (on) selected + row.key else selected - row.key },
-                        onOpen = openFor(row.key))
+                        onOpen = openFor(row.key),
+                        onDetails = { detailKey = row.key })
                 }
             }
         } else {
@@ -536,7 +557,8 @@ internal fun CombinedTransfersScreen(
                 CombinedTransferRow(row, labels[row.key.environment].orEmpty(), palette.hueOf(row.key.environment),
                     selection = if (selecting) row.key in selected else null,
                     onSelect = { on -> selected = if (on) selected + row.key else selected - row.key },
-                    onOpen = openFor(row.key))
+                    onOpen = openFor(row.key),
+                        onDetails = { detailKey = row.key })
             }
         }
         item {
@@ -564,6 +586,7 @@ internal fun CombinedTransfersScreen(
                 else listState.scrollToItem(0)
             }
         }, modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 16.dp))
+    }
     }
 }
 
@@ -597,7 +620,9 @@ private fun CombinedTransferRow(
     selection: Boolean? = null,
     onSelect: (Boolean) -> Unit = {},
     /** Null for environments only listed here (no live list to open). */
-    onOpen: (() -> Unit)? = null
+    onOpen: (() -> Unit)? = null,
+    /** Read-only details are available even for saved, unsigned-in profiles. */
+    onDetails: () -> Unit
 ) {
     val accent = hue?.let { Color(it.argb) } ?: ChunksColors.Outline
     // The hue is used for the label only where it meets AA on this surface.
@@ -611,7 +636,7 @@ private fun CombinedTransferRow(
             modifier = Modifier.padding(start = 4.dp).align(Alignment.CenterVertically).semantics {
                 contentDescription = "Select ${row.displayName} on $environmentLabel"
             })
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(Modifier.weight(1f).padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(environmentLabel, style = MaterialTheme.typography.labelMedium, color = labelColour,
                 fontWeight = FontWeight.Bold)
             Text(row.displayName, style = MaterialTheme.typography.titleSmall)
@@ -620,8 +645,13 @@ private fun CombinedTransferRow(
             Text(combinedRowFacts(row), style = MaterialTheme.typography.bodySmall)
             if (row.hasError) Text("Needs attention in its own list", color = ChunksColors.Red,
                 style = MaterialTheme.typography.bodySmall)
-            if (onOpen != null) OutlinedButton(onClick = onOpen, modifier = Modifier.heightIn(min = 48.dp)
-                .semantics { contentDescription = "Open ${row.displayName} in $environmentLabel" }) {
+            OutlinedButton(onClick = onDetails,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics {
+                    contentDescription = "Details for ${row.displayName} on $environmentLabel"
+                }) { Text("Details") }
+            if (onOpen != null) OutlinedButton(onClick = onOpen,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    .semantics { contentDescription = "Open ${row.displayName} in $environmentLabel" }) {
                 Text("Open in its list")
             }
             // Say why no action is offered rather than leaving the user to hunt for one.
