@@ -51,10 +51,21 @@ def verify(root: ET.Element) -> tuple[bool, list[str]]:
             errors.append("JUnit test counter absent or invalid")
         cases = suite.findall("testcase")
         observed += len(cases)
-        targets.extend(c for c in cases if CLASS in c.attrib.get("classname", "")
-                       and c.attrib.get("name") == CASE)
-        for output in suite.findall("system-out"):
-            lines.extend((output.text or "").splitlines())
+        # A green diagnostic from a different suite cannot vouch for this
+        # native fixture. Match the full class segment, never a substring.
+        suite_targets = [c for c in cases
+                         if (c.attrib.get("classname", "") == CLASS or
+                             c.attrib.get("classname", "").endswith("." + CLASS))
+                         and c.attrib.get("name") == CASE]
+        targets.extend(suite_targets)
+        suite_lines = [line.strip()
+                       for output in suite.iter("system-out")
+                       for line in (output.text or "").splitlines()
+                       if line.strip().startswith(FAMILY + " ")]
+        if suite_targets:
+            lines.extend(suite_lines)
+        elif suite_lines:
+            errors.append("Restoration witness belongs to a different JUnit test suite")
     if observed != declared or declared < 1:
         errors.append(f"JUnit testcase count disagrees with report: actual={observed}, declared={declared}")
     if failed or skipped:
