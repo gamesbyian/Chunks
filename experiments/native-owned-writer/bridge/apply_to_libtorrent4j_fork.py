@@ -41,6 +41,16 @@ target_link_libraries(chunks_owned_session_smoke PRIVATE torrent-rasterbar)
 target_include_directories(chunks_owned_session_smoke PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}/chunks")
 """
+# Upstream Android builds are Boost.Build (b2), NOT CMake. Both must link the
+# owned backend. A host-only CMake link can never prove the Android artifact.
+ANDROID_JAM_SOURCES = """\
+         chunks/owned_payload_file.cc
+         chunks/owned_torrent_storage.cc
+         chunks/bridge/checked_piece_range.cc
+         chunks/bridge/receipt_admission.cc
+         chunks/bridge/serial_native_io_queue.cc
+         chunks/bridge/owned_libtorrent_disk.cc
+"""
 JAVA_METHOD = """
     /** Requires regenerated SWIG and rebuilt native library; never call on stock JNI. */
     public void setOwnedDiskIO(String privateReceiptRoot) {
@@ -78,6 +88,7 @@ def stage(fork: Path, native: Path) -> None:
         raise ValueError("Different upstream SWIG disk API: manual review required")
     swig = swigdir / "libtorrent.i"
     cmake = swigdir / "CMakeLists.txt"
+    jam = swigdir / "Jamfile"
     java = fork / "src/main/java/org/libtorrent4j/SessionParams.java"
     updates = {
         swig: patch_once(
@@ -89,6 +100,9 @@ def stage(fork: Path, native: Path) -> None:
         cmake: patch_once(cmake.read_text(),
             'target_link_libraries(torrent4j PRIVATE torrent-rasterbar)\n',
             CMAKE_SOURCES),
+        jam: patch_once(jam.read_text(),
+            '\t libtorrent_jni.cpp\n',
+            ANDROID_JAM_SOURCES),
         java: patch_before_once(java.read_text(),
             '    private static session_params bdecode0(File file) {\n',
             JAVA_METHOD),
