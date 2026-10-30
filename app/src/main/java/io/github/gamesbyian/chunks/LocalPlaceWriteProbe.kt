@@ -66,12 +66,12 @@ internal object LocalPlaceWriteProbe {
         openExclusive: (Path, () -> Unit) -> ExclusiveProbeFile = ::openAndroidExclusive,
         // Test-only interleaving after exclusive open, before descriptor fstat.
         afterCreate: () -> Unit = {},
-        // Interleave after source/destination verification, before the next
-        // source identity check.
-        beforeRename: () -> Unit = {},
         // Inject a competing foreign destination AFTER the final pathname
         // check. Exclusive publication must still refuse without modifying it.
-        beforePublish: () -> Unit = {}
+        beforePublish: () -> Unit = {},
+        // Keep this original last parameter for callers that use a trailing
+        // lambda to inject races at the pre-publication rename boundary.
+        beforeRename: () -> Unit = {}
     ): String? {
         if (!folder.isAbsolute) return "Folder path is not absolute"
         try {
