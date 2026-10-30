@@ -43,16 +43,21 @@ class EnvironmentBadgePaletteTest {
             }
         }
 
+        rule.waitForIdle()
         val original = rule.onNodeWithTag("badge").captureToImage().asAndroidBitmap()
         try {
             // A different store object updates an already-composed badge.
             assertTrue(EnvironmentColourStore(context).choose(id, chosen))
-            rule.waitForIdle()
+            rule.waitUntil(5_000) {
+                !original.sameAs(rule.onNodeWithTag("badge").captureToImage().asAndroidBitmap())
+            }
             val changed = rule.onNodeWithTag("badge").captureToImage().asAndroidBitmap()
             assertFalse("Choosing a hue must update an existing badge", original.sameAs(changed))
 
             assertTrue(EnvironmentColourStore(context).restoreAutomatic(id))
-            rule.waitForIdle()
+            rule.waitUntil(5_000) {
+                original.sameAs(rule.onNodeWithTag("badge").captureToImage().asAndroidBitmap())
+            }
             val restored = rule.onNodeWithTag("badge").captureToImage().asAndroidBitmap()
             assertTrue("Restoring automatic should render the original badge", original.sameAs(restored))
             assertEquals(automatic, store.load().hueOf(id))
