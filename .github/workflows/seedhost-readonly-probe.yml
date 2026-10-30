@@ -14,6 +14,9 @@ concurrency:
   cancel-in-progress: false
 jobs:
   probe:
+    # A manually dispatched workflow must never read protected credentials
+    # from an arbitrary branch or untrusted copy of the workflow source.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 4
     steps:
