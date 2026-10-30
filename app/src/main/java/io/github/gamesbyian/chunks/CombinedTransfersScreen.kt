@@ -517,8 +517,9 @@ internal fun CombinedTransfersScreen(
                     val snapshot = sources
                     batchScope.launch {
                         try {
-                            batchResult = runCombinedLifecycle(chosen, start, snapshot, server?.lifecycle, serverId)
-                                .describe { labels[it] ?: it.value }
+                            batchResult = describeCombinedBatchSafely({ labels[it] ?: it.value }) {
+                                runCombinedLifecycle(chosen, start, snapshot, server?.lifecycle, serverId)
+                            }
                         } finally {
                             selected = emptySet()
                             batchRunning = false
@@ -927,9 +928,7 @@ private fun CombinedBatchSection(
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         OutlinedButton(onClick = { onSelecting(!selecting); confirming = null }, enabled = !running,
             modifier = Modifier.heightIn(min = 48.dp)) { Text(if (selecting) "Done selecting" else "Select…") }
-        if (running) Text("Working… each environment's list will refresh afterwards.",
-            style = MaterialTheme.typography.bodySmall)
-        result.forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
+        CombinedBatchFeedback(running = running, outcomes = result)
         if (!selecting || selected.isEmpty()) return@Column
         val hidden = (selected - visible).size
         Text("${selected.size} selected" + (if (hidden > 0) ", $hidden not shown by the current view" else ""),
