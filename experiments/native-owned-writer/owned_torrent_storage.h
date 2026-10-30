@@ -22,6 +22,7 @@ class OwnedTorrentStorage final {
     std::uint64_t size;
     std::string receipt_id;
     std::string mapping_commitment;
+    bool pad_file = false;
   };
   enum class Admission { FRESH, RESTORED };
   static std::unique_ptr<OwnedTorrentStorage> Open(
