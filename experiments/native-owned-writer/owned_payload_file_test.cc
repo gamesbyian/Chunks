@@ -263,5 +263,22 @@ int main() {
     assert(s.read(s.payload / "episode.bin") == "OWNED");
     passed();
   }
+  {
+    Sandbox s;
+    std::string error;
+    auto owned = chunks::OwnedPayloadFile::Create(s.payload.string(), "episode.bin",
+        s.receipts.string(), kId, kMapping, &error);
+    assert(owned);
+    assert(owned->WriteAt(0, "OWNED", 5, &error));
+    owned.reset();
+    fs::remove(s.payload / "episode.bin");
+    // An absent path with a *finalized* receipt cannot be recycled through
+    // the pending-zero-progress admission path, even with the same hash.
+    assert(!chunks::OwnedPayloadFile::Reserve(s.payload.string(), "episode.bin",
+        s.receipts.string(), kId, kMapping, &error));
+    assert(!fs::exists(s.payload / "episode.bin"));
+    assert(fs::exists(s.receipts / kId));
+    passed();
+  }
   std::cout << "CHUNKS_PINNED_WRITER_CASES=" << cases << " PASSED\n";
 }
