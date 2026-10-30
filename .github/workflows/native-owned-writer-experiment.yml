@@ -20,3 +20,16 @@ jobs:
         run: |
           bash experiments/native-owned-writer/test.sh --sanitizers
           CXX=clang++ bash experiments/native-owned-writer/test.sh
+      - name: Cross-compile isolated native writer on Android API29 ABIs
+        run: |
+          set -euo pipefail
+          ndk_root="$(find "$ANDROID_HOME/ndk" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n1)"
+          test -n "$ndk_root" && test -f "$ndk_root/build/cmake/android.toolchain.cmake"
+          for abi in arm64-v8a x86_64; do
+            cmake -S experiments/native-owned-writer -B "$RUNNER_TEMP/owned-$abi" -G Ninja \
+              -DCMAKE_TOOLCHAIN_FILE="$ndk_root/build/cmake/android.toolchain.cmake" \
+              -DANDROID_ABI="$abi" -DANDROID_PLATFORM=android-29 \
+              -DCHUNKS_OWNED_WRITER_HOST_TESTS=OFF
+            cmake --build "$RUNNER_TEMP/owned-$abi" --parallel 2
+          done
+
