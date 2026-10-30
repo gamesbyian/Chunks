@@ -90,6 +90,10 @@ bool OwnedTorrentStorage::Preopen(std::uint64_t offset, size_t bytes,
           root_, s.relative_path, receipts_, s.receipt_id, s.mapping_commitment, error);
     }
     if (!slot.owned) return false;
+    // A successful restored CreateFromReservation can follow a failed
+    // Reopen while the physical file was still absent. The earlier error
+    // must never be reported as the result of the successful operation.
+    if (error) error->clear();
   }
   return true;
 }
