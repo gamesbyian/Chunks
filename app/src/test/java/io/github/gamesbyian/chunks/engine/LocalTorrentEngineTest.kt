@@ -235,6 +235,36 @@ class LocalTorrentEngineTest {
         assertFalse(File(dest, "Chunks public fixture/episode.bin").exists())
     }
 
+    @Test fun missingAdmissionReceiptNeverSilentlyUpgradesRestoredJobToReviewedSeed() {
+        val fixture = fixture()
+        val state = temp.newFolder("unknown-admission-state")
+        val destination = temp.newFolder("unknown-admission-destination")
+        val first = persistentEngine(state)
+        val stopped = added(first.addStopped(fixture.torrent, destination))
+        assertTrue(stopped.stopped)
+        val receipt = File(state, "${stopped.infoHash}.admission")
+        assertTrue("All restorable Adds must persist an admission type", receipt.isFile)
+        first.close()
+
+        // Simulate an old/corrupt/lost private provenance record, not a
+        // permission to infer ownership from a resumed name and file size.
+        assertTrue("Only remove our test-owned admission record", receipt.delete())
+        val file = File(destination, "Chunks public fixture/episode.bin")
+        assertTrue(file.parentFile.mkdirs() || file.parentFile.isDirectory)
+        val foreign = ByteArray(fixture.files.getValue("episode.bin").size).also {
+            Random(5793L).nextBytes(it)
+        }
+        file.writeBytes(foreign)
+        val resumed = persistentEngine(state)
+        assertTrue(resumed.restoreProblems.isEmpty())
+        val status = requireNotNull(resumed.status(stopped.infoHash))
+        assertTrue(status.stopped)
+        assertTrue(status.error.orEmpty().contains("review"))
+        assertEquals(LocalCommandOutcome.REFUSED, resumed.resume(stopped.infoHash).outcome)
+        assertArrayEquals("Unknown Add origin must not overwrite foreign data",
+            foreign, file.readBytes())
+    }
+
     @Test fun restoredStoppedJobExcludesDifferentCheckedHashBeforeEitherStarts() {
         val firstFixture = fixture()
         val competingFixture = conflictingFixture()
