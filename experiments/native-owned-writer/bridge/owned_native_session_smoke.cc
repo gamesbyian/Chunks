@@ -127,6 +127,94 @@ void exercise(bool plant_foreign) {
   }
 }
 
+
+// Positive proof: a real native libtorrent seed sends a piece over loopback
+// to a second native libtorrent session using the receipt-owned disk backend.
+// Completion must be observed from libtorrent AND compared to exact file bytes.
+// The seeder lives in its own disposable directory and uses built-in disk I/O;
+// the downloader uses ONLY the custom writer under test.
+void exerciseLoopbackTransfer() {
+  Sandbox box;
+  fs::path const seed_dir = box.root / "seed-only";
+  fs::create_directories(seed_dir);
+  const std::string expected(16 * 1024, 'x');
+  {
+    std::ofstream payload(seed_dir / "probe.bin", std::ios::binary);
+    CHECK(static_cast<bool>(payload));
+    payload.write(expected.data(), static_cast<std::streamsize>(expected.size()));
+    CHECK(static_cast<bool>(payload));
+  }
+  auto const torrent_bytes = fixtureTorrent();
+  lt::settings_pack seed_settings;
+  seed_settings.set_str(lt::settings_pack::listen_interfaces, "127.0.0.1:0");
+  seed_settings.set_bool(lt::settings_pack::enable_dht, false);
+  seed_settings.set_bool(lt::settings_pack::enable_lsd, false);
+  seed_settings.set_bool(lt::settings_pack::enable_upnp, false);
+  seed_settings.set_bool(lt::settings_pack::enable_natpmp, false);
+  lt::session seed(seed_settings);
+  auto source_params = lt::load_torrent_buffer(
+      {torrent_bytes.data(), static_cast<std::ptrdiff_t>(torrent_bytes.size())});
+  source_params.save_path = seed_dir.string();
+  source_params.flags &= ~lt::torrent_flags::paused;
+  source_params.flags &= ~lt::torrent_flags::auto_managed;
+  source_params.flags |= lt::torrent_flags::seed_mode;
+  lt::error_code ec;
+  auto seeded = seed.add_torrent(std::move(source_params), ec);
+  CHECK(!ec && seeded.is_valid());
+
+  lt::settings_pack download_settings;
+  download_settings.set_str(lt::settings_pack::listen_interfaces, "127.0.0.1:0");
+  download_settings.set_bool(lt::settings_pack::enable_dht, false);
+  download_settings.set_bool(lt::settings_pack::enable_lsd, false);
+  download_settings.set_bool(lt::settings_pack::enable_upnp, false);
+  download_settings.set_bool(lt::settings_pack::enable_natpmp, false);
+  lt::session_params owned_params(download_settings);
+  owned_params.disk_io_constructor =
+      chunks::MakeOwnedDiskConstructor(box.receipts.string());
+  {
+    lt::session owned(owned_params);
+    auto target_params = lt::load_torrent_buffer(
+        {torrent_bytes.data(), static_cast<std::ptrdiff_t>(torrent_bytes.size())});
+    target_params.save_path = box.public_root.string();
+    target_params.flags &= ~lt::torrent_flags::paused;
+    target_params.flags &= ~lt::torrent_flags::auto_managed;
+    auto target = owned.add_torrent(std::move(target_params), ec);
+    CHECK(!ec && target.is_valid());
+
+    bool connected = false;
+    bool completed = false;
+    for (int i = 0; i < 400; ++i) {
+      if (!connected && seed.listen_port() != 0) {
+        try {
+          target.connect_peer(lt::tcp::endpoint(
+              lt::address_v4::loopback(), seed.listen_port()));
+          connected = true;
+        } catch (std::exception const&) {
+          // The initial torrent checking state may reject manual peers.
+        }
+      }
+      auto const status = target.status();
+      CHECK(!status.errc);
+      if (status.is_seeding) {
+        completed = true;
+        break;
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
+    CHECK(connected);
+    CHECK(completed);
+    CHECK(target.status().total_payload_download >=
+          static_cast<std::int64_t>(expected.size()));
+  } // own native session must flush all bytes before destruction
+
+  std::ifstream payload(box.public_root / "probe.bin", std::ios::binary);
+  CHECK(static_cast<bool>(payload));
+  const std::string received{std::istreambuf_iterator<char>(payload), {}};
+  CHECK(received == expected);
+  std::cout << "CHUNKS_OWNED_LOOPBACK_TRANSFER=PASS size="
+            << received.size() << "\n";
+}
+
 int main(int argc, char** argv) {
   if (argc == 2 && std::string(argv[1]) == "--self-test-fail") {
     CHECK(false); // the CI release build must terminate with code 86
@@ -135,5 +223,6 @@ int main(int argc, char** argv) {
   CHECK(argc == 1);
   exercise(false);
   exercise(true);
-  std::cout << "CHUNKS_REAL_LIBTORRENT_HOST_SESSION=PASS cases=2\n";
+  exerciseLoopbackTransfer();
+  std::cout << "CHUNKS_REAL_LIBTORRENT_HOST_SESSION=PASS cases=3\n";
 }
