@@ -27,6 +27,30 @@ class HttpRpcCombinedChallengeTest {
         }
     }
 
+    @Test fun horizontalTabsAreLegalSchemeSeparatorsAndNeverDowngradeDigest() {
+        // HTTP credentials permits SP / HTAB. A valid Digest challenge with
+        // HTAB must not disappear behind a Basic challenge in the same field.
+        val cases = listOf(
+            "Basic realm=\"legacy\", Digest\trealm=\"QA\", nonce=\"n\", qop=\"auth\"",
+            "Digest\t realm=\"QA\", nonce=\"n\", qop=\"auth\", Basic\trealm=\"legacy\"",
+            "Basic\trealm=\"legacy\", Digest  \trealm=\"QA\", nonce=\"n\", qop=\"auth\""
+        )
+        for (header in cases) {
+            val value = HttpRpcAuthorization.fromChallenge(
+                listOf(header), credentials, "POST", "/RPC2")
+            assertTrue("Digest must beat Basic even with HTAB: $header", value.startsWith("Digest "))
+            assertTrue(value.contains("nonce=\"n\""))
+            assertFalse(value.contains("fixture-secret"))
+        }
+    }
+
+    @Test fun schemePrefixInsideAnotherTokenCannotBecomeDigest() {
+        val value = HttpRpcAuthorization.fromChallenge(
+            listOf("Basic realm=\"legacy\", Digestive realm=\"not-a-challenge\""),
+            credentials, "POST", "/RPC2")
+        assertTrue(value.startsWith("Basic "))
+    }
+
     @Test fun commasAndSchemeWordsInsideQuotesAreNotNewChallenges() {
         val response = HttpRpcAuthorization.fromChallenge(
             listOf("""Basic realm="legacy", Digest realm="QA", nonce="one,two", qop="auth,auth-int", opaque="route,Basic realm=trap" """),
