@@ -64,13 +64,36 @@ internal object CreateSeedCopy {
         val ownedFiles = ArrayList<java.nio.file.Path>()
         val ownedDirs = ArrayList<java.nio.file.Path>()
         val ownedDirSet = HashSet<java.nio.file.Path>()
+        // A previously created directory may be replaced by a link while
+        // copying. Refuse any further writes OR cleanup through that link.
+        // This is an observation gate, not an atomic defense against races.
+        fun parentChainStillDirect(path: java.nio.file.Path): Boolean = try {
+            if (!Files.isDirectory(base, LinkOption.NOFOLLOW_LINKS) ||
+                Files.isSymbolicLink(base)) false
+            else {
+                var parent = path.parent
+                var direct = true
+                while (parent != null && parent.startsWith(targetPath)) {
+                    if (Files.isSymbolicLink(parent) ||
+                        !Files.isDirectory(parent, LinkOption.NOFOLLOW_LINKS)) {
+                        direct = false
+                        break
+                    }
+                    parent = parent.parent
+                }
+                direct
+            }
+        } catch (_: Exception) { false }
         // Delete only known created entries. Never recursively traverse a
         // folder that could now contain someone else's files.
         fun cleanup(): Boolean {
             var clear = true
             for (path in ownedFiles.asReversed()) {
                 try {
-                    if (Files.isSymbolicLink(path)) { clear = false; continue }
+                    if (!parentChainStillDirect(path) || Files.isSymbolicLink(path)) {
+                        clear = false
+                        continue
+                    }
                     Files.deleteIfExists(path)
                     if (!Files.notExists(path, LinkOption.NOFOLLOW_LINKS)) clear = false
                 } catch (_: Exception) { clear = false }
@@ -109,6 +132,9 @@ internal object CreateSeedCopy {
                 check(path.startsWith(if (single) base else targetPath)) {
                     "Copy path escapes its destination"
                 }
+                check(parentChainStillDirect(path)) {
+                    "Copy destination changed or became indirect"
+                }
                 // Write the final file through an EXCLUSIVE non-following
                 // descriptor. No predictable .chunks-part file or rename.
                 FileChannel.open(path, StandardOpenOption.CREATE_NEW,
@@ -145,6 +171,9 @@ internal object CreateSeedCopy {
                         check(remaining == 0L) { "Copy source is shorter than its reviewed torrent" }
                     }
                     out.force(true)
+                }
+                check(parentChainStillDirect(path)) {
+                    "Copy destination changed while writing"
                 }
                 val written = path.toFile()
                 TorrentMetainfoBuilder.Entry(entry.path, written.length()) { written.inputStream() }
