@@ -99,8 +99,28 @@ class UnifiedTransferDetailPanelTest {
         }
         rule.onNodeWithText("Accessible selected transfer").assertExists()
         rule.onNodeWithText("Observation:", substring = true).assertExists()
+        rule.onNodeWithText("Last-known transfer facts only.", substring = true).performScrollTo().assertExists()
         rule.onNodeWithText("Start and stop:", substring = true).performScrollTo().assertExists()
         rule.onRoot().captureRoboImage("build/chunks-visual/details-stale-412x892.png")
+    }
+
+    @Test fun incompleteInventoryLabelsVisibleCachedFactsAsUnconfirmed() {
+        val snapshot = EnvironmentTransferSnapshot(
+            id, EnvironmentAvailability.LIVE, false, now - 10,
+            listOf(UnifiedTransferObservation(
+                key, "Cached title", "Cached title", 1024, 800_000, true, 12, 0, null))
+        )
+        val state = UnifiedTransferDetails.resolve(key, listOf(snapshot), null, now)
+        assertEquals(TransferDetailReadState.INCOMPLETE, state.readState)
+        rule.setContent {
+            ChunksTheme {
+                Surface { UnifiedTransferDetailPanel(state, "Server two", onBack = {}) }
+            }
+        }
+        rule.onNodeWithText("Cached title").assertExists()
+        rule.onNodeWithText("Last-known transfer facts only.", substring = true)
+            .performScrollTo().assertExists()
+        rule.onNodeWithText("Capability unknown.", substring = true).assertDoesNotExist()
     }
 
     @Test fun lockedSourceNeverLeaksItsNameAndDoesNotOfferSourceNavigation() {

@@ -76,7 +76,16 @@ object UnifiedTransferDetails {
                     nowEpochMillis - it <= EnvironmentSnapshots.SERVER_INVENTORY_FRESH_MS } == true)
         } == true
         val operations = EnvironmentOperation.entries.map { operation ->
-            val evidence = if (capabilityFresh) matching!!.of(operation) else CapabilityEvidence.UNKNOWN
+            val candidate = if (capabilityFresh) matching!!.of(operation) else CapabilityEvidence.UNKNOWN
+            // A same-ID DTO can still carry a capability from the wrong engine
+            // family. Phone build facts must never become remote authorization,
+            // and an rTorrent advertisement cannot describe a phone operation.
+            val wrongProvenance = (candidate == CapabilityEvidence.BUILT_IN &&
+                (key.environment != EnvironmentSnapshots.PHONE ||
+                    matching?.source != "phone engine")) ||
+                (candidate == CapabilityEvidence.ADVERTISED &&
+                    key.environment == EnvironmentSnapshots.PHONE)
+            val evidence = if (wrongProvenance) CapabilityEvidence.UNKNOWN else candidate
             val ready = state == TransferDetailReadState.CURRENT &&
                 (evidence == CapabilityEvidence.BUILT_IN ||
                     evidence == CapabilityEvidence.ADVERTISED)
@@ -85,6 +94,8 @@ object UnifiedTransferDetails {
                     "Unavailable: " + state.explanation
                 !capabilityFresh ->
                     "Capability has not been checked recently for this exact environment."
+                wrongProvenance ->
+                    "Capability evidence belongs to the wrong engine type; check this environment again."
                 evidence == CapabilityEvidence.BUILT_IN ->
                     "Built into the phone engine. Any change still needs an observed result."
                 evidence == CapabilityEvidence.ADVERTISED ->
