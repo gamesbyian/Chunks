@@ -76,7 +76,11 @@ class LocalEngineService : Service() {
             // readback budget across all transfers, but still issue every Stop.
             val timeoutBudget = if (timedOut) LocalServicePauseBudget() else null
             val engine = LocalEngineHolder.current()
-                ?: return LocalServiceTimeoutNotice.PauseSummary(listed = 0, confirmed = 0)
+                // A missing or inaccessible engine is not evidence that zero
+                // torrents were running. Preserve uncertainty in the timeout
+                // notice rather than promising an empty, successfully stopped
+                // phone when the process/engine could not be inspected.
+                ?: return LocalServiceTimeoutNotice.PauseSummary(listed = null, confirmed = 0)
             // Attempt each Stop independently. One uncertain native command
             // must not prevent pausing the other active phone transfers.
             val active = try { engine.list().filter { !it.stopped } }
