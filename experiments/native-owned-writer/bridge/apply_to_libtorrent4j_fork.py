@@ -12,6 +12,7 @@ FILES = ("owned_payload_file.h", "owned_payload_file.cc",
          "owned_torrent_storage.h", "owned_torrent_storage.cc",
          "bridge/checked_piece_range.h", "bridge/checked_piece_range.cc",
          "bridge/receipt_admission.h", "bridge/receipt_admission.cc",
+         "bridge/serial_native_io_queue.h", "bridge/serial_native_io_queue.cc",
          "bridge/owned_libtorrent_disk.h", "bridge/owned_libtorrent_disk.cc",
          "bridge/owned_disk_extension.i")
 CMAKE_SOURCES = """
@@ -20,6 +21,7 @@ target_sources(torrent4j PRIVATE
   chunks/owned_torrent_storage.cc
   chunks/bridge/checked_piece_range.cc
   chunks/bridge/receipt_admission.cc
+  chunks/bridge/serial_native_io_queue.cc
   chunks/bridge/owned_libtorrent_disk.cc
 )
 target_include_directories(torrent4j PRIVATE
