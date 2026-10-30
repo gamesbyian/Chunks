@@ -58,7 +58,7 @@ jobs:
           witnessed = []
           for prefix in ("CHUNKS_POST_ADD_COLLISION", "CHUNKS_MAGNET_COLLISION"):
               found = [s.strip() for s in lines if s.startswith(prefix + " ")]
-              if len(found) != 3:
+              if len(found) != 4:
                   raise SystemExit(f"Missing or ambiguous synthetic witness for {prefix}: {len(found)} lines")
               hashes = next((s for s in found if "before_sha256=" in s), "")
               if not re.fullmatch(rf"{prefix} before_sha256=[a-f0-9]{{64}} expected_sha256=[a-f0-9]{{64}} after_sha256=[a-f0-9]{{64}}", hashes):
@@ -66,6 +66,13 @@ jobs:
               for key in ("foreign_file_replaced", "expected_torrent_data_present"):
                   if not any(re.fullmatch(rf"{prefix} {key}=(true|false)", s) for s in found):
                       raise SystemExit(f"Missing {key} for {prefix}")
+              diagnostic = (
+                  rf"{prefix} native_start_outcome=(VERIFIED|UNCERTAIN)"
+                  if prefix == "CHUNKS_POST_ADD_COLLISION" else
+                  rf"{prefix} observed_metadata=true stopped=(true|false) upload_only=(true|false)"
+              )
+              if len([s for s in found if re.fullmatch(diagnostic, s)]) != 1:
+                  raise SystemExit(f"Missing or invalid native state witness for {prefix}")
               witnessed.extend(found)
 
           print("\n".join(witnessed))
