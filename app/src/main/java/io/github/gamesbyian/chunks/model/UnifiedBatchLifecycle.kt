@@ -21,7 +21,7 @@ enum class LifecycleReply { VERIFIED, ACKNOWLEDGED, REFUSED, UNCERTAIN, NOT_FOUN
  * Every selected key is executed only by the adapter registered for its own
  * environment; there is no fallback to another engine. An environment that
  * is not LIVE, has no adapter or has an incomplete inventory refuses its
- * items. The first UNCERTAIN or failed command halts the whole batch: later
+ * items. The first unverified, UNCERTAIN or failed attempted command halts the whole batch: later
  * items in every environment are NOT_ATTEMPTED and nothing is retried.
  */
 object UnifiedBatchLifecycle {
@@ -105,7 +105,13 @@ object UnifiedBatchLifecycle {
             }
             when (reply) {
                 LifecycleReply.VERIFIED -> out += ItemResult(target.key, CommandEvidence.VERIFIED)
-                LifecycleReply.ACKNOWLEDGED -> out += ItemResult(target.key, CommandEvidence.ACKNOWLEDGED)
+                LifecycleReply.ACKNOWLEDGED -> {
+                    out += ItemResult(target.key, CommandEvidence.ACKNOWLEDGED,
+                        "Accepted but not yet confirmed; refresh before issuing another change")
+                    // An accepted request without a fresh readback is an
+                    // unresolved mutation: later targets must not be issued.
+                    halted = target.key
+                }
                 LifecycleReply.REFUSED -> {
                     out += ItemResult(target.key, CommandEvidence.REFUSED,
                         "Engine refused this change; inspect the transfer's storage warning")
@@ -113,6 +119,10 @@ object UnifiedBatchLifecycle {
                 }
                 LifecycleReply.NOT_FOUND -> {
                     out += ItemResult(target.key, CommandEvidence.REFUSED, "No longer in this environment")
+                    // Actual adapter readback invalidated the reviewed list.
+                    // Preflight refusals need not halt, but a failed attempted
+                    // command must stop all later targets, even on other hosts.
+                    halted = target.key
                 }
                 LifecycleReply.UNCERTAIN, null -> {
                     out += ItemResult(target.key, CommandEvidence.UNCERTAIN,
@@ -175,8 +185,15 @@ fun UnifiedBatchLifecycle.Report.describe(label: (EnvironmentId) -> String): Lis
         label(env.environment) + ": " + parts.joinToString(", ") + "."
     }
     val haltedEvidence = items.firstOrNull { it.key == haltedOn }?.evidence
-    return if (haltedOn == null) lines else if (haltedEvidence == CommandEvidence.REFUSED)
-        lines + "Stopped early: one requested change was explicitly refused. Inspect the transfer's storage warning; nothing was retried."
-    else lines + ("Stopped early: one result was uncertain. Refresh each list " +
-        "before trying again; nothing was retried.")
+    return when {
+        haltedOn == null -> lines
+        haltedEvidence == CommandEvidence.REFUSED ->
+            lines + ("Stopped early: one requested change was explicitly refused or the " +
+                "transfer disappeared. Review the owning environment; nothing was retried.")
+        haltedEvidence == CommandEvidence.ACKNOWLEDGED ->
+            lines + ("Stopped early: one request was accepted but its resulting state " +
+                "has not been verified. Refresh each list before continuing; nothing was retried.")
+        else -> lines + ("Stopped early: one result was uncertain. Refresh each list " +
+            "before trying again; nothing was retried.")
+    }
 }
