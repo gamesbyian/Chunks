@@ -1,6 +1,7 @@
 package io.github.gamesbyian.chunks
 
 import android.content.Context
+import androidx.compose.runtime.mutableIntStateOf
 import io.github.gamesbyian.chunks.model.AliasReviewWrite
 import io.github.gamesbyian.chunks.model.AliasReviewPlanner
 import io.github.gamesbyian.chunks.model.TransferDisplayNames
@@ -17,6 +18,12 @@ import java.util.Locale
  * Importantly, saving an alias here cannot call rTorrent or change any backing file.
  */
 internal class TransferAliasStore(context: Context) {
+    companion object {
+        private val currentRevision = mutableIntStateOf(0)
+        val revision: Int get() = currentRevision.intValue
+        private fun changed() { currentRevision.intValue++ }
+    }
+
     private val preferences = context.applicationContext.getSharedPreferences(
         "chunks_display_aliases_v1", Context.MODE_PRIVATE
     )
@@ -26,13 +33,34 @@ internal class TransferAliasStore(context: Context) {
             runCatching { TransferDisplayNames.validateAlias(stored) }.getOrNull()
         }
 
+    /**
+     * One preferences snapshot for a scoped set of transfer identities. This
+     * can hash thousands of keys, so callers MUST run it off the UI thread.
+     * Malformed persisted aliases are ignored rather than displayed.
+     */
+    fun getBatch(requests: Set<CombinedAliasRequest>): Map<CombinedAliasRequest, String> {
+        if (requests.isEmpty()) return emptyMap()
+        val stored = preferences.all
+        return buildMap {
+            requests.forEach { request ->
+                val value = stored[key(request.aliasScope, request.key.infoHash)] as? String
+                    ?: return@forEach
+                val alias = runCatching { TransferDisplayNames.validateAlias(value) }.getOrNull()
+                    ?: return@forEach
+                put(request, alias)
+            }
+        }
+    }
+
     /** A null alias clears the override. A write failure must not be called a saved change. */
     fun save(endpoint: String, hash: String, alias: String?): Boolean {
         val preferenceKey = key(endpoint, hash)
         val editor = preferences.edit()
         if (alias == null) editor.remove(preferenceKey)
         else editor.putString(preferenceKey, TransferDisplayNames.validateAlias(alias))
-        return editor.commit()
+        val committed = editor.commit()
+        if (committed) changed()
+        return committed
     }
 
     /**
@@ -53,7 +81,9 @@ internal class TransferAliasStore(context: Context) {
         if (keys.toSet().size != keys.size || keys.any(preferences::contains)) return false
         val editor = preferences.edit()
         writes.forEachIndexed { i, entry -> editor.putString(keys[i], entry.alias) }
-        return editor.commit()
+        val committed = editor.commit()
+        if (committed) changed()
+        return committed
     }
 
     /**
@@ -70,7 +100,9 @@ internal class TransferAliasStore(context: Context) {
             return false
         val editor = preferences.edit()
         keys.forEach(editor::remove)
-        return editor.commit()
+        val committed = editor.commit()
+        if (committed) changed()
+        return committed
     }
 
     private fun key(endpoint: String, hash: String): String {
