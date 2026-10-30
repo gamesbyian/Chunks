@@ -6,6 +6,7 @@
 #include "checked_piece_range.h"
 #include "owned_libtorrent_disk.h"
 #include "receipt_admission.h"
+#include "serial_native_io_queue.h"
 
 #include <libtorrent/libtorrent.hpp>
 #include <libtorrent/hasher.hpp>
@@ -114,42 +115,49 @@ class NativeDisk final : public lt::disk_interface, public lt::buffer_allocator_
   void async_check_files(lt::storage_index_t index, lt::add_torrent_params const* resume,
       lt::aux::vector<std::string, lt::file_index_t> links,
       std::function<void(lt::status_t, lt::storage_error const&)> callback) override {
-    auto& state = *torrents_[index];
-    lt::storage_error problem;
-    if (!state.refusal.empty()) {
-      problem = Denied(lt::operation_t::file_open);
-    } else {
-      for (auto const& link : links) {
-        if (!link.empty()) problem = Denied(lt::operation_t::file_open);
-      }
-      if (!problem.ec && !state.checked) {
-        std::string reason;
-        // libtorrent may supply a non-null add_torrent_params for both
-        // fresh and restored jobs. Resume-pointer presence is not proof of
-        // ownership. Decide from app-private durable per-path receipts only.
-        const auto admission = ClassifyNativeAdmission(receipts_, state.layout, &reason);
-        if (admission == NativeAdmissionMode::REFUSED) {
-          state.refusal = reason;
-          problem = Denied(lt::operation_t::file_open);
-        } else {
-          const auto mode = admission == NativeAdmissionMode::FRESH
-              ? OwnedTorrentStorage::Admission::FRESH
-              : OwnedTorrentStorage::Admission::RESTORED;
-          state.storage = OwnedTorrentStorage::Open(state.save_path, receipts_,
-                                                    state.layout, mode, &reason);
+    auto state = torrents_[index];
+    const bool had_resume = resume != nullptr;
+    auto failure = [this, callback] {
+      auto denied = Denied(lt::operation_t::file_open);
+      boost::asio::post(io_, [callback, denied] {
+        callback(lt::disk_status::fatal_disk_error, denied);
+      });
+    };
+    // Never run receipt discovery, directory traversal or reservation on
+    // libtorrent's network thread. The queue serializes admission and writes.
+    if (!queue_.Submit([this, state, links=std::move(links), had_resume, callback] {
+      lt::storage_error problem;
+      if (!state || !state->refusal.empty()) {
+        problem = Denied(lt::operation_t::file_open);
+      } else {
+        for (auto const& link : links)
+          if (!link.empty()) problem = Denied(lt::operation_t::file_open);
+        if (!problem.ec && !state->checked) {
+          std::string reason;
+          auto const admission = ClassifyNativeAdmission(receipts_, state->layout, &reason);
+          if (admission == NativeAdmissionMode::REFUSED) {
+            state->refusal = reason;
+            problem = Denied(lt::operation_t::file_open);
+          } else {
+            auto const mode = admission == NativeAdmissionMode::FRESH
+                ? OwnedTorrentStorage::Admission::FRESH
+                : OwnedTorrentStorage::Admission::RESTORED;
+            state->storage = OwnedTorrentStorage::Open(state->save_path, receipts_,
+                                                      state->layout, mode, &reason);
+          }
+          if (!problem.ec && !state->storage) {
+            state->refusal = reason;
+            problem = Denied(lt::operation_t::file_open);
+          }
+          if (!problem.ec && state->storage) state->checked = true;
         }
-        if (!problem.ec && !state.storage) {
-          state.refusal = reason;
-          problem = Denied(lt::operation_t::file_open);
-        }
-        // A rejected claim must never transition the native torrent into
-        // "checked" state, even if callbacks later repeat this operation.
-        if (!problem.ec && state.storage) state.checked = true;
       }
-    }
-    auto status = problem.ec ? lt::disk_status::fatal_disk_error
-                : resume == nullptr ? lt::status_t{} : lt::disk_status::need_full_check;
-    boost::asio::post(io_, [callback, status, problem] { callback(status, problem); });
+      auto const status = problem.ec ? lt::disk_status::fatal_disk_error
+          : had_resume ? lt::disk_status::need_full_check : lt::status_t{};
+      boost::asio::post(io_, [callback, status, problem] {
+        callback(status, problem);
+      });
+    }, failure)) failure();
   }
 
   void async_read(lt::storage_index_t index, lt::peer_request const& req,
@@ -347,6 +355,7 @@ class NativeDisk final : public lt::disk_interface, public lt::buffer_allocator_
   std::string receipts_;
   lt::aux::vector<std::shared_ptr<Torrent>, lt::storage_index_t> torrents_;
   std::vector<lt::storage_index_t> free_;
+  SerialNativeIoQueue queue_;
 };
 } // namespace
 
