@@ -280,6 +280,9 @@ class LocalTorrentEngineTest {
                     firstSelected.priority, 7))))
         assertEquals(firstSelected.priority, requireNotNull(leecher.files(transfer.infoHash))
             .single { it.index == firstSelected.index }.priority)
+        assertTrue("A planner stale-review safety refusal must be explained on the transfer",
+            requireNotNull(leecher.status(transfer.infoHash)).error.orEmpty()
+                .contains("no verified native bytes"))
         assertEquals(LocalCommandOutcome.REFUSED,
             leecher.setFileWanted(transfer.infoHash, skipped.index, true))
         assertArrayEquals("Active file selection cannot clobber planted bytes",
