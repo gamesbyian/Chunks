@@ -29,6 +29,10 @@ Combined Transfers SHALL offer a **Group by environment** presentation toggle, i
 6. Combined batch actions cannot accidentally execute against an unselected/hidden profile, and a view-scope change cannot alter Add destination, saved rule scope or setting target.
 
 
+## Smart scoped defaults without a destination guessing game (owner UX, 2026-10-30)
+
+A person with one eligible environment gets a resolved, obvious destination and no compulsory environment picker. With multiple environments, show the saved explicit Add destination or ask once when genuinely ambiguous; a combined view, filter, recently viewed profile or matching hash is never implicit permission to redirect a command. Display read-only scoped settings as familiar summaries such as **On phone · Save to: [verified folder] · Change**, and provide **Change this transfer**, **Change this environment's default** and **Apply to selected profiles** only where those actions are genuinely distinct. Skipping a scope control must not cause later file-location confusion or force recovery from an accidental server choice. Retain source labels and per-transfer options after Add, reconnect and restart, with honest offline/unknown states. [UX requirement](UX.md#visible-options-automatic-defaults-and-nondecision-continuity-binding-owner-direction-2026-10-30).
+
 ## Configuration and first run
 - Local-only is the default offer and a complete standalone path; no remote account, remote connection, seedbox, or network enrichment is required. An explicit remote-only choice is equally first class and must not force local torrent-engine setup or start the local service.
 - Users may enable local only, remote only, or both; remote may include multiple independently named rTorrent profiles. Enabling, disabling and later re-enabling an environment preserves its configuration and torrent/data state unless a **separate, explicit deletion or credential-forget action** is confirmed. Disable means hidden/inactive in Chunks UI, not a destructive torrent removal or remote server shutdown. Do not stop active local downloads silently: warn of consequences and offer a separate stop/background policy.
