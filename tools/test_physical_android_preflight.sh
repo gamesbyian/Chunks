@@ -26,8 +26,14 @@ case "${1:-}" in
     devices)
         printf 'List of devices attached\nTEST\tdevice\n'
         if [[ "${MOCK_MULTIPLE:-0}" == 1 ]]; then printf 'SECOND\tdevice\n'; fi
+        # A failed producer can still emit a plausible complete inventory.
+        [[ "${MOCK_DEVICES_FAILURE:-0}" != 1 ]] || exit 19
         ;;
-    get-state) printf 'device\n' ;;
+    get-state)
+        printf 'device\n'
+        # A status comparison must not hide the producer's nonzero exit.
+        [[ "${MOCK_GET_STATE_FAILURE:-0}" != 1 ]] || exit 23
+        ;;
     install)
         if [[ "${MOCK_INSTALL_FAILURE_TEXT:-0}" == 1 ]]; then
             printf 'Failure [INSTALL_FAILED_INVALID_APK]\n'
@@ -49,8 +55,24 @@ case "${1:-}" in
                 esac
                 ;;
             dumpsys)
-                printf 'Package [io.github.gamesbyian.chunks]\nversionName=%s\n' \
-                    "${MOCK_VERSION:-0.1.0-dev+0123456789ab}"
+                if [[ "${MOCK_DUMPSYS_MISSING:-0}" == 1 ]]; then
+                    printf 'Package [io.github.gamesbyian.chunks]\n'
+                else
+                    printf 'Package [io.github.gamesbyian.chunks]\nversionName=%s\n' \
+                        "${MOCK_VERSION:-0.1.0-dev+0123456789ab}"
+                    if [[ "${MOCK_DUMPSYS_LARGE:-0}" == 1 ]]; then
+                        # Force a late writer after the early matching line.
+                        # grep -m1 abandons this producer with SIGPIPE.
+                        sleep 0.02
+                        for ((i=0; i<20000; i++)); do
+                            printf 'package dump detail %d\n' "$i"
+                        done
+                    fi
+                    if [[ "${MOCK_DUMPSYS_CONFLICT:-0}" == 1 ]]; then
+                        printf 'versionName=0.0.0-conflicting\n'
+                    fi
+                fi
+                if [[ "${MOCK_DUMPSYS_FAILURE:-0}" == 1 ]]; then exit 1; fi
                 ;;
             am)
                 [[ "${2:-}" == "start" ]] || exit 1
@@ -100,6 +122,25 @@ if MOCK_MULTIPLE=1 bash "$repo/tools/physical_android_preflight.sh" "$apk" >/dev
 fi
 [[ ! -e "$MOCK_INSTALL_FILE" ]]
 
+# Device inventory and state readbacks must fail closed even when adb
+# prints a complete-looking success value and exits unsuccessfully.
+for condition in MOCK_DEVICES_FAILURE MOCK_GET_STATE_FAILURE; do
+    if env "$condition=1" MOCK_REQUIRE_SERIAL=1 bash "$repo/tools/physical_android_preflight.sh" "$apk" >"$temp/failed-adb.log" 2>&1; then
+        echo "Failed adb readback was accepted: $condition" >&2
+        exit 1
+    fi
+    [[ ! -e "$MOCK_INSTALL_FILE" ]] || {
+        echo "An APK was installed after a failed adb readback: $condition" >&2
+        exit 1
+    }
+done
+# Explicit-target get-state is equally unsafe if only output is checked.
+if ADB_SERIAL=TEST MOCK_GET_STATE_FAILURE=1 bash "$repo/tools/physical_android_preflight.sh" "$apk" >"$temp/failed-adb.log" 2>&1; then
+    echo "Explicit device accepted failed adb get-state" >&2
+    exit 1
+fi
+[[ ! -e "$MOCK_INSTALL_FILE" ]]
+
 # adb may return exit code zero while reporting installation failure.
 if MOCK_INSTALL_FAILURE_TEXT=1 bash "$repo/tools/physical_android_preflight.sh" "$apk" >/dev/null 2>&1; then
     echo "False-positive adb install was accepted" >&2
@@ -107,6 +148,22 @@ if MOCK_INSTALL_FAILURE_TEXT=1 bash "$repo/tools/physical_android_preflight.sh" 
 fi
 [[ ! -e "$MOCK_INSTALL_FILE" ]]
 
+# Some real package dumps are much larger than one pipe buffer. A reader that
+# stops at versionName leaves adb writing into a closed pipe (SIGPIPE 141).
+output="$(MOCK_DUMPSYS_LARGE=1 bash "$repo/tools/physical_android_preflight.sh" "$apk")"
+[[ -e "$MOCK_INSTALL_FILE" && "$output" == *"installation and initial launch verified"* ]]
+rm "$MOCK_INSTALL_FILE"
+
+# Do not mistake a first good line for an authoritative version if a later
+# line contradicts it, or if the package manager command itself failed.
+for condition in MOCK_DUMPSYS_CONFLICT MOCK_DUMPSYS_FAILURE MOCK_DUMPSYS_MISSING; do
+    if env "$condition=1" bash "$repo/tools/physical_android_preflight.sh" "$apk" >/dev/null 2>&1; then
+        echo "Unreliable package-version evidence was accepted: $condition" >&2
+        exit 1
+    fi
+    [[ -e "$MOCK_INSTALL_FILE" ]]
+    rm "$MOCK_INSTALL_FILE"
+done
 # An installed package version mismatch must not become launch acceptance.
 if MOCK_VERSION=0.1.0-dev+ffffffffffff bash "$repo/tools/physical_android_preflight.sh" "$apk" >/dev/null 2>&1; then
     echo "Mismatched installed APK version was accepted" >&2
@@ -131,4 +188,4 @@ if bash "$repo/tools/physical_android_preflight.sh" "$apk" >/dev/null 2>&1; then
     exit 1
 fi
 [[ ! -e "$MOCK_INSTALL_FILE" ]]
-echo "CHUNKS_PHYSICAL_PREFLIGHT_TEST: verified success and fail-closed serial selection, install output, launch output, version, emulator, multi-device and tampered APK"
+echo "CHUNKS_PHYSICAL_PREFLIGHT_TEST: verified success and fail-closed serial selection, complete dumpsys output, install and launch evidence, version, emulator, multi-device and tampered APK"

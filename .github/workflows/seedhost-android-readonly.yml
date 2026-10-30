@@ -12,12 +12,6 @@ on:
     paths:
       - ".github/workflows/seedhost-android-readonly.yml"
   workflow_dispatch:
-    inputs:
-      rutorrent_url:
-        description: "Credential-free HTTPS ruTorrent URL; defaults to the approved development Seedhost"
-        required: false
-        default: "https://ianseeds.wood.seedhost.eu/rutorrent/"
-        type: string
 
 permissions:
   contents: read
@@ -42,7 +36,7 @@ jobs:
           gradle-version: "9.3.1"
       - name: Check protected access prerequisites
         env:
-          CHUNKS_LIVE_RUTORRENT_URL: ${{ inputs.rutorrent_url || 'https://ianseeds.wood.seedhost.eu/rutorrent/' }}
+          CHUNKS_LIVE_RUTORRENT_URL: "https://ianseeds.wood.seedhost.eu/rutorrent/"
           CHUNKS_LIVE_RTORRENT_USER: ${{ secrets.rtorrent_user }}
           CHUNKS_LIVE_RTORRENT_PASS: ${{ secrets.rtorrent_pass }}
         run: |
@@ -65,7 +59,7 @@ jobs:
       - name: Installed Android app reads real protected Seedhost over HTTPS
         uses: reactivecircus/android-emulator-runner@v2
         env:
-          CHUNKS_LIVE_RUTORRENT_URL: ${{ inputs.rutorrent_url || 'https://ianseeds.wood.seedhost.eu/rutorrent/' }}
+          CHUNKS_LIVE_RUTORRENT_URL: "https://ianseeds.wood.seedhost.eu/rutorrent/"
           CHUNKS_LIVE_RTORRENT_USER: ${{ secrets.rtorrent_user }}
           CHUNKS_LIVE_RTORRENT_PASS: ${{ secrets.rtorrent_pass }}
         with:

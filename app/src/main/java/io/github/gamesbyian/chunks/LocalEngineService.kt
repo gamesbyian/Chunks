@@ -66,7 +66,14 @@ class LocalEngineService : Service() {
          * Pause every running transfer and persist state. Safe to call without
          * the service. Reports how many pauses a readback confirmed.
          */
-        internal fun pauseAll(context: Context): LocalServiceTimeoutNotice.PauseSummary {
+        internal fun pauseAll(
+            context: Context,
+            timedOut: Boolean = false
+        ): LocalServiceTimeoutNotice.PauseSummary {
+            // Android gives a time-limited dataSync service only a short grace
+            // period to stop after onTimeout. Spend at most one SHARED
+            // readback budget across all transfers, but still issue every Stop.
+            val timeoutBudget = if (timedOut) LocalServicePauseBudget() else null
             val engine = LocalEngineHolder.current()
                 ?: return LocalServiceTimeoutNotice.PauseSummary(listed = 0, confirmed = 0)
             // Attempt each Stop independently. One uncertain native command
@@ -76,14 +83,19 @@ class LocalEngineService : Service() {
             var confirmed = 0
             active?.forEach { transfer ->
                 try {
-                    if (engine.pause(transfer.infoHash, readbackTimeoutMs = 2_000).outcome ==
+                    val waitMs = timeoutBudget?.nextReadbackTimeoutMs() ?: 2_000L
+                    if (engine.pause(transfer.infoHash, readbackTimeoutMs = waitMs).outcome ==
                         LocalCommandOutcome.VERIFIED) confirmed++
                 } catch (_: Exception) {
                     // An uncertain outcome must be observed afresh, not retried.
                 }
             }
             // Always attempt persistence, including after a failed Stop.
-            try { engine.saveResumeData() } catch (_: Exception) { }
+            // During OS timeout, do not spend an additional default five
+            // seconds waiting for disk alerts after the shared Stop budget.
+            try {
+                engine.saveResumeData(timeoutMs = if (timedOut) 1_000L else 5_000L)
+            } catch (_: Exception) { }
             return LocalServiceTimeoutNotice.PauseSummary(active?.size, confirmed)
         }
     }
@@ -163,7 +175,7 @@ class LocalEngineService : Service() {
     private fun requestStopAll(timedOut: Boolean = false) {
         if (!workLanes.submitControl {
                 try {
-                    val summary = pauseAll(this)
+                    val summary = pauseAll(this, timedOut = timedOut)
                     if (timedOut) postTimeoutNotice(summary)
                 } finally { handler.post { finish() } }
             }) {

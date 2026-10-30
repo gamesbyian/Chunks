@@ -1,11 +1,17 @@
 # Chunks documentation index
 
+- [External destination delivery](EXTERNAL-DESTINATION-DELIVERY.md): optional verified local-torrent delivery to Google Drive/SAF or independently authorized FTP-family storage, staged copy, recovery and no implicit cloud seeding (planned).
+
+
 The [documentation architecture and authoring standard](DOCUMENTATION-STANDARD.md) defines the authority of each document and how agents maintain it. This index is navigation, **not another specification**.
 
 ## Agent entry points
 
+- [Android TV and multi-backend remote roadmap](ANDROID-TV-AND-REMOTE-BACKENDS.md): binding future TV UX, protocol adapter generalization, BiglyBT reuse/license audit, stage gates; deferred until foundational acceptance.
+
 - [AGENTS](../AGENTS.md): required operating instructions and safety rules.
 - [WORK-QUEUE](WORK-QUEUE.md): concise active priority/order authority; reconcile with live PRs/issues.
+- [Independent Android architecture audit, 2026-10-30](ANDROID-ARCHITECTURE-AUDIT-2026-10-30.md): AUD-01–15 source findings, evidence and gaps, work-package definitions and unresolved review areas. [#687](https://github.com/gamesbyian/Chunks/issues/687) tracks follow-through; this dated report is **not a second work queue**.
 - [Dependency-reset queue snapshot](archive/WORK-QUEUE-2026-10-29-pre-dependency-reset.txt): verbatim prior active board; historical, never executable.
 - [Older queue archive](archive/WORK-QUEUE-2026-10-29-preconsolidation.md): preserved earlier milestone narratives; not a live plan.
 - [QUALITY-LEDGER](QUALITY-LEDGER.md): dated test evidence and limitations; not a current task queue.
@@ -77,3 +83,5 @@ The [documentation architecture and authoring standard](DOCUMENTATION-STANDARD.m
 ## Where to put new information
 
 A user-facing promise goes in PRODUCT or its linked feature contract; screen behavior in UX; implementation details in ARCHITECTURE; a binding choice in DECISIONS; proof in QUALITY-LEDGER; missing test coverage in SPEC-COVERAGE; prioritized work in WORK-QUEUE. Use concise cross-references rather than distributing whole requirements across all seven files.
+
+- [Per-transfer home-screen widgets](PER-TRANSFER-HOME-WIDGETS.md): deferred P3, independent live indicator per transfer, launcher removal feasibility gate.

@@ -3,11 +3,6 @@ name: Protected Seedhost Kotlin adapter acceptance
 on:
   workflow_dispatch:
     inputs:
-      rutorrent_url:
-        description: "Credential-free ruTorrent HTTPS URL for development Seedhost"
-        type: string
-        required: false
-        default: "https://ianseeds.wood.seedhost.eu/rutorrent/"
       apply_mutation:
         description: "Owner-authorized: add, prioritise, start/stop and session-erase ONE unique synthetic test torrent under <default>/chunks-acceptance"
         type: boolean
@@ -53,7 +48,7 @@ jobs:
           fi
       - name: Run actual Kotlin RPC adapter against development Seedhost
         env:
-          CHUNKS_LIVE_RUTORRENT_URL: ${{ inputs.rutorrent_url }}
+          CHUNKS_LIVE_RUTORRENT_URL: "https://ianseeds.wood.seedhost.eu/rutorrent/"
           CHUNKS_LIVE_RTORRENT_USER: ${{ secrets.rtorrent_user }}
           CHUNKS_LIVE_RTORRENT_PASS: ${{ secrets.rtorrent_pass }}
           CHUNKS_LIVE_MUTATION: ${{ inputs.apply_mutation && 'apply' || 'read-only' }}

@@ -2,14 +2,12 @@ package io.github.gamesbyian.chunks
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -75,20 +73,16 @@ internal fun TransferFilePriorityControl(
                     color = MaterialTheme.colorScheme.error)
             }
             if (!attempted && !confirming && allowed) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    for (value in 0..2) {
-                        FilterChip(
-                            selected = desired == value,
-                            onClick = { desired = value },
-                            label = { Text(choices[value]) },
-                            modifier = Modifier.height(48.dp)
-                        )
-                    }
-                }
+                RemoteFilePriorityChoices(
+                    fileIndex = index,
+                    filePath = file.path,
+                    desired = desired,
+                    onChoose = { desired = it }
+                )
                 OutlinedButton(
                     onClick = { confirming = true },
                     enabled = desired != file.priority,
-                    modifier = Modifier.fillMaxWidth().height(48.dp)
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                 ) { Text("Review priority change") }
             }
             if (confirming) {
@@ -139,11 +133,11 @@ internal fun TransferFilePriorityControl(
                         }
                     },
                     enabled = allowed && !pending,
-                    modifier = Modifier.fillMaxWidth().height(52.dp)
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
                 ) { Text("Confirm priority") }
                 OutlinedButton(
                     onClick = { confirming = false },
-                    modifier = Modifier.fillMaxWidth().height(48.dp)
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                 ) { Text("Cancel") }
             }
             if (attempted) {

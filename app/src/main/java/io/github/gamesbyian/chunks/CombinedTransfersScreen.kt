@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
@@ -20,6 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FilterChip
@@ -34,9 +36,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.heading
@@ -46,6 +50,9 @@ import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.engine.LocalTransferStatus
 import io.github.gamesbyian.chunks.model.EnvironmentAvailability
 import io.github.gamesbyian.chunks.model.EnvironmentId
+import io.github.gamesbyian.chunks.model.EnvironmentCapabilities
+import io.github.gamesbyian.chunks.model.EnvironmentCapabilitySnapshot
+import io.github.gamesbyian.chunks.model.EnvironmentOperation
 import io.github.gamesbyian.chunks.model.EnvironmentSnapshots
 import io.github.gamesbyian.chunks.model.EnvironmentTransferSnapshot
 import io.github.gamesbyian.chunks.model.EnvironmentViewScope
@@ -64,6 +71,8 @@ import io.github.gamesbyian.chunks.rpc.RemoteTransfer
 import io.github.gamesbyian.chunks.model.LifecycleReply
 import io.github.gamesbyian.chunks.model.UnifiedBatchLifecycle
 import io.github.gamesbyian.chunks.model.UnifiedTransferKey
+import io.github.gamesbyian.chunks.model.UnifiedTransferDetails
+import io.github.gamesbyian.chunks.model.TransferDetailReadState
 import io.github.gamesbyian.chunks.model.describe
 import io.github.gamesbyian.chunks.model.toLifecycleReply
 import io.github.gamesbyian.chunks.rpc.LifecycleOutcome
@@ -83,6 +92,7 @@ import io.github.gamesbyian.chunks.model.EnvironmentPalette
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withContext
 
 /** The connected server's latest accepted list, as the server screen holds it. */
@@ -93,14 +103,18 @@ internal data class CombinedServerSource(
     val fullView: Boolean,
     val observedAtEpochMillis: Long?,
     /** Start/Stop through the server screen's own mutation gate; null when not offered. */
-    val lifecycle: CombinedServerLifecycle? = null
+    val lifecycle: CombinedServerLifecycle? = null,
+    /** Live authenticated RTorrentRemote identity, never a saved profile string. */
+    val authenticatedSession: Any? = null
 )
 
 /** The connected server's lease, command and settle, exactly as its own list uses them. */
 internal class CombinedServerLifecycle(
     val begin: () -> Boolean,
     val settled: () -> Unit,
-    val setStarted: suspend (String, Boolean) -> LifecycleOutcome
+    val setStarted: suspend (String, Boolean) -> LifecycleOutcome,
+    /** Read-only method-list probe of the same signed-in server; null skips the pre-check. */
+    val probe: (suspend () -> io.github.gamesbyian.chunks.rpc.RemoteProbe)? = null
 )
 
 /** A saved profile that is not signed in during this session. */
@@ -131,14 +145,12 @@ internal fun listingFailure(failure: Throwable): String = when (failure) {
 }
 
 /** A listing older than this is shown as out of date; it is never refreshed silently. */
-internal const val SAVED_LISTING_FRESH_MS = 120_000L
+internal const val SAVED_LISTING_FRESH_MS = EnvironmentSnapshots.SERVER_INVENTORY_FRESH_MS
 
 /** A failed refresh invalidates live status immediately, while preserving last-known rows. */
 internal fun savedListingIsStale(listing: SavedServerListing, now: Long): Boolean =
     listing.loading || listing.error != null ||
-        (listing.observedAtEpochMillis != null &&
-            (now < listing.observedAtEpochMillis ||
-                now - listing.observedAtEpochMillis > SAVED_LISTING_FRESH_MS))
+        EnvironmentSnapshots.serverInventoryIsOutOfDate(listing.observedAtEpochMillis, now)
 
 /** A separate single-flight reader so this view never blocks or shares the phone screen's slot. */
 private object CombinedPhoneReader {
@@ -176,7 +188,7 @@ internal fun UnifiedSortKey.orderingKind(): TransferSortOrdering.Kind = when (th
 }
 
 internal fun availabilityText(source: EnvironmentTransferSnapshot): String = when (source.availability) {
-    EnvironmentAvailability.LIVE -> if (source.inventoryComplete) "Live" else "Live, list may be incomplete"
+    EnvironmentAvailability.LIVE -> if (source.canClaimCompleteLiveInventory) "Live" else "Live, list may be incomplete"
     EnvironmentAvailability.STALE -> "Out of date, showing last list"
     EnvironmentAvailability.OFFLINE -> if (source.environment == EnvironmentSnapshots.PHONE)
         "Engine not running, open On this phone" else "Not connected"
@@ -218,6 +230,7 @@ internal fun CombinedTransfersScreen(
     var phoneObservedAt by remember { mutableStateOf<Long?>(null) }
     // Explicit cross-environment selection; never derived from the view scope.
     var selecting by remember { mutableStateOf(false) }
+    var detailKey by remember { mutableStateOf<UnifiedTransferKey?>(null) }
     var selected by remember { mutableStateOf<Set<UnifiedTransferKey>>(emptySet()) }
     var batchRunning by remember { mutableStateOf(false) }
     var batchResult by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -296,6 +309,9 @@ internal fun CombinedTransfersScreen(
     val sources = remember(phoneFrame, phoneConfirmed, phoneRunning, phoneObservedAt, phonePrivacy,
         server?.aliasScope, server?.transfers, server?.stale, server?.fullView, server?.observedAtEpochMillis,
         serverPrivacy, savedPrivacy, listings, now, batchRunning, PhoneMutationFence.revision.blocksMutations()) { buildList {
+        // The ticker invalidates old reads; use the actual clock when a newer
+        // observation arrives between ticks so it is not mistaken for a future read.
+        val snapshotNow = System.currentTimeMillis()
         val phoneStale = phoneFrame.stale || PhoneMutationFence.revision.blocksMutations() || batchRunning
         val phone = if (phoneRunning || phoneConfirmed) EnvironmentSnapshots.phone(
             phoneFrame.copy(stale = phoneStale), phoneConfirmed,
@@ -308,7 +324,7 @@ internal fun CombinedTransfersScreen(
             add(EnvironmentSnapshots.server(serverId, server.transfers, connected = true,
                 stale = server.stale || batchRunning,
                 locked = serverPrivacy?.mayShow != true, fullView = server.fullView,
-                observedAtEpochMillis = server.observedAtEpochMillis)
+                observedAtEpochMillis = server.observedAtEpochMillis, nowEpochMillis = snapshotNow)
                 .withAliases { hash -> aliases.get(server.aliasScope, hash) })
         }
         savedProfiles.filter { EnvironmentId(it.id) != serverId }.forEach { profile ->
@@ -317,8 +333,8 @@ internal fun CombinedTransfersScreen(
             val observed = listing?.observedAtEpochMillis
             val locked = savedPrivacy[id]?.mayShow == false
             add(EnvironmentSnapshots.server(id, listing?.transfers.orEmpty(), connected = observed != null,
-                stale = listing?.let { savedListingIsStale(it, now) } == true,
-                locked = locked, fullView = true, observedAtEpochMillis = observed)
+                stale = listing?.let { savedListingIsStale(it, snapshotNow) } == true,
+                locked = locked, fullView = true, observedAtEpochMillis = observed, nowEpochMillis = snapshotNow)
                 .withAliases { hash -> profile.aliasScope?.let { aliases.get(it, hash) } })
         }
     }
@@ -334,14 +350,109 @@ internal fun CombinedTransfersScreen(
         onDispose { if (secure) activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_SECURE) }
     }
 
-    LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    val listState = rememberLazyListState()
+    // Reading LazyListState.layoutInfo during composition creates a feedback
+    // loop: layout publishes info, composition reads it, then remeasures.
+    // Capture only actual size changes and use stable scroll state for visibility.
+    var viewportHeightPx by remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    val showReturnToTop = ReturnToTopPolicy.remote(
+        firstVisibleIndex = listState.firstVisibleItemIndex,
+        firstVisibleOffsetPx = listState.firstVisibleItemScrollOffset,
+        viewportHeightPx = viewportHeightPx,
+        hasTransfers = result.transfers.isNotEmpty()
+    )
+    val focusedKey = detailKey
+    val signedInFocus = focusedKey?.takeIf { it.environment == serverId }
+    val capabilityGate = remember { RemoteCapabilityProbeSessionGate() }
+    // MainActivity creates a fresh CombinedServerSource each recomposition.
+    // The session witness comes from its live RTorrentRemote object, not this
+    // replaceable data wrapper or the persisted profile's endpoint string.
+    capabilityGate.bind(server?.authenticatedSession, serverId, signedInFocus)
+    val latestServer = rememberUpdatedState(server)
+    val latestServerId = rememberUpdatedState(serverId)
+    val latestFocus = rememberUpdatedState(signedInFocus)
+    var pendingCapability by remember {
+        mutableStateOf<RemoteCapabilityProbeSessionGate.Ticket?>(null)
+    }
+    var capabilityEvidence by remember {
+        mutableStateOf<Pair<RemoteCapabilityProbeSessionGate.Ticket, EnvironmentCapabilitySnapshot>?>(null)
+    }
+    var capabilityFailure by remember {
+        mutableStateOf<Pair<RemoteCapabilityProbeSessionGate.Ticket, String>?>(null)
+    }
+    fun stillCurrent(ticket: RemoteCapabilityProbeSessionGate.Ticket?) =
+        ticket != null && capabilityGate.current(
+            ticket, latestServer.value?.authenticatedSession,
+            latestServerId.value, latestFocus.value
+        )
+
+    if (focusedKey != null) {
+        // The same observed source collection is the only detail authority.
+        // Saved servers remain read-only here, even when credentials enabled a
+        // manual listing. Never switch sign-in context or reuse a matching hash.
+        val snapshot = capabilityEvidence?.takeIf { stillCurrent(it.first) }?.second
+        val details = UnifiedTransferDetails.resolve(
+            focusedKey, sources,
+            if (focusedKey.environment == EnvironmentSnapshots.PHONE)
+                EnvironmentCapabilities.phone() else snapshot,
+            System.currentTimeMillis()
+        )
+        val readOnlyProbe = server?.lifecycle?.probe?.takeIf {
+            focusedKey.environment == serverId &&
+                server?.authenticatedSession != null &&
+                serverPrivacy?.mayShow == true &&
+                details.readState == TransferDetailReadState.CURRENT
+        }
+        UnifiedTransferDetailPanel(
+            detail = details,
+            environmentLabel = labels[focusedKey.environment] ?: "Unconfigured environment",
+            onBack = { detailKey = null },
+            onOpenOwningList = openFor(focusedKey),
+            onCheckCapabilities = readOnlyProbe?.let { probe ->
+                {
+                    val ticket = capabilityGate.begin()
+                    // Do not dispatch a probe if the app changed sessions after
+                    // composing the button but before the tap was delivered.
+                    if (stillCurrent(ticket)) {
+                        pendingCapability = ticket
+                        capabilityEvidence = null
+                        capabilityFailure = null
+                        batchScope.launch {
+                            try {
+                                val observed = withContext(Dispatchers.IO) {
+                                    withTimeout(15_000L) { probe() }
+                                }
+                                if (stillCurrent(ticket)) {
+                                    capabilityEvidence = ticket!! to
+                                        EnvironmentCapabilities.fromProbe(
+                                            ticket.environment, observed, System.currentTimeMillis())
+                                }
+                            } catch (cancel: kotlinx.coroutines.CancellationException) {
+                                if (cancel !is kotlinx.coroutines.TimeoutCancellationException)
+                                    throw cancel
+                                if (stillCurrent(ticket)) capabilityFailure =
+                                    ticket!! to "The server capability check timed out; no methods were verified."
+                            } catch (_: Exception) {
+                                if (stillCurrent(ticket)) capabilityFailure =
+                                    ticket!! to "The signed-in server did not complete the read-only check."
+                            } finally {
+                                if (pendingCapability === ticket) pendingCapability = null
+                            }
+                        }
+                    }
+                }
+            },
+            capabilityCheckInProgress = stillCurrent(pendingCapability),
+            capabilityCheckError = capabilityFailure?.takeIf { stillCurrent(it.first) }?.second
+        )
+    } else {
+    Box(Modifier.fillMaxSize()) {
+        LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp)
+                .onSizeChanged { viewportHeightPx = it.height },
+            state = listState, contentPadding = PaddingValues(bottom = 88.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item {
-            Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("All environments", style = MaterialTheme.typography.headlineSmall,
-                    modifier = Modifier.semantics { heading() })
-                OutlinedButton(onClick = onBack, modifier = Modifier.heightIn(min = 48.dp)) { Text("Back") }
-            }
+            CombinedTransfersHeader(onBack)
             Text("Browse every environment together. Start and Stop can be applied to a selection " +
                 "here; every other change happens in each environment's own list.",
                 style = MaterialTheme.typography.bodySmall)
@@ -433,7 +544,8 @@ internal fun CombinedTransfersScreen(
                 Text("Group by environment", style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.weight(1f))
                 Switch(checked = query.groupByEnvironment,
-                    onCheckedChange = { update(query.copy(groupByEnvironment = it)) })
+                    onCheckedChange = { update(query.copy(groupByEnvironment = it)) },
+                    modifier = Modifier.semantics { contentDescription = "Group by environment" })
             }
         }
         item {
@@ -508,7 +620,8 @@ internal fun CombinedTransfersScreen(
                     CombinedTransferRow(row, labels[row.key.environment].orEmpty(), palette.hueOf(row.key.environment),
                         selection = if (selecting) row.key in selected else null,
                         onSelect = { on -> selected = if (on) selected + row.key else selected - row.key },
-                        onOpen = openFor(row.key))
+                        onOpen = openFor(row.key),
+                        onDetails = { detailKey = row.key })
                 }
             }
         } else {
@@ -516,7 +629,8 @@ internal fun CombinedTransfersScreen(
                 CombinedTransferRow(row, labels[row.key.environment].orEmpty(), palette.hueOf(row.key.environment),
                     selection = if (selecting) row.key in selected else null,
                     onSelect = { on -> selected = if (on) selected + row.key else selected - row.key },
-                    onOpen = openFor(row.key))
+                    onOpen = openFor(row.key),
+                        onDetails = { detailKey = row.key })
             }
         }
         item {
@@ -529,14 +643,22 @@ internal fun CombinedTransfersScreen(
                 onRestore = { id -> colourStore.restoreAutomatic(id); palette = colourStore.load() })
         }
         item {
-            Row(Modifier.padding(vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = onOpenPhone, modifier = Modifier.heightIn(min = 48.dp)) {
+            ResponsiveActionGroup(Modifier.padding(vertical = 12.dp)) { actionModifier ->
+                OutlinedButton(onClick = onOpenPhone, modifier = actionModifier) {
                     Text("Open On this phone")
                 }
                 if (onOpenServer != null) OutlinedButton(onClick = onOpenServer,
-                    modifier = Modifier.heightIn(min = 48.dp)) { Text("Open server list") }
+                    modifier = actionModifier) { Text("Open server list") }
             }
         }
+        }
+        ReturnToTopControl(visible = showReturnToTop, onClick = {
+            batchScope.launch {
+                if (ReturnToTopPolicy.animationsEnabled(context)) listState.animateScrollToItem(0)
+                else listState.scrollToItem(0)
+            }
+        }, modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 16.dp))
+    }
     }
 }
 
@@ -570,7 +692,9 @@ private fun CombinedTransferRow(
     selection: Boolean? = null,
     onSelect: (Boolean) -> Unit = {},
     /** Null for environments only listed here (no live list to open). */
-    onOpen: (() -> Unit)? = null
+    onOpen: (() -> Unit)? = null,
+    /** Read-only details are available even for saved, unsigned-in profiles. */
+    onDetails: () -> Unit
 ) {
     val accent = hue?.let { Color(it.argb) } ?: ChunksColors.Outline
     // The hue is used for the label only where it meets AA on this surface.
@@ -584,7 +708,7 @@ private fun CombinedTransferRow(
             modifier = Modifier.padding(start = 4.dp).align(Alignment.CenterVertically).semantics {
                 contentDescription = "Select ${row.displayName} on $environmentLabel"
             })
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(Modifier.weight(1f).padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(environmentLabel, style = MaterialTheme.typography.labelMedium, color = labelColour,
                 fontWeight = FontWeight.Bold)
             Text(row.displayName, style = MaterialTheme.typography.titleSmall)
@@ -593,8 +717,13 @@ private fun CombinedTransferRow(
             Text(combinedRowFacts(row), style = MaterialTheme.typography.bodySmall)
             if (row.hasError) Text("Needs attention in its own list", color = ChunksColors.Red,
                 style = MaterialTheme.typography.bodySmall)
-            if (onOpen != null) OutlinedButton(onClick = onOpen, modifier = Modifier.heightIn(min = 48.dp)
-                .semantics { contentDescription = "Open ${row.displayName} in $environmentLabel" }) {
+            OutlinedButton(onClick = onDetails,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics {
+                    contentDescription = "Details for ${row.displayName} on $environmentLabel"
+                }) { Text("Details") }
+            if (onOpen != null) OutlinedButton(onClick = onOpen,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    .semantics { contentDescription = "Open ${row.displayName} in $environmentLabel" }) {
                 Text("Open in its list")
             }
             // Say why no action is offered rather than leaving the user to hunt for one.
@@ -617,9 +746,19 @@ internal suspend fun runCombinedLifecycle(
     sources: List<EnvironmentTransferSnapshot>,
     serverLifecycle: CombinedServerLifecycle?,
     serverId: EnvironmentId?,
-    phoneEngine: () -> io.github.gamesbyian.chunks.engine.LocalTorrentEngine? = { LocalEngineHolder.current() }
+    phoneEngine: () -> io.github.gamesbyian.chunks.engine.LocalTorrentEngine? = { LocalEngineHolder.current() },
+    nowEpochMillis: () -> Long = { System.currentTimeMillis() }
 ): UnifiedBatchLifecycle.Report {
-    val byKey = sources.flatMap { it.transfers }.associateBy { it.key }
+    // Confirmation can arrive between clock ticks, after the displayed source
+    // expired. Re-evaluate it before acquiring any command lane.
+    val currentTime = nowEpochMillis()
+    val currentSources = sources.map { source ->
+        if (source.environment != EnvironmentSnapshots.PHONE &&
+            source.availability == EnvironmentAvailability.LIVE &&
+            EnvironmentSnapshots.serverInventoryIsOutOfDate(source.observedAtEpochMillis, currentTime))
+            source.copy(availability = EnvironmentAvailability.STALE) else source
+    }
+    val byKey = currentSources.flatMap { it.transfers }.associateBy { it.key }
     val targets = chosen.sortedWith(compareBy({ it.environment.value }, { it.infoHash }))
         .map { UnifiedBatchLifecycle.Target(it, byKey[it]?.started) }
     val adapters = HashMap<EnvironmentId, UnifiedBatchLifecycle.Adapter>()
@@ -630,7 +769,7 @@ internal suspend fun runCombinedLifecycle(
         // An unavailable, incomplete or unobserved inventory cannot authorize
         // a batch, so never even acquire its engine's mutation gate. The pure
         // batch still returns an explicit per-transfer refusal.
-        val actionable = sources.filter { it.canClaimCompleteLiveInventory }
+        val actionable = currentSources.filter { it.canClaimCompleteLiveInventory }
             .map { it.environment }.toSet()
         for (environment in targets.map { it.key.environment }.toSet()) {
             if (environment !in actionable) continue
@@ -650,7 +789,16 @@ internal suspend fun runCombinedLifecycle(
                     }
                 }
             } else if (environment == serverId && serverLifecycle != null) {
-                if (!serverLifecycle.begin()) refusals[environment] = "server is busy or refreshing"
+                // Fresh read-only pre-check before leasing: a server that does not
+                // advertise Start/Stop refuses here. No answer leaves it UNKNOWN,
+                // and the command's own readback still decides.
+                val capability = serverCapabilities(environment, serverLifecycle.probe)
+                    .decide(EnvironmentOperation.START_STOP, EnvironmentAvailability.LIVE)
+                val source = currentSources.first { it.environment == environment }
+                if (EnvironmentSnapshots.serverInventoryIsOutOfDate(source.observedAtEpochMillis, nowEpochMillis()))
+                    refusals[environment] = "Transfer list is out of date; refresh first"
+                else if (!capability.allowed) refusals[environment] = capability.explanation
+                else if (!serverLifecycle.begin()) refusals[environment] = "server is busy or refreshing"
                 else {
                     serverLeased = true
                     adapters[environment] = UnifiedBatchLifecycle.Adapter { hash, on ->
@@ -662,10 +810,26 @@ internal suspend fun runCombinedLifecycle(
                 }
             } else refusals[environment] = "only listed here; sign in to this server to change it"
         }
-        return UnifiedBatchLifecycle.run(targets, start, sources, adapters, refusals)
+        return UnifiedBatchLifecycle.run(targets, start, currentSources, adapters, refusals,
+            sourceIsFresh = { source -> source.environment == EnvironmentSnapshots.PHONE ||
+                !EnvironmentSnapshots.serverInventoryIsOutOfDate(source.observedAtEpochMillis, nowEpochMillis()) })
     } finally {
         if (phoneLeased) PhoneMutationFence.revision.settledMutation()
         if (serverLeased) serverLifecycle?.settled?.invoke()
+    }
+}
+
+internal suspend fun serverCapabilities(
+    environment: EnvironmentId,
+    probe: (suspend () -> io.github.gamesbyian.chunks.rpc.RemoteProbe)?
+): EnvironmentCapabilitySnapshot {
+    if (probe == null) return EnvironmentCapabilities.unprobed(environment)
+    return try {
+        EnvironmentCapabilities.fromProbe(environment, probe(), System.currentTimeMillis())
+    } catch (cancel: kotlinx.coroutines.CancellationException) {
+        throw cancel
+    } catch (_: Exception) {
+        EnvironmentCapabilities.unprobed(environment)
     }
 }
 
@@ -692,20 +856,20 @@ private fun CombinedBatchSection(
         val hidden = (selected - visible).size
         Text("${selected.size} selected" + (if (hidden > 0) ", $hidden not shown by the current view" else ""),
             style = MaterialTheme.typography.titleSmall)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        ResponsiveActionGroup { actionModifier ->
             OutlinedButton(onClick = { confirming = true }, enabled = !running,
-                modifier = Modifier.heightIn(min = 48.dp)) { Text("Start…") }
+                modifier = actionModifier) { Text("Start…") }
             OutlinedButton(onClick = { confirming = false }, enabled = !running,
-                modifier = Modifier.heightIn(min = 48.dp)) { Text("Stop…") }
+                modifier = actionModifier) { Text("Stop…") }
             OutlinedButton(onClick = { onClear(); confirming = null }, enabled = !running,
-                modifier = Modifier.heightIn(min = 48.dp)) { Text("Clear") }
+                modifier = actionModifier) { Text("Clear") }
         }
         val wanted = confirming ?: return@Column
         Text(combinedBatchPreview(wanted, selected, labels), style = MaterialTheme.typography.bodyMedium)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        ResponsiveActionGroup { actionModifier ->
             Button(onClick = { confirming = null; onRun(wanted) }, enabled = !running,
-                modifier = Modifier.heightIn(min = 48.dp)) { Text(if (wanted) "Start selected" else "Stop selected") }
-            OutlinedButton(onClick = { confirming = null }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Cancel") }
+                modifier = actionModifier) { Text(if (wanted) "Start selected" else "Stop selected") }
+            OutlinedButton(onClick = { confirming = null }, modifier = actionModifier) { Text("Cancel") }
         }
     }
 }
@@ -773,7 +937,10 @@ private fun EnvironmentColourChooser(
 
 /** Live-only totals in words, saying what is unknown or left out. */
 internal fun combinedTotalsText(t: io.github.gamesbyian.chunks.model.UnifiedTransferTotals): String =
-    "Live total: ↓ " + Units.bytes(t.downloadBytesPerSecond) + "/s · ↑ " + Units.bytes(t.uploadBytesPerSecond) +
-        "/s across ${t.liveRows} transfers" +
+    "Live total: ↓ " + (if (t.downloadTotalBeyondRange) "exceeds reporting range"
+                         else Units.bytes(t.downloadBytesPerSecond) + "/s") +
+        " · ↑ " + (if (t.uploadTotalBeyondRange) "exceeds reporting range"
+                    else Units.bytes(t.uploadBytesPerSecond) + "/s") +
+        " across ${t.liveRows} transfers" +
         (if (t.rowsWithUnknownRate > 0) " · ${t.rowsWithUnknownRate} with rates not reported" else "") +
-        (if (t.excludedEnvironments > 0) " · ${t.excludedEnvironments} environment(s) not included (not live)" else "")
+        (if (t.excludedEnvironments > 0) " · ${t.excludedEnvironments} environment(s) excluded (not fully observed)" else "")

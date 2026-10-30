@@ -230,28 +230,52 @@ object UnifiedTransferCatalog {
 }
 
 /**
- * Totals over the shown rows that come from LIVE sources only. Rows from
- * out-of-date, offline or locked sources are excluded and counted, and a
- * row whose rate was not reported is counted as unknown, never as 0 B/s.
+ * Totals over shown rows from complete, freshly observed LIVE sources only.
+ * Out-of-date, offline, incomplete, locked and timestamp-less sources are
+ * excluded and counted. Unreported rates are unknown, never measured zero.
  */
 data class UnifiedTransferTotals(
     val liveRows: Int,
     val downloadBytesPerSecond: Long,
     val uploadBytesPerSecond: Long,
     val rowsWithUnknownRate: Int,
-    val excludedEnvironments: Int
+    val excludedEnvironments: Int,
+    /** True when a valid total exceeds Long.MAX_VALUE; the formatted rate is not exact. */
+    val downloadTotalBeyondRange: Boolean = false,
+    val uploadTotalBeyondRange: Boolean = false
 ) {
     companion object {
+        /** An overflow must never wrap into a negative rate later displayed as 0 B/s. */
+        private fun sumRates(
+            rows: List<UnifiedTransferObservation>,
+            rate: (UnifiedTransferObservation) -> Long?
+        ): Pair<Long, Boolean> {
+            var total = 0L
+            var beyondRange = false
+            for (row in rows) {
+                val measured = rate(row) ?: continue
+                if (measured > Long.MAX_VALUE - total) {
+                    total = Long.MAX_VALUE
+                    beyondRange = true
+                } else total += measured
+            }
+            return total to beyondRange
+        }
+
         fun of(result: UnifiedTransferQueryResult): UnifiedTransferTotals {
-            val live = result.sources.filter { it.availability == EnvironmentAvailability.LIVE }
+            val eligible = result.sources.filter { it.canClaimCompleteLiveInventory }
                 .map { it.environment }.toSet()
-            val rows = result.transfers.filter { it.key.environment in live }
+            val rows = result.transfers.filter { it.key.environment in eligible }
+            val (download, downloadOverflow) = sumRates(rows) { it.downloadBytesPerSecond }
+            val (upload, uploadOverflow) = sumRates(rows) { it.uploadBytesPerSecond }
             return UnifiedTransferTotals(
                 liveRows = rows.size,
-                downloadBytesPerSecond = rows.sumOf { it.downloadBytesPerSecond ?: 0L },
-                uploadBytesPerSecond = rows.sumOf { it.uploadBytesPerSecond ?: 0L },
+                downloadBytesPerSecond = download,
+                uploadBytesPerSecond = upload,
                 rowsWithUnknownRate = rows.count { it.downloadBytesPerSecond == null || it.uploadBytesPerSecond == null },
-                excludedEnvironments = result.sources.size - live.size + result.missingSelectedEnvironments.size)
+                excludedEnvironments = result.sources.size - eligible.size + result.missingSelectedEnvironments.size,
+                downloadTotalBeyondRange = downloadOverflow,
+                uploadTotalBeyondRange = uploadOverflow)
         }
     }
 }

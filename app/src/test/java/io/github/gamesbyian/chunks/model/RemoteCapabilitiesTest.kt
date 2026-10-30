@@ -21,6 +21,67 @@ class RemoteCapabilitiesTest {
         assertEquals(RemoteCapabilities.Status.ADVERTISED, byLabel.getValue("Transfer list").status)
     }
 
+
+    @Test fun optionalDefaultDirectoryDoesNotDisqualifyExplicitDestinationAdd() {
+        val graded = RemoteCapabilities.grade(RemoteProbe("0.16", all - "directory.default"))
+            .associateBy { it.feature.label }
+        assertEquals(RemoteCapabilities.Status.ADVERTISED,
+            graded.getValue("Add magnet via XML-RPC").status)
+        assertEquals(RemoteCapabilities.Status.ADVERTISED,
+            graded.getValue("Add .torrent via XML-RPC").status)
+        assertEquals(RemoteCapabilities.Status.MISSING,
+            graded.getValue("Use server default Add folder").status)
+    }
+
+    @Test fun addRoutesAreIndependentAndRequireExactSessionLookup() {
+        val missingMagnet = RemoteCapabilities.grade(RemoteProbe("0.16", all - "load.verbose"))
+            .associateBy { it.feature.label }
+        assertEquals(RemoteCapabilities.Status.MISSING,
+            missingMagnet.getValue("Add magnet via XML-RPC").status)
+        assertEquals(RemoteCapabilities.Status.ADVERTISED,
+            missingMagnet.getValue("Add .torrent via XML-RPC").status)
+        val noExactLookup = RemoteCapabilities.grade(RemoteProbe("0.16", all - "d.name"))
+            .associateBy { it.feature.label }
+        assertEquals(RemoteCapabilities.Status.MISSING,
+            noExactLookup.getValue("Add magnet via XML-RPC").status)
+        assertEquals(RemoteCapabilities.Status.MISSING,
+            noExactLookup.getValue("Add .torrent via XML-RPC").status)
+    }
+
+    @Test fun removeRequiresExactHashReadbackInAdditionToEraseMethod() {
+        val graded = RemoteCapabilities.grade(RemoteProbe("0.16", all - "d.hash"))
+            .associateBy { it.feature.label }
+        assertEquals(RemoteCapabilities.Status.MISSING,
+            graded.getValue("Remove from server session").status)
+        assertEquals(listOf("d.hash"), graded.getValue("Remove from server session").missing)
+    }
+
+    @Test fun missingActivityGetterCannotAdvertiseVerifiableLifecycle() {
+        val graded = RemoteCapabilities.grade(RemoteProbe("0.16", all - "d.is_active"))
+            .associateBy { it.feature.label }
+        assertEquals(RemoteCapabilities.Status.MISSING,
+            graded.getValue("Start and stop").status)
+        assertEquals(listOf("d.is_active"), graded.getValue("Start and stop").missing)
+    }
+
+    @Test fun trackerHealthAndFinishInOrderRequireExactIdentityMethod() {
+        val missingHash = RemoteCapabilities.grade(RemoteProbe("0.16", all - "d.hash"))
+            .associateBy { it.feature.label }
+        assertEquals(listOf("d.hash"), missingHash.getValue("Tracker health").missing)
+        assertEquals(listOf("d.hash"), missingHash.getValue("Finish in Order").missing)
+    }
+
+    @Test fun optionalBoundAddressDoesNotBlockPhoneCopy() {
+        val graded = RemoteCapabilities.grade(RemoteProbe("0.16",
+            all - "network.bind_address")).associateBy { it.feature.label }
+        assertEquals(RemoteCapabilities.Status.ADVERTISED,
+            graded.getValue("Copy files to this phone").status)
+        val missingListener = RemoteCapabilities.grade(RemoteProbe("0.16",
+            all - "network.listen.port")).associateBy { it.feature.label }
+        assertEquals(RemoteCapabilities.Status.MISSING,
+            missingListener.getValue("Copy files to this phone").status)
+    }
+
     @Test fun noIntrospectionMeansUnknownNotMissing() {
         val probe = RemoteProbe("0.9.6", null)
         val graded = RemoteCapabilities.grade(probe)

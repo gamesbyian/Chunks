@@ -24,8 +24,9 @@ import org.junit.runner.RunWith
  * service; once verified bytes are flowing the script forces deep Doze
  * (dumpsys deviceidle force-idle) and drops a flag file. The test then
  * records whether hash-verified bytes keep arriving while idle. Passing
- * requires only that the service and engine stay alive and answer; growth
- * versus stall is the recorded observation. Emulator only: OEM power
+ * requires periodic evidence that Android stayed in idle throughout the
+ * observation window, with the service and engine still answering. Growth
+ * versus stall is a separate recorded observation. Emulator only: OEM power
  * managers and real idle entry on a handset can differ.
  */
 @RunWith(AndroidJUnit4::class)
@@ -74,13 +75,26 @@ class AndroidPublicSwarmDozeInstrumentedTest {
                 if (System.nanoTime() > flagDeadline) fail("Doze flag never arrived")
                 Thread.sleep(500)
             }
-            val idle = context.getSystemService(PowerManager::class.java).isDeviceIdleMode
+            val power = context.getSystemService(PowerManager::class.java)
+            val witness = DeepIdleWindowWitness()
+            witness.record(power.isDeviceIdleMode)
             val before = requireNotNull(engine.status(hash)).doneBytes
+            // Sample 19 times over 90 seconds (initial + every five seconds).
+            // A `force-idle` ACK before the window is not proof of sustained idle.
             val window = 90_000L
-            Thread.sleep(window)
+            repeat(18) {
+                Thread.sleep(5_000)
+                witness.record(power.isDeviceIdleMode)
+            }
             val after = requireNotNull(engine.status(hash)) { "engine stopped answering in Doze" }
             val grew = after.doneBytes - before
-            log((if (grew > 0) "GROWTH" else "STALLED") + " idle_mode=$idle window_ms=$window " +
+            if (!witness.sustained(expectedSamples = 19)) {
+                log("INCONCLUSIVE idle_not_sustained samples=${witness.samples} " +
+                    "non_idle_samples=${witness.nonIdleSamples} window_ms=$window")
+                fail("INCONCLUSIVE: Android did not remain in deep idle throughout the sampling window")
+            }
+            log((if (grew > 0) "GROWTH" else "STALLED") + " idle_mode=true " +
+                "idle_samples=${witness.samples} window_ms=$window " +
                 "verified_before=$before verified_after=${after.doneBytes} grew=$grew peers=${after.peers}")
             assertTrue("foreground service must survive Doze", ongoing())
             assertNotNull(after)

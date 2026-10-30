@@ -60,7 +60,7 @@ internal object SnapshotRestoreOnceV1 {
 
         override fun submitStopped(originalTorrent: ByteArray, chosenPlace: File): Boolean =
             try {
-                engine.addStopped(originalTorrent, chosenPlace) is LocalAddResult.AddedStopped
+                engine.addStoppedChecked(originalTorrent, chosenPlace) is LocalAddResult.AddedStopped
             } catch (_: Exception) { false }
     }
 

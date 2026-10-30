@@ -46,6 +46,12 @@ class AndroidPublicSwarmInterruptInstrumentedTest {
         val engine = LocalEngineHolder.get(context)
         val added = (engine.addStopped(File(context.cacheDir, name).readBytes(), target)
             as LocalAddResult.AddedStopped).status
+        // A completed (or undersized) fixture cannot prove mid-download death
+        // or meaningful continuation. Refuse before arming the kill.
+        if (added.wantedBytes <= budget) {
+            log("INCONCLUSIVE fixture_too_small wanted=${added.wantedBytes} budget=$budget")
+            fail("INCONCLUSIVE: fixture has no data beyond interruption budget")
+        }
         assertEquals(LocalCommandOutcome.VERIFIED, engine.resume(added.infoHash).outcome)
         val started = System.nanoTime()
         var latest = requireNotNull(engine.status(added.infoHash))
@@ -56,6 +62,10 @@ class AndroidPublicSwarmInterruptInstrumentedTest {
         if (latest.doneBytes < budget) {
             log("INCONCLUSIVE phase A verified=${latest.doneBytes} target=$budget peers=${latest.peers}")
             fail("INCONCLUSIVE peer availability before the kill")
+        }
+        if (InterruptedSwarmEvidence.continuationGoal(latest.doneBytes, added.wantedBytes) == null) {
+            log("INCONCLUSIVE not_mid_download verified=${latest.doneBytes} wanted=${added.wantedBytes}")
+            fail("INCONCLUSIVE: no genuinely incomplete transfer to interrupt")
         }
         marker.writeText(added.infoHash + "\n" + latest.doneBytes + "\n" + added.wantedBytes)
         log("armed hash=${added.infoHash} verified_before_kill=${latest.doneBytes} wanted=${added.wantedBytes}")
@@ -87,12 +97,21 @@ class AndroidPublicSwarmInterruptInstrumentedTest {
                 Thread.sleep(500)
                 status = requireNotNull(engine.status(hash))
             }
+            if (status.state == LocalTransferState.CHECKING) {
+                log("INCONCLUSIVE recheck_did_not_settle verified=${status.doneBytes}")
+                fail("INCONCLUSIVE: disk recheck never settled after restart")
+            }
             val recovered = status.doneBytes
             // Observation, not a pass condition: whether pieces written before the kill
             // were recognised on disk (RECOVERED) or must be fetched again (REDOWNLOAD).
             log((if (recovered > 0) "RECOVERED" else "REDOWNLOAD") +
                 " recheck_recovered=$recovered verified_before_kill=$before state=${status.state}")
-            val goal = minOf(before + (4L shl 20), wanted)
+            // Rechecking existing disk pieces is not new peer transfer.
+            // Require additional verified bytes beyond BOTH the pre-kill count
+            // and the settled recovery count; otherwise fail inconclusive.
+            val goal = requireNotNull(InterruptedSwarmEvidence.continuationGoal(maxOf(before, recovered), wanted)) {
+                "INCONCLUSIVE: interruption marker did not record a partial download"
+            }
             val started = System.nanoTime()
             while (status.doneBytes < goal && System.nanoTime() - started < seconds * 1_000_000_000L) {
                 Thread.sleep(2_000)

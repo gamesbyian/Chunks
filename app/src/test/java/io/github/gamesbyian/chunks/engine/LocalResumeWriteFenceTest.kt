@@ -66,4 +66,40 @@ class LocalResumeWriteFenceTest {
             workers.shutdownNow()
         }
     }
+    @Test fun twoWritersForSameHandleNeverOverlapTheirTemporaryFileWrites() {
+        val handles = mutableMapOf("abc" to "current-handle")
+        val firstEntered = CountDownLatch(1)
+        val releaseFirst = CountDownLatch(1)
+        val secondEntered = CountDownLatch(1)
+        val firstFinished = CountDownLatch(1)
+        val workers = Executors.newFixedThreadPool(2)
+        val writes = mutableListOf<String>()
+        try {
+            val initialAdd = workers.submit<Boolean> {
+                LocalResumeWriteFence.writeIfCurrent(handles, "abc", "current-handle") {
+                    firstEntered.countDown()
+                    check(releaseFirst.await(5, TimeUnit.SECONDS))
+                    writes.add("initial-add")
+                }.also { firstFinished.countDown() }
+            }
+            assertTrue(firstEntered.await(2, TimeUnit.SECONDS))
+            val asyncSave = workers.submit<Boolean> {
+                LocalResumeWriteFence.writeIfCurrent(handles, "abc", "current-handle") {
+                    secondEntered.countDown()
+                    writes.add("async-save")
+                }
+            }
+            assertFalse("A second writer must not enter while the first owns the resume temp file",
+                secondEntered.await(100, TimeUnit.MILLISECONDS))
+            releaseFirst.countDown()
+            assertTrue(initialAdd.get(3, TimeUnit.SECONDS))
+            assertTrue(firstFinished.await(2, TimeUnit.SECONDS))
+            assertTrue(asyncSave.get(3, TimeUnit.SECONDS))
+            assertEquals(listOf("initial-add", "async-save"), writes)
+        } finally {
+            releaseFirst.countDown()
+            workers.shutdownNow()
+        }
+    }
+
 }
