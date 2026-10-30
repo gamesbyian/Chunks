@@ -34,6 +34,29 @@ class HttpRpcAuthorizationIdentitySafetyTest {
         }
     }
 
+    @Test fun hostileServerChallengeControlsNeverBecomeAuthorizationHeaders() {
+        val suffixes = listOf('\u007f', '\u0085', '\u009f', '\u2028', '\u2029')
+        for (bad in suffixes) {
+            val challenges = listOf(
+                """Basic realm="malicious@BAD@"""",
+                """Digest realm="malicious@BAD@", nonce="once", qop="auth", algorithm=SHA-256""",
+                """Digest realm="safe", nonce="malicious@BAD@", qop="auth", algorithm=SHA-256"""
+            ).map { it.replace("@BAD@", bad.toString()) }
+            for (challenge in challenges) {
+                try {
+                    HttpRpcAuthorization.fromChallenge(
+                        listOf(challenge), RemoteCredentials("https://example.test/RPC2", "alice", "secret"),
+                        "POST", "/RPC2"
+                    )
+                    fail("Unsafe challenge control accepted")
+                } catch (failure: IOException) {
+                    assertTrue(failure.message.orEmpty().contains("authentication challenge", ignoreCase = true))
+                    assertFalse(failure.message.orEmpty().contains("malicious"))
+                }
+            }
+        }
+    }
+
     @Test fun ordinaryAccountAndColonContainingPasswordRemainUsable() {
         val identity = RemoteCredentials("https://example.test/RPC2", "alice.smith", "secret:with:colons")
         val b = HttpRpcAuthorization.fromChallenge(listOf(basic), identity, "POST", "/RPC2")
