@@ -62,12 +62,18 @@ jobs:
           ndk_root="$(find "$ANDROID_HOME/ndk" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n1)"
           llvm="$ndk_root/toolchains/llvm/prebuilt/linux-x86_64/bin"
           test -f "$ndk_root/build/cmake/android.toolchain.cmake"
+          # NDK sysroot cannot resolve host /usr/include directly. Expose
+          # *only* header-only Boost through an isolated include directory;
+          # never let host glibc headers/libraries enter the target link.
+          mkdir -p "$RUNNER_TEMP/chunks-boost-includes"
+          ln -s /usr/include/boost "$RUNNER_TEMP/chunks-boost-includes/boost"
           upstream="$RUNNER_TEMP/chunks-libtorrent4j"
           build="$RUNNER_TEMP/chunks-android-owned-${{ matrix.abi }}"
           cmake -S "$upstream/swig" -B "$build" -G Ninja \
             -DCMAKE_TOOLCHAIN_FILE="$ndk_root/build/cmake/android.toolchain.cmake" \
             -DANDROID_ABI=${{ matrix.abi }} -DANDROID_PLATFORM=android-29 \
             -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_FLAGS="-I$RUNNER_TEMP/chunks-boost-includes" \
             -DBUILD_SHARED_LIBS=OFF -Dwebtorrent=OFF -DUSE_JUICE=OFF \
             -DCMAKE_DISABLE_FIND_PACKAGE_OpenSSL=TRUE \
             -DCMAKE_DISABLE_FIND_PACKAGE_GnuTLS=TRUE \
