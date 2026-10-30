@@ -51,6 +51,12 @@ Do not use Secrets in fork/PR builds. Never connect the CI runner to a private r
 
 The filter's 13 deterministic offline negative controls run in the already existing path-scoped documentation job when the filter or tests change. To collect an actual safety receipt, first obtain the applicable native diagnostic JUnit XML **at the exact reviewed source SHA**, then invoke the filter on that output and record both positive and negative results in [QUALITY-LEDGER](QUALITY-LEDGER.md). **The offline controls do not run native libtorrent or prove current source is safe**. A future green synthetic receipt cannot establish atomically owned native write handles, post-crash restored ownership, symlink substitution safety, arbitrary real files or physical API29/API35 handset proof. Keep [#568](https://github.com/gamesbyian/Chunks/issues/568) P0 open until the independent safety evidence matrix is complete.
 
+## API29 real shared-Downloads safety trigger (2026-10-30)
+
+The existing `android10-downloads-instrumentation.yml` remains a **single path-scoped emulator job**, not an all-Android-app fan-out. Changes to `LocalTorrentEngine.kt`, `LocalCheckedPayloadReservations.kt`, or `LocalPayloadCollisionSurvey.kt` now trigger its real API29 shared-Downloads tests even without edits to the instrumentation suite. Those production sources directly control checked Add, first Start, magnet metadata paths and same-path writer admission on user-visible Downloads. `tests/test_ci_trigger_contract.py` independently guards these trigger paths in the cheap foundation JVM workflow. Unrelated Compose screens, artwork, remote transport, docs and font changes remain excluded from the API29 trigger unless they match an independently justified existing path. For actual overlap, avoid dispatching additional manual duplicate runs.
+
+**Evidence limits:** a path trigger proves only that CI is scheduled. Require the exact PR-head run's actual non-skipped permission/native peer/collision test results, and independently distinguish that emulator evidence from handset/SAF/SD, persisted writer ownership and external path-substitution safety. This change does not close [#568](https://github.com/gamesbyian/Chunks/issues/568), [#9](https://github.com/gamesbyian/Chunks/issues/9) or [AUD-01](ANDROID-ARCHITECTURE-AUDIT-2026-10-30.md).
+
 ## Opt-in dataSync timeout repro (#569, 2026-10-29)
 
 `android-fgs-timeout-repro.yml` runs one class, `LocalEngineServiceTimeoutInstrumentedTest`, through `tools/fgs_timeout_repro.sh` on a disposable API35 emulator.
