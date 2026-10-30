@@ -288,16 +288,21 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
     private fun transferFromRow(row: List<*>, rich: Boolean): RemoteTransfer {
         val hash = row[0] as? String ?: error("Missing info hash")
         require(identityPattern.matches(hash)) { "Invalid torrent infohash in server view" }
+        val size = nonNegativeNumber(row[2], "torrent size")
+        val completed = nonNegativeNumber(row[3], "verified bytes")
+        require(completed <= size) { "Verified bytes exceed torrent size" }
+        val state = number(row[4])
+        require(state in 0L..1L) { "Invalid rTorrent state flag" }
         return RemoteTransfer(
             hash = hash,
             name = (row[1] as? String ?: error("Missing torrent name")).take(2048),
-            sizeBytes = number(row[2]).coerceAtLeast(0),
-            completedBytes = number(row[3]).coerceAtLeast(0),
-            started = number(row[4]) != 0L,
+            sizeBytes = size,
+            completedBytes = completed,
+            started = state == 1L,
             directory = (row[5] as? String ?: error("Missing server path")).take(4096),
-            downBytesPerSecond = if (rich) number(row[6]).coerceAtLeast(0) else null,
-            upBytesPerSecond = if (rich) number(row[7]).coerceAtLeast(0) else null,
-            ratioThousandths = if (rich) number(row[8]).coerceAtLeast(0) else null
+            downBytesPerSecond = if (rich) nonNegativeNumber(row[6], "download rate") else null,
+            upBytesPerSecond = if (rich) nonNegativeNumber(row[7], "upload rate") else null,
+            ratioThousandths = if (rich) nonNegativeNumber(row[8], "ratio") else null
         )
     }
 
@@ -645,10 +650,14 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         return rows.map { item ->
             val columns = item as? List<*> ?: error("Invalid remote file")
             require(columns.size == 3) { "Invalid remote file fields" }
+            val path = columns[0] as? String ?: error("Missing file path")
+            require(path.isNotBlank() && path.length <= 4096) { "Invalid remote file path" }
+            val priority = number(columns[2])
+            require(priority in 0L..2L) { "Invalid remote file priority" }
             RemoteFile(
-                path = (columns[0] as? String ?: error("Missing file path")).take(4096),
-                sizeBytes = number(columns[1]).coerceAtLeast(0),
-                priority = number(columns[2]).toInt()
+                path = path,
+                sizeBytes = nonNegativeNumber(columns[1], "file size"),
+                priority = priority.toInt()
             )
         }
     }
@@ -695,8 +704,11 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             val first = number(c[3])
             val second = number(c[4])
             require(first in 0..totalChunks && second in first..totalChunks) { "Invalid file chunk range" }
-            FileCompletion((c[0] as? String ?: error("Missing file path")).take(4096),
-                number(c[1]).coerceAtLeast(0), number(c[2]).toInt(),
+            val path = c[0] as? String ?: error("Missing file path")
+            require(path.isNotBlank() && path.length <= 4096) { "Invalid remote file path" }
+            val priority = number(c[2])
+            require(priority in 0L..2L) { "Invalid remote file priority" }
+            FileCompletion(path, nonNegativeNumber(c[1], "file size"), priority.toInt(),
                 completedChunks = checkedPieces.completedIn(first, second),
                 sizeChunks = second - first)
         }
@@ -995,8 +1007,14 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
     private fun extractRows(response: Any?): List<*> =
         response as? List<*> ?: error("Unexpected rTorrent array reply")
 
+    // XmlRpcCodec decodes i4/int/i8 as Long. Do not silently truncate a
+    // fractional XML-RPC double, NaN or Infinity into a valid integer flag,
+    // length, rate, or priority. This protects inventory and mutation preflight.
     private fun number(value: Any?): Long =
-        (value as? Number)?.toLong() ?: error("Expected numeric rTorrent value")
+        value as? Long ?: throw IllegalArgumentException("Expected integral rTorrent value")
+
+    private fun nonNegativeNumber(value: Any?, field: String): Long =
+        number(value).also { require(it >= 0L) { "Invalid negative rTorrent $field" } }
 
     internal suspend fun call(method: String, params: List<Any> = emptyList()): Any? =
         withContext(Dispatchers.IO) {
