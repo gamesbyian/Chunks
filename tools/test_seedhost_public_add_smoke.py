@@ -3,6 +3,7 @@ import sys
 from types import SimpleNamespace
 from unittest.mock import patch
 import unittest
+import xmlrpc.client
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 import seedhost_public_add_smoke as s
@@ -45,6 +46,8 @@ class Server:
         if method == "d.is_multi_file":
             return int(self.multi)
         if method == "d.name":
+            if not self.present:
+                raise xmlrpc.client.Fault(-501, "Could not find info-hash.")
             return self.name
         if method == "d.state":
             return self.started
@@ -67,7 +70,7 @@ class LiveTest(unittest.TestCase):
         with patch.object(s, "public_fixture", return_value=fixture()):
             result = s.execute(args(True), factory=lambda *params: server)
         self.assertEqual("verified_stopped_in_destination", result["result"])
-        self.assertEqual(["d.multicall2", "load.raw_verbose", "d.multicall2",
+        self.assertEqual(["d.multicall2", "d.name", "load.raw_verbose", "d.multicall2",
                           "d.directory", "d.is_multi_file", "d.name", "d.state"], server.calls)
 
     def test_multifile_parent_add_appends_torrent_name(self):
@@ -97,6 +100,54 @@ class LiveTest(unittest.TestCase):
             result = s.execute(args(True), factory=lambda *params: server)
         self.assertEqual("already_present_no_write", result["result"])
         self.assertEqual(["d.multicall2"], server.calls)
+
+    def test_session_hidden_duplicate_refuses_load_even_when_main_view_is_empty(self):
+        class HiddenServer(Server):
+            def call(self, method, *params):
+                if method == "d.name":
+                    self.calls.append(method)
+                    return "Already registered in a different session view"
+                return super().call(method, *params)
+        server = HiddenServer(None, None, None)
+        with patch.object(s, "public_fixture", return_value=fixture()):
+            result = s.execute(args(True), factory=lambda *params: server)
+        self.assertEqual("already_present_no_write", result["result"])
+        self.assertEqual(["d.multicall2", "d.name"], server.calls)
+
+    def test_only_documented_unknown_hash_faults_permit_one_add(self):
+        for code, message in (
+            (-501, "Could not find info-hash."),
+            (-500, "invalid parameters: info-hash not found"),
+        ):
+            class AbsentServer(Server):
+                def call(self, method, *params):
+                    if method == "d.name" and not self.present:
+                        self.calls.append(method)
+                        raise xmlrpc.client.Fault(code, message)
+                    return super().call(method, *params)
+            server = AbsentServer(None, None, None)
+            with self.subTest(code=code), patch.object(s, "public_fixture", return_value=fixture()):
+                result = s.execute(args(True), factory=lambda *params: server)
+            self.assertEqual("verified_stopped_in_destination", result["result"])
+            self.assertEqual(1, server.calls.count("load.raw_verbose"))
+
+    def test_unexpected_or_malformed_exact_lookup_never_writes(self):
+        for reply in (xmlrpc.client.Fault(-32601, "Unknown RPC method"), None, 123):
+            class FaultingServer(Server):
+                def call(self, method, *params):
+                    if method == "d.name" and not self.present:
+                        self.calls.append(method)
+                        if isinstance(reply, Exception):
+                            raise reply
+                        return reply
+                    return super().call(method, *params)
+            server = FaultingServer(None, None, None)
+            with self.subTest(reply=type(reply).__name__), patch.object(
+                    s, "public_fixture", return_value=fixture()):
+                with self.assertRaises((xmlrpc.client.Fault, ValueError)):
+                    s.execute(args(True), factory=lambda *params: server)
+            self.assertEqual(["d.multicall2", "d.name"], server.calls)
+            self.assertNotIn("load.raw_verbose", server.calls)
 
     def test_ambiguous_load_never_retries(self):
         server = Server(None, None, None)
