@@ -13,6 +13,8 @@ on:
       - 'tests/test_docs_check.py'
       - 'tools/verify_release_apk_identity.py'
       - 'tests/test_verify_release_apk_identity.py'
+      - 'tools/check_pr_exact_head.py'
+      - 'tests/test_check_pr_exact_head.py'
       - '.github/workflows/release-apk.yml'
       - '.github/workflows/documentation-validation.yml'
   pull_request:
@@ -25,6 +27,8 @@ on:
       - 'tests/test_docs_check.py'
       - 'tools/verify_release_apk_identity.py'
       - 'tests/test_verify_release_apk_identity.py'
+      - 'tools/check_pr_exact_head.py'
+      - 'tests/test_check_pr_exact_head.py'
       - '.github/workflows/release-apk.yml'
       - '.github/workflows/documentation-validation.yml'
   workflow_dispatch:
@@ -48,3 +52,5 @@ jobs:
         run: python3 -m unittest discover -s tests -p 'test_docs_check.py'
       - name: Verify release APK identity negative controls (offline)
         run: python3 -m unittest discover -s tests -p 'test_verify_release_apk_identity.py'
+      - name: Refuse stale, cancelled and mismatched PR CI receipts (offline)
+        run: python3 -m unittest discover -s tests -p 'test_check_pr_exact_head.py'
