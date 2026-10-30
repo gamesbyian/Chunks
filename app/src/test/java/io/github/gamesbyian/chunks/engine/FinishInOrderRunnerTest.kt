@@ -95,7 +95,6 @@ class FinishInOrderRunnerTest {
             // A write-ahead journal can be saved but saving the later
             // suspension fails. Never claim that persisted recovery succeeded.
             var attempts = 0
-            val baseSave = port.outcome
             val failing = object : FinishInOrderRunner.Port by port {
                 override fun save(infoHash: String, record: FinishInOrderRecord): Boolean {
                     attempts++
