@@ -65,6 +65,19 @@ class LocalPayloadCollisionSurveyTest {
             is LocalPayloadCollisionSurvey.Result.Unknown)
     }
 
+    @Test fun nativeMetadataCountIsBoundedBeforePathMaterialization() {
+        // This must reject enormous hostile native counts without allocating
+        // a list or constructing a huge synthetic torrent fixture.
+        for (count in listOf(Int.MIN_VALUE, -1, 0, 100_001, Int.MAX_VALUE)) {
+            assertTrue("Unexpected acceptance of native count $count",
+                !LocalPayloadCollisionSurvey.supportsNativeFileCount(count))
+        }
+        for (count in listOf(1, 2, 100_000)) {
+            assertTrue("Valid native count $count refused",
+                LocalPayloadCollisionSurvey.supportsNativeFileCount(count))
+        }
+    }
+
     @Test fun oversizedFileListDoesNotBecomeMisleadingClear() {
         assertTrue(LocalPayloadCollisionSurvey.inspect(
             temp.root, listOf("a", "b"), maxPaths = 1)

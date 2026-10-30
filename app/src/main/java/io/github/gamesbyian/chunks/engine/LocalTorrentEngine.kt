@@ -231,7 +231,8 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             val info = handle.torrentFile() ?: return "Metadata file layout is unavailable"
             val files = info.files()
             val count = files.numFiles()
-            if (count !in 1..100_000) return "Torrent payload path count is unsupported"
+            if (!LocalPayloadCollisionSurvey.supportsNativeFileCount(count))
+                return "Torrent payload path count is unsupported"
             (0 until count).asSequence()
                 .filterNot { files.padFileAt(it) }.map { files.filePath(it) }.toList()
         } catch (_: Exception) { return "Torrent file layout cannot be inspected" }
@@ -356,7 +357,10 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             return LocalAddResult.Refused("Torrent metadata is invalid")
         val paths = try {
             val files = info.files()
-            (0 until files.numFiles()).asSequence()
+            val count = files.numFiles()
+            if (!LocalPayloadCollisionSurvey.supportsNativeFileCount(count))
+                return LocalAddResult.Refused("Torrent payload path count is unsupported. Nothing added.")
+            (0 until count).asSequence()
                 .filterNot { files.padFileAt(it) }
                 .map { files.filePath(it) }.toList()
         } catch (_: Exception) {
