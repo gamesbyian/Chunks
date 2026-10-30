@@ -280,6 +280,35 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     }
 
     /**
+     * Restoration is itself a new in-process admission event: decoded resume
+     * records have no durable owner-descriptor guarantee, but their declared
+     * destination names must exclude *new* checked Adds before anyone hits
+     * Start. Do NOT infer ownership of existing file bytes here, nor perform
+     * native writes or any automatic deletion. The Start path separately
+     * rechecks native progress and file existence before authorizing writes.
+     */
+    private fun reserveRestoredJobPaths(key: String, handle: TorrentHandle): String? {
+        val paths = try {
+            val info = handle.torrentFile() ?: return "Restored file metadata is unavailable"
+            val files = info.files()
+            val count = files.numFiles()
+            if (!LocalPayloadCollisionSurvey.supportsNativeFileCount(count))
+                return "Restored torrent file count is unsupported"
+            (0 until count).asSequence().filterNot { files.padFileAt(it) }
+                .map { files.filePath(it) }.toList()
+        } catch (_: Exception) {
+            return "Restored torrent paths cannot be inspected"
+        }
+        if (paths.isEmpty()) return "Restored torrent has no inspectable backing files"
+        return when (val claimed = checkedPayloadReservations.reserve(
+            key, File(handle.savePath()), paths, allowExistingOwner = true
+        )) {
+            LocalCheckedPayloadReservations.Result.Reserved -> null
+            is LocalCheckedPayloadReservations.Result.Refused -> claimed.problem
+        }
+    }
+
+    /**
      * Request a non-blocking resume snapshot as soon as magnet metadata exists.
      * The initial Add/metadata callback ordering is asynchronous; both entry
      * points call this, and pendingSaves coalesces duplicates for this handle.
@@ -1381,6 +1410,12 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             if (restored == null) { problems += file.name; continue }
             handles[key] = restored
             restoredFirstStarts.add(key)
+            // Reserve before a newly added checked job can compete with this
+            // stopped restored handle. Any ambiguous/duplicate record stays
+            // visible and stopped, with a discoverable refusal on explicit Start.
+            reserveRestoredJobPaths(key, restored)?.let {
+                checkedStartProblems[key] = "Restored path admission requires review: $it"
+            }
         }
         restoreProblems = problems
     }
