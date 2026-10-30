@@ -588,6 +588,15 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                 }
                 checkedStartProblems.remove(key)
             }
+            if (state.hasMetadata() && checkedFirstStarts[key] == null &&
+                checkedPayloadReservations.hasReservation(key)) {
+                val problem = inspectCheckedRestartCollision(key, handle)
+                if (problem != null) {
+                    checkedStartProblems[key] = problem
+                    return@command false
+                }
+                checkedStartProblems.remove(key)
+            }
             if (state.hasMetadata() &&
                 (state.flags().and_(org.libtorrent4j.TorrentFlags.UPLOAD_MODE).non_zero() ||
                     magnetCollisionProblems.containsKey(key))) {
@@ -611,6 +620,53 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             checkedFirstStarts.remove(key)
             true
         }
+
+    /**
+     * Point-in-time checked-job restart guard. A libtorrent file with ZERO
+     * verified bytes cannot be assumed to belong to this job just because the
+     * same name exists after Stop; another app may have planted it. Exact
+     * reserved path identity is also required before each native Start.
+     * This does not protect positive-progress files against inode replacement,
+     * or an attacker racing a check before the actual native disk open.
+     */
+    private fun inspectCheckedRestartCollision(key: String, handle: TorrentHandle): String? {
+        val root = File(handle.savePath())
+        val paths: List<String>
+        val progress: List<Long>
+        try {
+            val info = handle.torrentFile() ?: return "Native metadata unavailable before Start"
+            val files = info.files()
+            val count = files.numFiles()
+            if (!LocalPayloadCollisionSurvey.supportsNativeFileCount(count))
+                return "Torrent file layout unsupported before Start"
+            val nativeProgress = handle.fileProgress()
+            if (nativeProgress.size != count)
+                return "Native per-file verification status unavailable before Start"
+            val selectedPaths = ArrayList<String>(count)
+            val selectedProgress = ArrayList<Long>(count)
+            for (index in 0 until count) {
+                if (files.padFileAt(index)) continue
+                selectedPaths += files.filePath(index)
+                selectedProgress += nativeProgress[index]
+            }
+            paths = selectedPaths
+            progress = selectedProgress
+        } catch (_: Exception) {
+            return "Native file paths or verification status unavailable before Start"
+        }
+        if (paths.isEmpty()) return "Torrent has no inspectable backing paths"
+        when (val reservation = checkedPayloadReservations.reserve(
+            key, root, paths, allowExistingOwner = true
+        )) {
+            LocalCheckedPayloadReservations.Result.Reserved -> Unit
+            is LocalCheckedPayloadReservations.Result.Refused ->
+                return reservation.problem
+        }
+        return when (val check = LocalCheckedRestartGuard.inspect(root, paths, progress)) {
+            LocalCheckedRestartGuard.Result.ClearAtObservation -> null
+            is LocalCheckedRestartGuard.Result.Refused -> check.reason
+        }
+    }
 
     fun pause(infoHash: String, readbackTimeoutMs: Long = 5_000): LocalCommandResult =
         command(infoHash, wantStopped = true, readbackTimeoutMs) {
