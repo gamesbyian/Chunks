@@ -13,7 +13,7 @@ DIR = "/home/dev/ChunksFixtures"
 def args(apply=False, confirm=HASH):
     return SimpleNamespace(archive_id="fixture", commons_file=None,
         destination=DIR, max_total_mib=512,
-        rutorrent_url="https://test.seedhost.eu/rutorrent/",
+        rutorrent_url="https://ianseeds.wood.seedhost.eu/rutorrent/",
         apply=apply, confirm_hash=confirm)
 
 def fixture():
@@ -113,16 +113,57 @@ class LiveTest(unittest.TestCase):
             result = s.execute(args(True), factory=lambda *params: server)
         self.assertEqual("readback_mismatch", result["result"])
 
+    def test_primary_secret_transport_refuses_sibling_tenants_before_opening_network(self):
+        # Even direct calls bypassing GitHub's protected workflow constant
+        # cannot pass repository credentials to another account or mount.
+        refused = [
+            "https://other.wood.seedhost.eu/rutorrent/",
+            "https://ianseeds.wood.seedhost.eu:8443/rutorrent/",
+            "https://ianseeds.wood.seedhost.eu/rutorrent2/",
+            "https://ianseeds.wood.seedhost.eu/ianseeds/rutorrent/",
+            "https://ianseeds.wood.seedhost.eu/rutorrent//",
+            "https://ianseeds.wood.seedhost.eu/rutorrent/../rutorrent2/",
+            "https://ianseeds.wood.seedhost.eu/rutorrent/%2e%2e/rutorrent2/",
+            "https://ianseeds.wood.seedhost.eu/rutorrent%2fplugins/httprpc/action.php",
+            "https://ianseeds.wood.seedhost.eu/rutorrent/plugins/httprpc/action.php/",
+            "https://ianseeds.wood.seedhost.eu/RPC1",
+            "https://ianseeds.wood.seedhost.eu/RPC2",
+            "https://ianseeds.wood.seedhost.eu/rutorrent/?token=not-a-secret",
+            "https://@ianseeds.wood.seedhost.eu/rutorrent/",
+            "http://ianseeds.wood.seedhost.eu/rutorrent/",
+        ]
+        with patch.object(s.urllib.request, "build_opener") as opener:
+            for url in refused:
+                with self.subTest(url=url):
+                    with self.assertRaises(ValueError):
+                        s.ProtectedRpc(url, "user", "test-not-a-password")
+                    with self.assertRaises(ValueError):
+                        s.rpc_endpoint(url)
+            opener.assert_not_called()
+
+    def test_primary_web_alias_and_exact_rpc_mount_remain_available(self):
+        expected = "https://ianseeds.wood.seedhost.eu/rutorrent/plugins/httprpc/action.php"
+        for url in (
+            "https://ianseeds.wood.seedhost.eu/rutorrent",
+            "https://ianseeds.wood.seedhost.eu/rutorrent/",
+            expected,
+        ):
+            with self.subTest(url=url):
+                self.assertEqual(expected, s.rpc_endpoint(url))
+        self.assertEqual(
+            "https://ianseeds.wood.seedhost.eu:443/rutorrent/plugins/httprpc/action.php",
+            s.rpc_endpoint("https://ianseeds.wood.seedhost.eu:443/rutorrent/"))
+
     def test_destination_and_https_endpoint_validation(self):
         for path in ("relative", "/", "/tmp/../elsewhere", "/tmp//elsewhere", "/tmp/,d.erase="):
             with self.assertRaises(ValueError):
                 s.destination(path)
-        self.assertEqual("https://test.seedhost.eu/rutorrent/plugins/httprpc/action.php",
-                         s.rpc_endpoint("https://test.seedhost.eu/rutorrent/"))
-        for url in ("http://test.seedhost.eu/rutorrent/",
+        self.assertEqual("https://ianseeds.wood.seedhost.eu/rutorrent/plugins/httprpc/action.php",
+                         s.rpc_endpoint("https://ianseeds.wood.seedhost.eu/rutorrent/"))
+        for url in ("http://ianseeds.wood.seedhost.eu/rutorrent/",
                     "https://evil.example/rutorrent/",
-                    "https://user:pass@test.seedhost.eu/rutorrent/",
-                    "https://test.seedhost.eu/rutorrent/?token=secret"):
+                    "https://user:pass@ianseeds.wood.seedhost.eu/rutorrent/",
+                    "https://ianseeds.wood.seedhost.eu/rutorrent/?token=secret"):
             with self.assertRaises(ValueError):
                 s.rpc_endpoint(url)
 
