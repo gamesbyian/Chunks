@@ -1,5 +1,11 @@
 # Chunks active engineering work queue
 
+## Deferred secondary capability: external destination delivery
+
+**Not executable before core safety and release gates.** After reliable native verified payload storage, stable source/readback, independent SAF publication, credential handling and core Add/UX acceptance, implement optional **On phone torrent → verified external Place delivery**. Phase 1: durable destination plan and collision-safe staged export through one proven SAF/Drive-like adapter; phase 2: separately authenticated FTP-family adapter and recovery/verification matrix; phase 3 only if justified: low-storage progressive delivery. No cloud-backed torrent backing-store or cloud seeding work authorized. Do not displace G0–G2 or existing storage tasks. Acceptance, UX, consent and recovery: [EXTERNAL-DESTINATION-DELIVERY](EXTERNAL-DESTINATION-DELIVERY.md).
+
+
+
 ## Deferred roadmap after foundations (non-executable today)
 
 **Owner-approved expansion, 2026-10-29:** once rTorrent is bulletproof by explicit real-host and mutation-safety gates, add isolated support for all practical maintainable remote torrent backends; prove the generalized adapter model first with Transmission and qBittorrent, then expand. Separately, pursue native Android TV/Google TV support with phone-core reuse, an independently D-pad-first Compose UI, BiglyBT reference-source audit and GPL/license review. This paragraph does not grant agents permission to leave the P0 queue, start a new navigation rewrite, or weaken current acceptance. Detailed requirements and staged gates: [ANDROID-TV-AND-REMOTE-BACKENDS](ANDROID-TV-AND-REMOTE-BACKENDS.md), [#660](https://github.com/gamesbyian/Chunks/issues/660).
