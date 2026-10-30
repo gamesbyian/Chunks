@@ -17,7 +17,7 @@
 **Historical interpretation:** older candidate and handoff sections below retain their original point-in-time observations, including then-draft statuses, failed heads and pending checks. They are not assertions about the latest main. This checkpoint supersedes their PR-status statements without rewriting test history.
 
 
-## Historical candidate: 2026-10-30 storage probe descriptor-backed creation identity
+## 2026-10-30 storage probe descriptor-backed creation identity
 
 Candidate for existing [#697](https://github.com/gamesbyian/Chunks/pull/697): descriptor repair `96df84637ae0c34da30cdf00cc569a7f39d429c8`, API29 inclusion `168c505`, preview fixture `8c00633`. Independent JDK17 control against unchanged original PR source `1c3e0986` substituted the pathname between exclusive open and its first attribute lookup: the probe recorded the foreign inode as owned, then deleted it after readback failed. Production now uses Android `Os.open(O_CREAT|O_EXCL|O_NOFOLLOW|O_RDWR)`, captures identity with `fstat` on that original descriptor and retains it through cleanup. `lstat` comparisons never follow a substituted link; equal contents do not confer ownership.
 
@@ -26,7 +26,7 @@ Candidate for existing [#697](https://github.com/gamesbyian/Chunks/pull/697): de
 Five Android instrumentation cases exercise the production descriptor implementation (normal cleanup, planted destination, pre-fstat source replacement, byte-identical replacement and symlink). API29 now includes that class alongside nine public Downloads/picker cases; API35 already selects it. **Actual emulator execution and final independent review remain pending.** The native rename/delete still use pathname check/action sequences; atomic external-race protection, native payload ownership and physical/provider acceptance are not proved. #568/AUD-04 remain open.
 
 
-## Historical candidate: 2026-10-30 native magnet reconciliation and independent failure controls
+## 2026-10-30 native magnet reconciliation and independent failure controls
 
 Candidate for existing [#648](https://github.com/gamesbyian/Chunks/pull/648), based on main `0b0b5cc426aa463350273ed1712d88440462a2ea`: source `0ca7e85` preserves the current draft's fresh native status, explicit REFUSED outcome, bounded native path count and no-empty-file assertions, plus main's startup inventory, resume-write/cache-flush fences and independent collision characterization. The metadata callback uses only the handle monitor: it cannot wait for the engine monitor while Close holds it and joins the alert dispatcher. Explicit metadata-ready Start consumes its admission markers before payload writes, preventing an already queued callback from treating approved new files as foreign. New public Downloads instrumentation checks real metadata, foreign bytes, refusal, native resume persistence and refused Start after restart; it has compiled but its integrated emulator execution is pending.
 
