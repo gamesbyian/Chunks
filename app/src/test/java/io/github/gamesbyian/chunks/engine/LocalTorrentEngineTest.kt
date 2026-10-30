@@ -306,6 +306,56 @@ class LocalTorrentEngineTest {
         assertFalse("Both stopped native jobs must leave payload absent", firstPath.exists())
     }
 
+    @Test fun competingReviewedExistingRestoresCannotBypassRejectedPathClaimAtStart() {
+        val left = fixture()
+        val right = conflictingFixture()
+        val root = temp.newFolder("reviewed-restored-collision-root")
+        val stateA = temp.newFolder("reviewed-restored-collision-state-a")
+        val stateB = temp.newFolder("reviewed-restored-collision-state-b")
+        // Each independently reviewed native Add is legal in its original
+        // process, but two saved sessions can later be combined into one.
+        // Neither stopped Add is permitted to create payload bytes.
+        val originA = persistentEngine(stateA)
+        val first = added(originA.addStopped(left.torrent, root))
+        val originB = persistentEngine(stateB)
+        val second = added(originB.addStopped(right.torrent, root))
+        assertTrue(first.infoHash != second.infoHash)
+        assertEquals(LocalAdmissionProvenance.Mode.REVIEWED_EXISTING,
+            LocalAdmissionProvenance.read(stateA, first.infoHash))
+        assertEquals(LocalAdmissionProvenance.Mode.REVIEWED_EXISTING,
+            LocalAdmissionProvenance.read(stateB, second.infoHash))
+        originA.close()
+        originB.close()
+        for (suffix in listOf(".resume", ".admission")) {
+            File(stateB, second.infoHash + suffix)
+                .copyTo(File(stateA, second.infoHash + suffix))
+        }
+        val foreign = File(root, "Chunks public fixture/episode.bin")
+        assertFalse("No test must materialize payload during stopped Add", foreign.exists())
+
+        val restored = persistentEngine(stateA)
+        assertTrue("Both exact-hash native resumes must remain observable",
+            restored.restoreProblems.isEmpty())
+        val records = restored.list()
+        assertEquals(2, records.size)
+        assertTrue(records.all { it.stopped })
+        val conflicting = records.singleOrNull {
+            it.error.orEmpty().contains("Restored path admission requires review")
+        } ?: fail("Exactly one restored reviewed-existing job must have a path reservation refusal")
+        val refused = restored.resume(conflicting.infoHash)
+        assertEquals("A display-only restore problem cannot permit native Start",
+            LocalCommandOutcome.REFUSED, refused.outcome)
+        assertTrue(requireNotNull(refused.status).stopped)
+        assertTrue(refused.status?.error.orEmpty().contains("Restored path admission"))
+        assertFalse("The conflicting restored Start may not create or replace payload",
+            foreign.exists())
+
+        val winner = records.single { it.infoHash != conflicting.infoHash }
+        assertEquals("The nonconflicting reviewed-existing job remains operable",
+            LocalCommandOutcome.VERIFIED, restored.resume(winner.infoHash).outcome)
+        assertEquals(LocalCommandOutcome.VERIFIED, restored.pause(winner.infoHash).outcome)
+    }
+
     @Test fun restoredCheckedStoppedAddRefusesForeignFileBeforeFirstNativeStart() {
         val sourceParent = temp.newFolder("restore-admission-seed")
         val source = File(sourceParent, "Restore admission fixture").apply { mkdirs() }
