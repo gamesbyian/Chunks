@@ -677,6 +677,8 @@ internal fun CombinedTransfersScreen(
                         listings[source.environment]?.takeIf { it.sourceAliasScope == witness }
                     }
                     val status = when {
+                        privacyEvidence == null ->
+                            "Privacy policy not yet verified; transfers hidden"
                         listing?.loading == true -> "Loading list…"
                         listing?.error != null && listing.observedAtEpochMillis == null ->
                             "Could not load (" + listing.error + ")"
