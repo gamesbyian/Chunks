@@ -2,11 +2,6 @@ name: Seedhost read-only RPC probe
 on:
   workflow_dispatch:
     inputs:
-      rutorrent_url:
-        description: 'Credential-free Seedhost ruTorrent HTTPS URL'
-        required: false
-        default: "https://ianseeds.wood.seedhost.eu/rutorrent/"
-        type: string
       inspect_inventory:
         description: 'Read only: also capture nonsecret torrent metadata as a test fixture'
         required: false
@@ -24,7 +19,7 @@ jobs:
     steps:
       - name: Safely test HTTP-RPC version only
         env:
-          RUTORRENT_URL: ${{ inputs.rutorrent_url }}
+          RUTORRENT_URL: "https://ianseeds.wood.seedhost.eu/rutorrent/"
           RT_USER: ${{ secrets.rtorrent_user }}
           RT_PASS: ${{ secrets.rtorrent_pass }}
           INSPECT_INVENTORY: ${{ inputs.inspect_inventory }}
@@ -37,10 +32,12 @@ jobs:
           if not url or not user or not password:
               raise SystemExit("Missing Seedhost URL and/or rTorrent credential secrets in Chunks repository.")
           parsed = urllib.parse.urlsplit(url)
-          if (parsed.scheme != "https" or not parsed.hostname or
-                  not parsed.hostname.endswith(".seedhost.eu") or parsed.username or
-                  parsed.password or parsed.query or parsed.fragment):
-              raise SystemExit("Only credential-free Seedhost HTTPS addresses are allowed.")
+          # The primary protected credentials are authorized for this one
+          # exact host and ruTorrent mount, not every Seedhost tenant.
+          if (parsed.scheme != "https" or parsed.hostname != "ianseeds.wood.seedhost.eu" or
+                  parsed.port not in (None, 443) or parsed.path.rstrip("/") != "/rutorrent" or
+                  parsed.username or parsed.password or parsed.query or parsed.fragment):
+              raise SystemExit("Protected credentials require the exact primary Seedhost endpoint.")
           path = parsed.path.rstrip("/")
           if path.lower().endswith("/rutorrent"):
               path += "/plugins/httprpc/action.php"
