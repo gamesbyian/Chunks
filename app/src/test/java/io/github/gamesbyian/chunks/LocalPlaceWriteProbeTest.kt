@@ -72,7 +72,7 @@ class LocalPlaceWriteProbeTest {
         assertNotNull(LocalPlaceWriteProbe.verify(root, predictable))
         assertTrue(probe.isFile)
         assertTrue(unrelated.contentEquals(probe.readBytes()))
-        assertTrue(File(root, ".chunks-write-probe-0000000000000000.ok").notExists())
+        assertFalse(File(root, ".chunks-write-probe-0000000000000000.ok").exists())
     }
 
     @Test fun occupiedRenameTargetRemainsIntactAndNoTemporaryProbeIsLeft() {
@@ -85,6 +85,6 @@ class LocalPlaceWriteProbeTest {
         }
         assertNotNull(LocalPlaceWriteProbe.verify(root, predictable))
         assertTrue(bytes.contentEquals(other.readBytes()))
-        assertTrue(File(root, ".chunks-write-probe-0000000000000000.tmp").notExists())
+        assertFalse(File(root, ".chunks-write-probe-0000000000000000.tmp").exists())
     }
 }
