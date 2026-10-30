@@ -35,7 +35,7 @@ class LocalEngineRebootInstrumentedTest {
     private val instrumentation get() = InstrumentationRegistry.getInstrumentation()
     private val context get() = instrumentation.targetContext
     private val phase get() = InstrumentationRegistry.getArguments().getString("chunksRebootPhase")
-    private val work get() = File(context.filesDir, "reboot-test")
+    private val work get() = File(requireNotNull(LocalEngineHolder.appDownloads(context)), "reboot-test")
     private val marker get() = File(context.filesDir, "reboot-test.marker")
     private val notifications get() = context.getSystemService(NotificationManager::class.java)
 
