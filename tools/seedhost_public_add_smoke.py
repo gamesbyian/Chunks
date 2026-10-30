@@ -157,15 +157,22 @@ def execute(args, factory=ProtectedRpc):
             print("CHUNKS_PUBLIC_ADD: metadata not yet visible in main view")
             return receipt
         observed = client.call("d.directory", expected)
-        multi = int(client.call("d.is_multi_file", expected)) != 0
+        raw_multi = client.call("d.is_multi_file", expected)
+        # Never let int(0.9), int("0") or int(False) turn an invalid RPC
+        # field into authoritative binary state after an applied Add.
+        if type(raw_multi) is not int or raw_multi not in (0, 1):
+            raise ValueError("Invalid rTorrent multi-file flag")
+        multi = raw_multi == 1
         torrent_name = client.call("d.name", expected)
         valid_name = (isinstance(torrent_name, str) and torrent_name not in ("", ".", "..") and
                       "/" not in torrent_name and "\\" not in torrent_name and
                       all(ord(c) >= 32 for c in torrent_name))
         expected_root = (planned + "/" + torrent_name) if multi and valid_name else planned
         state = client.call("d.state", expected)
+        if type(state) is not int or state not in (0, 1):
+            raise ValueError("Invalid rTorrent lifecycle flag")
         if isinstance(observed, str) and observed == expected_root and (
-                not multi or valid_name) and int(state) == 0:
+                not multi or valid_name) and state == 0:
             receipt["result"] = "verified_stopped_in_destination"
             receipt["observed_directory"] = observed
             print("CHUNKS_PUBLIC_ADD: verified exact hash, chosen parent destination, stopped")
