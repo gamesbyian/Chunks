@@ -235,6 +235,31 @@ class LocalTorrentEngineTest {
         assertFalse(File(dest, "Chunks public fixture/episode.bin").exists())
     }
 
+    @Test fun restoredStoppedJobExcludesDifferentCheckedHashBeforeEitherStarts() {
+        val firstFixture = fixture()
+        val competingFixture = conflictingFixture()
+        val state = temp.newFolder("restored-reservation-state")
+        val root = temp.newFolder("restored-reservation-root")
+        val original = persistentEngine(state)
+        val first = added(original.addStoppedChecked(firstFixture.torrent, root))
+        assertTrue(first.stopped)
+        val firstPath = File(root, "Chunks public fixture/episode.bin")
+        assertFalse(firstPath.exists())
+        assertTrue(File(state, "${first.infoHash}.resume").isFile)
+        original.close()
+
+        val restored = persistentEngine(state)
+        assertTrue(restored.restoreProblems.isEmpty())
+        assertTrue(requireNotNull(restored.status(first.infoHash)).stopped)
+        assertFalse(firstPath.exists())
+        val blocked = restored.addStoppedChecked(competingFixture.torrent, root)
+        assertTrue("Restored stopped destination must already be reserved: $blocked",
+            blocked is LocalAddResult.Refused)
+        assertTrue((blocked as LocalAddResult.Refused).reason.contains("reserves"))
+        assertEquals("No second native handle must be registered", 1, restored.list().size)
+        assertFalse("Both stopped native jobs must leave payload absent", firstPath.exists())
+    }
+
     @Test fun restoredCheckedStoppedAddRefusesForeignFileBeforeFirstNativeStart() {
         val sourceParent = temp.newFolder("restore-admission-seed")
         val source = File(sourceParent, "Restore admission fixture").apply { mkdirs() }
