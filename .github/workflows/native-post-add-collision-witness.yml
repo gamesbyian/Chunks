@@ -95,7 +95,7 @@ jobs:
                   if witnessed_bool("expected_torrent_data_present") != (expected == after):
                       raise SystemExit("Expected torrent data receipt contradicts SHA-256 values")
               diagnostic = (
-                  rf"{prefix} native_start_outcome=(VERIFIED|UNCERTAIN)"
+                  rf"{prefix} native_start_outcome=(VERIFIED|UNCERTAIN|REFUSED)"
                   if prefix == "CHUNKS_POST_ADD_COLLISION" else
                   rf"{prefix} observed_metadata=true stopped=(true|false) upload_only=(true|false)"
                   if prefix == "CHUNKS_MAGNET_COLLISION" else
