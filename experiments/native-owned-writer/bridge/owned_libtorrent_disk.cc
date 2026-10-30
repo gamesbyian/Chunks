@@ -61,6 +61,7 @@ struct Torrent {
   std::string refusal;
   bool checked = false;
   std::atomic<bool> retired{false};
+  std::atomic<bool> disk_fault{false};
 };
 
 class NativeDisk final : public lt::disk_interface, public lt::buffer_allocator_interface {
@@ -210,7 +211,8 @@ class NativeDisk final : public lt::disk_interface, public lt::buffer_allocator_
       std::function<void(lt::storage_error const&)> callback,
       lt::disk_job_flags_t) override {
     auto state = torrents_[index];
-    auto failure = [this, callback] {
+    auto failure = [this, state, callback] {
+      if (state) state->disk_fault.store(true);
       auto denied = Denied(lt::operation_t::file_write);
       boost::asio::post(io_, [callback, denied] { callback(denied); });
     };
@@ -231,10 +233,15 @@ class NativeDisk final : public lt::disk_interface, public lt::buffer_allocator_
       if (!queue_.Submit([this, state, bounds, owned=std::move(owned), callback] {
         std::string error;
         lt::storage_error result;
-        if (state->retired.load() ||
-            !state->checked || !state->refusal.empty() ||
-            !state->storage->WriteRange(bounds.absolute_offset, owned.data(),
-                                         owned.size(), &error)) {
+        if (state->retired.load() || state->disk_fault.load() ||
+            !state->checked || !state->refusal.empty()) {
+          result = Denied(lt::operation_t::file_write);
+        } else if (!state->storage->WriteRange(bounds.absolute_offset,
+                                               owned.data(), owned.size(), &error)) {
+          // Disk failure may have written part of a block. Require explicit
+          // recovery before accepting any future native write.
+          state->disk_fault.store(true);
+          state->refusal = error.empty() ? "Uncertain native payload write" : error;
           result = Denied(lt::operation_t::file_write);
         }
         boost::asio::post(io_, [callback, result] { callback(result); });
@@ -359,13 +366,16 @@ class NativeDisk final : public lt::disk_interface, public lt::buffer_allocator_
     auto state = torrents_[index];
     auto flush = [this, state, cb] {
       std::string reason;
-      if (state && state->storage && !state->storage->Flush(&reason))
-        state->refusal = reason;
+      if (state && state->storage && !state->storage->Flush(&reason)) {
+        state->disk_fault.store(true);
+        state->refusal = reason.empty() ? "Uncertain native file flush" : reason;
+      }
       if (cb) boost::asio::post(io_, cb);
     };
     // Flush must follow queued writes, not race on libtorrent's network
     // thread. On queue exhaustion, synchronously drain and fail closed.
-    if (!queue_.Submit(flush, [this, cb] {
+    if (!queue_.Submit(flush, [this, state, cb] {
+      if (state) state->disk_fault.store(true);
       if (cb) boost::asio::post(io_, cb);
     })) {
       queue_.DrainAndStop();
