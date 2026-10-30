@@ -117,7 +117,7 @@ class LocalAdmissionProvenanceTest {
                 outcomes.any { it.first == winner && it.second })
             assertTrue("No losing admission may report success",
                 outcomes.none { it.first != winner && it.second })
-            val expected = "chunks-native-admission-v1\\n$hash\\n${winner!!.token}\\n"
+            val expected = "chunks-native-admission-v1\n$hash\n${winner!!.token}\n"
             assertEquals(expected, File(state, "$hash.admission").readText())
             assertEquals(winner, LocalAdmissionProvenance.read(state, hash))
             assertTrue("Published receipt must resist a later contrary admission",
