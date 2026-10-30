@@ -141,4 +141,11 @@ jobs:
           # session and exercises its owned disk callbacks on disposable
           # public-like storage with planted foreign bytes.
           cmake --build "$build" --target chunks_owned_session_smoke --parallel 2
+          # Negative control: the smoke must NOT turn green when compiled
+          # Release/-DNDEBUG and a check is deliberately false.
+          set +e
+          timeout 5 "$build/chunks_owned_session_smoke" --self-test-fail
+          failure_status=$?
+          set -e
+          test "$failure_status" -eq 86
           timeout 30 "$build/chunks_owned_session_smoke"
