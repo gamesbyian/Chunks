@@ -63,6 +63,14 @@ bool GetFile(int fd, struct stat* st) {
   return ::fstat(fd, st) == 0 && S_ISREG(st->st_mode) && st->st_nlink == 1;
 }
 
+bool PrivateReceiptRoot(int fd, std::string* error) {
+  struct stat st{};
+  if (::fstat(fd, &st) != 0 || !S_ISDIR(st.st_mode) ||
+      st.st_uid != ::geteuid() || (st.st_mode & 0077) != 0)
+    return Fail(error, "Native receipt root must be private to the app UID");
+  return true;
+}
+
 bool ParentPath(int root, const std::vector<std::string>& parts, bool create,
                 Fd* parent, std::string* err) {
   Fd current(::dup(root));
@@ -229,6 +237,7 @@ std::unique_ptr<OwnedPayloadFile> OwnedPayloadFile::OpenImpl(
   Fd root_fd(::open(root.c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC));
   Fd receipt_fd(::open(receipts.c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC));
   if (root_fd.v < 0 || receipt_fd.v < 0) return reject("Payload or private receipt root unavailable");
+  if (!PrivateReceiptRoot(receipt_fd.v, error)) return nullptr;
   // Existing or unreadable app-private ownership claims must be resolved
   // before touching a new public payload path. Publication is still the
   // authoritative no-replace check after O_EXCL creation.
@@ -296,6 +305,7 @@ bool OwnedPayloadFile::Reserve(
   Fd receipt_fd(::open(receipts.c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC));
   if (root_fd.v < 0 || receipt_fd.v < 0)
     return Fail(error, "Prospective payload or receipt root inaccessible");
+  if (!PrivateReceiptRoot(receipt_fd.v, error)) return false;
   // A previously completed physical claim must never be downgraded to a
   // fresh zero-progress reservation after the file disappeared or was moved.
   // Existing data recovery is a separate explicit verify/adopt operation.
