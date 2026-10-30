@@ -94,6 +94,41 @@ class CreateSeedCopyOwnershipTest {
         assertFalse(absent.exists())
     }
 
+    @Test fun sourceGrowthAfterCreationNeverWritesBeyondReviewedLength() {
+        val root = temp.newFolder("source-grown-after-hashing")
+        val keep = File(root, "keep.txt")
+        keep.writeText("other person's file")
+        val checked = ByteArray(1024) { 1 }
+        var providerBytes = checked
+        val req = TorrentMetainfoBuilder.Request("Shared set", listOf(
+            TorrentMetainfoBuilder.Entry(listOf("episode.bin"), checked.size.toLong()) {
+                ByteArrayInputStream(providerBytes)
+            }
+        ))
+        val expected = TorrentMetainfoBuilder.build(req)
+        providerBytes = ByteArray(65_536) { 2 }
+        val result = CreateSeedCopy.copyVerifyAndSeed(req, expected, root, engine())
+        assertTrue(result is CreateSeedCopy.Outcome.Refused)
+        assertFalse(File(root, "Shared set").exists())
+        assertEquals("other person's file", keep.readText())
+    }
+
+    @Test fun sourceTruncationAfterCreationRemovesOnlyOwnedPartialBytes() {
+        val root = temp.newFolder("source-short-after-hashing")
+        val checked = ByteArray(8_192) { 9 }
+        var providerBytes = checked
+        val req = TorrentMetainfoBuilder.Request("Shared set", listOf(
+            TorrentMetainfoBuilder.Entry(listOf("episode.bin"), checked.size.toLong()) {
+                ByteArrayInputStream(providerBytes)
+            }
+        ))
+        val expected = TorrentMetainfoBuilder.build(req)
+        providerBytes = ByteArray(1024) { 9 }
+        val result = CreateSeedCopy.copyVerifyAndSeed(req, expected, root, engine())
+        assertTrue(result is CreateSeedCopy.Outcome.Refused)
+        assertFalse(File(root, "Shared set").exists())
+    }
+
     @Test fun invalidPathComponentRefusesBeforeCreatingAnyFile() {
         val root = temp.newFolder("invalid-relative-name")
         val valid = request("Shared set", "one.bin")
