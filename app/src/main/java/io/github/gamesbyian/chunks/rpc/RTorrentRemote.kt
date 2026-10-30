@@ -206,7 +206,14 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         val minimum = MINIMUM_FIELDS
         val extended = EXTENDED_FIELDS
         val hashes = readViewIdentities(view)
-        if (hashes.isEmpty()) return emptyList()
+        if (hashes.isEmpty()) {
+            // Even an empty first read is not a stable snapshot: a server
+            // could add a transfer before the paged fallback returns.
+            check(readViewIdentities(view).isEmpty()) {
+                "rTorrent view membership changed during paged read; refresh"
+            }
+            return emptyList()
+        }
 
         fun getters(fields: List<String>) = fields.map { it.removeSuffix("=") }
         val rich = try {
@@ -866,6 +873,12 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             val row = raw as? List<*> ?: error("Malformed tracker row")
             require(row.size == 2) { "Unsupported tracker field layout" }
             (row[0] as? String)?.takeIf { number(row[1]) == 1L }
+        }
+        // Privacy can change while tracker URLs are being read. Do not return
+        // any URLs until a fresh server-side privacy check still says public.
+        // An RPC fault here fails closed rather than exposing a passkey.
+        if (number(call("d.is_private", listOf(hash))) != 0L) {
+            return PublicTrackers.Private
         }
         guardIdentity()
         return PublicTrackers.Urls(urls)

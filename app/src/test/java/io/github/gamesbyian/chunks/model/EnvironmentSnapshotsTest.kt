@@ -3,6 +3,7 @@ package io.github.gamesbyian.chunks.model
 import io.github.gamesbyian.chunks.engine.LocalTransferState
 import io.github.gamesbyian.chunks.engine.LocalTransferStatus
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -64,7 +65,8 @@ class EnvironmentSnapshotsTest {
 
     @Test fun serverSnapshotNeedsConnectionFullViewAndObservationToBeComplete() {
         val rows = listOf(remote("d".repeat(40)))
-        val full = EnvironmentSnapshots.server(server, rows, true, false, false, true, 9)
+        val full = EnvironmentSnapshots.server(server, rows, true, false, false, true, 9,
+            nowEpochMillis = 9)
         assertTrue(full.canClaimCompleteLiveInventory)
         assertFalse(EnvironmentSnapshots.server(server, rows, true, false, false, fullView = false,
             observedAtEpochMillis = 9).inventoryComplete)
@@ -75,6 +77,68 @@ class EnvironmentSnapshotsTest {
         assertTrue(offline.transfers.isEmpty())
         assertEquals(EnvironmentAvailability.LOCKED, EnvironmentSnapshots.server(server, rows, true,
             false, locked = true, fullView = true, observedAtEpochMillis = 9).availability)
+    }
+
+    @Test fun signedInServerExpiresAtTheSameBoundaryAsSavedListings() {
+        val observed = 1_000_000L
+        val rows = listOf(remote("d".repeat(40)))
+        fun at(now: Long) = EnvironmentSnapshots.server(server, rows, connected = true,
+            stale = false, locked = false, fullView = true, observedAtEpochMillis = observed,
+            nowEpochMillis = now)
+        for (now in listOf(observed, observed + EnvironmentSnapshots.SERVER_INVENTORY_FRESH_MS)) {
+            assertTrue(at(now).canClaimCompleteLiveInventory)
+            assertEquals(EnvironmentAvailability.LIVE, at(now).availability)
+        }
+        for (now in listOf(observed - 1, observed + EnvironmentSnapshots.SERVER_INVENTORY_FRESH_MS + 1)) {
+            val stale = at(now)
+            assertEquals(EnvironmentAvailability.STALE, stale.availability)
+            assertFalse(stale.canClaimCompleteLiveInventory)
+            assertEquals("Last-known rows must remain available for inspection", 1, stale.transfers.size)
+            assertEquals(observed, stale.observedAtEpochMillis)
+        }
+        // Unknown observation time stays unconfirmed, never a fresh complete list.
+        assertFalse(EnvironmentSnapshots.server(server, rows, true, false, false, true, null,
+            nowEpochMillis = observed).canClaimCompleteLiveInventory)
+        assertTrue(EnvironmentSnapshots.serverInventoryIsOutOfDate(Long.MIN_VALUE, Long.MAX_VALUE))
+        assertTrue(EnvironmentSnapshots.serverInventoryIsOutOfDate(observed, Long.MIN_VALUE))
+    }
+
+    @Test fun expiredServerCannotContributeLiveRatesOrReceiveBatchCommands() = runBlocking {
+        val observed = 1_000_000L
+        val now = observed + EnvironmentSnapshots.SERVER_INVENTORY_FRESH_MS + 1
+        val sameHash = "d".repeat(40)
+        val otherServer = EnvironmentId("other-server")
+        val row = remote(sameHash).copy(downBytesPerSecond = 50, upBytesPerSecond = 5)
+        val stale = EnvironmentSnapshots.server(server, listOf(row), true, false, false, true,
+            observed, nowEpochMillis = now)
+        val live = EnvironmentSnapshots.server(otherServer, listOf(row), true, false, false, true,
+            now, nowEpochMillis = now)
+        val query = UnifiedTransferCatalog.query(listOf(stale, live), UnifiedTransferQuery())
+        assertEquals(2, query.transfers.size)
+        assertTrue(query.hasIncompleteOrStaleSource)
+        val totals = UnifiedTransferTotals.of(query)
+        assertEquals(1, totals.liveRows)
+        assertEquals(50L, totals.downloadBytesPerSecond)
+        assertEquals(5L, totals.uploadBytesPerSecond)
+        assertEquals(1, totals.excludedEnvironments)
+
+        val calls = ArrayList<EnvironmentId>()
+        val report = UnifiedBatchLifecycle.run(
+            targets = query.transfers.map { UnifiedBatchLifecycle.Target(it.key, it.started) },
+            start = false, sources = listOf(stale, live),
+            adapters = listOf(server, otherServer).associateWith { id ->
+                UnifiedBatchLifecycle.Adapter { _, _ -> calls += id; LifecycleReply.VERIFIED }
+            })
+        assertEquals(listOf(otherServer), calls)
+        assertEquals(CommandEvidence.REFUSED, report.items.first { it.key.environment == server }.evidence)
+        assertEquals(CommandEvidence.VERIFIED, report.items.first { it.key.environment == otherServer }.evidence)
+
+        // Only an actual newly accepted read restores live status and totals.
+        val refreshed = EnvironmentSnapshots.server(server, listOf(row), true, false, false, true,
+            now, nowEpochMillis = now)
+        assertTrue(refreshed.canClaimCompleteLiveInventory)
+        assertEquals(2, UnifiedTransferTotals.of(UnifiedTransferCatalog.query(listOf(refreshed, live),
+            UnifiedTransferQuery())).liveRows)
     }
 
     @Test fun aliasScopeParsesToTheSameServerIdOrRejectsMalformedScopes() {

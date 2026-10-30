@@ -8,7 +8,6 @@ import java.nio.file.StandardCopyOption
 import java.util.Collections
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import org.libtorrent4j.AddTorrentParams
 import org.libtorrent4j.AnnounceEntry
@@ -142,15 +141,10 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     // alert must not confirm a different save generation.
     private val pendingSaves = LocalResumeSaveRequests<TorrentHandle>()
 
-    private class PendingFlush {
-        val latch = CountDownLatch(1)
-        @Volatile var success = false
-        fun completed() { success = true; latch.countDown() }
-        fun refused() { latch.countDown() }
-    }
-    // A timed-out native flush remains in the map until its actual callback:
-    // otherwise a late callback from attempt 1 might falsely confirm attempt 2.
-    private val pendingFlushes = ConcurrentHashMap<String, PendingFlush>()
+    // Cache flushes need the same handle-bound completion semantics as resume
+    // saves. In particular, a late alert for a removed torrent must never
+    // confirm the cache of a replacement with the same infohash.
+    private val pendingFlushes = LocalCacheFlushGate<TorrentHandle>(this)
     @Volatile private var started = false
 
     /** Resume files that could not be restored on start; they are left untouched. */
@@ -174,7 +168,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             val handle = (alert as? TorrentAlert<*>)?.handle() ?: return
             val key = synchronized(handles) { handles.entries.firstOrNull { it.value == handle }?.key } ?: return
             if (alert.type() == AlertType.CACHE_FLUSHED) {
-                pendingFlushes.remove(key)?.completed()
+                pendingFlushes.complete(key, handle)
                 return
             }
             if (alert.type() == AlertType.METADATA_RECEIVED) {
@@ -499,7 +493,10 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             // makes the collision gate survive process death without relying
             // on this object's in-memory collision map.
             val flags = handle.getFlags()
-            if (handle.status().hasMetadata() &&
+            // The no-argument status() caches metadata for 500 ms. Use the
+            // uncached overload, as snapshot() does, so a just-resolved magnet
+            // cannot bypass this gate through an old metadata=false result.
+            if (handle.status(TorrentHandle.QUERY_NAME).hasMetadata() &&
                 flags.and_(org.libtorrent4j.TorrentFlags.UPLOAD_MODE).non_zero()) {
                 val problem = inspectMagnetCollision(handle)
                 if (problem != null) {
@@ -1066,7 +1063,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         awaitingMetadata.remove(key)
         startWhenMetadataArrives.remove(key)
         magnetCollisionProblems.remove(key)
-        pendingFlushes.remove(key)?.refused()
+        pendingFlushes.cancel(key, handle)
         pendingSaves.cancel(key, handle)
         val saved = config.stateDirectory?.let { File(it, "$key.resume") } ?: return true
         // A removed session with an undeletable .resume file can reappear on
@@ -1113,29 +1110,17 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
      * source bytes. It must be called off the Android UI thread.
      */
     fun flushCompletedForLibraryRead(infoHash: String, timeoutMs: Long = 20_000L): Boolean {
-        if (!started || timeoutMs <= 0L) return false
         val key = normal(infoHash)
-        val handle = synchronized(handles) { handles[key] } ?: return false
-        val before = try { status(key) } catch (_: Exception) { null } ?: return false
-        if (!before.metadataKnown || before.progressPpm != 1_000_000 ||
-            before.state !in setOf(LocalTransferState.SEEDING, LocalTransferState.FINISHED)) return false
-
-        val proposed = PendingFlush()
-        val existing = pendingFlushes.putIfAbsent(key, proposed)
-        val pending = existing ?: proposed
-        if (existing == null) {
-            try { handle.flushCache() } catch (_: Exception) {
-                pendingFlushes.remove(key, proposed)
-                proposed.refused()
-                return false
-            }
-        }
-        val completed = try { pending.latch.await(timeoutMs, TimeUnit.MILLISECONDS) }
-            catch (_: InterruptedException) { Thread.currentThread().interrupt(); false }
-        if (!completed || !pending.success) return false
-        val after = try { status(key) } catch (_: Exception) { null }
-        return after?.metadataKnown == true && after.progressPpm == 1_000_000 &&
-            after.state in setOf(LocalTransferState.SEEDING, LocalTransferState.FINISHED)
+        return pendingFlushes.flush(
+            key, timeoutMs,
+            currentHandle = { if (started) handles[key] else null },
+            isComplete = { handle ->
+                val status = try { snapshot(key, handle) } catch (_: Exception) { null }
+                status?.metadataKnown == true && status.progressPpm == 1_000_000 &&
+                    status.state in setOf(LocalTransferState.SEEDING, LocalTransferState.FINISHED)
+            },
+            invokeNative = { it.flushCache() }
+        )
     }
 
     /**
@@ -1171,8 +1156,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         if (!started) return
         saveResumeData()
         pendingSaves.cancelAll()
-        pendingFlushes.values.forEach { it.refused() }
-        pendingFlushes.clear()
+        pendingFlushes.cancelAll()
         handles.clear()
         awaitingMetadata.clear()
         startWhenMetadataArrives.clear()

@@ -136,14 +136,12 @@ internal fun listingFailure(failure: Throwable): String = when (failure) {
 }
 
 /** A listing older than this is shown as out of date; it is never refreshed silently. */
-internal const val SAVED_LISTING_FRESH_MS = 120_000L
+internal const val SAVED_LISTING_FRESH_MS = EnvironmentSnapshots.SERVER_INVENTORY_FRESH_MS
 
 /** A failed refresh invalidates live status immediately, while preserving last-known rows. */
 internal fun savedListingIsStale(listing: SavedServerListing, now: Long): Boolean =
     listing.loading || listing.error != null ||
-        (listing.observedAtEpochMillis != null &&
-            (now < listing.observedAtEpochMillis ||
-                now - listing.observedAtEpochMillis > SAVED_LISTING_FRESH_MS))
+        EnvironmentSnapshots.serverInventoryIsOutOfDate(listing.observedAtEpochMillis, now)
 
 /** A separate single-flight reader so this view never blocks or shares the phone screen's slot. */
 private object CombinedPhoneReader {
@@ -301,6 +299,9 @@ internal fun CombinedTransfersScreen(
     val sources = remember(phoneFrame, phoneConfirmed, phoneRunning, phoneObservedAt, phonePrivacy,
         server?.aliasScope, server?.transfers, server?.stale, server?.fullView, server?.observedAtEpochMillis,
         serverPrivacy, savedPrivacy, listings, now, batchRunning, PhoneMutationFence.revision.blocksMutations()) { buildList {
+        // The ticker invalidates old reads; use the actual clock when a newer
+        // observation arrives between ticks so it is not mistaken for a future read.
+        val snapshotNow = System.currentTimeMillis()
         val phoneStale = phoneFrame.stale || PhoneMutationFence.revision.blocksMutations() || batchRunning
         val phone = if (phoneRunning || phoneConfirmed) EnvironmentSnapshots.phone(
             phoneFrame.copy(stale = phoneStale), phoneConfirmed,
@@ -313,7 +314,7 @@ internal fun CombinedTransfersScreen(
             add(EnvironmentSnapshots.server(serverId, server.transfers, connected = true,
                 stale = server.stale || batchRunning,
                 locked = serverPrivacy?.mayShow != true, fullView = server.fullView,
-                observedAtEpochMillis = server.observedAtEpochMillis)
+                observedAtEpochMillis = server.observedAtEpochMillis, nowEpochMillis = snapshotNow)
                 .withAliases { hash -> aliases.get(server.aliasScope, hash) })
         }
         savedProfiles.filter { EnvironmentId(it.id) != serverId }.forEach { profile ->
@@ -322,8 +323,8 @@ internal fun CombinedTransfersScreen(
             val observed = listing?.observedAtEpochMillis
             val locked = savedPrivacy[id]?.mayShow == false
             add(EnvironmentSnapshots.server(id, listing?.transfers.orEmpty(), connected = observed != null,
-                stale = listing?.let { savedListingIsStale(it, now) } == true,
-                locked = locked, fullView = true, observedAtEpochMillis = observed)
+                stale = listing?.let { savedListingIsStale(it, snapshotNow) } == true,
+                locked = locked, fullView = true, observedAtEpochMillis = observed, nowEpochMillis = snapshotNow)
                 .withAliases { hash -> profile.aliasScope?.let { aliases.get(it, hash) } })
         }
     }
@@ -341,12 +342,7 @@ internal fun CombinedTransfersScreen(
 
     LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item {
-            Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("All environments", style = MaterialTheme.typography.headlineSmall,
-                    modifier = Modifier.semantics { heading() })
-                OutlinedButton(onClick = onBack, modifier = Modifier.heightIn(min = 48.dp)) { Text("Back") }
-            }
+            CombinedTransfersHeader(onBack)
             Text("Browse every environment together. Start and Stop can be applied to a selection " +
                 "here; every other change happens in each environment's own list.",
                 style = MaterialTheme.typography.bodySmall)
@@ -438,7 +434,8 @@ internal fun CombinedTransfersScreen(
                 Text("Group by environment", style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.weight(1f))
                 Switch(checked = query.groupByEnvironment,
-                    onCheckedChange = { update(query.copy(groupByEnvironment = it)) })
+                    onCheckedChange = { update(query.copy(groupByEnvironment = it)) },
+                    modifier = Modifier.semantics { contentDescription = "Group by environment" })
             }
         }
         item {
@@ -622,9 +619,19 @@ internal suspend fun runCombinedLifecycle(
     sources: List<EnvironmentTransferSnapshot>,
     serverLifecycle: CombinedServerLifecycle?,
     serverId: EnvironmentId?,
-    phoneEngine: () -> io.github.gamesbyian.chunks.engine.LocalTorrentEngine? = { LocalEngineHolder.current() }
+    phoneEngine: () -> io.github.gamesbyian.chunks.engine.LocalTorrentEngine? = { LocalEngineHolder.current() },
+    nowEpochMillis: () -> Long = { System.currentTimeMillis() }
 ): UnifiedBatchLifecycle.Report {
-    val byKey = sources.flatMap { it.transfers }.associateBy { it.key }
+    // Confirmation can arrive between clock ticks, after the displayed source
+    // expired. Re-evaluate it before acquiring any command lane.
+    val currentTime = nowEpochMillis()
+    val currentSources = sources.map { source ->
+        if (source.environment != EnvironmentSnapshots.PHONE &&
+            source.availability == EnvironmentAvailability.LIVE &&
+            EnvironmentSnapshots.serverInventoryIsOutOfDate(source.observedAtEpochMillis, currentTime))
+            source.copy(availability = EnvironmentAvailability.STALE) else source
+    }
+    val byKey = currentSources.flatMap { it.transfers }.associateBy { it.key }
     val targets = chosen.sortedWith(compareBy({ it.environment.value }, { it.infoHash }))
         .map { UnifiedBatchLifecycle.Target(it, byKey[it]?.started) }
     val adapters = HashMap<EnvironmentId, UnifiedBatchLifecycle.Adapter>()
@@ -635,7 +642,7 @@ internal suspend fun runCombinedLifecycle(
         // An unavailable, incomplete or unobserved inventory cannot authorize
         // a batch, so never even acquire its engine's mutation gate. The pure
         // batch still returns an explicit per-transfer refusal.
-        val actionable = sources.filter { it.canClaimCompleteLiveInventory }
+        val actionable = currentSources.filter { it.canClaimCompleteLiveInventory }
             .map { it.environment }.toSet()
         for (environment in targets.map { it.key.environment }.toSet()) {
             if (environment !in actionable) continue
@@ -660,7 +667,10 @@ internal suspend fun runCombinedLifecycle(
                 // and the command's own readback still decides.
                 val capability = serverCapabilities(environment, serverLifecycle.probe)
                     .decide(EnvironmentOperation.START_STOP, EnvironmentAvailability.LIVE)
-                if (!capability.allowed) refusals[environment] = capability.explanation
+                val source = currentSources.first { it.environment == environment }
+                if (EnvironmentSnapshots.serverInventoryIsOutOfDate(source.observedAtEpochMillis, nowEpochMillis()))
+                    refusals[environment] = "Transfer list is out of date; refresh first"
+                else if (!capability.allowed) refusals[environment] = capability.explanation
                 else if (!serverLifecycle.begin()) refusals[environment] = "server is busy or refreshing"
                 else {
                     serverLeased = true
@@ -673,7 +683,9 @@ internal suspend fun runCombinedLifecycle(
                 }
             } else refusals[environment] = "only listed here; sign in to this server to change it"
         }
-        return UnifiedBatchLifecycle.run(targets, start, sources, adapters, refusals)
+        return UnifiedBatchLifecycle.run(targets, start, currentSources, adapters, refusals,
+            sourceIsFresh = { source -> source.environment == EnvironmentSnapshots.PHONE ||
+                !EnvironmentSnapshots.serverInventoryIsOutOfDate(source.observedAtEpochMillis, nowEpochMillis()) })
     } finally {
         if (phoneLeased) PhoneMutationFence.revision.settledMutation()
         if (serverLeased) serverLifecycle?.settled?.invoke()

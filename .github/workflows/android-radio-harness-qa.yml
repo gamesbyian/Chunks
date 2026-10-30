@@ -1,0 +1,35 @@
+name: Chunks radio harness safety
+
+on:
+  pull_request:
+    paths:
+      - "tools/android_public_swarm_netflap.sh"
+      - "tools/android_radio_baseline.sh"
+      - "tools/test_android_radio_baseline.sh"
+      - "tools/test_android_public_swarm_netflap_mock.sh"
+      - ".github/workflows/android-radio-harness-qa.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chunks-radio-harness-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  radio-harness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate radio harness shell syntax
+        run: |
+          bash -n tools/android_public_swarm_netflap.sh
+          bash -n tools/android_radio_baseline.sh
+          bash -n tools/test_android_radio_baseline.sh
+          bash -n tools/test_android_public_swarm_netflap_mock.sh
+      - name: Verify baseline readback and restoration fail closed
+        run: bash tools/test_android_radio_baseline.sh
+      - name: Verify network-flap controller with fake adb
+        run: bash tools/test_android_public_swarm_netflap_mock.sh
