@@ -98,5 +98,22 @@ int main() {
     assert(!fs::exists(s.payload / "show"));
     ++count;
   }
+  {
+    Sandbox s;
+    std::string error;
+    auto layout = files();
+    layout.insert(layout.begin() + 1, {".pad/3", 3, "", "", true});
+    auto t = Storage::Open(s.payload.string(), s.receipts.string(), layout,
+                           Storage::Admission::FRESH, &error);
+    assert(t && t->size() == 15);
+    assert(t->WriteRange(4, "ABCDEF", 6, &error));
+    assert(t->Flush(&error));
+    assert(!fs::exists(s.payload / ".pad"));
+    assert(s.read(s.payload / "show/partB.bin") == "EF");
+    char received[7]{};
+    assert(t->ReadRange(4, received, 6, &error));
+    assert(std::string(received, 6) == std::string("A\0\0\0EF", 6));
+    ++count;
+  }
   std::cout << "CHUNKS_MULTIFILE_WRITER_CASES=" << count << " PASSED\n";
 }
