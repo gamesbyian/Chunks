@@ -21,14 +21,17 @@ internal object RemoteCapabilities {
         Feature("Add magnet via XML-RPC", listOf("d.multicall2", "d.name", "load.verbose"), EnvironmentOperation.ADD_MAGNET),
         Feature("Add .torrent via XML-RPC", listOf("d.multicall2", "d.name", "load.raw_verbose"), EnvironmentOperation.ADD_TORRENT_FILE),
         Feature("Use server default Add folder", listOf("directory.default"), EnvironmentOperation.SERVER_DEFAULT_ADD_FOLDER),
-        Feature("Start and stop", listOf("d.open", "d.start", "d.resume", "d.stop", "d.close", "d.state"), EnvironmentOperation.START_STOP),
+        // Acknowledged d.state alone cannot verify either lifecycle direction:
+        // both Start and Stop inspect the independent engine-active getter.
+        Feature("Start and stop", listOf("d.open", "d.start", "d.resume", "d.stop", "d.close", "d.state", "d.is_active"), EnvironmentOperation.START_STOP),
         Feature("File list and priorities", listOf("f.multicall", "f.priority.set", "d.update_priorities"), EnvironmentOperation.FILE_PRIORITIES),
-        Feature("Tracker health", listOf("d.tracker_size", "t.multicall"), EnvironmentOperation.TRACKER_HEALTH),
+        Feature("Tracker health", listOf("d.hash", "d.tracker_size", "t.multicall"), EnvironmentOperation.TRACKER_HEALTH),
         // Erase requires main-view preflight and exact d.hash readback,
         // not merely an advertised d.erase setter.
         Feature("Remove from server session", listOf("d.multicall2", "d.hash", "d.erase"), EnvironmentOperation.SESSION_REMOVE),
-        Feature("Copy files to this phone", listOf("network.listen.port", "network.bind_address", "d.is_private", "d.is_active"), EnvironmentOperation.COPY_TO_PHONE),
-        Feature("Finish in Order", listOf("f.multicall", "f.priority.set", "d.update_priorities", "d.bitfield", "d.size_chunks"), EnvironmentOperation.FINISH_IN_ORDER)
+        // Announced/bound address getters are optional; the web hostname can be a fallback.
+        Feature("Copy files to this phone", listOf("network.listen.port", "d.is_private", "d.is_active"), EnvironmentOperation.COPY_TO_PHONE),
+        Feature("Finish in Order", listOf("d.hash", "f.multicall", "f.priority.set", "d.update_priorities", "d.bitfield", "d.size_chunks"), EnvironmentOperation.FINISH_IN_ORDER)
     )
 
     fun grade(probe: RemoteProbe): List<Graded> {

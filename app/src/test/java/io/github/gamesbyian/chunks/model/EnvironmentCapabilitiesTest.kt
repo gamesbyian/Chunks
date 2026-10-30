@@ -61,6 +61,33 @@ class EnvironmentCapabilitiesTest {
         assertEquals(CapabilityEvidence.MISSING, eraseOnly.of(EnvironmentOperation.SESSION_REMOVE))
     }
 
+    @Test fun oneServerWithoutActivityGetterCannotPrecheckVerifiableStartStop() {
+        val missing = EnvironmentCapabilities.fromProbe(serverA,
+            RemoteProbe("0.16", all - "d.is_active"), 7)
+        val complete = EnvironmentCapabilities.fromProbe(serverB,
+            RemoteProbe("0.16", all), 8)
+        assertEquals(CapabilityEvidence.MISSING, missing.of(EnvironmentOperation.START_STOP))
+        assertFalse(missing.decide(EnvironmentOperation.START_STOP, EnvironmentAvailability.LIVE).allowed)
+        assertEquals(CapabilityEvidence.ADVERTISED, complete.of(EnvironmentOperation.START_STOP))
+        assertTrue(complete.decide(EnvironmentOperation.START_STOP, EnvironmentAvailability.LIVE).allowed)
+        // A server with unavailable introspection stays UNKNOWN, never missing.
+        assertEquals(CapabilityEvidence.UNKNOWN, EnvironmentCapabilities.fromProbe(serverA,
+            RemoteProbe("0.16", null), 9).of(EnvironmentOperation.START_STOP))
+    }
+
+    @Test fun optionalPeerAddressFallbackAndMandatoryIdentityGettersAreGradedIndependently() {
+        val optionalAbsent = EnvironmentCapabilities.fromProbe(serverA,
+            RemoteProbe("0.16", all - "network.bind_address" - "network.local_address"), 10)
+        assertEquals(CapabilityEvidence.ADVERTISED,
+            optionalAbsent.of(EnvironmentOperation.COPY_TO_PHONE))
+        val missingHash = EnvironmentCapabilities.fromProbe(serverB,
+            RemoteProbe("0.16", all - "d.hash"), 11)
+        assertEquals(CapabilityEvidence.MISSING,
+            missingHash.of(EnvironmentOperation.TRACKER_HEALTH))
+        assertEquals(CapabilityEvidence.MISSING,
+            missingHash.of(EnvironmentOperation.FINISH_IN_ORDER))
+    }
+
     @Test fun unknownIsNeverMissingAndUnavailableEnvironmentsRefuse() {
         val noList = EnvironmentCapabilities.fromProbe(serverA, RemoteProbe("0.9.6", null), 1)
         val unprobed = EnvironmentCapabilities.unprobed(serverA)
