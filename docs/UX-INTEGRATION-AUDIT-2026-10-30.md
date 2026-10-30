@@ -1,6 +1,6 @@
 # UX coherence and consolidation audit (2026-10-30)
 
-**Type:** dated non-normative reconciliation record; this is **not** another design authority or executable queue. **Base:** `main` as inspected 2026-10-30, before UX/docs PR #783 and #795 merged. **Canonical result:** [UX](UX.md), with the [original pre-reconciliation text archived unchanged](archive/UX-2026-10-30-pre-reconciliation.md). **Validation status:** documentation edit only; GitHub Actions/head checks and merging remain to be reviewed. No app code, user test, physical handset or actual host behavior has been changed or tested by this work.
+**Type:** dated non-normative reconciliation record; this is **not** another design authority or executable queue. **Base:** `main` as inspected 2026-10-30, before UX/docs PR #783 and #795 merged. **Canonical result:** [UX](UX.md), with the [original pre-reconciliation wording archived with relative links normalized](archive/UX-2026-10-30-pre-reconciliation.md). **Validation status:** documentation edit only; GitHub Actions/head checks and merging remain to be reviewed. No app code, user test, physical handset or actual host behavior has been changed or tested by this work.
 
 ## Review scope and methodology
 
@@ -23,7 +23,7 @@ Reviewed the repository's live document tree, [AGENTS](../AGENTS.md), [documenta
 
 ## Preservation and migration checklist
 
-- [x] The previous `docs/UX.md` is copied **verbatim** to `docs/archive/UX-2026-10-30-pre-reconciliation.md` before restructuring, to make every sentence and evidence receipt recoverable.
+- [x] The previous `docs/UX.md` is copied **without changing prose or requirements, apart from archive-relative Markdown link normalization** to `docs/archive/UX-2026-10-30-pre-reconciliation.md` before restructuring, to make every sentence and evidence receipt recoverable.
 - [x] All **42 original level-two headings** are retained in the live UX document at level three under organized task families or in the historical-compatibility area, preserving their names/anchors.
 - [x] Focused domain contracts remain authoritative; the new front matter links and summarizes them without attempting to replace their full security, storage, remote-host, rule and state machines.
 - [x] Job-only Copy/Move Transfer, non-clobber, per-profile scope, explicit privacy/consent, honest uncertain writes, file/Place ownership, no remote Chunks folder and deferred physical acceptance retain priority.
