@@ -8,7 +8,6 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
@@ -80,13 +79,12 @@ class CombinedSharedDetailNavigationTest {
         val connectedName = serverEnvironmentLabel(connectedScope)
         rule.onNode(hasScrollToIndexAction())
             .performScrollToNode(hasText("Instance two download"))
+        // TalkBack activates the button's semantic action directly. A simulated
+        // center-coordinate click against an offscreen LazyColumn row at 200%
+        // can instead hit the next button as the viewport remeasures.
         rule.onNodeWithContentDescription("Details for Instance two download on $connectedName")
-            .performScrollTo().performClick()
-        rule.waitForIdle()
-        fun semanticsTree(node: androidx.compose.ui.semantics.SemanticsNode, indent: Int = 0): String =
-            " ".repeat(indent) + node.config.toString() + "\\n" +
-                node.children.joinToString("\\n") { semanticsTree(it, indent + 1) }
-        println("COMBINED_DETAIL_AFTER_CLICK: " + semanticsTree(rule.onRoot().fetchSemanticsNode()))
+            .performScrollTo()
+            .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
         rule.onNodeWithText("Transfer details").assertExists()
         rule.onNodeWithText("Environment: $connectedName").assertExists()
         rule.onNodeWithText("Instance two download").assertExists()
@@ -109,7 +107,9 @@ class CombinedSharedDetailNavigationTest {
         rule.onNode(hasScrollToIndexAction())
             .performScrollToNode(hasText("Instance three download"))
         rule.onNodeWithContentDescription(
-            "Details for Instance three download on Server · $savedLabel").performScrollTo().performClick()
+            "Details for Instance three download on Server · $savedLabel")
+            .performScrollTo()
+            .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
         rule.onNodeWithText("Environment: Server · $savedLabel").assertExists()
         rule.onNodeWithText("Instance three download").assertExists()
         rule.onNodeWithText("Instance two download").assertDoesNotExist()
