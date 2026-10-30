@@ -1158,7 +1158,8 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         )
         private val FILE_READ_FIELDS = setOf(
             "f.path=", "f.size_bytes=", "f.priority=",
-            "f.completed_chunks=", "f.size_chunks="
+            "f.completed_chunks=", "f.size_chunks=",
+            "f.range_first=", "f.range_second="
         )
         private val TRACKER_READ_FIELDS = setOf(
             "t.url=", "t.is_enabled=", "t.success_counter=",
