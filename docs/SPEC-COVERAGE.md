@@ -1,5 +1,15 @@
 # Chunks specification coverage and acceptance map
 
+## Deferred product coverage: additional remote engines and Android TV (2026-10-29)
+
+| Requirement | Status | Acceptance still required |
+| --- | --- | --- |
+| Multi-backend remote adapters beyond rTorrent (Transmission, qBittorrent, then more practical protocols) | **Planned; not implemented/accepted**; gated on rTorrent release-quality correctness | Adapter capability matrix, exact-target mixed-backend operations, credentials/TLS, errors, negative tests and independent real-host checks; [#660](https://github.com/gamesbyian/Chunks/issues/660) |
+| Native Android TV/Google TV local and remote-only client | **Planned; not implemented/accepted** | BiglyBT license/code audit, TV Compose D-pad/focus and accessibility, TV emulator plus physical device, local storage safety and player handoff tests |
+
+Binding scope and stage gates: [ANDROID-TV-AND-REMOTE-BACKENDS](ANDROID-TV-AND-REMOTE-BACKENDS.md). Current P0 integrity/remote/phone work retains priority.
+
+
 **P0 payload integrity warning (2026-10-29):** real desktop native peer probe [#633](https://github.com/gamesbyian/Chunks/pull/633) observed a pre-existing foreign same-path file overwritten after Start. Existing API29/API35 shared Downloads download/resume results do not establish collision safety. Protection is **partial, with a P0 magnet gate still open**: merged [#640](https://github.com/gamesbyian/Chunks/pull/640) checks normal phone .torrent/snapshot Add paths with an API29 negative control. Dependent [draft #648](https://github.com/gamesbyian/Chunks/pull/648) remains blocked: at `2f31293c`, a collision-blocked magnet Start returned VERIFIED instead of UNCERTAIN in [run 40976455505](https://github.com/gamesbyian/Chunks/actions/runs/40976455505), and restart upload-only retention was not reached. Separate observation safeguards [#651](https://github.com/gamesbyian/Chunks/pull/651) are merged with exact-head automated evidence; they do not establish magnet safety. External path races, explicit verified existing-data reuse, physical-device provider and reinstall boundaries remain open under [#568](https://github.com/gamesbyian/Chunks/issues/568).
 
 
