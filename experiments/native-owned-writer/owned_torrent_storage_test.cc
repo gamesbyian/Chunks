@@ -146,5 +146,17 @@ int main() {
     assert(s.read(s.payload / "show/partA.bin") == "FOREIGN");
     ++count;
   }
+  {
+    Sandbox s;
+    std::string error;
+    auto conflicting = files();
+    conflicting[0].relative_path = "episode.bin";
+    conflicting[1].relative_path = "episode.bin/extras.txt";
+    auto invalid = Storage::Open(s.payload.string(), s.receipts.string(),
+          conflicting, Storage::Admission::FRESH, &error);
+    assert(!invalid);
+    assert(!fs::exists(s.payload / "episode.bin"));
+    ++count;
+  }
   std::cout << "CHUNKS_MULTIFILE_WRITER_CASES=" << count << " PASSED\n";
 }
