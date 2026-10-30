@@ -296,6 +296,7 @@ internal fun CombinedTransfersScreen(
     val savedPrivacy = remember(privacyRevision, savedProfiles.map { it.id to it.aliasScope }) {
         savedProfiles.associate { profile ->
             EnvironmentId(profile.id) to (profile.aliasScope
+                ?.takeIf { SavedProfileIdentity.matches(profile.id, it) }
                 ?.let { RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(it) }
                 ?.let { TransferPrivacyVisibility.current(context, activity, it) }
                 ?: TransferPrivacyVisibility.Decision(mayShow = false, needsSecureWindow = true))
@@ -310,9 +311,15 @@ internal fun CombinedTransfersScreen(
     val activeSavedScopes = savedProfiles.mapNotNull { profile ->
         val id = EnvironmentId(profile.id)
         profile.aliasScope?.takeIf { scope ->
-            id != serverId && profile.listOnly != null && savedPrivacy[id]?.mayShow == true
+            id != serverId && SavedProfileIdentity.matches(profile.id, scope) &&
+                profile.listOnly != null && savedPrivacy[id]?.mayShow == true
         }?.let { id to it }
     }.toMap()
+    // Keep corrupted or mismatched saved profile rows visible as configured,
+    // but refuse all background listing and privacy authorization for them.
+    val invalidSavedProfiles = savedProfiles.filter { it.aliasScope != null &&
+        !SavedProfileIdentity.matches(it.id, it.aliasScope) && EnvironmentId(it.id) != serverId
+    }.map { EnvironmentId(it.id) }.toSet()
     val currentSavedScopes = rememberUpdatedState(activeSavedScopes)
     val savedListingFence = remember { SavedListingResponseFence() }
     LaunchedEffect(activeSavedScopes) {
@@ -639,6 +646,8 @@ internal fun CombinedTransfersScreen(
                         listings[source.environment]?.takeIf { it.sourceAliasScope == witness }
                     }
                     val status = when {
+                        source.environment in invalidSavedProfiles ->
+                            "Saved account identity could not be verified; reconnect this profile"
                         listing?.loading == true -> "Loading list…"
                         listing?.error != null && listing.observedAtEpochMillis == null ->
                             "Could not load (" + listing.error + ")"
