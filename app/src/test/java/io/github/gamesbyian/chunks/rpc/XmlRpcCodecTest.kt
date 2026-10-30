@@ -119,4 +119,104 @@ class XmlRpcCodecTest {
         responseDecodesFaultAsFailure()
     }
 
+    @Test fun malformedArrayCannotBecomeAnEmptyOrPartialInventory() {
+        for (array in listOf(
+            "<array/>",
+            "<array><unexpected/></array>",
+            "<array><data/><data/></array>",
+            "<array><data/><unexpected/></array>",
+            "<array><data><unexpected/></data></array>",
+            "<array><data><value><string>visible</string></value><unexpected/></data></array>",
+            "<array><data>omitted transfer<value><string>visible</string></value></data></array>"
+        )) {
+            assertThrows("Must refuse malformed inventory: $array", IllegalArgumentException::class.java) {
+                XmlRpcCodec.response(response("<value>$array</value>"))
+            }
+        }
+    }
+
+    @Test fun refusesAmbiguousResponseEnvelopesInsteadOfPickingFirstResult() {
+        val param = "<param><value><array><data/></array></value></param>"
+        val fault = "<fault><value><struct>" +
+            "<member><name>faultCode</name><value><int>-501</int></value></member>" +
+            "<member><name>faultString</name><value><string>Could not find info-hash.</string></value></member>" +
+            "</struct></value></fault>"
+        for (content in listOf(
+            "<params>$param$param</params>",
+            "<params>$param</params><params>$param</params>",
+            "<params>$param</params>$fault",
+            "$fault$fault",
+            "<params>$param<unexpected/></params>",
+            "<params><param><value/><value/></param></params>",
+            "<params>$param</params>unexpected text"
+        )) {
+            assertThrows(IllegalArgumentException::class.java) {
+                XmlRpcCodec.response("<methodResponse>$content</methodResponse>")
+            }
+        }
+    }
+
+    @Test fun refusesMultipleTypesMixedContentAndNestedScalarMarkup() {
+        for (value in listOf(
+            "<value><int>0</int><int>1</int></value>",
+            "<value>unexpected<string>accepted</string></value>",
+            "<value><int><string>1</string></int></value>",
+            "<value><string>partial<unexpected> hidden</unexpected></string></value>",
+            "<value><base64><string>AAEC</string></base64></value>",
+            "<value><nil>not empty</nil></value>"
+        )) {
+            assertThrows(IllegalArgumentException::class.java) {
+                XmlRpcCodec.response(response(value))
+            }
+        }
+    }
+
+    @Test fun refusesMalformedAndDuplicateStructMembersIncludingFaultIdentity() {
+        val member = "<member><name>faultCode</name><value><int>-501</int></value></member>"
+        for (members in listOf(
+            "$member$member",
+            "$member<unexpected/>",
+            "<member><name>key</name><name>other</name><value/></member>",
+            "<member><name>key</name><value/><value/></member>",
+            "<member><name>key<unexpected/></name><value/></member>"
+        )) {
+            assertThrows(IllegalArgumentException::class.java) {
+                XmlRpcCodec.response(response("<value><struct>$members</struct></value>"))
+            }
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            XmlRpcCodec.response("<methodResponse><fault><value><struct>$member$member" +
+                "</struct></value></fault></methodResponse>")
+        }
+    }
+
+    @Test fun malformedFaultsCannotAuthorizeMissingTorrentOrMethodFallback() {
+        val code = "<member><name>faultCode</name><value><int>-501</int></value></member>"
+        val message = "<member><name>faultString</name><value><string>Could not find info-hash.</string></value></member>"
+        for (value in listOf(
+            "<struct>${code.replace("<int>-501</int>", "<string>-501</string>")}$message</struct>",
+            "<struct>$code</struct>",
+            "<struct>$message</struct>",
+            "<string>Could not find info-hash.</string>"
+        )) {
+            val failure = assertThrows(Exception::class.java) {
+                XmlRpcCodec.response("<methodResponse><fault><value>$value</value></fault></methodResponse>")
+            }
+            assertTrue(failure is IllegalStateException)
+            assertFalse("Malformed replies must not become an authoritative RPC fault", failure is RpcFault)
+        }
+    }
+
+    @Test fun validEmptyValuesWhitespaceCommentsAndImplicitStringsRemainSupported() {
+        assertEquals(emptyList<Any>(), XmlRpcCodec.response(response("<value><array><data/></array></value>")))
+        assertEquals(emptyMap<String, Any>(), XmlRpcCodec.response(response("<value><struct/></value>")))
+        assertEquals("", XmlRpcCodec.response(response("<value/>")))
+        assertEquals("  plain & text  ", XmlRpcCodec.response(response("<value>  plain &amp; text  </value>")))
+        assertEquals("left right", XmlRpcCodec.response(response("<value><string>left<![CDATA[ right]]></string></value>")))
+        assertNull(XmlRpcCodec.response(response("<value><nil/></value>")))
+        assertEquals(listOf(7L), XmlRpcCodec.response(response(
+            "<value> \n<!-- type --><array>\n<data><!-- entry --><value><int>7</int></value>\n</data></array></value>"
+        )))
+    }
+
 }

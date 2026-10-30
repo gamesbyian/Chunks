@@ -75,29 +75,6 @@ jobs:
               app/build/test-results/testDebugUnitTest/*.xml 2>/dev/null | sort | tail -60 || true
             exit 1
           fi
-      # G1 disposable existing-file collision probe: Gradle captures test stdout
-      # in JUnit XML, so surface its sanitized SHA witness without a new runner.
-      # Other branches/test suites with no collision probe remain unaffected.
-      - name: Surface synthetic native collision witness
-        if: success()
-        run: |
-          python3 - <<'PY'
-          import glob, os, xml.etree.ElementTree as ET
-          paths = glob.glob("app/build/test-results/testDebugUnitTest/*LocalNativeCollisionProbeTest*.xml")
-          if paths:
-              lines = []
-              for path in paths:
-                  root = ET.parse(path).getroot()
-                  for node in root.iter("system-out"):
-                      lines.extend(s.strip() for s in (node.text or "").splitlines()
-                                   if "CHUNKS_NATIVE_COLLISION " in s)
-              if len(lines) < 3:
-                  raise SystemExit("Native collision test ran but its SHA witness was absent")
-              print("\n".join(lines))
-              with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as report:
-                  report.write("### G1 synthetic collision probe (NOT protection acceptance)\n\n")
-                  report.write("\n".join("- `" + line + "`" for line in lines) + "\n")
-          PY
       # A chained native handler that re-raises shows only "SIGSEGV (sent by
       # kill)"; the full report's thread list is needed to find the real fault.
       # This workflow holds no secrets, so the report's environment is safe.

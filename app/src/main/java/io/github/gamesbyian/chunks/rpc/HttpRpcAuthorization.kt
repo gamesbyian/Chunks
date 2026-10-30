@@ -21,12 +21,13 @@ internal object HttpRpcAuthorization {
         requestTarget: String
     ): String {
         if (credentials.username.isEmpty()) throw IOException("RPC authentication required")
-        val digest = headers.firstOrNull { it.trimStart().startsWith("Digest ", true) }
+        val challenges = supportedChallenges(headers)
+        val digest = challenges.firstOrNull { schemeOf(it) == "Digest" }
         if (digest != null) {
-            val values = parse(digest.trimStart().substring(7))
+            val values = parse(digest.trimStart().substring(6).trimStart(' ', '\t'))
             return digestHeader(values, credentials, method, requestTarget)
         }
-        val basic = headers.firstOrNull { it.trimStart().startsWith("Basic ", true) }
+        val basic = challenges.firstOrNull { schemeOf(it) == "Basic" }
         if (basic != null) {
             val bytes = (credentials.username + ":" + credentials.password).toByteArray(Charsets.UTF_8)
             return "Basic " + Base64.getEncoder().encodeToString(bytes)
@@ -34,8 +35,67 @@ internal object HttpRpcAuthorization {
         throw IOException("Unsupported RPC authentication challenge")
     }
 
+    /**
+     * RFC 9110 requires SP between auth-scheme and credentials. Recognize
+     * nonconforming HTAB as well so a tabbed Digest challenge cannot be
+     * silently overlooked in favor of a coadvertised Basic challenge.
+     * Never match scheme words inside quoted parameters or longer tokens.
+     */
+    private fun schemeOf(candidate: String): String? {
+        val value = candidate.trimStart()
+        return listOf("Digest", "Basic").firstOrNull { name ->
+            value.length > name.length && value.regionMatches(0, name, 0, name.length, true) &&
+                (value[name.length] == ' ' || value[name.length] == '\t')
+        }
+    }
+
+    /**
+     * WWW-Authenticate may carry several challenges in one field as well as
+     * in separate fields. Split only at unquoted commas introducing a
+     * supported scheme. Quoted Digest nonce/opaque/qop commas are parameters.
+     *
+     * Parse the whole field before choosing a scheme: malformed quotation
+     * cannot trick us into choosing weaker Basic authentication.
+     */
+    private fun supportedChallenges(headers: List<String>): List<String> {
+        val choices = mutableListOf<String>()
+        for (header in headers) {
+            if (header.length !in 1..8192 ||
+                header.any { it == '\r' || it == '\n' || (it.code < 32 && it != '\t') }) {
+                throw IOException("Invalid RPC authentication challenge")
+            }
+            val boundaries = mutableListOf(0)
+            var inQuotes = false
+            var escaped = false
+            for (index in header.indices) {
+                val ch = header[index]
+                if (inQuotes) {
+                    if (escaped) escaped = false
+                    else if (ch == '\\') escaped = true
+                    else if (ch == '"') inQuotes = false
+                    continue
+                }
+                if (ch == '"') {
+                    inQuotes = true
+                    continue
+                }
+                if (ch != ',') continue
+                val next = header.substring(index + 1).trimStart()
+                if (schemeOf(next) != null) boundaries += index + 1
+            }
+            if (inQuotes || escaped) throw IOException("Malformed RPC authentication challenge")
+            for (index in boundaries.indices) {
+                val end = if (index == boundaries.lastIndex) header.length else boundaries[index + 1] - 1
+                val candidate = header.substring(boundaries[index], end).trim()
+                if (schemeOf(candidate) != null) choices += candidate
+            }
+        }
+        return choices
+    }
+
     private fun parse(header: String): Map<String, String> {
-        if (header.length !in 1..8192 || header.any { it == '\r' || it == '\n' || it.code < 32 }) {
+        if (header.length !in 1..8192 ||
+            header.any { it == '\r' || it == '\n' || (it.code < 32 && it != '\t') }) {
             throw IOException("Invalid RPC authentication challenge")
         }
         val out = linkedMapOf<String, String>()

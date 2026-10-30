@@ -105,6 +105,66 @@ class LocalPublicDownloadsPlaceInstrumentedTest {
         assertNull(app.failure)
     }
 
+    @Test fun checkedAddAcceptsCleanPublicDownloadsOnActualAndroidRoot() {
+        allowSharedDownloads()
+        val public = LocalDownloadPlaces.choices(context)
+            .single { it.place.kind == LocalPlaceKind.PUBLIC_DOWNLOADS }
+        val root = requireNotNull(LocalDownloadPlaces.materialize(public.place)) {
+            "Public Downloads could not be verified"
+        }
+        val destination = requireNotNull(LocalOwnedAddFolder.prepare(root,
+            "clean-checked-" + System.nanoTime()))
+        publicTestFolder = destination
+
+        val source = File(work, "checked-source/Clean checked fixture").apply { mkdirs() }
+        File(source, "payload.bin").writeBytes(ByteArray(16_384) { (it % 251).toByte() })
+        val torrent = TorrentBuilder().path(source).pieceSize(16 * 1024)
+            .generate().entry().bencode()
+
+        // Uses the production checked Add against the actual Android path,
+        // catching indirect /storage ancestor compatibility regressions.
+        val native = engine()
+        val result = native.addStoppedChecked(torrent, destination)
+        assertTrue("Fresh Android public Downloads path was rejected: " + result,
+            result is LocalAddResult.AddedStopped)
+        val added = (result as LocalAddResult.AddedStopped).status
+        assertTrue("Checked Add must be stopped", added.stopped)
+        assertEquals(1, native.list().size)
+        assertTrue("Stopped Add should not create any payload bytes",
+            !File(destination, "Clean checked fixture/payload.bin").exists())
+    }
+
+    @Test fun checkedAddRejectsUnrelatedCollisionInSharedDownloadsWithoutMutation() {
+        allowSharedDownloads()
+        val public = LocalDownloadPlaces.choices(context)
+            .single { it.place.kind == LocalPlaceKind.PUBLIC_DOWNLOADS }
+        val root = requireNotNull(LocalDownloadPlaces.materialize(public.place)) {
+            "Public Downloads could not be verified"
+        }
+        val destination = requireNotNull(LocalOwnedAddFolder.prepare(root,
+            "collision-" + System.nanoTime()))
+        publicTestFolder = destination
+
+        val source = File(work, "foreign-source/Collision fixture").apply { mkdirs() }
+        val expected = ByteArray(96_000).also { Random(568).nextBytes(it) }
+        File(source, "payload.bin").writeBytes(expected)
+        val torrent = TorrentBuilder().path(source).pieceSize(16 * 1024)
+            .generate().entry().bencode()
+
+        val foreign = File(destination, "Collision fixture/payload.bin")
+        assertTrue(foreign.parentFile.mkdirs())
+        val original = ByteArray(expected.size).also { Random(9876).nextBytes(it) }
+        foreign.writeBytes(original)
+
+        val native = engine()
+        val result = native.addStoppedChecked(torrent, destination)
+        assertTrue("Existing foreign file must be refused: " + result,
+            result is LocalAddResult.Refused)
+        assertTrue("Refusal must not register a native transfer", native.list().isEmpty())
+        assertArrayEquals("Refusal must preserve exact public Downloads bytes",
+            original, foreign.readBytes())
+    }
+
     @Test fun nativeEngineWritesResumesAndSeedsFromPublicChunksDownloads() {
         allowSharedDownloads()
         val public = LocalDownloadPlaces.choices(context)

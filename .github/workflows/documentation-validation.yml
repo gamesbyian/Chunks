@@ -11,6 +11,9 @@ on:
       - 'assets/fonts/README.md'
       - 'tools/check_docs.py'
       - 'tests/test_docs_check.py'
+      - 'tools/verify_release_apk_identity.py'
+      - 'tests/test_verify_release_apk_identity.py'
+      - '.github/workflows/release-apk.yml'
       - '.github/workflows/documentation-validation.yml'
   pull_request:
     paths:
@@ -20,6 +23,9 @@ on:
       - 'assets/fonts/README.md'
       - 'tools/check_docs.py'
       - 'tests/test_docs_check.py'
+      - 'tools/verify_release_apk_identity.py'
+      - 'tests/test_verify_release_apk_identity.py'
+      - '.github/workflows/release-apk.yml'
       - '.github/workflows/documentation-validation.yml'
   workflow_dispatch:
 
@@ -40,3 +46,5 @@ jobs:
         run: python3 tools/check_docs.py
       - name: Test documentation validator
         run: python3 -m unittest discover -s tests -p 'test_docs_check.py'
+      - name: Verify release APK identity negative controls (offline)
+        run: python3 -m unittest discover -s tests -p 'test_verify_release_apk_identity.py'
