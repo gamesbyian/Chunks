@@ -14,7 +14,7 @@ FILES = ("owned_payload_file.h", "owned_payload_file.cc",
          "bridge/receipt_admission.h", "bridge/receipt_admission.cc",
          "bridge/serial_native_io_queue.h", "bridge/serial_native_io_queue.cc",
          "bridge/owned_libtorrent_disk.h", "bridge/owned_libtorrent_disk.cc",
-         "bridge/owned_disk_extension.i")
+         "bridge/owned_disk_extension.i", "bridge/owned_native_session_smoke.cc")
 CMAKE_SOURCES = """
 target_sources(torrent4j PRIVATE
   chunks/owned_payload_file.cc
@@ -26,6 +26,20 @@ target_sources(torrent4j PRIVATE
 )
 target_include_directories(torrent4j PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}/chunks" "${CMAKE_CURRENT_SOURCE_DIR}")
+
+# Host-only actual libtorrent session safety smoke (not included in Android .so)
+add_executable(chunks_owned_session_smoke
+  chunks/bridge/owned_native_session_smoke.cc
+  chunks/owned_payload_file.cc
+  chunks/owned_torrent_storage.cc
+  chunks/bridge/checked_piece_range.cc
+  chunks/bridge/receipt_admission.cc
+  chunks/bridge/serial_native_io_queue.cc
+  chunks/bridge/owned_libtorrent_disk.cc
+)
+target_link_libraries(chunks_owned_session_smoke PRIVATE torrent-rasterbar)
+target_include_directories(chunks_owned_session_smoke PRIVATE
+  "${CMAKE_CURRENT_SOURCE_DIR}/chunks")
 """
 JAVA_METHOD = """
     /** Requires regenerated SWIG and rebuilt native library; never call on stock JNI. */
