@@ -40,6 +40,7 @@ class RemotePeerSourceIntegrityTest {
     private fun fetch(port: String, privacy: String, active: String): Pair<RemotePeerSource, List<String>> {
         Gateway { method ->
             result(when (method) {
+                "d.hash" -> str("a".repeat(40))
                 "network.local_address" -> str("127.0.0.1")
                 "network.bind_address" -> str("0.0.0.0")
                 "network.listen.port" -> port
@@ -62,8 +63,8 @@ class RemotePeerSourceIntegrityTest {
         assertFalse(source.isActive)
         assertEquals("127.0.0.1", source.rpcHost)
         assertNull("Unusable wildcard bind must stay unknown", source.boundAddress)
-        assertEquals(listOf("network.local_address", "network.bind_address",
-            "network.listen.port", "d.is_private", "d.is_active"), methods)
+        assertEquals(listOf("d.hash", "network.local_address", "network.bind_address",
+            "network.listen.port", "d.is_private", "d.is_active", "d.hash"), methods)
     }
 
     @Test fun invalidPeerPortsCannotBePublished() {
@@ -73,6 +74,7 @@ class RemotePeerSourceIntegrityTest {
         )
         for (port in invalidPorts) {
             Gateway { method -> result(when (method) {
+                "d.hash" -> str("a".repeat(40))
                 "network.local_address" -> str("example.org")
                 "network.bind_address" -> str("0.0.0.0")
                 "network.listen.port" -> port
@@ -84,7 +86,7 @@ class RemotePeerSourceIntegrityTest {
                     }
                     fail("Invalid peer port was accepted: $port")
                 } catch (_: IllegalArgumentException) {
-                    assertEquals(listOf("network.local_address", "network.bind_address",
+                    assertEquals(listOf("d.hash", "network.local_address", "network.bind_address",
                         "network.listen.port"), gateway.methods)
                 }
             }
@@ -96,6 +98,7 @@ class RemotePeerSourceIntegrityTest {
             for (badFlag in listOf(integer(-1), integer(2), double("0.5"), double("1.0"))) {
                 Gateway { method ->
                     result(when (method) {
+                        "d.hash" -> str("a".repeat(40))
                         "network.local_address" -> str("127.0.0.1")
                         "network.bind_address" -> str("0.0.0.0")
                         "network.listen.port" -> integer(51413)
@@ -111,7 +114,7 @@ class RemotePeerSourceIntegrityTest {
                         fail("Malformed $methodToBreak flag accepted: $badFlag")
                     } catch (_: IllegalArgumentException) {
                         assertFalse(gateway.methods.any {
-                            it !in setOf("network.local_address", "network.bind_address",
+                            it !in setOf("d.hash", "network.local_address", "network.bind_address",
                                 "network.listen.port", "d.is_private", "d.is_active")
                         })
                         assertEquals(1, gateway.methods.count { it == methodToBreak })
@@ -120,4 +123,38 @@ class RemotePeerSourceIntegrityTest {
             }
         }
     }
+    @Test fun vanishedOrRetargetedHashNeverBecomesTrustedPeerSource() {
+        for (failBefore in listOf(true, false)) {
+            var checks = 0
+            Gateway { method ->
+                result(when (method) {
+                    "d.hash" -> {
+                        checks++
+                        if (failBefore || checks == 2) str("b".repeat(40))
+                        else str("a".repeat(40))
+                    }
+                    "network.local_address" -> str("127.0.0.1")
+                    "network.bind_address" -> str("0.0.0.0")
+                    "network.listen.port" -> integer(51413)
+                    "d.is_private" -> integer(0)
+                    "d.is_active" -> integer(1)
+                    else -> error("Unexpected mutation: $method")
+                })
+            }.use { gateway ->
+                try {
+                    runBlocking {
+                        RTorrentRemote(RemoteCredentials(gateway.endpoint, "", "")).peerSource(hash)
+                    }
+                    fail("Mismatched exact hash was accepted")
+                } catch (_: IllegalStateException) {
+                    assertEquals(if (failBefore) 1 else 2,
+                        gateway.methods.count { it == "d.hash" })
+                    if (failBefore) assertEquals(listOf("d.hash"), gateway.methods)
+                    else assertEquals("The identity changed after field reads",
+                        "d.hash", gateway.methods.last())
+                }
+            }
+        }
+    }
+
 }
