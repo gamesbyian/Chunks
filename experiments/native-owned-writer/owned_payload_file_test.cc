@@ -176,6 +176,7 @@ int main() {
         s.receipts.string(), kId, kOtherMapping, &error));
     assert(fs::exists(s.receipts / kId));
     assert(s.read(s.receipts / kId).find(kMapping) != std::string::npos);
+    assert(!fs::exists(s.payload / "different.bin"));
     passed();
   }
   {
