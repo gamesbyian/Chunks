@@ -36,7 +36,7 @@ jobs:
 
   pinned-libtorrent-disk-abi:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - name: Fetch exact libtorrent commit embedded by libtorrent4j 2.1.0-39
@@ -91,6 +91,19 @@ jobs:
           grep -F 'set_owned_disk_io_constructor' "$upstream/swig/libtorrent_jni.cpp"
           # Ensure SWIG generation didn't accidentally drop core session calls.
           grep -F 'set_posix_disk_io_constructor' "$upstream/src/main/java/org/libtorrent4j/swig/session_params.java"
+      - name: Syntax-check regenerated full JNI against pinned native ABI
+        run: |
+          set -euo pipefail
+          upstream="$RUNNER_TEMP/chunks-libtorrent4j"
+          java_home="$(dirname "$(dirname "$(readlink -f "$(command -v javac)")")")"
+          test -f "$java_home/include/jni.h"
+          test -f "$upstream/swig/libtorrent_jni.cpp"
+          c++ -std=c++17 -fsyntax-only \
+            -DTORRENT_ABI_VERSION=4 -DTORRENT_USE_OPENSSL=1 \
+            -I "$java_home/include" -I "$java_home/include/linux" \
+            -I "$upstream/swig" \
+            -I "$upstream/swig/deps/libtorrent/include" \
+            "$upstream/swig/libtorrent_jni.cpp"
       - name: Compile all custom disk_interface overrides against pinned C++ API
         run: |
           set -euo pipefail
