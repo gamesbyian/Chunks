@@ -14,7 +14,7 @@
 #include <libtorrent/torrent_handle.hpp>
 #include <libtorrent/torrent_status.hpp>
 
-#include <cassert>
+#include <cstdlib>
 #include <chrono>
 #include <filesystem>
 #include <fstream>
@@ -26,6 +26,17 @@
 #include <unistd.h>
 #include <vector>
 
+// Deliberately remains active under -O3 -DNDEBUG used by CI Release builds.
+// Every safety witness MUST use this, never libc CHECK(), whose side effects
+// and checks disappear in the actual test configuration.
+#define CHECK(condition) do { \
+  if (!(condition)) { \
+    std::cerr << "CHUNKS_NATIVE_SESSION_CHECK_FAILED " << __FILE__ \
+              << ":" << __LINE__ << " " << #condition << "\\n"; \
+    std::exit(86); \
+  } \
+} while (false)
+
 namespace fs = std::filesystem;
 namespace lt = libtorrent;
 
@@ -34,13 +45,13 @@ struct Sandbox {
   Sandbox() {
     char name[] = "/tmp/chunks-owned-native-session-XXXXXX";
     auto* dir = ::mkdtemp(name);
-    assert(dir);
+    CHECK(dir);
     root = dir;
     public_root = root / "public";
     receipts = root / "private";
     fs::create_directories(public_root);
     fs::create_directories(receipts);
-    assert(::chmod(receipts.c_str(), 0700) == 0);
+    CHECK(::chmod(receipts.c_str(), 0700) == 0);
   }
   ~Sandbox() { fs::remove_all(root); }
 };
@@ -82,7 +93,7 @@ void exercise(bool plant_foreign) {
     lt::session session(sp);
     lt::error_code ec;
     auto handle = session.add_torrent(std::move(atp), ec);
-    assert(!ec && handle.is_valid());
+    CHECK(!ec && handle.is_valid());
     // Allow native check_files to run and report on the network thread.
     bool observed = false;
     for (int i = 0; i < 100; ++i) {
@@ -99,24 +110,29 @@ void exercise(bool plant_foreign) {
       std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
     if (plant_foreign) {
-      assert(observed);  // direct native foreign-file intake MUST refuse
+      CHECK(observed);  // direct native foreign-file intake MUST refuse
       std::ifstream in(payload_path, std::ios::binary);
       std::string after{std::istreambuf_iterator<char>(in), {}};
-      assert(after == foreign);
+      CHECK(after == foreign);
     } else {
-      assert(observed);  // a stopped fresh Add must reserve, not create
-      assert(!fs::exists(payload_path));
+      CHECK(observed);  // a stopped fresh Add must reserve, not create
+      CHECK(!fs::exists(payload_path));
     }
   }
   // Even after native session teardown, foreign bytes remain exactly intact.
   if (plant_foreign) {
     std::ifstream in(payload_path, std::ios::binary);
     std::string after{std::istreambuf_iterator<char>(in), {}};
-    assert(after == foreign);
+    CHECK(after == foreign);
   }
 }
 
-int main() {
+int main(int argc, char** argv) {
+  if (argc == 2 && std::string(argv[1]) == "--self-test-fail") {
+    CHECK(false); // the CI release build must terminate with code 86
+    return 0;
+  }
+  CHECK(argc == 1);
   exercise(false);
   exercise(true);
   std::cout << "CHUNKS_REAL_LIBTORRENT_HOST_SESSION=PASS cases=2\n";
