@@ -99,12 +99,21 @@ class LocalNativePostAddCollisionProbeTest {
         assertArrayEquals("No mutation before Start", unrelated, foreign.readBytes())
 
         val start = receiver.resume(infoHash)
-        assertTrue(start.toString(), start.outcome == LocalCommandOutcome.VERIFIED)
-        await("native peer transfer completion") {
-            receiver.status(infoHash)?.progressPpm == 1_000_000
+        // The current raw Add path demonstrates the original unsafe native
+        // behavior. A future checked-Start implementation MUST be allowed to
+        // refuse without making this characterization test obsolete.
+        assertTrue("Start must be confirmed or explicitly uncertain: $start",
+            start.outcome in setOf(LocalCommandOutcome.VERIFIED, LocalCommandOutcome.UNCERTAIN))
+        if (start.outcome == LocalCommandOutcome.VERIFIED) {
+            await("native peer transfer completion") {
+                receiver.status(infoHash)?.progressPpm == 1_000_000
+            }
+            assertTrue("Flush before independent backing-file readback",
+                receiver.flushCompletedForLibraryRead(infoHash, 30_000L))
+        } else {
+            assertArrayEquals("Refused Start must preserve the foreign file",
+                unrelated, foreign.readBytes())
         }
-        assertTrue("Flush before independent backing-file readback",
-            receiver.flushCompletedForLibraryRead(infoHash, 30_000L))
 
         val afterBytes = foreign.readBytes()
         val after = sha(afterBytes)
@@ -155,15 +164,25 @@ class LocalNativePostAddCollisionProbeTest {
 
         assertTrue(receiver.connectPeer(hash,
             InetSocketAddress("127.0.0.1", seed.listenPort())))
-        await("magnet metadata fetched and auto-start requested") {
+        await("magnet metadata either safely blocked or auto-started") {
             val status = receiver.status(hash)
-            status != null && status.metadataKnown && !status.stopped && !status.uploadOnly
+            status != null && status.metadataKnown &&
+                ((status.stopped && status.uploadOnly) ||
+                    (!status.stopped && !status.uploadOnly))
         }
-        await("magnet native peer transfer completion") {
-            receiver.status(hash)?.progressPpm == 1_000_000
+        val outcome = requireNotNull(receiver.status(hash))
+        if (outcome.stopped && outcome.uploadOnly) {
+            // A fail-closed implementation leaves the supplied foreign
+            // bytes alone. Do not require unsafe auto-Start to pass a test.
+            assertArrayEquals("Blocked metadata must preserve unrelated bytes",
+                unrelated, foreign.readBytes())
+        } else {
+            await("magnet native peer transfer completion") {
+                receiver.status(hash)?.progressPpm == 1_000_000
+            }
+            assertTrue("Flush before independent backing-file readback",
+                receiver.flushCompletedForLibraryRead(hash, 30_000L))
         }
-        assertTrue("Flush before independent backing-file readback",
-            receiver.flushCompletedForLibraryRead(hash, 30_000L))
 
         val actual = foreign.readBytes()
         val replaced = !actual.contentEquals(unrelated)
