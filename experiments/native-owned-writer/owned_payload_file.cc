@@ -203,7 +203,7 @@ std::unique_ptr<OwnedPayloadFile> OwnedPayloadFile::OpenImpl(
       return reject("Payload identity differs from durable ownership receipt");
   }
   std::unique_ptr<OwnedPayloadFile> opened(new OwnedPayloadFile(root_fd.release(),
-      parent.release(), file.release(), parts.back(), record.dev, record.ino,
+      parent.release(), file.release(), root, relative, parts.back(), record.dev, record.ino,
       record.root_dev, record.root_ino, record.parent_dev, record.parent_ino));
   if (!opened->StillOwned(error)) return nullptr;
   return opened;
@@ -221,10 +221,12 @@ std::unique_ptr<OwnedPayloadFile> OwnedPayloadFile::Reopen(
   return OpenImpl(root, rel, receipts, id, mapping, false, error);
 }
 
-OwnedPayloadFile::OwnedPayloadFile(int root, int parent, int file, std::string leaf,
+OwnedPayloadFile::OwnedPayloadFile(int root, int parent, int file,
+    std::string root_path, std::string relative_path, std::string leaf,
     std::uint64_t dev, std::uint64_t ino, std::uint64_t root_dev,
     std::uint64_t root_ino, std::uint64_t parent_dev, std::uint64_t parent_ino)
-    : root_fd_(root), parent_fd_(parent), file_fd_(file), leaf_(std::move(leaf)),
+    : root_fd_(root), parent_fd_(parent), file_fd_(file), root_path_(std::move(root_path)),
+      relative_path_(std::move(relative_path)), leaf_(std::move(leaf)),
       dev_(dev), ino_(ino), root_dev_(root_dev), root_ino_(root_ino),
       parent_dev_(parent_dev), parent_ino_(parent_ino) {}
 
@@ -235,6 +237,21 @@ OwnedPayloadFile::~OwnedPayloadFile() {
 }
 
 bool OwnedPayloadFile::StillOwned(std::string* err) const {
+  // Re-evaluate the named path as well as pinned descriptors: a renamed root
+  // or intermediate directory cannot count as writes to the selected Place.
+  Fd named_root(::open(root_path_.c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC));
+  std::vector<std::string> parts;
+  Fd named_parent;
+  struct stat actual_root{}, actual_parent{};
+  if (named_root.v < 0 || !ValidRelative(relative_path_, &parts) ||
+      !GetDirectory(named_root.v, &actual_root) ||
+      !ParentPath(named_root.v, parts, false, &named_parent, err) ||
+      !GetDirectory(named_parent.v, &actual_parent) ||
+      static_cast<std::uint64_t>(actual_root.st_dev) != root_dev_ ||
+      static_cast<std::uint64_t>(actual_root.st_ino) != root_ino_ ||
+      static_cast<std::uint64_t>(actual_parent.st_dev) != parent_dev_ ||
+      static_cast<std::uint64_t>(actual_parent.st_ino) != parent_ino_)
+    return Fail(err, "Native destination root or parent mapping changed");
   struct stat root{}, parent{}, pinned{}, path{};
   if (::fstat(root_fd_, &root) != 0 || ::fstat(parent_fd_, &parent) != 0 ||
       !GetFile(file_fd_, &pinned) ||
