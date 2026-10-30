@@ -246,7 +246,7 @@ class CombinedTransfersScreenTest {
         rule.onNodeWithText("Stop selected").assertExists()
         rule.runOnIdle {
             // Same saved roster slot, different authenticated endpoint/account.
-            profile = profile.copy(aliasScope = "https://rotated.example/RPC2\\u0000replacement")
+            profile = profile.copy(aliasScope = "https://rotated.example/RPC2\u0000replacement")
         }
         rule.onNodeWithText("Stop selected").assertDoesNotExist()
         rule.onNodeWithText("1 selected").assertDoesNotExist()
