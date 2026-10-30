@@ -86,8 +86,8 @@ class NativeDisk final : public lt::disk_interface, public lt::buffer_allocator_
       for (lt::file_index_t file : mapped.file_range()) {
         auto const path = mapped.file_path(file);
         auto const size = mapped.file_size(file);
-        if (size < 0 || mapped.file_absolute_path(file)) {
-          state->refusal = "Native torrent file length or renamed path invalid";
+        if (size < 0 || mapped.file_absolute_path(file) || !mapped.symlink(file).empty()) {
+          state->refusal = "Native torrent path is invalid, absolute or a symlink";
           break;
         }
         auto const file_number = static_cast<int>(file);
