@@ -200,14 +200,13 @@ internal fun EnvironmentBadge(
     // Observe the shared persisted palette revision. An environment ID stays
     // stable when its chosen hue changes, so ID alone is not a valid cache key.
     val paletteRevision = EnvironmentColourStore.revision
-    val colourStore = remember(context) { EnvironmentColourStore(context) }
     var hue by androidx.compose.runtime.remember(context, environment) {
         androidx.compose.runtime.mutableStateOf<io.github.gamesbyian.chunks.model.EnvironmentHue?>(null)
     }
-    androidx.compose.runtime.LaunchedEffect(colourStore, environment, paletteRevision) {
+    androidx.compose.runtime.LaunchedEffect(context, environment, paletteRevision) {
         try {
             hue = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                environment?.let { colourStore.load().hueOf(it) }
+                environment?.let { EnvironmentColourStore(context).load().hueOf(it) }
             }
         } catch (cancel: kotlinx.coroutines.CancellationException) {
             throw cancel
