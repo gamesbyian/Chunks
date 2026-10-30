@@ -21,7 +21,8 @@ import io.github.gamesbyian.chunks.engine.LocalCommandOutcome
  * Keeps the in-process local engine alive while the user has transfers running,
  * shown as an ongoing notification with a Stop all action. It never starts a
  * transfer itself, stops when nothing is running, and on Android's dataSync
- * time limit (Android 15+) pauses everything rather than pretending to continue.
+ * time limit (Android 15+) requests a pause and ends its foreground lifetime
+ * within a bounded deadline, reporting any unconfirmed native outcome.
  * This is not a promise of unlimited background seeding.
  */
 class LocalEngineService : Service() {
@@ -112,6 +113,18 @@ class LocalEngineService : Service() {
     // warning is shown until the next genuinely admitted observation.
     private val stallNotice = LocalServiceStallNotice()
     @Volatile private var stopping = false
+    private var finished = false
+    private val timeoutStop = LocalServiceTimeoutStop(
+        postDelayed = { runnable, delay -> handler.postDelayed(runnable, delay) },
+        removeCallbacks = handler::removeCallbacks,
+        onFinished = { summary ->
+            // Satisfy Android's stop deadline before preparing a notice, which
+            // may need to read persisted privacy settings. Unknown is never a
+            // claim that native transfers actually stopped.
+            finish()
+            postTimeoutNotice(summary)
+        }
+    )
     private val tick = object : Runnable {
         override fun run() {
             if (stopping) return
@@ -142,6 +155,14 @@ class LocalEngineService : Service() {
         // Must be called promptly for every startForegroundService request.
         startForeground(NOTIFICATION_ID, notification("Checking transfers…"),
             ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        if (finished) {
+            // Android can deliver another start before destroying this stopped
+            // instance. Do not reattach a foreground lifetime whose deadline
+            // and callbacks were already retired; a later instance is separate.
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf(startId)
+            return START_NOT_STICKY
+        }
         if (intent?.action == ACTION_STOP_ALL) {
             // A forged/replayed PendingIntent cannot bypass a locally enabled
             // privacy gate. Android's mandatory onTimeout is intentionally
@@ -164,7 +185,9 @@ class LocalEngineService : Service() {
     /** Android 15+ dataSync limit reached: stop honestly instead of being killed. */
     override fun onTimeout(startId: Int, fgsType: Int) {
         stopping = true
-        requestStopAll(timedOut = true)
+        // Schedule on the main Handler BEFORE queuing native work. The shared
+        // readback budget cannot bound JNI, engine locks, or a queued Stop.
+        if (timeoutStop.begin()) requestStopAll(timedOut = true)
     }
 
     /**
@@ -174,14 +197,23 @@ class LocalEngineService : Service() {
      */
     private fun requestStopAll(timedOut: Boolean = false) {
         if (!workLanes.submitControl {
+                var summary = LocalServiceTimeoutNotice.PauseSummary(listed = null, confirmed = 0)
                 try {
-                    val summary = pauseAll(this, timedOut = timedOut)
-                    if (timedOut) postTimeoutNotice(summary)
-                } finally { handler.post { finish() } }
+                    summary = pauseAll(this, timedOut = timedOut)
+                } finally {
+                    handler.post {
+                        if (timedOut) timeoutStop.complete(summary)
+                        // A user Stop queued before onTimeout cannot bypass
+                        // the timeout result/notice or defeat its deadline.
+                        else if (!timeoutStop.requested) finish()
+                    }
+                }
             }) {
             // Only possible once the service is shutting down. Preserve the
             // normal foreground-service stop lifecycle.
-            finish()
+            if (timedOut) timeoutStop.complete(
+                LocalServiceTimeoutNotice.PauseSummary(listed = null, confirmed = 0)
+            ) else if (!timeoutStop.requested) finish()
         }
     }
 
@@ -226,6 +258,9 @@ class LocalEngineService : Service() {
     }
 
     private fun finish() {
+        if (finished) return
+        finished = true
+        timeoutStop.abandon()
         handler.removeCallbacks(tick)
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
@@ -233,6 +268,8 @@ class LocalEngineService : Service() {
 
     override fun onDestroy() {
         stopping = true
+        finished = true
+        timeoutStop.abandon()
         handler.removeCallbacks(tick)
         // Resume persistence must likewise be independent of a stuck poll.
         workLanes.submitControl {
