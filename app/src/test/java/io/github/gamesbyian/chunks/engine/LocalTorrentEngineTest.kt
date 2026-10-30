@@ -415,6 +415,22 @@ class LocalTorrentEngineTest {
         assertTrue("Collision must be visible", blocked.error.orEmpty().contains("Existing files"))
         assertArrayEquals("Early Start consent cannot overwrite unrelated bytes",
             unrelated, collision.readBytes())
+        // Narrow synthetic diagnostic: isolate a stale stored collision
+        // witness from a genuinely missing native payload pathname. This
+        // read-only survey must match the same destination used by Start.
+        val beforeStart = requireNotNull(leecher.status(seed.infoHash))
+        val observedSurvey = LocalPayloadCollisionSurvey.inspect(
+            File(beforeStart.savePath),
+            listOf("Chunks public fixture/episode.bin", "Chunks public fixture/extras/notes.txt")
+        )
+        println("CHUNKS_MAGNET_START_GATE metadata=${beforeStart.metadataKnown} " +
+            "uploadOnly=${beforeStart.uploadOnly} stopped=${beforeStart.stopped} " +
+            "foreignExists=${collision.isFile} survey=${observedSurvey::class.simpleName} " +
+            "nativeSavePathMatches=${File(beforeStart.savePath).canonicalPath == destination.canonicalPath}")
+        assertTrue("The same pathname must still have the foreign bytes before Start",
+            collision.isFile && unrelated.contentEquals(collision.readBytes()))
+        assertTrue("The production survey must still see the deliberately planted foreign file",
+            observedSurvey is LocalPayloadCollisionSurvey.Result.ExistingPaths)
         assertEquals(LocalCommandOutcome.UNCERTAIN, leecher.resume(seed.infoHash).outcome)
         assertArrayEquals(unrelated, collision.readBytes())
 
