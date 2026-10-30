@@ -8,6 +8,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
 import org.junit.Assert.*
+import java.util.concurrent.atomic.AtomicInteger
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -24,7 +25,7 @@ class CombinedSavedServersTest {
     private val scopeB = "https://b.example/RPC2\u0000bob"
     private fun id(scope: String) = io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverId(
         scope.substringBefore('\u0000'), scope.substringAfter('\u0000')).value
-    private var calls = 0
+    private val calls = AtomicInteger(0)
 
     private fun show(profiles: List<CombinedSavedProfile>) = rule.setContent {
         ChunksTheme { Surface(color = ChunksColors.Background) {
@@ -36,16 +37,23 @@ class CombinedSavedServersTest {
     @Test fun loadsOtherSavedServersOnlyWhenAskedAndReportsFailures() {
         show(listOf(
             CombinedSavedProfile(id(scopeA), "ann @ a.example/RPC2", scopeA) {
-                calls++; listOf(RemoteTransfer("a".repeat(40), "Linux ISO", 100, 100, true, "/d", 0, 5))
+                calls.incrementAndGet(); listOf(RemoteTransfer("a".repeat(40), "Linux ISO", 100, 100, true, "/d", 0, 5))
             },
             CombinedSavedProfile(id(scopeB), "bob @ b.example/RPC2", scopeB) {
-                calls++; throw java.net.ConnectException("refused")
+                calls.incrementAndGet(); throw java.net.ConnectException("refused")
             }))
         rule.onNodeWithText("Server · ann @ a.example/RPC2: Not connected · 0 transfers").assertExists()
-        assertEquals("nothing is fetched until the user asks", 0, calls)
+        assertEquals("nothing is fetched until the user asks", 0, calls.get())
         rule.onNodeWithText("Load other saved servers (read-only)").performScrollTo().performClick()
-        rule.waitUntil(5_000) { calls == 2 }
-        rule.waitForIdle()
+        // Both fetches starting is not both results applied: the listings land
+        // from a background coroutine that waitForIdle does not wait for.
+        rule.waitUntil(5_000) {
+            calls.get() == 2 &&
+                rule.onAllNodesWithText("Server · ann @ a.example/RPC2: Live · 1 transfers")
+                    .fetchSemanticsNodes().isNotEmpty() &&
+                rule.onAllNodesWithText("Server · bob @ b.example/RPC2: Could not load (connection refused) · 0 transfers")
+                    .fetchSemanticsNodes().isNotEmpty()
+        }
         rule.onNodeWithText("Linux ISO").performScrollTo().assertExists()
         rule.onNodeWithText("Server · ann @ a.example/RPC2: Live · 1 transfers").assertExists()
         rule.onNodeWithText("Server · bob @ b.example/RPC2: Could not load (connection refused) · 0 transfers")
@@ -101,10 +109,10 @@ class CombinedSavedServersTest {
 
     @Test fun profileWithoutVerifiableScopeStaysLockedAndIsNeverFetched() {
         show(listOf(CombinedSavedProfile(id(scopeA), "ann @ a.example/RPC2", aliasScope = null) {
-            calls++; emptyList()
+            calls.incrementAndGet(); emptyList()
         }))
         rule.onNodeWithText("Server · ann @ a.example/RPC2: Locked, open it to unlock · 0 transfers").assertExists()
         rule.onNodeWithText("Load other saved servers (read-only)").assertDoesNotExist()
-        assertEquals(0, calls)
+        assertEquals(0, calls.get())
     }
 }

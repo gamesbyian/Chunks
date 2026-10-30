@@ -1,5 +1,7 @@
 package io.github.gamesbyian.chunks.rpc
 
+import java.util.Locale
+
 /**
  * Reviewed, data-only provider hints for hostname-only Smart Connect.
  *
@@ -40,7 +42,7 @@ object RemoteProviderCatalog {
         val liveAccepted: Boolean = false
     ) {
         fun matches(host: String): Boolean {
-            val h = host.lowercase().trimEnd('.')
+            val h = host.lowercase(Locale.ROOT).trimEnd('.')
             val domainHit = domains.any { h == it || h.endsWith(".$it") }
             return domainHit && (hostLabelPrefix == null || h.startsWith(hostLabelPrefix))
         }
@@ -144,7 +146,7 @@ object RemoteProviderCatalog {
 
     /** Ordered templates for a hostname-only input; deduplication is the caller's. */
     fun plan(host: String, account: String?): List<Pair<String, String>> {
-        val h = host.lowercase()
+        val h = host.lowercase(Locale.ROOT)
         val provider = match(h)
         val templates = provider?.templates?.takeIf { it.isNotEmpty() } ?: generic
         return templates.mapNotNull { t ->
@@ -152,7 +154,7 @@ object RemoteProviderCatalog {
                 Requirement.NONE -> t.path to t.description
                 Requirement.ACCOUNT -> account?.let { t.path.replace("{account}", it) to t.description }
                 Requirement.ACCOUNT_IS_HOST_LABEL ->
-                    if (account != null && h.startsWith(account.lowercase() + ".")) t.path to t.description else null
+                    if (account != null && h.startsWith(account.lowercase(Locale.ROOT) + ".")) t.path to t.description else null
             }
         }
     }

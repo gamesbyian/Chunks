@@ -13,6 +13,11 @@ on:
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/Android10StoragePermissionDialogInstrumentedTest.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/LocalEngineScreen.kt"
       - "tools/android10_downloads_instrumentation.sh"
+      - "tools/test_android10_downloads_instrumentation_mock.sh"
+      # Native resume reader changes must exercise the API29 real backing,
+      # restart, and fresh-peer seeding journey, not only host JVM tests.
+      - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalResumeFileReader.kt"
+      - "app/src/test/java/io/github/gamesbyian/chunks/engine/LocalResumeFileReaderTest.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/LocalEngineService.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/LocalService*.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalEngineServiceInstrumentedTest.kt"
@@ -32,6 +37,8 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
+      - name: Reject misleading API29 install and test evidence (offline)
+        run: bash tools/test_android10_downloads_instrumentation_mock.sh
       - uses: actions/setup-java@v4
         with:
           distribution: temurin

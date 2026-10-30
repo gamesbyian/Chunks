@@ -45,7 +45,7 @@ class RemoteBatchLifecyclePanelInstrumentedTest {
         rule.waitUntil(5_000) { settled == 1 }
         assertEquals(listOf("a".repeat(40), "c".repeat(40)), calls.toList())
         assertEquals(1, leases)
-        rule.onNodeWithText("Halted: one reply was lost", substring = true).assertExists()
+        rule.onNodeWithText("Halted: one command's result could not be verified", substring = true).assertExists()
         rule.onNodeWithText("1 not attempted", substring = true).assertExists()
     }
 

@@ -79,4 +79,77 @@ class LocalFileDiskCheckTest {
             assertEquals("No files to check.", LocalFileDiskCheck.check(root, emptyList()).summary())
         } finally { root.deleteRecursively() }
     }
+
+    @Test fun symlinkInsideRootIsNeverReportedAsARealPayload() {
+        val root = Files.createTempDirectory("chunks-diskcheck-internal-link").toFile()
+        try {
+            val original = File(root, "real.bin")
+            original.writeBytes(ByteArray(17) { 3 })
+            Files.createSymbolicLink(File(root, "alias.bin").toPath(), original.toPath())
+            val result = LocalFileDiskCheck.check(root,
+                listOf(file(0, "alias.bin", 17, 17))).results.single()
+            assertEquals(Status.UNSAFE_PATH, result.status)
+            assertNull(result.observedBytes)
+            assertArrayEquals(ByteArray(17) { 3 }, original.readBytes())
+        } finally { root.deleteRecursively() }
+    }
+
+    @Test fun brokenSymlinkIsUnsafeInsteadOfAnApparentlyUnstartedFile() {
+        val root = Files.createTempDirectory("chunks-diskcheck-broken-link").toFile()
+        try {
+            Files.createSymbolicLink(File(root, "orphan.bin").toPath(),
+                File(root, "absent.bin").toPath())
+            val result = LocalFileDiskCheck.check(root,
+                listOf(file(0, "orphan.bin", 100, 0))).results.single()
+            assertEquals(Status.UNSAFE_PATH, result.status)
+            assertNull(result.observedBytes)
+        } finally { root.deleteRecursively() }
+    }
+
+    @Test fun directlySymlinkedSaveFolderDoesNotMakeOtherFilesAppearPresent() {
+        val real = Files.createTempDirectory("chunks-diskcheck-real-root").toFile()
+        val alias = File(real.parentFile, real.name + "-alias")
+        try {
+            File(real, "foreign.bin").writeBytes(ByteArray(13) { 7 })
+            Files.createSymbolicLink(alias.toPath(), real.toPath())
+            val report = LocalFileDiskCheck.check(alias,
+                listOf(file(0, "foreign.bin", 13, 13)))
+            assertEquals(Status.FOLDER_UNAVAILABLE, report.results.single().status)
+            assertNull(report.results.single().observedBytes)
+            assertArrayEquals(ByteArray(13) { 7 },
+                File(real, "foreign.bin").readBytes())
+        } finally {
+            alias.delete()
+            real.deleteRecursively()
+        }
+    }
+
+    @Test fun accessDeniedDuringActualAttributeReadIsUnreadableNotMissing() {
+        val root = Files.createTempDirectory("chunks-diskcheck-access-loss").toFile()
+        try {
+            val observed = LocalFileDiskCheck.observe(root, "unknown.bin") {
+                throw java.nio.file.AccessDeniedException(it.toString())
+            }
+            assertNotNull(observed)
+            assertTrue(observed!!.error)
+            assertEquals(Status.UNREADABLE, LocalFileDiskCheck.classify(
+                file(0, "unknown.bin", 9, 0), observed))
+            assertFalse(File(root, "unknown.bin").exists())
+        } finally { root.deleteRecursively() }
+    }
+
+    @Test fun ambiguousOrEscapingNamesNeverCountAsUnstartedOrHealthy() {
+        val root = Files.createTempDirectory("chunks-diskcheck-malformed").toFile()
+        try {
+            for (unsafe in listOf("../elsewhere", "/absolute", "x/../y",
+                "x//y", "x/./y", "x\\y", "x\nname")) {
+                val result = LocalFileDiskCheck.check(root,
+                    listOf(file(0, unsafe, 4, 0))).results.single()
+                assertEquals(unsafe, Status.UNSAFE_PATH, result.status)
+            }
+            assertEquals(Status.UNREADABLE, LocalFileDiskCheck.classify(
+                file(0, "unknown.bin", 4, 0),
+                LocalFileDiskCheck.Observation(false, false, 0, error = true)))
+        } finally { root.deleteRecursively() }
+    }
 }

@@ -49,7 +49,10 @@ internal object RemoteBatchLifecycle {
             } catch (cancel: CancellationException) {
                 throw cancel
             } catch (_: Exception) {
-                null
+                // The exception can occur after the server received/applied
+                // the command. Conservatively halt as uncertain, never
+                // reinterpret a lost reply as a definite refusal.
+                LifecycleOutcome.Uncertain(desiredStarted)
             }
             when (outcome) {
                 is LifecycleOutcome.Verified -> verified += target.hash
