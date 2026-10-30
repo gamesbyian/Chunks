@@ -63,11 +63,9 @@ int main() {
     std::string error;
     auto t = Storage::Open(s.payload.string(), s.receipts.string(), files(),
                            Storage::Admission::FRESH, &error);
-    assert(t);
-    assert(!t->WriteRange(3, "ABCDEFGHI", 9, &error));
+    assert(!t); // prospective admission refused before creating any payload
     assert(s.read(s.payload / "show/partB.bin") == "FOREIGN");
-    // All files opened before writes, so A remained zero length.
-    assert(s.read(s.payload / "show/partA.bin").empty());
+    assert(!fs::exists(s.payload / "show/partA.bin"));
     ++count;
   }
   {
@@ -77,7 +75,8 @@ int main() {
                            Storage::Admission::FRESH, &error);
     assert(t);
     assert(!t->WriteRange(11, "XX", 2, &error));
-    assert(!fs::exists(s.payload / "show"));
+    assert(!fs::exists(s.payload / "show/partA.bin"));
+    assert(!fs::exists(s.payload / "show/partB.bin"));
     ++count;
   }
   {
@@ -113,6 +112,38 @@ int main() {
     char received[7]{};
     assert(t->ReadRange(4, received, 6, &error));
     assert(std::string(received, 6) == std::string("A\0\0\0EF", 6));
+    ++count;
+  }
+  {
+    Sandbox s;
+    std::string error;
+    auto fresh = Storage::Open(s.payload.string(), s.receipts.string(), files(),
+                               Storage::Admission::FRESH, &error);
+    assert(fresh);
+    assert(!fs::exists(s.payload / "show/partA.bin"));
+    assert(fs::exists(s.receipts / (std::string(A) + ".pending")));
+    fresh.reset(); // stopped Add, process exits before native payload creation
+    auto restored = Storage::Open(s.payload.string(), s.receipts.string(), files(),
+                                  Storage::Admission::RESTORED, &error);
+    assert(restored);
+    assert(restored->WriteRange(0, "ABCDE", 5, &error));
+    assert(restored->Flush(&error));
+    assert(s.read(s.payload / "show/partA.bin") == "ABCDE");
+    ++count;
+  }
+  {
+    Sandbox s;
+    std::string error;
+    auto fresh = Storage::Open(s.payload.string(), s.receipts.string(), files(),
+                               Storage::Admission::FRESH, &error);
+    assert(fresh);
+    fresh.reset();
+    { std::ofstream planted(s.payload / "show/partA.bin"); planted << "FOREIGN"; }
+    auto restored = Storage::Open(s.payload.string(), s.receipts.string(), files(),
+                                  Storage::Admission::RESTORED, &error);
+    assert(restored);
+    assert(!restored->WriteRange(0, "ABCDE", 5, &error));
+    assert(s.read(s.payload / "show/partA.bin") == "FOREIGN");
     ++count;
   }
   std::cout << "CHUNKS_MULTIFILE_WRITER_CASES=" << count << " PASSED\n";
