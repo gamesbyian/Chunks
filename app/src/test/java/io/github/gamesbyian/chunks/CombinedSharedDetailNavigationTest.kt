@@ -83,7 +83,10 @@ class CombinedSharedDetailNavigationTest {
         rule.onNodeWithContentDescription("Details for Instance two download on $connectedName")
             .performScrollTo().performClick()
         rule.waitForIdle()
-        println("COMBINED_DETAIL_AFTER_CLICK: " + rule.onRoot().printToString())
+        fun semanticsTree(node: androidx.compose.ui.semantics.SemanticsNode, indent: Int = 0): String =
+            " ".repeat(indent) + node.config.toString() + "\\n" +
+                node.children.joinToString("\\n") { semanticsTree(it, indent + 1) }
+        println("COMBINED_DETAIL_AFTER_CLICK: " + semanticsTree(rule.onRoot().fetchSemanticsNode()))
         rule.onNodeWithText("Transfer details").assertExists()
         rule.onNodeWithText("Environment: $connectedName").assertExists()
         rule.onNodeWithText("Instance two download").assertExists()
