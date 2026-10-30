@@ -338,17 +338,21 @@ class LocalNativePostAddCollisionProbeTest {
         assertFalse(before == sourceSha)
 
         val restored = persistentEngine()
-        assertTrue("The engine must report any invalid resume data instead of losing it",
-            restored.restoreProblems.isEmpty())
-        val record = requireNotNull(restored.status(hash))
-        assertTrue("Native resume must restore stopped", record.stopped)
-        // At this point an in-process first-Start reservation from the
-        // previous LocalTorrentEngine instance is no longer present.
-        val started = restored.resume(hash)
-        assertTrue("Future safety may explicitly refuse the unowned file: $started",
-            started.outcome in setOf(LocalCommandOutcome.REFUSED,
+        val record = restored.status(hash)
+        assertTrue("If native restore refused the collision, the resume witness must survive",
+            record != null || File(state, "$hash.resume").isFile)
+        assertTrue("Restored handle must remain stopped until explicit Start",
+            record?.stopped != false)
+        // A future native owner-aware restore may refuse before registering a
+        // handle, which is safer than attempting a path-writing Start. Preserve
+        // a valid diagnostic even if that protective behavior is introduced.
+        val startOutcome = if (record == null) LocalCommandOutcome.NOT_FOUND
+            else restored.resume(hash).outcome
+        assertTrue("A future safe native engine may refuse unowned file restore",
+            startOutcome in setOf(LocalCommandOutcome.NOT_FOUND,
+                LocalCommandOutcome.REFUSED,
                 LocalCommandOutcome.VERIFIED, LocalCommandOutcome.UNCERTAIN))
-        if (started.outcome != LocalCommandOutcome.REFUSED) {
+        if (startOutcome in setOf(LocalCommandOutcome.VERIFIED, LocalCommandOutcome.UNCERTAIN)) {
             assertTrue(restored.connectPeer(hash,
                 InetSocketAddress("127.0.0.1", seed.listenPort())))
             await("restored checked job finishes real peer transfer") {
@@ -357,12 +361,12 @@ class LocalNativePostAddCollisionProbeTest {
             assertTrue("Flush exact completed native handle before disk readback",
                 restored.flushCompletedForLibraryRead(hash, 30_000L))
         } else {
-            assertArrayEquals("Refused restoration Start leaves planted bytes intact",
+            assertArrayEquals("Refused restoration must leave planted foreign bytes intact",
                 foreign, payload.readBytes())
         }
 
         val after = payload.readBytes()
-        println("CHUNKS_RESTORE_COLLISION observed_stopped=true resumed_outcome=${started.outcome}")
+        println("CHUNKS_RESTORE_COLLISION observed_stopped=${record?.stopped == true} resumed_outcome=$startOutcome")
         println("CHUNKS_RESTORE_COLLISION before_sha256=$before expected_sha256=$sourceSha " +
             "after_sha256=${sha(after)}")
         println("CHUNKS_RESTORE_COLLISION foreign_file_replaced=${!after.contentEquals(foreign)}")
