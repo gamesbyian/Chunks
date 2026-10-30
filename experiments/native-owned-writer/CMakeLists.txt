@@ -8,6 +8,7 @@ add_library(chunks_owned_writer STATIC
     owned_torrent_storage.cc
     bridge/checked_piece_range.cc
     bridge/receipt_admission.cc
+    bridge/serial_native_io_queue.cc
 )
 target_compile_features(chunks_owned_writer PUBLIC cxx_std_17)
 target_include_directories(chunks_owned_writer PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
@@ -26,7 +27,10 @@ if(CHUNKS_OWNED_WRITER_HOST_TESTS AND NOT ANDROID)
     target_link_libraries(chunks_receipt_admission_test PRIVATE chunks_owned_writer)
     add_executable(chunks_checked_piece_range_test bridge/checked_piece_range_test.cc)
     target_link_libraries(chunks_checked_piece_range_test PRIVATE chunks_owned_writer)
+    add_executable(chunks_native_io_queue_test bridge/serial_native_io_queue_test.cc)
+    target_link_libraries(chunks_native_io_queue_test PRIVATE chunks_owned_writer Threads::Threads)
     enable_testing()
+    add_test(NAME bounded_native_io_queue COMMAND chunks_native_io_queue_test)
     add_test(NAME checked_piece_bounds COMMAND chunks_checked_piece_range_test)
     add_test(NAME receipt_admission_inventory COMMAND chunks_receipt_admission_test)
     add_test(NAME owned_file_nonclobber COMMAND chunks_owned_file_test)
