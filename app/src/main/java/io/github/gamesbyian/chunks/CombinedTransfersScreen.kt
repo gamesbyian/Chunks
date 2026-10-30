@@ -399,7 +399,7 @@ internal fun CombinedTransfersScreen(
         )
         val readOnlyProbe = server?.lifecycle?.probe?.takeIf {
             focusedKey.environment == serverId &&
-                server.authenticatedSession != null &&
+                server?.authenticatedSession != null &&
                 serverPrivacy?.mayShow == true &&
                 details.readState == TransferDetailReadState.CURRENT
         }
