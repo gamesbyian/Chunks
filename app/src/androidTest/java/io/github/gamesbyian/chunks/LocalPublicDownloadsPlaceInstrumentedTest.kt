@@ -217,7 +217,7 @@ class LocalPublicDownloadsPlaceInstrumentedTest {
             original, foreign.readBytes())
 
         assertEquals("Explicit Start must refuse the newly known payload collision",
-            LocalCommandOutcome.UNCERTAIN, leecher.resume(seed.infoHash).outcome)
+            LocalCommandOutcome.REFUSED, leecher.resume(seed.infoHash).outcome)
         val afterStart = requireNotNull(leecher.status(seed.infoHash))
         assertTrue(afterStart.stopped)
         assertTrue(afterStart.uploadOnly)
@@ -238,7 +238,7 @@ class LocalPublicDownloadsPlaceInstrumentedTest {
         assertTrue("Blocked metadata-ready magnet must restore stopped", restored.stopped)
         assertTrue("Native upload-only protection must survive restart", restored.uploadOnly)
         assertEquals(destination.absolutePath, restored.savePath)
-        assertEquals(LocalCommandOutcome.UNCERTAIN, restarted.resume(seed.infoHash).outcome)
+        assertEquals(LocalCommandOutcome.REFUSED, restarted.resume(seed.infoHash).outcome)
         val afterRestartStart = requireNotNull(restarted.status(seed.infoHash))
         assertTrue(afterRestartStart.stopped)
         assertTrue(afterRestartStart.uploadOnly)

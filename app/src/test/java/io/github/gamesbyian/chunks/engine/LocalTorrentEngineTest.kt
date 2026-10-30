@@ -402,6 +402,14 @@ class LocalTorrentEngineTest {
         // Upload mode requests no payload pieces before the user presses Start.
         assertEquals(0L, stopped.doneBytes)
         assertEquals(0L, stopped.payloadDownloadedBytes)
+        // A zero-byte payload pathname is still a mutation of an unowned
+        // destination. UPLOAD_MODE must keep every metadata-only file absent,
+        // even after native asynchronous file-layout processing settles.
+        Thread.sleep(1_000)
+        for (name in fixture.files.keys) {
+            val path = File(destination, "Chunks public fixture/$name")
+            assertFalse("Magnet metadata alone created a payload path: $name", path.exists())
+        }
 
         assertEquals(LocalCommandOutcome.VERIFIED, leecher.resume(seed.infoHash).outcome)
         waitFor { leecher.status(seed.infoHash)?.progressPpm == 1_000_000 }
@@ -514,7 +522,28 @@ class LocalTorrentEngineTest {
         assertTrue("Collision must be visible", blocked.error.orEmpty().contains("Existing files"))
         assertArrayEquals("Early Start consent cannot overwrite unrelated bytes",
             unrelated, collision.readBytes())
-        assertEquals(LocalCommandOutcome.UNCERTAIN, leecher.resume(seed.infoHash).outcome)
+        // The unoccupied sibling path must not be materialized during rejected
+        // metadata-time auto-Start. Empty files are still unauthorized writes.
+        Thread.sleep(500)
+        assertFalse("Rejected magnet created an unowned sibling payload path",
+            File(destination, "Chunks public fixture/extras/notes.txt").exists())
+        // Narrow synthetic diagnostic: isolate a stale stored collision
+        // witness from a genuinely missing native payload pathname. This
+        // read-only survey must match the same destination used by Start.
+        val beforeStart = requireNotNull(leecher.status(seed.infoHash))
+        val observedSurvey = LocalPayloadCollisionSurvey.inspect(
+            File(beforeStart.savePath),
+            listOf("Chunks public fixture/episode.bin", "Chunks public fixture/extras/notes.txt")
+        )
+        println("CHUNKS_MAGNET_START_GATE metadata=${beforeStart.metadataKnown} " +
+            "uploadOnly=${beforeStart.uploadOnly} stopped=${beforeStart.stopped} " +
+            "foreignExists=${collision.isFile} survey=${observedSurvey::class.simpleName} " +
+            "nativeSavePathMatches=${File(beforeStart.savePath).canonicalPath == destination.canonicalPath}")
+        assertTrue("The same pathname must still have the foreign bytes before Start",
+            collision.isFile && unrelated.contentEquals(collision.readBytes()))
+        assertTrue("The production survey must still see the deliberately planted foreign file",
+            observedSurvey is LocalPayloadCollisionSurvey.Result.ExistingPaths)
+        assertEquals(LocalCommandOutcome.REFUSED, leecher.resume(seed.infoHash).outcome)
         assertArrayEquals(unrelated, collision.readBytes())
 
         // A blocked magnet must be restorable without making a previously
@@ -528,7 +557,7 @@ class LocalTorrentEngineTest {
         assertTrue("Blocked magnet must restore stopped", paused.stopped)
         assertTrue("Persistent upload-only gate must survive a process restart", paused.uploadOnly)
         assertTrue(paused.metadataKnown)
-        assertEquals(LocalCommandOutcome.UNCERTAIN, restarted.resume(seed.infoHash).outcome)
+        assertEquals(LocalCommandOutcome.REFUSED, restarted.resume(seed.infoHash).outcome)
         assertArrayEquals("Failed re-Start after process death must not overwrite foreign bytes",
             unrelated, collision.readBytes())
 

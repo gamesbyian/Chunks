@@ -118,8 +118,8 @@ data class LocalRateLimits(val downloadBytesPerSecond: Int = 0, val uploadBytesP
     }
 }
 
-/** libtorrent applies pause/resume asynchronously; only a matching readback is VERIFIED. */
-enum class LocalCommandOutcome { VERIFIED, UNCERTAIN, NOT_FOUND }
+/** Native lifecycle outcomes: verified state, explicit preflight refusal, uncertain mutation, or absence. */
+enum class LocalCommandOutcome { VERIFIED, REFUSED, UNCERTAIN, NOT_FOUND }
 
 data class LocalCommandResult(val outcome: LocalCommandOutcome, val status: LocalTransferStatus?)
 
@@ -233,7 +233,10 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         val paths = try {
             val info = handle.torrentFile() ?: return "Metadata file layout is unavailable"
             val files = info.files()
-            (0 until files.numFiles()).asSequence()
+            val count = files.numFiles()
+            if (!LocalPayloadCollisionSurvey.supportsNativeFileCount(count))
+                return "Torrent payload path count is unsupported"
+            (0 until count).asSequence()
                 .filterNot { files.padFileAt(it) }.map { files.filePath(it) }.toList()
         } catch (_: Exception) { return "Torrent file layout cannot be inspected" }
         if (paths.isEmpty()) return "Torrent has no inspectable payload files"
@@ -357,7 +360,10 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             return LocalAddResult.Refused("Torrent metadata is invalid")
         val paths = try {
             val files = info.files()
-            (0 until files.numFiles()).asSequence()
+            val count = files.numFiles()
+            if (!LocalPayloadCollisionSurvey.supportsNativeFileCount(count))
+                return LocalAddResult.Refused("Torrent payload path count is unsupported. Nothing added.")
+            (0 until count).asSequence()
                 .filterNot { files.padFileAt(it) }
                 .map { files.filePath(it) }.toList()
         } catch (_: Exception) {
@@ -495,35 +501,29 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         return if (hash.matches(Regex("^[0-9a-fA-F]{40}$"))) hash.lowercase(Locale.ROOT) else null
     }
 
+    /** Survey, consent and native Start share the metadata callback's handle fence. */
     fun resume(infoHash: String, readbackTimeoutMs: Long = 5_000): LocalCommandResult =
         command(infoHash, wantStopped = false, readbackTimeoutMs) { handle ->
             val key = normal(infoHash)
-            // Upload-only is also preserved in the native resume file. That
-            // makes the collision gate survive process death without relying
-            // on this object's in-memory collision map.
-            val flags = handle.getFlags()
-            // The no-argument status() caches metadata for 500 ms. Use the
-            // uncached overload, as snapshot() does, so a just-resolved magnet
-            // cannot bypass this gate through an old metadata=false result.
-            if (handle.status(TorrentHandle.QUERY_NAME).hasMetadata() &&
-                flags.and_(org.libtorrent4j.TorrentFlags.UPLOAD_MODE).non_zero()) {
+            // status() caches metadata for 500 ms. Query the same fresh native
+            // flags as snapshot(), including persisted upload-only on restart.
+            val state = handle.status(TorrentHandle.QUERY_NAME)
+            if (state.hasMetadata() &&
+                (state.flags().and_(org.libtorrent4j.TorrentFlags.UPLOAD_MODE).non_zero() ||
+                    magnetCollisionProblems.containsKey(key))) {
                 val problem = inspectMagnetCollision(handle)
                 if (problem != null) {
                     magnetCollisionProblems[key] = problem
                     return@command false
                 }
                 magnetCollisionProblems.remove(key)
-                // Explicit Start has performed the metadata-time survey. A
-                // queued metadata alert must not survey again after our own
-                // authorized payload has begun creating these files.
+                // Consume admission before native writes begin. A queued
+                // metadata alert must not resurvey our authorized payload.
                 awaitingMetadata.remove(key)
                 startWhenMetadataArrives.remove(key)
                 handle.unsetFlags(org.libtorrent4j.TorrentFlags.UPLOAD_MODE)
                 requestMetadataResumeSave(key, handle)
             }
-            // Gate, Start consent and native command share the handle monitor
-            // with the metadata callback. It cannot pause between the reviewed
-            // gate and this Start or consume consent halfway through submission.
             if (awaitingMetadata.contains(key)) startWhenMetadataArrives.add(key)
             handle.resume()
             true
@@ -551,13 +551,18 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                 val handle = handles[key]?.takeIf { started && it.isValid }
                     ?: return LocalCommandResult(LocalCommandOutcome.NOT_FOUND, null)
                 if (!action(handle))
-                    return LocalCommandResult(LocalCommandOutcome.UNCERTAIN, snapshot(key, handle))
+                    return LocalCommandResult(LocalCommandOutcome.REFUSED, snapshot(key, handle))
             }
         }
+        return waitForCommandReadback(key, wantStopped, readbackTimeoutMs)
+    }
+
+    private fun waitForCommandReadback(
+        key: String, wantStopped: Boolean, readbackTimeoutMs: Long
+    ): LocalCommandResult {
         val deadline = System.nanoTime() + readbackTimeoutMs * 1_000_000
-        var latest: LocalTransferStatus? = null
         while (true) {
-            latest = status(key) ?: return LocalCommandResult(LocalCommandOutcome.NOT_FOUND, null)
+            val latest = status(key) ?: return LocalCommandResult(LocalCommandOutcome.NOT_FOUND, null)
             if (latest.stopped == wantStopped) return LocalCommandResult(LocalCommandOutcome.VERIFIED, latest)
             if (System.nanoTime() >= deadline) return LocalCommandResult(LocalCommandOutcome.UNCERTAIN, latest)
             Thread.sleep(25)

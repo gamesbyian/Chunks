@@ -26,7 +26,13 @@ internal object LocalPayloadCollisionSurvey {
         data class Unknown(val problem: String) : Result
     }
 
-    fun inspect(root: File, relativePaths: List<String>, maxPaths: Int = 100_000): Result {
+    // Validate the native metadata count BEFORE allocating a Java/Kotlin path
+    // list. The survey's maxPaths check would otherwise occur too late.
+    const val MAX_NATIVE_PATHS = 100_000
+
+    fun supportsNativeFileCount(count: Int): Boolean = count in 1..MAX_NATIVE_PATHS
+
+    fun inspect(root: File, relativePaths: List<String>, maxPaths: Int = MAX_NATIVE_PATHS): Result {
         if (maxPaths <= 0 || relativePaths.size > maxPaths)
             return Result.Unknown("Payload path count is unsupported")
         val base = try {
