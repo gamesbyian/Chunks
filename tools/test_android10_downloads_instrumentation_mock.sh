@@ -33,9 +33,9 @@ case "$1" in
         [[ "$MOCK_GETPROP_FAIL" != 1 ]] || exit 22
         ;;
       pm)
-        [[ "$2" == path ]] || exit 1
-        [[ "$MOCK_PM_PATH_FAIL" != 1 ]] || exit 23
-        [[ ! -e "$MOCK_DIR/installed" ]] || echo 'package:/data/app/stale/base.apk'
+        [[ "$2" == list && "$3" == packages ]] || exit 1
+        [[ "$MOCK_PM_LIST_FAIL" != 1 ]] || exit 23
+        [[ ! -e "$MOCK_DIR/installed" ]] || echo 'package:io.github.gamesbyian.chunks'
         ;;
       am)
         printf 'instrument\n' >> "$MOCK_DIR/instruments"
@@ -57,7 +57,7 @@ esac
 MOCK
 chmod +x "$temp/bin/adb"
 export PATH="$temp/bin:$PATH" MOCK_DIR="$temp/device"
-export MOCK_UNINSTALL_STICKY=0 MOCK_INSTALL_FAIL=0 MOCK_GETPROP_FAIL=0 MOCK_PM_PATH_FAIL=0 MOCK_SKIP=0
+export MOCK_UNINSTALL_STICKY=0 MOCK_INSTALL_FAIL=0 MOCK_GETPROP_FAIL=0 MOCK_PM_LIST_FAIL=0 MOCK_SKIP=0
 : > "$MOCK_DIR/instruments"
 bash -n "$root/android10_downloads_instrumentation.sh"
 bash -n "$root/test_android10_downloads_instrumentation_mock.sh"
@@ -78,7 +78,7 @@ refuse_before_tests() {
   }
 }
 refuse_before_tests env MOCK_INSTALL_FAIL=1
-refuse_before_tests env MOCK_PM_PATH_FAIL=1
+refuse_before_tests env MOCK_PM_LIST_FAIL=1
 refuse_before_tests env MOCK_GETPROP_FAIL=1
 : > "$MOCK_DIR/installed"
 refuse_before_tests env MOCK_UNINSTALL_STICKY=1
