@@ -486,7 +486,7 @@ class LocalTorrentEngineTest {
             collision.isFile && unrelated.contentEquals(collision.readBytes()))
         assertTrue("The production survey must still see the deliberately planted foreign file",
             observedSurvey is LocalPayloadCollisionSurvey.Result.ExistingPaths)
-        assertEquals(LocalCommandOutcome.UNCERTAIN, leecher.resume(seed.infoHash).outcome)
+        assertEquals(LocalCommandOutcome.REFUSED, leecher.resume(seed.infoHash).outcome)
         assertArrayEquals(unrelated, collision.readBytes())
 
         // A blocked magnet must be restorable without making a previously
@@ -500,7 +500,7 @@ class LocalTorrentEngineTest {
         assertTrue("Blocked magnet must restore stopped", paused.stopped)
         assertTrue("Persistent upload-only gate must survive a process restart", paused.uploadOnly)
         assertTrue(paused.metadataKnown)
-        assertEquals(LocalCommandOutcome.UNCERTAIN, restarted.resume(seed.infoHash).outcome)
+        assertEquals(LocalCommandOutcome.REFUSED, restarted.resume(seed.infoHash).outcome)
         assertArrayEquals("Failed re-Start after process death must not overwrite foreign bytes",
             unrelated, collision.readBytes())
 

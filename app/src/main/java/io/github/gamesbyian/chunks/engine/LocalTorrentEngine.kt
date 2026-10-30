@@ -118,8 +118,8 @@ data class LocalRateLimits(val downloadBytesPerSecond: Int = 0, val uploadBytesP
     }
 }
 
-/** libtorrent applies pause/resume asynchronously; only a matching readback is VERIFIED. */
-enum class LocalCommandOutcome { VERIFIED, UNCERTAIN, NOT_FOUND }
+/** Native lifecycle outcomes: verified state, explicit preflight refusal, uncertain mutation, or absence. */
+enum class LocalCommandOutcome { VERIFIED, REFUSED, UNCERTAIN, NOT_FOUND }
 
 data class LocalCommandResult(val outcome: LocalCommandOutcome, val status: LocalTransferStatus?)
 
@@ -521,7 +521,9 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                 val problem = inspectMagnetCollision(handle)
                 if (problem != null) {
                     magnetCollisionProblems[key] = problem
-                    return LocalCommandResult(LocalCommandOutcome.UNCERTAIN, snapshot(key, handle))
+                    // No native Start was issued. This is a known refusal,
+                    // not an uncertain remote or asynchronous mutation.
+                    return LocalCommandResult(LocalCommandOutcome.REFUSED, snapshot(key, handle))
                 }
                 magnetCollisionProblems.remove(key)
                 handle.unsetFlags(org.libtorrent4j.TorrentFlags.UPLOAD_MODE)

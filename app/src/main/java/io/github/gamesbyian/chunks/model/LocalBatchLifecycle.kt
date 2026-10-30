@@ -18,7 +18,8 @@ internal object LocalBatchLifecycle {
         val verified: Int,
         val skipped: Int,
         val haltedOn: String?,
-        val notAttempted: Int
+        val notAttempted: Int,
+        val haltedOutcome: LocalCommandOutcome? = null
     )
 
     fun run(targets: List<Target>, start: Boolean, command: (String, Boolean) -> LocalCommandOutcome): Report {
@@ -32,7 +33,7 @@ internal object LocalBatchLifecycle {
             if (target.stopped == !start) { skipped++; continue }
             val outcome = try { command(target.infoHash, start) } catch (_: RuntimeException) { null }
             if (outcome == LocalCommandOutcome.VERIFIED) verified++
-            else return Report(start, verified, skipped, target.infoHash, targets.size - index - 1)
+            else return Report(start, verified, skipped, target.infoHash, targets.size - index - 1, outcome)
         }
         return Report(start, verified, skipped, null, 0)
     }
@@ -41,7 +42,10 @@ internal object LocalBatchLifecycle {
         val verb = if (report.start) "started" else "stopped"
         var text = "${report.verified} confirmed $verb on this phone" +
             (if (report.skipped > 0) ", ${report.skipped} already $verb" else "") + "."
-        if (report.haltedOn != null) text += " Halted: one transfer's state could not be confirmed, so " +
+        if (report.haltedOn != null) text += if (report.haltedOutcome == LocalCommandOutcome.REFUSED)
+            " Halted: a transfer explicitly refused Start because its destination is unsafe; " +
+                "${report.notAttempted} were not attempted. Review its files and destination before retrying."
+        else " Halted: one transfer's state could not be confirmed, so " +
             "${report.notAttempted} were not attempted. Wait for a fresh list before trying again."
         return text
     }
