@@ -68,7 +68,8 @@ import io.github.gamesbyian.chunks.model.UnifiedTransferQuery
 import io.github.gamesbyian.chunks.model.Units
 import io.github.gamesbyian.chunks.privacy.RemoteTransferPrivacyScope
 import io.github.gamesbyian.chunks.privacy.TransferPrivacyRuntime
-import io.github.gamesbyian.chunks.privacy.TransferPrivacyVisibility
+import io.github.gamesbyian.chunks.privacy.TransferDeviceAuthenticator
+import io.github.gamesbyian.chunks.privacy.TransferPrivacyPolicyStore
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
 import io.github.gamesbyian.chunks.model.LifecycleReply
 import io.github.gamesbyian.chunks.model.UnifiedBatchLifecycle
@@ -308,25 +309,62 @@ internal fun CombinedTransfersScreen(
         }
     }
 
-    // Privacy follows each environment's own gate. Reading the lifecycle
-    // revision re-evaluates after background/foreground transitions.
+    // Privacy policy storage and SHA-256 preference-key derivation must never
+    // run during composition. Until a cancellable, exact-scope asynchronous
+    // read completes, every environment is locked, including opt-out scopes.
     val privacyRevision = TransferPrivacyRuntime.lifecycleRevision
-    val phonePrivacy = remember(privacyRevision) {
-        TransferPrivacyVisibility.current(context, activity, TransferCollectionStore.LOCAL_ENGINE_SCOPE)
+    val policyRevision = TransferPrivacyPolicyStore.revision
+    val phonePrivacyScope = TransferCollectionStore.LOCAL_ENGINE_SCOPE
+    val serverPrivacyScope = remember(server?.aliasScope) {
+        server?.aliasScope?.let(RemoteTransferPrivacyScope::fromAuthenticatedAliasScope)
     }
-    val serverPrivacy = remember(privacyRevision, server?.aliasScope) {
-        server?.let { RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(it.aliasScope) }
-            ?.let { TransferPrivacyVisibility.current(context, activity, it) }
-    }
-
-    // Keyed on identities, not the profile objects (their loader lambdas change every recomposition).
-    val savedPrivacy = remember(privacyRevision, savedProfiles.map { it.id to it.aliasScope }) {
+    // Profile identity is verified before admission: neither a renamed
+    // account nor a different ruTorrent instance may borrow a prior policy.
+    val savedScopeIdentities = savedProfiles.map { it.id to it.aliasScope }
+    val savedPrivacyScopes = remember(savedScopeIdentities) {
         savedProfiles.associate { profile ->
-            EnvironmentId(profile.id) to (profile.aliasScope
-                ?.let { RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(it) }
-                ?.let { TransferPrivacyVisibility.current(context, activity, it) }
-                ?: TransferPrivacyVisibility.Decision(mayShow = false, needsSecureWindow = true))
+            EnvironmentId(profile.id) to profile.aliasScope
+                ?.takeIf { EnvironmentSnapshots.serverIdOfAliasScope(it)?.value == profile.id }
+                ?.let(RemoteTransferPrivacyScope::fromAuthenticatedAliasScope)
         }
+    }
+    val requestedPrivacyScopes = remember(serverPrivacyScope, savedPrivacyScopes) {
+        buildSet {
+            add(phonePrivacyScope)
+            serverPrivacyScope?.let { add(it) }
+            savedPrivacyScopes.values.filterNotNull().forEach { add(it) }
+        }
+    }
+    var loadedPrivacy by remember { mutableStateOf<CombinedPrivacyEvidence?>(null) }
+    LaunchedEffect(context, requestedPrivacyScopes, policyRevision, privacyRevision) {
+        loadedPrivacy = null
+        try {
+            val modes = withContext(Dispatchers.IO) {
+                val store = TransferPrivacyPolicyStore(context)
+                requestedPrivacyScopes.associateWith(store::mode)
+            }
+            loadedPrivacy = CombinedPrivacyEvidence(
+                requestedPrivacyScopes, policyRevision, privacyRevision, modes)
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            // A failed preference read never turns an unknown mode into NEVER.
+        }
+    }
+    // An old policy result is invisible immediately after lifecycle, account,
+    // or policy changes, even before LaunchedEffect starts the next read.
+    val privacyEvidence = loadedPrivacy?.takeIf {
+        it.current(requestedPrivacyScopes, policyRevision, privacyRevision)
+    }
+    val privacySession = TransferPrivacyRuntime.session
+    val deviceSecure = activity != null && TransferDeviceAuthenticator.hasSecureLock(activity)
+    val phonePrivacy = privacyEvidence?.decision(phonePrivacyScope, privacySession, deviceSecure)
+        ?: CombinedPrivacyEvidence.LOCKED
+    val serverPrivacy = serverPrivacyScope?.let {
+        privacyEvidence?.decision(it, privacySession, deviceSecure) ?: CombinedPrivacyEvidence.LOCKED
+    }
+    val savedPrivacy = savedPrivacyScopes.mapValues { (_, scope) ->
+        privacyEvidence?.decision(scope, privacySession, deviceSecure) ?: CombinedPrivacyEvidence.LOCKED
     }
     val serverId = server?.let {
         EnvironmentSnapshots.serverIdOfAliasScope(it.aliasScope)
@@ -337,9 +375,16 @@ internal fun CombinedTransfersScreen(
     val activeSavedScopes = savedProfiles.mapNotNull { profile ->
         val id = EnvironmentId(profile.id)
         profile.aliasScope?.takeIf { scope ->
-            id != serverId && profile.listOnly != null && savedPrivacy[id]?.mayShow == true
+            id != serverId && SavedProfileIdentity.matches(profile.id, scope) &&
+                profile.listOnly != null && savedPrivacy[id]?.mayShow == true
         }?.let { id to it }
     }.toMap()
+    // An invalid saved authenticated endpoint/account identity may remain
+    // visible as a configured row, but never load or borrow another scope.
+    val invalidSavedProfiles = savedProfiles.filter { it.aliasScope != null &&
+        !SavedProfileIdentity.matches(it.id, it.aliasScope) &&
+        EnvironmentId(it.id) != serverId
+    }.map { EnvironmentId(it.id) }.toSet()
     val currentSavedScopes = rememberUpdatedState(activeSavedScopes)
     val savedListingFence = remember { SavedListingResponseFence() }
     LaunchedEffect(activeSavedScopes) {
@@ -714,6 +759,10 @@ internal fun CombinedTransfersScreen(
                         listings[source.environment]?.takeIf { it.sourceAliasScope == witness }
                     }
                     val status = when {
+                        source.environment in invalidSavedProfiles ->
+                            "Saved account identity could not be verified; reconnect this profile"
+                        privacyEvidence == null ->
+                            "Privacy policy not yet verified; transfers hidden"
                         listing?.loading == true -> "Loading list…"
                         listing?.error != null && listing.observedAtEpochMillis == null ->
                             "Could not load (" + listing.error + ")"
