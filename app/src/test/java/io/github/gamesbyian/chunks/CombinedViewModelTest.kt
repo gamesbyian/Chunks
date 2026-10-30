@@ -56,6 +56,23 @@ class CombinedViewModelTest {
         assertEquals(UnifiedTransferQuery(), CombinedViewPreferences.decode("*;SIZE;ASCENDING;0;"))
     }
 
+    @Test fun latePersistedViewNeverOverridesInteractiveSearchOrScope() {
+        val saved = UnifiedTransferQuery(scope = EnvironmentViewScope.Only(setOf(server)),
+            filter = UnifiedTransferFilter.STOPPED, sortKey = UnifiedSortKey.SIZE,
+            direction = UnifiedSortDirection.DESCENDING)
+        val current = UnifiedTransferQuery(scope = EnvironmentViewScope.Only(setOf(phone)),
+            search = "typed during a slow disk read", sortKey = UnifiedSortKey.NAME)
+        assertEquals(current, CombinedViewPreferences.reconcileLoadedView(
+            current, saved, userInteracted = true))
+        assertEquals(saved, CombinedViewPreferences.reconcileLoadedView(
+            UnifiedTransferQuery(), saved, userInteracted = false))
+        assertFalse("A search-only edit is still user input and must be retained",
+            CombinedViewPreferences.reconcileLoadedView(current, saved, true).search.isEmpty())
+        // The saved encoding still refuses to persist search text as a source
+        // of privacy disclosure after process recreation.
+        assertFalse(CombinedViewPreferences.encode(current).contains("typed during"))
+    }
+
     @Test fun scopeChipsSelectOneThenToggleAndNeverProduceAnEmptySubset() {
         val one = toggleScope(EnvironmentViewScope.All, server)
         assertEquals(EnvironmentViewScope.Only(setOf(server)), one)
