@@ -328,30 +328,28 @@ class LocalTorrentEngineTest {
         assertTrue(Files.isSymbolicLink(payload.toPath()))
     }
 
-    @Test fun checkedPartialAddStillRequiresFreshSurveyBeforeFirstStart() {
+    @Test fun unavailableResumeParentRefusesCheckedAddBeforeNativeRegistration() {
         val fixture = fixture()
         val state = temp.newFolder("checked-partial-state")
         val moved = File(temp.root, "checked-state-still-preserved")
         val target = persistentEngine(state)
         assertTrue(state.renameTo(moved))
         state.writeText("no longer a writable resume directory")
-
         val destination = temp.newFolder("checked-partial-destination")
-        try {
-            target.addStoppedChecked(fixture.torrent, destination)
-            fail("A failed initial resume write cannot report a complete Add")
-        } catch (_: java.io.IOException) {
-            // The native job was registered but its resume write failed.
-            // A later UI Start must still have the original collision fence.
-        }
-        val partial = target.list().single()
-        assertTrue(partial.stopped)
+
+        // ENOTDIR may produce an unknown presence result for resume paths.
+        // The safe result is refusal before any native handle is created.
+        val outcome = target.addStoppedChecked(fixture.torrent, destination)
+        assertTrue("Invalid resume parent must not admit a native handle: $outcome",
+            outcome is LocalAddResult.Refused)
+        assertTrue(target.list().isEmpty())
+        assertEquals("no longer a writable resume directory", state.readText())
+
         val foreign = File(destination, "Chunks public fixture/episode.bin")
         assertTrue(foreign.parentFile.isDirectory || foreign.parentFile.mkdirs())
         val bytes = byteArrayOf(8, 6, 7, 5, 3, 0, 9)
         foreign.writeBytes(bytes)
-        assertEquals(LocalCommandOutcome.REFUSED, target.resume(partial.infoHash).outcome)
-        assertArrayEquals("Uncertain Add cannot bypass protection", bytes, foreign.readBytes())
+        assertArrayEquals(bytes, foreign.readBytes())
     }
 
     @Test fun checkedTorrentRefusesSymlinkParentIntroducedAfterAdd() {
@@ -435,33 +433,22 @@ class LocalTorrentEngineTest {
         listenInterfaces = "127.0.0.1:0", allowMultipleConnectionsPerIp = true, stateDirectory = state
     )).also { it.start(); engines += it }
 
-    @Test fun lostResumeDirectoryDuringAddIsObservableWithoutDeletingPayload() {
+    @Test fun lostResumeDirectoryDuringAddRefusesBeforePayloadMutation() {
         val fixture = fixture()
         val state = temp.newFolder("state-disappears-on-add")
         val moved = File(temp.root, "state-preserved-on-add")
         val instance = persistentEngine(state)
-        // Simulate access loss AFTER startup preflight, but BEFORE the initial
-        // app-private resume write. This must not become a false successful Add.
         assertTrue(state.renameTo(moved))
         state.writeText("temporary inaccessible state placeholder")
         val destination = temp.newFolder("lost-resume-destination")
-        try {
-            instance.addStopped(fixture.torrent, destination)
-            fail("Add without durable resume state must not be reported successful")
-        } catch (_: java.io.IOException) {
-            // A native handle may already have been registered. The caller
-            // correctly treats this exception as uncertain and refreshes inventory.
-        }
-        val observed = instance.list().single()
-        assertTrue("A partial Add must remain inspectable, not disappear", observed.stopped)
-        assertEquals(destination.absolutePath, observed.savePath)
+
+        val result = instance.addStopped(fixture.torrent, destination)
+        assertTrue("Unknown saved-state path must refuse native Add: $result",
+            result is LocalAddResult.Refused)
+        assertTrue("The refused Add must not be registered", instance.list().isEmpty())
         assertEquals("temporary inaccessible state placeholder", state.readText())
-        // Restore the original private storage directory before a confirmed,
-        // session-only Remove. Neither path should ever delete payload bytes.
         assertTrue(state.delete())
         assertTrue(moved.renameTo(state))
-        assertTrue(instance.removeKeepingData(observed.infoHash))
-        assertTrue(instance.list().isEmpty())
         for ((name, bytes) in fixture.files)
             assertArrayEquals(bytes, File(fixture.root, name).readBytes())
     }
