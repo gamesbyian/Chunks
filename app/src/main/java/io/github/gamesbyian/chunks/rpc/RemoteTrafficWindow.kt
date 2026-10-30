@@ -85,7 +85,10 @@ data class RemoteTrafficWindow(
                     TrafficVerdict.RECEIVED_AND_VERIFIED
                 inDelta != null && inDelta > 0 -> TrafficVerdict.RECEIVED_ONLY
                 verifiedDelta != null && verifiedDelta > 0 -> TrafficVerdict.VERIFIED_ONLY
-                inDelta == null && verifiedDelta == null -> TrafficVerdict.INSUFFICIENT_EVIDENCE
+                // A missing sample from either cumulative counter prevents a
+                // justified "no progress" verdict. Any *positive* complete
+                // counter is still separately reportable above.
+                inDelta == null || verifiedDelta == null -> TrafficVerdict.INSUFFICIENT_EVIDENCE
                 else -> TrafficVerdict.NO_PROGRESS_OBSERVED
             }
             return RemoteTrafficWindow(verdict, elapsed, inDelta, verifiedDelta, peaks, active)
