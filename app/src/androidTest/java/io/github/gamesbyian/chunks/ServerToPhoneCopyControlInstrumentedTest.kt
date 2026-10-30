@@ -35,6 +35,7 @@ class ServerToPhoneCopyControlInstrumentedTest {
     @After fun stop() { server?.close() }
 
     private fun answer(method: String): String = when (method) {
+        "d.hash" -> "<value><string>$hash</string></value>"
         "network.local_address" -> "<value><string></string></value>"
         // Read-only (#460). A wildcard bind names no specific peer address.
         "network.bind_address" -> "<value><string>0.0.0.0</string></value>"
@@ -100,8 +101,10 @@ class ServerToPhoneCopyControlInstrumentedTest {
         assertEquals(listOf("magnet:?xt=urn:btih:${hash.lowercase()}&dn=Big%20Buck%20Bunny&x.pe=127.0.0.1:6890"),
             reviewed)
         assertTrue("Only read-only commands: $methods", methods.toSet() ==
-            setOf("network.local_address", "network.bind_address", "network.listen.port",
+            setOf("d.hash", "network.local_address", "network.bind_address", "network.listen.port",
                 "d.is_private", "d.is_active"))
+        assertEquals("Identity must be guarded before and after peer source reads",
+            2, methods.count { it == "d.hash" })
     }
 
     @Test fun enteredPeerAddressIsLabelledAndUsedOnlyAfterReview() {
