@@ -1250,9 +1250,10 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         magnetCollisionProblems.clear()
         checkedFirstStarts.clear()
         checkedStartProblems.clear()
-        // The session no longer contains native writers once stop returns.
-        checkedPayloadReservations.clear()
         session.stop()
+        // The native session has stopped before its in-process path claims
+        // are discarded. This does not grant ownership to any restored job.
+        checkedPayloadReservations.clear()
         started = false
     }
 
