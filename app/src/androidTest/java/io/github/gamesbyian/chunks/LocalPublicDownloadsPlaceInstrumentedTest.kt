@@ -165,6 +165,43 @@ class LocalPublicDownloadsPlaceInstrumentedTest {
             original, foreign.readBytes())
     }
 
+    @Test fun checkedFirstStartRefusesLateForeignFileInSharedDownloads() {
+        allowSharedDownloads()
+        val public = LocalDownloadPlaces.choices(context)
+            .single { it.place.kind == LocalPlaceKind.PUBLIC_DOWNLOADS }
+        val root = requireNotNull(LocalDownloadPlaces.materialize(public.place)) {
+            "Public Downloads could not be verified"
+        }
+        val destination = requireNotNull(LocalOwnedAddFolder.prepare(root,
+            "checked-start-race-" + System.nanoTime()))
+        publicTestFolder = destination
+
+        val source = File(work, "checked-race-source/Late collision fixture")
+            .apply { mkdirs() }
+        val payload = ByteArray(96_000).also { Random(568).nextBytes(it) }
+        File(source, "payload.bin").writeBytes(payload)
+        val torrent = TorrentBuilder().path(source).pieceSize(16 * 1024)
+            .generate().entry().bencode()
+
+        val native = engine()
+        val added = native.addStoppedChecked(torrent, destination)
+        assertTrue("The checked Add itself must succeed: $added",
+            added is LocalAddResult.AddedStopped)
+        val transfer = (added as LocalAddResult.AddedStopped).status
+        val foreign = File(destination, "Late collision fixture/payload.bin")
+        assertTrue(foreign.parentFile.isDirectory || foreign.parentFile.mkdirs())
+        val original = ByteArray(payload.size).also { Random(9876).nextBytes(it) }
+        foreign.writeBytes(original)
+
+        assertEquals(LocalCommandOutcome.REFUSED,
+            native.resume(transfer.infoHash).outcome)
+        val stopped = requireNotNull(native.status(transfer.infoHash))
+        assertTrue("First Start collision must remain stopped", stopped.stopped)
+        assertTrue("User sees the refusal", stopped.error.orEmpty().contains("since Add"))
+        assertArrayEquals("Android shared Downloads collision must retain exact foreign bytes",
+            original, foreign.readBytes())
+    }
+
     @Test fun magnetMetadataCollisionPreservesPublicDownloadsAcrossStartAndRestart() {
         allowSharedDownloads()
         val public = LocalDownloadPlaces.choices(context)
