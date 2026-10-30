@@ -72,6 +72,10 @@ internal class LocalCheckedPayloadReservations {
         return Result.Reserved
     }
 
+    /** Same admitted magnet may be observed again at an explicit Start. */
+    @Synchronized
+    fun hasReservation(owner: String): Boolean = byOwner.containsKey(owner)
+
     @Synchronized
     fun release(owner: String) {
         byOwner.remove(owner)?.forEach { path ->
