@@ -1,5 +1,11 @@
 # Lean CI and evidence economy
 
+## Strict raw Add and magnet collision evidence (offline controls, not native acceptance)
+
+`tools/require_add_magnet_nonclobber.py` consumes a **real executed** `LocalNativePostAddCollisionProbeTest` JUnit XML, independently of the native characterization workflow's green/red-neutral job result. Both raw Add-after-foreign-path creation and magnet-metadata-arrival witnesses must come from that exact test class and suite, with complete distinct SHA-256 before/expected/after values, unchanged foreign bytes, and truthful negative replacement flags. Raw collision must return an explicit `REFUSED` Start; deferred magnet must remain stopped in upload-only mode after metadata. `VERIFIED`, `UNCERTAIN`, auto-start or overwritten bytes are **not release-safety receipts** even when the underlying diagnostic is green. Counterfeit classname, borrowed unrelated-suite lines, missing/duplicate witnesses, failed/skipped tests and contradictory byte flags refuse acceptance.
+
+Fourteen deterministic synthetic positive/negative controls live in `tests/test_require_add_magnet_nonclobber.py` and run only in the existing documentation validation job on scoped changes; **no new Android job, external host, real peer or protected credential** is scheduled. The checker is read-only and is **not** run as a blanket prerequisite on every PR. A green offline control tests the checker, not the native writer: independent actual native JUnit, scoped restore/post-Stop receipts, API29/API35 and physical-device nonclobber remain G0 gates under [#568](https://github.com/gamesbyian/Chunks/issues/568).
+
 **Documentation-only changes:** validate repository-local targets offline with `python3 tools/check_docs.py` and its unit tests. Do not dispatch Android, native, host or font Actions merely to validate Markdown. A docs PR merged to main does not justify an unrelated font fan-out; retain path-specific workflow triggers and the [font-lab isolation contract](design/CHUNKS-FONT-LAB-OPERATIONS.md). See [documentation standard](DOCUMENTATION-STANDARD.md).
 
 ## Build pin consistency negative controls (independent QA, 2026-10-30)
