@@ -604,7 +604,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                 checkedStartProblems.remove(key)
             }
             if (state.hasMetadata() && restoredFirstStarts.contains(key) &&
-                state.flags().and_(org.libtorrent4j.TorrentFlags.UPLOAD_MODE).is_zero) {
+                !state.flags().and_(org.libtorrent4j.TorrentFlags.UPLOAD_MODE).non_zero()) {
                 val problem = inspectCheckedRestartCollision(key, handle)
                 if (problem != null) {
                     checkedStartProblems[key] = problem
