@@ -20,7 +20,9 @@ class ForkPatchTest(unittest.TestCase):
             ("build.gradle.kts", 'version = "2.1.0-39"\n'),
             ("swig/libtorrent/session_params.i",
              "%ignore libtorrent::session_params::disk_io_constructor;\n"),
-            ("swig/libtorrent.i", '%include "libtorrent/session_params.i"\n'),
+            ("swig/libtorrent.i",
+             '#include "libtorrent/session_params.hpp"\n'
+             '%include "libtorrent/session_params.i"\n'),
             ("swig/CMakeLists.txt",
              "target_link_libraries(torrent4j PRIVATE torrent-rasterbar)\n"),
             ("src/main/java/org/libtorrent4j/SessionParams.java",
@@ -39,6 +41,8 @@ class ForkPatchTest(unittest.TestCase):
         self.assertIn("setOwnedDiskIO", java)
         self.assertLess(java.index("setOwnedDiskIO"), java.index("bdecode0"))
         self.assertIn('chunks/bridge/owned_disk_extension.i',
+                      (self.root / "swig/libtorrent.i").read_text())
+        self.assertIn('#include "chunks/bridge/owned_libtorrent_disk.h"',
                       (self.root / "swig/libtorrent.i").read_text())
         self.assertIn('chunks/owned_torrent_storage.cc',
                       (self.root / "swig/CMakeLists.txt").read_text())
