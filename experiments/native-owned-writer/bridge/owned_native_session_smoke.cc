@@ -179,7 +179,8 @@ void exerciseRestartedPendingCollision() {
   run(true);
   std::ifstream occupant(box.public_root / "probe.bin", std::ios::binary);
   CHECK(static_cast<bool>(occupant));
-  CHECK(std::string(std::istreambuf_iterator<char>(occupant), {}) == foreign);
+  const std::string after{std::istreambuf_iterator<char>(occupant), {}};
+  CHECK(after == foreign);
   std::cout << "CHUNKS_OWNED_RESTARTED_PENDING_COLLISION=PASS\n";
 }
 
