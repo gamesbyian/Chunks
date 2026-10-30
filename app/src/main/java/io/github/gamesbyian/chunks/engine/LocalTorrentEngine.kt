@@ -489,6 +489,15 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         val hash = identity(info)
         if (handles.containsKey(hash) || session.find(info.infoHash())?.isValid == true)
             return LocalAddResult.Refused("This torrent is already in the local engine")
+        // remove_torrent is asynchronous. A checked job's path tombstone
+        // outlives its visible handle and cannot be evaded by switching
+        // from checked Add to the separately reviewed raw Add entrypoint.
+        // The nested raw call inside addStoppedChecked has its own live
+        // checkedFirstStarts admission and remains allowed.
+        if (checkedPayloadReservations.hasReservation(hash) &&
+            !checkedFirstStarts.containsKey(hash))
+            return LocalAddResult.Refused(
+                "A previous checked transfer still reserves native storage until session shutdown")
 
         val provenance = if (checkedFirstStarts.containsKey(hash))
             LocalAdmissionProvenance.Mode.CHECKED
