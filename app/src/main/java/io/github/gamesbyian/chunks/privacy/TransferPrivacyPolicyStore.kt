@@ -16,7 +16,11 @@ internal class TransferPrivacyPolicyStore(context: Context) {
         // combined view observes it to invalidate old off-main-thread reads.
         private val policyRevision = mutableIntStateOf(0)
         val revision: Int get() = policyRevision.intValue
-        private fun changed() { policyRevision.intValue++ }
+        private fun changed() {
+            synchronized(policyRevision) {
+                policyRevision.intValue++
+            }
+        }
     }
 
     private val prefs = context.applicationContext.getSharedPreferences(
