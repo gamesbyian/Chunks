@@ -1,0 +1,75 @@
+name: Native post-Add collision witnesses
+
+# This is a G1 diagnostic of native path-write behavior, NOT an acceptance
+# gate for production overwrite protection. Real peers are loopback-only.
+on:
+  pull_request:
+    paths:
+      - "app/src/test/java/io/github/gamesbyian/chunks/engine/LocalNativePostAddCollisionProbeTest.kt"
+      - ".github/workflows/native-post-add-collision-witness.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chunks-post-add-collision-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-synthetic-collision-witness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+      - name: Install pinned Android compile toolchain
+        run: |
+          printf 'y\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
+          if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          fi
+      - name: Run two disposable native loopback collision probes
+        run: |
+          gradle --no-daemon :app:testDebugUnitTest \
+            --tests io.github.gamesbyian.chunks.engine.LocalNativePostAddCollisionProbeTest
+      - name: Print independent before-and-after hash witnesses
+        run: |
+          python3 - <<'PY'
+          import glob
+          import os
+          import re
+          import xml.etree.ElementTree as ET
+
+          paths = glob.glob("app/build/test-results/testDebugUnitTest/*LocalNativePostAddCollisionProbeTest*.xml")
+          if len(paths) != 1:
+              raise SystemExit(f"Expected one targeted JUnit XML report, found {len(paths)}")
+          root = ET.parse(paths[0]).getroot()
+          if int(root.get("tests", "0")) != 2 or int(root.get("failures", "0")) or int(root.get("errors", "0")):
+              raise SystemExit("Both native collision probes must execute without failures")
+          stdout = "\n".join((e.text or "") for e in root.iter("system-out"))
+          lines = stdout.splitlines()
+          witnessed = []
+          for prefix in ("CHUNKS_POST_ADD_COLLISION", "CHUNKS_MAGNET_COLLISION"):
+              found = [s.strip() for s in lines if s.startswith(prefix + " ")]
+              if len(found) != 3:
+                  raise SystemExit(f"Missing or ambiguous synthetic witness for {prefix}: {len(found)} lines")
+              hashes = next((s for s in found if "before_sha256=" in s), "")
+              if not re.fullmatch(rf"{prefix} before_sha256=[a-f0-9]{{64}} expected_sha256=[a-f0-9]{{64}} after_sha256=[a-f0-9]{{64}}", hashes):
+                  raise SystemExit(f"Invalid synthetic SHA-256 witness for {prefix}")
+              for key in ("foreign_file_replaced", "expected_torrent_data_present"):
+                  if not any(re.fullmatch(rf"{prefix} {key}=(true|false)", s) for s in found):
+                      raise SystemExit(f"Missing {key} for {prefix}")
+              witnessed.extend(found)
+
+          print("\n".join(witnessed))
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as out:
+              out.write("### Disposable native collision probes (NOT production protection)\n\n")
+              out.write("\n".join("- `" + line + "`" for line in witnessed) + "\n")
+          PY
