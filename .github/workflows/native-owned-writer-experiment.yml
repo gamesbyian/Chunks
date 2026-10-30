@@ -65,6 +65,9 @@ jobs:
           grep -F '%include "chunks/bridge/owned_disk_extension.i"' "$upstream/swig/libtorrent.i"
           grep -F 'setOwnedDiskIO' "$upstream/src/main/java/org/libtorrent4j/SessionParams.java"
           grep -F 'chunks/bridge/owned_libtorrent_disk.cc' "$upstream/swig/CMakeLists.txt"
+          grep -F 'chunks/owned_payload_file.cc' "$upstream/swig/Jamfile"
+          grep -F 'chunks/bridge/owned_libtorrent_disk.cc' "$upstream/swig/Jamfile"
+          test "$(grep -F -c 'chunks/bridge/owned_libtorrent_disk.cc' "$upstream/swig/Jamfile")" -eq 1
           git -C "$upstream" diff --check
       - name: Generate real SWIG Java and native wrappers for rebuilt fork
         run: |
