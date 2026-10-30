@@ -39,10 +39,23 @@ case "${1:-}" in
       pidof) exit 1 ;;
       am)
         [[ "${2:-}" == "instrument" ]] || exit 1
+        phase=a
         if [[ " $* " == *phaseB_nothingStartsAfterBootAndRestoreIsStopped* ]]; then
+          phase=b
           : > "${MOCK_PHASE_B_FLAG:?}"
         fi
-        printf 'OK (1 test)\n'
+        if [[ "${MOCK_BAD_PHASE:-}" == "$phase" ]]; then
+          case "${MOCK_BAD_KIND:-}" in
+            false_ok) printf 'INSTRUMENTATION_RESULT: stream=OK (1 test)\n' ;;
+            skip) printf 'OK (1 test)\nINSTRUMENTATION_STATUS_CODE: -3\n' ;;
+            fail) printf 'OK (1 test)\nINSTRUMENTATION_STATUS_CODE: -1\n' ;;
+            duplicate) printf 'OK (1 test)\nOK (1 test)\n' ;;
+            command_failure) printf 'OK (1 test)\n'; exit 25 ;;
+            *) echo 'Missing mock bad kind' >&2; exit 30 ;;
+          esac
+        else
+          printf 'OK (1 test)\n'
+        fi
         ;;
       *) exit 1 ;;
     esac
@@ -81,4 +94,25 @@ fi
 grep -q 'no valid original kernel boot ID' "$temp/invalid.log"
 [[ ! -e "$MOCK_REBOOT_FLAG" && ! -e "$MOCK_PHASE_B_FLAG" ]]
 
-echo "CHUNKS_REBOOT_WITNESS_TEST: new-boot receipt verified; unchanged and invalid boot IDs refused before phase B"
+# A plausible but false "OK (1 test)" receipt may appear in an
+# instrumentation stream or alongside a skip/failure status. Refuse both
+# phases independently. Phase A failures must never reach the reboot call.
+for phase in a b; do
+  for kind in false_ok skip fail duplicate command_failure; do
+    rm -f "$MOCK_REBOOT_FLAG" "$MOCK_PHASE_B_FLAG"
+    if MOCK_BAD_PHASE="$phase" MOCK_BAD_KIND="$kind" bash "$repo/tools/reboot_repro.sh" >"$temp/$phase-$kind.log" 2>&1; then
+      echo "False reboot acceptance for phase=$phase kind=$kind" >&2; exit 1
+    fi
+    if [[ "$phase" == a ]]; then
+      [[ ! -e "$MOCK_REBOOT_FLAG" && ! -e "$MOCK_PHASE_B_FLAG" ]] || {
+        echo "Reboot or phase B ran after failed phase A: $kind" >&2; exit 1;
+      }
+    else
+      [[ -e "$MOCK_REBOOT_FLAG" && -e "$MOCK_PHASE_B_FLAG" ]] || {
+        echo "Phase B negative fixture was not exercised: $kind" >&2; exit 1;
+      }
+    fi
+  done
+done
+
+echo "CHUNKS_REBOOT_WITNESS_TEST: authentic reboot, no-reboot/invalid-ID, and ten false instrumentation receipts correctly rejected"
