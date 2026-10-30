@@ -1,5 +1,11 @@
 # Chunks interaction and accessibility contract
 
+## External destination on local Add (planned, secondary)
+
+Keep the usual **On phone** Add and default `Downloads/Chunks Downloads` unchanged. An optional **Deliver files to…** selector can target a specifically authorized Google Drive/SAF or FTP-family Place; explicitly show **Downloaded on phone** and **Delivered to [destination]** as independent statuses. Show local staging space, remote permission/capability and whether destination verification is possible before approval. Delivery failure/restart offers Retry, Change destination, Keep on phone and Cancel delivery without changing the torrent job. Default seeding and retention persist; optional stop-seeding/remove-owned-staging control requires separate informed consent after verified delivery. Do not surface cloud seeding or direct random-write claims. [Full UX and failure matrix](EXTERNAL-DESTINATION-DELIVERY.md).
+
+
+
 ## Future Android TV and protocol-agnostic remote UX (binding, deferred)
 
 Use a separate TV-first Compose presentation over the same transfer/core contracts; never ship a stretched touchscreen layout as TV support. D-pad focus/restoration, Select/Back navigation, readable high-contrast transfer rows and recognizable source/server identifiers, remote-friendly Add and file selection, focus-safe dialogs and independent TV accessibility/device acceptance are binding. Any supported remote backend must fit the same user-visible environment/select/sort/filter/details/Add/command vocabulary with accurate capability limits and no cross-server leakage. Full specification: [Android TV and remote backends](ANDROID-TV-AND-REMOTE-BACKENDS.md). This is not current implementation evidence.
