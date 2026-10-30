@@ -36,6 +36,18 @@ The tracks are separable. Do not hold TV design hostage to every remote adapter,
 
 The prior informal **30–50% TV infrastructure / 15–30% complete TV app** savings figures are speculative planning hypotheses only. Do not treat as validated estimates, schedule commitments or justification for direct copying. An actual file-level audit and prototype must establish reusable components and integration cost.
 
+## Available future real-server test fixtures (owner confirmation, 2026-10-29)
+
+The owner confirms that GitHub Actions secrets already exist for three further Seedhost protocol endpoints. They are **future opt-in integration fixtures**, not proof of implemented adapters, supported RPC endpoint format, credentials validity, or successful connections:
+
+| Backend | Base/service URL supplied | Password secret |
+| --- | --- | --- |
+| Transmission | `https://wood.seedhost.eu/ianseeds/transmission` | `Transmission_pass` |
+| qBittorrent | `https://wood.seedhost.eu/ianseeds/qbittorrent/` | `Qbittorrent_pass` |
+| Deluge | `https://wood.seedhost.eu/ianseeds/deluge` | `Deluge_pass` |
+
+All three use username secret `rtorrent_user`. Password **values** are not documented or fetched here. Exact service URLs may be UI entry points rather than API endpoints; discover API/session/CSRF/URL routing per protocol instead of assuming direct RPC. Keep all authenticated checks in protected, manually triggered workflows; prevent logs/artifacts from exposing tokens, passkeys, credentials or sensitive transfer inventories. Use licensed disposable torrents, safe Add/Start/Stop/session-only Remove after explicit compatibility checks, and never delete payloads or mutate the user's pre-existing torrents. Continue prioritizing current rTorrent P0 before expansion.
+
 ## Staging / exit gates
 
 - **G0/G1 (current):** native data safety, rTorrent correctness, physical Android phone acceptance, shared local/remote capabilities, stable CI evidence.
