@@ -52,6 +52,14 @@ This conservative bridge deliberately lacks a general legacy-data adoption path.
 
 To stage the native sources, SWIG extension and Java declaration in an **explicitly reviewed** libtorrent4j 2.1.0-39 source checkout, run `python3 experiments/native-owned-writer/bridge/apply_to_libtorrent4j_fork.py /path/to/your-fork`. This is an idempotent source patch helper with strict version/seam and divergent-source refusal. It does **not** compile, install or safely enable the fork. The native code must be linked into the rebuilt `torrent4j` library and SWIG generated before any app integration. Its four synthetic staging tests are CI-gated.
 
+## Bounded asynchronous disk queue (stacked experiment)
+
+The adapter's receipt inventory, physical admission, payload reads/writes, SHA-1 and v2 SHA-256 hashes, Stop/release flush and clear-piece fences now execute through one serial worker instead of blocking libtorrent's network thread. Each accepted callback is posted back to libtorrent's `io_context`. The worker owns a bounded FIFO (64 pending jobs); raw peer buffers are validated and copied before the enqueue returns. If the queue is full, subsequent operations explicitly fail rather than silently dropping callbacks. All queued tasks carry a `shared_ptr` to their original storage, preventing reused native index access. Removing a transfer atomically marks that storage retired and waits for accepted work to finish before its slot is reused. Shutdown drains before the final flush.
+
+The standalone queue suite checks rejection under load, FIFO ordering, callback failure containment, no write after unreportable failure, and an idle fence that doesn't stop other transfers. The C++/NDK static build and the fork staging harness include this source.
+
+**Remaining before release:** actual linked JNI and real-peer tests, FUSE/SD ownership capabilities and safe publication fallback, cancellation/readback of in-flight callbacks, bounded filesystem stall deadlines, native library packaging/R8 acceptance, v2-only identity, safe priority/partfile/move/delete implementations. A serial worker is intentionally conservative rather than a benchmark-optimized multithreaded disk backend. Do not enable it for production until these acceptance gates pass.
+
 ## Adapter candidate and ABI validation
 
 - Source: `bridge/owned_libtorrent_disk.cc`. Its factory `MakeOwnedDiskConstructor(private_receipts)` is suitable only for a future rebuilt libtorrent4j SWIG extension; nothing invokes it today.
