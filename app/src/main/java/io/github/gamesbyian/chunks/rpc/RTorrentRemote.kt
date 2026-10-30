@@ -104,8 +104,8 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         // even after a second or third percent-decoding pass. Benign %20 and
         // %25 in hosted account names remain valid.
         val rawPath = uri.rawPath.orEmpty()
-        val encodedSeparatorOrControl = Regex("(?i)%(?:25){0,2}(?:2f|5c|0[0-9a-f]|1[0-9a-f]|7f)")
-        val dotTraversalSegment = Regex("(?i)(?:^|/)(?:\\.|%2e|%252e|%25252e){1,2}(?:/|$)")
+        val encodedSeparatorOrControl = Regex("(?i)%(?:25)*(?:2f|5c|0[0-9a-f]|1[0-9a-f]|7f)")
+        val dotTraversalSegment = Regex("(?i)(?:^|/)(?:\\.|%(?:25)*2e){1,2}(?:/|$)")
         require(!encodedSeparatorOrControl.containsMatchIn(rawPath) &&
             !dotTraversalSegment.containsMatchIn(rawPath)) {
             "Ambiguous or unsafe rTorrent RPC path; use an exact unencoded server mount"
@@ -486,8 +486,10 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                 write("\r\n--$boundary--\r\n".toByteArray(Charsets.UTF_8))
             }.toByteArray()
             val requestTarget = (upload.rawPath ?: "/") + (upload.rawQuery?.let { "?" + it } ?: "")
-            var authorization: String? = null
-            var attemptedChallenge = false
+            // The upload form is non-idempotent. Learn a challenge by a
+            // read-only RPC on the same ruTorrent origin before posting the
+            // form; never replay an upload after any HTTP 401 response.
+            val authorization = preauthorizeWrite(requestTarget)
             while (true) {
                 val connection = upload.toURL().openConnection() as HttpURLConnection
                 connection.connectTimeout = 8_000
@@ -501,14 +503,6 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                 try {
                     connection.outputStream.use { it.write(body) }
                     val status = connection.responseCode
-                    if (status == HttpURLConnection.HTTP_UNAUTHORIZED && !attemptedChallenge && auth.username.isNotEmpty()) {
-                        val challenges = connection.headerFields.entries
-                            .filter { (name, _) -> name?.equals("WWW-Authenticate", true) == true }
-                            .flatMap { it.value }
-                        authorization = HttpRpcAuthorization.fromChallenge(challenges, auth, "POST", requestTarget)
-                        attemptedChallenge = true
-                        continue
-                    }
                     // ruTorrent answers the form with 200 or a same-page redirect; never follow it.
                     if (status !in 200..399) throw IOException("ruTorrent upload returned HTTP $status")
                     val stream = if (status in 200..299) connection.inputStream else null
@@ -1044,6 +1038,45 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
     private fun nonNegativeNumber(value: Any?, field: String): Long =
         number(value).also { require(it >= 0L) { "Invalid negative rTorrent $field" } }
 
+    /**
+     * Obtain Basic/Digest authorization using an immutable read-only RPC
+     * challenge, scoped to this exact HTTPS/loopback endpoint. The returned
+     * value is formatted for the target POST path, which may be ruTorrent's
+     * same-origin multipart upload rather than the XML-RPC mount.
+     *
+     * Never challenge-negotiate by repeating an already-sent write.
+     * This helper is called only from Dispatchers.IO.
+     */
+    private fun preauthorizeWrite(requestTarget: String): String? {
+        if (auth.username.isEmpty()) return null
+        val probeBody = XmlRpcCodec.request("system.client_version").toByteArray(Charsets.UTF_8)
+        val probe = endpoint.toURL().openConnection() as HttpURLConnection
+        probe.connectTimeout = 8_000
+        probe.readTimeout = 15_000
+        probe.instanceFollowRedirects = false
+        probe.requestMethod = "POST"
+        probe.setRequestProperty("Content-Type", "text/xml; charset=utf-8")
+        probe.setRequestProperty("Accept", "text/xml")
+        probe.doOutput = true
+        probe.setFixedLengthStreamingMode(probeBody.size)
+        try {
+            probe.outputStream.use { it.write(probeBody) }
+            val status = probe.responseCode
+            return when {
+                status == HttpURLConnection.HTTP_UNAUTHORIZED -> {
+                    val challenges = probe.headerFields.entries
+                        .filter { (name, _) -> name?.equals("WWW-Authenticate", true) == true }
+                        .flatMap { it.value }
+                    HttpRpcAuthorization.fromChallenge(challenges, auth, "POST", requestTarget)
+                }
+                status in 200..299 -> null
+                else -> throw IOException("rTorrent authentication preflight returned HTTP $status")
+            }
+        } finally {
+            probe.disconnect()
+        }
+    }
+
     internal suspend fun call(method: String, params: List<Any> = emptyList()): Any? =
         withContext(Dispatchers.IO) {
             // A challenge-based credential exchange is scoped to the *same*
@@ -1052,8 +1085,14 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             val request = XmlRpcCodec.request(method, params).toByteArray(Charsets.UTF_8)
             val requestTarget = (endpoint.rawPath?.ifEmpty { "/" } ?: "/") +
                 (endpoint.rawQuery?.let { "?" + it } ?: "")
-            var authorization: String? = null
-            var attemptedChallenge = false
+            val mutation = !isReadOnlyRpcMethod(method, params)
+            // A 401 may arrive after a broken gateway has applied a write.
+            // Learn a fresh Basic/Digest challenge using a read-only RPC on
+            // this same endpoint, then send the mutation only once.
+            var authorization: String? = if (mutation) preauthorizeWrite(requestTarget) else null
+            // Read-only RPCs retain their one challenge retry. For writes,
+            // even a 401 with WWW-Authenticate proves nothing about rollback.
+            var attemptedChallenge = mutation
             while (true) {
                 val connection = endpoint.toURL().openConnection() as HttpURLConnection
                 connection.connectTimeout = 8_000
@@ -1105,6 +1144,54 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         }
 
     private companion object {
+        // No method is retryable just because its name *looks* like a getter.
+        // A future setter, or a setter smuggled inside a multicall, must never
+        // inherit the read-only HTTP 401 challenge/replay path.
+        private val DIRECT_READ_METHODS = setOf(
+            "system.client_version", "system.listMethods", "directory.default",
+            "download_list", "network.local_address", "network.bind_address",
+            "network.listen.port", "d.hash", "d.name", "d.size_bytes",
+            "d.completed_bytes", "d.state", "d.directory", "d.down.rate",
+            "d.up.rate", "d.ratio", "d.is_multi_file", "d.size_chunks",
+            "d.bitfield", "d.is_private", "d.is_active", "d.is_open",
+            "d.peers_connected", "d.down.total", "d.tracker_size"
+        )
+        private val FILE_READ_FIELDS = setOf(
+            "f.path=", "f.size_bytes=", "f.priority=",
+            "f.completed_chunks=", "f.size_chunks=",
+            "f.range_first=", "f.range_second="
+        )
+        private val TRACKER_READ_FIELDS = setOf(
+            "t.url=", "t.is_enabled=", "t.success_counter=",
+            "t.failed_counter=", "t.latest_sum_peers="
+        )
+
+        private fun isReadOnlyRpcMethod(method: String, params: List<Any>): Boolean {
+            if (method in DIRECT_READ_METHODS) return true
+            if (method == "d.multicall2") {
+                return params.size in 3..(2 + EXTENDED_FIELDS.size) &&
+                    params.drop(2).all { it is String && it in EXTENDED_FIELDS }
+            }
+            if (method == "f.multicall" || method == "t.multicall") {
+                val allowed = if (method == "f.multicall") FILE_READ_FIELDS else TRACKER_READ_FIELDS
+                return params.size in 3..8 &&
+                    params.drop(2).all { it is String && it in allowed }
+            }
+            if (method == "system.multicall") {
+                val nested = params.singleOrNull() as? List<*> ?: return false
+                // Production paging emits one exact-hash getter per entry.
+                // Refuse nested multicall recursion and unrecognized methods.
+                return nested.isNotEmpty() && nested.size <= PAGE_SIZE * EXTENDED_FIELDS.size &&
+                    nested.all { item ->
+                        val fields = item as? Map<*, *> ?: return@all false
+                        val name = fields["methodName"] as? String ?: return@all false
+                        val args = fields["params"] as? List<*> ?: return@all false
+                        name in DIRECT_READ_METHODS && name.startsWith("d.") &&
+                            args.size == 1 && args.single() is String
+                    }
+            }
+            return false // all unknown future RPCs are single-dispatch
+        }
         const val MAX_TRANSFERS = 12_000
         const val PAGE_SIZE = 250
         val MINIMUM_FIELDS = listOf("d.hash=", "d.name=", "d.size_bytes=", "d.completed_bytes=",
