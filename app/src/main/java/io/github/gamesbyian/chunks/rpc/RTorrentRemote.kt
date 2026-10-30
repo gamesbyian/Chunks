@@ -104,8 +104,8 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         // even after a second or third percent-decoding pass. Benign %20 and
         // %25 in hosted account names remain valid.
         val rawPath = uri.rawPath.orEmpty()
-        val encodedSeparatorOrControl = Regex("(?i)%(?:25){0,2}(?:2f|5c|0[0-9a-f]|1[0-9a-f]|7f)")
-        val dotTraversalSegment = Regex("(?i)(?:^|/)(?:\\.|%2e|%252e|%25252e){1,2}(?:/|$)")
+        val encodedSeparatorOrControl = Regex("(?i)%(?:25)*(?:2f|5c|0[0-9a-f]|1[0-9a-f]|7f)")
+        val dotTraversalSegment = Regex("(?i)(?:^|/)(?:\\.|%(?:25)*2e){1,2}(?:/|$)")
         require(!encodedSeparatorOrControl.containsMatchIn(rawPath) &&
             !dotTraversalSegment.containsMatchIn(rawPath)) {
             "Ambiguous or unsafe rTorrent RPC path; use an exact unencoded server mount"
