@@ -143,7 +143,10 @@ object RemoteSmartConnect {
         // Accept a hostname pasted from a provider dashboard, without
         // asking the user to type https:// themselves.
         val prepared = if ("://" in raw) raw else "https://$raw"
-        val uri = URI(prepared)
+        // URISyntaxException includes the entire rejected input in its
+        // message. Never surface a pasted token/password through diagnostics.
+        val uri = try { URI(prepared) }
+            catch (_: Exception) { throw IllegalArgumentException("Enter a valid seedbox address") }
         require(uri.scheme.equals("https", true) ||
             (uri.scheme.equals("http", true) &&
                 uri.host in setOf("localhost", "127.0.0.1", "[::1]"))) {
