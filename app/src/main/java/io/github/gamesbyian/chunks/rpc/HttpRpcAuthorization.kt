@@ -36,9 +36,10 @@ internal object HttpRpcAuthorization {
     }
 
     /**
-     * HTTP auth-scheme is separated from credentials by SP / HTAB. Recognize
-     * the scheme only at a challenge boundary, never in a Digest quoted value
-     * or as a prefix of a longer authentication token.
+     * RFC 9110 requires SP between auth-scheme and credentials. Recognize
+     * nonconforming HTAB as well so a tabbed Digest challenge cannot be
+     * silently overlooked in favor of a coadvertised Basic challenge.
+     * Never match scheme words inside quoted parameters or longer tokens.
      */
     private fun schemeOf(candidate: String): String? {
         val value = candidate.trimStart()

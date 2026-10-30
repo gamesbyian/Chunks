@@ -27,9 +27,9 @@ class HttpRpcCombinedChallengeTest {
         }
     }
 
-    @Test fun horizontalTabsAreLegalSchemeSeparatorsAndNeverDowngradeDigest() {
-        // HTTP credentials permits SP / HTAB. A valid Digest challenge with
-        // HTAB must not disappear behind a Basic challenge in the same field.
+    @Test fun nonstandardHorizontalTabsCannotDowngradeDigest() {
+        // RFC 9110 requires SP here. A nonconforming Digest challenge using
+        // HTAB must not disappear behind Basic in a merged header.
         val cases = listOf(
             "Basic realm=\"legacy\", Digest\trealm=\"QA\", nonce=\"n\", qop=\"auth\"",
             "Digest\t realm=\"QA\", nonce=\"n\", qop=\"auth\", Basic\trealm=\"legacy\"",
