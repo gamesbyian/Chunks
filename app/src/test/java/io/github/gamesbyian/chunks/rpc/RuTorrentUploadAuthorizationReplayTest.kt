@@ -16,22 +16,17 @@ class RuTorrentUploadAuthorizationReplayTest {
     private val challengeBasic = """Basic realm="Fixture""""
     private val challengeDigest =
         """Digest realm="Fixture", nonce="one", qop="auth", algorithm=SHA-256"""
-    private fun result(value: String) =
-        "<methodResponse><params><param><value>$value</value></param></params></methodResponse>"
-    private val unknownHash = """<methodResponse><fault><value><struct>
-        <member><name>faultCode</name><value><int>-501</int></value></member>
-        <member><name>faultString</name><value><string>Could not find info-hash.</string></value></member>
-        </struct></value></fault></methodResponse>"""
-
     private class Fake(
         private val challenge: String?,
         private val rejectAfterUpload: Boolean
     ) : AutoCloseable {
+        private fun result(value: String) =
+            "<methodResponse><params><param><value>$value</value></param></params></methodResponse>"
         private val server = HttpServer.create(
             InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0)
         val methods: MutableList<String> = Collections.synchronizedList(mutableListOf())
         val authorizations: MutableList<String?> = Collections.synchronizedList(mutableListOf())
-        var uploads = 0
+        @Volatile var uploads = 0
             private set
         val root get() = "http://127.0.0.1:${server.address.port}/rutorrent/"
         init {
