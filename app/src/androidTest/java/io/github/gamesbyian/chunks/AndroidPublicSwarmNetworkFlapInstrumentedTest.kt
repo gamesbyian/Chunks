@@ -2,6 +2,8 @@ package io.github.gamesbyian.chunks
 
 import android.Manifest
 import android.app.NotificationManager
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.content.Intent
 import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -24,6 +26,8 @@ import org.junit.runner.RunWith
  * mobile data off, signals the test, waits, turns them back on and signals
  * again. The test requires the job to stay started (never silently stopped
  * or removed) and verified growth to resume after the network returns,
+ * and requires the app's validated default Internet network to disappear
+ * and return. Wi-Fi/mobile-data toggle ACKs alone do not prove an outage.
  * without restarting the engine; it records what happened during the outage.
  */
 @RunWith(AndroidJUnit4::class)
@@ -39,6 +43,27 @@ class AndroidPublicSwarmNetworkFlapInstrumentedTest {
     private fun ongoing() = context.getSystemService(NotificationManager::class.java)
         .activeNotifications.any { it.id == LocalEngineService.NOTIFICATION_ID }
 
+    private fun defaultInternetValidated(): Boolean {
+        val connectivity = context.getSystemService(ConnectivityManager::class.java)
+        val caps = connectivity.getNetworkCapabilities(connectivity.activeNetwork)
+        return caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true &&
+            caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+    }
+
+    private fun requireNetworkWitness(
+        witness: DefaultNetworkValidationWitness,
+        wanted: DefaultNetworkValidationWitness.Phase,
+        timeoutSeconds: Long
+    ) {
+        val deadline = System.nanoTime() + timeoutSeconds * 1_000_000_000L
+        while (System.nanoTime() < deadline) {
+            if (witness.observe(defaultInternetValidated()) == wanted) return
+            Thread.sleep(500)
+        }
+        log("INCONCLUSIVE network_witness_missing=$wanted observed=${witness.phase}")
+        fail("INCONCLUSIVE: default Internet network did not reach $wanted; " +
+            "radio toggles alone do not prove connectivity loss")
+    }
     private fun waitForFile(file: File, seconds: Long) {
         val deadline = System.nanoTime() + seconds * 1_000_000_000L
         while (!file.exists()) {
@@ -73,10 +98,19 @@ class AndroidPublicSwarmNetworkFlapInstrumentedTest {
                 log("INCONCLUSIVE no flow before outage verified=${status.doneBytes}")
                 fail("INCONCLUSIVE peer availability before the outage")
             }
+            val witness = DefaultNetworkValidationWitness()
+            requireNetworkWitness(witness, DefaultNetworkValidationWitness.Phase.NEED_LOSS, 15)
+            log("default_network_baseline_validated=true")
             log("ready verified=${status.doneBytes}")
             waitForFile(offFlag, 180)
             val atLoss = requireNotNull(engine.status(hash)).doneBytes
+            // The emulator can retain virtual Ethernet even after both radio toggles.
+            // Require loss of the app-visible validated default Internet network.
+            requireNetworkWitness(witness, DefaultNetworkValidationWitness.Phase.NEED_RETURN, 18)
+            log("network_witness_default_internet_lost=true")
             waitForFile(onFlag, 180)
+            requireNetworkWitness(witness, DefaultNetworkValidationWitness.Phase.COMPLETE, 90)
+            log("network_witness_default_internet_restored=true")
             val offline = requireNotNull(engine.status(hash))
             log("outage verified_at_loss=$atLoss verified_at_return=${offline.doneBytes} " +
                 "stopped=${offline.stopped} error=${offline.error != null}")

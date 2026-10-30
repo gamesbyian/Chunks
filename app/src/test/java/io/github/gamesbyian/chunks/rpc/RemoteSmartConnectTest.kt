@@ -116,6 +116,32 @@ class RemoteSmartConnectTest {
         }
     }
 
+    @Test fun encodedSeparatorsAndControlsCannotRedirectAnExplicitInstance() {
+        val refused = listOf(
+            "/rutorrent2%2Frutorrent3/RPC2",
+            "/rutorrent2%5c..%5crutorrent3/RPC2",
+            "/tenant%00/RPC2",
+            "/tenant%0d%0a/RPC2",
+            "/tenant%7f/RPC2"
+        )
+        for (path in refused) {
+            try {
+                RemoteSmartConnect.withExactPath("host.example", path)
+                fail("Encoded path escape accepted in advanced RPC path: $path")
+            } catch (_: IllegalArgumentException) { }
+            try {
+                RemoteSmartConnect.candidates("https://host.example$path", "user")
+                fail("Encoded path escape accepted in pasted RPC address: $path")
+            } catch (_: IllegalArgumentException) { }
+        }
+        // Hosted prefixes legitimately use encoded *spaces*; no broad
+        // percent-decoding or re-encoding is performed.
+        val safe = "https://host.example/my%20account/rutorrent2/"
+        assertEquals(listOf(
+            "https://host.example/my%20account/rutorrent2/plugins/httprpc/action.php"),
+            RemoteSmartConnect.candidates(safe, "user").map { it.endpoint })
+    }
+
     @Test fun repeatedAuthFailureStopsBeforeTryingAnotherCandidate() = runBlocking {
         val attempted = mutableListOf<String>()
         try {

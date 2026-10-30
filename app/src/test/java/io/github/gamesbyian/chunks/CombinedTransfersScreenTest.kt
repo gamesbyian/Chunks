@@ -43,11 +43,11 @@ class CombinedTransfersScreenTest {
     private val gate = CombinedServerLifecycle(begin = { true }, settled = { settles++ },
         setStarted = { hash, on -> commands += hash to on; io.github.gamesbyian.chunks.rpc.LifecycleOutcome.Verified(on) })
 
-    private fun show(stale: Boolean = false) = rule.setContent {
+    private fun show(stale: Boolean = false, observedAtEpochMillis: Long = System.currentTimeMillis()) = rule.setContent {
         ChunksTheme { Surface(color = ChunksColors.Background) {
             CombinedTransfersScreen(
                 server = CombinedServerSource(aliasScope, rows, stale = stale, fullView = true,
-                    observedAtEpochMillis = 1L, lifecycle = gate),
+                    observedAtEpochMillis = observedAtEpochMillis, lifecycle = gate),
                 savedProfiles = listOf(other), onOpenPhone = {}, onOpenServer = {}, onBack = {})
         } }
     }
@@ -84,6 +84,7 @@ class CombinedTransfersScreenTest {
         rule.onNodeWithText("On this phone: Engine not running, open On this phone · 0 transfers").assertDoesNotExist()
         rule.onNodeWithText("Showing 2").assertExists()
         rule.onNodeWithText("Group by environment").performScrollTo()
+        rule.onNodeWithContentDescription("Group by environment").assertExists()
         rule.onNode(androidx.compose.ui.test.isToggleable()).performClick()
         rule.onNodeWithText(serverEnvironmentLabel(aliasScope) + " · 2 shown").assertExists()
         val saved = CombinedViewPreferences(context).load()
@@ -113,6 +114,23 @@ class CombinedTransfersScreenTest {
         show(stale = true)
         rule.onNodeWithText(serverEnvironmentLabel(aliasScope) + ": Out of date, showing last list · 2 transfers")
             .assertExists()
+    }
+
+    @Test fun oldSignedInServerRowsRemainVisibleButAreNotLiveOrActionable() {
+        show(observedAtEpochMillis = System.currentTimeMillis() -
+            io.github.gamesbyian.chunks.model.EnvironmentSnapshots.SERVER_INVENTORY_FRESH_MS - 1)
+        rule.onNodeWithText(serverEnvironmentLabel(aliasScope) + ": Out of date, showing last list · 2 transfers")
+            .assertExists()
+        rule.onNodeWithText("Select…").performClick()
+        rule.onNodeWithContentDescription("Select Big Archive on " + serverEnvironmentLabel(aliasScope))
+            .performScrollTo().performClick()
+        rule.onNodeWithText("1 selected").performScrollTo()
+        rule.onNodeWithText("Stop…").performClick()
+        rule.onNodeWithText("Stop selected").performClick()
+        rule.onNodeWithText(serverEnvironmentLabel(aliasScope) +
+            ": 1 not attempted (Transfer list is out of date; refresh first).").assertExists()
+        assertTrue(commands.isEmpty())
+        assertEquals("An expired inventory must never take the server lease", 0, settles)
     }
 
     @Test fun selectedStopIsPreviewedPerEnvironmentAndRunsOnlyOnThatServer() {

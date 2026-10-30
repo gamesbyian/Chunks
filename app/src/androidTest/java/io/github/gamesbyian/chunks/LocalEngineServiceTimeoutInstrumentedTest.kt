@@ -36,7 +36,7 @@ class LocalEngineServiceTimeoutInstrumentedTest {
     private val context get() = instrumentation.targetContext
     private val notifications get() = context.getSystemService(NotificationManager::class.java)
     private lateinit var work: File
-    private var hash: String? = null
+    private val hashes = mutableListOf<String>()
 
     @Before fun setUp() {
         assumeTrue("Run through tools/fgs_timeout_repro.sh only",
@@ -49,7 +49,7 @@ class LocalEngineServiceTimeoutInstrumentedTest {
 
     @After fun tearDown() {
         if (!::work.isInitialized) return
-        hash?.let { LocalEngineHolder.current()?.removeKeepingData(it) }
+        hashes.forEach { LocalEngineHolder.current()?.removeKeepingData(it) }
         context.stopService(Intent(context, LocalEngineService::class.java))
         work.deleteRecursively()
     }
@@ -72,27 +72,41 @@ class LocalEngineServiceTimeoutInstrumentedTest {
             writeBytes(ByteArray(96_000).also { Random(569).nextBytes(it) })
         }
         val before = sha(payload)
+        // Two distinct torrents expose a sequential per-transfer readback
+        // budget regression without spawning another Android FGS timeout test.
+        val secondRoot = File(work, "Timeout fixture 2").apply { mkdirs() }
+        val secondPayload = File(secondRoot, "payload2.bin").apply {
+            writeBytes(ByteArray(96_000).also { Random(570).nextBytes(it) })
+        }
+        val secondBefore = sha(secondPayload)
         val torrent = TorrentBuilder().path(root).pieceSize(16 * 1024).generate().entry().bencode()
+        val secondTorrent = TorrentBuilder().path(secondRoot).pieceSize(16 * 1024).generate().entry().bencode()
         val engine = LocalEngineHolder.get(context)
         val added = (engine.addStopped(torrent, work) as LocalAddResult.AddedStopped).status
-        hash = added.infoHash
+        hashes += added.infoHash
+        val second = (engine.addStopped(secondTorrent, work) as LocalAddResult.AddedStopped).status
+        hashes += second.infoHash
         assertEquals(LocalCommandOutcome.VERIFIED, engine.resume(added.infoHash).outcome)
+        assertEquals(LocalCommandOutcome.VERIFIED, engine.resume(second.infoHash).outcome)
 
         val started = System.currentTimeMillis()
         LocalEngineService.start(context)
         waitFor("ongoing notification", 30) { active(LocalEngineService.NOTIFICATION_ID) != null }
         // No Stop all and no activity: only Android's (shortened) limit can stop it now.
-        waitFor("Android dataSync timeout pause", 180) { engine.status(added.infoHash)?.stopped == true }
+        waitFor("Android dataSync timeout pause for both transfers", 180) {
+            hashes.all { engine.status(it)?.stopped == true }
+        }
         val elapsed = System.currentTimeMillis() - started
         waitFor("timeout notice", 30) { active(LocalServiceTimeoutNotice.NOTIFICATION_ID) != null }
         waitFor("ongoing notification removed", 30) { active(LocalEngineService.NOTIFICATION_ID) == null }
 
         val notice = active(LocalServiceTimeoutNotice.NOTIFICATION_ID)!!.notification
         val text = notice.extras.getCharSequence(android.app.Notification.EXTRA_TEXT).toString()
-        assertEquals("Android's background time limit was reached. Chunks paused 1 transfer on this phone. " +
+        assertEquals("Android's background time limit was reached. Chunks paused 2 transfers on this phone. " +
             "Open Chunks to resume.", text)
         assertTrue("notice must be dismissible", notice.flags and android.app.Notification.FLAG_ONGOING_EVENT == 0)
-        assertArrayEquals("payload bytes unchanged", before, sha(payload))
+        assertArrayEquals("first payload bytes unchanged", before, sha(payload))
+        assertArrayEquals("second payload bytes unchanged", secondBefore, sha(secondPayload))
         android.util.Log.i("ChunksFgsTimeout", "CHUNKS_FGS_TIMEOUT paused_after_ms=$elapsed sdk=" +
             android.os.Build.VERSION.SDK_INT + " notice=\"$text\"")
     }

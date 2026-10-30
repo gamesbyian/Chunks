@@ -51,7 +51,18 @@ class CreateSeedCopyTest {
         while (leecher.status(hash)?.state != LocalTransferState.SEEDING) {
             assertTrue("peer did not finish", System.currentTimeMillis() < deadline); Thread.sleep(100)
         }
-        for ((path, bytes) in payload) assertArrayEquals(bytes, File(target, "Shared set/$path").readBytes())
+        // A native SEEDING state can precede asynchronous disk-cache flush.
+        // The independent peer's payload is accepted only after this exact
+        // handle has acknowledged CACHE_FLUSHED, then byte-for-byte readback.
+        assertTrue("Native leecher never confirmed a completed cache flush",
+            leecher.flushCompletedForLibraryRead(hash, timeoutMs = 20_000L))
+        for ((path, bytes) in payload) {
+            val downloaded = File(target, "Shared set/$path")
+            assertTrue("Native peer reported completion but file is missing: " +
+                downloaded.absolutePath, downloaded.isFile)
+            assertArrayEquals("Native peer bytes mismatch at " + downloaded.absolutePath,
+                bytes, downloaded.readBytes())
+        }
     }
 
     @Test fun neverOverwritesAndRefusesFilesThatChangedAfterCreation() {

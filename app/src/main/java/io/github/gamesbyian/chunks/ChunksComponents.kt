@@ -195,7 +195,10 @@ internal fun EnvironmentBadge(
     environment: io.github.gamesbyian.chunks.model.EnvironmentId? = null
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
-    val hue = remember(environment) {
+    // Observe the shared persisted palette revision. An environment ID stays
+    // stable when its chosen hue changes, so ID alone is not a valid cache key.
+    val paletteRevision = EnvironmentColourStore.revision
+    val hue = remember(context, environment, paletteRevision) {
         environment?.let { runCatching { EnvironmentColourStore(context).load().hueOf(it) }.getOrNull() }
     }
     val accent = hue?.let { Color(it.argb) } ?: if (server) ChunksColors.Blue else ChunksColors.Cyan
