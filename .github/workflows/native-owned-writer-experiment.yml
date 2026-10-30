@@ -123,6 +123,23 @@ jobs:
             -I "$RUNNER_TEMP/chunks-libtorrent/include" \
             experiments/native-owned-writer/bridge/owned_libtorrent_disk.cc
 
+      - name: Cross-compile owned disk-interface adapter for Android API29 arm64 and x86_64
+        run: |
+          set -euo pipefail
+          ndk_root="$(find "$ANDROID_HOME/ndk" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n1)"
+          llvm="$ndk_root/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          test -x "$llvm/aarch64-linux-android29-clang++"
+          mkdir -p "$RUNNER_TEMP/chunks-boost-includes"
+          ln -s /usr/include/boost "$RUNNER_TEMP/chunks-boost-includes/boost"
+          # This is a source-level Android toolchain portability check.
+          # Android crypto must later use the pinned target OpenSSL build.
+          for target in aarch64-linux-android29 x86_64-linux-android29; do
+            "$llvm/$target-clang++" -std=c++17 -Wall -Wextra -Werror -pedantic \
+              -fsyntax-only -DTORRENT_ABI_VERSION=4 -DTORRENT_USE_OPENSSL=0 \
+              -I "$RUNNER_TEMP/chunks-libtorrent/include" \
+              -I "$RUNNER_TEMP/chunks-boost-includes" \
+              experiments/native-owned-writer/bridge/owned_libtorrent_disk.cc
+          done
       - name: Build forked host JNI shared library with owned disk backend
         run: |
           set -euo pipefail
