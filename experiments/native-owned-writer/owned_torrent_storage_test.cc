@@ -158,5 +158,39 @@ int main() {
     assert(!fs::exists(s.payload / "episode.bin"));
     ++count;
   }
+  {
+    Sandbox s;
+    std::string error;
+    auto fresh = Storage::Open(s.payload.string(), s.receipts.string(), files(),
+                                Storage::Admission::FRESH, &error);
+    assert(fresh);
+    char bytes[6]{};
+    // A seeder read of an uncreated but durably reserved payload must
+    // refuse without fabricating empty bytes, metadata or backing paths.
+    assert(!fresh->ReadRange(0, bytes, 5, &error));
+    assert(!fs::exists(s.payload / "show/partA.bin"));
+    assert(!fs::exists(s.receipts / A));
+    assert(fs::exists(s.receipts / (std::string(A) + ".pending")));
+    // A later real write may still exclusively acquire this exact file.
+    assert(fresh->WriteRange(0, "ABCDE", 5, &error));
+    assert(s.read(s.payload / "show/partA.bin") == "ABCDE");
+    ++count;
+  }
+  {
+    Sandbox s;
+    std::string error;
+    auto fresh = Storage::Open(s.payload.string(), s.receipts.string(), files(),
+                                Storage::Admission::FRESH, &error);
+    assert(fresh);
+    fresh.reset();
+    auto resumed = Storage::Open(s.payload.string(), s.receipts.string(), files(),
+                                  Storage::Admission::RESTORED, &error);
+    assert(resumed);
+    char bytes[4]{};
+    assert(!resumed->ReadRange(0, bytes, 3, &error));
+    assert(!fs::exists(s.payload / "show/partA.bin"));
+    assert(!fs::exists(s.receipts / A));
+    ++count;
+  }
   std::cout << "CHUNKS_MULTIFILE_WRITER_CASES=" << count << " PASSED\n";
 }
