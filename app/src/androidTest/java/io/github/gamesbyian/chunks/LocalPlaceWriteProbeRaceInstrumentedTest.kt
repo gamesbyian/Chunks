@@ -39,6 +39,31 @@ class LocalPlaceWriteProbeRaceInstrumentedTest {
         } finally {
             root.deleteRecursively()
         }
+
+        // Same executed Android test count: separately prove that a symbolic
+        // link planted after the LAST survey cannot be followed or removed.
+        val linkRoot = File(context.cacheDir, "probe-link-after-survey-" + System.nanoTime())
+        val unrelated = File(context.cacheDir, "probe-link-foreign-" + System.nanoTime())
+        assertTrue(linkRoot.mkdirs())
+        val outsideBytes = byteArrayOf(9, 7, 5, 3, 1)
+        unrelated.writeBytes(outsideBytes)
+        val link = File(linkRoot, ".chunks-write-probe-0000000000000000.ok").toPath()
+        try {
+            val predictable = object : Random() {
+                override fun nextBytes(out: ByteArray) { out.fill(0) }
+            }
+            val refused = LocalPlaceWriteProbe.verify(linkRoot, predictable,
+                beforePublish = { Files.createSymbolicLink(link, unrelated.toPath()) })
+            assertNotNull("O_EXCL must reject a planted final-name symlink", refused)
+            assertTrue(Files.isSymbolicLink(link))
+            assertArrayEquals(outsideBytes, unrelated.readBytes())
+            assertFalse(File(linkRoot, ".chunks-write-probe-0000000000000000.tmp").exists())
+        } finally {
+            // Both paths were created exclusively by this disposable fixture.
+            if (Files.isSymbolicLink(link)) Files.deleteIfExists(link)
+            linkRoot.deleteRecursively()
+            unrelated.delete()
+        }
     }
 
     @Test fun normalDescriptorBackedProbeReadsBackAndCleansItsOwnFile() {
