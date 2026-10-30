@@ -252,10 +252,11 @@ private fun ChunksApp(
             }
         }.distinct()
     }
-    val paletteStore = remember(context) { EnvironmentColourStore(context) }
-    LaunchedEffect(paletteStore, paletteIdentities) {
+    LaunchedEffect(context, paletteIdentities) {
         try {
-            withContext(Dispatchers.IO) { paletteStore.ensure(paletteIdentities) }
+            withContext(Dispatchers.IO) {
+                EnvironmentColourStore(context).ensure(paletteIdentities)
+            }
         } catch (cancel: kotlinx.coroutines.CancellationException) {
             throw cancel
         } catch (_: Exception) {
