@@ -244,6 +244,58 @@ class LocalPublicDownloadsPlaceInstrumentedTest {
             original, foreign.readBytes())
     }
 
+    @Test fun restoredCheckedStartRefusesPlantedForeignPublicDownloadsBytes() {
+        allowSharedDownloads()
+        val public = LocalDownloadPlaces.choices(context)
+            .single { it.place.kind == LocalPlaceKind.PUBLIC_DOWNLOADS }
+        val root = requireNotNull(LocalDownloadPlaces.materialize(public.place)) {
+            "Actual Android Downloads root could not be verified"
+        }
+        val destination = requireNotNull(LocalOwnedAddFolder.prepare(root,
+            "restored-checked-collision-" + System.nanoTime()))
+        publicTestFolder = destination
+
+        val source = File(work, "restore-checked-source/Restored checked Android fixture")
+            .apply { mkdirs() }
+        val payload = ByteArray(96_000).also { Random(5687).nextBytes(it) }
+        File(source, "payload.bin").writeBytes(payload)
+        val torrent = TorrentBuilder().path(source).pieceSize(16 * 1024)
+            .generate().entry().bencode()
+        val state = File(work, "restore-checked-state").apply { mkdirs() }
+        val beforeDeath = engine(state)
+        val added = beforeDeath.addStoppedChecked(torrent, destination)
+        assertTrue("An initially clean public backing path must admit checked Add: $added",
+            added is LocalAddResult.AddedStopped)
+        val hash = (added as LocalAddResult.AddedStopped).status.infoHash
+        assertTrue("A stopped native Add must persist its resume source",
+            File(state, "$hash.resume").isFile)
+        beforeDeath.close()
+
+        // The fixture actor is outside the engine and owns only this uniquely
+        // created test folder. No real user Downloads content may be touched.
+        val foreignPath = File(destination, "Restored checked Android fixture/payload.bin")
+        assertTrue(foreignPath.parentFile.mkdirs() || foreignPath.parentFile.isDirectory)
+        val foreign = ByteArray(payload.size).also { Random(5688).nextBytes(it) }
+        assertTrue(!payload.contentEquals(foreign))
+        foreignPath.writeBytes(foreign)
+
+        val restored = engine(state)
+        assertTrue("Native resume should restore with no malformed records",
+            restored.restoreProblems.isEmpty())
+        val preStart = requireNotNull(restored.status(hash))
+        assertTrue("Restored job must remain stopped", preStart.stopped)
+        assertEquals("No payload should download while stopped", 0L, preStart.doneBytes)
+        assertEquals("A foreign zero-progress file must refuse first restored native Start",
+            LocalCommandOutcome.REFUSED, restored.resume(hash).outcome)
+        val blocked = requireNotNull(restored.status(hash))
+        assertTrue(blocked.stopped)
+        assertTrue(blocked.error.orEmpty().contains("no verified native bytes"))
+        assertArrayEquals("The actual Android Downloads foreign file must survive byte for byte",
+            foreign, foreignPath.readBytes())
+        // No direct filesystem adoption or implicit cleanup: the user/test
+        // must remove only data it independently recognizes as its own.
+    }
+
     @Test fun magnetMetadataCollisionPreservesPublicDownloadsAcrossStartAndRestart() {
         allowSharedDownloads()
         val public = LocalDownloadPlaces.choices(context)
