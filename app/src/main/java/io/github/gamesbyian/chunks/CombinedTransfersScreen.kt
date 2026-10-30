@@ -321,9 +321,24 @@ internal fun CombinedTransfersScreen(
         if (server != null && serverId != null) put(serverId, serverEnvironmentLabel(server.aliasScope))
         savedProfiles.forEach { profile -> putIfAbsent(EnvironmentId(profile.id), "Server · " + profile.label) }
     }
-    // Colours follow stable IDs: assigned once, then kept through rename/reorder/reconnect.
-    val colourStore = remember(context) { EnvironmentColourStore(context) }
-    var palette by remember(labels.keys.toList()) { mutableStateOf(colourStore.ensure(labels.keys.toList())) }
+    // Palette storage is a lifecycle effect, not work performed by remember or
+    // by LazyColumn composition. Read external changes via the shared revision:
+    // profile rename, navigation and chooser updates never overwrite user hues.
+    val paletteIdentities = labels.keys.toList()
+    val paletteRevision = EnvironmentColourStore.revision
+    var palette by remember { mutableStateOf(EnvironmentPalette.State(emptyMap(), emptyMap())) }
+    LaunchedEffect(context, paletteIdentities, paletteRevision) {
+        try {
+            palette = withContext(Dispatchers.IO) {
+                EnvironmentColourStore(context).ensure(paletteIdentities)
+            }
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            // Keep the previous visible colours rather than presenting a failed
+            // write as saved; controls and environment IDs are independent.
+        }
+    }
     var choosingColours by remember { mutableStateOf(false) }
     // Only environments with a live list here can open a row there.
     fun openFor(key: UnifiedTransferKey): (() -> Unit)? =
@@ -502,8 +517,9 @@ internal fun CombinedTransfersScreen(
                     val snapshot = sources
                     batchScope.launch {
                         try {
-                            batchResult = runCombinedLifecycle(chosen, start, snapshot, server?.lifecycle, serverId)
-                                .describe { labels[it] ?: it.value }
+                            batchResult = describeCombinedBatchSafely({ labels[it] ?: it.value }) {
+                                runCombinedLifecycle(chosen, start, snapshot, server?.lifecycle, serverId)
+                            }
                         } finally {
                             selected = emptySet()
                             batchRunning = false
@@ -685,8 +701,16 @@ internal fun CombinedTransfersScreen(
                 Text(if (choosingColours) "Done with colours" else "Environment colours…")
             }
             if (choosingColours) EnvironmentColourChooser(labels, palette,
-                onChoose = { id, hue -> colourStore.choose(id, hue); palette = colourStore.load() },
-                onRestore = { id -> colourStore.restoreAutomatic(id); palette = colourStore.load() })
+                onChoose = { id, hue ->
+                    batchScope.launch {
+                        withContext(Dispatchers.IO) { EnvironmentColourStore(context).choose(id, hue) }
+                    }
+                },
+                onRestore = { id ->
+                    batchScope.launch {
+                        withContext(Dispatchers.IO) { EnvironmentColourStore(context).restoreAutomatic(id) }
+                    }
+                })
         }
         item {
             ResponsiveActionGroup(Modifier.padding(vertical = 12.dp)) { actionModifier ->
@@ -904,9 +928,7 @@ private fun CombinedBatchSection(
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         OutlinedButton(onClick = { onSelecting(!selecting); confirming = null }, enabled = !running,
             modifier = Modifier.heightIn(min = 48.dp)) { Text(if (selecting) "Done selecting" else "Select…") }
-        if (running) Text("Working… each environment's list will refresh afterwards.",
-            style = MaterialTheme.typography.bodySmall)
-        result.forEach { Text(it, style = MaterialTheme.typography.bodySmall) }
+        CombinedBatchFeedback(running = running, outcomes = result)
         if (!selecting || selected.isEmpty()) return@Column
         val hidden = (selected - visible).size
         Text("${selected.size} selected" + (if (hidden > 0) ", $hidden not shown by the current view" else ""),

@@ -2,6 +2,7 @@ package io.github.gamesbyian.chunks.engine
 
 import java.io.File
 import java.net.InetSocketAddress
+import java.nio.file.Files
 import java.util.Random
 import org.junit.After
 import org.junit.Before
@@ -165,6 +166,142 @@ class LocalTorrentEngineTest {
         assertEquals(LocalCommandOutcome.VERIFIED, paused.outcome)
         assertTrue(paused.status!!.stopped)
         assertEquals(LocalCommandOutcome.NOT_FOUND, engine.pause("b".repeat(40)).outcome)
+    }
+
+    @Test fun checkedTorrentRefusesForeignPayloadPlantedAfterAddBeforeFirstStart() {
+        val fixture = fixture()
+        val destination = temp.newFolder("checked-first-start-race")
+        val target = engine()
+        val added = added(target.addStoppedChecked(fixture.torrent, destination))
+        val foreign = File(destination, "Chunks public fixture/episode.bin")
+        assertTrue(foreign.parentFile.isDirectory || foreign.parentFile.mkdirs())
+        val original = ByteArray(fixture.files.getValue("episode.bin").size)
+            .also { Random(568).nextBytes(it) }
+        foreign.writeBytes(original)
+
+        val refused = target.resume(added.infoHash)
+        assertEquals(LocalCommandOutcome.REFUSED, refused.outcome)
+        val blocked = requireNotNull(refused.status)
+        assertTrue("Refused Start must leave the handle stopped", blocked.stopped)
+        assertTrue("A user-visible cause must survive readback",
+            blocked.error.orEmpty().contains("since Add"))
+        Thread.sleep(500)
+        assertArrayEquals("Checked Start must not overwrite foreign bytes",
+            original, foreign.readBytes())
+        assertFalse("Refused Start cannot create another unowned payload",
+            File(destination, "Chunks public fixture/extras/notes.txt").exists())
+
+        // The same job can be started after the test-owned collision is removed.
+        assertTrue(foreign.delete())
+        assertEquals(LocalCommandOutcome.VERIFIED, target.resume(added.infoHash).outcome)
+        assertNull("Cleared admission must remove the prior refusal",
+            target.status(added.infoHash)?.error)
+    }
+
+    @Test fun checkedDifferentInfohashesCannotReserveOneStillEmptyNativePayload() {
+        val fixture = fixture()
+        // Two distinct torrent identities with IDENTICAL relative output
+        // paths. No disk file yet exists, so a file-existence survey alone
+        // would approve both jobs before either native writer is started.
+        val otherParent = temp.newFolder("second-seed")
+        val otherRoot = File(otherParent, "Chunks public fixture").apply { mkdirs() }
+        File(otherRoot, "episode.bin").writeBytes(
+            ByteArray(1_300_000).also { Random(569).nextBytes(it) })
+        File(otherRoot, "extras/notes.txt").apply {
+            parentFile.mkdirs()
+            writeText("Different bytes for a different exact infohash")
+        }
+        val secondTorrent = TorrentBuilder().path(otherRoot)
+            .pieceSize(64 * 1024).generate().entry().bencode()
+        val dest = temp.newFolder("shared-stopped-target")
+        val native = engine()
+        val first = added(native.addStoppedChecked(fixture.torrent, dest))
+        val refused = native.addStoppedChecked(secondTorrent, dest)
+        assertTrue("A second checked job must not claim the same future writer paths: $refused",
+            refused is LocalAddResult.Refused)
+        assertTrue((refused as LocalAddResult.Refused).reason.contains("reserves"))
+        assertEquals("Refused Add may not register a second native handle", 1,
+            native.list().size)
+        assertTrue(native.status(first.infoHash)?.stopped == true)
+        assertFalse(File(dest, "Chunks public fixture/episode.bin").exists())
+
+        // libtorrent removal is non-blocking. Even after the job disappears
+        // from the visible inventory, queued native writes may retain its
+        // handle. Do not let a different torrent claim that name in-session.
+        assertTrue(native.removeKeepingData(first.infoHash))
+        assertNull(native.status(first.infoHash))
+        assertTrue(native.addStoppedChecked(secondTorrent, dest) is LocalAddResult.Refused)
+        assertTrue(native.list().isEmpty())
+        assertFalse(File(dest, "Chunks public fixture/episode.bin").exists())
+    }
+
+    @Test fun checkedPartialAddStillRequiresFreshSurveyBeforeFirstStart() {
+        val fixture = fixture()
+        val state = temp.newFolder("checked-partial-state")
+        val moved = File(temp.root, "checked-state-still-preserved")
+        val target = persistentEngine(state)
+        assertTrue(state.renameTo(moved))
+        state.writeText("no longer a writable resume directory")
+
+        val destination = temp.newFolder("checked-partial-destination")
+        try {
+            target.addStoppedChecked(fixture.torrent, destination)
+            fail("A failed initial resume write cannot report a complete Add")
+        } catch (_: java.io.IOException) {
+            // The native job was registered but its resume write failed.
+            // A later UI Start must still have the original collision fence.
+        }
+        val partial = target.list().single()
+        assertTrue(partial.stopped)
+        val foreign = File(destination, "Chunks public fixture/episode.bin")
+        assertTrue(foreign.parentFile.isDirectory || foreign.parentFile.mkdirs())
+        val bytes = byteArrayOf(8, 6, 7, 5, 3, 0, 9)
+        foreign.writeBytes(bytes)
+        assertEquals(LocalCommandOutcome.REFUSED, target.resume(partial.infoHash).outcome)
+        assertArrayEquals("Uncertain Add cannot bypass protection", bytes, foreign.readBytes())
+    }
+
+    @Test fun checkedTorrentRefusesSymlinkParentIntroducedAfterAdd() {
+        val fixture = fixture()
+        val destination = temp.newFolder("checked-symlink-start")
+        val external = temp.newFolder("checked-symlink-target")
+        val target = engine()
+        val added = added(target.addStoppedChecked(fixture.torrent, destination))
+        val link = File(destination, "Chunks public fixture")
+        // Paused libtorrent versions may materialize an empty parent directory
+        // before Start. Replace only our own disposable empty test directory.
+        if (link.exists()) {
+            assertTrue(link.isDirectory)
+            assertTrue(link.list().orEmpty().isEmpty())
+            assertTrue(link.delete())
+        }
+        Files.createSymbolicLink(link.toPath(), external.toPath())
+
+        val refused = target.resume(added.infoHash)
+        assertEquals(LocalCommandOutcome.REFUSED, refused.outcome)
+        assertTrue(requireNotNull(refused.status).stopped)
+        assertTrue(refused.status?.error.orEmpty().contains("Cannot verify"))
+        assertTrue("External directory cannot receive payload", external.list().isEmpty())
+        assertTrue("The planted link must not be deleted", Files.isSymbolicLink(link.toPath()))
+    }
+
+    @Test fun checkedTorrentFirstStartDownloadsAndHashesNormalBytes() {
+        val fixture = fixture()
+        val seeder = engine()
+        val source = added(seeder.addStopped(fixture.torrent, fixture.root.parentFile))
+        assertEquals(LocalCommandOutcome.VERIFIED, seeder.resume(source.infoHash).outcome)
+        waitFor { seeder.status(source.infoHash)?.state == LocalTransferState.SEEDING }
+
+        val destination = temp.newFolder("checked-normal-start")
+        val leecher = engine()
+        val checked = added(leecher.addStoppedChecked(fixture.torrent, destination,
+            listOf(InetSocketAddress("127.0.0.1", seeder.listenPort()))))
+        assertEquals(LocalCommandOutcome.VERIFIED, leecher.resume(checked.infoHash).outcome)
+        requireFlushed(leecher, checked.infoHash)
+        for ((name, bytes) in fixture.files) {
+            assertArrayEquals(name, bytes,
+                File(destination, "Chunks public fixture/$name").readBytes())
+        }
     }
 
     @Test fun refusesDuplicatesInvalidMetadataAndUnchosenFolders() {
@@ -378,6 +515,93 @@ class LocalTorrentEngineTest {
         assertEquals(setOf(wrongName.name, garbage.name), restarted.restoreProblems.toSet())
         assertTrue(wrongName.isFile && garbage.isFile)
         assertEquals("not bencode", garbage.readText())
+    }
+
+    private fun conflictingFixture(): Fixture {
+        val root = File(temp.newFolder("other-seed"), "Chunks public fixture")
+            .apply { mkdirs() }
+        val files = linkedMapOf(
+            "episode.bin" to ByteArray(1_300_000).also { Random(873).nextBytes(it) },
+            "extras/notes.txt" to "This different content yields another infohash".toByteArray()
+        )
+        for ((name, bytes) in files) {
+            File(root, name).apply { parentFile.mkdirs() }.writeBytes(bytes)
+        }
+        return Fixture(root,
+            TorrentBuilder().path(root).pieceSize(64 * 1024).generate().entry().bencode(),
+            files)
+    }
+
+    @Test fun metadataReadyMagnetCannotAutoStartOverStoppedCheckedJobReservation() {
+        val firstFixture = fixture()
+        val other = conflictingFixture()
+        val seeder = engine()
+        val seeded = added(seeder.addStopped(other.torrent, other.root.parentFile))
+        assertEquals(LocalCommandOutcome.VERIFIED, seeder.resume(seeded.infoHash).outcome)
+        waitFor { seeder.status(seeded.infoHash)?.state == LocalTransferState.SEEDING }
+
+        val target = engine()
+        val destination = temp.newFolder("checked-versus-magnet")
+        val existing = added(target.addStoppedChecked(firstFixture.torrent, destination))
+        assertTrue(existing.stopped)
+        assertFalse("The first job must have no backing bytes yet",
+            File(destination, "Chunks public fixture/episode.bin").exists())
+        val magnet = "magnet:?xt=urn:btih:" + seeded.infoHash
+        assertTrue(target.addMagnet(magnet, destination,
+            listOf(InetSocketAddress("127.0.0.1", seeder.listenPort())),
+            autoStartAfterMetadata = true) is LocalAddResult.FetchingMetadata)
+        waitFor {
+            target.status(seeded.infoHash)?.let { it.metadataKnown && it.stopped } == true
+        }
+        val blocked = requireNotNull(target.status(seeded.infoHash))
+        assertTrue("Collision refusal cannot unset upload-only", blocked.uploadOnly)
+        assertTrue("The second job must disclose the reservation collision",
+            blocked.error.orEmpty().contains("reserves"))
+        assertEquals(0L, blocked.payloadDownloadedBytes)
+        Thread.sleep(500)
+        assertFalse("No torrent may create competing backing bytes",
+            File(destination, "Chunks public fixture/episode.bin").exists())
+        assertFalse(File(destination, "Chunks public fixture/extras/notes.txt").exists())
+
+        // The checked job's native Remove is asynchronous, so its tombstone
+        // must continue to prohibit the second handle from starting.
+        assertTrue(target.removeKeepingData(existing.infoHash))
+        assertEquals(LocalCommandOutcome.REFUSED, target.resume(seeded.infoHash).outcome)
+        assertFalse(File(destination, "Chunks public fixture/episode.bin").exists())
+    }
+
+    @Test fun metadataReadyStoppedMagnetReservesEmptyPathsBeforeAnotherCheckedAdd() {
+        val firstFixture = fixture()
+        val other = conflictingFixture()
+        val seeder = engine()
+        val seeded = added(seeder.addStopped(firstFixture.torrent, firstFixture.root.parentFile))
+        assertEquals(LocalCommandOutcome.VERIFIED, seeder.resume(seeded.infoHash).outcome)
+        waitFor { seeder.status(seeded.infoHash)?.state == LocalTransferState.SEEDING }
+
+        val target = engine()
+        val destination = temp.newFolder("magnet-versus-checked")
+        assertTrue(target.addMagnet("magnet:?xt=urn:btih:" + seeded.infoHash,
+            destination, listOf(InetSocketAddress("127.0.0.1", seeder.listenPort())))
+            is LocalAddResult.FetchingMetadata)
+        waitFor {
+            target.status(seeded.infoHash)?.let { it.metadataKnown && it.stopped } == true
+        }
+        assertTrue(requireNotNull(target.status(seeded.infoHash)).uploadOnly)
+        val refused = target.addStoppedChecked(other.torrent, destination)
+        assertTrue("Metadata should reserve missing paths before checked Add: $refused",
+            refused is LocalAddResult.Refused)
+        assertTrue((refused as LocalAddResult.Refused).reason.contains("reserves"))
+        assertEquals(1, target.list().size)
+        assertFalse(File(destination, "Chunks public fixture/episode.bin").exists())
+
+        // The same magnet's explicit later Start is allowed to revalidate its
+        // *exact* reservation instead of treating itself as a foreign writer.
+        assertEquals(LocalCommandOutcome.VERIFIED, target.resume(seeded.infoHash).outcome)
+        requireFlushed(target, seeded.infoHash)
+        for ((name, bytes) in firstFixture.files) {
+            assertArrayEquals(name, bytes,
+                File(destination, "Chunks public fixture/$name").readBytes())
+        }
     }
 
     @Test fun magnetFetchesOnlyMetadataFromAPeerThenStopsUntilStarted() {

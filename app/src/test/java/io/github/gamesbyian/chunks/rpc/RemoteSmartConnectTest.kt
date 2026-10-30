@@ -222,6 +222,35 @@ class RemoteSmartConnectTest {
         }
     }
 
+    @Test fun rateLimitedConnectStopsBeforeTryingOtherEndpoints() = runBlocking {
+        for (message in listOf(
+            "rTorrent gateway returned HTTP 429",
+            "HTTP/1.1 429 Too Many Requests"
+        )) {
+            val attempted = mutableListOf<String>()
+            val failure = try {
+                RemoteSmartConnect.connect("custom.example", "user", "secret") { credentials ->
+                    attempted += credentials.endpoint
+                    throw IOException(message)
+                }
+                fail("Expected server rate limiting")
+                null
+            } catch (failed: RemoteSmartConnect.ConnectionFailed) { failed }
+            requireNotNull(failure)
+            assertEquals(RemoteSmartConnect.Category.RATE_LIMIT, failure.category)
+            assertEquals(1, failure.tested)
+            assertEquals(1, attempted.size)
+            assertEquals(listOf("Server is limiting connection attempts"),
+                failure.attempts.map { it.outcome })
+            assertEquals("Server rate limit reached (HTTP 429)",
+                RemoteSmartConnect.describe(IOException(message)))
+            val visible = failure.message.orEmpty() +
+                RemoteSmartConnect.repairAdvice(failure, "custom.example").joinToString()
+            assertFalse(visible.contains("secret"))
+            assertTrue(visible.contains("not automatically retry"))
+        }
+    }
+
     @Test fun boundedGenericHostnamePlanningDoesNotGuessOtherHostnames() {
         val candidates = RemoteSmartConnect.candidates("https://my-server.example/", "user")
         assertTrue(candidates.size <= 6)

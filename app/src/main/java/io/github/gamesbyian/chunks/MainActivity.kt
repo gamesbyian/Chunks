@@ -52,6 +52,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -168,6 +169,15 @@ private enum class Section(val label: String) {
     TRANSFERS("Transfers"), COMBINED("All environments"), PLACES("Places"), ORGANIZE("Organize"), SERVER("Server"), ARCHIVES("ZIP review"), CREATE("Create"), SEEDING("Seeding rules"), LOCAL("On this phone"), ADD("Add"), NAMES("Names"), SNAPSHOT("Inventory backup"), SNAPSHOT_INSPECT("Inspect backup")
 }
 
+// Only privacy-gated, non-mutating navigation is kept through Activity/process
+// recreation. No authenticated server, command, selected hash or Add draft is saved.
+private val SectionRestoreSaver = Saver<androidx.compose.runtime.MutableState<Section>, String>(
+    save = { NavigationRestorePolicy.restorableSection(it.value.name) },
+    restore = { saved ->
+        mutableStateOf(Section.valueOf(NavigationRestorePolicy.restorableSection(saved)))
+    }
+)
+
 @Composable
 private fun ChunksApp(
     sharedMagnet: String?,
@@ -212,7 +222,7 @@ private fun ChunksApp(
     var stale by remember { mutableStateOf(false) }
     var currentView by remember { mutableStateOf("main") }
     var requestedView by remember { mutableStateOf("main") }
-    var section by remember { mutableStateOf(Section.TRANSFERS) }
+    var section by rememberSaveable(saver = SectionRestoreSaver) { mutableStateOf(Section.TRANSFERS) }
     var query by remember { mutableStateOf("") }
     var filter by remember { mutableStateOf(TransferFilter.ALL) }
     var order by remember { mutableStateOf(TransferOrder.NAME) }
@@ -238,14 +248,30 @@ private fun ChunksApp(
     val aliasSessions = remember { mutableMapOf<String, TransferAliasEditSession>() }
     var aliasScope by remember { mutableStateOf("") }
     var aliasRevision by remember { mutableStateOf(0) }
-    // Give every known environment its lasting identity colour before any screen shows it.
-    remember(savedProfiles, aliasScope) {
-        runCatching {
-            EnvironmentColourStore(context).ensure(buildList {
-                add(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE)
-                io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverIdOfAliasScope(aliasScope)?.let { add(it) }
-                savedProfiles.forEach { add(io.github.gamesbyian.chunks.model.EnvironmentId(it.id)) }
-            }.distinct())
+    // Purely derive the configured identities during composition. SharedPreferences
+    // writes must happen after composition, off the main thread, and only when
+    // the identity set changes. A malformed legacy profile cannot block phone.
+    val paletteIdentities = remember(savedProfiles, aliasScope) {
+        buildList {
+            add(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE)
+            io.github.gamesbyian.chunks.model.EnvironmentSnapshots
+                .serverIdOfAliasScope(aliasScope)?.let { add(it) }
+            savedProfiles.forEach { profile ->
+                runCatching { io.github.gamesbyian.chunks.model.EnvironmentId(profile.id) }
+                    .getOrNull()?.let { add(it) }
+            }
+        }.distinct()
+    }
+    LaunchedEffect(context, paletteIdentities) {
+        try {
+            withContext(Dispatchers.IO) {
+                EnvironmentColourStore(context).ensure(paletteIdentities)
+            }
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            // The combined view has its own read/repair path. A failed preference
+            // write must never change server identity or block transfer controls.
         }
     }
     val sortStore = remember(context) { TransferListSortStore(context) }
@@ -783,7 +809,8 @@ private fun ChunksApp(
                 Notice("Refresh problem", error.orEmpty())
             }
             when (section) {
-                Section.TRANSFERS -> TransfersScreen(
+                Section.TRANSFERS -> RemoteEnvironmentCompositionBoundary(aliasScope, connectedRemote) {
+                    TransfersScreen(
                     remote = connectedRemote, onLifecycleSettled = settledRemoteMutation,
                     onMutationStarted = beginRemoteMutation,
                     aliasStore = aliasStore, aliasScope = aliasScope,
@@ -866,6 +893,7 @@ private fun ChunksApp(
                         }
                     }
                 )
+                }
                 Section.SNAPSHOT -> SnapshotInventoryExportScreen(
                     transfers = transfers, view = currentView,
                     snapshotRevision = snapshotRevision,
@@ -1196,7 +1224,7 @@ private fun ConnectionScreen(
                 onClick = onConnect,
                 enabled = !loading && endpoint.isNotBlank(),
                 shape = RoundedCornerShape(18.dp),
-                modifier = Modifier.fillMaxWidth().height(56.dp)
+                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
             ) { Text(if (loading) "Finding secure rTorrent…" else "Connect to rTorrent") }
         }
         item { ConnectionDiagnosticsPanel(diagnostics, loading, onCancelConnect) }
@@ -1289,16 +1317,10 @@ private fun TransfersScreen(
                 OutlinedButton(onClick = onCombined, modifier = Modifier.heightIn(min = 48.dp)) {
                     Text("All environments…")
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = onAdd, enabled = !loading && !stale,
-                        modifier = Modifier.weight(1f).height(52.dp)) {
-                        Text("+ Add torrent")
-                    }
-                    OutlinedButton(onClick = onRefresh, enabled = !loading,
-                        modifier = Modifier.height(52.dp)) {
-                        Text(if (loading) "Refreshing…" else "Refresh")
-                    }
-                }
+                RemoteTransfersPrimaryActions(
+                    loading = loading, stale = stale,
+                    onAdd = onAdd, onRefresh = onRefresh
+                )
                 val wideText = LocalDensity.current.fontScale >= 1.5f
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1389,21 +1411,16 @@ private fun TransfersScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 for (option in TransferFilter.entries) {
                     FilterChip(selected = filter == option, onClick = { onFilter(option) },
-                        label = { Text(option.label) }, modifier = Modifier.height(48.dp))
+                        label = { Text(option.label) }, modifier = Modifier.heightIn(min = 48.dp))
                 }
             }
         }
         item {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(visible.size.toString() + " shown", style = MaterialTheme.typography.titleMedium)
-                OutlinedButton(onClick = {
-                    val choices = TransferOrder.entries
-                    val next = choices[(choices.indexOf(order) + 1) % choices.size]
-                    onSort(next, next.naturalDirection)
-                }, modifier = Modifier.height(48.dp)) {
-                    Text("Sort: " + order.label)
-                }
-            }
+            RemoteTransfersSortSummary(visible.size, order.label, onCycleSort = {
+                val choices = TransferOrder.entries
+                val next = choices[(choices.indexOf(order) + 1) % choices.size]
+                onSort(next, next.naturalDirection)
+            })
         }
         item {
             TransferSortDirectionButton(
@@ -1577,6 +1594,7 @@ private fun TransfersScreen(
                         overflow = TextOverflow.Ellipsis)
                 }
             }
+            RemoteTransferCompositionBoundary(aliasScope, transfer.hash) {
             TransferCard(
                 remote = remote, stale = stale || loading, mainView = view == "main",
                 onMutationStarted = onMutationStarted,
@@ -1602,6 +1620,7 @@ private fun TransfersScreen(
                 moveScope = aliasScope,
                 finishInOrderScope = aliasScope
             )
+            }
             }
         }
         item { RemoteCapabilityPanel(remote) }
@@ -1812,7 +1831,7 @@ private fun PlacesScreen(list: List<RemoteTransfer>, onUsePlace: (String) -> Uni
                     Text(place.second.toString() + " transfers",
                         style = MaterialTheme.typography.bodySmall)
                     OutlinedButton(onClick = { onUsePlace(place.first) },
-                        modifier = Modifier.height(48.dp)) { Text("Use in Add preview") }
+                        modifier = Modifier.heightIn(min = 48.dp)) { Text("Use in Add preview") }
                 }
             }
         }
@@ -2025,7 +2044,7 @@ private fun ServerScreen(
                 for (view in listOf("main", "default", "started", "stopped")) {
                     FilterChip(selected = requestedView == view,
                         onClick = { onRequestedView(view) },
-                        label = { Text(view) }, modifier = Modifier.height(48.dp))
+                        label = { Text(view) }, modifier = Modifier.heightIn(min = 48.dp))
                 }
             }
         }
@@ -2035,7 +2054,7 @@ private fun ServerScreen(
                 style = MaterialTheme.typography.bodyMedium)
         }
         item {
-            Button(onClick = onRefresh, enabled = !loading, modifier = Modifier.fillMaxWidth().height(54.dp)) {
+            Button(onClick = onRefresh, enabled = !loading, modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp)) {
                 Text(if (loading) "Refreshing…" else "Load selected view")
             }
         }
@@ -2053,7 +2072,7 @@ private fun ServerScreen(
             }
         }
         item {
-            OutlinedButton(onClick = onDisconnect, modifier = Modifier.fillMaxWidth().height(54.dp)) {
+            OutlinedButton(onClick = onDisconnect, modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp)) {
                 Text("Disconnect")
             }
         }

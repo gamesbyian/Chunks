@@ -45,13 +45,14 @@ object RemoteSmartConnect {
         when (category) {
             Category.AUTH -> "Login rejected. Check the username/password for this rTorrent instance."
             Category.PROXY -> "A network proxy requires separate authentication (HTTP 407). Chunks stopped endpoint discovery."
+            Category.RATE_LIMIT -> "The server is limiting connection attempts (HTTP 429). Chunks stopped checking addresses to protect your login."
             Category.TLS -> "Secure connection failed. Check the HTTPS hostname/certificate. Chunks will not bypass TLS."
             Category.NETWORK -> "The server is unreachable or did not respond. Check its address and network."
             Category.ENDPOINT -> "No compatible rTorrent XML-RPC endpoint was verified. Paste the complete ruTorrent URL, or enter your provider's exact RPC path under Advanced connection settings."
         }
     )
 
-    enum class Category { AUTH, PROXY, TLS, NETWORK, ENDPOINT }
+    enum class Category { AUTH, PROXY, RATE_LIMIT, TLS, NETWORK, ENDPOINT }
 
     /** Targeted next steps for a failed connection; never echoes secrets. */
     fun repairAdvice(failure: ConnectionFailed, input: String): List<String> {
@@ -59,6 +60,9 @@ object RemoteSmartConnect {
             URI(input.trim()).rawPath.orEmpty().trim('/').isNotEmpty()
         } catch (_: Exception) { false }
         return when (failure.category) {
+            Category.RATE_LIMIT -> listOf(
+                "The server asked Chunks to stop making connection attempts.",
+                "Check the provider status or try connecting later; Chunks will not automatically retry with your credentials.")
             Category.PROXY -> listOf(
                 "Check whether your network, VPN or company proxy requires separate sign-in.",
                 "A proxy login cannot be fixed by guessing rTorrent paths or changing the seedbox password.")
@@ -92,6 +96,7 @@ object RemoteSmartConnect {
             status == 404 -> "No rTorrent gateway here (HTTP 404)"
             status == 401 || status == 403 -> "Login refused (HTTP $status)"
             status == 407 -> "Network proxy authentication required (HTTP 407)"
+            status == 429 -> "Server rate limit reached (HTTP 429)"
             status in 300..399 -> "Redirected (HTTP $status); Chunks does not follow redirects with your login"
             status != null -> "Server error (HTTP $status)"
             failure is RpcReplyTooLarge -> "Answered with an unexpectedly large reply"
@@ -229,6 +234,9 @@ object RemoteSmartConnect {
                     failure is UnknownHostException || failure is ConnectException ||
                         failure is SocketTimeoutException || failure is NoRouteToHostException -> Category.NETWORK
                     failure is IOException &&
+                        Regex("(?i)HTTP(?:/\\d+(?:\\.\\d+)?)?\\s+429(?:\\D|$)")
+                            .containsMatchIn(failure.message.orEmpty()) -> Category.RATE_LIMIT
+                    failure is IOException &&
                         Regex("(?i)HTTP(?:/\\d+(?:\\.\\d+)?)?\\s+407(?:\\D|$)")
                             .containsMatchIn(failure.message.orEmpty()) -> Category.PROXY
                     failure is IOException &&
@@ -244,6 +252,7 @@ object RemoteSmartConnect {
                     Category.ENDPOINT -> describe(failure)
                     Category.AUTH -> "Login refused"
                     Category.PROXY -> "Network proxy requires sign-in"
+                    Category.RATE_LIMIT -> "Server is limiting connection attempts"
                     Category.TLS -> "Secure connection failed"
                     Category.NETWORK -> "Unreachable"
                 })
