@@ -290,6 +290,13 @@ bool OwnedPayloadFile::Reserve(
   Fd receipt_fd(::open(receipts.c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC));
   if (root_fd.v < 0 || receipt_fd.v < 0)
     return Fail(error, "Prospective payload or receipt root inaccessible");
+  // A previously completed physical claim must never be downgraded to a
+  // fresh zero-progress reservation after the file disappeared or was moved.
+  // Existing data recovery is a separate explicit verify/adopt operation.
+  struct stat committed{};
+  if (::fstatat(receipt_fd.v, id.c_str(), &committed, AT_SYMLINK_NOFOLLOW) == 0 ||
+      errno != ENOENT)
+    return Fail(error, "Previously published ownership may not be re-reserved");
   struct stat rs{}, ps{}, foreign{};
   if (!GetDirectory(root_fd.v, &rs)) return Fail(error, "Invalid prospective root");
   Fd parent;
