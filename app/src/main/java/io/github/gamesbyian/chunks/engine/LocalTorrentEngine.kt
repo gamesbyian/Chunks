@@ -163,6 +163,10 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     private data class CheckedFirstStart(val saveDirectory: File, val paths: List<String>)
     private val checkedFirstStarts = ConcurrentHashMap<String, CheckedFirstStart>()
     private val checkedStartProblems = ConcurrentHashMap<String, String>()
+    // A different stopped checked job may target the same EMPTY native paths.
+    // Reserve declared paths through Start/Stop, not just until the first Start.
+    // This in-session exclusion is NOT a durable native ownership boundary.
+    private val checkedPayloadReservations = LocalCheckedPayloadReservations()
     // Metadata-ready upload-only magnets are intentionally persisted paused;
     // native UPLOAD_MODE remains their durable don't-write-payload marker.
     // The next explicit Start rechecks paths, including after process restart.
@@ -393,15 +397,27 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         // Register BEFORE native Add. A failed resume-file fsync may throw after
         // libtorrent registered a stopped handle: the UI can still discover it.
         // That partially admitted handle must never evade the first-Start fence.
+        when (val reservation = checkedPayloadReservations.reserve(key, saveDirectory, paths)) {
+            LocalCheckedPayloadReservations.Result.Reserved -> Unit
+            is LocalCheckedPayloadReservations.Result.Refused ->
+                return LocalAddResult.Refused(reservation.problem + ". Nothing added.")
+        }
         val admission = CheckedFirstStart(saveDirectory, paths)
         checkedFirstStarts[key] = admission
         try {
             val added = addStopped(torrentBytes, saveDirectory, peers)
-            if (added !is LocalAddResult.AddedStopped && !handles.containsKey(key))
+            if (added !is LocalAddResult.AddedStopped && !handles.containsKey(key)) {
                 checkedFirstStarts.remove(key, admission)
+                checkedPayloadReservations.release(key)
+            }
             return added
         } catch (failure: Exception) {
-            if (!handles.containsKey(key)) checkedFirstStarts.remove(key, admission)
+            // A failed resume write can leave a real native handle registered.
+            // Retain BOTH fences unless the native job is definitely absent.
+            if (!handles.containsKey(key)) {
+                checkedFirstStarts.remove(key, admission)
+                checkedPayloadReservations.release(key)
+            }
             throw failure
         }
     }
@@ -1133,6 +1149,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         magnetCollisionProblems.remove(key)
         checkedFirstStarts.remove(key)
         checkedStartProblems.remove(key)
+        checkedPayloadReservations.release(key)
         pendingFlushes.cancel(key, handle)
         pendingSaves.cancel(key, handle)
         val saved = config.stateDirectory?.let { File(it, "$key.resume") } ?: return true
@@ -1233,6 +1250,8 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         magnetCollisionProblems.clear()
         checkedFirstStarts.clear()
         checkedStartProblems.clear()
+        // The session no longer contains native writers once stop returns.
+        checkedPayloadReservations.clear()
         session.stop()
         started = false
     }
