@@ -141,7 +141,10 @@ class NativeDisk final : public lt::disk_interface, public lt::buffer_allocator_
         if (!problem.ec && !state.storage) {
           state.refusal = reason;
           problem = Denied(lt::operation_t::file_open);
-        } else state.checked = true;
+        }
+        // A rejected claim must never transition the native torrent into
+        // "checked" state, even if callbacks later repeat this operation.
+        if (!problem.ec && state.storage) state.checked = true;
       }
     }
     auto status = problem.ec ? lt::disk_status::fatal_disk_error
