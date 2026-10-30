@@ -239,43 +239,52 @@ class NativeDisk final : public lt::disk_interface, public lt::buffer_allocator_
       lt::span<lt::sha256_hash> v2, lt::disk_job_flags_t,
       std::function<void(lt::piece_index_t, lt::sha1_hash const&,
                          lt::storage_error const&)> callback) override {
-    auto& state = *torrents_[index];
-    lt::sha1_hash result{};
-    lt::storage_error problem;
-    std::string reason;
-    auto const piece_length = state.files.piece_length();
-    auto const total = state.files.total_size();
-    auto const start = std::int64_t(static_cast<int>(piece)) * piece_length;
-    if (!state.checked || start < 0 || start >= total) {
-      problem = Denied(lt::operation_t::file_read);
-    } else {
-      int const length = static_cast<int>(std::min<std::int64_t>(piece_length, total - start));
-      auto const blocks = (length + lt::default_block_size - 1) / lt::default_block_size;
-      if (!v2.empty() && static_cast<int>(v2.size()) < blocks) {
+    auto state = torrents_[index];
+    auto failure = [this, piece, callback] {
+      auto denied = Denied(lt::operation_t::file_read);
+      boost::asio::post(io_, [piece, callback, denied] {
+        callback(piece, lt::sha1_hash{}, denied);
+      });
+    };
+    if (!queue_.Submit([this, state, piece, v2, callback] {
+      lt::sha1_hash result{};
+      lt::storage_error problem;
+      std::string reason;
+      auto const piece_length = state ? state->files.piece_length() : 0;
+      auto const total = state ? state->files.total_size() : 0;
+      auto const start = std::int64_t(static_cast<int>(piece)) * piece_length;
+      if (!state || !state->checked || !state->refusal.empty() ||
+          start < 0 || start >= total || piece_length <= 0) {
         problem = Denied(lt::operation_t::file_read);
       } else {
-        lt::hasher sha;
-        std::vector<char> block(lt::default_block_size);
-        for (int offset=0, part=0; offset < length; offset += lt::default_block_size, ++part) {
-          int const count = std::min(lt::default_block_size, length - offset);
-          if (!state.storage->ReadRange(static_cast<std::uint64_t>(start + offset),
-                                        block.data(), static_cast<std::size_t>(count), &reason)) {
-            problem = Denied(lt::operation_t::file_read);
-            break;
+        int const length = static_cast<int>(std::min<std::int64_t>(piece_length, total - start));
+        auto const blocks = (length + lt::default_block_size - 1) / lt::default_block_size;
+        if (!v2.empty() && static_cast<int>(v2.size()) < blocks) {
+          problem = Denied(lt::operation_t::file_read);
+        } else {
+          lt::hasher sha;
+          std::vector<char> block(lt::default_block_size);
+          for (int offset=0, part=0; offset < length; offset += lt::default_block_size, ++part) {
+            int const count = std::min(lt::default_block_size, length - offset);
+            if (!state->storage->ReadRange(static_cast<std::uint64_t>(start + offset),
+                                           block.data(), static_cast<std::size_t>(count), &reason)) {
+              problem = Denied(lt::operation_t::file_read);
+              break;
+            }
+            sha.update({block.data(), count});
+            if (!v2.empty()) {
+              lt::hasher256 h;
+              h.update({block.data(), count});
+              v2[part] = h.final();
+            }
           }
-          sha.update({block.data(), count});
-          if (!v2.empty()) {
-            lt::hasher256 h;
-            h.update({block.data(), count});
-            v2[part] = h.final();
-          }
+          if (!problem.ec) result = sha.final();
         }
-        if (!problem.ec) result = sha.final();
       }
-    }
-    boost::asio::post(io_, [callback, piece, result, problem] {
-      callback(piece, result, problem);
-    });
+      boost::asio::post(io_, [callback, piece, result, problem] {
+        callback(piece, result, problem);
+      });
+    }, failure)) failure();
   }
 
   void async_hash2(lt::storage_index_t index, lt::piece_index_t piece,
