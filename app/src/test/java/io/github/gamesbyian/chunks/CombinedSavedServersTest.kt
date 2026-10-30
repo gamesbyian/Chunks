@@ -68,14 +68,19 @@ class CombinedSavedServersTest {
 
     @Test fun lateReadFromPreviousAccountCannotPublishIntoReconfiguredServerSlot() {
         CombinedViewPreferences(androidx.test.core.app.ApplicationProvider
-            .getApplicationContext()).save(io.github.gamesbyian.chunks.model.UnifiedTransferQuery())
+            .getApplicationContext<android.content.Context>()).save(io.github.gamesbyian.chunks.model.UnifiedTransferQuery())
         val sameSlot = id(scopeA)
         val pending = kotlinx.coroutines.CompletableDeferred<List<RemoteTransfer>>()
         val entered = java.util.concurrent.atomic.AtomicInteger(0)
+        val oldCompleted = java.util.concurrent.atomic.AtomicInteger(0)
         var current by androidx.compose.runtime.mutableStateOf(
             CombinedSavedProfile(sameSlot, "Account slot", scopeA) {
                 entered.incrementAndGet()
-                pending.await()
+                try {
+                    pending.await()
+                } finally {
+                    oldCompleted.incrementAndGet()
+                }
             }
         )
         val newReads = java.util.concurrent.atomic.AtomicInteger(0)
@@ -101,6 +106,7 @@ class CombinedSavedServersTest {
         rule.waitForIdle()
         pending.complete(listOf(RemoteTransfer("a".repeat(40),
             "Old account private payload", 100, 100, true, "/old")))
+        rule.waitUntil(5_000) { oldCompleted.get() == 1 }
         // A stale completion may finish on another dispatcher. Even after it
         // has had time to return, the view stays unconnected to account A.
         rule.waitUntil(5_000) {
