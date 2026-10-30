@@ -135,7 +135,7 @@ jobs:
           # Android crypto must later use the pinned target OpenSSL build.
           for target in aarch64-linux-android29 x86_64-linux-android29; do
             "$llvm/$target-clang++" -std=c++17 -Wall -Wextra -Werror -pedantic \
-              -fsyntax-only -DTORRENT_ABI_VERSION=4 -DTORRENT_USE_OPENSSL=0 \
+              -fsyntax-only -DTORRENT_ABI_VERSION=4 \
               -I "$RUNNER_TEMP/chunks-libtorrent/include" \
               -I "$RUNNER_TEMP/chunks-boost-includes" \
               experiments/native-owned-writer/bridge/owned_libtorrent_disk.cc
