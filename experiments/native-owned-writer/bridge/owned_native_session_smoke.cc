@@ -267,8 +267,52 @@ void exerciseLoopbackTransfer() {
   CHECK(static_cast<bool>(payload));
   const std::string received{std::istreambuf_iterator<char>(payload), {}};
   CHECK(received == expected);
+  payload.close();
   std::cout << "CHUNKS_OWNED_LOOPBACK_TRANSFER=PASS size="
             << received.size() << "\n";
+
+  // Fully received ownership is not transferable to a newly planted file
+  // with the same relative pathname. Preserve the original real payload at
+  // a new name, replace its old name with unrelated same-size bytes, then
+  // start an actual second native session against the durable receipts.
+  fs::rename(box.public_root / "probe.bin",
+             box.public_root / "original-owned-preserved.bin");
+  const std::string foreign(expected.size(), 'F');
+  {
+    std::ofstream planted(box.public_root / "probe.bin", std::ios::binary);
+    CHECK(static_cast<bool>(planted));
+    planted.write(foreign.data(), static_cast<std::streamsize>(foreign.size()));
+    CHECK(static_cast<bool>(planted));
+  }
+  {
+    lt::session_params restarted(download_settings);
+    restarted.disk_io_constructor =
+        chunks::MakeOwnedDiskConstructor(box.receipts.string());
+    lt::session second(restarted);
+    auto revived = lt::load_torrent_buffer(
+        {torrent_bytes.data(), static_cast<std::ptrdiff_t>(torrent_bytes.size())});
+    revived.save_path = box.public_root.string();
+    revived.flags |= lt::torrent_flags::paused;
+    revived.flags &= ~lt::torrent_flags::auto_managed;
+    auto handle = second.add_torrent(std::move(revived), ec);
+    CHECK(!ec && handle.is_valid());
+    bool refused = false;
+    for (int i = 0; i < 150; ++i) {
+      if (handle.status().errc) { refused = true; break; }
+      std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    }
+    CHECK(refused);
+  }
+  std::ifstream planted(box.public_root / "probe.bin", std::ios::binary);
+  CHECK(static_cast<bool>(planted));
+  const std::string after{std::istreambuf_iterator<char>(planted), {}};
+  CHECK(after == foreign);
+  std::ifstream original(box.public_root / "original-owned-preserved.bin",
+                         std::ios::binary);
+  CHECK(static_cast<bool>(original));
+  const std::string preserved{std::istreambuf_iterator<char>(original), {}};
+  CHECK(preserved == expected);
+  std::cout << "CHUNKS_OWNED_RESTARTED_COMPLETED_COLLISION=PASS\n";
 }
 
 int main(int argc, char** argv) {
@@ -281,5 +325,5 @@ int main(int argc, char** argv) {
   exercise(true);
   exerciseLoopbackTransfer();
   exerciseRestartedPendingCollision();
-  std::cout << "CHUNKS_REAL_LIBTORRENT_HOST_SESSION=PASS cases=4\n";
+  std::cout << "CHUNKS_REAL_LIBTORRENT_HOST_SESSION=PASS cases=5\n";
 }
