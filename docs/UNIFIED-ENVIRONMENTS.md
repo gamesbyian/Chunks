@@ -104,7 +104,7 @@ The server label comes from the authenticated alias scope via the same address f
 - **Sources:** the phone engine, but only if it is already running in this process (the view never starts it); the signed-in server's latest accepted list; and every other saved profile, shown as *Not connected* with no rows. Identity is `phone` or the saved profile ID.
 - **List behavior:** multi-select view scope (All, one or several), search, six reversible sort keys with unknowns last, and *Group by environment* with one shared sort. Scope, sort, direction and grouping persist across restart; search text is not saved.
 - **Status:** each source shows Live, Out of date, Not connected or Locked.
-- **Privacy:** each environment's own privacy lock is respected, and the window is secured while protected rows are shown.
+- **Privacy:** each environment's own privacy lock is respected, and the window is secured while protected rows are shown. Load exact-scope privacy policy modes off the Compose thread; while a policy read is pending/failed/stale after account, foreground or saved-mode changes, lock the affected combined view instead of assuming opt-out. Saved server listing/alias authorization requires that the authenticated account+instance reconstruct exactly the saved environment ID. If mismatched, show a reconnect warning, never fetch/display private rows under the old profile, and do not borrow another account's session grant.
 - **Rows:** each row has a text environment label and a decorative rail.
 
 **Cross-environment Start/Stop (PARTIAL).** *Select…* enables an explicit row selection, counting selections hidden by the current view.
