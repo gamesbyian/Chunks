@@ -271,7 +271,8 @@ std::unique_ptr<OwnedPayloadFile> OwnedPayloadFile::OpenImpl(
     if (saved.commitment != record.commitment ||
         saved.relative_path != record.relative_path || saved.root_dev != record.root_dev ||
         saved.root_ino != record.root_ino || saved.parent_dev != record.parent_dev ||
-        saved.parent_ino != record.parent_ino || saved.dev != record.dev || saved.ino != record.ino)
+        saved.parent_ino != record.parent_ino || saved.dev != record.dev ||
+        saved.ino != record.ino || saved.owner_token != record.owner_token)
       return reject("Payload identity differs from durable ownership receipt");
   }
   std::unique_ptr<OwnedPayloadFile> opened(new OwnedPayloadFile(root_fd.release(),
