@@ -34,6 +34,21 @@ class EnvironmentCapabilitiesTest {
         }
     }
 
+    @Test fun forgedBuildFactsAndServerAdvertisementsCannotAuthorizeWrongEngine() {
+        val borrowedPhone = EnvironmentCapabilitySnapshot(serverA, "phone engine", 10,
+            mapOf(EnvironmentOperation.START_STOP to CapabilityEvidence.BUILT_IN))
+        val fakeRemote = EnvironmentCapabilitySnapshot(EnvironmentSnapshots.PHONE, "rTorrent test", 10,
+            mapOf(EnvironmentOperation.START_STOP to CapabilityEvidence.ADVERTISED))
+        for (snapshot in listOf(borrowedPhone, fakeRemote)) {
+            val decision = snapshot.decide(EnvironmentOperation.START_STOP, EnvironmentAvailability.LIVE)
+            assertFalse(decision.allowed)
+            assertTrue(decision.explanation.contains("engine"))
+        }
+        val ordinaryServer = EnvironmentCapabilities.fromProbe(serverA,
+            RemoteProbe("0.9.8", all), 10)
+        assertTrue(ordinaryServer.decide(EnvironmentOperation.START_STOP, EnvironmentAvailability.LIVE).allowed)
+    }
+
     @Test fun eachServerIsGradedFromItsOwnProbeOnly() {
         val a = EnvironmentCapabilities.fromProbe(serverA, RemoteProbe("0.9.8", all - "d.erase"), 5)
         val b = EnvironmentCapabilities.fromProbe(serverB, RemoteProbe("0.15.1", all), 6)
