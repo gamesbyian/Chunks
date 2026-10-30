@@ -206,7 +206,14 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         val minimum = MINIMUM_FIELDS
         val extended = EXTENDED_FIELDS
         val hashes = readViewIdentities(view)
-        if (hashes.isEmpty()) return emptyList()
+        if (hashes.isEmpty()) {
+            // Even an empty first read is not a stable snapshot: a server
+            // could add a transfer before the paged fallback returns.
+            check(readViewIdentities(view).isEmpty()) {
+                "rTorrent view membership changed during paged read; refresh"
+            }
+            return emptyList()
+        }
 
         fun getters(fields: List<String>) = fields.map { it.removeSuffix("=") }
         val rich = try {
