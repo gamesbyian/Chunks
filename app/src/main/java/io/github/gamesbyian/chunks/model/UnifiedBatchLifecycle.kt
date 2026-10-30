@@ -13,7 +13,7 @@ import kotlinx.coroutines.CancellationException
 enum class CommandEvidence { VERIFIED, ALREADY_SATISFIED, ACKNOWLEDGED, REFUSED, UNCERTAIN, NOT_ATTEMPTED }
 
 /** Engine-neutral reply from an environment's existing guarded adapter. */
-enum class LifecycleReply { VERIFIED, ACKNOWLEDGED, UNCERTAIN, NOT_FOUND }
+enum class LifecycleReply { VERIFIED, ACKNOWLEDGED, REFUSED, UNCERTAIN, NOT_FOUND }
 
 /**
  * Reviewed Start/Stop over an explicit cross-environment selection.
@@ -42,7 +42,7 @@ object UnifiedBatchLifecycle {
     data class Report(
         val start: Boolean,
         val environments: List<EnvironmentReport>,
-        /** The item whose command left the batch uncertain, if any. */
+        /** First rejected/uncertain executed command that halted later items. */
         val haltedOn: UnifiedTransferKey?
     ) {
         val items: List<ItemResult> get() = environments.flatMap { it.items }
@@ -106,6 +106,11 @@ object UnifiedBatchLifecycle {
             when (reply) {
                 LifecycleReply.VERIFIED -> out += ItemResult(target.key, CommandEvidence.VERIFIED)
                 LifecycleReply.ACKNOWLEDGED -> out += ItemResult(target.key, CommandEvidence.ACKNOWLEDGED)
+                LifecycleReply.REFUSED -> {
+                    out += ItemResult(target.key, CommandEvidence.REFUSED,
+                        "Engine refused this change; inspect the transfer's storage warning")
+                    halted = target.key
+                }
                 LifecycleReply.NOT_FOUND -> {
                     out += ItemResult(target.key, CommandEvidence.REFUSED, "No longer in this environment")
                 }
@@ -138,6 +143,7 @@ object UnifiedBatchLifecycle {
 /** Maps the phone engine's readback outcome without upgrading it. */
 fun LocalCommandOutcome.toLifecycleReply(): LifecycleReply = when (this) {
     LocalCommandOutcome.VERIFIED -> LifecycleReply.VERIFIED
+    LocalCommandOutcome.REFUSED -> LifecycleReply.REFUSED
     LocalCommandOutcome.UNCERTAIN -> LifecycleReply.UNCERTAIN
     LocalCommandOutcome.NOT_FOUND -> LifecycleReply.NOT_FOUND
 }
@@ -168,6 +174,9 @@ fun UnifiedBatchLifecycle.Report.describe(label: (EnvironmentId) -> String): Lis
         }
         label(env.environment) + ": " + parts.joinToString(", ") + "."
     }
-    return if (haltedOn != null) lines + ("Stopped early: one result was uncertain. Refresh each list " +
-        "before trying again; nothing was retried.") else lines
+    val haltedEvidence = items.firstOrNull { it.key == haltedOn }?.evidence
+    return if (haltedOn == null) lines else if (haltedEvidence == CommandEvidence.REFUSED)
+        lines + "Stopped early: one requested change was explicitly refused. Inspect the transfer's storage warning; nothing was retried."
+    else lines + ("Stopped early: one result was uncertain. Refresh each list " +
+        "before trying again; nothing was retried.")
 }

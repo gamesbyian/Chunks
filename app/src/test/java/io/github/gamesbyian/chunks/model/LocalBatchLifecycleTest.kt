@@ -23,7 +23,7 @@ class LocalBatchLifecycleTest {
 
     @Test fun uncertainNotFoundOrFailureHaltWithoutRetry() {
         for (bad in listOf<() -> LocalCommandOutcome>({ LocalCommandOutcome.UNCERTAIN },
-            { LocalCommandOutcome.NOT_FOUND }, { error("jni") })) {
+            { LocalCommandOutcome.REFUSED }, { LocalCommandOutcome.NOT_FOUND }, { error("jni") })) {
             val calls = ArrayList<String>()
             val report = LocalBatchLifecycle.run(listOf(t('a', false), t('b', false), t('c', false)), false) { h, _ ->
                 calls += h
@@ -34,6 +34,16 @@ class LocalBatchLifecycleTest {
             assertEquals(1, report.notAttempted)
             assertTrue(LocalBatchLifecycle.describe(report).contains("Halted"))
         }
+    }
+
+    @Test fun knownRefusalStopsBatchWithoutMarkingCommandUncertain() {
+        val report = LocalBatchLifecycle.run(listOf(t('a', true), t('b', true)), true) { _, _ ->
+            LocalCommandOutcome.REFUSED
+        }
+        assertEquals(LocalCommandOutcome.REFUSED, report.haltedOutcome)
+        assertEquals(0, report.verified)
+        assertEquals(1, report.notAttempted)
+        assertTrue(LocalBatchLifecycle.describe(report).contains("refused Start"))
     }
 
     @Test fun invalidBatchesRunNothing() {

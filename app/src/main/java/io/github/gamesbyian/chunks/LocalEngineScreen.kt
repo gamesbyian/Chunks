@@ -917,6 +917,8 @@ internal fun LocalEngineScreen(
                                     if (serviceOk) "Added and started. Check peer availability and downloaded bytes in the transfer list."
                                     else "Added and started, but Android refused background service. Keep Chunks open."
                                 }
+                                LocalCommandOutcome.REFUSED ->
+                                    "Added stopped, but Start was refused because the destination contains unreviewed files. Inspect the storage warning and choose a safe destination."
                                 LocalCommandOutcome.UNCERTAIN -> {
                                     inventoryFrame = inventoryFrame.copy(stale = true)
                                     "Added, but Start was not confirmed. Check the next phone transfer list before trying again."
@@ -1333,13 +1335,16 @@ internal fun LocalEngineScreen(
                                 if (transfer.stopped) engine.resume(transfer.infoHash) else engine.pause(transfer.infoHash)
                             }
                             var serviceProblem: String? = null
-                            if (transfer.stopped && outcome.outcome != LocalCommandOutcome.NOT_FOUND) {
+                            if (transfer.stopped && outcome.outcome in setOf(
+                                    LocalCommandOutcome.VERIFIED, LocalCommandOutcome.UNCERTAIN)) {
                                 try { LocalEngineService.start(context) } catch (_: Exception) {
                                     serviceProblem = "Android did not allow background running; keep Chunks open."
                                 }
                             }
                             message = when (outcome.outcome) {
                                 LocalCommandOutcome.VERIFIED -> serviceProblem
+                                LocalCommandOutcome.REFUSED ->
+                                    "Start was refused: unreviewed destination files may be overwritten. Inspect the transfer's storage warning; no Start was issued."
                                 LocalCommandOutcome.UNCERTAIN -> {
                                     inventoryFrame = inventoryFrame.copy(stale = true)
                                     "The engine has not confirmed the change yet. Wait for fresh status before trying again."
@@ -1374,6 +1379,7 @@ internal fun LocalEngineScreen(
                             }
                             message = when (outcome) {
                                 LocalCommandOutcome.VERIFIED -> null
+                                LocalCommandOutcome.REFUSED -> "File selection was refused. Inspect the transfer before changing files."
                                 LocalCommandOutcome.NOT_FOUND -> "This transfer or file is no longer available."
                                 LocalCommandOutcome.UNCERTAIN -> "File selection is unconfirmed. Wait for fresh status before trying again."
                             }

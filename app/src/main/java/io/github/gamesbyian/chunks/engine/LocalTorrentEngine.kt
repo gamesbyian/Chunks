@@ -118,8 +118,8 @@ data class LocalRateLimits(val downloadBytesPerSecond: Int = 0, val uploadBytesP
     }
 }
 
-/** libtorrent applies pause/resume asynchronously; only a matching readback is VERIFIED. */
-enum class LocalCommandOutcome { VERIFIED, UNCERTAIN, NOT_FOUND }
+/** Native lifecycle outcomes: verified state, explicit preflight refusal, uncertain mutation, or absence. */
+enum class LocalCommandOutcome { VERIFIED, REFUSED, UNCERTAIN, NOT_FOUND }
 
 data class LocalCommandResult(val outcome: LocalCommandOutcome, val status: LocalTransferStatus?)
 
@@ -155,6 +155,10 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     private val awaitingMetadata: MutableSet<String> = ConcurrentHashMap.newKeySet()
     /** Explicit Add-and-start consent while magnet metadata is still unresolved. */
     private val startWhenMetadataArrives: MutableSet<String> = ConcurrentHashMap.newKeySet()
+    private val magnetCollisionProblems = ConcurrentHashMap<String, String>()
+    // Metadata-ready upload-only magnets are intentionally persisted paused;
+    // native UPLOAD_MODE remains their durable don't-write-payload marker.
+    // The next explicit Start rechecks paths, including after process restart.
 
     private val engineListener = object : AlertListener {
         override fun types() = intArrayOf(AlertType.SAVE_RESUME_DATA.swig(),
@@ -171,12 +175,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                 // Metadata discovery uses upload-only mode, never payload pieces.
                 // A prior reviewed Add-and-start permits downloading AFTER the
                 // metadata arrives. Otherwise stop and require manual Start.
-                if (awaitingMetadata.remove(key)) {
-                    val startAfterMetadata = startWhenMetadataArrives.remove(key)
-                    if (!startAfterMetadata) handle.pause()
-                    handle.unsetFlags(org.libtorrent4j.TorrentFlags.UPLOAD_MODE)
-                    if (startAfterMetadata) handle.resume()
-                }
+                transitionMagnetMetadata(key, handle)
                 return
             }
             var persisted = false
@@ -198,6 +197,71 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                 // dispatcher or overwrite the previous verified resume file.
             } finally {
                 pendingSaves.complete(key, handle, persisted)
+            }
+        }
+    }
+
+    /**
+     * Metadata-ready magnets must prove their prospective destination paths
+     * are free of unreviewed files BEFORE leaving UPLOAD_MODE. A blocked
+     * magnet can retry after the user clears the conflicting file.
+     */
+    private fun transitionMagnetMetadata(key: String, handle: TorrentHandle) {
+        // The alert dispatcher must never acquire the engine monitor: close()
+        // holds it while joining that dispatcher. Share only the handle lock
+        // with command submission and handle retirement (engine -> handles).
+        synchronized(handles) {
+            if (!started || handles[key] != handle || !handle.isValid || !awaitingMetadata.remove(key)) return
+            val autoStart = startWhenMetadataArrives.remove(key)
+            val problem = inspectMagnetCollision(handle)
+            if (problem != null) magnetCollisionProblems[key] = problem
+            else magnetCollisionProblems.remove(key)
+            if (problem != null || !autoStart) {
+                // Don't clear UPLOAD_MODE while the native pause is still
+                // asynchronous. A paused magnet can persist and be revived
+                // only by a *fresh* path survey on explicit Start.
+                handle.pause()
+            } else {
+                handle.unsetFlags(org.libtorrent4j.TorrentFlags.UPLOAD_MODE)
+                handle.resume()
+            }
+            requestMetadataResumeSave(key, handle)
+        }
+    }
+
+    private fun inspectMagnetCollision(handle: TorrentHandle): String? {
+        val paths = try {
+            val info = handle.torrentFile() ?: return "Metadata file layout is unavailable"
+            val files = info.files()
+            val count = files.numFiles()
+            if (!LocalPayloadCollisionSurvey.supportsNativeFileCount(count))
+                return "Torrent payload path count is unsupported"
+            (0 until count).asSequence()
+                .filterNot { files.padFileAt(it) }.map { files.filePath(it) }.toList()
+        } catch (_: Exception) { return "Torrent file layout cannot be inspected" }
+        if (paths.isEmpty()) return "Torrent has no inspectable payload files"
+        return when (val survey = LocalPayloadCollisionSurvey.inspect(File(handle.savePath()), paths)) {
+            is LocalPayloadCollisionSurvey.Result.ClearAtObservation -> null
+            is LocalPayloadCollisionSurvey.Result.ExistingPaths ->
+                "Existing files conflict with this magnet (" + survey.total +
+                    " path(s)); choose a clean destination or review existing data"
+            is LocalPayloadCollisionSurvey.Result.Unknown ->
+                "Cannot verify magnet payload paths: " + survey.problem
+        }
+    }
+
+    /**
+     * Request a non-blocking resume snapshot as soon as magnet metadata exists.
+     * The initial Add/metadata callback ordering is asynchronous; both entry
+     * points call this, and pendingSaves coalesces duplicates for this handle.
+     * Serialize registration against Remove/Close but NEVER await an alert here.
+     */
+    private fun requestMetadataResumeSave(key: String, handle: TorrentHandle) {
+        if (config.stateDirectory == null) return
+        synchronized(handles) {
+            if (!started || handles[key] != handle || !handle.isValid) return
+            pendingSaves.acquire(key, handle) {
+                handle.saveResumeData(TorrentHandle.SAVE_INFO_DICT)
             }
         }
     }
@@ -296,7 +360,10 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             return LocalAddResult.Refused("Torrent metadata is invalid")
         val paths = try {
             val files = info.files()
-            (0 until files.numFiles()).asSequence()
+            val count = files.numFiles()
+            if (!LocalPayloadCollisionSurvey.supportsNativeFileCount(count))
+                return LocalAddResult.Refused("Torrent payload path count is unsupported. Nothing added.")
+            (0 until count).asSequence()
                 .filterNot { files.padFileAt(it) }
                 .map { files.filePath(it) }.toList()
         } catch (_: Exception) {
@@ -413,12 +480,9 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         val handle = TorrentHandle(raw)
         handles[hash] = handle
         // Metadata may already have arrived before we registered interest.
-        if (handle.status().hasMetadata() && awaitingMetadata.remove(hash)) {
-            val autoStart = startWhenMetadataArrives.remove(hash)
-            if (!autoStart) handle.pause()
-            handle.unsetFlags(org.libtorrent4j.TorrentFlags.UPLOAD_MODE)
-            if (autoStart) handle.resume()
-        }
+        // In that case an early callback may not have found the registered
+        // handle, so persist through the same native coalesced request path.
+        if (handle.status().hasMetadata()) transitionMagnetMetadata(hash, handle)
         val status = snapshot(hash, handle) ?: return LocalAddResult.Refused("Added magnet could not be read back")
         return LocalAddResult.FetchingMetadata(status)
     }
@@ -437,17 +501,32 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         return if (hash.matches(Regex("^[0-9a-fA-F]{40}$"))) hash.lowercase(Locale.ROOT) else null
     }
 
+    /** Survey, consent and native Start share the metadata callback's handle fence. */
     fun resume(infoHash: String, readbackTimeoutMs: Long = 5_000): LocalCommandResult =
-        command(infoHash, wantStopped = false, readbackTimeoutMs) {
-            // A magnet initially runs in upload-only mode so it can fetch
-            // metadata without downloading payload. If the user manually
-            // presses Start while that metadata is pending, preserve that
-            // explicit intent across the METADATA_RECEIVED callback. Otherwise
-            // the callback would pause the torrent even though Start was
-            // acknowledged earlier. A later explicit Stop clears this intent.
+        command(infoHash, wantStopped = false, readbackTimeoutMs) { handle ->
             val key = normal(infoHash)
+            // status() caches metadata for 500 ms. Query the same fresh native
+            // flags as snapshot(), including persisted upload-only on restart.
+            val state = handle.status(TorrentHandle.QUERY_NAME)
+            if (state.hasMetadata() &&
+                (state.flags().and_(org.libtorrent4j.TorrentFlags.UPLOAD_MODE).non_zero() ||
+                    magnetCollisionProblems.containsKey(key))) {
+                val problem = inspectMagnetCollision(handle)
+                if (problem != null) {
+                    magnetCollisionProblems[key] = problem
+                    return@command false
+                }
+                magnetCollisionProblems.remove(key)
+                // Consume admission before native writes begin. A queued
+                // metadata alert must not resurvey our authorized payload.
+                awaitingMetadata.remove(key)
+                startWhenMetadataArrives.remove(key)
+                handle.unsetFlags(org.libtorrent4j.TorrentFlags.UPLOAD_MODE)
+                requestMetadataResumeSave(key, handle)
+            }
             if (awaitingMetadata.contains(key)) startWhenMetadataArrives.add(key)
-            it.resume()
+            handle.resume()
+            true
         }
 
     fun pause(infoHash: String, readbackTimeoutMs: Long = 5_000): LocalCommandResult =
@@ -456,24 +535,34 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             // magnet metadata is in flight.
             startWhenMetadataArrives.remove(normal(infoHash))
             it.pause()
+            true
         }
 
     private fun command(
         infoHash: String,
         wantStopped: Boolean,
         readbackTimeoutMs: Long,
-        action: (TorrentHandle) -> Unit
+        action: (TorrentHandle) -> Boolean
     ): LocalCommandResult {
         require(readbackTimeoutMs in 0..60_000)
         val key = normal(infoHash)
         synchronized(this) {
-            val handle = handles[key] ?: return LocalCommandResult(LocalCommandOutcome.NOT_FOUND, null)
-            action(handle)
+            synchronized(handles) {
+                val handle = handles[key]?.takeIf { started && it.isValid }
+                    ?: return LocalCommandResult(LocalCommandOutcome.NOT_FOUND, null)
+                if (!action(handle))
+                    return LocalCommandResult(LocalCommandOutcome.REFUSED, snapshot(key, handle))
+            }
         }
+        return waitForCommandReadback(key, wantStopped, readbackTimeoutMs)
+    }
+
+    private fun waitForCommandReadback(
+        key: String, wantStopped: Boolean, readbackTimeoutMs: Long
+    ): LocalCommandResult {
         val deadline = System.nanoTime() + readbackTimeoutMs * 1_000_000
-        var latest: LocalTransferStatus? = null
         while (true) {
-            latest = status(key) ?: return LocalCommandResult(LocalCommandOutcome.NOT_FOUND, null)
+            val latest = status(key) ?: return LocalCommandResult(LocalCommandOutcome.NOT_FOUND, null)
             if (latest.stopped == wantStopped) return LocalCommandResult(LocalCommandOutcome.VERIFIED, latest)
             if (System.nanoTime() >= deadline) return LocalCommandResult(LocalCommandOutcome.UNCERTAIN, latest)
             Thread.sleep(25)
@@ -991,6 +1080,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         synchronized(handles) { handles.remove(key) }
         awaitingMetadata.remove(key)
         startWhenMetadataArrives.remove(key)
+        magnetCollisionProblems.remove(key)
         pendingFlushes.cancel(key, handle)
         pendingSaves.cancel(key, handle)
         val saved = config.stateDirectory?.let { File(it, "$key.resume") } ?: return true
@@ -1088,6 +1178,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         handles.clear()
         awaitingMetadata.clear()
         startWhenMetadataArrives.clear()
+        magnetCollisionProblems.clear()
         session.stop()
         started = false
     }
@@ -1165,7 +1256,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             metadataKnown = status.hasMetadata(),
             uploadOnly = status.flags().and_(org.libtorrent4j.TorrentFlags.UPLOAD_MODE).non_zero(),
             savePath = handle.savePath(),
-            error = error,
+            error = magnetCollisionProblems[hash] ?: error,
             trackers = trackerSummary(handle),
             downloadPayloadRateBytesPerSecond = status.downloadPayloadRate().coerceAtLeast(0),
             uploadPayloadRateBytesPerSecond = status.uploadPayloadRate().coerceAtLeast(0),
