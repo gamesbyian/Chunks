@@ -70,7 +70,8 @@ internal object HttpRpcAuthorization {
         val choices = mutableListOf<String>()
         for (header in headers) {
             if (header.length !in 1..8192 ||
-                header.any { it == '\r' || it == '\n' || (it.code < 32 && it != '\t') }) {
+                header.any { it == '\r' || it == '\n' || (it.code < 32 && it != '\t') ||
+                    it.code in 127..159 || it == '\u2028' || it == '\u2029' }) {
                 throw IOException("Invalid RPC authentication challenge")
             }
             val boundaries = mutableListOf(0)
@@ -104,7 +105,8 @@ internal object HttpRpcAuthorization {
 
     private fun parse(header: String): Map<String, String> {
         if (header.length !in 1..8192 ||
-            header.any { it == '\r' || it == '\n' || (it.code < 32 && it != '\t') }) {
+            header.any { it == '\r' || it == '\n' || (it.code < 32 && it != '\t') ||
+                    it.code in 127..159 || it == '\u2028' || it == '\u2029' }) {
             throw IOException("Invalid RPC authentication challenge")
         }
         val out = linkedMapOf<String, String>()
