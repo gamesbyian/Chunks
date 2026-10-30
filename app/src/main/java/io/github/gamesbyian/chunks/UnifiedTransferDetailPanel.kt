@@ -13,7 +13,10 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.model.EnvironmentOperation
@@ -38,7 +41,11 @@ internal fun UnifiedTransferDetailPanel(
     environmentLabel: String,
     onBack: () -> Unit,
     onOpenOwningList: (() -> Unit)? = null,
-    onRefreshOwningList: (() -> Unit)? = null
+    onRefreshOwningList: (() -> Unit)? = null,
+    /** Only an authenticated, matching environment adapter may offer this read-only probe. */
+    onCheckCapabilities: (() -> Unit)? = null,
+    capabilityCheckInProgress: Boolean = false,
+    capabilityCheckError: String? = null
 ) {
     val hidden = detail.readState == TransferDetailReadState.LOCKED
     Column(
@@ -84,9 +91,32 @@ internal fun UnifiedTransferDetailPanel(
                 modifier = Modifier.semantics { heading() })
             Text("Read-only evidence. An advertised or built-in capability does not prove a command succeeded.",
                 style = MaterialTheme.typography.bodySmall)
-            detail.operations.filter { it.operation != EnvironmentOperation.LIST }.forEach { operation ->
-                Text(operation.operation.label + ": " + operation.explanation,
-                    style = MaterialTheme.typography.bodyMedium)
+            if (onCheckCapabilities != null) {
+                OutlinedButton(
+                    onClick = onCheckCapabilities,
+                    enabled = !capabilityCheckInProgress,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics {
+                        contentDescription = "Check capabilities for $environmentLabel"
+                    }
+                ) {
+                    Text(if (capabilityCheckInProgress) "Checking capabilities…"
+                        else "Check server capabilities")
+                }
+            }
+            // The container stays mounted while a probe is in flight. TalkBack
+            // receives the replacement evidence/failure; stale prior probe
+            // results cannot be silently represented as this attempt's result.
+            Column(Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
+                verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                capabilityCheckError?.let {
+                    Text("Capability check could not be completed: $it",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium)
+                }
+                detail.operations.filter { it.operation != EnvironmentOperation.LIST }.forEach { operation ->
+                    Text(operation.operation.label + ": " + operation.explanation,
+                        style = MaterialTheme.typography.bodyMedium)
+                }
             }
         }
     }

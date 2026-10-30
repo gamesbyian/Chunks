@@ -80,12 +80,10 @@ class CombinedSharedDetailNavigationTest {
         val connectedName = serverEnvironmentLabel(connectedScope)
         rule.onNode(hasScrollToIndexAction())
             .performScrollToNode(hasText("Instance two download"))
-        // TalkBack activates the button's semantic action directly. A simulated
-        // center-coordinate click against an offscreen LazyColumn row at 200%
-        // can instead hit the next button as the viewport remeasures.
+        // Exercise the real touch-coordinate path at 200% text with
+        // the compact floating Back-to-top control from merged #681.
         rule.onNodeWithContentDescription("Details for Instance two download on $connectedName")
-            .performScrollTo()
-            .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+            .performScrollTo().performClick()
         rule.onNodeWithText("Transfer details").assertExists()
         rule.onNodeWithText("Environment: $connectedName").assertExists()
         rule.onNodeWithText("Instance two download").assertExists()
@@ -112,8 +110,7 @@ class CombinedSharedDetailNavigationTest {
             .performScrollToNode(hasText("Instance three download"))
         rule.onNodeWithContentDescription(
             "Details for Instance three download on Server · $savedLabel")
-            .performScrollTo()
-            .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+            .performScrollTo().performClick()
         rule.onNodeWithText("Environment: Server · $savedLabel").assertExists()
         rule.onNodeWithText("Instance three download").assertExists()
         rule.onNodeWithText("Instance two download").assertDoesNotExist()

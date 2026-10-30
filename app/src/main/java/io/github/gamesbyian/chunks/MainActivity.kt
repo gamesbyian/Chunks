@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -1345,13 +1346,14 @@ private fun TransfersScreen(
             }
         }
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                StatTile("Down", Units.bytes(list.sumOf { it.downBytesPerSecond ?: 0 }) + "/s", Lilac,
-                    Modifier.weight(1f))
-                StatTile("Up", Units.bytes(list.sumOf { it.upBytesPerSecond ?: 0 }) + "/s", Coral,
-                    Modifier.weight(1f))
-                StatTile("Start set", list.count { it.started }.toString(),
-                    Lime, Modifier.weight(1f))
+            val down = remember(list) { RemoteRateEvidence.download(list) }
+            val up = remember(list) { RemoteRateEvidence.upload(list) }
+            RemoteRateStatTiles(down, up, list.count { it.started })
+            down.caveat("Download")?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall)
+            }
+            up.caveat("Upload")?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall)
             }
         }
         item {
@@ -1698,11 +1700,8 @@ private fun TransferCard(
                     style = MaterialTheme.typography.bodySmall
                 )
             }
-            if (transfer.downBytesPerSecond != null) {
-                Text("↓ " + Units.bytes(transfer.downBytesPerSecond) + "/s" +
-                    "     ↑ " + Units.bytes(transfer.upBytesPerSecond ?: 0) + "/s" +
-                    "     ratio " + ((transfer.ratioThousandths ?: 0L) / 1000.0).toString(),
-                    style = MaterialTheme.typography.bodySmall)
+            RemoteRateEvidence.detailLines(transfer).forEach { fact ->
+                Text(fact, style = MaterialTheme.typography.bodySmall)
             }
             Text("Place: " + transfer.directory, style = MaterialTheme.typography.bodySmall,
                 color = ChunksColors.TextSecondary, maxLines = if (expanded) 5 else 2,
@@ -2075,15 +2074,44 @@ private fun ColoredPanel(title: String, message: String, color: Color) {
     }
 }
 
+/**
+ * Preserve an honest entire rate label at 320dp and 200% font size.
+ * This is a presentation decision only: rates and the server scope are
+ * computed by the existing observation model, and no action is dispatched.
+ */
+@Composable
+internal fun RemoteRateStatTiles(
+    download: RemoteRateSubtotal,
+    upload: RemoteRateSubtotal,
+    started: Int
+) {
+    val scale = LocalDensity.current.fontScale
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        if (maxWidth < 380.dp || scale >= 1.5f) {
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                StatTile("Down", download.tileLabel(), Lilac, Modifier.fillMaxWidth())
+                StatTile("Up", upload.tileLabel(), Coral, Modifier.fillMaxWidth())
+                StatTile("Start set", started.toString(), Lime, Modifier.fillMaxWidth())
+            }
+        } else {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                StatTile("Down", download.tileLabel(), Lilac, Modifier.weight(1f))
+                StatTile("Up", upload.tileLabel(), Coral, Modifier.weight(1f))
+                StatTile("Start set", started.toString(), Lime, Modifier.weight(1f))
+            }
+        }
+    }
+}
+
 @Composable
 private fun StatTile(label: String, value: String, color: Color, modifier: Modifier = Modifier) {
     Card(modifier = modifier, shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = color)) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(label, style = MaterialTheme.typography.labelMedium, color = Ink)
-            // Two lines at most: at 200% text a single line dropped the unit ("50.4").
+            // Unknown/partial rate labels must remain readable, including 200% text.
             Text(value, style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold, color = Ink, maxLines = 2)
+                fontWeight = FontWeight.Bold, color = Ink)
         }
     }
 }

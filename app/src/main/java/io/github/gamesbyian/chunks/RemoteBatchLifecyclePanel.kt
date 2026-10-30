@@ -2,9 +2,7 @@ package io.github.gamesbyian.chunks
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -45,13 +43,13 @@ internal fun RemoteBatchLifecyclePanel(
 
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Batch Start / Stop", fontWeight = FontWeight.Bold)
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        ResponsiveActionGroup { actionModifier ->
             OutlinedButton(onClick = { confirming = true; message = null },
                 enabled = enabled && !running && toStart > 0,
-                modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Start $toStart") }
+                modifier = actionModifier) { Text("Start $toStart") }
             OutlinedButton(onClick = { confirming = false; message = null },
                 enabled = enabled && !running && toStop > 0,
-                modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Stop $toStop") }
+                modifier = actionModifier) { Text("Stop $toStop") }
         }
         val wanted = confirming
         if (wanted != null) {
@@ -61,7 +59,7 @@ internal fun RemoteBatchLifecyclePanel(
                 "any reply is lost or refused, Chunks stops there without retrying and refreshes " +
                 "so you can check. No files are moved or deleted.",
                 style = MaterialTheme.typography.bodySmall)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ResponsiveActionGroup { actionModifier ->
                 Button(onClick = {
                     confirming = null
                     if (!onMutationStarted()) {
@@ -81,11 +79,11 @@ internal fun RemoteBatchLifecyclePanel(
                         }
                     }
                 }, enabled = enabled && !running && count > 0,
-                    modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                    modifier = actionModifier) {
                     Text(if (wanted) "Confirm Start" else "Confirm Stop")
                 }
                 OutlinedButton(onClick = { confirming = null },
-                    modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Cancel") }
+                    modifier = actionModifier) { Text("Cancel") }
             }
         }
         if (running) Text("Sending commands one at a time…")
