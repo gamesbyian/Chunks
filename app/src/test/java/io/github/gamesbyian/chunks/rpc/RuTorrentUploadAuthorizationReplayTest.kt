@@ -44,7 +44,7 @@ class RuTorrentUploadAuthorizationReplayTest {
                         "d.multicall2" -> result("<array><data></data></array>")
                         "d.name" -> """<methodResponse><fault><value><struct>
                             <member><name>faultCode</name><value><int>-501</int></value></member>
-                            <member><name>faultString</name><value><string>Unknown info hash</string></value></member>
+                            <member><name>faultString</name><value><string>Could not find info-hash.</string></value></member>
                             </struct></value></fault></methodResponse>"""
                         "system.client_version" -> result("<string>0.9.8</string>")
                         else -> error("Unexpected RPC: $method")
