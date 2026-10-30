@@ -1,6 +1,6 @@
 # Chunks interaction and accessibility contract
 
-**Purpose:** one intentional interaction system for a native Android BitTorrent client and rTorrent remote, not a chronological log of feature requests. **Authority:** [PRODUCT](PRODUCT.md) owns promises; this file owns cross-surface UX rules; [UNIFIED-ENVIRONMENTS](UNIFIED-ENVIRONMENTS.md) and the linked focused contracts own domain-specific identities and capabilities. [SPEC-COVERAGE](SPEC-COVERAGE.md) and [QUALITY-LEDGER](QUALITY-LEDGER.md) alone own implementation/evidence status; [WORK-QUEUE](WORK-QUEUE.md) owns execution order. The [unchanged original UX notes](archive/UX-2026-10-30-pre-reconciliation.md) are archived for traceability and are non-normative.
+**Purpose:** one intentional interaction system for a native Android BitTorrent client and rTorrent remote, not a chronological log of feature requests. **Authority:** [PRODUCT](PRODUCT.md) owns promises; this file owns cross-surface UX rules; [UNIFIED-ENVIRONMENTS](UNIFIED-ENVIRONMENTS.md) and the linked focused contracts own domain-specific identities and capabilities. [SPEC-COVERAGE](SPEC-COVERAGE.md) and [QUALITY-LEDGER](QUALITY-LEDGER.md) alone own implementation/evidence status; [WORK-QUEUE](WORK-QUEUE.md) owns execution order. The [preserved original UX notes (with archive-relative links normalized)](archive/UX-2026-10-30-pre-reconciliation.md) are archived for traceability and are non-normative.
 
 ## Philosophy and priorities
 
