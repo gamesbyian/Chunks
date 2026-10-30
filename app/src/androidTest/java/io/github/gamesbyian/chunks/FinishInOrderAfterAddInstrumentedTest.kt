@@ -24,7 +24,7 @@ class FinishInOrderAfterAddInstrumentedTest {
     private var engine: LocalTorrentEngine? = null
     private var hash: String? = null
 
-    @Before fun setUp() { work = File(context.filesDir, "fio-add-test").apply { deleteRecursively(); mkdirs() } }
+    @Before fun setUp() { work = File(requireNotNull(LocalEngineHolder.appDownloads(context)), "fio-add-test").apply { deleteRecursively(); mkdirs() } }
     @After fun tearDown() {
         hash?.let { FinishInOrderStore(context).remove(it) }
         engine?.close(); work.deleteRecursively()
