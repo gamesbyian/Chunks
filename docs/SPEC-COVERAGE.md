@@ -1,5 +1,11 @@
 # Chunks specification coverage and acceptance map
 
+## Intelligent defaults and post-skip continuity: specification coverage (2026-10-30)
+
+**Status: product/UX specification expanded; runtime implementation and independent acceptance not established.** [#779](https://github.com/gamesbyian/Chunks/issues/779) tracks the 40-second teach-back and skipped-choice outcomes; [PR #783](https://github.com/gamesbyian/Chunks/pull/783) proposes the canonical product, UX and domain-contract additions. All current G0 data-integrity gates remain unchanged, especially [#568](https://github.com/gamesbyian/Chunks/issues/568). No device or novice evidence is implied by documentation.
+
+The future G2 acceptance matrix must test untouched optional choices on magnet, .torrent and Android Share across phone-only, remote-only and combined modes: correct verified default scope; visibility without required decision; accepted privacy/cleanup boundaries; accessible in-context changes later; honest unknown/unsupported; restoration and safe fallbacks after file/storage change, restart, stale remote or ambiguous outcome. Require full ordinary task completion **after** skipping every optional setting, not merely a successful Add tap. Relevant contracts: [PRODUCT](PRODUCT.md#intelligent-defaults-visible-options-and-downstream-continuity-binding-owner-direction-2026-10-30), [UX](UX.md#visible-options-automatic-defaults-and-nondecision-continuity-binding-owner-direction-2026-10-30), [SMART-SEEDING-RULES](SMART-SEEDING-RULES.md), [UNIFIED-ENVIRONMENTS](UNIFIED-ENVIRONMENTS.md), [INTAKE](INTAKE-QUEUE-AND-POLICIES.md), [STORAGE](STORAGE-AND-EXTRACTION.md), [ARTWORK](TRANSFER-ARTWORK.md), [CREATE-AND-SHARE](CREATE-AND-SHARE.md), [SNAPSHOTS](TRANSFER-SNAPSHOTS.md) and [EXTERNAL-FILE-ACCESS](EXTERNAL-FILE-ACCESS.md).
+
 ## P0 integration status versus acceptance (2026-10-30)
 
 | Scope | Implemented / merged evidence | Independently accepted boundary and remaining gate |
