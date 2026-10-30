@@ -225,11 +225,13 @@ class LocalTorrentEngineTest {
         assertTrue(native.status(first.infoHash)?.stopped == true)
         assertFalse(File(dest, "Chunks public fixture/episode.bin").exists())
 
-        // Session-only removal relinquishes the stopped job's name claim and
-        // never authorizes deletion of any backing bytes.
+        // libtorrent removal is non-blocking. Even after the job disappears
+        // from the visible inventory, queued native writes may retain its
+        // handle. Do not let a different torrent claim that name in-session.
         assertTrue(native.removeKeepingData(first.infoHash))
-        val second = added(native.addStoppedChecked(secondTorrent, dest))
-        assertTrue(second.stopped)
+        assertNull(native.status(first.infoHash))
+        assertTrue(native.addStoppedChecked(secondTorrent, dest) is LocalAddResult.Refused)
+        assertTrue(native.list().isEmpty())
         assertFalse(File(dest, "Chunks public fixture/episode.bin").exists())
     }
 
