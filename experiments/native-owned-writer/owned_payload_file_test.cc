@@ -1,5 +1,6 @@
 #include "owned_payload_file.h"
 
+#include <atomic>
 #include <cassert>
 #include <cstring>
 #include <filesystem>
@@ -7,6 +8,7 @@
 #include <iostream>
 #include <limits>
 #include <string>
+#include <thread>
 #include <unistd.h>
 
 namespace fs = std::filesystem;
@@ -200,6 +202,30 @@ int main() {
     s.write(s.payload / "season/episode.bin", "FOREIGN");
     assert(!f->WriteAt(0, "DENIED", 6, &error));
     assert(s.read(s.payload / "season/episode.bin") == "FOREIGN");
+    passed();
+  }
+  {
+    Sandbox s;
+    std::atomic<bool> go{false};
+    std::atomic<int> accepted{0};
+    std::thread a([&] {
+      while (!go.load()) std::this_thread::yield();
+      std::string error;
+      auto owned = chunks::OwnedPayloadFile::Create(s.payload.string(), "race.bin",
+          s.receipts.string(), kId, kMapping, &error);
+      if (owned) ++accepted;
+    });
+    std::thread b([&] {
+      while (!go.load()) std::this_thread::yield();
+      std::string error;
+      auto owned = chunks::OwnedPayloadFile::Create(s.payload.string(), "race.bin",
+          s.receipts.string(), kId, kMapping, &error);
+      if (owned) ++accepted;
+    });
+    go = true;
+    a.join(); b.join();
+    assert(accepted == 1);
+    assert(fs::exists(s.receipts / kId));
     passed();
   }
   std::cout << "CHUNKS_PINNED_WRITER_CASES=" << cases << " PASSED\n";
