@@ -152,17 +152,17 @@ class LocalEngineService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // Must be called promptly for every startForegroundService request.
-        startForeground(NOTIFICATION_ID, notification("Checking transfers…"),
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
         if (finished) {
-            // Android can deliver another start before destroying this stopped
-            // instance. Do not reattach a foreground lifetime whose deadline
-            // and callbacks were already retired; a later instance is separate.
-            stopForeground(STOP_FOREGROUND_REMOVE)
+            // A timed-out/retired instance must not call startForeground again:
+            // Android may reject dataSync promotion after the time budget ran out.
+            // Ending this start request promptly also satisfies the service
+            // start contract without reattaching a retired foreground lifetime.
             stopSelf(startId)
             return START_NOT_STICKY
         }
+        // Must be called promptly for every admitted startForegroundService request.
+        startForeground(NOTIFICATION_ID, notification("Checking transfers…"),
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
         if (intent?.action == ACTION_STOP_ALL) {
             // A forged/replayed PendingIntent cannot bypass a locally enabled
             // privacy gate. Android's mandatory onTimeout is intentionally
