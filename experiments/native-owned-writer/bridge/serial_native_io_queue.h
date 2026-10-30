@@ -27,6 +27,9 @@ class SerialNativeIoQueue final {
   bool Submit(Task task, Task on_error);
   // Drain all accepted jobs and join. Idempotent; not called from the worker.
   void DrainAndStop();
+  // Caller is libtorrent's network thread. Wait for all previously accepted
+  // jobs without shutting down unrelated torrents' future disk work.
+  void WaitIdle();
   std::size_t pending() const;
   bool faulted() const;
 
@@ -35,11 +38,13 @@ class SerialNativeIoQueue final {
   void Run();
   mutable std::mutex mutex_;
   std::condition_variable ready_;
+  std::condition_variable idle_;
   std::deque<Entry> pending_;
   // Every worker-readable field must be initialized before thread launch.
   std::size_t limit_;
   bool stopping_ = false;
   bool faulted_ = false;
+  bool active_ = false;
   std::thread worker_;
 };
 } // namespace chunks
