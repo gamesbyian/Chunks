@@ -68,6 +68,14 @@ python3 -m unittest discover -s tests -p 'test_docs_check.py'
 ```
 The checker validates repository-local Markdown targets without network access and reports unresolved heading fragments. Use `--strict-anchors` when cleaning existing anchor debt; do not weaken the link-target check to hide broken paths. Link checks are quick/local and should not spawn Android or font GitHub workflows.
 
+## UX-specific coherence gate
+
+When a change affects user-visible behavior, first apply the shared [UX philosophy, interaction grammar and scope model](UX.md) to the full journey: entry → meaningful safe default → optional choices → requested/observed result → follow-up actions → failure/restart → later correction. A new setting belongs to one canonical effective-value evaluator and scope, even if several screens link to it. A new feature must not introduce a competing navigation destination or new meaning for Transfer, Place, Collection, environment, job-only Copy/Move or payload copy without an explicit owner decision and amendment to the owning contract.
+
+UX changes must consider both a casual user's **40-second teach-back** and an advanced user's route to precise technical controls. For each optional Add/configuration choice, record the skipped-choice outcome and later Change route. For each status, distinguish observations, hypotheses, unknowns and safe next action. For each action, define scope, consent, uncertain outcomes and non-clobber/destructive gates. Preserve an anchor or give an explicit migration mapping when relocating previously linked material. Evidence and implementation notes belong to QUALITY-LEDGER/SPEC-COVERAGE; do not append them as new normative UX sections.
+
+**Migration discipline:** review existing source headings and inbound links, retain dated prior text in an archive when removing it from the active contract, list preserved requirements and intentional changes, reconcile overlapping feature PRs by meaning, and verify exact-head documentation validation. A navigation improvement does not confer application readiness.
+
 ## Quality gate
 
 A documentation PR passes only when an unfamiliar agent can answer: **What is required? Why? Where is it implemented? What evidence supports it? What remains? Which file may I edit? How will I verify success?** If these require searching multiple contradictory paragraphs, the document is not finished.
