@@ -772,16 +772,17 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             val observed = number(call("d.state", listOf(hash))) != 0L
             if (observed != desiredStarted) {
                 LifecycleOutcome.Pending(desiredStarted, observed)
-            } else if (desiredStarted) {
-                // state=1 includes paused torrents. Only the separate active
-                // bit establishes that the engine is actually running.
+            } else {
+                // d.state by itself is not proof the engine has finished
+                // starting/stopping. Acknowledged commands may settle later.
+                // Unknown activity does not become a verified postcondition.
                 val active = try {
                     number(call("d.is_active", listOf(hash))) != 0L
                 } catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
                   catch (_: RpcFault) { null }
-                if (active == true) LifecycleOutcome.Verified(true)
-                else LifecycleOutcome.Pending(true, true)
-            } else LifecycleOutcome.Verified(false)
+                if (active == desiredStarted) LifecycleOutcome.Verified(desiredStarted)
+                else LifecycleOutcome.Pending(desiredStarted, observed)
+            }
         } catch (_: java.io.IOException) {
             LifecycleOutcome.Uncertain(desiredStarted)
         } catch (_: RpcFault) {
