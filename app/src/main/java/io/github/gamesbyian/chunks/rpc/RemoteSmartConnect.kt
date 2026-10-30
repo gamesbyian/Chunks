@@ -44,13 +44,14 @@ object RemoteSmartConnect {
     ) : IOException(
         when (category) {
             Category.AUTH -> "Login rejected. Check the username/password for this rTorrent instance."
+            Category.PROXY -> "A network proxy requires separate authentication (HTTP 407). Chunks stopped endpoint discovery."
             Category.TLS -> "Secure connection failed. Check the HTTPS hostname/certificate. Chunks will not bypass TLS."
             Category.NETWORK -> "The server is unreachable or did not respond. Check its address and network."
             Category.ENDPOINT -> "No compatible rTorrent XML-RPC endpoint was verified. Paste the complete ruTorrent URL, or enter your provider's exact RPC path under Advanced connection settings."
         }
     )
 
-    enum class Category { AUTH, TLS, NETWORK, ENDPOINT }
+    enum class Category { AUTH, PROXY, TLS, NETWORK, ENDPOINT }
 
     /** Targeted next steps for a failed connection; never echoes secrets. */
     fun repairAdvice(failure: ConnectionFailed, input: String): List<String> {
@@ -58,6 +59,9 @@ object RemoteSmartConnect {
             URI(input.trim()).rawPath.orEmpty().trim('/').isNotEmpty()
         } catch (_: Exception) { false }
         return when (failure.category) {
+            Category.PROXY -> listOf(
+                "Check whether your network, VPN or company proxy requires separate sign-in.",
+                "A proxy login cannot be fixed by guessing rTorrent paths or changing the seedbox password.")
             Category.AUTH -> listOf(
                 "Use the same username and password that open ruTorrent in your browser.",
                 "Some providers use a separate web-UI password from the SSH/FTP one.",
@@ -82,11 +86,12 @@ object RemoteSmartConnect {
     /** Short user-facing reason for one candidate's failure. */
     internal fun describe(failure: Exception): String {
         val message = failure.message.orEmpty()
-        val status = Regex("HTTP (\\d{3})").find(message)?.groupValues?.get(1)?.toIntOrNull()
+        val status = Regex("(?i)HTTP(?:/\\d+(?:\\.\\d+)?)?\\s+(\\d{3})").find(message)?.groupValues?.get(1)?.toIntOrNull()
         return when {
             failure is RpcFault -> "Answered, but rTorrent refused the read-only check"
             status == 404 -> "No rTorrent gateway here (HTTP 404)"
             status == 401 || status == 403 -> "Login refused (HTTP $status)"
+            status == 407 -> "Network proxy authentication required (HTTP 407)"
             status in 300..399 -> "Redirected (HTTP $status); Chunks does not follow redirects with your login"
             status != null -> "Server error (HTTP $status)"
             failure is RpcReplyTooLarge -> "Answered with an unexpectedly large reply"
@@ -224,7 +229,11 @@ object RemoteSmartConnect {
                     failure is UnknownHostException || failure is ConnectException ||
                         failure is SocketTimeoutException || failure is NoRouteToHostException -> Category.NETWORK
                     failure is IOException &&
-                        Regex("(?i)HTTP (?:401|403)(?:\\D|$)").containsMatchIn(failure.message.orEmpty()) ->
+                        Regex("(?i)HTTP(?:/\\d+(?:\\.\\d+)?)?\\s+407(?:\\D|$)")
+                            .containsMatchIn(failure.message.orEmpty()) -> Category.PROXY
+                    failure is IOException &&
+                        Regex("(?i)HTTP(?:/\\d+(?:\\.\\d+)?)?\\s+(?:401|403)(?:\\D|$)")
+                            .containsMatchIn(failure.message.orEmpty()) ->
                         Category.AUTH
                     failure is IOException && (failure.message.orEmpty().contains("authentication challenge", true) ||
                             failure.message.orEmpty().contains("authentication required", true)) ->
@@ -234,6 +243,7 @@ object RemoteSmartConnect {
                 attempts += Attempt(candidate.description, path, when (category) {
                     Category.ENDPOINT -> describe(failure)
                     Category.AUTH -> "Login refused"
+                    Category.PROXY -> "Network proxy requires sign-in"
                     Category.TLS -> "Secure connection failed"
                     Category.NETWORK -> "Unreachable"
                 })

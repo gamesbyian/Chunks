@@ -1,5 +1,12 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-30 independent exact-head CI receipt hardening (G0 QA, not product acceptance)
+
+Two small, independently scoped integration infrastructure PRs were merged without changing the local engine, remote adapter, Compose, Gradle, release signing, protected-host access or font workflows. [#709](https://github.com/gamesbyian/Chunks/pull/709) merged at main `0952fd01dc27f42b5c9c46423111957a64f457a8` (head `5648f42139b808d0ca412ed6df5d1df42af2c34b`): `tools/check_pr_exact_head.py` checks required workflow/check status against the currently observed, full PR head, linked PR identity and stable before/after base; the deterministic offline test suite passed **12/12 locally** and exact-head docs run [41116007143](https://github.com/gamesbyian/Chunks/actions/runs/41116007143) passed repository links and existing docs validator. [#710](https://github.com/gamesbyian/Chunks/pull/710) merged at main `52030d622b59e524350559f0139ef3bdc4ab9759` (head `323ad6b3a9f870f640400513b50ec8e31bf60db2`): the same 12 offline negative controls now run automatically within the **existing path-scoped documentation** job, with [run 41116413475](https://github.com/gamesbyian/Chunks/actions/runs/41116413475) PASS, including the added exact-head test step. No new runner, routine font work or broad app CI fan-out was introduced.
+
+**Boundary:** these are *receipt-integrity* checks, not the correctness of a native peer or protected rTorrent mutation, and not branch protection, independent human/device review, a signed APK or post-merge main acceptance. At the observed #703 head `ae30defb8071447c1d86ddabec01a1a4ba0c70b5`, 5 path-triggered workflows succeeded but R8 [41110491422](https://github.com/gamesbyian/Chunks/actions/runs/41110491422) was cancelled **before any job was created**. That remains **no R8 evidence**, with draft #703 pending an exact-head gate disposition; #706 is stacked and does not retroactively change #703's receipt. G0/G1 native foreign-file, post-Stop, Android handset, multi-server protected-host and AUD-10 required-main-status protection are still **OPEN / UNVERIFIED**. See [CI-POLICY](CI-POLICY.md), [#9](https://github.com/gamesbyian/Chunks/issues/9), [#10](https://github.com/gamesbyian/Chunks/issues/10) and audit [#687](https://github.com/gamesbyian/Chunks/issues/687).
+
+
 
 ## 2026-10-30 bounded G0/G1 integration: four reviewed merges
 

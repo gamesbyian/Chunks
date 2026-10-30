@@ -192,6 +192,36 @@ class RemoteSmartConnectTest {
         assertEquals("verified-version-and-list", success.response)
     }
 
+    @Test fun http407ProxyChallengeStopsDiscoveryWithoutCredentialPathSweep() = runBlocking {
+        for (message in listOf(
+            "rTorrent gateway returned HTTP 407",
+            "Unable to tunnel through proxy. Proxy returns HTTP/1.1 407 Proxy Authentication Required"
+        )) {
+            val attempted = mutableListOf<String>()
+            val failure = try {
+                RemoteSmartConnect.connect("custom.example", "user", "secret") { credentials ->
+                    attempted += credentials.endpoint
+                    throw IOException(message)
+                }
+                fail("Expected proxy authorization failure")
+                null
+            } catch (failed: RemoteSmartConnect.ConnectionFailed) { failed }
+            requireNotNull(failure)
+            assertEquals(RemoteSmartConnect.Category.PROXY, failure.category)
+            assertEquals(1, failure.tested)
+            assertEquals(1, attempted.size)
+            assertEquals(listOf("Network proxy requires sign-in"),
+                failure.attempts.map { it.outcome })
+            assertFalse((failure.message.orEmpty() +
+                RemoteSmartConnect.repairAdvice(failure, "custom.example").joinToString())
+                .contains("secret"))
+            assertTrue(RemoteSmartConnect.repairAdvice(failure, "custom.example")
+                .any { it.contains("proxy") })
+            assertEquals("Network proxy authentication required (HTTP 407)",
+                RemoteSmartConnect.describe(IOException(message)))
+        }
+    }
+
     @Test fun boundedGenericHostnamePlanningDoesNotGuessOtherHostnames() {
         val candidates = RemoteSmartConnect.candidates("https://my-server.example/", "user")
         assertTrue(candidates.size <= 6)
