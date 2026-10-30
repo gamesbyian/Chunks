@@ -1390,16 +1390,11 @@ private fun TransfersScreen(
             }
         }
         item {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(visible.size.toString() + " shown", style = MaterialTheme.typography.titleMedium)
-                OutlinedButton(onClick = {
-                    val choices = TransferOrder.entries
-                    val next = choices[(choices.indexOf(order) + 1) % choices.size]
-                    onSort(next, next.naturalDirection)
-                }, modifier = Modifier.heightIn(min = 48.dp)) {
-                    Text("Sort: " + order.label)
-                }
-            }
+            RemoteTransfersSortSummary(visible.size, order.label, onCycleSort = {
+                val choices = TransferOrder.entries
+                val next = choices[(choices.indexOf(order) + 1) % choices.size]
+                onSort(next, next.naturalDirection)
+            })
         }
         item {
             TransferSortDirectionButton(
