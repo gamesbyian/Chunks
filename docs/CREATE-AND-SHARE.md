@@ -9,6 +9,10 @@ A user selects an Android file/folder and can publish a shareable torrent withou
 - **Public discovery:** separately opt in to submitting to supported public indexes, anonymously where explicitly offered, or using a connected identity. Public tracker announce, DHT discoverability and searchable indexing are separate states.
 - **Connected services:** optional named publisher profiles for tracker/indexer/service accounts. A user may select one or multiple supported destinations and review each service's content/metadata and authentication requirements before committing.
 
+## Default-share journey and later agency (owner UX, 2026-10-30)
+
+Offer a plain, nonblocking summary of included files, proposed share output, save location and supported sharing route with adjacent **Change** affordances. When the user leaves optional choices alone, create only the approved reversible draft and perform actions already separately authorized; never infer publication to an indexer, wider peer discovery, public tracker hosting, recipient delivery or third-party account authorization. Display real reachability/availability evidence before suggesting that recipients can obtain bytes. Keep a created draft/output accessible for later changes and further sharing steps without forcing a new creation workflow; when a metadata change requires a new torrent identity, explain that explicitly. [Default and continuity UX](UX.md#visible-options-automatic-defaults-and-nondecision-continuity-binding-owner-direction-2026-10-30).
+
 ## User journey
 Entry points: Create & Share action, Android file/folder Share intent, or selected Chunks-accessible file(s). Preview exact chosen files, total bytes, filenames, directory structure, read permissions and available storage. Warn about IP exposure, persistent seeding, metadata leakage, and inability to revoke already distributed information. Never send content or metadata externally until the user explicitly initiates a network action.
 
