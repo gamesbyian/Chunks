@@ -339,9 +339,9 @@ class LocalTorrentEngineTest {
         val records = restored.list()
         assertEquals(2, records.size)
         assertTrue(records.all { it.stopped })
-        val conflicting = records.singleOrNull {
+        val conflicting = requireNotNull(records.singleOrNull {
             it.error.orEmpty().contains("Restored path admission requires review")
-        } ?: fail("Exactly one restored reviewed-existing job must have a path reservation refusal")
+        }) { "Exactly one restored reviewed-existing job must have a path reservation refusal" }
         val refused = restored.resume(conflicting.infoHash)
         assertEquals("A display-only restore problem cannot permit native Start",
             LocalCommandOutcome.REFUSED, refused.outcome)
