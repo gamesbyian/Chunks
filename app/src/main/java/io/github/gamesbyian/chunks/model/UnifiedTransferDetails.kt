@@ -60,9 +60,9 @@ object UnifiedTransferDetails {
             source == null -> TransferDetailReadState.ENVIRONMENT_MISSING
             source.availability == EnvironmentAvailability.LOCKED -> TransferDetailReadState.LOCKED
             source.availability == EnvironmentAvailability.OFFLINE -> TransferDetailReadState.OFFLINE
-            source.availability == EnvironmentAvailability.STALE || !currentTime ->
-                TransferDetailReadState.STALE
-            !source.inventoryComplete -> TransferDetailReadState.INCOMPLETE
+            source.availability == EnvironmentAvailability.STALE ||
+                (timestamp != null && !currentTime) -> TransferDetailReadState.STALE
+            !source.inventoryComplete || !currentTime -> TransferDetailReadState.INCOMPLETE
             observed == null -> TransferDetailReadState.NOT_IN_CURRENT_LIST
             else -> TransferDetailReadState.CURRENT
         }
