@@ -14,6 +14,10 @@ trap 'rm -rf "$tmp"' EXIT
     bridge/checked_piece_range.cc bridge/checked_piece_range_test.cc \
     -o "$tmp/checked-piece-range-test"
 "$tmp/checked-piece-range-test"
+"$compiler" -std=c++17 -O2 -pthread -Wall -Wextra -Werror -pedantic \
+    bridge/receipt_admission.cc bridge/receipt_admission_test.cc \
+    -o "$tmp/receipt-admission-test"
+"$tmp/receipt-admission-test"
 "$tmp/owned-payload-file-test"
 if [[ "$#" -gt 0 && "$1" == "--sanitizers" ]]; then
   "$compiler" -std=c++17 -O1 -g -pthread -fno-omit-frame-pointer \
@@ -30,4 +34,9 @@ if [[ "$#" -gt 0 && "$1" == "--sanitizers" ]]; then
       bridge/checked_piece_range.cc bridge/checked_piece_range_test.cc \
       -o "$tmp/checked-piece-range-sanitizers"
   "$tmp/checked-piece-range-sanitizers"
+  "$compiler" -std=c++17 -O1 -g -pthread -fno-omit-frame-pointer \
+      -fsanitize=address,undefined \
+      bridge/receipt_admission.cc bridge/receipt_admission_test.cc \
+      -o "$tmp/receipt-admission-sanitizers"
+  "$tmp/receipt-admission-sanitizers"
 fi
