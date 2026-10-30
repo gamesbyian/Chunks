@@ -60,6 +60,14 @@ The standalone queue suite checks rejection under load, FIFO ordering, callback 
 
 **Remaining before release:** actual linked JNI and real-peer tests, FUSE/SD ownership capabilities and safe publication fallback, cancellation/readback of in-flight callbacks, bounded filesystem stall deadlines, native library packaging/R8 acceptance, v2-only identity, safe priority/partfile/move/delete implementations. A serial worker is intentionally conservative rather than a benchmark-optimized multithreaded disk backend. Do not enable it for production until these acceptance gates pass.
 
+## Android-native build entrypoint (important distinction)
+
+The upstream pinned libtorrent4j repository uses **two different native build systems**. The `swig/CMakeLists.txt` host path built a genuine `libtorrent4j.so`, but upstream's published Android arm64/x86_64 artifacts are produced by **Boost.Build** through `swig/Jamfile`, `swig/android-build/b2-arm64.sh` and `b2-x86_64.sh`. An Android artifact built with the original Jamfile would silently keep the default disk implementation even after the CMake host tests passed.
+
+The fork staging helper now patches and verifies **both** CMake and the real Android Jamfile, adding the full owned writer, receipt classifier, piece decoder and bounded worker directly to the `torrent4j` shared library target. The test refuses a changed upstream Jamfile or partially conflicting fork source before writing files. CI verifies the exact pinned upstream Jamfile contains each owned backend once.
+
+This still does **not** build an Android JNI library. Upstream Android scripts currently use NDK r29, API 28, Boost 1.90 and static OpenSSL, while Chunks requires independent API29/API35 (plus current phone) acceptance. Android native library packaging into the app, Java/native ABI parity, native symbol export, POSIX/FUSE receipt and xattr capability checks, real-peer file bytes and public Downloads/SD remain release gates. Until those pass, this is a source-wiring proof, not an Android deployment claim.
+
 ## Adapter candidate and ABI validation
 
 - Source: `bridge/owned_libtorrent_disk.cc`. Its factory `MakeOwnedDiskConstructor(private_receipts)` is suitable only for a future rebuilt libtorrent4j SWIG extension; nothing invokes it today.
