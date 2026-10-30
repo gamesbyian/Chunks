@@ -308,6 +308,9 @@ class LocalTorrentEngineTest {
         val transfer = added(original.addStoppedChecked(metainfo, target))
         assertTrue("Checked stopped Add must persist a resume record",
             File(state, "${transfer.infoHash}.resume").isFile)
+        assertEquals("A checked native Add must never be restored as reviewed existing data",
+            LocalAdmissionProvenance.Mode.CHECKED,
+            LocalAdmissionProvenance.read(state, transfer.infoHash))
         assertTrue(original.status(transfer.infoHash)?.stopped == true)
         original.close()
 
@@ -893,6 +896,9 @@ class LocalTorrentEngineTest {
         val magnet = "magnet:?xt=urn:btih:${seed.infoHash}"
         assertTrue(first.addMagnet(magnet, destination,
             listOf(InetSocketAddress("127.0.0.1", seeder.listenPort()))) is LocalAddResult.FetchingMetadata)
+        assertEquals("Magnet admission must remain checked across restoration",
+            LocalAdmissionProvenance.Mode.CHECKED,
+            LocalAdmissionProvenance.read(state, seed.infoHash))
         waitFor {
             val current = first.status(seed.infoHash)
             current != null && current.metadataKnown && current.stopped
