@@ -8,6 +8,7 @@ import io.github.gamesbyian.chunks.engine.LocalTransferState
 import java.io.ByteArrayInputStream
 import java.io.File
 import java.net.InetSocketAddress
+import java.nio.file.Files
 import kotlin.random.Random
 import org.junit.After
 import org.junit.Assert.*
@@ -77,13 +78,46 @@ class CreateSeedCopyTest {
         assertTrue((changed as CreateSeedCopy.Outcome.Refused).reason.contains("changed"))
     }
 
-    @Test fun cancellingRemovesOnlyThePartialCopy() {
+    @Test fun replacedEarlierFileCannotBeReadViaSymlinkDuringHashRebuild() {
+        val req = request()
+        val created = TorrentMetainfoBuilder.build(req)
+        val root = temp.newFolder("replace-earlier-output")
+        val foreign = File(temp.newFolder("foreign-source"), "private.bin")
+        // Identical bytes deliberately defeat an ordinary hash-mismatch
+        // refusal. The result must be rejected because the source file was
+        // replaced, even though the rebuilt torrent would have the same hash.
+        val untouched = payload.getValue("one.bin").copyOf()
+        foreign.writeBytes(untouched)
+        val copied = File(root, "Shared set/one.bin").toPath()
+        val displaced = File(root, "Shared set/owned-moved-aside.bin").toPath()
+        var swapped = false
+        val result = CreateSeedCopy.copyVerifyAndSeed(req, created, root, engine(),
+            onProgress = { completed ->
+                if (!swapped && completed > payload.getValue("one.bin").size) {
+                    assertTrue("First output must already exist before the second file",
+                        Files.isRegularFile(copied))
+                    Files.move(copied, displaced)
+                    Files.createSymbolicLink(copied, foreign.toPath())
+                    swapped = true
+                }
+            })
+        assertTrue("Fixture must exercise the replacement", swapped)
+        assertTrue("$result", result is CreateSeedCopy.Outcome.Refused)
+        assertTrue((result as CreateSeedCopy.Outcome.Refused).reason.contains("changed"))
+        assertTrue(Files.isSymbolicLink(copied))
+        assertTrue("Foreign file contents must remain intact",
+            untouched.contentEquals(foreign.readBytes()))
+        assertTrue(Files.isRegularFile(displaced))
+    }
+
+    @Test fun cancellingKeepsThePartialCopyForManualReview() {
         val root = temp.newFolder("place4")
         File(root, "keep.txt").writeText("mine")
         val out = CreateSeedCopy.copyVerifyAndSeed(request(), TorrentMetainfoBuilder.build(request()), root, engine(),
             isCancelled = { true })
         assertTrue((out as CreateSeedCopy.Outcome.Refused).reason.startsWith("Cancelled"))
-        assertFalse(File(root, "Shared set").exists())
+        assertTrue(File(root, "Shared set").isDirectory)
+        assertTrue(out.reason.contains("manual review"))
         assertEquals("mine", File(root, "keep.txt").readText())
     }
 }

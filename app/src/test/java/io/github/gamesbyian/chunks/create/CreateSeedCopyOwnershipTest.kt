@@ -73,8 +73,8 @@ class CreateSeedCopyOwnershipTest {
         assertTrue((result as CreateSeedCopy.Outcome.Refused).reason.startsWith("Cancelled"))
         assertArrayEquals("Foreign bytes must survive cancellation", original,
             foreign.readBytes())
-        assertFalse("Only the owned partial file is deleted",
-            File(root, "Shared set/one.bin").exists())
+        assertTrue("Partial output stays for manual review without deleting a replaced name",
+            File(root, "Shared set/one.bin").isFile)
         assertTrue("A directory with foreign entries must not be recursively deleted",
             File(root, "Shared set").isDirectory)
     }
@@ -177,11 +177,12 @@ class CreateSeedCopyOwnershipTest {
         providerBytes = ByteArray(65_536) { 2 }
         val result = CreateSeedCopy.copyVerifyAndSeed(req, expected, root, engine())
         assertTrue(result is CreateSeedCopy.Outcome.Refused)
-        assertFalse(File(root, "Shared set").exists())
+        assertTrue(File(root, "Shared set").isDirectory)
+        assertTrue((result as CreateSeedCopy.Outcome.Refused).reason.contains("manual review"))
         assertEquals("other person's file", keep.readText())
     }
 
-    @Test fun sourceTruncationAfterCreationRemovesOnlyOwnedPartialBytes() {
+    @Test fun sourceTruncationAfterCreationRetainsPartialBytesForReview() {
         val root = temp.newFolder("source-short-after-hashing")
         val checked = ByteArray(8_192) { 9 }
         var providerBytes = checked
@@ -194,7 +195,8 @@ class CreateSeedCopyOwnershipTest {
         providerBytes = ByteArray(1024) { 9 }
         val result = CreateSeedCopy.copyVerifyAndSeed(req, expected, root, engine())
         assertTrue(result is CreateSeedCopy.Outcome.Refused)
-        assertFalse(File(root, "Shared set").exists())
+        assertTrue(File(root, "Shared set").isDirectory)
+        assertTrue((result as CreateSeedCopy.Outcome.Refused).reason.contains("manual review"))
     }
 
     @Test fun invalidPathComponentRefusesBeforeCreatingAnyFile() {
