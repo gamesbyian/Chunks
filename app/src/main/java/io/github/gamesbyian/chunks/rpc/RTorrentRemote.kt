@@ -170,13 +170,24 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             (call("network.bind_address") as? String)?.trim()
                 ?.takeIf { it.isNotEmpty() && it.length <= 253 && it !in setOf("0.0.0.0", "::", "[::]") }
         } catch (_: RpcFault) { null }
+        val port = number(call("network.listen.port"))
+        // A remote peer-copy destination must have a real TCP listen port.
+        // Integer coercion, negative values and >65535 must never be silently
+        // published as a usable BitTorrent address.
+        require(port in 1L..65535L) { "Invalid rTorrent peer listening port" }
+        fun exactFlag(method: String, value: Long): Boolean {
+            require(value in 0L..1L) { "Invalid rTorrent $method flag" }
+            return value == 1L
+        }
+        val isPrivate = exactFlag("privacy", number(call("d.is_private", listOf(hash))))
+        val isActive = exactFlag("activity", number(call("d.is_active", listOf(hash))))
         return RemotePeerSource(
             rpcHost = endpoint.host.removePrefix("[").removeSuffix("]"),
             announcedAddress = announced,
             boundAddress = bound,
-            listenPort = number(call("network.listen.port")),
-            isPrivate = number(call("d.is_private", listOf(hash))) != 0L,
-            isActive = number(call("d.is_active", listOf(hash))) != 0L
+            listenPort = port,
+            isPrivate = isPrivate,
+            isActive = isActive
         )
     }
 
