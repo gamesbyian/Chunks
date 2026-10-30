@@ -1,5 +1,10 @@
 # Chunks interaction and accessibility contract
 
+## Future Android TV and protocol-agnostic remote UX (binding, deferred)
+
+Use a separate TV-first Compose presentation over the same transfer/core contracts; never ship a stretched touchscreen layout as TV support. D-pad focus/restoration, Select/Back navigation, readable high-contrast transfer rows and recognizable source/server identifiers, remote-friendly Add and file selection, focus-safe dialogs and independent TV accessibility/device acceptance are binding. Any supported remote backend must fit the same user-visible environment/select/sort/filter/details/Add/command vocabulary with accurate capability limits and no cross-server leakage. Full specification: [Android TV and remote backends](ANDROID-TV-AND-REMOTE-BACKENDS.md). This is not current implementation evidence.
+
+
 > **Authority:** user-visible behavior, interaction state and accessibility requirements. Dated implementation notes describe bounded evidence only; the live [coverage map](SPEC-COVERAGE.md), [quality ledger](QUALITY-LEDGER.md) and [work queue](WORK-QUEUE.md) determine present status and next work.
 
 ## Combined Transfers and environment colour language (binding, 2026-10-29)
