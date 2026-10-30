@@ -972,6 +972,22 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
      * the result is VERIFIED only once readback shows the requested selection.
      * Skipping never deletes bytes already written.
      */
+    /**
+     * JNI file-priority operations can authorize disk writes even while an
+     * already-started checked job is running; check before each such mutation.
+     * A separately reviewed existing-data seed has different provenance and
+     * must not be mistaken for a fresh checked download with absent files.
+     */
+    private fun checkedPriorityMutationProblem(key: String, handle: TorrentHandle): String? {
+        if (!checkedPayloadReservations.hasReservation(key) ||
+            checkedFirstStarts.containsKey(key) ||
+            reviewedExistingNativeJobs.contains(key)) return null
+        val problem = inspectCheckedRestartCollision(key, handle)
+        if (problem != null) checkedStartProblems[key] = problem
+        else checkedStartProblems.remove(key)
+        return problem
+    }
+
     fun setFileWanted(infoHash: String, index: Int, wanted: Boolean, readbackTimeoutMs: Long = 5_000): LocalCommandOutcome {
         require(readbackTimeoutMs in 0..60_000)
         val key = normal(infoHash)
@@ -979,6 +995,8 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             val handle = handles[key] ?: return LocalCommandOutcome.NOT_FOUND
             val files = handle.torrentFile()?.files() ?: return LocalCommandOutcome.NOT_FOUND
             require(index in 0 until files.numFiles() && !files.padFileAt(index)) { "No such file" }
+            if (wanted && checkedPriorityMutationProblem(key, handle) != null)
+                return LocalCommandOutcome.REFUSED
             handle.filePriority(index, if (wanted) org.libtorrent4j.Priority.DEFAULT else org.libtorrent4j.Priority.IGNORE)
         }
         val deadline = System.nanoTime() + readbackTimeoutMs * 1_000_000
@@ -1021,6 +1039,8 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                 return LocalFileBatchOutcome.STALE_REVIEW
             if (actual.priority == requestedPriority)
                 return LocalFileBatchOutcome.UNCHANGED
+            if (checkedPriorityMutationProblem(key, handle) != null)
+                return LocalFileBatchOutcome.STALE_REVIEW
             val priority = when (requestedPriority) {
                 1 -> org.libtorrent4j.Priority.LOW
                 4 -> org.libtorrent4j.Priority.DEFAULT
@@ -1114,6 +1134,8 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                         change.requestedPriority !in setOf(FinishInOrderPlanner.LOW,
                             FinishInOrderPlanner.NORMAL, FinishInOrderPlanner.HIGH)
                 }) return LocalFileBatchOutcome.STALE_REVIEW
+            if (checkedPriorityMutationProblem(key, handle) != null)
+                return LocalFileBatchOutcome.STALE_REVIEW
             try {
                 changes.forEach { change ->
                     handle.filePriority(change.index, when (change.requestedPriority) {
@@ -1204,6 +1226,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         try {
             synchronized(this) {
                 val handle = handles[key]?.takeIf { it.isValid } ?: return false
+                if (on && checkedPriorityMutationProblem(key, handle) != null) return false
                 if (on) handle.setFlags(org.libtorrent4j.TorrentFlags.SEQUENTIAL_DOWNLOAD)
                 else handle.unsetFlags(org.libtorrent4j.TorrentFlags.SEQUENTIAL_DOWNLOAD)
             }
@@ -1256,6 +1279,8 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                         fresh.sizeBytes != change.reviewed.sizeBytes ||
                         fresh.priority != change.reviewed.priority
                 }) return LocalFileBatchOutcome.STALE_REVIEW
+            if (checkedPriorityMutationProblem(key, handle) != null)
+                return LocalFileBatchOutcome.STALE_REVIEW
             try {
                 changes.forEach { change ->
                     val priority = when (change.requestedPriority) {
@@ -1307,6 +1332,8 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                 ?: return LocalFileBatchOutcome.STALE_REVIEW
             selected = plan.indicesToChange
             if (selected.isEmpty()) return LocalFileBatchOutcome.UNCHANGED
+            if (wanted && checkedPriorityMutationProblem(key, handle) != null)
+                return LocalFileBatchOutcome.STALE_REVIEW
             val priority = if (wanted) org.libtorrent4j.Priority.DEFAULT
                 else org.libtorrent4j.Priority.IGNORE
             try {
