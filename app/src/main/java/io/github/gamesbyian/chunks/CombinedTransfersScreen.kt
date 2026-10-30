@@ -324,13 +324,14 @@ internal fun CombinedTransfersScreen(
     // Palette storage is a lifecycle effect, not work performed by remember or
     // by LazyColumn composition. Read external changes via the shared revision:
     // profile rename, navigation and chooser updates never overwrite user hues.
-    val colourStore = remember(context) { EnvironmentColourStore(context) }
     val paletteIdentities = labels.keys.toList()
     val paletteRevision = EnvironmentColourStore.revision
     var palette by remember { mutableStateOf(EnvironmentPalette.State(emptyMap(), emptyMap())) }
-    LaunchedEffect(colourStore, paletteIdentities, paletteRevision) {
+    LaunchedEffect(context, paletteIdentities, paletteRevision) {
         try {
-            palette = withContext(Dispatchers.IO) { colourStore.ensure(paletteIdentities) }
+            palette = withContext(Dispatchers.IO) {
+                EnvironmentColourStore(context).ensure(paletteIdentities)
+            }
         } catch (cancel: kotlinx.coroutines.CancellationException) {
             throw cancel
         } catch (_: Exception) {
@@ -700,10 +701,14 @@ internal fun CombinedTransfersScreen(
             }
             if (choosingColours) EnvironmentColourChooser(labels, palette,
                 onChoose = { id, hue ->
-                    batchScope.launch { withContext(Dispatchers.IO) { colourStore.choose(id, hue) } }
+                    batchScope.launch {
+                        withContext(Dispatchers.IO) { EnvironmentColourStore(context).choose(id, hue) }
+                    }
                 },
                 onRestore = { id ->
-                    batchScope.launch { withContext(Dispatchers.IO) { colourStore.restoreAutomatic(id) } }
+                    batchScope.launch {
+                        withContext(Dispatchers.IO) { EnvironmentColourStore(context).restoreAutomatic(id) }
+                    }
                 })
         }
         item {
