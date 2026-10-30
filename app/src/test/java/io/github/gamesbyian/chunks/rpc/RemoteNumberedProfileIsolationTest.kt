@@ -98,13 +98,15 @@ class RemoteNumberedProfileIsolationTest {
 
             assertEquals(listOf("d.open", "d.start", "d.resume", "d.state", "d.is_active"),
                 fixture.authorized2)
-            assertEquals(listOf("d.stop", "d.close", "d.state"), fixture.authorized3)
+            // A stopped server may read both the persistent and active flags.
+            // Keep every readback on profile 3, even when profile 2 holds the same hash.
+            assertEquals(listOf("d.stop", "d.close", "d.state", "d.is_active"), fixture.authorized3)
             assertTrue("second profile must never receive first profile credentials",
                 fixture.unauthorized3.all { it == null })
             assertTrue("first profile must never receive second profile credentials",
                 fixture.unauthorized2.all { it == null })
             assertEquals(5, fixture.unauthorized2.size)
-            assertEquals(3, fixture.unauthorized3.size)
+            assertEquals(4, fixture.unauthorized3.size)
         }
     }
 }
