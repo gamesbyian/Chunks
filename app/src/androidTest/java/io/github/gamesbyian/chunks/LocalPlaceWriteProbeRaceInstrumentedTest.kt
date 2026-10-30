@@ -14,14 +14,14 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Real Android exclusive-open/fstat/lstat identity and NIO rename semantics.
+ * Real Android exclusive-open/fstat/lstat identity and exclusive publication.
  * Controlled interleavings do not establish atomic pathname check/action safety.
  */
 @RunWith(AndroidJUnit4::class)
 class LocalPlaceWriteProbeRaceInstrumentedTest {
     private val context get() = InstrumentationRegistry.getInstrumentation().targetContext
 
-    @Test fun destinationCreatedAtRenameBoundaryKeepsUnrelatedBytes() {
+    @Test fun destinationCreatedAfterFinalSurveyKeepsUnrelatedBytes() {
         val root = File(context.cacheDir, "probe-race-" + System.nanoTime())
         assertTrue(root.mkdirs())
         try {
@@ -30,9 +30,8 @@ class LocalPlaceWriteProbeRaceInstrumentedTest {
             val predictable = object : Random() {
                 override fun nextBytes(out: ByteArray) { out.fill(0) }
             }
-            val refused = LocalPlaceWriteProbe.verify(root, predictable) {
-                competing.writeBytes(bytes)
-            }
+            val refused = LocalPlaceWriteProbe.verify(root, predictable,
+                beforePublish = { competing.writeBytes(bytes) })
             assertNotNull(refused)
             assertTrue(competing.isFile)
             assertArrayEquals(bytes, competing.readBytes())
