@@ -80,11 +80,14 @@ class NativeDisk final : public lt::disk_interface, public lt::buffer_allocator_
         params.files.total_size() <= 0) {
       state->refusal = "Native torrent metadata invalid or missing";
     } else {
-      for (lt::file_index_t file{0}; file < params.files.end_file(); ++file) {
-        auto const path = params.files.file_path(file);
-        auto const size = params.files.file_size(file);
-        if (size < 0) {
-          state->refusal = "Native torrent file length invalid";
+      // Use libtorrent's immutable layout plus the explicit renamed-files
+      // overlay. The original file_storage path alone is not authoritative.
+      lt::filenames const mapped(params.files, params.renamed_files);
+      for (lt::file_index_t file : mapped.file_range()) {
+        auto const path = mapped.file_path(file);
+        auto const size = mapped.file_size(file);
+        if (size < 0 || mapped.file_absolute_path(file)) {
+          state->refusal = "Native torrent file length or renamed path invalid";
           break;
         }
         auto const file_number = static_cast<int>(file);
@@ -93,7 +96,7 @@ class NativeDisk final : public lt::disk_interface, public lt::buffer_allocator_
         auto const bound = Digest(hash + "\n" + state->save_path + "\n" +
             path + "\n" + std::to_string(file_number) + "\n" + std::to_string(size));
         state->layout.push_back({path, static_cast<std::uint64_t>(size),
-                                 path_id, bound, params.files.pad_file_at(file)});
+                                 path_id, bound, mapped.pad_file_at(file)});
       }
     }
     if (index == torrents_.end_index()) torrents_.emplace_back(std::move(state));
