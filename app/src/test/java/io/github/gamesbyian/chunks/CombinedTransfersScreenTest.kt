@@ -52,6 +52,27 @@ class CombinedTransfersScreenTest {
         } }
     }
 
+    @Test fun detailFocusResolvesExactServerAndHashWithoutLifecycleCommands() {
+        show()
+        val target = "Details for Big Archive on " + serverEnvironmentLabel(aliasScope)
+        rule.onNodeWithContentDescription(target).performScrollTo().performClick()
+        rule.onNodeWithText("Transfer details").assertExists()
+        rule.onNodeWithText("Environment: " + serverEnvironmentLabel(aliasScope)).assertExists()
+        rule.onNodeWithText("Exact infohash: " + "1".repeat(40)).assertExists()
+        assertTrue("read-only details must not issue any lifecycle commands", commands.isEmpty())
+    }
+
+    @Test fun corruptSavedDetailIdentityCannotResolveOrGuessAnEnvironment() {
+        assertNull(restoreCombinedDetailTarget(null))
+        assertNull(restoreCombinedDetailTarget(emptyList()))
+        assertNull(restoreCombinedDetailTarget(listOf("server-one")))
+        assertNull(restoreCombinedDetailTarget(listOf("server-one", "1".repeat(40), "extra")))
+        assertNull(restoreCombinedDetailTarget(listOf("server-one", "garbage")))
+        val exact = restoreCombinedDetailTarget(listOf("server-one", "A".repeat(40)))
+        assertEquals("server-one", exact?.environment?.value)
+        assertEquals("a".repeat(40), exact?.infoHash)
+    }
+
     @Test fun showsEveryEnvironmentHonestlyWithoutStartingThePhoneEngine() {
         show()
         rule.onNodeWithText("All environments").assertExists()
