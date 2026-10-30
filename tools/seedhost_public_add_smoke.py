@@ -19,6 +19,11 @@ from public_fixture_collector import archive_fixture, commons_fixture, fetch, cr
 
 HASH = re.compile(r"^[0-9a-fA-F]{40}$")
 MAX_RESPONSE = 4_194_304
+# These repository secrets belong to ONE owner-approved development instance.
+# A separate numbered tenant needs separate credentials and an explicit tool.
+PRIMARY_SEEDHOST = "ianseeds.wood.seedhost.eu"
+PRIMARY_WEB_PATH = "/rutorrent"
+PRIMARY_RPC_PATH = "/rutorrent/plugins/httprpc/action.php"
 
 def destination(value):
     if not value.startswith("/") or len(value) < 2 or len(value) > 1024:
@@ -30,16 +35,20 @@ def destination(value):
     return value
 
 def rpc_endpoint(value):
+    """Bind primary repository secrets to their ONE approved HTTPS/RPC mount.
+
+    The manual workflow also pins the URL, but this transport may be invoked
+    directly. Never let a supplied URL select a sibling tenant or numbered
+    rTorrent instance. Validate the *raw* path before any decoding/rewriting.
+    """
     uri = urllib.parse.urlsplit(value)
-    if (uri.scheme != "https" or not uri.hostname or not uri.hostname.endswith(".seedhost.eu") or
-        uri.port not in (None, 443) or uri.username or uri.password or uri.query or uri.fragment):
-        raise ValueError("Invalid Seedhost HTTPS URL")
-    path = uri.path.rstrip("/")
-    if path.lower().endswith("/rutorrent"):
-        path += "/plugins/httprpc/action.php"
-    if not (path.endswith("/plugins/httprpc/action.php") or path.endswith("/RPC1") or path.endswith("/RPC2")):
-        raise ValueError("Not an approved Seedhost RPC path")
-    return urllib.parse.urlunsplit(("https", uri.netloc, path, "", ""))
+    if (uri.scheme != "https" or uri.hostname != PRIMARY_SEEDHOST or
+        uri.port not in (None, 443) or uri.username is not None or
+        uri.password is not None or uri.query or uri.fragment):
+        raise ValueError("Primary Seedhost credentials require the exact approved HTTPS origin")
+    if uri.path not in (PRIMARY_WEB_PATH, PRIMARY_WEB_PATH + "/", PRIMARY_RPC_PATH):
+        raise ValueError("Primary Seedhost credentials require the exact approved ruTorrent mount")
+    return urllib.parse.urlunsplit(("https", uri.netloc, PRIMARY_RPC_PATH, "", ""))
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
