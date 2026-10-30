@@ -157,6 +157,27 @@ class LiveTest(unittest.TestCase):
         self.assertEqual("outcome_uncertain", result["result"])
         self.assertEqual(1, server.calls.count("load.raw_verbose"))
 
+    def test_malformed_post_add_flags_never_verify_stopped_or_trigger_replay(self):
+        # XML-RPC may legitimately deliver a float/string/bool; none is
+        # a confirmed rTorrent int 0/1 even if Python int() coerces it.
+        for method in ("d.is_multi_file", "d.state"):
+            for malformed in (0.9, "0", False, 2, -1):
+                class MalformedFlagServer(Server):
+                    def call(self, name, *params):
+                        if name == method:
+                            self.calls.append(name)
+                            return malformed
+                        return super().call(name, *params)
+                server = MalformedFlagServer(None, None, None)
+                with self.subTest(method=method, malformed=repr(malformed)), patch.object(
+                        s, "public_fixture", return_value=fixture()):
+                    result = s.execute(args(True), factory=lambda *params: server)
+                self.assertEqual("acknowledged_pending_readback", result["result"])
+                self.assertEqual("ValueError", result["error_class"])
+                self.assertEqual(1, server.calls.count("load.raw_verbose"))
+                self.assertNotIn("f.priority.set", server.calls)
+                self.assertNotIn("d.erase", server.calls)
+
     def test_directory_mismatch_is_not_verified(self):
         server = Server(None, None, None)
         server.directory = "/somewhere-else"
