@@ -70,4 +70,96 @@ class LocalPayloadCollisionSurveyTest {
             temp.root, listOf("a", "b"), maxPaths = 1)
             is LocalPayloadCollisionSurvey.Result.Unknown)
     }
+
+    @Test fun chosenRootAncestorAliasIsResolvedBeforeCollisionSurvey() {
+        val selected = temp.newFolder("selected-parent")
+        val external = temp.newFolder("external-target")
+        val actual = File(external, "download")
+        assertTrue(actual.mkdir())
+        val foreign = File(actual, "episode.mkv")
+        foreign.writeText("foreign bytes")
+        Files.createSymbolicLink(File(selected, "indirect").toPath(), external.toPath())
+        // OS-managed parent aliases also occur in Android's app-private tree.
+        // Inspect the real destination, never claim a lexical path is clear.
+        assertEquals(LocalPayloadCollisionSurvey.Result.ExistingPaths(
+            listOf("episode.mkv"), 1),
+            LocalPayloadCollisionSurvey.inspect(
+                File(selected, "indirect/download"), listOf("episode.mkv")))
+        assertEquals("foreign bytes", foreign.readText())
+    }
+
+    @Test fun rootItselfCannotBeAnIndirectDestination() {
+        val selected = temp.newFolder("symlink-selected")
+        val actual = temp.newFolder("symlink-real")
+        val alias = File(selected, "direct-link")
+        Files.createSymbolicLink(alias.toPath(), actual.toPath())
+        assertTrue(LocalPayloadCollisionSurvey.inspect(
+            alias, listOf("episode.mkv")) is LocalPayloadCollisionSurvey.Result.Unknown)
+    }
+
+    @Test fun lexicalParentTraversalCannotSurveyDifferentTreeThanNativeWriter() {
+        val selected = temp.newFolder("traversal-selected")
+        val external = temp.newFolder("traversal-external")
+        Files.createSymbolicLink(File(selected, "indirect").toPath(), external.toPath())
+        // Resolving indirect/.. lexically erases the link; resolving it
+        // physically could reach the external directory's parent instead.
+        assertTrue(LocalPayloadCollisionSurvey.inspect(
+            File(selected, "indirect/.."), listOf("episode.mkv"))
+            is LocalPayloadCollisionSurvey.Result.Unknown)
+    }
+
+    @Test fun duplicateDeclaredFileIndicesCannotShareOneFutureDestination() {
+        assertTrue(LocalPayloadCollisionSurvey.inspect(
+            temp.root, listOf("duplicate.mkv", "duplicate.mkv"))
+            is LocalPayloadCollisionSurvey.Result.Unknown)
+    }
+
+    @Test fun torrentFileAndItsOwnChildCannotBothBePayloads() {
+        for (paths in listOf(
+            listOf("Series", "Series/S01E01.mkv"),
+            listOf("Series/S01E01.mkv", "Series")
+        )) {
+            assertTrue(LocalPayloadCollisionSurvey.inspect(temp.root, paths)
+                is LocalPayloadCollisionSurvey.Result.Unknown)
+        }
+    }
+
+    @Test fun caseInsensitiveVolumeCannotAliasTwoDifferentTorrentIndices() {
+        val root = temp.newFolder("folding-alias")
+        val paths = listOf("Show/Episode.mkv", "show/episode.MKV")
+        assertTrue(LocalPayloadCollisionSurvey.inspect(root, paths)
+            is LocalPayloadCollisionSurvey.Result.Unknown)
+        assertTrue(root.listFiles().orEmpty().isEmpty())
+    }
+
+    @Test fun caseFoldedFileCannotAlsoBeItsOwnDirectoryParent() {
+        val root = temp.newFolder("folding-ancestor")
+        for (paths in listOf(
+            listOf("SeRiEs", "series/episode.mkv"),
+            listOf("series/episode.mkv", "SeRiEs")
+        )) {
+            assertTrue(LocalPayloadCollisionSurvey.inspect(root, paths)
+                is LocalPayloadCollisionSurvey.Result.Unknown)
+        }
+        assertTrue(root.listFiles().orEmpty().isEmpty())
+    }
+
+    @Test fun compatibilityAndCanonicalUnicodeAliasesAreNotDistinctFiles() {
+        val root = temp.newFolder("unicode-alias")
+        for (paths in listOf(
+            listOf("Cafe\u0301/episode.mkv", "Caf\u00e9/episode.mkv"),
+            listOf("Wei\u00df/episode.mkv", "WEISS/episode.mkv"),
+            listOf("\u212b/episode.mkv", "\u00c5/episode.mkv")
+        )) {
+            assertTrue(paths.toString(), LocalPayloadCollisionSurvey.inspect(root, paths)
+                is LocalPayloadCollisionSurvey.Result.Unknown)
+        }
+        assertTrue(root.listFiles().orEmpty().isEmpty())
+    }
+
+    @Test fun overlongSinglePathFailsClosedWithoutFilesystemMutation() {
+        assertTrue(LocalPayloadCollisionSurvey.inspect(
+            temp.root, listOf("a".repeat(4097)))
+            is LocalPayloadCollisionSurvey.Result.Unknown)
+    }
 }
