@@ -235,6 +235,52 @@ class LocalTorrentEngineTest {
         assertFalse(File(dest, "Chunks public fixture/episode.bin").exists())
     }
 
+    @Test fun restoredCheckedStoppedAddRefusesForeignFileBeforeFirstNativeStart() {
+        val sourceParent = temp.newFolder("restore-admission-seed")
+        val source = File(sourceParent, "Restore admission fixture").apply { mkdirs() }
+        val expected = ByteArray(384 * 1024).also { Random(5683L).nextBytes(it) }
+        File(source, "payload.bin").writeBytes(expected)
+        val metainfo = TorrentBuilder().path(source).pieceSize(32 * 1024)
+            .flags(TorrentBuilder.V1_ONLY).generate().entry().bencode()
+        val seed = engine()
+        val seeded = added(seed.addStopped(metainfo, sourceParent))
+        assertEquals(LocalCommandOutcome.VERIFIED, seed.resume(seeded.infoHash).outcome)
+        waitFor { seed.status(seeded.infoHash)?.state == LocalTransferState.SEEDING }
+
+        val state = temp.newFolder("restore-admission-state")
+        val target = temp.newFolder("restore-admission-target")
+        val original = persistentEngine(state)
+        val transfer = added(original.addStoppedChecked(metainfo, target))
+        assertTrue("Checked stopped Add must persist a resume record",
+            File(state, "${transfer.infoHash}.resume").isFile)
+        assertTrue(original.status(transfer.infoHash)?.stopped == true)
+        original.close()
+
+        val foreignPath = File(target, "Restore admission fixture/payload.bin")
+        assertTrue(foreignPath.parentFile.mkdirs() || foreignPath.parentFile.isDirectory)
+        val foreignBytes = ByteArray(expected.size).also { Random(5684L).nextBytes(it) }
+        foreignPath.writeBytes(foreignBytes)
+        val restored = persistentEngine(state)
+        assertTrue(restored.restoreProblems.isEmpty())
+        assertTrue(requireNotNull(restored.status(transfer.infoHash)).stopped)
+        val refused = restored.resume(transfer.infoHash)
+        assertEquals("First Start after restore must not trust a foreign file",
+            LocalCommandOutcome.REFUSED, refused.outcome)
+        assertTrue(requireNotNull(refused.status).stopped)
+        assertTrue(refused.status?.error.orEmpty().contains("no verified native bytes"))
+        assertArrayEquals("Restored checked job must not replace planted foreign bytes",
+            foreignBytes, foreignPath.readBytes())
+
+        assertTrue("Delete only the deliberately planted test file", foreignPath.delete())
+        assertTrue("Connect real loopback peer only after removing the foreign fixture",
+            restored.connectPeer(transfer.infoHash,
+                InetSocketAddress("127.0.0.1", seed.listenPort())))
+        assertEquals(LocalCommandOutcome.VERIFIED, restored.resume(transfer.infoHash).outcome)
+        requireFlushed(restored, transfer.infoHash)
+        assertArrayEquals(expected, foreignPath.readBytes())
+        assertArrayEquals(expected, File(source, "payload.bin").readBytes())
+    }
+
     @Test fun checkedPostStopRestartRefusesForeignSkippedFileThenDownloadsAfterClear() {
         val sourceParent = temp.newFolder("checked-post-stop-source")
         val sourceRoot = File(sourceParent, "Stopped checked fixture").apply { mkdirs() }
