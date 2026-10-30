@@ -8,6 +8,37 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class TransferAliasStoreInstrumentedTest {
+    @Test fun bulkLookupReadsOnlyExactAccountScopeAndTracksSuccessfulWrites() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val store = TransferAliasStore(context)
+        val endpoint = "https://batch-identity.example.test/RPC2"
+        val alice = "$endpoint\u0000alice"
+        val bob = "$endpoint\u0000bob"
+        val hash = "9".repeat(40)
+        val aliceKey = io.github.gamesbyian.chunks.model.UnifiedTransferKey.of(
+            io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverId(endpoint, "alice"), hash)
+        val bobKey = io.github.gamesbyian.chunks.model.UnifiedTransferKey.of(
+            io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverId(endpoint, "bob"), hash)
+        val aliceRequest = CombinedAliasRequest(aliceKey, alice)
+        val bobRequest = CombinedAliasRequest(bobKey, bob)
+        try {
+            val before = TransferAliasStore.revision
+            assertTrue(store.save(alice, hash, "Alice private label"))
+            assertTrue(TransferAliasStore.revision > before)
+            assertEquals(mapOf(aliceRequest to "Alice private label"),
+                store.getBatch(setOf(aliceRequest, bobRequest)))
+            assertTrue(store.save(bob, hash, "Bob separate label"))
+            assertEquals(mapOf(aliceRequest to "Alice private label",
+                bobRequest to "Bob separate label"), store.getBatch(setOf(aliceRequest, bobRequest)))
+            assertTrue(store.save(alice, hash, null))
+            assertEquals(mapOf(bobRequest to "Bob separate label"),
+                store.getBatch(setOf(aliceRequest, bobRequest)))
+        } finally {
+            store.save(alice, hash, null)
+            store.save(bob, hash, null)
+        }
+    }
+
     @Test fun aliasesAreLocalAndScopedToServerAndInfoHash() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val store = TransferAliasStore(context)
