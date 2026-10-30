@@ -14,6 +14,12 @@ on:
       - "app/src/main/java/io/github/gamesbyian/chunks/LocalEngineScreen.kt"
       - "tools/android10_downloads_instrumentation.sh"
       - "tools/test_android10_downloads_instrumentation_mock.sh"
+      # Checked Add/Start, path reservations and native collision surveys
+      # directly guard user-visible shared Downloads bytes. Exercise API29
+      # when their production logic changes even if androidTest stays untouched.
+      - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalTorrentEngine.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalCheckedPayloadReservations.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalPayloadCollisionSurvey.kt"
       # Native resume reader changes must exercise the API29 real backing,
       # restart, and fresh-peer seeding journey, not only host JVM tests.
       - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalResumeFileReader.kt"
