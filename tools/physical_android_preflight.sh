@@ -94,8 +94,11 @@ if ! printf '%s\n' "$install_output" | tr -d '\r' | grep -qx 'Success'; then
     echo "adb did not report successful installation: refusing acceptance" >&2
     exit 1
 fi
+# Consume all of dumpsys output: grep -m 1 can close the pipe early, causing
+# a healthy adb producer to receive SIGPIPE under pipefail. Multiple distinct
+# package versions are ambiguous and must not certify the installed APK.
 installed_version="$("${adb_command[@]}" shell dumpsys package io.github.gamesbyian.chunks |
-    grep -m 1 -o 'versionName=[^[:space:]]*' | cut -d = -f 2)"
+    grep -o 'versionName=[^[:space:]]*' | cut -d = -f 2 | sort -u)"
 expected_version="0.1.0-dev+${built_commit:0:12}"
 [[ "$installed_version" == "$expected_version" ]] || {
     echo "Installed Chunks version does not match the built checkout: refusing to record success" >&2
