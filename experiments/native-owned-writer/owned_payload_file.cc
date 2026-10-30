@@ -1,5 +1,6 @@
 #include "owned_payload_file.h"
 
+#include <array>
 #include <cerrno>
 #include <climits>
 #include <cstdio>
@@ -10,12 +11,16 @@
 #include <string>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/xattr.h>
 #include <unistd.h>
 #include <vector>
 
 namespace chunks {
 namespace {
-constexpr char kMagic[] = "CHUNKS-OWNED-PAYLOAD-V1";
+constexpr char kMagic[] = "CHUNKS-OWNED-PAYLOAD-V2";
+constexpr char kOwnerXattr[] = "user.chunks.owned-payload";
+constexpr char kUncreatedToken[] =
+    "0000000000000000000000000000000000000000000000000000000000000000";
 
 struct Fd {
   explicit Fd(int x = -1) : v(x) {}
@@ -80,12 +85,14 @@ bool ParentPath(int root, const std::vector<std::string>& parts, bool create,
 struct Receipt {
   std::string commitment;
   std::uint64_t root_dev, root_ino, parent_dev, parent_ino, dev, ino;
+  std::string owner_token;
 };
 
 std::string Encode(const Receipt& v) {
   std::ostringstream os;
   os << kMagic << '\n' << v.commitment << '\n' << v.root_dev << '\n' << v.root_ino << '\n'
-     << v.parent_dev << '\n' << v.parent_ino << '\n' << v.dev << '\n' << v.ino << '\n';
+     << v.parent_dev << '\n' << v.parent_ino << '\n' << v.dev << '\n' << v.ino << '\n'
+     << v.owner_token << '\n';
   return os.str();
 }
 
@@ -97,8 +104,11 @@ bool Parse(const std::string& s, Receipt* out) {
       commitment.size() != 64) return false;
   for (char c : commitment) if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))) return false;
   if (!(is >> result.root_dev >> result.root_ino >> result.parent_dev >> result.parent_ino
-           >> result.dev >> result.ino)) return false;
+           >> result.dev >> result.ino >> result.owner_token)) return false;
   if (!(is >> std::ws).eof()) return false;
+  if (result.owner_token.size() != 64) return false;
+  for (char c : result.owner_token)
+    if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))) return false;
   result.commitment = commitment;
   *out = result;
   return true;
@@ -108,6 +118,38 @@ bool ValidId(const std::string& id) {
   if (id.size() != 64) return false;
   for (char c : id) if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))) return false;
   return true;
+}
+
+// Fresh identity survives inode recycling. Public/SD filesystems that do not
+// support persistent user xattrs are *not* eligible for direct native writes;
+// they require separately verified non-replacing publication from staging.
+std::string RandomOwnerToken() {
+  Fd random(::open("/dev/urandom", O_RDONLY | O_CLOEXEC));
+  if (random.v < 0) return {};
+  std::array<unsigned char, 32> bytes{};
+  size_t done = 0;
+  while (done < bytes.size()) {
+    ssize_t count = ::read(random.v, bytes.data() + done, bytes.size() - done);
+    if (count < 0 && errno == EINTR) continue;
+    if (count <= 0) return {};
+    done += static_cast<size_t>(count);
+  }
+  const char* alphabet = "0123456789abcdef";
+  std::string token;
+  token.reserve(64);
+  for (auto byte : bytes) {
+    token.push_back(alphabet[byte >> 4]);
+    token.push_back(alphabet[byte & 15]);
+  }
+  return token;
+}
+
+bool ReadOwnerToken(int fd, std::string* token) {
+  std::array<char, 64> bytes{};
+  ssize_t count = ::fgetxattr(fd, kOwnerXattr, bytes.data(), bytes.size());
+  if (count != static_cast<ssize_t>(bytes.size())) return false;
+  token->assign(bytes.begin(), bytes.end());
+  return token->size() == 64;
 }
 
 bool FullyWrite(int fd, const std::string& content) {
@@ -187,9 +229,21 @@ std::unique_ptr<OwnedPayloadFile> OwnedPayloadFile::OpenImpl(
                    (create ? (O_RDWR | O_CREAT | O_EXCL) : O_RDWR) | O_NOFOLLOW | O_CLOEXEC, 0600));
   if (file.v < 0 || !GetFile(file.v, &fs))
     return reject("Payload file not exclusively owned or unavailable");
+  std::string owner_token;
+  if (create) {
+    owner_token = RandomOwnerToken();
+    if (owner_token.empty()) return reject("Cannot generate native file identity");
+    if (::fsetxattr(file.v, kOwnerXattr, owner_token.data(),
+                    owner_token.size(), XATTR_CREATE) != 0)
+      return reject("Native file ownership xattrs unsupported; direct write refused");
+  } else {
+    if (!ReadOwnerToken(file.v, &owner_token))
+      return reject("Native file owner token unavailable; reopen refused");
+  }
   Receipt record{commitment, static_cast<uint64_t>(rs.st_dev), static_cast<uint64_t>(rs.st_ino),
                  static_cast<uint64_t>(ps.st_dev), static_cast<uint64_t>(ps.st_ino),
-                 static_cast<uint64_t>(fs.st_dev), static_cast<uint64_t>(fs.st_ino)};
+                 static_cast<uint64_t>(fs.st_dev), static_cast<uint64_t>(fs.st_ino),
+                 owner_token};
   if (create) {
     if (::fsync(file.v) != 0 || ::fsync(parent.v) != 0 ||
         !PublishReceipt(receipt_fd.v, id, record, error))
@@ -203,7 +257,8 @@ std::unique_ptr<OwnedPayloadFile> OwnedPayloadFile::OpenImpl(
       return reject("Payload identity differs from durable ownership receipt");
   }
   std::unique_ptr<OwnedPayloadFile> opened(new OwnedPayloadFile(root_fd.release(),
-      parent.release(), file.release(), root, relative, parts.back(), record.dev, record.ino,
+      parent.release(), file.release(), root, relative, parts.back(),
+      record.owner_token, record.dev, record.ino,
       record.root_dev, record.root_ino, record.parent_dev, record.parent_ino));
   if (!opened->StillOwned(error)) return nullptr;
   return opened;
@@ -232,7 +287,7 @@ bool OwnedPayloadFile::Reserve(
       errno != ENOENT) return Fail(error, "Prospective payload path already occupied or uncertain");
   Receipt target{commitment, static_cast<uint64_t>(rs.st_dev),
       static_cast<uint64_t>(rs.st_ino), static_cast<uint64_t>(ps.st_dev),
-      static_cast<uint64_t>(ps.st_ino), 0, 0};
+      static_cast<uint64_t>(ps.st_ino), 0, 0, kUncreatedToken};
   const std::string pending = id + ".pending";
   Receipt existing{};
   std::string ignored;
@@ -240,7 +295,8 @@ bool OwnedPayloadFile::Reserve(
     return (existing.commitment == target.commitment &&
         existing.root_dev == target.root_dev && existing.root_ino == target.root_ino &&
         existing.parent_dev == target.parent_dev && existing.parent_ino == target.parent_ino &&
-        existing.dev == 0 && existing.ino == 0) ||
+        existing.dev == 0 && existing.ino == 0 &&
+        existing.owner_token == kUncreatedToken) ||
         Fail(error, "Prospective ownership changed since reservation");
   }
   // If a pending receipt exists but cannot be read, it is untrusted, not free.
@@ -263,6 +319,7 @@ std::unique_ptr<OwnedPayloadFile> OwnedPayloadFile::CreateFromReservation(
   if (receipt_fd.v < 0 || !LoadReceipt(receipt_fd.v, id + ".pending", &pending, error))
     return nullptr;
   if (pending.commitment != commitment || pending.dev != 0 || pending.ino != 0 ||
+      pending.owner_token != kUncreatedToken ||
       !Reserve(root, relative, receipts, id, commitment, error)) return nullptr;
   // Reserve validated the original identity and absence. O_EXCL rechecks
   // physical absence at the actual writer open, never trusting observation.
@@ -283,11 +340,11 @@ std::unique_ptr<OwnedPayloadFile> OwnedPayloadFile::Reopen(
 
 OwnedPayloadFile::OwnedPayloadFile(int root, int parent, int file,
     std::string root_path, std::string relative_path, std::string leaf,
-    std::uint64_t dev, std::uint64_t ino, std::uint64_t root_dev,
+    std::string owner_token, std::uint64_t dev, std::uint64_t ino, std::uint64_t root_dev,
     std::uint64_t root_ino, std::uint64_t parent_dev, std::uint64_t parent_ino)
     : root_fd_(root), parent_fd_(parent), file_fd_(file), root_path_(std::move(root_path)),
       relative_path_(std::move(relative_path)), leaf_(std::move(leaf)),
-      dev_(dev), ino_(ino), root_dev_(root_dev), root_ino_(root_ino),
+      owner_token_(std::move(owner_token)), dev_(dev), ino_(ino), root_dev_(root_dev), root_ino_(root_ino),
       parent_dev_(parent_dev), parent_ino_(parent_ino) {}
 
 OwnedPayloadFile::~OwnedPayloadFile() {
@@ -326,6 +383,10 @@ bool OwnedPayloadFile::StillOwned(std::string* err) const {
       static_cast<std::uint64_t>(path.st_dev) != dev_ ||
       static_cast<std::uint64_t>(path.st_ino) != ino_)
     return Fail(err, "Pinned native file no longer matches its owned path");
+  // A recycled inode with the same dev+ino is not durable ownership.
+  std::string actual_token;
+  if (!ReadOwnerToken(file_fd_, &actual_token) || actual_token != owner_token_)
+    return Fail(err, "Native filesystem creation identity changed");
   return true;
 }
 
