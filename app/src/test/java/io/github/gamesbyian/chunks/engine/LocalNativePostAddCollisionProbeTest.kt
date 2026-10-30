@@ -338,6 +338,7 @@ class LocalNativePostAddCollisionProbeTest {
         assertFalse(before == sourceSha)
 
         val restored = persistentEngine()
+        val afterRestore = sha(payload.readBytes())
         val record = restored.status(hash)
         assertTrue("If native restore refused the collision, the resume witness must survive",
             record != null || File(state, "$hash.resume").isFile)
@@ -368,7 +369,8 @@ class LocalNativePostAddCollisionProbeTest {
         val after = payload.readBytes()
         println("CHUNKS_RESTORE_COLLISION observed_stopped=${record?.stopped == true} resumed_outcome=$startOutcome")
         println("CHUNKS_RESTORE_COLLISION before_sha256=$before expected_sha256=$sourceSha " +
-            "after_sha256=${sha(after)}")
+            "after_restore_sha256=$afterRestore after_sha256=${sha(after)}")
+        println("CHUNKS_RESTORE_COLLISION restore_changed_foreign=${afterRestore != before}")
         println("CHUNKS_RESTORE_COLLISION foreign_file_replaced=${!after.contentEquals(foreign)}")
         println("CHUNKS_RESTORE_COLLISION expected_torrent_data_present=${after.contentEquals(expected)}")
         // Characterization: a future native writer can refuse and preserve,
