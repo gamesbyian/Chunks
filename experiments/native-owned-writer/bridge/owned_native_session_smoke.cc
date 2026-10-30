@@ -7,6 +7,8 @@
 #include <libtorrent/create_torrent.hpp>
 #include <libtorrent/hasher.hpp>
 #include <libtorrent/load_torrent.hpp>
+#include <libtorrent/read_resume_data.hpp>
+#include <libtorrent/write_resume_data.hpp>
 #include <libtorrent/session.hpp>
 #include <libtorrent/session_params.hpp>
 #include <libtorrent/settings_pack.hpp>
@@ -224,6 +226,7 @@ void exerciseLoopbackTransfer() {
   download_settings.set_bool(lt::settings_pack::enable_lsd, false);
   download_settings.set_bool(lt::settings_pack::enable_upnp, false);
   download_settings.set_bool(lt::settings_pack::enable_natpmp, false);
+  std::vector<char> saved_resume;
   lt::session_params owned_params(download_settings);
   owned_params.disk_io_constructor =
       chunks::MakeOwnedDiskConstructor(box.receipts.string());
@@ -261,6 +264,12 @@ void exerciseLoopbackTransfer() {
     CHECK(completed);
     CHECK(target.status().total_payload_download >=
           static_cast<std::int64_t>(expected.size()));
+    // Persist the exact native libtorrent transfer state, not just our
+    // private owner receipts, so this replay reproduces process restoration.
+    auto const resume_data = target.get_resume_data(
+        lt::torrent_handle::save_info_dict);
+    saved_resume = lt::write_resume_data_buf(resume_data);
+    CHECK(!saved_resume.empty());
   } // own native session must flush all bytes before destruction
 
   std::ifstream payload(box.public_root / "probe.bin", std::ios::binary);
@@ -289,8 +298,14 @@ void exerciseLoopbackTransfer() {
     restarted.disk_io_constructor =
         chunks::MakeOwnedDiskConstructor(box.receipts.string());
     lt::session second(restarted);
-    auto revived = lt::load_torrent_buffer(
-        {torrent_bytes.data(), static_cast<std::ptrdiff_t>(torrent_bytes.size())});
+    // Decode the exact completed-transfer resume snapshot written by the
+    // previous native session. The renamed real inode is no longer at the
+    // claimed path, so the receipt-owned backend must refuse foreign bytes.
+    lt::error_code resume_error;
+    auto revived = lt::read_resume_data(
+        {saved_resume.data(), static_cast<std::ptrdiff_t>(saved_resume.size())},
+        resume_error);
+    CHECK(!resume_error);
     revived.save_path = box.public_root.string();
     revived.flags |= lt::torrent_flags::paused;
     revived.flags &= ~lt::torrent_flags::auto_managed;
