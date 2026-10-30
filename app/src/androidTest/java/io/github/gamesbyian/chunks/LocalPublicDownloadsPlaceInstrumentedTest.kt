@@ -165,6 +165,48 @@ class LocalPublicDownloadsPlaceInstrumentedTest {
             original, foreign.readBytes())
     }
 
+    @Test fun twoCheckedHashesCannotReserveOneEmptyPublicDownloadsBackingPath() {
+        allowSharedDownloads()
+        val public = LocalDownloadPlaces.choices(context)
+            .single { it.place.kind == LocalPlaceKind.PUBLIC_DOWNLOADS }
+        val root = requireNotNull(LocalDownloadPlaces.materialize(public.place)) {
+            "Public Downloads could not be verified"
+        }
+        val destination = requireNotNull(LocalOwnedAddFolder.prepare(root,
+            "checked-double-hash-" + System.nanoTime()))
+        publicTestFolder = destination
+
+        fun torrent(parent: String, seed: Long): ByteArray {
+            val source = File(work, "$parent/Shared destination fixture")
+                .apply { mkdirs() }
+            val payload = ByteArray(96_000).also { Random(seed).nextBytes(it) }
+            File(source, "payload.bin").writeBytes(payload)
+            return TorrentBuilder().path(source).pieceSize(16 * 1024)
+                .generate().entry().bencode()
+        }
+        val first = torrent("shared-source-one", 568L)
+        val second = torrent("shared-source-two", 569L)
+        val native = engine()
+        val accepted = native.addStoppedChecked(first, destination)
+        assertTrue("The first stopped checked job should be admitted: $accepted",
+            accepted is LocalAddResult.AddedStopped)
+        val competing = native.addStoppedChecked(second, destination)
+        assertTrue("A still-empty directory must not authorize two native writers: $competing",
+            competing is LocalAddResult.Refused)
+        assertTrue((competing as LocalAddResult.Refused).reason.contains("reserves"))
+        assertEquals(1, native.list().size)
+        val path = File(destination, "Shared destination fixture/payload.bin")
+        assertTrue("Neither stopped job may create public Downloads backing bytes",
+            !path.exists())
+
+        // The libtorrent Remove operation is asynchronous; a later same-path
+        // checked Add must not claim the first handle's outstanding disk I/O.
+        val hash = (accepted as LocalAddResult.AddedStopped).status.infoHash
+        assertTrue(native.removeKeepingData(hash))
+        assertTrue(native.addStoppedChecked(second, destination) is LocalAddResult.Refused)
+        assertTrue("No payload created after admission refusal", !path.exists())
+    }
+
     @Test fun checkedFirstStartRefusesLateForeignFileInSharedDownloads() {
         allowSharedDownloads()
         val public = LocalDownloadPlaces.choices(context)
