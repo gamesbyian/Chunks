@@ -207,8 +207,11 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
      * magnet can retry after the user clears the conflicting file.
      */
     private fun transitionMagnetMetadata(key: String, handle: TorrentHandle) {
-        synchronized(this) {
-            if (!started || handles[key] != handle || !awaitingMetadata.remove(key)) return
+        // The alert dispatcher must never acquire the engine monitor: close()
+        // holds it while joining that dispatcher. Share only the handle lock
+        // with command submission and handle retirement (engine -> handles).
+        synchronized(handles) {
+            if (!started || handles[key] != handle || !handle.isValid || !awaitingMetadata.remove(key)) return
             val autoStart = startWhenMetadataArrives.remove(key)
             val problem = inspectMagnetCollision(handle)
             if (problem != null) magnetCollisionProblems[key] = problem
@@ -252,8 +255,8 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
      */
     private fun requestMetadataResumeSave(key: String, handle: TorrentHandle) {
         if (config.stateDirectory == null) return
-        synchronized(this) {
-            if (!started || handles[key] != handle) return
+        synchronized(handles) {
+            if (!started || handles[key] != handle || !handle.isValid) return
             pendingSaves.acquire(key, handle) {
                 handle.saveResumeData(TorrentHandle.SAVE_INFO_DICT)
             }
@@ -484,11 +487,9 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         return if (hash.matches(Regex("^[0-9a-fA-F]{40}$"))) hash.lowercase(Locale.ROOT) else null
     }
 
-    fun resume(infoHash: String, readbackTimeoutMs: Long = 5_000): LocalCommandResult {
-        val key = normal(infoHash)
-        synchronized(this) {
-            val handle = handles[key]
-                ?: return LocalCommandResult(LocalCommandOutcome.NOT_FOUND, null)
+    fun resume(infoHash: String, readbackTimeoutMs: Long = 5_000): LocalCommandResult =
+        command(infoHash, wantStopped = false, readbackTimeoutMs) { handle ->
+            val key = normal(infoHash)
             // Upload-only is also preserved in the native resume file. That
             // makes the collision gate survive process death without relying
             // on this object's in-memory collision map.
@@ -501,25 +502,24 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                 val problem = inspectMagnetCollision(handle)
                 if (problem != null) {
                     magnetCollisionProblems[key] = problem
-                    return LocalCommandResult(LocalCommandOutcome.UNCERTAIN, snapshot(key, handle))
+                    return@command false
                 }
                 magnetCollisionProblems.remove(key)
+                // Explicit Start has performed the metadata-time survey. A
+                // queued metadata alert must not survey again after our own
+                // authorized payload has begun creating these files.
+                awaitingMetadata.remove(key)
+                startWhenMetadataArrives.remove(key)
                 handle.unsetFlags(org.libtorrent4j.TorrentFlags.UPLOAD_MODE)
                 requestMetadataResumeSave(key, handle)
             }
-        }
-        return command(infoHash, wantStopped = false, readbackTimeoutMs) {
-            // A magnet initially runs in upload-only mode so it can fetch
-            // metadata without downloading payload. If the user manually
-            // presses Start while that metadata is pending, preserve that
-            // explicit intent across the METADATA_RECEIVED callback. Otherwise
-            // the callback would pause the torrent even though Start was
-            // acknowledged earlier. A later explicit Stop clears this intent.
-            val key = normal(infoHash)
+            // Gate, Start consent and native command share the handle monitor
+            // with the metadata callback. It cannot pause between the reviewed
+            // gate and this Start or consume consent halfway through submission.
             if (awaitingMetadata.contains(key)) startWhenMetadataArrives.add(key)
-            it.resume()
+            handle.resume()
+            true
         }
-    }
 
     fun pause(infoHash: String, readbackTimeoutMs: Long = 5_000): LocalCommandResult =
         command(infoHash, wantStopped = true, readbackTimeoutMs) {
@@ -527,19 +527,24 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             // magnet metadata is in flight.
             startWhenMetadataArrives.remove(normal(infoHash))
             it.pause()
+            true
         }
 
     private fun command(
         infoHash: String,
         wantStopped: Boolean,
         readbackTimeoutMs: Long,
-        action: (TorrentHandle) -> Unit
+        action: (TorrentHandle) -> Boolean
     ): LocalCommandResult {
         require(readbackTimeoutMs in 0..60_000)
         val key = normal(infoHash)
         synchronized(this) {
-            val handle = handles[key] ?: return LocalCommandResult(LocalCommandOutcome.NOT_FOUND, null)
-            action(handle)
+            synchronized(handles) {
+                val handle = handles[key]?.takeIf { started && it.isValid }
+                    ?: return LocalCommandResult(LocalCommandOutcome.NOT_FOUND, null)
+                if (!action(handle))
+                    return LocalCommandResult(LocalCommandOutcome.UNCERTAIN, snapshot(key, handle))
+            }
         }
         val deadline = System.nanoTime() + readbackTimeoutMs * 1_000_000
         var latest: LocalTransferStatus? = null

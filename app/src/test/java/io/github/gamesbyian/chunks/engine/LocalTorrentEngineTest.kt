@@ -355,6 +355,50 @@ class LocalTorrentEngineTest {
             File(destination, "Chunks public fixture/episode.bin").readBytes())
     }
 
+    @Test fun explicitStartBeforeQueuedMetadataCallbackDoesNotResurveyItsOwnPayload() {
+        val fixture = fixture()
+        val seeder = engine()
+        val seed = added(seeder.addStopped(fixture.torrent, fixture.root.parentFile))
+        assertEquals(LocalCommandOutcome.VERIFIED, seeder.resume(seed.infoHash).outcome)
+        waitFor { seeder.status(seed.infoHash)?.state == LocalTransferState.SEEDING }
+        val destination = temp.newFolder("queued-metadata-start")
+        val leecher = engine()
+        assertTrue(leecher.addMagnet("magnet:?xt=urn:btih:" + seed.infoHash, destination)
+            is LocalAddResult.FetchingMetadata)
+        // Delay Java alert dispatch using the existing handle monitor while
+        // the real C++ session discovers metadata and writes payload. No test
+        // hook or alternate disk backend changes the production behaviour.
+        val handles = LocalTorrentEngine::class.java.getDeclaredField("handles")
+            .apply { isAccessible = true }.get(leecher)
+        synchronized(leecher) {
+            synchronized(handles) {
+                assertTrue(leecher.connectPeer(seed.infoHash,
+                    InetSocketAddress("127.0.0.1", seeder.listenPort())))
+                waitFor(20_000) {
+                    leecher.status(seed.infoHash)?.metadataKnown == true &&
+                        Thread.getAllStackTraces().any { (thread, stack) ->
+                            thread.state == Thread.State.BLOCKED && stack.any {
+                                it.className.startsWith(LocalTorrentEngine::class.java.name) &&
+                                    it.methodName == "alert"
+                            }
+                        }
+                }
+                assertEquals(LocalCommandOutcome.VERIFIED, leecher.resume(seed.infoHash).outcome)
+                waitFor(20_000) { leecher.status(seed.infoHash)?.progressPpm == 1_000_000 }
+                assertTrue("Payload must exist before the queued callback is released",
+                    File(destination, "Chunks public fixture/episode.bin").isFile)
+            }
+        }
+        // CACHE_FLUSHED travels through the same real dispatcher, proving the
+        // earlier queued metadata callback has run before final assertions.
+        requireFlushed(leecher, seed.infoHash)
+        val afterCallback = requireNotNull(leecher.status(seed.infoHash))
+        assertNull("Our own approved payload must not become a foreign collision", afterCallback.error)
+        assertFalse("The delayed callback must not undo explicit Start", afterCallback.stopped)
+        for ((name, bytes) in fixture.files)
+            assertArrayEquals(name, bytes, File(destination, "Chunks public fixture/$name").readBytes())
+    }
+
     @Test fun resolvedMagnetIsPersistedImmediatelyAndRestoresStopped() {
         val fixture = fixture()
         val seeder = engine()
