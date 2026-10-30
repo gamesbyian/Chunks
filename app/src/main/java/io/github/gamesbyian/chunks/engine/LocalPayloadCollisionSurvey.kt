@@ -13,7 +13,9 @@ import java.nio.file.Path
  * Existing files are always classified as collisions, even if their size or
  * name resembles torrent contents. Reuse/rehydration must have a separate,
  * explicitly reviewed native hash-check path. Paths that cannot be inspected
- * or whose parents traverse symbolic links are UNKNOWN rather than safe.
+ * or whose *payload* parents traverse symbolic links are UNKNOWN. System
+ * directory aliases in the selected root's ancestors are resolved to their
+ * real path before inspecting children (including Android /data/user aliases).
  */
 internal object LocalPayloadCollisionSurvey {
     internal sealed interface Result {
@@ -31,17 +33,16 @@ internal object LocalPayloadCollisionSurvey {
             // directory from the one reached when the OS follows that link.
             if (supplied.any { it.toString() == ".." })
                 return Result.Unknown("Download root contains parent traversal")
-            supplied.normalize().also { resolved ->
-                // A final-component check misses /parent-link/download-root.
-                // The native writer follows ancestors, so survey those too.
-                var ancestor: Path? = resolved
-                while (ancestor != null) {
-                    if (Files.isSymbolicLink(ancestor))
-                        return Result.Unknown("Download root crosses a symbolic link")
-                    ancestor = ancestor.parent
-                }
-                if (!Files.isDirectory(resolved, LinkOption.NOFOLLOW_LINKS))
-                    return Result.Unknown("Download root is unavailable or indirect")
+            val lexical = supplied.normalize()
+            // The chosen directory itself must not be a symlink. Its ancestor
+            // aliases can be OS-managed (/data/user/0 on Android), however:
+            // inspecting lexical descendants would miss the real destination.
+            if (!Files.isDirectory(lexical, LinkOption.NOFOLLOW_LINKS) ||
+                Files.isSymbolicLink(lexical))
+                return Result.Unknown("Download root is unavailable or indirect")
+            lexical.toRealPath().also { actual ->
+                if (!Files.isDirectory(actual, LinkOption.NOFOLLOW_LINKS))
+                    return Result.Unknown("Resolved download root is unavailable")
             }
         } catch (_: Exception) { return Result.Unknown("Download root cannot be inspected") }
         // Conflicting torrent file indices cannot independently own the same
