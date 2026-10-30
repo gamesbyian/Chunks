@@ -18,14 +18,17 @@ api="$(adb shell getprop ro.build.version.sdk | tr -d '\r\n')" || {
 # adb uninstall can fail if the package was absent, but a failed uninstall of
 # an installed package must never be mistaken for a clean device state.
 adb uninstall io.github.gamesbyian.chunks >/dev/null 2>&1 || true
-remaining="$(adb shell pm path io.github.gamesbyian.chunks)" || {
+# pm path may report a nonzero status for a legitimately absent package.
+# List packages instead, then require an exact package-name match, never a
+# substring match against similarly named preview/other applications.
+remaining="$(adb shell pm list packages io.github.gamesbyian.chunks)" || {
   echo "CHUNKS_ANDROID10_DOWNLOADS: cannot verify the previous app is gone" >&2
   exit 1
 }
-[[ -z "$remaining" ]] || {
+if printf '%s\n' "$remaining" | tr -d '\r' | grep -Fxq 'package:io.github.gamesbyian.chunks'; then
   echo "CHUNKS_ANDROID10_DOWNLOADS: previous app still installed" >&2
   exit 1
-}
+fi
 
 install_checked() {
   local output
