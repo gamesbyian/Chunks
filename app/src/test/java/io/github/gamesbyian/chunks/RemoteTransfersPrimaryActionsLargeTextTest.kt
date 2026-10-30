@@ -117,7 +117,9 @@ class RemoteTransfersPrimaryActionsLargeTextTest {
         showSort(550, 1f)
         val count = rule.onNodeWithText("120 shown").getUnclippedBoundsInRoot()
         val sort = rule.onNodeWithText("Sort: Download speed").getUnclippedBoundsInRoot()
-        assertEquals(count.top, sort.top)
+        // The button is taller than the count label and the Row centers it;
+        // their vertical intervals should overlap without horizontal collision.
+        assertTrue(count.bottom > sort.top && count.top < sort.bottom)
         assertTrue(count.right < sort.left)
     }
 
