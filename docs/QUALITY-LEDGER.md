@@ -1,5 +1,17 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-30 G0 RED: persisted checked-Add restore loses foreign-file protection
+
+**New independent native proof:** [PR #733](https://github.com/gamesbyian/Chunks/pull/733), candidate head `8e4205b3ba607f3624372fc49d829dd1a2890861`, [real native loopback JVM/JNI run 41121891456](https://github.com/gamesbyian/Chunks/actions/runs/41121891456). The **deliberately green diagnostic** executes production `addStoppedChecked` with app-style persisted resume state, closes engine, plants foreign data at the previously empty destination, restores a stopped native handle and submits first Start. The native workflow's four diagnostic cases and five-line `CHUNKS_RESTORE_COLLISION` witness executed successfully, but that green characterization is **negative product evidence**:
+
+- `observed_stopped=true resumed_outcome=VERIFIED`
+- `before_sha256=a81511ac006812fe5008019b1b8173107861f600226cf5fcfbf5da6dd81201e2`, `after_restore_sha256=a81511ac006812fe5008019b1b8173107861f600226cf5fcfbf5da6dd81201e2` (foreign file unchanged at restore).
+- `expected_sha256=29ee35e1f27d929ad825d65ce49375ada3e0df61b476e5bfbc54a74303cbbfb1`, `after_sha256=29ee35e1f27d929ad825d65ce49375ada3e0df61b476e5bfbc54a74303cbbfb1` (native Start replaced foreign bytes with torrent payload).
+- `restore_changed_foreign=false foreign_file_replaced=true expected_torrent_data_present=true`.
+
+**Implication:** merged [#721](https://github.com/gamesbyian/Chunks/pull/721)'s checked first-Start and cross-job pathname reservations are session-only; a restored checked job can re-enter native writing without durable unverified-file refusal. [#731](https://github.com/gamesbyian/Chunks/pull/731) and [#727](https://github.com/gamesbyian/Chunks/pull/727) propose in-process restart/priority guards only; neither can be claimed to protect restored handles until specifically proved at the integrated head. Require persistent transfer/Place/inode identity, fail-closed/quarantined recovery before libtorrent writes, and separately hash-verified attach-existing-data on final writer implementation. Re-run native restore, priority, Start/Stop, raw Add and symlink/positive-progress destructive cases with independently immutable foreign bytes plus actual Android API29/API35/physical handset. [#568](https://github.com/gamesbyian/Chunks/issues/568) remains **G0 RED, release-blocking**. Source witness details [#568 comment](https://github.com/gamesbyian/Chunks/issues/568#issuecomment-6532745690).
+
+
 ## 2026-10-30 reviewed integration checkpoint: clean-main collision, remote and CI work
 
 **Exact main commit after latest reviewed remote acceptance:** [`a97e3d8924fd28acc65351bcbe91f8c1d5684857`](https://github.com/gamesbyian/Chunks/commit/a97e3d8924fd28acc65351bcbe91f8c1d5684857). This is a **source-bound checkpoint**, not an assertion that a post-merge combined-main device/host release suite ran.
