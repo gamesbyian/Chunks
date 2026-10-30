@@ -167,6 +167,72 @@ class LocalTorrentEngineTest {
         assertEquals(LocalCommandOutcome.NOT_FOUND, engine.pause("b".repeat(40)).outcome)
     }
 
+    @Test fun checkedTorrentRefusesForeignPayloadPlantedAfterAddBeforeFirstStart() {
+        val fixture = fixture()
+        val destination = temp.newFolder("checked-first-start-race")
+        val target = engine()
+        val added = added(target.addStoppedChecked(fixture.torrent, destination))
+        val foreign = File(destination, "Chunks public fixture/episode.bin")
+        assertTrue(foreign.parentFile.mkdirs())
+        val original = ByteArray(fixture.files.getValue("episode.bin").size)
+            .also { Random(568).nextBytes(it) }
+        foreign.writeBytes(original)
+
+        val refused = target.resume(added.infoHash)
+        assertEquals(LocalCommandOutcome.REFUSED, refused.outcome)
+        val blocked = requireNotNull(refused.status)
+        assertTrue("Refused Start must leave the handle stopped", blocked.stopped)
+        assertTrue("A user-visible cause must survive readback",
+            blocked.error.orEmpty().contains("since Add"))
+        Thread.sleep(500)
+        assertArrayEquals("Checked Start must not overwrite foreign bytes",
+            original, foreign.readBytes())
+        assertFalse("Refused Start cannot create another unowned payload",
+            File(destination, "Chunks public fixture/extras/notes.txt").exists())
+
+        // The same job can be started after the test-owned collision is removed.
+        assertTrue(foreign.delete())
+        assertEquals(LocalCommandOutcome.VERIFIED, target.resume(added.infoHash).outcome)
+        assertNull("Cleared admission must remove the prior refusal",
+            target.status(added.infoHash)?.error)
+    }
+
+    @Test fun checkedTorrentRefusesSymlinkParentIntroducedAfterAdd() {
+        val fixture = fixture()
+        val destination = temp.newFolder("checked-symlink-start")
+        val external = temp.newFolder("checked-symlink-target")
+        val target = engine()
+        val added = added(target.addStoppedChecked(fixture.torrent, destination))
+        val link = File(destination, "Chunks public fixture")
+        Files.createSymbolicLink(link.toPath(), external.toPath())
+
+        val refused = target.resume(added.infoHash)
+        assertEquals(LocalCommandOutcome.REFUSED, refused.outcome)
+        assertTrue(requireNotNull(refused.status).stopped)
+        assertTrue(refused.status?.error.orEmpty().contains("Cannot verify"))
+        assertTrue("External directory cannot receive payload", external.list().isEmpty())
+        assertTrue("The planted link must not be deleted", Files.isSymbolicLink(link.toPath()))
+    }
+
+    @Test fun checkedTorrentFirstStartDownloadsAndHashesNormalBytes() {
+        val fixture = fixture()
+        val seeder = engine()
+        val source = added(seeder.addStopped(fixture.torrent, fixture.root.parentFile))
+        assertEquals(LocalCommandOutcome.VERIFIED, seeder.resume(source.infoHash).outcome)
+        waitFor { seeder.status(source.infoHash)?.state == LocalTransferState.SEEDING }
+
+        val destination = temp.newFolder("checked-normal-start")
+        val leecher = engine()
+        val checked = added(leecher.addStoppedChecked(fixture.torrent, destination,
+            listOf(InetSocketAddress("127.0.0.1", seeder.listenPort()))))
+        assertEquals(LocalCommandOutcome.VERIFIED, leecher.resume(checked.infoHash).outcome)
+        requireFlushed(leecher, checked.infoHash)
+        for ((name, bytes) in fixture.files) {
+            assertArrayEquals(name, bytes,
+                File(destination, "Chunks public fixture/$name").readBytes())
+        }
+    }
+
     @Test fun refusesDuplicatesInvalidMetadataAndUnchosenFolders() {
         val fixture = fixture()
         val engine = engine()
