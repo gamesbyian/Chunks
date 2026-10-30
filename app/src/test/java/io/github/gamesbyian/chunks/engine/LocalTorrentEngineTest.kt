@@ -252,15 +252,15 @@ class LocalTorrentEngineTest {
 
         val root = temp.newFolder("post-stop-checked-dest")
         val leecher = engine()
-        val transfer = added(leecher.addStoppedChecked(metainfo, root,
-            listOf(InetSocketAddress("127.0.0.1", seeder.listenPort()))))
+        // A peer-free first Start makes the active-file-priority collision
+        // deterministic and avoids waiting for intentionally skipped data.
+        val transfer = added(leecher.addStoppedChecked(metainfo, root))
         val skipped = requireNotNull(leecher.files(transfer.infoHash))
             .single { it.path.endsWith("/delayed.bin") }
         assertEquals(LocalCommandOutcome.VERIFIED,
             leecher.setFileWanted(transfer.infoHash, skipped.index, false))
         assertEquals(LocalCommandOutcome.VERIFIED, leecher.resume(transfer.infoHash).outcome)
-        requireFlushed(leecher, transfer.infoHash)
-        assertArrayEquals(first, File(root, "Stopped checked fixture/initial.bin").readBytes())
+        assertEquals(0L, requireNotNull(leecher.status(transfer.infoHash)).doneBytes)
         // Even without an explicit Stop/Start, unskipping can schedule disk
         // writes on an active native job. Reject foreign bytes BEFORE JNI.
         val activeForeign = File(root, "Stopped checked fixture/delayed.bin")
@@ -309,6 +309,9 @@ class LocalTorrentEngineTest {
         assertTrue("Only remove the fixture we planted", foreign.delete())
         assertEquals(LocalCommandOutcome.VERIFIED,
             leecher.setFileWanted(transfer.infoHash, skipped.index, true))
+        assertTrue("A clean recovery starts a real peer transfer, not a synthetic completed status",
+            leecher.connectPeer(transfer.infoHash,
+                InetSocketAddress("127.0.0.1", seeder.listenPort())))
         assertEquals(LocalCommandOutcome.VERIFIED, leecher.resume(transfer.infoHash).outcome)
         requireFlushed(leecher, transfer.infoHash)
         assertArrayEquals("Clean restart may still download the skipped file",
