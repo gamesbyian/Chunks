@@ -11,25 +11,33 @@ import java.util.Locale
  * server has not finished downloading (and DHT may be off).
  *
  * Only for transfers the server reports as non-private. Defence in depth:
- * any URL that still looks credential-bearing (user info, passkey-style
- * query keys or long opaque path/query tokens) is dropped rather than copied,
- * so a passkey never reaches the phone's editable Add field.
+ * only generic public announce paths without queries, fragments, encoding
+ * or userinfo are eligible. A credential can hide under an arbitrary query key
+ * or a short path component; a passkey denylist/length threshold is insufficient.
+ * Unknown tracker URL shapes are dropped rather than copied automatically.
+ * Provider-specific secrets in a hostname are not inferable from URL syntax.
  */
 internal object PublicTrackerHandoff {
     const val MAX_TRACKERS = 20
     private val schemes = setOf("http", "https", "udp")
-    private val secretKeys = Regex("(?i)(?:^|[?&;])(?:passkey|pk|authkey|auth|key|token|torrent_pass|uid|secret)=")
-    private val opaqueToken = Regex("[A-Za-z0-9]{16,}")
+    // Generic public endpoints; unknown paths might embed short passkeys.
+    private val publicAnnouncePaths = setOf(
+        "", "/announce", "/announce.php", "/tracker/announce", "/tracker/announce.php"
+    )
 
     fun usable(url: String): Boolean {
         if (url.length !in 8..512 || url.any { it.isISOControl() || it.isWhitespace() }) return false
         val uri = try { URI(url) } catch (_: Exception) { return false }
         val scheme = uri.scheme?.lowercase(Locale.ROOT) ?: return false
         if (scheme !in schemes || uri.host.isNullOrBlank() || uri.rawUserInfo != null) return false
-        val rest = (uri.rawPath.orEmpty() + "?" + uri.rawQuery.orEmpty())
-        if (secretKeys.containsMatchIn("?" + uri.rawQuery.orEmpty())) return false
-        // "/announce" is fine; "/a1b2c3…/announce" (a per-user token) is not.
-        return rest.split('/', '?', '&', '=', '.', '-', '_').none { opaqueToken.matches(it) }
+        // Any query could be a provider-specific secret, even if its key is
+        // not literally "passkey". Reject fragments and encoded paths too.
+        if (uri.rawQuery != null || uri.rawFragment != null) return false
+        val path = uri.rawPath.orEmpty()
+        if ('%' in path) return false
+        // Path components can hold passkeys of *any* length. Only common
+        // public endpoints are safe to add without manual review.
+        return path.lowercase(Locale.ROOT).trimEnd('/') in publicAnnouncePaths
     }
 
     /** [magnet] must already be a validated identity magnet. */
