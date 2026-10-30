@@ -61,6 +61,41 @@ class EnvironmentBadgePaletteTest {
         }
     }
 
+    @Test fun concurrentPaletteEffectsAcrossSeparateStoresRemainIdempotent() {
+        // A live remote page and the combined page can both first see the same
+        // two configured accounts. Neither may overwrite committed identity
+        // assignments or make the revision rise again during ordinary redraw.
+        val phone = EnvironmentId("p".repeat(64))
+        val remote = EnvironmentId("r".repeat(64))
+        val ids = listOf(phone, remote)
+        val pool = java.util.concurrent.Executors.newFixedThreadPool(2)
+        val go = java.util.concurrent.CountDownLatch(1)
+        try {
+            val first = pool.submit<io.github.gamesbyian.chunks.model.EnvironmentPalette.State> {
+                go.await()
+                EnvironmentColourStore(context).ensure(ids)
+            }
+            val second = pool.submit<io.github.gamesbyian.chunks.model.EnvironmentPalette.State> {
+                go.await()
+                EnvironmentColourStore(context).ensure(ids)
+            }
+            go.countDown()
+            val a = first.get(5, java.util.concurrent.TimeUnit.SECONDS)
+            val b = second.get(5, java.util.concurrent.TimeUnit.SECONDS)
+            assertEquals(a, b)
+            assertNotNull(a.hueOf(phone))
+            assertNotNull(a.hueOf(remote))
+            assertNotEquals(a.hueOf(phone), a.hueOf(remote))
+            val revisionAfterFirstCommit = EnvironmentColourStore.revision
+            val again = EnvironmentColourStore(context).ensure(ids)
+            assertEquals(a, again)
+            assertEquals("A recomposition must not cause another preference write",
+                revisionAfterFirstCommit, EnvironmentColourStore.revision)
+        } finally {
+            pool.shutdownNow()
+        }
+    }
+
     @Test fun invalidEnvironmentCannotModifyPaletteOrTriggerUiRevision() {
         val store = EnvironmentColourStore(context)
         val revision = EnvironmentColourStore.revision
