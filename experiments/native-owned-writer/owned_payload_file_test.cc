@@ -25,6 +25,7 @@ struct Sandbox {
     receipts = base / "private-receipts";
     fs::create_directories(payload);
     fs::create_directories(receipts);
+    fs::permissions(receipts, fs::perms::owner_all, fs::perm_options::replace);
   }
   ~Sandbox() { fs::remove_all(base); }
   std::string read(const fs::path& p) {
