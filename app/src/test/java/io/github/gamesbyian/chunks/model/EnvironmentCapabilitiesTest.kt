@@ -25,6 +25,15 @@ class EnvironmentCapabilitiesTest {
         assertFalse(phone.decide(EnvironmentOperation.COPY_TO_PHONE, EnvironmentAvailability.LIVE).allowed)
     }
 
+    @Test fun builtInPhoneEvidenceCannotBeRetargetedToRemoteProfile() {
+        for (remoteId in listOf(serverA, serverB)) {
+            try {
+                EnvironmentCapabilities.phone(remoteId)
+                fail("A remote server cannot inherit the phone engine's built-in features")
+            } catch (_: IllegalArgumentException) { }
+        }
+    }
+
     @Test fun eachServerIsGradedFromItsOwnProbeOnly() {
         val a = EnvironmentCapabilities.fromProbe(serverA, RemoteProbe("0.9.8", all - "d.erase"), 5)
         val b = EnvironmentCapabilities.fromProbe(serverB, RemoteProbe("0.15.1", all), 6)
