@@ -95,8 +95,14 @@ def verify(root: ET.Element) -> tuple[bool, list[str]]:
         errors.append("Missing or unsafe foreign_file_replaced=false")
     if groups.get("expected_torrent_data_present") != f"{FAMILY} expected_torrent_data_present=false":
         errors.append("Missing or unsafe expected_torrent_data_present=false")
-    if not LIFECYCLE.fullmatch(groups.get("first_start_outcome", "")):
+    lifecycle = LIFECYCLE.fullmatch(groups.get("first_start_outcome", ""))
+    if not lifecycle:
         errors.append("Missing or invalid verified Start/Stop, priority and restart witness")
+    elif lifecycle.group(2) != "REFUSED":
+        # An accepted or uncertain native restart against deliberately planted
+        # unowned bytes remains capable of a later asynchronous overwrite.
+        # Equal hashes at the observation deadline cannot grant Start authority.
+        errors.append("UNOWNED POST-STOP RESTART WAS NOT EXPLICITLY REFUSED")
     return not errors, errors
 
 
@@ -114,7 +120,7 @@ def main(argv: list[str] | None = None) -> int:
         print("BLOCKED: " + problem, file=sys.stderr)
     if not ok:
         return 1
-    print("PASS: synthetic post-Stop foreign file unchanged before/after priority and restart")
+    print("PASS: synthetic post-Stop native restart explicitly refused; foreign bytes unchanged")
     print("LIMIT: no native atomic ownership, external race, persistent recovery or physical-device proof")
     return 0
 

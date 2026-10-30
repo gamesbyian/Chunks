@@ -55,8 +55,11 @@ class PostStopReceiptSafetyTest(unittest.TestCase):
     def test_safe_refused_restart(self):
         self.assertTrue(validator.verify(sample())[0])
 
-    def test_safe_verified_restart_if_foreign_bytes_remain_unchanged(self):
-        self.assertTrue(validator.verify(sample(restarted="VERIFIED"))[0])
+    def test_verified_restart_is_unsafe_even_if_bytes_still_match_at_deadline(self):
+        self.blocked(sample(restarted="VERIFIED"), "NOT EXPLICITLY REFUSED")
+
+    def test_uncertain_restart_is_unsafe_even_if_bytes_still_match_at_deadline(self):
+        self.blocked(sample(restarted="UNCERTAIN"), "NOT EXPLICITLY REFUSED")
 
     def test_priority_mutation_overwrite_is_a_failure_even_if_repaired_later(self):
         self.blocked(sample(priority=SHA_B), "DURING FILE PRIORITY")
