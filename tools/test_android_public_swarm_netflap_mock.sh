@@ -26,13 +26,22 @@ case "$*" in
   'shell svc data disable') printf '0\n' > "$MOCK_DIR/data"; printf 'data-off\n' >> "$MOCK_DIR/commands" ;;
   'logcat -c') : ;;
   'logcat -d -s ChunksSwarm:I') printf 'CHUNKS_SWARM_NETFLAP: ready verified=4194304\n' ;;
-  install\ *) printf 'install\n' >> "$MOCK_DIR/commands" ;;
+  install\ *)
+    printf 'install\n' >> "$MOCK_DIR/commands"
+    if [[ "${MOCK_INSTALL_FAILURE:-0}" == 1 ]]; then
+      printf 'Failure [INSTALL_FAILED_INVALID_APK]\n'
+    else
+      printf 'Success\n'
+    fi
+    ;;
   exec-in\ run-as\ *) cat >/dev/null ;;
   exec-out\ run-as\ *)
     case "$*" in *'files/net-off') touch "$MOCK_DIR/net-off";; *'files/net-on') touch "$MOCK_DIR/net-on";; esac ;;
   shell\ am\ instrument\ *)
     printf 'instrument\n' >> "$MOCK_DIR/commands"
-    printf 'INSTRUMENTATION_RESULT: stream=OK (1 test)\nOK (1 test)\n' ;;
+    printf 'INSTRUMENTATION_RESULT: stream=OK (1 test)\nOK (1 test)\n'
+    [[ "${MOCK_INSTRUMENT_FAILURE:-0}" != 1 ]] || exit 19
+    ;;
   *) printf 'Unexpected mock adb operation: %s\n' "$*" >&2; exit 1 ;;
 esac
 MOCK_ADB
@@ -50,6 +59,19 @@ for state in '1 0' '0 1'; do
   [[ -f "$MOCK_DIR/net-off" && -f "$MOCK_DIR/net-on" ]]
   [[ "$(grep -c -E '^(wifi|data)-(off|on)$' "$MOCK_DIR/commands")" == 4 ]]
   grep -q 'network returned to original settings' "$temp/output"
+done
+# A spawned instrumentation can print OK and still exit unsuccessfully.
+# A zero-exit adb install can report Failure instead of a real installation.
+for negative in MOCK_INSTRUMENT_FAILURE MOCK_INSTALL_FAILURE; do
+  printf '1\n' > "$MOCK_DIR/wifi"; printf '0\n' > "$MOCK_DIR/data"
+  : > "$MOCK_DIR/commands"
+  rm -f "$MOCK_DIR/net-off" "$MOCK_DIR/net-on"
+  if env -u ADB_SERIAL -u ANDROID_SERIAL "$negative=1" bash "$repo/android_public_swarm_netflap.sh" > "$temp/$negative.log" 2>&1; then
+    echo "Misleading netflap acceptance was accepted: $negative" >&2; exit 1
+  fi
+  [[ "$(cat "$MOCK_DIR/wifi")" == 1 && "$(cat "$MOCK_DIR/data")" == 0 ]] || {
+    echo "Network settings not restored after failed netflap: $negative" >&2; exit 1
+  }
 done
 printf '1\n' > "$MOCK_DIR/wifi"; printf '0\n' > "$MOCK_DIR/data"; : > "$MOCK_DIR/commands"
 if MOCK_UNREADABLE_DATA=1 bash "$repo/android_public_swarm_netflap.sh" > "$temp/fail" 2>&1; then
@@ -74,4 +96,4 @@ fi
 grep -q 'Selected adb device unavailable' "$temp/state-failed.log"
 [[ ! -s "$MOCK_DIR/commands" && ! -e "$MOCK_DIR/net-off" && ! -e "$MOCK_DIR/net-on" ]]
 [[ "$(cat "$MOCK_DIR/wifi")" == 1 && "$(cat "$MOCK_DIR/data")" == 0 ]]
-echo 'CHUNKS_NETFLAP_MOCK: baseline preservation, outage signaling, failed state query, unknown state, ambiguous/wireless adb all passed'
+echo 'CHUNKS_NETFLAP_MOCK: baseline preservation, outage signaling, failed state query, unknown state, ambiguous/wireless adb, zero-exit install failures and nonzero instrumentation all passed'

@@ -1,5 +1,11 @@
 # Chunks architecture and behavior contracts
 
+## External destination delivery seam (planned, nonblocking)
+
+Treat a locally running torrent, its owned staging files, and a final external Place as independent identities and authorities. Optional DeliveryPlan/DeliveryJournal coordinates verified stable source readback, separately authenticated SAF/Drive or FTP-family adapters, collision-safe temporary publication, readback/hash confirmation and durable uncertain/restart reconciliation. Reuse independent SAF library-copy semantics; do not bind provider file APIs as libtorrent's backing filesystem or treat remote torrent RPC credentials as filesystem access. Retain source through uncertain or unverified outcome; never infer cloud seeding. [Canonical delivery design and tests](EXTERNAL-DESTINATION-DELIVERY.md).
+
+
+
 ## Future backend adapters and TV presentation seam (deferred contract)
 
 Do not entangle the normalized transfer catalog, environment/hash identity, freshness, capability probing or outcome-state logic with rTorrent-only XML-RPC classes or phone-only Compose screens. After rTorrent release-quality acceptance, add isolated authenticated protocol adapters starting with Transmission and qBittorrent, retaining exact scoped target authority and per-backend negative/real-server proof. Android TV gets a separate Compose-for-TV presentation over the same tested core; D-pad/focus code must not invade engine execution. Avoid speculative refactors while native overwrite safety and current P0 gates remain open. Canonical future contract: [Android TV and remote backends](ANDROID-TV-AND-REMOTE-BACKENDS.md).

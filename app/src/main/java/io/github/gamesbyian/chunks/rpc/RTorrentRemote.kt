@@ -99,6 +99,17 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         require(!uri.host.isNullOrBlank() && uri.userInfo == null && uri.fragment == null) {
             "Invalid rTorrent endpoint"
         }
+        // Stored/explicit RemoteCredentials can bypass Smart Connect. Refuse
+        // paths that a reverse proxy might decode into a different RPC mount,
+        // even after a second or third percent-decoding pass. Benign %20 and
+        // %25 in hosted account names remain valid.
+        val rawPath = uri.rawPath.orEmpty()
+        val encodedSeparatorOrControl = Regex("(?i)%(?:25){0,2}(?:2f|5c|0[0-9a-f]|1[0-9a-f]|7f)")
+        val dotTraversalSegment = Regex("(?i)(?:^|/)(?:\\.|%2e|%252e|%25252e){1,2}(?:/|$)")
+        require(!encodedSeparatorOrControl.containsMatchIn(rawPath) &&
+            !dotTraversalSegment.containsMatchIn(rawPath)) {
+            "Ambiguous or unsafe rTorrent RPC path; use an exact unencoded server mount"
+        }
     }
 
     suspend fun version(): String =
@@ -326,6 +337,11 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         if (existing.any { it.hash.equals(plan.expectedInfoHash, ignoreCase = true) }) {
             return RemoteAddOutcome.AlreadyPresent(plan.expectedInfoHash)
         }
+        // View membership cannot prove absence from the server session.
+        // This exact-hash read is required before any non-idempotent load.
+        if (lookupName(plan.expectedInfoHash) != null) {
+            return RemoteAddOutcome.AlreadyPresent(plan.expectedInfoHash)
+        }
         requireCurrentServerDefault(plan)
         try {
             val params: List<Any> = if (plan.useServerDefault) listOf("", plan.source)
@@ -335,6 +351,10 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             // Timeout or gateway loss can occur *after* load was applied.
             // Never repeat the call automatically: duplicates or path drift
             // must be reconciled by a later explicit inventory refresh.
+            return RemoteAddOutcome.Uncertain(plan.expectedInfoHash)
+        } catch (_: RpcFault) {
+            // The server may apply a load before reporting a fault. A fault is
+            // not evidence of rollback or a safe invitation to repeat Add.
             return RemoteAddOutcome.Uncertain(plan.expectedInfoHash)
         }
         return awaitFreshStoppedAddReadback(plan)
@@ -359,12 +379,15 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         if (listTransfers("main").any { it.hash.equals(hash, ignoreCase = true) }) {
             return RemoteAddOutcome.AlreadyPresent(hash)
         }
+        if (lookupName(hash) != null) return RemoteAddOutcome.AlreadyPresent(hash)
         requireCurrentServerDefault(plan)
         try {
             val params: List<Any> = if (plan.useServerDefault) listOf("", torrentBytes)
                 else listOf("", torrentBytes, "d.directory.set=" + plan.destination)
             call("load.raw_verbose", params)
         } catch (_: IOException) {
+            return RemoteAddOutcome.Uncertain(hash)
+        } catch (_: RpcFault) {
             return RemoteAddOutcome.Uncertain(hash)
         }
         return awaitFreshStoppedAddReadback(plan)
@@ -406,6 +429,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         if (listTransfers("main").any { it.hash.equals(hash, ignoreCase = true) }) {
             return RemoteAddOutcome.AlreadyPresent(hash)
         }
+        if (lookupName(hash) != null) return RemoteAddOutcome.AlreadyPresent(hash)
         try {
             postRuTorrentUpload(upload, plan.destination, torrentBytes)
         } catch (_: IOException) {
@@ -579,6 +603,10 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         try {
             call("d.erase", listOf(hash))
         } catch (_: IOException) {
+            return SessionEraseOutcome.Uncertain(hash)
+        } catch (_: RpcFault) {
+            // A server fault cannot prove that a destructive session command
+            // was not applied. Reconcile read-only; never issue a second erase.
             return SessionEraseOutcome.Uncertain(hash)
         }
         return try {

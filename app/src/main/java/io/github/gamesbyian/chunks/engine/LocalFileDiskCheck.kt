@@ -1,6 +1,11 @@
 package io.github.gamesbyian.chunks.engine
 
 import java.io.File
+import java.nio.file.Files
+import java.nio.file.LinkOption
+import java.nio.file.NoSuchFileException
+import java.nio.file.Path
+import java.nio.file.attribute.BasicFileAttributes
 
 /**
  * Read-only "is this transfer's data where the engine expects it?" check
@@ -69,29 +74,69 @@ object LocalFileDiskCheck {
     }
 
     /**
-     * Stats each file under [saveDirectory]. A path that resolves outside the
-     * save folder (".." or a symlink escape) is refused and reported, not read.
+     * Diagnose file status without following torrent-declared link components.
+     * Android-managed ancestors can be aliases, so canonicalize the root,
+     * but do not permit the user-selected root itself to be a symlink.
+     *
+     * This is read-only point-in-time evidence, never a hash check or
+     * authorization to reattach, reuse, overwrite, move or delete content.
      */
     fun check(saveDirectory: File, files: List<LocalTransferFile>): Report {
-        // Fail closed: without an inspectable save folder, "not started" files
-        // would otherwise read as a clean report.
         val root = try {
-            saveDirectory.canonicalFile.takeIf { it.isDirectory }
+            val selected = saveDirectory.toPath().toAbsolutePath()
+            if (!saveDirectory.isAbsolute || Files.isSymbolicLink(selected) ||
+                !Files.isDirectory(selected, LinkOption.NOFOLLOW_LINKS)) null
+            else selected.toRealPath().takeIf {
+                Files.isDirectory(it, LinkOption.NOFOLLOW_LINKS)
+            }
         } catch (_: Exception) { null }
-        if (root == null) return Report(files.map { FileResult(it, Status.FOLDER_UNAVAILABLE, null) })
+        if (root == null)
+            return Report(files.map { FileResult(it, Status.FOLDER_UNAVAILABLE, null) })
         return Report(files.map { file ->
-            val observed = observe(root, file.path)
-            FileResult(file, classify(file, observed), observed?.takeIf { it.exists && it.isFile }?.length)
+            val observed = observe(root.toFile(), file.path)
+            FileResult(file, classify(file, observed),
+                observed?.takeIf { it.exists && it.isFile && !it.error }?.length)
         })
     }
 
-    internal fun observe(root: File, relativePath: String): Observation? = try {
-        val target = File(root, relativePath).canonicalFile
-        if (target != root && !target.path.startsWith(root.path + File.separator)) null
-        else Observation(target.exists(), target.isFile, if (target.isFile) target.length() else 0L)
-    } catch (_: SecurityException) {
-        Observation(exists = false, isFile = false, length = 0, error = true)
-    } catch (_: java.io.IOException) {
-        Observation(exists = false, isFile = false, length = 0, error = true)
+    internal fun observe(
+        root: File,
+        relativePath: String,
+        readAttrs: (Path) -> BasicFileAttributes = {
+            Files.readAttributes(it, BasicFileAttributes::class.java,
+                LinkOption.NOFOLLOW_LINKS)
+        }
+    ): Observation? {
+        if (relativePath.isBlank() || relativePath.startsWith('/') ||
+            relativePath.contains('\\') ||
+            relativePath.any { it.code < 32 || it.code == 127 })
+            return null
+        val segments = relativePath.split('/')
+        if (segments.any { it.isEmpty() || it == "." || it == ".." }) return null
+        val base = root.toPath()
+        var path: Path = base
+        for ((index, segment) in segments.withIndex()) {
+            path = path.resolve(segment)
+            if (!path.startsWith(base)) return null
+            val attrs = try {
+                readAttrs(path)
+            } catch (_: NoSuchFileException) {
+                return Observation(exists = false, isFile = false, length = 0)
+            } catch (_: Exception) {
+                // Inaccessible or indeterminate is not equivalent to absent.
+                return Observation(exists = false, isFile = false,
+                    length = 0, error = true)
+            }
+            if (attrs.isSymbolicLink) return null
+            if (index < segments.lastIndex) {
+                if (!attrs.isDirectory) return null
+            } else {
+                return Observation(
+                    exists = true, isFile = attrs.isRegularFile,
+                    length = if (attrs.isRegularFile) attrs.size() else 0L
+                )
+            }
+        }
+        return null
     }
 }

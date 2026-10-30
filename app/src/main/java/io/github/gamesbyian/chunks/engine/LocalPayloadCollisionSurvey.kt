@@ -4,6 +4,8 @@ import java.io.File
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
+import java.text.Normalizer
+import java.util.Locale
 
 /**
  * Non-mutating, point-in-time survey of candidate libtorrent payload paths.
@@ -13,7 +15,9 @@ import java.nio.file.Path
  * Existing files are always classified as collisions, even if their size or
  * name resembles torrent contents. Reuse/rehydration must have a separate,
  * explicitly reviewed native hash-check path. Paths that cannot be inspected
- * or whose parents traverse symbolic links are UNKNOWN rather than safe.
+ * or whose *payload* parents traverse symbolic links are UNKNOWN. System
+ * directory aliases in the selected root's ancestors are resolved to their
+ * real path before inspecting children (including Android /data/user aliases).
  */
 internal object LocalPayloadCollisionSurvey {
     internal sealed interface Result {
@@ -26,11 +30,45 @@ internal object LocalPayloadCollisionSurvey {
         if (maxPaths <= 0 || relativePaths.size > maxPaths)
             return Result.Unknown("Payload path count is unsupported")
         val base = try {
-            root.toPath().toAbsolutePath().normalize().also {
-                if (Files.isSymbolicLink(it) || !Files.isDirectory(it, LinkOption.NOFOLLOW_LINKS))
-                    return Result.Unknown("Download root is unavailable or indirect")
+            val supplied = root.toPath().toAbsolutePath()
+            // Normalizing a lexical link/../child can select a different
+            // directory from the one reached when the OS follows that link.
+            if (supplied.any { it.toString() == ".." })
+                return Result.Unknown("Download root contains parent traversal")
+            val lexical = supplied.normalize()
+            // The chosen directory itself must not be a symlink. Its ancestor
+            // aliases can be OS-managed (/data/user/0 on Android), however:
+            // inspecting lexical descendants would miss the real destination.
+            if (!Files.isDirectory(lexical, LinkOption.NOFOLLOW_LINKS) ||
+                Files.isSymbolicLink(lexical))
+                return Result.Unknown("Download root is unavailable or indirect")
+            lexical.toRealPath().also { actual ->
+                if (!Files.isDirectory(actual, LinkOption.NOFOLLOW_LINKS))
+                    return Result.Unknown("Resolved download root is unavailable")
             }
         } catch (_: Exception) { return Result.Unknown("Download root cannot be inspected") }
+        // Case-sensitive phone storage may distinguish these lexical names,
+        // while FAT/exFAT and providers may map them to a single file. Reject
+        // a conservative case-folded and Unicode-normalized namespace, not
+        // only byte-identical names. Actual provider rules can vary.
+        fun aliasKey(path: String) = Normalizer.normalize(
+            path, Normalizer.Form.NFKC
+        ).uppercase(Locale.ROOT).lowercase(Locale.ROOT)
+        val declaredFiles = HashSet<String>()
+        for (relative in relativePaths) {
+            if (relative.length > 4096)
+                return Result.Unknown("Torrent payload path is too long")
+            if (!declaredFiles.add(aliasKey(relative)))
+                return Result.Unknown("Torrent declares potentially aliased payload paths")
+        }
+        for (relative in relativePaths) {
+            var slash = relative.indexOf('/')
+            while (slash >= 0) {
+                if (declaredFiles.contains(aliasKey(relative.substring(0, slash))))
+                    return Result.Unknown("Torrent declares a file as another file's parent")
+                slash = relative.indexOf('/', slash + 1)
+            }
+        }
         val collisions = ArrayList<String>()
         var total = 0
         for (relative in relativePaths) {

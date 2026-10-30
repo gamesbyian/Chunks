@@ -14,10 +14,20 @@ valid_boot_id() { [[ "$1" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a
 before_boot_id="$(read_boot_id)"
 valid_boot_id "$before_boot_id" || { echo "CHUNKS_REBOOT: no valid original kernel boot ID"; exit 1; }
 
+# The adb process can exit 0 while a test was skipped/failed, and a result
+# stream can echo "OK (1 test)" without reporting the actual terminal status.
+# Keep the exact completion line, prohibit negative status and skipped reports.
+instrument_passed_once() {
+  local output="$1"
+  [[ "$(grep -Fxc 'OK (1 test)' <<< "$output" || true)" == 1 ]] &&
+    ! grep -Eq '^INSTRUMENTATION_STATUS_CODE: -[1-9]|^FAILURES|AssumptionViolatedException' <<< "$output"
+}
 adb logcat -c || true
 outA=$(adb shell am instrument -w -r -e class "$cls#phaseA_seedUnderServiceBeforeReboot" -e chunksRebootPhase a "$runner")
 echo "$outA" | tail -6
-echo "$outA" | grep -q "OK (1 test)" || { echo "CHUNKS_REBOOT: phase A failed"; exit 1; }
+instrument_passed_once "$outA" || {
+  echo "CHUNKS_REBOOT: phase A did not report exactly one passing, non-skipped test"; exit 1;
+}
 adb logcat -d -s ChunksReboot:I | grep "CHUNKS_REBOOT armed" || { echo "CHUNKS_REBOOT: phase A never armed"; exit 1; }
 adb reboot
 adb wait-for-device
@@ -42,5 +52,6 @@ adb logcat -c || true
 outB=$(adb shell am instrument -w -r -e class "$cls#phaseB_nothingStartsAfterBootAndRestoreIsStopped" -e chunksRebootPhase b "$runner")
 echo "$outB" | tail -6
 adb logcat -d -s ChunksReboot:I | tail -3
-echo "$outB" | grep -q "OK (1 test)" || { echo "CHUNKS_REBOOT: phase B did not pass"; exit 1; }
-if echo "$outB" | grep -q "INSTRUMENTATION_STATUS_CODE: -3"; then echo "CHUNKS_REBOOT: phase B skipped"; exit 1; fi
+instrument_passed_once "$outB" || {
+  echo "CHUNKS_REBOOT: phase B did not report exactly one passing, non-skipped test"; exit 1;
+}

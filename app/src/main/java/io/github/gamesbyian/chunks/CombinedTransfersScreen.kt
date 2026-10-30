@@ -36,6 +36,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,6 +71,8 @@ import io.github.gamesbyian.chunks.rpc.RemoteTransfer
 import io.github.gamesbyian.chunks.model.LifecycleReply
 import io.github.gamesbyian.chunks.model.UnifiedBatchLifecycle
 import io.github.gamesbyian.chunks.model.UnifiedTransferKey
+import io.github.gamesbyian.chunks.model.UnifiedTransferDetails
+import io.github.gamesbyian.chunks.model.TransferDetailReadState
 import io.github.gamesbyian.chunks.model.describe
 import io.github.gamesbyian.chunks.model.toLifecycleReply
 import io.github.gamesbyian.chunks.rpc.LifecycleOutcome
@@ -89,6 +92,7 @@ import io.github.gamesbyian.chunks.model.EnvironmentPalette
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withContext
 
 /** The connected server's latest accepted list, as the server screen holds it. */
@@ -99,7 +103,9 @@ internal data class CombinedServerSource(
     val fullView: Boolean,
     val observedAtEpochMillis: Long?,
     /** Start/Stop through the server screen's own mutation gate; null when not offered. */
-    val lifecycle: CombinedServerLifecycle? = null
+    val lifecycle: CombinedServerLifecycle? = null,
+    /** Live authenticated RTorrentRemote identity, never a saved profile string. */
+    val authenticatedSession: Any? = null
 )
 
 /** The connected server's lease, command and settle, exactly as its own list uses them. */
@@ -224,6 +230,7 @@ internal fun CombinedTransfersScreen(
     var phoneObservedAt by remember { mutableStateOf<Long?>(null) }
     // Explicit cross-environment selection; never derived from the view scope.
     var selecting by remember { mutableStateOf(false) }
+    var detailKey by remember { mutableStateOf<UnifiedTransferKey?>(null) }
     var selected by remember { mutableStateOf<Set<UnifiedTransferKey>>(emptySet()) }
     var batchRunning by remember { mutableStateOf(false) }
     var batchResult by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -354,6 +361,91 @@ internal fun CombinedTransfersScreen(
         viewportHeightPx = viewportHeightPx,
         hasTransfers = result.transfers.isNotEmpty()
     )
+    val focusedKey = detailKey
+    val signedInFocus = focusedKey?.takeIf { it.environment == serverId }
+    val capabilityGate = remember { RemoteCapabilityProbeSessionGate() }
+    // MainActivity creates a fresh CombinedServerSource each recomposition.
+    // The session witness comes from its live RTorrentRemote object, not this
+    // replaceable data wrapper or the persisted profile's endpoint string.
+    capabilityGate.bind(server?.authenticatedSession, serverId, signedInFocus)
+    val latestServer = rememberUpdatedState(server)
+    val latestServerId = rememberUpdatedState(serverId)
+    val latestFocus = rememberUpdatedState(signedInFocus)
+    var pendingCapability by remember {
+        mutableStateOf<RemoteCapabilityProbeSessionGate.Ticket?>(null)
+    }
+    var capabilityEvidence by remember {
+        mutableStateOf<Pair<RemoteCapabilityProbeSessionGate.Ticket, EnvironmentCapabilitySnapshot>?>(null)
+    }
+    var capabilityFailure by remember {
+        mutableStateOf<Pair<RemoteCapabilityProbeSessionGate.Ticket, String>?>(null)
+    }
+    fun stillCurrent(ticket: RemoteCapabilityProbeSessionGate.Ticket?) =
+        ticket != null && capabilityGate.current(
+            ticket, latestServer.value?.authenticatedSession,
+            latestServerId.value, latestFocus.value
+        )
+
+    if (focusedKey != null) {
+        // The same observed source collection is the only detail authority.
+        // Saved servers remain read-only here, even when credentials enabled a
+        // manual listing. Never switch sign-in context or reuse a matching hash.
+        val snapshot = capabilityEvidence?.takeIf { stillCurrent(it.first) }?.second
+        val details = UnifiedTransferDetails.resolve(
+            focusedKey, sources,
+            if (focusedKey.environment == EnvironmentSnapshots.PHONE)
+                EnvironmentCapabilities.phone() else snapshot,
+            System.currentTimeMillis()
+        )
+        val readOnlyProbe = server?.lifecycle?.probe?.takeIf {
+            focusedKey.environment == serverId &&
+                server?.authenticatedSession != null &&
+                serverPrivacy?.mayShow == true &&
+                details.readState == TransferDetailReadState.CURRENT
+        }
+        UnifiedTransferDetailPanel(
+            detail = details,
+            environmentLabel = labels[focusedKey.environment] ?: "Unconfigured environment",
+            onBack = { detailKey = null },
+            onOpenOwningList = openFor(focusedKey),
+            onCheckCapabilities = readOnlyProbe?.let { probe ->
+                {
+                    val ticket = capabilityGate.begin()
+                    // Do not dispatch a probe if the app changed sessions after
+                    // composing the button but before the tap was delivered.
+                    if (stillCurrent(ticket)) {
+                        pendingCapability = ticket
+                        capabilityEvidence = null
+                        capabilityFailure = null
+                        batchScope.launch {
+                            try {
+                                val observed = withContext(Dispatchers.IO) {
+                                    withTimeout(15_000L) { probe() }
+                                }
+                                if (stillCurrent(ticket)) {
+                                    capabilityEvidence = ticket!! to
+                                        EnvironmentCapabilities.fromProbe(
+                                            ticket.environment, observed, System.currentTimeMillis())
+                                }
+                            } catch (cancel: kotlinx.coroutines.CancellationException) {
+                                if (cancel !is kotlinx.coroutines.TimeoutCancellationException)
+                                    throw cancel
+                                if (stillCurrent(ticket)) capabilityFailure =
+                                    ticket!! to "The server capability check timed out; no methods were verified."
+                            } catch (_: Exception) {
+                                if (stillCurrent(ticket)) capabilityFailure =
+                                    ticket!! to "The signed-in server did not complete the read-only check."
+                            } finally {
+                                if (pendingCapability === ticket) pendingCapability = null
+                            }
+                        }
+                    }
+                }
+            },
+            capabilityCheckInProgress = stillCurrent(pendingCapability),
+            capabilityCheckError = capabilityFailure?.takeIf { stillCurrent(it.first) }?.second
+        )
+    } else {
     Box(Modifier.fillMaxSize()) {
         LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp)
                 .onSizeChanged { viewportHeightPx = it.height },
@@ -528,7 +620,8 @@ internal fun CombinedTransfersScreen(
                     CombinedTransferRow(row, labels[row.key.environment].orEmpty(), palette.hueOf(row.key.environment),
                         selection = if (selecting) row.key in selected else null,
                         onSelect = { on -> selected = if (on) selected + row.key else selected - row.key },
-                        onOpen = openFor(row.key))
+                        onOpen = openFor(row.key),
+                        onDetails = { detailKey = row.key })
                 }
             }
         } else {
@@ -536,7 +629,8 @@ internal fun CombinedTransfersScreen(
                 CombinedTransferRow(row, labels[row.key.environment].orEmpty(), palette.hueOf(row.key.environment),
                     selection = if (selecting) row.key in selected else null,
                     onSelect = { on -> selected = if (on) selected + row.key else selected - row.key },
-                    onOpen = openFor(row.key))
+                    onOpen = openFor(row.key),
+                        onDetails = { detailKey = row.key })
             }
         }
         item {
@@ -564,6 +658,7 @@ internal fun CombinedTransfersScreen(
                 else listState.scrollToItem(0)
             }
         }, modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 16.dp))
+    }
     }
 }
 
@@ -597,7 +692,9 @@ private fun CombinedTransferRow(
     selection: Boolean? = null,
     onSelect: (Boolean) -> Unit = {},
     /** Null for environments only listed here (no live list to open). */
-    onOpen: (() -> Unit)? = null
+    onOpen: (() -> Unit)? = null,
+    /** Read-only details are available even for saved, unsigned-in profiles. */
+    onDetails: () -> Unit
 ) {
     val accent = hue?.let { Color(it.argb) } ?: ChunksColors.Outline
     // The hue is used for the label only where it meets AA on this surface.
@@ -611,7 +708,7 @@ private fun CombinedTransferRow(
             modifier = Modifier.padding(start = 4.dp).align(Alignment.CenterVertically).semantics {
                 contentDescription = "Select ${row.displayName} on $environmentLabel"
             })
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Column(Modifier.weight(1f).padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(environmentLabel, style = MaterialTheme.typography.labelMedium, color = labelColour,
                 fontWeight = FontWeight.Bold)
             Text(row.displayName, style = MaterialTheme.typography.titleSmall)
@@ -620,8 +717,13 @@ private fun CombinedTransferRow(
             Text(combinedRowFacts(row), style = MaterialTheme.typography.bodySmall)
             if (row.hasError) Text("Needs attention in its own list", color = ChunksColors.Red,
                 style = MaterialTheme.typography.bodySmall)
-            if (onOpen != null) OutlinedButton(onClick = onOpen, modifier = Modifier.heightIn(min = 48.dp)
-                .semantics { contentDescription = "Open ${row.displayName} in $environmentLabel" }) {
+            OutlinedButton(onClick = onDetails,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics {
+                    contentDescription = "Details for ${row.displayName} on $environmentLabel"
+                }) { Text("Details") }
+            if (onOpen != null) OutlinedButton(onClick = onOpen,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    .semantics { contentDescription = "Open ${row.displayName} in $environmentLabel" }) {
                 Text("Open in its list")
             }
             // Say why no action is offered rather than leaving the user to hunt for one.
