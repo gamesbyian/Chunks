@@ -19,6 +19,24 @@ class TransferPrivacyPolicyStoreInstrumentedTest {
             store.setMode(scope, TransferLockMode.NEVER, true)
     }
 
+    @Test fun successfulPolicyWritesInvalidatePendingCombinedSnapshotsButRefusedWritesDoNot() {
+        clear()
+        val scope = "test-combined-privacy-revision"
+        val store = TransferPrivacyPolicyStore(context)
+        try {
+            val before = TransferPrivacyPolicyStore.revision
+            assertTrue(store.setMode(scope, TransferLockMode.EVERY_ENTRY, false))
+            assertTrue(TransferPrivacyPolicyStore.revision > before)
+            val protected = TransferPrivacyPolicyStore.revision
+            assertFalse(store.setMode(scope, TransferLockMode.NEVER, false))
+            assertEquals(protected, TransferPrivacyPolicyStore.revision)
+            assertTrue(store.setMode(scope, TransferLockMode.NEVER, true))
+            assertTrue(TransferPrivacyPolicyStore.revision > protected)
+        } finally {
+            store.setMode(scope, TransferLockMode.NEVER, true)
+        }
+    }
+
     @Test fun policiesSurviveReopenWithNoPersistedUnlockAndDistinctAccountScopes() {
         clear()
         val store = TransferPrivacyPolicyStore(context)
