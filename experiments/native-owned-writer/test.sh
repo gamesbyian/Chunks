@@ -10,6 +10,10 @@ trap 'rm -rf "$tmp"' EXIT
     owned_payload_file.cc owned_torrent_storage.cc owned_torrent_storage_test.cc \
     -o "$tmp/owned-torrent-storage-test"
 "$tmp/owned-torrent-storage-test"
+"$compiler" -std=c++17 -O2 -pthread -Wall -Wextra -Werror -pedantic \
+    bridge/checked_piece_range.cc bridge/checked_piece_range_test.cc \
+    -o "$tmp/checked-piece-range-test"
+"$tmp/checked-piece-range-test"
 "$tmp/owned-payload-file-test"
 if [[ "$#" -gt 0 && "$1" == "--sanitizers" ]]; then
   "$compiler" -std=c++17 -O1 -g -pthread -fno-omit-frame-pointer \
@@ -21,4 +25,9 @@ if [[ "$#" -gt 0 && "$1" == "--sanitizers" ]]; then
       owned_payload_file.cc owned_torrent_storage.cc owned_torrent_storage_test.cc \
       -o "$tmp/owned-torrent-storage-sanitizers"
   "$tmp/owned-torrent-storage-sanitizers"
+  "$compiler" -std=c++17 -O1 -g -pthread -fno-omit-frame-pointer \
+      -fsanitize=address,undefined \
+      bridge/checked_piece_range.cc bridge/checked_piece_range_test.cc \
+      -o "$tmp/checked-piece-range-sanitizers"
+  "$tmp/checked-piece-range-sanitizers"
 fi
