@@ -177,6 +177,9 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     // restored record. It may contain existing native payload, so never treat
     // an old unknown record as an expressly reviewed existing-data seed.
     private val restoredUnknownAdmissions: MutableSet<String> = ConcurrentHashMap.newKeySet()
+    // Every native handle reconstructed from saved resume state must
+    // revalidate its path claim on Start, even reviewed-existing seeding jobs.
+    private val restoredNativeJobs: MutableSet<String> = ConcurrentHashMap.newKeySet()
     // Metadata-ready upload-only magnets are intentionally persisted paused;
     // native UPLOAD_MODE remains their durable don't-write-payload marker.
     // The next explicit Start rechecks paths, including after process restart.
@@ -622,6 +625,23 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             // status() caches metadata for 500 ms. Query the same fresh native
             // flags as snapshot(), including persisted upload-only on restart.
             val state = handle.status(TorrentHandle.QUERY_NAME)
+            if (restoredNativeJobs.contains(key)) {
+                val problem = if (state.hasMetadata()) {
+                    reserveRestoredJobPaths(key, handle)
+                } else if (state.flags()
+                        .and_(org.libtorrent4j.TorrentFlags.UPLOAD_MODE).non_zero()) {
+                    // No native payload can be fetched until metadata arrives.
+                    // The metadata callback independently checks its new paths.
+                    null
+                } else {
+                    "Restored native payload layout unavailable; Start refused"
+                }
+                if (problem != null) {
+                    checkedStartProblems[key] =
+                        "Restored path admission requires review: $problem"
+                    return@command false
+                }
+            }
             if (restoredUnknownAdmissions.contains(key)) {
                 checkedStartProblems[key] =
                     "Native Add review is unavailable after restoration; re-review the transfer before starting"
@@ -1296,6 +1316,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         checkedFirstStarts.remove(key)
         restoredFirstStarts.remove(key)
         restoredUnknownAdmissions.remove(key)
+        restoredNativeJobs.remove(key)
         checkedStartProblems.remove(key)
         // remove_torrent is non-blocking: the old native handle may still
         // have queued payload I/O. Keep its path claim as a tombstone until
@@ -1403,6 +1424,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         checkedFirstStarts.clear()
         restoredFirstStarts.clear()
         restoredUnknownAdmissions.clear()
+        restoredNativeJobs.clear()
         checkedStartProblems.clear()
         session.stop()
         // The native session has stopped before its in-process path claims
@@ -1442,6 +1464,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             } catch (_: Exception) { null }
             if (restored == null) { problems += file.name; continue }
             handles[key] = restored
+            restoredNativeJobs.add(key)
             // Only the persisted checked Add path inherits checked restart
             // admission. A recorded reviewed-existing seed uses its explicitly
             // separate native seeding workflow. Unknown legacy/corrupt
