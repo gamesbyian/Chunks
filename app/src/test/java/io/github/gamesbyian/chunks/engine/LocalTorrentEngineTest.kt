@@ -1339,4 +1339,57 @@ class LocalTorrentEngineTest {
         assertEquals(2, stopped.verified)
         assertTrue(ids.all { instance.status(it)?.stopped == true })
     }
+    @Test fun privateNativeBackingRefusesSharedAddsAndQuarantinesLegacyRestore() {
+        val payload = fixture()
+        val sharedRoot = temp.newFolder("unsafe-shared-native")
+        val privateRoot = temp.newFolder("owned-private-native")
+        val resumeState = temp.newFolder("private-gate-resume")
+        fun instance(enforcePrivate: Boolean): LocalTorrentEngine {
+            val engine = LocalTorrentEngine(LocalEngineConfig(
+                listenInterfaces = "127.0.0.1:0", allowMultipleConnectionsPerIp = true,
+                stateDirectory = resumeState,
+                nativeBackingRoot = if (enforcePrivate) privateRoot else null
+            ))
+            engine.start()
+            engines += engine
+            return engine
+        }
+
+        // Reproduce a legacy stopped checked Add with real saved native state.
+        // Only test-owned files are used. No payload exists until after Close.
+        val legacy = instance(false)
+        val prior = added(legacy.addStoppedChecked(payload.torrent, sharedRoot))
+        assertTrue(legacy.saveResumeData() >= 1)
+        legacy.close()
+
+        val foreign = File(sharedRoot, "Chunks public fixture/episode.bin")
+        assertTrue(foreign.parentFile.isDirectory || foreign.parentFile.mkdirs())
+        val unrelated = ByteArray(payload.files.getValue("episode.bin").size)
+            .also { Random(56899L).nextBytes(it) }
+        foreign.writeBytes(unrelated)
+
+        val protected = instance(true)
+        assertTrue("Old shared-location resume must never be given to native libtorrent",
+            protected.list().isEmpty())
+        assertTrue("Quarantined resume must remain visible as a recovery problem",
+            protected.restoreProblems.any { it.contains(prior.infoHash) })
+        assertArrayEquals(unrelated, foreign.readBytes())
+        assertTrue(File(resumeState, prior.infoHash + ".resume").isFile)
+
+        // Test all three live intake routes: checked torrent, separately
+        // reviewed raw torrent and magnet. None may bypass the private root.
+        assertTrue(protected.addStoppedChecked(payload.torrent, sharedRoot) is LocalAddResult.Refused)
+        assertTrue(protected.addStopped(payload.torrent, sharedRoot) is LocalAddResult.Refused)
+        assertTrue(protected.addMagnet("magnet:?xt=urn:btih:" + prior.infoHash, sharedRoot)
+            is LocalAddResult.Refused)
+        assertArrayEquals(unrelated, foreign.readBytes())
+        assertTrue(protected.list().isEmpty())
+
+        // A new private checked job still admits and starts normally.
+        val owned = added(protected.addStoppedChecked(payload.torrent, privateRoot))
+        assertEquals(prior.infoHash, owned.infoHash)
+        assertEquals(LocalCommandOutcome.VERIFIED, protected.resume(owned.infoHash).outcome)
+        assertArrayEquals(unrelated, foreign.readBytes())
+    }
+
 }
