@@ -1,0 +1,180 @@
+#include "owned_payload_file.h"
+
+#include <cassert>
+#include <cstring>
+#include <filesystem>
+#include <fstream>
+#include <iostream>
+#include <limits>
+#include <string>
+#include <unistd.h>
+
+namespace fs = std::filesystem;
+
+struct Sandbox {
+  fs::path base, payload, receipts;
+  Sandbox() {
+    char name[] = "/tmp/chunks-owned-test-XXXXXX";
+    char* p = ::mkdtemp(name);
+    assert(p != nullptr);
+    base = p;
+    payload = base / "public-Downloads";
+    receipts = base / "private-receipts";
+    fs::create_directories(payload);
+    fs::create_directories(receipts);
+  }
+  ~Sandbox() { fs::remove_all(base); }
+  std::string read(const fs::path& p) {
+    std::ifstream file(p, std::ios::binary);
+    return std::string(std::istreambuf_iterator<char>(file), {});
+  }
+  void write(const fs::path& p, const std::string& bytes) {
+    std::ofstream file(p, std::ios::binary | std::ios::trunc);
+    file << bytes;
+  }
+};
+
+constexpr auto kId = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+constexpr auto kOtherId = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+constexpr auto kMapping = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
+constexpr auto kOtherMapping = "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd";
+
+int main() {
+  int cases = 0;
+  auto passed = [&cases]() { ++cases; };
+  {
+    Sandbox s;
+    std::string error;
+    auto f = chunks::OwnedPayloadFile::Create(s.payload.string(), "season/episode.bin",
+        s.receipts.string(), kId, kMapping, &error);
+    assert(f && error.empty());
+    assert(f->WriteAt(0, "torrent-data", 12, &error));
+    assert(f->Sync(&error));
+    f.reset();
+    auto r = chunks::OwnedPayloadFile::Reopen(s.payload.string(), "season/episode.bin",
+        s.receipts.string(), kId, kMapping, &error);
+    assert(r);
+    char bytes[13]{};
+    assert(r->ReadAt(0, bytes, 12, &error));
+    assert(std::string(bytes) == "torrent-data");
+    assert(!chunks::OwnedPayloadFile::Reopen(s.payload.string(), "season/episode.bin",
+        s.receipts.string(), kId, kOtherMapping, &error));
+    assert(s.read(s.payload / "season/episode.bin") == "torrent-data");
+    passed();
+  }
+  {
+    Sandbox s;
+    std::string error;
+    s.write(s.payload / "episode.bin", "UNRELATED BYTES");
+    assert(!chunks::OwnedPayloadFile::Create(s.payload.string(), "episode.bin",
+        s.receipts.string(), kId, kMapping, &error));
+    assert(s.read(s.payload / "episode.bin") == "UNRELATED BYTES");
+    assert(!fs::exists(s.receipts / kId));
+    passed();
+  }
+  {
+    Sandbox s;
+    std::string error;
+    fs::create_directories(s.base / "foreign-parent");
+    s.write(s.base / "foreign-parent/episode.bin", "KEEP ME");
+    fs::create_directory_symlink(s.base / "foreign-parent", s.payload / "linked");
+    assert(!chunks::OwnedPayloadFile::Create(s.payload.string(), "linked/episode.bin",
+        s.receipts.string(), kId, kMapping, &error));
+    assert(s.read(s.base / "foreign-parent/episode.bin") == "KEEP ME");
+    passed();
+  }
+  {
+    Sandbox s;
+    std::string error;
+    auto f = chunks::OwnedPayloadFile::Create(s.payload.string(), "episode.bin",
+        s.receipts.string(), kId, kMapping, &error);
+    assert(f);
+    assert(f->WriteAt(0, "OWN", 3, &error));
+    fs::rename(s.payload / "episode.bin", s.payload / "original-moved.bin");
+    s.write(s.payload / "episode.bin", "FOREIGN");
+    assert(!f->WriteAt(0, "DESTRUCTIVE", 11, &error));
+    assert(s.read(s.payload / "episode.bin") == "FOREIGN");
+    assert(!chunks::OwnedPayloadFile::Reopen(s.payload.string(), "episode.bin",
+        s.receipts.string(), kId, kMapping, &error));
+    assert(s.read(s.payload / "episode.bin") == "FOREIGN");
+    passed();
+  }
+  {
+    Sandbox s;
+    std::string error;
+    auto f = chunks::OwnedPayloadFile::Create(s.payload.string(), "season/episode.bin",
+        s.receipts.string(), kId, kMapping, &error);
+    assert(f);
+    assert(f->WriteAt(0, "OWN", 3, &error));
+    fs::rename(s.payload / "season", s.payload / "moved-season");
+    fs::create_directories(s.payload / "season");
+    s.write(s.payload / "season/episode.bin", "FOREIGN");
+    f.reset();
+    assert(!chunks::OwnedPayloadFile::Reopen(s.payload.string(), "season/episode.bin",
+        s.receipts.string(), kId, kMapping, &error));
+    assert(s.read(s.payload / "season/episode.bin") == "FOREIGN");
+    passed();
+  }
+  {
+    Sandbox s;
+    std::string error;
+    auto f = chunks::OwnedPayloadFile::Create(s.payload.string(), "episode.bin",
+        s.receipts.string(), kId, kMapping, &error);
+    assert(f);
+    fs::create_hard_link(s.payload / "episode.bin", s.payload / "alias.bin");
+    assert(!f->WriteAt(0, "DENIED", 6, &error));
+    f.reset();
+    assert(!chunks::OwnedPayloadFile::Reopen(s.payload.string(), "episode.bin",
+        s.receipts.string(), kId, kMapping, &error));
+    assert(s.read(s.payload / "episode.bin").empty());
+    passed();
+  }
+  {
+    Sandbox s;
+    std::string error;
+    auto f = chunks::OwnedPayloadFile::Create(s.payload.string(), "episode.bin",
+        s.receipts.string(), kId, kMapping, &error);
+    assert(f);
+    f.reset();
+    s.write(s.receipts / kId, "INVALID");
+    assert(!chunks::OwnedPayloadFile::Reopen(s.payload.string(), "episode.bin",
+        s.receipts.string(), kId, kMapping, &error));
+    passed();
+  }
+  {
+    Sandbox s;
+    std::string error;
+    assert(!chunks::OwnedPayloadFile::Create(s.payload.string(), "../bad.bin",
+        s.receipts.string(), kId, kMapping, &error));
+    assert(!chunks::OwnedPayloadFile::Create(s.payload.string(), "/absolute.bin",
+        s.receipts.string(), kId, kMapping, &error));
+    assert(!chunks::OwnedPayloadFile::Create(s.payload.string(), "bad//path.bin",
+        s.receipts.string(), kId, kMapping, &error));
+    assert(!chunks::OwnedPayloadFile::Create(s.payload.string(), "good.bin",
+        s.receipts.string(), "../bad-id", kMapping, &error));
+    passed();
+  }
+  {
+    Sandbox s;
+    std::string error;
+    auto f = chunks::OwnedPayloadFile::Create(s.payload.string(), "episode.bin",
+        s.receipts.string(), kId, kMapping, &error);
+    assert(f);
+    assert(!f->WriteAt(std::numeric_limits<std::uint64_t>::max(), "x", 1, &error));
+    assert(s.read(s.payload / "episode.bin").empty());
+    passed();
+  }
+  {
+    Sandbox s;
+    std::string error;
+    auto f = chunks::OwnedPayloadFile::Create(s.payload.string(), "episode.bin",
+        s.receipts.string(), kId, kMapping, &error);
+    assert(f);
+    assert(!chunks::OwnedPayloadFile::Create(s.payload.string(), "different.bin",
+        s.receipts.string(), kId, kOtherMapping, &error));
+    assert(fs::exists(s.receipts / kId));
+    assert(s.read(s.receipts / kId).find(kMapping) != std::string::npos);
+    passed();
+  }
+  std::cout << "CHUNKS_PINNED_WRITER_CASES=" << cases << " PASSED\n";
+}
