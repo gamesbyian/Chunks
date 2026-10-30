@@ -256,3 +256,7 @@ From the disconnected connection form, **Inspect a local ZIP without connecting*
 ## Current SAF UX capability boundary (2026-10-26)
 
 Verified finished local data may be **copied**, never silently moved, to a selected SAF library destination while the original remains seedable. A verified ZIP can be manually extracted into a **new** SAF folder, with unknown-capacity acknowledgement, journal recovery and no source deletion. These are API35 fixture-provider paths rather than blanket SD/cloud support. Disclose actual source/derivative identities and ongoing seeding consequences. The user's auto-extract preference remains disabled until independent device safety proof.
+
+## Individual transfer home-screen surfaces (planned, post-foundation)
+
+The transfer menu offers **Pin to home screen**: one separately positionable widget per job, not a shared transfer grid. Compact icon-like progress/status, optionally artwork-backed, and expanded resize layouts follow the same explicit local/remote identity and privacy cues as transfer detail. Tap opens the bound transfer. Seeding and completion retain the widget; verified job deletion should ideally remove it without user cleanup, subject to Android launcher restrictions that must be honestly exposed and tested. See [canonical home-screen widget UX/acceptance](PER-TRANSFER-HOME-WIDGETS.md).
