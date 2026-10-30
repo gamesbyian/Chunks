@@ -931,6 +931,13 @@ internal suspend fun runCombinedLifecycle(
     val byKey = currentSources.flatMap { it.transfers }.associateBy { it.key }
     val targets = chosen.sortedWith(compareBy({ it.environment.value }, { it.infoHash }))
         .map { UnifiedBatchLifecycle.Target(it, byKey[it]?.started) }
+    // rTorrent supports v1 40-hex hashes. This is a local pre-dispatch
+    // refusal, distinct from NOT_FOUND after an actual remote mutation/readback.
+    // Key by full Environment+Hash so another account is never implicated.
+    val unsupportedServerTargets = targets
+        .filter { it.key.environment == serverId &&
+            !it.key.infoHash.matches(Regex("[0-9a-f]{40}")) }
+        .associate { it.key to "Unsupported rTorrent infohash format; no command was sent" }
     val adapters = HashMap<EnvironmentId, UnifiedBatchLifecycle.Adapter>()
     val refusals = HashMap<EnvironmentId, String>()
     var phoneLeased = false
@@ -983,7 +990,7 @@ internal suspend fun runCombinedLifecycle(
                     adapters[environment] = UnifiedBatchLifecycle.Adapter { hash, on ->
                         // rTorrent identities are v1 only: refuse before any RPC rather than
                         // letting a local validation failure read as an uncertain mutation.
-                        if (!hash.matches(Regex("[0-9a-f]{40}"))) LifecycleReply.NOT_FOUND
+                        if (!hash.matches(Regex("[0-9a-f]{40}"))) LifecycleReply.REFUSED
                         else serverLifecycle.setStarted(hash, on).toLifecycleReply(on)
                     }
                 }
@@ -996,7 +1003,8 @@ internal suspend fun runCombinedLifecycle(
             // a retired session/selection/privacy review.
             sourceIsFresh = { source -> reviewStillCurrent() &&
                 (source.environment == EnvironmentSnapshots.PHONE ||
-                    !EnvironmentSnapshots.serverInventoryIsOutOfDate(source.observedAtEpochMillis, nowEpochMillis())) })
+                    !EnvironmentSnapshots.serverInventoryIsOutOfDate(source.observedAtEpochMillis, nowEpochMillis())) },
+            preflightRefusals = unsupportedServerTargets)
     } finally {
         if (phoneLeased) PhoneMutationFence.revision.settledMutation()
         if (serverLeased) serverLifecycle?.settled?.invoke()
