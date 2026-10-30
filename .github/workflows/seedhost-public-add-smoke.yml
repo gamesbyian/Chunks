@@ -19,10 +19,6 @@ on:
         description: "Internet Archive ID or Wikimedia Commons File: title"
         type: string
         required: true
-      rutorrent_url:
-        description: "Your Seedhost HTTPS ruTorrent URL (no credentials)"
-        type: string
-        required: true
       destination:
         description: "Absolute path on development rTorrent server"
         type: string
@@ -69,7 +65,7 @@ jobs:
         env:
           SOURCE_KIND: ${{ inputs.source_kind }}
           SOURCE_ID: ${{ inputs.source_id }}
-          SERVER_URL: ${{ inputs.rutorrent_url }}
+          SERVER_URL: "https://ianseeds.wood.seedhost.eu/rutorrent/"
           TARGET_DIR: ${{ inputs.destination }}
           MAX_TOTAL_MIB: ${{ inputs.max_total_mib }}
           APPLY: ${{ inputs.apply }}
