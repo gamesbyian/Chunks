@@ -108,13 +108,13 @@ class NativeDisk final : public lt::disk_interface, public lt::buffer_allocator_
       std::function<void(lt::status_t, lt::storage_error const&)> callback) override {
     auto& state = *torrents_[index];
     lt::storage_error problem;
-    if (!state.refusal.empty() || state.checked) {
+    if (!state.refusal.empty()) {
       problem = Denied(lt::operation_t::file_open);
     } else {
       for (auto const& link : links) {
         if (!link.empty()) problem = Denied(lt::operation_t::file_open);
       }
-      if (!problem.ec) {
+      if (!problem.ec && !state.checked) {
         std::string reason;
         state.storage = OwnedTorrentStorage::Open(state.save_path, receipts_, state.layout,
             resume == nullptr ? OwnedTorrentStorage::Admission::FRESH
@@ -230,13 +230,22 @@ class NativeDisk final : public lt::disk_interface, public lt::buffer_allocator_
     CheckedPieceRange bounds{};
     auto const total = static_cast<std::uint64_t>(state.files.total_size());
     auto const piece_len = static_cast<std::uint32_t>(state.files.piece_length());
-    auto const length = offset < 0 || offset >= static_cast<int>(piece_len)
+    auto const requested = offset < 0 || offset >= static_cast<int>(piece_len)
         ? 0 : std::min(lt::default_block_size, static_cast<int>(piece_len) - offset);
-    if (!state.checked ||
-        !DecodePieceRange(total, piece_len, static_cast<int>(piece),
-                          offset, length, false, &bounds, &reason)) {
+    if (!state.checked || !DecodePieceRange(total, piece_len,
+            static_cast<int>(piece), offset, 1, false, &bounds, &reason)) {
       problem = Denied(lt::operation_t::file_read);
     } else {
+      // A v2 block at the final partial piece may be smaller than 16KiB.
+      auto const available = total - bounds.absolute_offset;
+      auto const length = std::min<std::uint64_t>(requested, available);
+      if (!DecodePieceRange(total, piece_len, static_cast<int>(piece),
+                            offset, static_cast<std::int64_t>(length),
+                            false, &bounds, &reason)) {
+        problem = Denied(lt::operation_t::file_read);
+      }
+    }
+    if (!problem.ec) {
       std::vector<char> block(bounds.length);
       if (!state.storage->ReadRange(bounds.absolute_offset, block.data(),
                                     block.size(), &reason)) {
