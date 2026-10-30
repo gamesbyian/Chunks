@@ -15,6 +15,7 @@ case "${1:-}" in
   devices)
     printf 'List of devices attached\nMOCK_USB\tdevice\n'
     [[ "${MOCK_MULTI:-0}" != 1 ]] || printf 'ANOTHER\tdevice\n'
+    [[ "${MOCK_DEVICES_FAILURE:-0}" != 1 ]] || exit 28
     ;;
   get-state)
     [[ "${ANDROID_SERIAL:-}" == MOCK_USB ]] || exit 1
@@ -59,6 +60,10 @@ case "${1:-}" in
         case "${MOCK_B_RESULT:-ok}" in
           skip) printf 'INSTRUMENTATION_STATUS_CODE: -3\nOK (1 test)\n' ;;
           fail) printf 'INSTRUMENTATION_STATUS_CODE: -1\nOK (1 test)\n' ;;
+          unsupported_fail) printf 'INSTRUMENTATION_STATUS_CODE: -7\nOK (1 test)\n' ;;
+          false_ok) printf 'INSTRUMENTATION_RESULT: stream=OK (1 test)\n' ;;
+          duplicate) printf 'OK (1 test)\nOK (1 test)\n' ;;
+          command_failure) printf 'OK (1 test)\n'; exit 26 ;;
           ok) printf 'INSTRUMENTATION_RESULT: stream=OK\nOK (1 test)\n' ;;
         esac
         exit 0
@@ -91,7 +96,7 @@ for fixture in MOCK_ARM_MISSING MOCK_NO_CRASH MOCK_ALIVE MOCK_INSTALL_BAD MOCK_M
     exit 1
   fi
 done
-for fixture in skip fail; do
+for fixture in skip fail unsupported_fail false_ok duplicate command_failure; do
   if run_case "MOCK_B_RESULT=$fixture" >"$tmp/$fixture.log" 2>&1; then
     echo "False-positive phase B acceptance: $fixture" >&2
     exit 1
@@ -101,6 +106,16 @@ if ADB_SERIAL=WRONG bash "$repo/android_public_swarm_interrupt.sh" >"$tmp/wrong.
   echo "Unavailable explicit ADB serial was accepted" >&2
   exit 1
 fi
+# The entire adb devices command must exit successfully even if its
+# captured output contains a plausible sole attached USB target.
+: > "$MOCK_DIR/commands"
+rm -f "$tmp/b"
+if run_case MOCK_DEVICES_FAILURE=1 >"$tmp/inventory-failed.log" 2>&1; then
+  echo 'Failed adb devices with plausible inventory was accepted' >&2; exit 1
+fi
+grep -q 'ADB device inventory failed' "$tmp/inventory-failed.log"
+[[ ! -s "$MOCK_DIR/commands" && ! -e "$tmp/b" ]]
+
 # The device query's status must be successful even when stdout looks correct.
 : > "$MOCK_DIR/commands"
 rm -f "$tmp/b"
@@ -109,4 +124,4 @@ if run_case MOCK_GET_STATE_FAILURE=1 >"$tmp/state-failed.log" 2>&1; then
 fi
 grep -q 'Selected Android device unavailable' "$tmp/state-failed.log"
 [[ ! -s "$MOCK_DIR/commands" && ! -e "$tmp/b" ]]
-echo 'CHUNKS_INTERRUPT_HARNESS_TEST: large logs, positive recovery and failed-state-query negative controls passed'
+echo 'CHUNKS_INTERRUPT_HARNESS_TEST: large logs, positive recovery and failed inventory/state and false-success phase B negative controls passed'
