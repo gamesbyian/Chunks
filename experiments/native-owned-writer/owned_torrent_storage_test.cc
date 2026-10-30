@@ -192,5 +192,22 @@ int main() {
     assert(!fs::exists(s.receipts / A));
     ++count;
   }
+  {
+    Sandbox s;
+    std::string error;
+    auto first = Storage::Open(s.payload.string(), s.receipts.string(), files(),
+                                Storage::Admission::FRESH, &error);
+    assert(first);
+    // Receipt ID is a physical-Place + path claim, independent of torrent.
+    // A different torrent's mapping must not reserve the same empty path.
+    auto competing = files();
+    competing[0].mapping_commitment = D;
+    auto second = Storage::Open(s.payload.string(), s.receipts.string(), competing,
+                                 Storage::Admission::FRESH, &error);
+    assert(!second);
+    assert(!fs::exists(s.payload / "show/partA.bin"));
+    assert(fs::exists(s.receipts / (std::string(A) + ".pending")));
+    ++count;
+  }
   std::cout << "CHUNKS_MULTIFILE_WRITER_CASES=" << count << " PASSED\n";
 }
