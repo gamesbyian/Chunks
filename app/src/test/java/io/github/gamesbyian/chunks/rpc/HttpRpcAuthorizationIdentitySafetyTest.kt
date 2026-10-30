@@ -11,16 +11,13 @@ class HttpRpcAuthorizationIdentitySafetyTest {
 
     @Test fun ambiguousOrControlIdentityIsRefusedBeforeEitherAuthorizationHeader() {
         val invalid = listOf(
-            "operator:other", "operator\\r\\nX-Header: injected",
-            "operator\\nInjected", "operator\\rInjected",
-            "operator\\tadmin", "operator\\u0000admin",
-            "operator\\u007fadmin", "operator\\u0085admin",
-            "operator\\u2028admin", "operator\\u2029admin",
+            "operator:other", "operator\r\nX-Header: injected",
+            "operator\nInjected", "operator\rInjected",
+            "operator\tadmin", "operator\u0000admin",
+            "operator\u007fadmin", "operator\u0085admin",
+            "operator\u2028admin", "operator\u2029admin",
             "x".repeat(257)
-        ).map { it.replace("\\r", "\r").replace("\\n", "\n")
-            .replace("\\t", "\t").replace("\\u0000", "\u0000")
-            .replace("\\u007f", "\u007f").replace("\\u0085", "\u0085")
-            .replace("\\u2028", "\u2028").replace("\\u2029", "\u2029") }
+        )
         for (username in invalid) {
             for (challenge in listOf(basic, digest)) {
                 try {
@@ -45,7 +42,7 @@ class HttpRpcAuthorizationIdentitySafetyTest {
             String(java.util.Base64.getDecoder().decode(b.removePrefix("Basic ")), Charsets.UTF_8))
         val d = HttpRpcAuthorization.fromChallenge(listOf(digest), identity, "POST", "/RPC2")
         assertTrue(d.startsWith("Digest "))
-        assertTrue(d.contains("username=\\\"alice.smith\\\""))
+        assertTrue(d.contains("username=\"alice.smith\""))
         assertFalse(d.contains("secret:with:colons"))
     }
 }
