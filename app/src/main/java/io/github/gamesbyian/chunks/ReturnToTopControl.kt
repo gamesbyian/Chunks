@@ -2,6 +2,7 @@ package io.github.gamesbyian.chunks
 
 import android.content.Context
 import android.provider.Settings
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.heightIn
@@ -13,6 +14,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -57,19 +59,29 @@ internal fun ReturnToTopControl(
     modifier: Modifier = Modifier
 ) {
     if (!visible) return
-    Button(
-        onClick = onClick,
-        modifier = modifier.heightIn(min = 48.dp)
-            .semantics { contentDescription = "Back to top" },
-        colors = ButtonDefaults.buttonColors(
-            containerColor = ChunksColors.Cyan,
-            contentColor = ChunksColors.OnAccent
-        )
-    ) {
-        Row {
-            Text("↑", style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.width(8.dp))
-            Text("Back to top")
+    BoxWithConstraints(modifier) {
+        // A large floating text button can cover the middle of the transfer
+        // row below it. At narrow widths and enlarged text, keep its accessible
+        // name while making the visible footprint compact and unambiguous.
+        val compact = maxWidth < 380.dp || LocalDensity.current.fontScale >= 1.5f
+        Button(
+            onClick = onClick,
+            modifier = Modifier.heightIn(min = 48.dp)
+                .semantics { contentDescription = "Back to top" },
+            colors = ButtonDefaults.buttonColors(
+                containerColor = ChunksColors.Cyan,
+                contentColor = ChunksColors.OnAccent
+            )
+        ) {
+            if (compact) {
+                Text("↑", style = MaterialTheme.typography.titleMedium)
+            } else {
+                Row {
+                    Text("↑", style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Back to top")
+                }
+            }
         }
     }
 }
