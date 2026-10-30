@@ -34,9 +34,10 @@ internal class LocalCheckedPayloadReservations {
      * namespaces. No successful reservation is a permission to write.
      */
     @Synchronized
-    fun reserve(owner: String, root: File, relativePaths: List<String>): Result {
-        if (byOwner.containsKey(owner))
-            return Result.Refused("This transfer already holds payload paths")
+    fun reserve(
+        owner: String, root: File, relativePaths: List<String>,
+        allowExistingOwner: Boolean = false
+    ): Result {
         if (relativePaths.isEmpty() ||
             relativePaths.size > LocalPayloadCollisionSurvey.MAX_NATIVE_PATHS)
             return Result.Refused("Payload path count is unsupported")
@@ -60,6 +61,15 @@ internal class LocalCheckedPayloadReservations {
             val full = fold(realRoot.resolve(relative).toString().replace(File.separatorChar, '/'))
             if (!paths.add(full))
                 return Result.Refused("Torrent declares aliased backing paths")
+        }
+        // Explicit Start of an existing metadata-ready magnet may recheck
+        // its own exact previously reserved path set; an external ancestor
+        // alias retarget or changed native destination must never match.
+        // Checked Add always uses the default false to prevent same-hash
+        // resurrection after a non-blocking native Remove tombstones the job.
+        byOwner[owner]?.let { previous ->
+            return if (allowExistingOwner && previous == paths) Result.Reserved
+            else Result.Refused("This transfer already reserves different download paths")
         }
         for (path in paths) {
             if (conflictsWithReserved(path))
