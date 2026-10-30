@@ -63,18 +63,16 @@ NativeAdmissionMode ClassifyNativeAdmission(
     if (error) *error = "Torrent has no physical backing files";
     return NativeAdmissionMode::REFUSED;
   }
+  if (finalized == 0) {
+    // All absent or pending-only claims are zero-progress. Even if *every*
+    // path has a pending receipt, there are no restored payload bytes to
+    // hash. Re-reserve exactly, then admit only fresh exclusive writes.
+    if (error) error->clear();
+    return NativeAdmissionMode::FRESH;
+  }
   if (claimed == eligible) {
     if (error) error->clear();
     return NativeAdmissionMode::RESTORED;
-  }
-  if (claimed == 0 || finalized == 0) {
-    // An interrupted zero-progress Add can leave *some* pending path claims.
-    // It is safe to retry a FRESH reservation pass: Reserve checks every
-    // existing pending receipt against the exact path, parent and mapping,
-    // and O_EXCL still refuses any subsequently planted physical file.
-    // Never use this path once even one finalized physical receipt exists.
-    if (error) error->clear();
-    return NativeAdmissionMode::FRESH;
   }
   if (error) *error = "Incomplete native receipt inventory includes finalized payload; manual recovery required";
   return NativeAdmissionMode::REFUSED;
