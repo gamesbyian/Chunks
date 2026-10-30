@@ -4,7 +4,7 @@
 
 Run: bash experiments/native-owned-writer/test.sh --sanitizers
 
-On October 30 the corresponding source compiled with strict C++17 warnings and with ASan/UBSan on a disposable Linux host: **13/13 cases passed**. Cases include an already-existing foreign file, symlink parents, live file/root/ancestor replacement, hardlink alias, corrupt receipt, invalid path, overflowing offset, receipt collision, concurrent same-path Create (exactly one winner), and durable reopen. This is not BitTorrent traffic, Android FUSE, API29/API35, or physical-device evidence.
+On October 30 the corresponding source compiled with strict C++17 warnings and with ASan/UBSan on a disposable Linux host: **19/19 cases passed across the two suites**. Cases include an already-existing foreign file, symlink parents, live file/root/ancestor replacement, hardlink alias, corrupt receipt, invalid path, overflowing offset, receipt collision, concurrent same-path Create (exactly one winner), and durable reopen. The second 6-case suite exercises multi-file piece offsets, cross-file preflight, padding that never creates a file, preserved foreign contents and readback from durable receipts. This is not BitTorrent traffic, Android FUSE, API29/API35, or physical-device evidence.
 
 ## Reason for the native seam
 
@@ -24,6 +24,7 @@ Upstream contracts:
 - Receipt: commits a private, synced record bound to transfer/file mapping commitment and exact root/parent/file device + inode. It claims publication with linkat rather than a replacing rename. On uncertain publication, it leaves bytes untouched for recovery.
 - Restart: requires the original private receipt, the caller's exact mapping commitment, and matching stable inode/device identity. Never infers permission to adopt by matching file names, sizes or hashes.
 - Read/write/flush: uses the original pinned file FD. Revalidates the named root, intermediate parent directories and actual file inode before and after IO; refuses unrelated path substitution. No payload deletion or automatic repair.
+- Piece-offset routing: each cross-file operation opens all affected files before the first piece write. Padding files consume logical byte offsets and read as zeros without creating physical payload. Zero-length metadata entries do not receive writes. This is a lightweight mapping experiment, not a full libtorrent piece cache, v2 hash engine or SAF implementation.
 - Inputs: strict relative paths and lowercase 64-hex identifiers. The caller MUST cryptographically derive receipt ID and mapping commitment from environment, exact infohash, verified Place and path. The primitive only checks their shape. The receipt directory MUST be private.
 
 ## Still required for production
