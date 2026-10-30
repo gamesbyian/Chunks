@@ -103,7 +103,8 @@ The server label comes from the authenticated alias scope via the same address f
 - **Before running:** Start…/Stop… shows a preview naming every target environment and its count.
 - **While running:** each environment runs under its own existing mutation gate: the server list's readback gate, or the process-wide `PhoneMutationFence` shared with the phone screen. Results are reported per environment.
 - **Refusals:** a stale, offline, locked, busy or signed-out environment refuses its items, never redirecting them.
-- **Uncertain results:** the first uncertain result halts the batch, with no retry.
+- **Unresolved or failed attempted changes:** the first uncertain result, acknowledged-but-not-yet-verified result, explicit backend refusal or actual backend NOT_FOUND halts the remainder of the batch, including different accounts with identical hashes. No retry is automatic. An acknowledged result says *accepted, awaiting fresh readback*, not *completed*. A backend NOT_FOUND says the reviewed transfer disappeared, never suggests trying another environment.
+- **Preflight refusals:** a locked/stale/unavailable/incomplete source is refused **before any command**, so unrelated eligible environments may still proceed. Only an **attempted** unresolved or failed change stops subsequent commands.
 
 **Environment colours (PARTIAL).** Each stable environment ID receives an automatic hue from Chunks' accent palette, never black or white.
 - **Automatic assignment:** a hue is assigned once and persisted, avoiding hues already used until all nine are taken. Error red and warning yellow come last.
