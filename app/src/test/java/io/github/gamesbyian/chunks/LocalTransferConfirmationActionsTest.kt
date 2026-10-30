@@ -47,7 +47,7 @@ class LocalTransferConfirmationActionsTest {
         assertTrue("Confirm and cancel stack at 200%", cancel.top >= confirm.bottom)
         assertTrue("Both have >=48dp semantic touch targets",
             rule.onNode(androidx.compose.ui.test.hasText("Remove, keep files") and
-                androidx.compose.ui.test.hasClickAction()).getUnclippedBoundsInRoot().height >= 48.dp)
+                androidx.compose.ui.test.hasClickAction()).getUnclippedBoundsInRoot().let { it.bottom - it.top >= 48.dp })
         rule.onNodeWithText("Keep").performClick()
         assertEquals(0, removes)
         assertEquals(1, declined)
