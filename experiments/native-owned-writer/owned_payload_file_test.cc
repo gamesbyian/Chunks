@@ -280,5 +280,24 @@ int main() {
     assert(fs::exists(s.receipts / kId));
     passed();
   }
+  {
+    Sandbox s;
+    std::string error;
+    assert(chunks::OwnedPayloadFile::Reserve(s.payload.string(), "one.bin",
+        s.receipts.string(), kId, kMapping, &error));
+    // Same parent/inode and even the same caller-provided receipt identifiers
+    // must never authorize another basename after a stopped Add.
+    assert(!chunks::OwnedPayloadFile::Reserve(s.payload.string(), "two.bin",
+        s.receipts.string(), kId, kMapping, &error));
+    assert(!chunks::OwnedPayloadFile::CreateFromReservation(s.payload.string(),
+        "two.bin", s.receipts.string(), kId, kMapping, &error));
+    assert(!fs::exists(s.payload / "two.bin"));
+    auto permitted = chunks::OwnedPayloadFile::CreateFromReservation(s.payload.string(),
+        "one.bin", s.receipts.string(), kId, kMapping, &error);
+    assert(permitted);
+    assert(permitted->WriteAt(0, "OWN", 3, &error));
+    assert(s.read(s.payload / "one.bin") == "OWN");
+    passed();
+  }
   std::cout << "CHUNKS_PINNED_WRITER_CASES=" << cases << " PASSED\n";
 }
