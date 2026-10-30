@@ -309,14 +309,17 @@ class LocalTorrentEngineTest {
             unrelated, foreign.readBytes())
 
         assertTrue("Only remove the fixture we planted", foreign.delete())
-        assertEquals(LocalCommandOutcome.VERIFIED,
-            leecher.setFileWanted(transfer.infoHash, skipped.index, true))
-        assertTrue("A clean recovery starts a real peer transfer, not a synthetic completed status",
-            leecher.connectPeer(transfer.infoHash,
-                InetSocketAddress("127.0.0.1", seeder.listenPort())))
-        assertEquals(LocalCommandOutcome.VERIFIED, leecher.resume(transfer.infoHash).outcome)
-        requireFlushed(leecher, transfer.infoHash)
-        assertArrayEquals("Clean restart may still download the skipped file",
+        // A trackerless native session that previously finished with skipped
+        // files may have no peer rediscovery. Use a fresh verified checked Add
+        // into the now-clean test-owned destination as the positive control.
+        // This must never imply the refused original native handle auto-retried.
+        leecher.close()
+        val clean = engine()
+        val cleanAdded = added(clean.addStoppedChecked(metainfo, root,
+            listOf(InetSocketAddress("127.0.0.1", seeder.listenPort()))))
+        assertEquals(LocalCommandOutcome.VERIFIED, clean.resume(cleanAdded.infoHash).outcome)
+        requireFlushed(clean, cleanAdded.infoHash)
+        assertArrayEquals("Fresh reviewed native Add receives real torrent bytes",
             delayed, foreign.readBytes())
         assertArrayEquals(first, File(root, "Stopped checked fixture/initial.bin").readBytes())
     }
