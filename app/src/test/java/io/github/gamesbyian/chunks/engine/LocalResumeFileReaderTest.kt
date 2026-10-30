@@ -85,4 +85,19 @@ class LocalResumeFileReaderTest {
             assertTrue(closed)
         } finally { file.delete() }
     }
+
+    @Test fun symbolicLinkResumeDoesNotReadOrChangeForeignBytes() {
+        val external = File.createTempFile("chunks-resume-foreign", ".resume")
+        val link = File(external.parentFile, "chunks-resume-alias-" + external.name)
+        try {
+            val bytes = byteArrayOf(4, 8, 15, 16, 23, 42)
+            external.writeBytes(bytes)
+            java.nio.file.Files.createSymbolicLink(link.toPath(), external.toPath())
+            assertNull(LocalResumeFileReader.read(link, 64))
+            assertArrayEquals(bytes, external.readBytes())
+        } finally {
+            link.delete()
+            external.delete()
+        }
+    }
 }
