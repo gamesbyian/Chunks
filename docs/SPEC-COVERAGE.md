@@ -1,5 +1,15 @@
 # Chunks specification coverage and acceptance map
 
+## P0 integration status versus acceptance (2026-10-30)
+
+| Scope | Implemented / merged evidence | Independently accepted boundary and remaining gate |
+| --- | --- | --- |
+| Local checked Start after Stop | [#731](https://github.com/gamesbyian/Chunks/pull/731) merged at `e9a9c12d34fbdeb7248c9e49daad6a2c0ca2465b`; six successful exact-head workflow runs. | **Bounded CI evidence only**: zero-native-progress occupancy/symlink observation refuses in-scope restart. Persisted restore [#748](https://github.com/gamesbyian/Chunks/pull/748), priority writers [#749](https://github.com/gamesbyian/Chunks/pull/749)/[#750](https://github.com/gamesbyian/Chunks/pull/750) and durable publication [#751](https://github.com/gamesbyian/Chunks/pull/751) remain drafts. Atomic libtorrent writer ownership, positive-progress substitution, race negatives, physical storage and handset **NOT ACCEPTED**; [#568](https://github.com/gamesbyian/Chunks/issues/568) G0 RED. |
+| Combined Start/Stop approval session identity | [#739](https://github.com/gamesbyian/Chunks/pull/739) merged at `e82c6b229ecd61cd662be2b4e2f49a637f463ed9`, three head-associated CI successes; UI confirmation expires on profile/session/privacy changes. | JVM/Compose checked source, no live multiple-rTorrent or physical accessibility acceptance. [#744](https://github.com/gamesbyian/Chunks/pull/744) **FAILED** foundation at [run 41125469781](https://github.com/gamesbyian/Chunks/actions/runs/41125469781) on valid-versus-invalid hash batch; #740/#745/#753 are pending. |
+| Remote peer-source facts | [#725](https://github.com/gamesbyian/Chunks/pull/725) merged at `db171dca31f7a2f7cd439903ac8f09e6bcf631d9`; read-only exact hash, port and flag validation with nine successful head-associated workflows. | No protected host or Android-to-host byte acceptance. Mutating XML-RPC and ruTorrent upload HTTP 401 no-replay are separate, unmerged dependency drafts [#742](https://github.com/gamesbyian/Chunks/pull/742) → [#743](https://github.com/gamesbyian/Chunks/pull/743). |
+
+Scope status follows [the source-and-receipt ledger](QUALITY-LEDGER.md#2026-10-30-integration-exact-head-acceptance-checkpoint-three-bounded-merges-g0-still-red). **Merged**, **head-CI tested**, **integrated-main tested** and **independently accepted** are different assertions. This checkpoint supplies neither signed release nor safe daily-driver authorization.
+
 ## External destination delivery coverage (planned)
 
 | Requirement | Status | Acceptance outstanding |
