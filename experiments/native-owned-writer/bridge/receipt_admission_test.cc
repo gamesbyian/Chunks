@@ -45,7 +45,7 @@ int main() {
     Case c; c.add(std::string(A)+".pending");c.add(std::string(B)+".pending");
     std::string error;
     assert(ClassifyNativeAdmission(c.receipts.string(),c.layout(),&error)==
-           NativeAdmissionMode::RESTORED);
+           NativeAdmissionMode::FRESH);
     ++passed;
   }
   {
