@@ -1,5 +1,17 @@
 # Chunks evidence and release gate ledger
 
+## Transfer observation evidence boundaries (JVM tier)
+
+Candidate source [`b249982`](https://github.com/gamesbyian/Chunks/commit/b249982) contains three independently source-reviewed P0 safeguards:
+
+- Server inventories expire after the existing 120-second saved-list limit. Last-known rows remain visible but cannot contribute live totals, authorize a command or prove an already-satisfied batch result. Checks cover confirmation, slow capability probes and expiry between batch items, including clock rollback and invalid timestamps.
+- XML-RPC decoding rejects ambiguous envelopes, missing/duplicate array data, hidden entries, nested scalar markup and duplicate struct keys. Malformed faults cannot masquerade as authoritative missing-torrent/method faults. A loopback adapter regression requires whole-inventory failure after one request without fallback.
+- Native cache-flush completion/cancellation belongs to the original torrent handle. Registration and final readback share the removal monitor, while waiting releases it. Deterministic tests reject late alerts and replacement handles with the same hash; existing native loopback tests still exercise real cache-flush alerts and independent byte readback.
+
+**Local validation at that source:** JDK 17.0.21, Gradle 9.3.1, Android SDK 37; `gradle --no-daemon --max-workers=4 -I /workspace/.toolchains/chunks-test-proxy.gradle :app:testDebugUnitTest :app:assembleDebug` passed: **800 tests, 771 passed, 29 skipped, zero failures/errors**, with debug APK assembly. The local init script forwards the configured HTTP/HTTPS proxy to test JVMs and selects Maven Central for Robolectric; TLS and CA verification remain enabled. The first test attempt lacked those test-JVM proxy settings and was stopped after dependency-fetch failures; the corrected full run completed.
+
+The 29 opt-in/integration skips are **not** acceptance. This is pure JVM, synthetic loopback RPC, desktop libtorrent and Robolectric evidence, not physical Android, live Seedhost, service/Doze or arbitrary storage-provider acceptance. These changes do not settle magnet/post-Add payload collisions; the failed safety-facing Start result on draft [#648](https://github.com/gamesbyian/Chunks/pull/648#issuecomment-6511946698) remains open. [#640](https://github.com/gamesbyian/Chunks/pull/640) is separately merged metadata-known Add preflight, not a race-free filesystem guarantee.
+
 ## 2026-10-29 per-environment capability snapshots (0A, #567)
 
 - **Source slice:** `EnvironmentCapabilitySnapshot` grades each environment separately.

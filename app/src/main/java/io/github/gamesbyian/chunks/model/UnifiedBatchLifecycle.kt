@@ -59,7 +59,9 @@ object UnifiedBatchLifecycle {
         sources: List<EnvironmentTransferSnapshot>,
         adapters: Map<EnvironmentId, Adapter>,
         /** Environments the caller could not lease (busy, awaiting readback, signed out), with why. */
-        refusals: Map<EnvironmentId, String> = emptyMap()
+        refusals: Map<EnvironmentId, String> = emptyMap(),
+        /** Rechecked per item, including no-ops, after earlier commands may have suspended. */
+        sourceIsFresh: (EnvironmentTransferSnapshot) -> Boolean = { true }
     ): Report {
         require(targets.isNotEmpty() && targets.size <= MAX_ITEMS) { "Select 1 to $MAX_ITEMS transfers" }
         require(targets.map { it.key }.toSet().size == targets.size) { "Batch contains duplicate identities" }
@@ -83,6 +85,11 @@ object UnifiedBatchLifecycle {
             val refusal = refusals[environment] ?: refusal(byEnvironment[environment], adapters[environment], target)
             if (refusal != null) {
                 out += ItemResult(target.key, CommandEvidence.REFUSED, refusal)
+                continue
+            }
+            if (!sourceIsFresh(byEnvironment.getValue(environment))) {
+                out += ItemResult(target.key, CommandEvidence.REFUSED,
+                    "Transfer list is out of date; refresh first")
                 continue
             }
             if (target.started == start) {

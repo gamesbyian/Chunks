@@ -23,7 +23,7 @@ class CombinedBatchLifecycleTest {
         UnifiedTransferKey.of(env, hash), "n", "n", 1, 0, started, null, null, null)
     private fun source(env: EnvironmentId, vararg rows: UnifiedTransferObservation,
                        availability: EnvironmentAvailability = EnvironmentAvailability.LIVE) =
-        EnvironmentTransferSnapshot(env, availability, true, 1, rows.toList())
+        EnvironmentTransferSnapshot(env, availability, true, System.currentTimeMillis(), rows.toList())
 
     private class FakeGate(private val grant: Boolean) {
         var begins = 0; var settles = 0
@@ -142,5 +142,59 @@ class CombinedBatchLifecycleTest {
         assertEquals(listOf(hash to false), gate.calls)
         assertNull(report.haltedOn)
         assertEquals(setOf(CommandEvidence.VERIFIED, CommandEvidence.REFUSED), report.items.map { it.evidence }.toSet())
+    }
+
+    @Test fun serverInventoryIsRecheckedAtConfirmationAndAfterCapabilityProbe() = runBlocking {
+        val observed = 1_000_000L
+        val expired = observed + EnvironmentSnapshots.SERVER_INVENTORY_FRESH_MS + 1
+        val onServer = row(server, true)
+        val source = source(server, onServer).copy(observedAtEpochMillis = observed)
+        for (expiresDuringProbe in listOf(false, true)) {
+            var clock = if (expiresDuringProbe) observed else expired
+            var probes = 0
+            var begins = 0
+            var settles = 0
+            var commands = 0
+            val lifecycle = CombinedServerLifecycle(
+                begin = { begins++; true }, settled = { settles++ },
+                setStarted = { _, on -> commands++; LifecycleOutcome.Verified(on) },
+                probe = { probes++; clock = expired; io.github.gamesbyian.chunks.rpc.RemoteProbe("0.9.8", null) })
+            val report = runCombinedLifecycle(setOf(onServer.key), false, listOf(source),
+                lifecycle, server, phoneEngine = { null }, nowEpochMillis = { clock })
+            assertEquals(if (expiresDuringProbe) 1 else 0, probes)
+            assertEquals(0, begins)
+            assertEquals(0, settles)
+            assertEquals(0, commands)
+            assertEquals(CommandEvidence.REFUSED, report.items.single().evidence)
+            assertEquals("Transfer list is out of date; refresh first", report.items.single().reason)
+        }
+    }
+
+    @Test fun batchThatCrossesExpiryRefusesLaterCommandsAndAlreadySatisfiedClaims() = runBlocking {
+        val observed = 1_000_000L
+        for (secondAlreadyStopped in listOf(false, true)) {
+            var clock = observed
+            val first = row(server, true)
+            val second = first.copy(key = UnifiedTransferKey.of(server, "d".repeat(40)),
+                started = !secondAlreadyStopped)
+            val calls = ArrayList<String>()
+            var settles = 0
+            val lifecycle = CombinedServerLifecycle(
+                begin = { true }, settled = { settles++ },
+                setStarted = { hash, on ->
+                    calls += hash
+                    clock = observed + EnvironmentSnapshots.SERVER_INVENTORY_FRESH_MS + 1
+                    LifecycleOutcome.Verified(on)
+                })
+            val report = runCombinedLifecycle(setOf(second.key, first.key), false,
+                listOf(source(server, first, second).copy(observedAtEpochMillis = observed)), lifecycle, server,
+                phoneEngine = { null }, nowEpochMillis = { clock })
+            assertEquals(listOf(first.key.infoHash), calls)
+            assertEquals(listOf(CommandEvidence.VERIFIED, CommandEvidence.REFUSED), report.items.map { it.evidence })
+            assertEquals("Transfer list is out of date; refresh first", report.items.last().reason)
+            assertFalse("Expired no-op evidence must not count as verified", report.fullyVerified)
+            assertNull(report.haltedOn)
+            assertEquals(1, settles)
+        }
     }
 }

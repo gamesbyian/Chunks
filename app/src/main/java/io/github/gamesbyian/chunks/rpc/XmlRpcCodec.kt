@@ -105,16 +105,17 @@ object XmlRpcCodec {
         val root = doc.documentElement
         require(root.tagName == "methodResponse") { "Invalid XML-RPC response" }
         val budget = intArrayOf(0)
-        val fault = child(root, "fault")
-        if (fault != null) {
-            val decoded = child(fault, "value")?.let { readValue(it, 0, budget) }
-            val map = decoded as? Map<*, *>
-            throw RpcFault(map?.get("faultCode")?.toString() ?: "unknown",
-                map?.get("faultString")?.toString() ?: "rTorrent returned an RPC fault")
+        val result = children(root).singleOrNull()
+        require(result != null) { "Expected one XML-RPC result" }
+        if (result.tagName == "fault") {
+            val map = readValue(singleChild(result, "value"), 0, budget) as? Map<*, *>
+                ?: error("Invalid RPC fault")
+            val code = map["faultCode"] as? Long ?: error("Missing RPC fault code")
+            val message = map["faultString"] as? String ?: error("Missing RPC fault message")
+            throw RpcFault(code.toString(), message)
         }
-        val params = child(root, "params") ?: error("Missing RPC parameters")
-        val param = child(params, "param") ?: error("Missing RPC parameter")
-        return readValue(child(param, "value") ?: error("Missing RPC value"), 0, budget)
+        require(result.tagName == "params") { "Invalid RPC result" }
+        return readValue(singleChild(singleChild(result, "param"), "value"), 0, budget)
     }
 
     /**
@@ -165,42 +166,56 @@ object XmlRpcCodec {
         require(depth <= MAX_XML_ELEMENT_DEPTH) { "XML-RPC value nesting too deep" }
         budget[0]++
         if (budget[0] > MAX_RPC_VALUE_NODES) throw XmlRpcSizeLimitExceeded("Too many XML-RPC values")
-        val typed = children(element).firstOrNull()
-            ?: return boundedText(element.textContent.orEmpty())
+        val valueElements = elements(element)
+        if (valueElements.isEmpty()) return boundedText(textOnly(element))
+        // A second type, mixed text, or nested scalar markup cannot be ignored:
+        // doing so can turn a malformed inventory into a successful partial read.
+        val typed = children(element).singleOrNull()
+        require(typed != null) { "Expected one XML-RPC value type" }
         return when (typed.tagName) {
-            "string", "dateTime.iso8601" -> boundedText(typed.textContent.orEmpty())
+            "string", "dateTime.iso8601" -> boundedText(textOnly(typed))
             "base64" -> {
-                val encoded = typed.textContent.filterNot { it.isWhitespace() }
+                val encoded = textOnly(typed).filterNot { it.isWhitespace() }
                 require(encoded.length <= 2_796_204) { "Binary RPC response exceeds 2 MiB" }
                 val bytes = java.util.Base64.getDecoder().decode(encoded)
                 require(bytes.size <= 2_097_152) { "Binary RPC response exceeds 2 MiB" }
                 bytes
             }
-            "int", "i4", "i8" -> typed.textContent.trim().toLong()
-            "boolean" -> when (typed.textContent.trim()) {
+            "int", "i4", "i8" -> textOnly(typed).trim().toLong()
+            "boolean" -> when (textOnly(typed).trim()) {
                 "1" -> true
                 "0" -> false
                 else -> error("Invalid XML-RPC boolean")
             }
-            "double" -> typed.textContent.trim().toDouble()
-            "nil" -> null
-            "array" -> child(typed, "data")?.let { data ->
-                val entries = children(data).filter { it.tagName == "value" }
+            "double" -> textOnly(typed).trim().toDouble()
+            "nil" -> {
+                require(textOnly(typed).isBlank()) { "Invalid XML-RPC nil" }
+                null
+            }
+            "array" -> {
+                val entries = children(singleChild(typed, "data"))
+                require(entries.all { it.tagName == "value" }) { "Invalid XML-RPC array entry" }
                 if (entries.size > MAX_ARRAY_ENTRIES) throw XmlRpcSizeLimitExceeded("XML-RPC array too large")
                 entries.map { readValue(it, depth + 1, budget) }
-            } ?: emptyList<Any>()
+            }
             "struct" -> {
-                val members = children(typed).filter { it.tagName == "member" }
+                val members = children(typed)
+                require(members.all { it.tagName == "member" }) { "Invalid XML-RPC struct member" }
                 require(members.size <= MAX_STRUCT_MEMBERS) { "XML-RPC struct too large" }
-                members.associate { member ->
-                    val name = child(member, "name")?.textContent
-                        ?: error("Invalid struct member")
+                val decoded = linkedMapOf<String, Any?>()
+                for (member in members) {
+                    val fields = children(member)
+                    require(fields.size == 2 && fields.count { it.tagName == "name" } == 1 &&
+                        fields.count { it.tagName == "value" } == 1) { "Invalid struct member" }
+                    val name = textOnly(fields.single { it.tagName == "name" })
                     require(name.length <= 256) { "XML-RPC struct key too long" }
-                    name to readValue(
-                        child(member, "value") ?: error("Missing member value"),
+                    require(!decoded.containsKey(name)) { "Duplicate XML-RPC struct key" }
+                    decoded[name] = readValue(
+                        fields.single { it.tagName == "value" },
                         depth + 1, budget
                     )
                 }
+                decoded
             }
             else -> error("Unsupported XML-RPC response type: ${typed.tagName}")
         }
@@ -211,10 +226,29 @@ object XmlRpcCodec {
         return value
     }
 
-    private fun child(parent: Element, tag: String): Element? =
-        children(parent).firstOrNull { it.tagName == tag }
+    private fun singleChild(parent: Element, tag: String): Element {
+        val child = children(parent).singleOrNull()
+        require(child?.tagName == tag) { "Expected one XML-RPC $tag" }
+        return child!!
+    }
+
+    private fun textOnly(element: Element): String {
+        require(elements(element).isEmpty()) { "Nested markup in XML-RPC scalar" }
+        return element.textContent.orEmpty()
+    }
 
     private fun children(parent: Element): List<Element> {
+        val nodes = parent.childNodes
+        for (index in 0 until nodes.length) {
+            val node = nodes.item(index)
+            if (node.nodeType == Node.TEXT_NODE || node.nodeType == Node.CDATA_SECTION_NODE) {
+                require(node.nodeValue.orEmpty().isBlank()) { "Mixed text in XML-RPC container" }
+            }
+        }
+        return elements(parent)
+    }
+
+    private fun elements(parent: Element): List<Element> {
         val out = ArrayList<Element>()
         val nodes = parent.childNodes
         for (index in 0 until nodes.length) {

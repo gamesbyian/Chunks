@@ -102,7 +102,7 @@ private fun describe(report: RemoteBatchLifecycle.Report): String {
     var text = parts.joinToString(", ") + "."
     if (report.halted) {
         text += if (report.haltedUncertain)
-            " Halted: one reply was lost, so that transfer may or may not have changed."
+            " Halted: one command's result could not be verified, so that transfer may or may not have changed."
         else " Halted: the server refused one command."
         text += " ${report.notAttempted.size} not attempted. Check the refreshed list before trying again."
     }
