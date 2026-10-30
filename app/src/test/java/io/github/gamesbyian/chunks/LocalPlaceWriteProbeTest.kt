@@ -27,8 +27,10 @@ class LocalPlaceWriteProbeTest {
         random: java.util.Random = java.security.SecureRandom(),
         afterCreate: () -> Unit = {},
         beforeRename: () -> Unit = {},
-        beforePublish: () -> Unit = {}
+        beforePublish: () -> Unit = {},
+        onOpen: (Path) -> Unit = {}
     ) = LocalPlaceWriteProbe.verify(root, random, openExclusive = { path, hook ->
+        onOpen(path)
         val channel = FileChannel.open(path, StandardOpenOption.CREATE_NEW,
             StandardOpenOption.READ, StandardOpenOption.WRITE, LinkOption.NOFOLLOW_LINKS)
         val key = Files.readAttributes(path, BasicFileAttributes::class.java,
@@ -54,7 +56,12 @@ class LocalPlaceWriteProbeTest {
     @Test fun writableFolderPassesAndKeepsNoProbeFiles() {
         val folder = temp.newFolder("Downloads")
         File(folder, "existing.bin").writeBytes(byteArrayOf(1, 2, 3))
-        assertNull(verify(folder))
+        val openNames = mutableListOf<String>()
+        assertNull(verify(folder, onOpen = { openNames += it.fileName.toString() }))
+        assertEquals("Both source and destination must be created exclusively",
+            2, openNames.size)
+        assertTrue(openNames[0].endsWith(".tmp"))
+        assertTrue(openNames[1].endsWith(".ok"))
         assertEquals(listOf("existing.bin"), folder.list()!!.toList())
         assertTrue(File(folder, "existing.bin").readBytes().contentEquals(byteArrayOf(1, 2, 3)))
     }
