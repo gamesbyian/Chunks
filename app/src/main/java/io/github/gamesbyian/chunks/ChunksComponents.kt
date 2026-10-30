@@ -26,6 +26,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -198,8 +200,22 @@ internal fun EnvironmentBadge(
     // Observe the shared persisted palette revision. An environment ID stays
     // stable when its chosen hue changes, so ID alone is not a valid cache key.
     val paletteRevision = EnvironmentColourStore.revision
-    val hue = remember(context, environment, paletteRevision) {
-        environment?.let { runCatching { EnvironmentColourStore(context).load().hueOf(it) }.getOrNull() }
+    val colourStore = remember(context) { EnvironmentColourStore(context) }
+    var hue by androidx.compose.runtime.remember(context, environment) {
+        androidx.compose.runtime.mutableStateOf<io.github.gamesbyian.chunks.model.EnvironmentHue?>(null)
+    }
+    androidx.compose.runtime.LaunchedEffect(colourStore, environment, paletteRevision) {
+        try {
+            hue = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                environment?.let { colourStore.load().hueOf(it) }
+            }
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            // Retain a previously visible hue if preferences are temporarily
+            // unreadable. Neither the badge nor a palette reload may issue a
+            // transfer operation or change the environment's stable identity.
+        }
     }
     val accent = hue?.let { Color(it.argb) } ?: if (server) ChunksColors.Blue else ChunksColors.Cyan
     Row(modifier.clip(RoundedCornerShape(12.dp)).background(ChunksColors.SurfaceRaised)
