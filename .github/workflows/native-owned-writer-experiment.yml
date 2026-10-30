@@ -56,6 +56,6 @@ jobs:
             sudo apt-get install -y -qq libboost-dev libssl-dev
           fi
           c++ -std=c++17 -Wall -Wextra -Werror -pedantic -fsyntax-only \
-            -DTORRENT_ABI_VERSION=3 \
+            -DTORRENT_ABI_VERSION=3 -DTORRENT_USE_OPENSSL=1 \
             -I "$RUNNER_TEMP/chunks-libtorrent/include" \
             experiments/native-owned-writer/bridge/owned_libtorrent_disk.cc
