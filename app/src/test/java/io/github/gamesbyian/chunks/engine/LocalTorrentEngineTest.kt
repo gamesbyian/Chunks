@@ -272,7 +272,7 @@ class LocalTorrentEngineTest {
         val beforeOrder = requireNotNull(leecher.files(transfer.infoHash))
         val firstSelected = beforeOrder.single { it.path.endsWith("/initial.bin") }
         val orderRecord = FinishInOrderRecord(FinishInOrderPlanner.policyFor(
-            FinishInOrderPlanner.Mode.BALANCED, beforeOrder, listOf(firstSelected.index)))
+            FinishInOrderPlanner.Mode.BALANCED, beforeOrder, beforeOrder.map { it.index }))
         // Automatic Finish in Order is a separate JNI file-priority writer.
         // Its existing journal/planner preflight must not bypass the shared
         // native foreign-path gate, even when only a different file is targeted.
