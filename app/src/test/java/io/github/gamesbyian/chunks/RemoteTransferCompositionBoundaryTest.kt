@@ -61,4 +61,30 @@ class RemoteTransferCompositionBoundaryTest {
         rule.onNodeWithText("No review pending").assertExists()
         assertEquals(0, actions)
     }
+
+    @Test fun serverWideSelectionCannotCrossProfilesOrReconnects() {
+        var account by mutableStateOf("https://one.test/RPC2\u0000alice")
+        var session by mutableStateOf<Any>(Any())
+        var emitted = 0
+        rule.setContent {
+            RemoteEnvironmentCompositionBoundary(account, session) {
+                var selected by androidx.compose.runtime.saveable.rememberSaveable {
+                    mutableStateOf(false)
+                }
+                Column {
+                    Text(if (selected) "One transfer selected" else "Nothing selected")
+                    Button(onClick = { selected = true }) { Text("Select transfer") }
+                    Button(onClick = { emitted++ }) { Text("Synthetic batch action") }
+                }
+            }
+        }
+        rule.onNodeWithText("Select transfer").performClick()
+        rule.onNodeWithText("One transfer selected").assertExists()
+        rule.runOnIdle { account = "https://one.test/RPC2\u0000bob" }
+        rule.onNodeWithText("Nothing selected").assertExists()
+        rule.onNodeWithText("Select transfer").performClick()
+        rule.runOnIdle { session = Any() } // same account, but new signed-in connection
+        rule.onNodeWithText("Nothing selected").assertExists()
+        assertEquals(0, emitted)
+    }
 }
