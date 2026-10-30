@@ -26,11 +26,41 @@ internal object LocalPayloadCollisionSurvey {
         if (maxPaths <= 0 || relativePaths.size > maxPaths)
             return Result.Unknown("Payload path count is unsupported")
         val base = try {
-            root.toPath().toAbsolutePath().normalize().also {
-                if (Files.isSymbolicLink(it) || !Files.isDirectory(it, LinkOption.NOFOLLOW_LINKS))
+            val supplied = root.toPath().toAbsolutePath()
+            // Normalizing a lexical link/../child can select a different
+            // directory from the one reached when the OS follows that link.
+            if (supplied.any { it.toString() == ".." })
+                return Result.Unknown("Download root contains parent traversal")
+            supplied.normalize().also { resolved ->
+                // A final-component check misses /parent-link/download-root.
+                // The native writer follows ancestors, so survey those too.
+                var ancestor: Path? = resolved
+                while (ancestor != null) {
+                    if (Files.isSymbolicLink(ancestor))
+                        return Result.Unknown("Download root crosses a symbolic link")
+                    ancestor = ancestor.parent
+                }
+                if (!Files.isDirectory(resolved, LinkOption.NOFOLLOW_LINKS))
                     return Result.Unknown("Download root is unavailable or indirect")
             }
         } catch (_: Exception) { return Result.Unknown("Download root cannot be inspected") }
+        // Conflicting torrent file indices cannot independently own the same
+        // destination, even when no filesystem object exists at Add time.
+        val declaredFiles = HashSet<String>()
+        for (relative in relativePaths) {
+            if (relative.length > 4096)
+                return Result.Unknown("Torrent payload path is too long")
+            if (!declaredFiles.add(relative))
+                return Result.Unknown("Torrent declares duplicate payload paths")
+        }
+        for (relative in relativePaths) {
+            var slash = relative.indexOf('/')
+            while (slash >= 0) {
+                if (declaredFiles.contains(relative.substring(0, slash)))
+                    return Result.Unknown("Torrent declares a file as another file's parent")
+                slash = relative.indexOf('/', slash + 1)
+            }
+        }
         val collisions = ArrayList<String>()
         var total = 0
         for (relative in relativePaths) {
