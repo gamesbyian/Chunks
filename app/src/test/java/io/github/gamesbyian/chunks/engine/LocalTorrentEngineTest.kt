@@ -306,6 +306,31 @@ class LocalTorrentEngineTest {
         assertFalse("Both stopped native jobs must leave payload absent", firstPath.exists())
     }
 
+    @Test fun reviewedExistingSeedRetainsNativeStartAfterProcessRestoration() {
+        val fixture = fixture()
+        val state = temp.newFolder("reviewed-existing-seed-resume-state")
+        val source = File(fixture.root, "episode.bin")
+        val expected = source.readBytes()
+        val original = persistentEngine(state)
+        val reviewed = added(original.addStopped(fixture.torrent, fixture.root.parentFile))
+        assertEquals(LocalAdmissionProvenance.Mode.REVIEWED_EXISTING,
+            LocalAdmissionProvenance.read(state, reviewed.infoHash))
+        assertTrue(reviewed.stopped)
+        original.close()
+        val restored = persistentEngine(state)
+        assertTrue(restored.restoreProblems.isEmpty())
+        assertTrue(requireNotNull(restored.status(reviewed.infoHash)).stopped)
+        // Valid reviewed source data can exist even when native fileProgress
+        // reports zero until recheck. Reservations prevent competing writers;
+        // they must not reinterpret previously reviewed seed bytes as foreign.
+        assertEquals(LocalCommandOutcome.VERIFIED,
+            restored.resume(reviewed.infoHash).outcome)
+        waitFor { restored.status(reviewed.infoHash)?.state == LocalTransferState.SEEDING }
+        assertArrayEquals(expected, source.readBytes())
+        assertEquals(LocalCommandOutcome.VERIFIED,
+            restored.pause(reviewed.infoHash).outcome)
+    }
+
     @Test fun distinctRawReviewedAddsCannotClaimOneStillEmptyNativeDestination() {
         val firstFixture = fixture()
         val secondFixture = conflictingFixture()
