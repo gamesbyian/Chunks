@@ -7,6 +7,7 @@ add_library(chunks_owned_writer STATIC
     owned_payload_file.cc
     owned_torrent_storage.cc
     bridge/checked_piece_range.cc
+    bridge/receipt_admission.cc
 )
 target_compile_features(chunks_owned_writer PUBLIC cxx_std_17)
 target_include_directories(chunks_owned_writer PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
@@ -21,10 +22,13 @@ if(CHUNKS_OWNED_WRITER_HOST_TESTS AND NOT ANDROID)
     target_link_libraries(chunks_owned_file_test PRIVATE chunks_owned_writer Threads::Threads)
     add_executable(chunks_owned_multifile_test owned_torrent_storage_test.cc)
     target_link_libraries(chunks_owned_multifile_test PRIVATE chunks_owned_writer Threads::Threads)
+    add_executable(chunks_receipt_admission_test bridge/receipt_admission_test.cc)
+    target_link_libraries(chunks_receipt_admission_test PRIVATE chunks_owned_writer)
     add_executable(chunks_checked_piece_range_test bridge/checked_piece_range_test.cc)
     target_link_libraries(chunks_checked_piece_range_test PRIVATE chunks_owned_writer)
     enable_testing()
     add_test(NAME checked_piece_bounds COMMAND chunks_checked_piece_range_test)
+    add_test(NAME receipt_admission_inventory COMMAND chunks_receipt_admission_test)
     add_test(NAME owned_file_nonclobber COMMAND chunks_owned_file_test)
     add_test(NAME owned_multifile_nonclobber COMMAND chunks_owned_multifile_test)
 endif()
