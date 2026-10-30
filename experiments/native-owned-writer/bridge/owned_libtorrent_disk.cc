@@ -5,6 +5,7 @@
 #include "../owned_torrent_storage.h"
 #include "checked_piece_range.h"
 #include "owned_libtorrent_disk.h"
+#include "receipt_admission.h"
 
 #include <libtorrent/libtorrent.hpp>
 #include <libtorrent/hasher.hpp>
@@ -123,10 +124,21 @@ class NativeDisk final : public lt::disk_interface, public lt::buffer_allocator_
       }
       if (!problem.ec && !state.checked) {
         std::string reason;
-        state.storage = OwnedTorrentStorage::Open(state.save_path, receipts_, state.layout,
-            resume == nullptr ? OwnedTorrentStorage::Admission::FRESH
-                              : OwnedTorrentStorage::Admission::RESTORED, &reason);
-        if (!state.storage) {
+        // libtorrent may supply a non-null add_torrent_params for both
+        // fresh and restored jobs. Resume-pointer presence is not proof of
+        // ownership. Decide from app-private durable per-path receipts only.
+        const auto admission = ClassifyNativeAdmission(receipts_, state.layout, &reason);
+        if (admission == NativeAdmissionMode::REFUSED) {
+          state.refusal = reason;
+          problem = Denied(lt::operation_t::file_open);
+        } else {
+          const auto mode = admission == NativeAdmissionMode::FRESH
+              ? OwnedTorrentStorage::Admission::FRESH
+              : OwnedTorrentStorage::Admission::RESTORED;
+          state.storage = OwnedTorrentStorage::Open(state.save_path, receipts_,
+                                                    state.layout, mode, &reason);
+        }
+        if (!problem.ec && !state.storage) {
           state.refusal = reason;
           problem = Denied(lt::operation_t::file_open);
         } else state.checked = true;
