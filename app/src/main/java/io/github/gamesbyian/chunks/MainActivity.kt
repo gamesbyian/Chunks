@@ -400,7 +400,8 @@ private fun ChunksApp(
                                 }
                             },
                             setStarted = remote::setStarted,
-                            probe = remote::probe))
+                            probe = remote::probe),
+                        authenticatedSession = remote)
                 },
                 savedProfiles = savedProfiles.map { profile ->
                     CombinedSavedProfile(profile.id, profile.label + " · " + profile.address,
