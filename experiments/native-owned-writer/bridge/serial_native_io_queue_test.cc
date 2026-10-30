@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <cassert>
+#include <chrono>
 #include <future>
 #include <iostream>
 #include <stdexcept>
@@ -79,6 +80,30 @@ int main() {
     try { SerialNativeIoQueue queue(0); }
     catch (std::invalid_argument const&) { refused = true; }
     assert(refused);
+    ++cases;
+  }
+  {
+    SerialNativeIoQueue queue(2);
+    std::promise<void> entered, release;
+    auto did_enter = entered.get_future();
+    auto allow_finish = release.get_future().share();
+    std::atomic<int> writes{0};
+    assert(queue.Submit([&] {
+      entered.set_value();
+      allow_finish.wait();
+      ++writes;
+    }, [] { assert(false); }));
+    did_enter.wait();
+    assert(queue.Submit([&] { ++writes; }, [] { assert(false); }));
+    auto idle = std::async(std::launch::async, [&] { queue.WaitIdle(); });
+    assert(idle.wait_for(std::chrono::milliseconds(30)) == std::future_status::timeout);
+    release.set_value();
+    idle.wait();
+    assert(writes == 2);
+    // Waiting for one transfer must not retire other transfers' worker.
+    assert(queue.Submit([&] { ++writes; }, [] { assert(false); }));
+    queue.DrainAndStop();
+    assert(writes == 3);
     ++cases;
   }
   std::cout << "CHUNKS_SERIAL_NATIVE_IO_CASES=" << cases << " PASSED\n";
