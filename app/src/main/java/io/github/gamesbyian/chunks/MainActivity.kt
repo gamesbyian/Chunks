@@ -52,6 +52,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -168,6 +169,15 @@ private enum class Section(val label: String) {
     TRANSFERS("Transfers"), COMBINED("All environments"), PLACES("Places"), ORGANIZE("Organize"), SERVER("Server"), ARCHIVES("ZIP review"), CREATE("Create"), SEEDING("Seeding rules"), LOCAL("On this phone"), ADD("Add"), NAMES("Names"), SNAPSHOT("Inventory backup"), SNAPSHOT_INSPECT("Inspect backup")
 }
 
+// Only privacy-gated, non-mutating navigation is kept through Activity/process
+// recreation. No authenticated server, command, selected hash or Add draft is saved.
+private val SectionRestoreSaver = Saver<androidx.compose.runtime.MutableState<Section>, String>(
+    save = { NavigationRestorePolicy.restorableSection(it.value.name) },
+    restore = { saved ->
+        mutableStateOf(Section.valueOf(NavigationRestorePolicy.restorableSection(saved)))
+    }
+)
+
 @Composable
 private fun ChunksApp(
     sharedMagnet: String?,
@@ -212,7 +222,7 @@ private fun ChunksApp(
     var stale by remember { mutableStateOf(false) }
     var currentView by remember { mutableStateOf("main") }
     var requestedView by remember { mutableStateOf("main") }
-    var section by remember { mutableStateOf(Section.TRANSFERS) }
+    var section by rememberSaveable(saver = SectionRestoreSaver) { mutableStateOf(Section.TRANSFERS) }
     var query by remember { mutableStateOf("") }
     var filter by remember { mutableStateOf(TransferFilter.ALL) }
     var order by remember { mutableStateOf(TransferOrder.NAME) }
