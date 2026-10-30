@@ -337,6 +337,11 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         if (existing.any { it.hash.equals(plan.expectedInfoHash, ignoreCase = true) }) {
             return RemoteAddOutcome.AlreadyPresent(plan.expectedInfoHash)
         }
+        // View membership cannot prove absence from the server session.
+        // This exact-hash read is required before any non-idempotent load.
+        if (lookupName(plan.expectedInfoHash) != null) {
+            return RemoteAddOutcome.AlreadyPresent(plan.expectedInfoHash)
+        }
         requireCurrentServerDefault(plan)
         try {
             val params: List<Any> = if (plan.useServerDefault) listOf("", plan.source)
@@ -374,6 +379,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         if (listTransfers("main").any { it.hash.equals(hash, ignoreCase = true) }) {
             return RemoteAddOutcome.AlreadyPresent(hash)
         }
+        if (lookupName(hash) != null) return RemoteAddOutcome.AlreadyPresent(hash)
         requireCurrentServerDefault(plan)
         try {
             val params: List<Any> = if (plan.useServerDefault) listOf("", torrentBytes)
@@ -423,6 +429,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         if (listTransfers("main").any { it.hash.equals(hash, ignoreCase = true) }) {
             return RemoteAddOutcome.AlreadyPresent(hash)
         }
+        if (lookupName(hash) != null) return RemoteAddOutcome.AlreadyPresent(hash)
         try {
             postRuTorrentUpload(upload, plan.destination, torrentBytes)
         } catch (_: IOException) {
