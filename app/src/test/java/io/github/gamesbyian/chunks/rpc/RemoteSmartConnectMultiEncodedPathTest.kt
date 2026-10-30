@@ -14,7 +14,10 @@ class RemoteSmartConnectMultiEncodedPathTest {
             "/tenant/%252e%252e/RPC2",
             "/tenant/%25252E%25252e/RPC2",
             "/tenant/.%252e/RPC2",
-            "/tenant/%25252e./RPC2"
+            "/tenant/%25252e./RPC2",
+            "/tenant%2525252fother/RPC2",
+            "/tenant%2525252525252fother/RPC2",
+            "/tenant/%2525252e%2525252e/RPC2"
         )
         for (path in paths) {
             try {
