@@ -124,6 +124,20 @@ class LocalFileDiskCheckTest {
         }
     }
 
+    @Test fun accessDeniedDuringActualAttributeReadIsUnreadableNotMissing() {
+        val root = Files.createTempDirectory("chunks-diskcheck-access-loss").toFile()
+        try {
+            val observed = LocalFileDiskCheck.observe(root, "unknown.bin") {
+                throw java.nio.file.AccessDeniedException(it.toString())
+            }
+            assertNotNull(observed)
+            assertTrue(observed!!.error)
+            assertEquals(Status.UNREADABLE, LocalFileDiskCheck.classify(
+                file(0, "unknown.bin", 9, 0), observed))
+            assertFalse(File(root, "unknown.bin").exists())
+        } finally { root.deleteRecursively() }
+    }
+
     @Test fun ambiguousOrEscapingNamesNeverCountAsUnstartedOrHealthy() {
         val root = Files.createTempDirectory("chunks-diskcheck-malformed").toFile()
         try {
