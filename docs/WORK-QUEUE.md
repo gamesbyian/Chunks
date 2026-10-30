@@ -1,5 +1,8 @@
 # Chunks active engineering work queue
 
+**Latest integrated G1 slice (2026-10-30):** [#698](https://github.com/gamesbyian/Chunks/pull/698) merged verified-piece counting for large/overlapping rTorrent file inventories with exact-source JVM, R8, disposable RPC and Android native review checks. This is a bounded read-performance improvement, not real-host acceptance. Separate P0 drafts [#697](https://github.com/gamesbyian/Chunks/pull/697) (probe ownership-scoped cleanup) and [#699](https://github.com/gamesbyian/Chunks/pull/699) (Create & Seed nofollow/identity readback) remain **unmerged**. Both are partial mitigations; native P0 [#568](https://github.com/gamesbyian/Chunks/issues/568)/[#648](https://github.com/gamesbyian/Chunks/pull/648) still gates release. Evidence: [QUALITY-LEDGER](QUALITY-LEDGER.md#2026-10-30-verified-g1-read-performance-integration-and-concurrent-g0-candidates).
+
+
 ## Deferred secondary capability: external destination delivery
 
 **Not executable before core safety and release gates.** After reliable native verified payload storage, stable source/readback, independent SAF publication, credential handling and core Add/UX acceptance, implement optional **On phone torrent → verified external Place delivery**. Phase 1: durable destination plan and collision-safe staged export through one proven SAF/Drive-like adapter; phase 2: separately authenticated FTP-family adapter and recovery/verification matrix; phase 3 only if justified: low-storage progressive delivery. No cloud-backed torrent backing-store or cloud seeding work authorized. Do not displace G0–G2 or existing storage tasks. Acceptance, UX, consent and recovery: [EXTERNAL-DESTINATION-DELIVERY](EXTERNAL-DESTINATION-DELIVERY.md).
