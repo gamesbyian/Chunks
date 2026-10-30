@@ -167,6 +167,12 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     // Reserve declared paths through Start/Stop, not just until the first Start.
     // This in-session exclusion is NOT a durable native ownership boundary.
     private val checkedPayloadReservations = LocalCheckedPayloadReservations()
+    // Native resume data does not preserve the prior checked admission or
+    // first-Start survey. Every restored metadata-ready job, including one
+    // previously added through raw existing-file recovery, must pass an
+    // independent zero-verified-path check before the first native Start in
+    // this new process. This remains only an observational safeguard.
+    private val restoredFirstStarts: MutableSet<String> = ConcurrentHashMap.newKeySet()
     // Metadata-ready upload-only magnets are intentionally persisted paused;
     // native UPLOAD_MODE remains their durable don't-write-payload marker.
     // The next explicit Start rechecks paths, including after process restart.
@@ -597,6 +603,15 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                 }
                 checkedStartProblems.remove(key)
             }
+            if (state.hasMetadata() && restoredFirstStarts.contains(key) &&
+                state.flags().and_(org.libtorrent4j.TorrentFlags.UPLOAD_MODE).is_zero) {
+                val problem = inspectCheckedRestartCollision(key, handle)
+                if (problem != null) {
+                    checkedStartProblems[key] = problem
+                    return@command false
+                }
+                checkedStartProblems.remove(key)
+            }
             if (state.hasMetadata() &&
                 (state.flags().and_(org.libtorrent4j.TorrentFlags.UPLOAD_MODE).non_zero() ||
                     magnetCollisionProblems.containsKey(key))) {
@@ -618,6 +633,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             // Only after native Start submission: an exception keeps the gate.
             // Future Stop/Start and process restoration remain separate P0.
             checkedFirstStarts.remove(key)
+            restoredFirstStarts.remove(key)
             true
         }
 
@@ -1324,6 +1340,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         startWhenMetadataArrives.clear()
         magnetCollisionProblems.clear()
         checkedFirstStarts.clear()
+        restoredFirstStarts.clear()
         checkedStartProblems.clear()
         session.stop()
         // The native session has stopped before its in-process path claims
@@ -1363,6 +1380,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             } catch (_: Exception) { null }
             if (restored == null) { problems += file.name; continue }
             handles[key] = restored
+            restoredFirstStarts.add(key)
         }
         restoreProblems = problems
     }
