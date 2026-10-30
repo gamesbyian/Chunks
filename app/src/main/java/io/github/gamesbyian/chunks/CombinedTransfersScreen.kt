@@ -321,9 +321,23 @@ internal fun CombinedTransfersScreen(
         if (server != null && serverId != null) put(serverId, serverEnvironmentLabel(server.aliasScope))
         savedProfiles.forEach { profile -> putIfAbsent(EnvironmentId(profile.id), "Server · " + profile.label) }
     }
-    // Colours follow stable IDs: assigned once, then kept through rename/reorder/reconnect.
+    // Palette storage is a lifecycle effect, not work performed by remember or
+    // by LazyColumn composition. Read external changes via the shared revision:
+    // profile rename, navigation and chooser updates never overwrite user hues.
     val colourStore = remember(context) { EnvironmentColourStore(context) }
-    var palette by remember(labels.keys.toList()) { mutableStateOf(colourStore.ensure(labels.keys.toList())) }
+    val paletteIdentities = labels.keys.toList()
+    val paletteRevision = EnvironmentColourStore.revision
+    var palette by remember { mutableStateOf(EnvironmentPalette.State(emptyMap(), emptyMap())) }
+    LaunchedEffect(colourStore, paletteIdentities, paletteRevision) {
+        try {
+            palette = withContext(Dispatchers.IO) { colourStore.ensure(paletteIdentities) }
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            // Keep the previous visible colours rather than presenting a failed
+            // write as saved; controls and environment IDs are independent.
+        }
+    }
     var choosingColours by remember { mutableStateOf(false) }
     // Only environments with a live list here can open a row there.
     fun openFor(key: UnifiedTransferKey): (() -> Unit)? =
@@ -685,8 +699,12 @@ internal fun CombinedTransfersScreen(
                 Text(if (choosingColours) "Done with colours" else "Environment colours…")
             }
             if (choosingColours) EnvironmentColourChooser(labels, palette,
-                onChoose = { id, hue -> colourStore.choose(id, hue); palette = colourStore.load() },
-                onRestore = { id -> colourStore.restoreAutomatic(id); palette = colourStore.load() })
+                onChoose = { id, hue ->
+                    batchScope.launch { withContext(Dispatchers.IO) { colourStore.choose(id, hue) } }
+                },
+                onRestore = { id ->
+                    batchScope.launch { withContext(Dispatchers.IO) { colourStore.restoreAutomatic(id) } }
+                })
         }
         item {
             ResponsiveActionGroup(Modifier.padding(vertical = 12.dp)) { actionModifier ->
