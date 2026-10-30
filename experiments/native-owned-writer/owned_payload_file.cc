@@ -292,6 +292,48 @@ std::unique_ptr<OwnedPayloadFile> OwnedPayloadFile::OpenImpl(
   return opened;
 }
 
+bool OwnedPayloadFile::VerifyReservation(
+    const std::string& root, const std::string& relative,
+    const std::string& receipts, const std::string& id,
+    const std::string& commitment, std::string* error) {
+  if (!ValidId(id) || !ValidId(commitment))
+    return Fail(error, "Invalid pending ownership identity");
+  std::vector<std::string> parts;
+  if (!ValidRelative(relative, &parts))
+    return Fail(error, "Unsafe pending payload path");
+  Fd root_fd(::open(root.c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC));
+  Fd receipt_fd(::open(receipts.c_str(),
+                       O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC));
+  if (root_fd.v < 0 || receipt_fd.v < 0 ||
+      !PrivateReceiptRoot(receipt_fd.v, error))
+    return Fail(error, "Pending receipt root missing or untrusted");
+  struct stat published{};
+  if (::fstatat(receipt_fd.v, id.c_str(), &published, AT_SYMLINK_NOFOLLOW) == 0 ||
+      errno != ENOENT)
+    return Fail(error, "Pending owner also has a finalized physical receipt");
+  Receipt pending{};
+  if (!LoadReceipt(receipt_fd.v, id + ".pending", &pending, error))
+    return false;
+  struct stat rs{}, ps{}, occupied{};
+  Fd parent;
+  if (!GetDirectory(root_fd.v, &rs) ||
+      !ParentPath(root_fd.v, parts, false, &parent, error) ||
+      !GetDirectory(parent.v, &ps))
+    return Fail(error, "Pending root or parent path no longer exists");
+  if (::fstatat(parent.v, parts.back().c_str(), &occupied,
+                AT_SYMLINK_NOFOLLOW) == 0 || errno != ENOENT)
+    return Fail(error, "Foreign file now occupies pending payload path");
+  return (pending.commitment == commitment &&
+      pending.relative_path == relative &&
+      pending.root_dev == static_cast<std::uint64_t>(rs.st_dev) &&
+      pending.root_ino == static_cast<std::uint64_t>(rs.st_ino) &&
+      pending.parent_dev == static_cast<std::uint64_t>(ps.st_dev) &&
+      pending.parent_ino == static_cast<std::uint64_t>(ps.st_ino) &&
+      pending.dev == 0 && pending.ino == 0 &&
+      pending.owner_token == kUncreatedToken) ||
+      Fail(error, "Pending ownership identity does not match destination");
+}
+
 bool OwnedPayloadFile::Reserve(
     const std::string& root, const std::string& relative,
     const std::string& receipts, const std::string& id,
