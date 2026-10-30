@@ -43,7 +43,8 @@ class LocalEngineServiceTimeoutInstrumentedTest {
             InstrumentationRegistry.getArguments().getString("chunksFgsTimeout") == "1")
         assumeTrue("dataSync time limit exists from Android 15", android.os.Build.VERSION.SDK_INT >= 35)
         instrumentation.uiAutomation.grantRuntimePermission(context.packageName, Manifest.permission.POST_NOTIFICATIONS)
-        work = File(context.filesDir, "service-timeout-test").apply { deleteRecursively(); mkdirs() }
+        work = File(requireNotNull(LocalEngineHolder.appDownloads(context)), "service-timeout-test")
+            .apply { deleteRecursively(); mkdirs() }
         notifications.cancel(LocalServiceTimeoutNotice.NOTIFICATION_ID)
     }
 
