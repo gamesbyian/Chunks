@@ -65,7 +65,7 @@ std::unique_ptr<OwnedTorrentStorage> OwnedTorrentStorage::Open(
 }
 
 bool OwnedTorrentStorage::Preopen(std::uint64_t offset, size_t bytes,
-                                  std::string* error) {
+                                  bool for_write, std::string* error) {
   if (offset > total_bytes_ || bytes > total_bytes_ - offset)
     return Fail(error, "Piece request exceeds declared torrent length");
   if (bytes == 0) return true;
@@ -76,7 +76,11 @@ bool OwnedTorrentStorage::Preopen(std::uint64_t offset, size_t bytes,
     if (slot.start >= last || slot.start + slot.spec.size <= offset) continue;
     if (slot.spec.pad_file || slot.owned) continue;
     const auto& s = slot.spec;
-    if (mode_ == Admission::FRESH) {
+    // Seeding and verification reads never create payload or alter receipts.
+    if (!for_write) {
+      slot.owned = OwnedPayloadFile::Reopen(root_, s.relative_path, receipts_,
+                        s.receipt_id, s.mapping_commitment, error);
+    } else if (mode_ == Admission::FRESH) {
       slot.owned = OwnedPayloadFile::CreateFromReservation(root_, s.relative_path,
                         receipts_, s.receipt_id, s.mapping_commitment, error);
     } else {
@@ -93,7 +97,7 @@ bool OwnedTorrentStorage::Preopen(std::uint64_t offset, size_t bytes,
 bool OwnedTorrentStorage::WriteRange(std::uint64_t offset, const void* input,
                                      size_t bytes, std::string* error) {
   if (bytes && input == nullptr) return Fail(error, "Missing native write buffer");
-  if (!Preopen(offset, bytes, error)) return false;
+  if (!Preopen(offset, bytes, true, error)) return false;
   const auto last = offset + bytes;
   auto* data = static_cast<const char*>(input);
   size_t done = 0;
@@ -112,7 +116,7 @@ bool OwnedTorrentStorage::WriteRange(std::uint64_t offset, const void* input,
 bool OwnedTorrentStorage::ReadRange(std::uint64_t offset, void* output,
                                     size_t bytes, std::string* error) {
   if (bytes && output == nullptr) return Fail(error, "Missing native read buffer");
-  if (!Preopen(offset, bytes, error)) return false;
+  if (!Preopen(offset, bytes, false, error)) return false;
   const auto last = offset + bytes;
   auto* data = static_cast<char*>(output);
   size_t done = 0;
