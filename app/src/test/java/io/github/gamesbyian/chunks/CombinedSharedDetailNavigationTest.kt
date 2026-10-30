@@ -103,7 +103,9 @@ class CombinedSharedDetailNavigationTest {
 
         rule.onNode(hasScrollToIndexAction())
             .performScrollToNode(hasText("Load other saved servers (read-only)"))
-        rule.onNodeWithText("Load other saved servers (read-only)").performClick()
+        rule.onNodeWithText("Load other saved servers (read-only)")
+            .performScrollTo()
+            .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
         rule.waitUntil(10_000) { requests.get() == 1 }
         rule.waitForIdle()
         rule.onNode(hasScrollToIndexAction())
