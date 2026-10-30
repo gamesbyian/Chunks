@@ -67,6 +67,7 @@ The [documentation architecture and authoring standard](DOCUMENTATION-STANDARD.m
 - [User-supplied test inputs](USER-SUPPLIED-TORRENT-TEST-INPUTS.md): controlled owner-provided fixtures.
 - [RESEARCH](RESEARCH.md) and [REUSE-AUDIT](REUSE-AUDIT.md): upstream references, prior art and reuse boundaries.
 - [Open-source reuse audit (2026-10-29)](research/OPEN-SOURCE-REUSE-2026-10-29.md): code-level candidates and adaptation/licence/test decisions for foundational Android, rTorrent and multi-environment work; non-normative research.
+- [Multilingual BitTorrent client and remote UX friction research, 2026-10-30](research/BITTORRENT-UX-FRICTION-MULTILINGUAL-2026-10-30.md): two-pass discovery matrix, firsthand complaints, prior/expanded evidence, unresolved source leads and prioritized non-normative Chunks UX recommendations.
 - [BitTorrent user-aversion and friction atlas](BITTORRENT-USER-AVERSION-RESEARCH-2026-10-29.md): qualitative, multilingual reports of dislike, non-use, abandonment and workflow pain (research, not product requirements).
 - [BitTorrent human-centered concept map](research/BITTORRENT-HUMAN-CONCEPT-MAP-2026-10-29.md) and [missing-feature synthesis](research/BITTORRENT-MISSING-FEATURES-SYNTHESIS-2026-10-29.md): non-normative feature-space analysis, 33 capability families and 30 workflow seams; [evidence audit](research/BITTORRENT-CONCEPT-MAP-EVIDENCE-AUDIT-2026-10-29.md) and [typed graph](research/BITTORRENT-CONCEPT-GRAPH-2026-10-29.json).
 - [Agent lanes](AGENT-LANES.md): concurrency/ownership model.
