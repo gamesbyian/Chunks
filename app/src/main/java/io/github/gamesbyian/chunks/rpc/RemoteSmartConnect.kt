@@ -24,7 +24,12 @@ object RemoteSmartConnect {
     // Some reverse proxies decode path escapes before selecting a tenant
     // mount. An encoded separator/control must not change which rTorrent
     // instance an explicit user path actually reaches.
-    private val ambiguousPathEscape = Regex("(?i)%(?:2f|5c|0[0-9a-f]|1[0-9a-f]|7f)")
+    private val ambiguousPathEscape =
+        Regex("(?i)%(?:25){0,2}(?:2f|5c|0[0-9a-f]|1[0-9a-f]|7f)")
+    // The transport already refuses traversal after repeated proxy decoding.
+    // Reject the same aliases in discovery before sending any credentials.
+    private val dotTraversalSegment =
+        Regex("(?i)(?:^|/)(?:\\.|%2e|%252e|%25252e){1,2}(?:/|$)")
 
     data class Candidate(val endpoint: String, val description: String)
     data class Verified<T>(
@@ -116,6 +121,7 @@ object RemoteSmartConnect {
         if (path.isEmpty()) return input
         require(path.length <= 512 && path.startsWith("/") && "//" !in path &&
             !ambiguousPathEscape.containsMatchIn(path) &&
+            !dotTraversalSegment.containsMatchIn(path) &&
             Regex("[A-Za-z0-9._~%/-]+").matches(path) &&
             path.split('/').none { it == "." || it == ".." || it.equals("%2e", true) ||
                 it.equals("%2e%2e", true) || it.equals(".%2e", true) || it.equals("%2e.", true) }) {
@@ -152,7 +158,7 @@ object RemoteSmartConnect {
         val rawPath = uri.rawPath.orEmpty().trimEnd('/')
         // Avoid URI normalization/path traversal changing the intended tenant
         // or accidentally selecting a different backend mount.
-        require(!Regex("(?i)(?:^|/)(?:\\.|%2e){1,2}(?:/|$)").containsMatchIn(rawPath) &&
+        require(!dotTraversalSegment.containsMatchIn(rawPath) &&
             !ambiguousPathEscape.containsMatchIn(rawPath)) {
             "Unsafe path segments in server address"
         }
