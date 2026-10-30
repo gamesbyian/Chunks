@@ -48,6 +48,8 @@ jobs:
           git -C "$RUNNER_TEMP/chunks-libtorrent" fetch --depth 1 origin 24a3adf35d3e689bde700371337aad61b160bafa
           git -C "$RUNNER_TEMP/chunks-libtorrent" checkout --detach FETCH_HEAD
           test "$(git -C "$RUNNER_TEMP/chunks-libtorrent" rev-parse HEAD)" = "24a3adf35d3e689bde700371337aad61b160bafa"
+      - name: Verify source-only SWIG and Java fork patch is safe and idempotent
+        run: python3 -m unittest discover -s experiments/native-owned-writer/bridge -p 'test_apply_to_libtorrent4j_fork.py' -v
       - name: Compile all custom disk_interface overrides against pinned C++ API
         run: |
           set -euo pipefail
