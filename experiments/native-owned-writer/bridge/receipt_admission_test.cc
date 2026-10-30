@@ -57,9 +57,11 @@ int main() {
   {
     Case c; c.add(std::string(A)+".pending");
     std::string error;
+    // Crash during stopped Add: pending-but-never-finalized claims can
+    // safely be re-reserved with exact mapping checks, without overwriting.
     assert(ClassifyNativeAdmission(c.receipts.string(),c.layout(),&error)==
-           NativeAdmissionMode::REFUSED);
-    assert(!error.empty()); ++passed;
+           NativeAdmissionMode::FRESH);
+    assert(error.empty()); ++passed;
   }
   {
     Case c; c.add(A);c.add(std::string(B)+".pending");
@@ -99,6 +101,13 @@ int main() {
     assert(ClassifyNativeAdmission(c.receipts.string(),c.layout(),&error)==
            NativeAdmissionMode::RESTORED);
     ++passed;
+  }
+  {
+    Case c; c.add(A);
+    std::string error;
+    assert(ClassifyNativeAdmission(c.receipts.string(),c.layout(),&error)==
+           NativeAdmissionMode::REFUSED);
+    assert(!error.empty()); ++passed;
   }
   std::cout << "CHUNKS_RECEIPT_ADMISSION_CASES=" << passed << " PASSED\n";
 }
