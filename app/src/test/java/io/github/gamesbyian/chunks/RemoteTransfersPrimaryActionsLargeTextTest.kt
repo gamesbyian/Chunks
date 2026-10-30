@@ -85,6 +85,42 @@ class RemoteTransfersPrimaryActionsLargeTextTest {
         assertTrue(add.right < refresh.left)
     }
 
+    private fun showSort(widthDp: Int, scale: Float, onSort: () -> Unit = {}) {
+        rule.setContent {
+            CompositionLocalProvider(LocalDensity provides Density(1f, scale)) {
+                ChunksTheme {
+                    Surface {
+                        Box(Modifier.width(widthDp.dp)) {
+                            RemoteTransfersSortSummary(120, "Download speed", onSort)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Test fun sortHeaderIsVerticalAndAccessibleAt320dp200Percent() {
+        var callbacks = 0
+        showSort(320, 2f) { callbacks++ }
+        val count = rule.onNodeWithText("120 shown").getUnclippedBoundsInRoot()
+        val sort = rule.onNodeWithText("Sort: Download speed").getUnclippedBoundsInRoot()
+        assertTrue("Sort button must not fight the count for width", sort.top >= count.bottom)
+        assertTrue(sort.left >= 0.dp && sort.right <= 320.dp)
+        rule.onNodeWithText("Sort: Download speed").performClick()
+        assertEquals(1, callbacks)
+        rule.onRoot().captureRoboImage("build/chunks-visual/remote-sort-320x700-200pct.png")
+    }
+
+    @Test
+    @Config(sdk = [35], qualifiers = "w600dp-h700dp-mdpi")
+    fun sortHeaderStaysOnOneRowWhenSpaceIsAvailable() {
+        showSort(550, 1f)
+        val count = rule.onNodeWithText("120 shown").getUnclippedBoundsInRoot()
+        val sort = rule.onNodeWithText("Sort: Download speed").getUnclippedBoundsInRoot()
+        assertEquals(count.top, sort.top)
+        assertTrue(count.right < sort.left)
+    }
+
     @Test fun loadingAndStaleKeepOriginalCommandGates() {
         var adds = 0
         var refreshes = 0
