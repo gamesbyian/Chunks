@@ -26,7 +26,8 @@ class LocalPlaceWriteProbeTest {
         root: File,
         random: java.util.Random = java.security.SecureRandom(),
         afterCreate: () -> Unit = {},
-        beforeRename: () -> Unit = {}
+        beforeRename: () -> Unit = {},
+        beforePublish: () -> Unit = {}
     ) = LocalPlaceWriteProbe.verify(root, random, openExclusive = { path, hook ->
         val channel = FileChannel.open(path, StandardOpenOption.CREATE_NEW,
             StandardOpenOption.READ, StandardOpenOption.WRITE, LinkOption.NOFOLLOW_LINKS)
@@ -47,7 +48,8 @@ class LocalPlaceWriteProbeTest {
             }
             override fun close() = channel.close()
         }
-    }, afterCreate = afterCreate, beforeRename = beforeRename)
+    }, afterCreate = afterCreate, beforeRename = beforeRename,
+        beforePublish = beforePublish)
 
     @Test fun writableFolderPassesAndKeepsNoProbeFiles() {
         val folder = temp.newFolder("Downloads")
@@ -154,6 +156,47 @@ class LocalPlaceWriteProbeTest {
         assertNotNull("A raced symlink destination must be refused", outcome)
         assertTrue(Files.isSymbolicLink(target.toPath()))
         assertTrue(original.contentEquals(foreign.readBytes()))
+        assertFalse(File(root, ".chunks-write-probe-0000000000000000.tmp").exists())
+    }
+
+    @Test fun destinationCreatedAfterLastSurveyIsNeverReplacedOrDeleted() {
+        val root = temp.newFolder("post-survey-collision")
+        val destination = File(root, ".chunks-write-probe-0000000000000000.ok")
+        val foreign = byteArrayOf(14, 15, 92, 65, 35, 89)
+        val predictable = object : java.util.Random() {
+            override fun nextBytes(buffer: ByteArray) { buffer.fill(0) }
+        }
+        var injected = false
+        val result = verify(root, predictable, beforePublish = {
+            // No more existence survey occurs after this callback. The only
+            // safe outcome is CREATE_NEW refusing the occupied destination.
+            destination.writeBytes(foreign)
+            injected = true
+        })
+        assertTrue("The injected post-survey collision must execute", injected)
+        assertNotNull("An occupied .ok destination must be refused", result)
+        assertTrue("The foreign destination must remain byte-identical",
+            foreign.contentEquals(destination.readBytes()))
+        assertFalse("Owned source staging can be cleaned without touching .ok",
+            File(root, ".chunks-write-probe-0000000000000000.tmp").exists())
+    }
+
+    @Test fun destinationSymlinkArrivingAfterLastSurveyIsNotFollowedOrRemoved() {
+        val root = temp.newFolder("post-survey-link")
+        val outside = temp.newFile("outside-post-survey").apply {
+            writeText("external content remains intact")
+        }
+        val destination = File(root, ".chunks-write-probe-0000000000000000.ok").toPath()
+        val predictable = object : java.util.Random() {
+            override fun nextBytes(buffer: ByteArray) { buffer.fill(0) }
+        }
+        val result = verify(root, predictable, beforePublish = {
+            Files.createSymbolicLink(destination, outside.toPath())
+        })
+        assertNotNull(result)
+        assertTrue("Pre-existing symlink must not be replaced",
+            Files.isSymbolicLink(destination))
+        assertEquals("external content remains intact", outside.readText())
         assertFalse(File(root, ".chunks-write-probe-0000000000000000.tmp").exists())
     }
 
