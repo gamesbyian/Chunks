@@ -402,6 +402,14 @@ class LocalTorrentEngineTest {
         // Upload mode requests no payload pieces before the user presses Start.
         assertEquals(0L, stopped.doneBytes)
         assertEquals(0L, stopped.payloadDownloadedBytes)
+        // A zero-byte payload pathname is still a mutation of an unowned
+        // destination. UPLOAD_MODE must keep every metadata-only file absent,
+        // even after native asynchronous file-layout processing settles.
+        Thread.sleep(1_000)
+        for (name in fixture.files.keys) {
+            val path = File(destination, "Chunks public fixture/$name")
+            assertFalse("Magnet metadata alone created a payload path: $name", path.exists())
+        }
 
         assertEquals(LocalCommandOutcome.VERIFIED, leecher.resume(seed.infoHash).outcome)
         waitFor { leecher.status(seed.infoHash)?.progressPpm == 1_000_000 }
@@ -470,6 +478,11 @@ class LocalTorrentEngineTest {
         assertTrue("Collision must be visible", blocked.error.orEmpty().contains("Existing files"))
         assertArrayEquals("Early Start consent cannot overwrite unrelated bytes",
             unrelated, collision.readBytes())
+        // The unoccupied sibling path must not be materialized during rejected
+        // metadata-time auto-Start. Empty files are still unauthorized writes.
+        Thread.sleep(500)
+        assertFalse("Rejected magnet created an unowned sibling payload path",
+            File(destination, "Chunks public fixture/extras/notes.txt").exists())
         // Narrow synthetic diagnostic: isolate a stale stored collision
         // witness from a genuinely missing native payload pathname. This
         // read-only survey must match the same destination used by Start.
