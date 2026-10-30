@@ -70,9 +70,12 @@ class NativeDisk final : public lt::disk_interface, public lt::buffer_allocator_
 
     auto state = std::make_shared<Torrent>();
     state->files = params.files;
-    state->save_path = params.path;
+    state->save_path.assign(params.path.data(), params.path.size());
     std::string const hash = Hex(params.info_hash.data(), 20);
-    if (hash.empty() || params.files.num_files() <= 0 ||
+    // storage_params carries a 20-byte v1 identity. Do not give v2-only
+    // torrents an all-zero/ambiguous identity: enable them only when the
+    // complete v2 identity can be bound from authenticated metadata.
+    if (!params.v1 || hash.empty() || params.files.num_files() <= 0 ||
         params.files.num_files() > 100000 || params.files.piece_length() <= 0 ||
         params.files.total_size() <= 0) {
       state->refusal = "Native torrent metadata invalid or missing";
@@ -86,8 +89,8 @@ class NativeDisk final : public lt::disk_interface, public lt::buffer_allocator_
         }
         auto const file_number = static_cast<int>(file);
         // Path-claim ID excludes infohash to prevent cross-torrent aliases.
-        auto const path_id = Digest(params.path + "\n" + path);
-        auto const bound = Digest(hash + "\n" + params.path + "\n" +
+        auto const path_id = Digest(state->save_path + "\n" + path);
+        auto const bound = Digest(hash + "\n" + state->save_path + "\n" +
             path + "\n" + std::to_string(file_number) + "\n" + std::to_string(size));
         state->layout.push_back({path, static_cast<std::uint64_t>(size),
                                  path_id, bound, params.files.pad_file_at(file)});
