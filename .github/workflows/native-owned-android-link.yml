@@ -104,8 +104,8 @@ jobs:
           test -s "$library"
           "$llvm/llvm-readelf" -h "$library" | tee "$RUNNER_TEMP/chunks-android-elf-header.txt"
           "$llvm/llvm-readelf" -d "$library" | tee "$RUNNER_TEMP/chunks-android-elf-deps.txt"
-          "$llvm/llvm-nm" -C "$library" | grep -m1 -F 'chunks::MakeOwnedDiskConstructor'
-          "$llvm/llvm-nm" -D "$library" | grep -m1 -F 'Java_org_libtorrent4j_swig_libtorrent_1jni_'
+          "$llvm/llvm-nm" -C "$library" | grep -F 'chunks::MakeOwnedDiskConstructor'
+          "$llvm/llvm-nm" -D "$library" | grep -F 'Java_org_libtorrent4j_swig_libtorrent_1jni_'
           if grep -E 'NEEDED.*(libssl|libcrypto|libboost_system)' "$RUNNER_TEMP/chunks-android-elf-deps.txt"; then
             echo "Unexpected external crypto/Boost target link" >&2
             exit 1
