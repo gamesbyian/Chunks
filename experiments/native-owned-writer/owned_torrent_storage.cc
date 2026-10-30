@@ -1,6 +1,10 @@
 #include "owned_torrent_storage.h"
 
+#include <cerrno>
 #include <cstring>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <limits>
 #include <set>
 #include <utility>
@@ -134,6 +138,43 @@ bool OwnedTorrentStorage::ReadRange(std::uint64_t offset, void* output,
     done += chunk;
   }
   return done == bytes || Fail(error, "Incomplete piece read mapping");
+}
+
+bool OwnedTorrentStorage::VerifyRestoredOwnership(std::string* error) {
+  if (mode_ != Admission::RESTORED)
+    return Fail(error, "Restored ownership verification on fresh storage");
+  // Do not trust resume's claimed pieces until finalized file receipts and
+  // pending-only absences agree with current physical filesystem identities.
+  int const root = ::open(receipts_.c_str(),
+                          O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+  if (root < 0) return Fail(error, "Native private receipts cannot be read");
+  for (auto& slot : slots_) {
+    if (slot.spec.pad_file || slot.spec.size == 0) continue;
+    auto const& file = slot.spec;
+    struct stat st{};
+    if (::fstatat(root, file.receipt_id.c_str(), &st, AT_SYMLINK_NOFOLLOW) == 0) {
+      if (!slot.owned) slot.owned = OwnedPayloadFile::Reopen(
+          root_, file.relative_path, receipts_, file.receipt_id,
+          file.mapping_commitment, error);
+      if (!slot.owned) {
+        ::close(root);
+        return false;
+      }
+    } else if (errno == ENOENT) {
+      if (!OwnedPayloadFile::VerifyReservation(
+              root_, file.relative_path, receipts_, file.receipt_id,
+              file.mapping_commitment, error)) {
+        ::close(root);
+        return false;
+      }
+    } else {
+      ::close(root);
+      return Fail(error, "Native receipt inventory changed during restore");
+    }
+  }
+  ::close(root);
+  if (error) error->clear();
+  return true;
 }
 
 bool OwnedTorrentStorage::Flush(std::string* error) {
