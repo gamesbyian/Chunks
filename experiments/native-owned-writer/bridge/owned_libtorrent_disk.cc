@@ -14,6 +14,7 @@
 #include <boost/system/errc.hpp>
 
 #include <algorithm>
+#include <atomic>
 #include <cstdint>
 #include <cstdlib>
 #include <functional>
@@ -59,6 +60,7 @@ struct Torrent {
   std::unique_ptr<OwnedTorrentStorage> storage;
   std::string refusal;
   bool checked = false;
+  std::atomic<bool> retired{false};
 };
 
 class NativeDisk final : public lt::disk_interface, public lt::buffer_allocator_interface {
@@ -108,6 +110,12 @@ class NativeDisk final : public lt::disk_interface, public lt::buffer_allocator_
   }
 
   void remove_torrent(lt::storage_index_t index) override {
+    auto state = torrents_[index];
+    if (state) state->retired.store(true);
+    // Native removal must not return with a queued write that can later
+    // recreate the removed transfer's path. Await admitted work before
+    // allowing slot/index reuse; all subsequently dequeued jobs refuse.
+    queue_.WaitIdle();
     torrents_[index].reset();
     free_.push_back(index);
   }
@@ -127,7 +135,7 @@ class NativeDisk final : public lt::disk_interface, public lt::buffer_allocator_
     // libtorrent's network thread. The queue serializes admission and writes.
     if (!queue_.Submit([this, state, links=std::move(links), had_resume, callback] {
       lt::storage_error problem;
-      if (!state || !state->refusal.empty()) {
+      if (!state || state->retired.load() || !state->refusal.empty()) {
         problem = Denied(lt::operation_t::file_open);
       } else {
         for (auto const& link : links)
@@ -175,7 +183,8 @@ class NativeDisk final : public lt::disk_interface, public lt::buffer_allocator_
       CheckedPieceRange bounds{};
       std::string reason;
       char* data = nullptr;
-      if (!state || !state->checked || !state->refusal.empty() ||
+      if (!state || state->retired.load() ||
+          !state->checked || !state->refusal.empty() ||
           !DecodePieceRange(static_cast<std::uint64_t>(state->files.total_size()),
                             static_cast<std::uint32_t>(state->files.piece_length()),
                             static_cast<int>(request.piece), request.start, request.length,
@@ -222,7 +231,8 @@ class NativeDisk final : public lt::disk_interface, public lt::buffer_allocator_
       if (!queue_.Submit([this, state, bounds, owned=std::move(owned), callback] {
         std::string error;
         lt::storage_error result;
-        if (!state->checked || !state->refusal.empty() ||
+        if (state->retired.load() ||
+            !state->checked || !state->refusal.empty() ||
             !state->storage->WriteRange(bounds.absolute_offset, owned.data(),
                                          owned.size(), &error)) {
           result = Denied(lt::operation_t::file_write);
@@ -253,7 +263,8 @@ class NativeDisk final : public lt::disk_interface, public lt::buffer_allocator_
       auto const piece_length = state ? state->files.piece_length() : 0;
       auto const total = state ? state->files.total_size() : 0;
       auto const start = std::int64_t(static_cast<int>(piece)) * piece_length;
-      if (!state || !state->checked || !state->refusal.empty() ||
+      if (!state || state->retired.load() ||
+          !state->checked || !state->refusal.empty() ||
           start < 0 || start >= total || piece_length <= 0) {
         problem = Denied(lt::operation_t::file_read);
       } else {
@@ -307,7 +318,8 @@ class NativeDisk final : public lt::disk_interface, public lt::buffer_allocator_
       auto const piece_len = state ? static_cast<std::uint32_t>(state->files.piece_length()) : 0;
       auto const requested = offset < 0 || offset >= static_cast<int>(piece_len)
           ? 0 : std::min(lt::default_block_size, static_cast<int>(piece_len) - offset);
-      if (!state || !state->checked || !state->refusal.empty() ||
+      if (!state || state->retired.load() ||
+          !state->checked || !state->refusal.empty() ||
           offset % lt::default_block_size != 0 ||
           !DecodePieceRange(total, piece_len, static_cast<int>(piece),
                             offset, 1, false, &bounds, &reason)) {
