@@ -4,6 +4,11 @@ import io.github.gamesbyian.chunks.engine.LocalAddResult
 import io.github.gamesbyian.chunks.engine.LocalCommandOutcome
 import io.github.gamesbyian.chunks.engine.LocalTorrentEngine
 import java.io.File
+import java.nio.ByteBuffer
+import java.nio.channels.FileChannel
+import java.nio.file.Files
+import java.nio.file.LinkOption
+import java.nio.file.StandardOpenOption
 
 /**
  * "Seed a copy on this phone" for a created torrent. The phone engine can only
@@ -32,46 +37,116 @@ internal object CreateSeedCopy {
         isCancelled: () -> Boolean = { false },
         verifyTimeoutMs: Long = 120_000
     ): Outcome {
+
+        fun safeSegment(value: String) = value.isNotEmpty() && value != "." && value != ".." &&
+            value.toByteArray(Charsets.UTF_8).size <= 1024 &&
+            value.none { it == '/' || it == '\\' || it.code < 32 || it.code == 127 }
+        if (!safeSegment(request.name) ||
+            request.entries.isEmpty() || request.entries.size > TorrentMetainfoBuilder.MAX_FILES ||
+            request.entries.any { entry ->
+                entry.path.isEmpty() || entry.path.size > 64 ||
+                    entry.path.any { !safeSegment(it) } || entry.sizeBytes < 0
+            }) return Outcome.Refused("The torrent has an unsafe copy destination. Nothing was copied.")
+        val base = root.toPath()
+        if (!root.isAbsolute || !Files.isDirectory(base, LinkOption.NOFOLLOW_LINKS) ||
+            Files.isSymbolicLink(base))
+            return Outcome.Refused("The copy destination is unavailable or indirect.")
         val target = File(root, request.name)
-        if (target.exists()) return Outcome.Refused(
+        val targetPath = target.toPath()
+        // File.exists() follows links and can miss dangling symlinks.
+        if (!Files.notExists(targetPath, LinkOption.NOFOLLOW_LINKS)) return Outcome.Refused(
             "Something named \"${request.name}\" is already in this folder. Nothing was copied or replaced.")
-        if (root.usableSpace < expected.totalBytes + SPACE_MARGIN) return Outcome.Refused(
-            "Not enough free space here for a copy. Nothing was copied.")
+        if (root.usableSpace < SPACE_MARGIN ||
+            root.usableSpace - SPACE_MARGIN < expected.totalBytes)
+            return Outcome.Refused("Not enough free space here for a copy. Nothing was copied.")
+
         val single = request.entries.size == 1 && request.entries[0].path == listOf(request.name)
-        val created = ArrayList<File>()
+        val ownedFiles = ArrayList<java.nio.file.Path>()
+        val ownedDirs = ArrayList<java.nio.file.Path>()
+        val ownedDirSet = HashSet<java.nio.file.Path>()
+        // Delete only known created entries. Never recursively traverse a
+        // folder that could now contain someone else's files.
+        fun cleanup(): Boolean {
+            var clear = true
+            for (path in ownedFiles.asReversed()) {
+                try {
+                    if (Files.isSymbolicLink(path)) { clear = false; continue }
+                    Files.deleteIfExists(path)
+                    if (!Files.notExists(path, LinkOption.NOFOLLOW_LINKS)) clear = false
+                } catch (_: Exception) { clear = false }
+            }
+            for (path in ownedDirs.asReversed()) {
+                try {
+                    if (Files.isSymbolicLink(path)) { clear = false; continue }
+                    Files.deleteIfExists(path) // fails if unowned entries appeared
+                    if (!Files.notExists(path, LinkOption.NOFOLLOW_LINKS)) clear = false
+                } catch (_: Exception) { clear = false }
+            }
+            return clear
+        }
+
         val copies = try {
+            if (!single) {
+                // Exclusive directory creation prevents reusing a foreign
+                // folder (or a pre-existing dangling symlink).
+                Files.createDirectory(targetPath)
+                ownedDirs += targetPath
+                ownedDirSet += targetPath
+            }
             var copied = 0L
             request.entries.map { entry ->
-                val file = if (single) target else File(target, entry.path.joinToString(File.separator))
-                // Stay inside the new folder whatever the provider called things.
-                check(file.canonicalPath.startsWith(target.canonicalPath)) { "Unsafe file name" }
-                file.parentFile?.mkdirs()
-                val part = File(file.path + ".chunks-part")
-                created += part
-                entry.open().use { input ->
-                    part.outputStream().use { output ->
+                val path = if (single) targetPath else {
+                    var parent = targetPath
+                    for (segment in entry.path.dropLast(1)) {
+                        parent = parent.resolve(segment)
+                        if (ownedDirSet.add(parent)) {
+                            Files.createDirectory(parent)
+                            ownedDirs += parent
+                        }
+                    }
+                    parent.resolve(entry.path.last())
+                }
+                check(path.startsWith(if (single) base else targetPath)) {
+                    "Copy path escapes its destination"
+                }
+                // Write the final file through an EXCLUSIVE non-following
+                // descriptor. No predictable .chunks-part file or rename.
+                FileChannel.open(path, StandardOpenOption.CREATE_NEW,
+                    StandardOpenOption.WRITE, LinkOption.NOFOLLOW_LINKS).use { out ->
+                    ownedFiles += path
+                    entry.open().use { input ->
                         val buffer = ByteArray(64 * 1024)
+                        var zeroReads = 0
                         while (true) {
                             if (isCancelled()) throw TorrentMetainfoBuilder.Cancelled()
-                            val read = input.read(buffer)
-                            if (read < 0) break
-                            output.write(buffer, 0, read)
-                            copied += read
+                            val count = input.read(buffer)
+                            if (count < 0) break
+                            if (count == 0) {
+                                check(++zeroReads <= 16) { "Copy source stopped making progress" }
+                                continue
+                            }
+                            zeroReads = 0
+                            val chunk = ByteBuffer.wrap(buffer, 0, count)
+                            while (chunk.hasRemaining()) {
+                                check(out.write(chunk) > 0) { "Copy write stopped making progress" }
+                            }
+                            copied += count
                             onProgress(copied)
                         }
-                        output.fd.sync()
                     }
+                    out.force(true)
                 }
-                check(part.renameTo(file)) { "Could not finish copying ${file.name}" }
-                created -= part; created += file
-                TorrentMetainfoBuilder.Entry(entry.path, file.length()) { file.inputStream() }
+                val written = path.toFile()
+                TorrentMetainfoBuilder.Entry(entry.path, written.length()) { written.inputStream() }
             }
         } catch (e: Exception) {
-            // Only the files this attempt just created; never seeded, never the user's originals.
-            created.forEach { it.delete() }
-            if (!single) target.deleteRecursively()
-            return Outcome.Refused(if (e is TorrentMetainfoBuilder.Cancelled) "Cancelled. The partial copy was removed."
-                else "The copy failed (${e.message ?: "read or write error"}). The partial copy was removed.")
+            val cleared = cleanup()
+            val suffix = if (cleared) "The partial copy was removed."
+                else "Partial files remain for manual review; no foreign directories were recursively deleted."
+            return Outcome.Refused(
+                (if (e is TorrentMetainfoBuilder.Cancelled) "Cancelled."
+                    else "The copy failed (${e.message ?: "read or write error"}).") + " " + suffix
+            )
         }
         val rebuilt = try {
             TorrentMetainfoBuilder.build(TorrentMetainfoBuilder.Request(request.name, copies, request.trackerTiers,
