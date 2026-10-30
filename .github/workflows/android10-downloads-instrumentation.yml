@@ -18,6 +18,8 @@ on:
       # directly guard user-visible shared Downloads bytes. Exercise API29
       # when their production logic changes even if androidTest stays untouched.
       - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalTorrentEngine.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalAdmissionProvenance.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalCheckedRestartGuard.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalCheckedPayloadReservations.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalPayloadCollisionSurvey.kt"
       # Native resume reader changes must exercise the API29 real backing,
