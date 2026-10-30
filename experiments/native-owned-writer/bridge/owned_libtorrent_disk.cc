@@ -4,6 +4,7 @@
 // needs native/Android validation and worker scheduling before shipping.
 #include "../owned_torrent_storage.h"
 #include "checked_piece_range.h"
+#include "owned_libtorrent_disk.h"
 
 #include <libtorrent/libtorrent.hpp>
 #include <libtorrent/hasher.hpp>
