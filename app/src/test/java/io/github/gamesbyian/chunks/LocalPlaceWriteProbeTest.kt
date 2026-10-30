@@ -166,6 +166,29 @@ class LocalPlaceWriteProbeTest {
         assertFalse(File(root, ".chunks-write-probe-0000000000000000.tmp").exists())
     }
 
+    @Test fun destinationWithoutVerifiedDescriptorIdentityIsRetainedNotDeleted() {
+        val root = temp.newFolder("unverified-exclusive-destination")
+        val target = File(root, ".chunks-write-probe-0000000000000000.ok").toPath()
+        val source = File(root, ".chunks-write-probe-0000000000000000.tmp").toPath()
+        val unknown = byteArrayOf(4, 4, 2, 2)
+        val predictable = object : java.util.Random() {
+            override fun nextBytes(buffer: ByteArray) { buffer.fill(0) }
+        }
+        val result = verify(root, predictable, onOpen = { path ->
+            if (path == target) {
+                // A broken/faulted provider creates the final name but fails
+                // before the descriptor can be pinned and fstat-verified.
+                // Chunks has no deletion authority over that uncertain inode.
+                Files.write(path, unknown, StandardOpenOption.CREATE_NEW)
+                throw java.io.IOException("could not verify destination descriptor")
+            }
+        })
+        assertNotNull("Unverified final inode must never count as a working Place", result)
+        assertTrue("Do not delete a final name without owned fd proof",
+            unknown.contentEquals(Files.readAllBytes(target)))
+        assertFalse("Source staging can still be cleaned by its pinned fd", Files.exists(source))
+    }
+
     @Test fun destinationCreatedAfterLastSurveyIsNeverReplacedOrDeleted() {
         val root = temp.newFolder("post-survey-collision")
         val destination = File(root, ".chunks-write-probe-0000000000000000.ok")
