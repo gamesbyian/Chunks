@@ -1,10 +1,13 @@
 package io.github.gamesbyian.chunks.engine
 
 import java.io.File
-import java.io.FileOutputStream
 import java.nio.file.Files
 import java.nio.file.LinkOption
-import java.nio.file.StandardCopyOption
+import java.nio.ByteBuffer
+import java.nio.channels.FileChannel
+import java.nio.file.FileAlreadyExistsException
+import java.nio.file.StandardOpenOption
+import java.util.UUID
 
 /**
  * Persisted admission *type*, not filesystem ownership. A resumed native
@@ -29,45 +32,76 @@ internal object LocalAdmissionProvenance {
     private fun bytes(hash: String, mode: Mode): ByteArray =
         "chunks-native-admission-v1\n$hash\n${mode.token}\n".toByteArray(Charsets.UTF_8)
 
-    /** Null is intentionally UNKNOWN, never an implicit raw/adopt grant. */
+    /**
+     * A no-follow open pins the receipt to a descriptor throughout its read.
+     * Separate isRegularFile/readAllBytes path operations could inspect one
+     * inode and then follow a newly substituted symlink to another.
+     *
+     * This is admission provenance only, not native payload inode ownership.
+     */
     fun read(directory: File?, hash: String): Mode? {
         if (directory == null || !identity.matches(hash)) return null
-        val file = receipt(directory, hash)
+        val file = receipt(directory, hash).toPath()
         return try {
-            if (!Files.isRegularFile(file.toPath(), LinkOption.NOFOLLOW_LINKS) ||
-                Files.size(file.toPath()) > 160) null
-            else {
-                val actual = Files.readAllBytes(file.toPath())
-                Mode.entries.singleOrNull { actual.contentEquals(bytes(hash, it)) }
+            FileChannel.open(file, StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS).use { channel ->
+                val size = channel.size()
+                if (size <= 0 || size > 160) return null
+                val result = ByteArray(size.toInt())
+                val buffer = ByteBuffer.wrap(result)
+                while (buffer.hasRemaining()) {
+                    if (channel.read(buffer) <= 0) return null
+                }
+                Mode.entries.singleOrNull { result.contentEquals(bytes(hash, it)) }
             }
         } catch (_: Exception) { null }
     }
 
     /**
-     * Called before native Add. The app-private record is synced and atomically
-     * installed before a restorable native job can exist. A conflicting prior
-     * mode refuses rather than rewriting evidence of an earlier admission.
-     * A crash that loses this record causes conservative UNKNOWN restoration.
+     * Create and sync a uniquely named private receipt first, then publish it
+     * with an atomic, exclusive hard link. ATOMIC_MOVE alone can replace a
+     * concurrently published destination on POSIX, even without REPLACE_EXISTING.
+     *
+     * The link claim is never overwritten: a competing mode wins or loses
+     * atomically, and the loser re-reads the winner without modifying it.
+     * Sync the parent after publication so successful admission is not based
+     * on a merely cached directory entry. No filesystem support = fail closed.
      */
     fun persist(directory: File?, hash: String, mode: Mode): Boolean {
         if (directory == null) return true // No native session restoration.
-        if (!identity.matches(hash) || !directory.isDirectory) return false
-        val target = receipt(directory, hash)
-        val path = target.toPath()
+        if (!identity.matches(hash)) return false
+        val parent = directory.toPath()
+        if (!Files.isDirectory(parent, LinkOption.NOFOLLOW_LINKS)) return false
+        val destination = receipt(directory, hash).toPath()
+        if (Files.exists(destination, LinkOption.NOFOLLOW_LINKS) ||
+            !Files.notExists(destination, LinkOption.NOFOLLOW_LINKS))
+            return read(directory, hash) == mode
+
+        val temporary = File(directory, "$hash.admission.${UUID.randomUUID()}.pending").toPath()
+        var created = false
         try {
-            if (Files.exists(path, LinkOption.NOFOLLOW_LINKS) ||
-                !Files.notExists(path, LinkOption.NOFOLLOW_LINKS))
-                return read(directory, hash) == mode
-            val temporary = File(directory, "$hash.admission.tmp")
-            if (Files.isSymbolicLink(temporary.toPath())) return false
-            FileOutputStream(temporary).use {
-                it.write(bytes(hash, mode))
-                it.fd.sync()
+            FileChannel.open(temporary,
+                StandardOpenOption.CREATE_NEW,
+                StandardOpenOption.WRITE,
+                LinkOption.NOFOLLOW_LINKS).use { channel ->
+                created = true
+                val buffer = ByteBuffer.wrap(bytes(hash, mode))
+                while (buffer.hasRemaining()) channel.write(buffer)
+                channel.force(true)
             }
-            Files.move(temporary.toPath(), path, StandardCopyOption.ATOMIC_MOVE)
+            try {
+                Files.createLink(destination, temporary)
+            } catch (_: FileAlreadyExistsException) {
+                return read(directory, hash) == mode
+            }
+            FileChannel.open(parent, StandardOpenOption.READ).use { it.force(true) }
             return read(directory, hash) == mode
         } catch (_: Exception) {
             return false
+        } finally {
+            if (created) {
+                try { Files.deleteIfExists(temporary) }
+                catch (_: Exception) { /* stale private staging is not admission */ }
+            }
         }
     }
 
