@@ -137,3 +137,8 @@ jobs:
           nm -C "$library" | grep -F 'chunks::MakeOwnedDiskConstructor'
           nm -D "$library" | grep -F 'Java_org_libtorrent4j_swig_libtorrent_1jni_'
           echo "CHUNKS_OWNED_HOST_JNI_LINK=PASS"
+          # Unlike syntax/link checks, this actually constructs a libtorrent
+          # session and exercises its owned disk callbacks on disposable
+          # public-like storage with planted foreign bytes.
+          cmake --build "$build" --target chunks_owned_session_smoke --parallel 2
+          timeout 30 "$build/chunks_owned_session_smoke"
