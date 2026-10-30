@@ -4,14 +4,14 @@ import io.github.gamesbyian.chunks.privacy.TransferLockMode
 
 /**
  * What Chunks tells the user after Android's dataSync time limit (Android
- * 15+) made it pause phone transfers. The service removes its ongoing
+ * 15+) requested a pause of phone transfers. The service removes its ongoing
  * notification when it stops, so without this the pause would be silent.
  * Counts are only claims about readback-confirmed pauses; a privacy-locked
  * phone scope gets no counts at all.
  */
 internal object LocalServiceTimeoutNotice {
     const val NOTIFICATION_ID = 4102
-    const val TITLE = "Chunks paused on this phone"
+    const val TITLE = "Chunks background time limit"
 
     /** [listed] is null when the running-transfer list itself could not be read. */
     data class PauseSummary(val listed: Int?, val confirmed: Int) {
