@@ -53,8 +53,8 @@ jobs:
         run: |
           set -euo pipefail
           script="$(bash tools/select_android_public_swarm_mode.sh "$CHUNKS_INTERRUPT" "$CHUNKS_DOZE" "$CHUNKS_NETFLAP")"
-          printf 'script=%s\\n' "$script" >> "$GITHUB_OUTPUT"
-          printf 'CHUNKS_SWARM_MODE selected=%s\\n' "$script"
+          printf 'script=%s\n' "$script" >> "$GITHUB_OUTPUT"
+          printf 'CHUNKS_SWARM_MODE selected=%s\n' "$script"
       - name: Collect the Debian netinst torrent (no web seeds, Debian tracker only)
         env:
           BUDGET_MIB: ${{ inputs.budget_mib }}
