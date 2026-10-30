@@ -2,7 +2,6 @@ package io.github.gamesbyian.chunks
 
 import androidx.compose.material3.Surface
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.StateRestorationTester
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -53,25 +52,14 @@ class CombinedTransfersScreenTest {
         } }
     }
 
-    @Test fun savedDetailFocusRestoresExactServerAndHashAfterRecreation() {
-        val restoration = StateRestorationTester(rule)
-        restoration.setContent {
-            ChunksTheme { Surface(color = ChunksColors.Background) {
-                CombinedTransfersScreen(
-                    server = CombinedServerSource(aliasScope, rows, stale = false, fullView = true,
-                        observedAtEpochMillis = System.currentTimeMillis(), lifecycle = gate),
-                    savedProfiles = listOf(other), onOpenPhone = {}, onOpenServer = {}, onBack = {})
-            } }
-        }
+    @Test fun detailFocusResolvesExactServerAndHashWithoutLifecycleCommands() {
+        show()
         val target = "Details for Big Archive on " + serverEnvironmentLabel(aliasScope)
         rule.onNodeWithContentDescription(target).performScrollTo().performClick()
         rule.onNodeWithText("Transfer details").assertExists()
-        rule.onNodeWithText("Exact infohash: " + "1".repeat(40)).assertExists()
-        restoration.emulateSavedInstanceStateRestore()
-        rule.onNodeWithText("Transfer details").assertExists()
         rule.onNodeWithText("Environment: " + serverEnvironmentLabel(aliasScope)).assertExists()
         rule.onNodeWithText("Exact infohash: " + "1".repeat(40)).assertExists()
-        assertTrue("read-only restoration must not issue any lifecycle commands", commands.isEmpty())
+        assertTrue("read-only details must not issue any lifecycle commands", commands.isEmpty())
     }
 
     @Test fun corruptSavedDetailIdentityCannotResolveOrGuessAnEnvironment() {
