@@ -94,9 +94,9 @@ jobs:
           grep -Eq "Verified using v[23] scheme \(APK Signature Scheme v[23]\): true" "$RUNNER_TEMP/signature.txt"
           # A valid signature does not establish the manifest identity that
           # will be printed in the release receipt. Check packaged bytes.
-          python3 tools/verify_release_apk_identity.py \\
-            --aapt "$ANDROID_HOME/build-tools/36.0.0/aapt" \\
-            --apk "$out/app-release.apk" \\
+          python3 tools/verify_release_apk_identity.py \
+            --aapt "$ANDROID_HOME/build-tools/36.0.0/aapt" \
+            --apk "$out/app-release.apk" \
             --version-name "$CHUNKS_VERSION_NAME" --version-code "$CHUNKS_VERSION_CODE"
           apk="$out/chunks-release-$CHUNKS_VERSION_NAME.apk"
           cp "$out/app-release.apk" "$apk"
