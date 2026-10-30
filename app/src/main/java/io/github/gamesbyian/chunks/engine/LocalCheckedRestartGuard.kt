@@ -41,7 +41,7 @@ internal object LocalCheckedRestartGuard {
                 return Result.Refused("Cannot verify backing paths before restart: " + all.problem)
             else -> Unit
         }
-        val zeroProgressPaths = nativePaths.filterIndexed { index ->
+        val zeroProgressPaths = nativePaths.filterIndexed { index, _ ->
             verifiedFileBytes[index] == 0L
         }
         if (zeroProgressPaths.isEmpty()) return Result.ClearAtObservation
