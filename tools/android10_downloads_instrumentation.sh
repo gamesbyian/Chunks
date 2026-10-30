@@ -67,12 +67,12 @@ fail_if_skipped_or_failed "$status" 'OK (1 test)' "Android 10 permission dialog 
 # 2. Capability proof with the grant now in place.
 set +e
 adb shell am instrument -w -r \
- -e class io.github.gamesbyian.chunks.LocalPublicDownloadsPlaceInstrumentedTest,io.github.gamesbyian.chunks.LocalDownloadPlacePickerInstrumentedTest \
+ -e class io.github.gamesbyian.chunks.LocalPublicDownloadsPlaceInstrumentedTest,io.github.gamesbyian.chunks.LocalDownloadPlacePickerInstrumentedTest,io.github.gamesbyian.chunks.LocalPlaceWriteProbeRaceInstrumentedTest \
  io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner >"$log" 2>&1
 status=$?
 set -e
 grep -E '^INSTRUMENTATION_STATUS: (class|test)=|^INSTRUMENTATION_STATUS_CODE:|^OK |^FAILURES|^Tests run' "$log" || true
-fail_if_skipped_or_failed "$status" 'OK (9 tests)' "Android 10 shared Downloads instrumentation"
+fail_if_skipped_or_failed "$status" 'OK (14 tests)' "Android 10 shared Downloads instrumentation"
 # 3. The foreground download service and its notification on API 29
 #    (an API 31-only builder call once crashed it here).
 set +e

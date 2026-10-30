@@ -4,6 +4,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
 import java.util.Random
+import java.nio.file.Files
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -12,8 +14,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Real Android NIO probe semantics with a controlled destination creation
- * after the last existence survey, not an adversarial scheduling guarantee.
+ * Real Android exclusive-open/fstat/lstat identity and NIO rename semantics.
+ * Controlled interleavings do not establish atomic pathname check/action safety.
  */
 @RunWith(AndroidJUnit4::class)
 class LocalPlaceWriteProbeRaceInstrumentedTest {
@@ -39,4 +41,84 @@ class LocalPlaceWriteProbeRaceInstrumentedTest {
             root.deleteRecursively()
         }
     }
+
+    @Test fun normalDescriptorBackedProbeReadsBackAndCleansItsOwnFile() {
+        val root = File(context.cacheDir, "probe-normal-" + System.nanoTime())
+        assertTrue(root.mkdirs())
+        try {
+            val unrelated = File(root, "keep.bin")
+            val bytes = byteArrayOf(1, 2, 3)
+            unrelated.writeBytes(bytes)
+            assertNull(LocalPlaceWriteProbe.verify(root))
+            assertArrayEquals(bytes, unrelated.readBytes())
+            assertTrue(root.list()!!.toList() == listOf("keep.bin"))
+        } finally { root.deleteRecursively() }
+    }
+
+    @Test fun substitutionBeforeFstatCannotGrantOwnershipToForeignFile() {
+        val root = File(context.cacheDir, "probe-before-fstat-" + System.nanoTime())
+        assertTrue(root.mkdirs())
+        try {
+            val source = File(root, ".chunks-write-probe-0000000000000000.tmp").toPath()
+            val displaced = File(root, "original-open-inode").toPath()
+            val foreign = byteArrayOf(9, 8, 7, 6)
+            val predictable = object : Random() {
+                override fun nextBytes(out: ByteArray) { out.fill(0) }
+            }
+            val refused = LocalPlaceWriteProbe.verify(root, predictable, afterCreate = {
+                Files.move(source, displaced)
+                Files.write(source, foreign)
+            })
+            assertNotNull(refused)
+            assertArrayEquals(foreign, Files.readAllBytes(source))
+            assertTrue(Files.exists(displaced))
+            assertFalse(File(root, ".chunks-write-probe-0000000000000000.ok").exists())
+        } finally { root.deleteRecursively() }
+    }
+
+    @Test fun byteIdenticalReplacementIsStillForeignAndNeverCleanedUp() {
+        val root = File(context.cacheDir, "probe-identical-" + System.nanoTime())
+        assertTrue(root.mkdirs())
+        try {
+            val source = File(root, ".chunks-write-probe-0000000000000000.tmp").toPath()
+            val displaced = File(root, "original-inode").toPath()
+            var foreignBytes: ByteArray? = null
+            val predictable = object : Random() {
+                override fun nextBytes(out: ByteArray) { out.fill(0) }
+            }
+            val refused = LocalPlaceWriteProbe.verify(root, predictable, beforeRename = {
+                foreignBytes = Files.readAllBytes(source)
+                Files.move(source, displaced)
+                Files.copy(displaced, source)
+            })
+            assertNotNull(refused)
+            assertArrayEquals(foreignBytes!!, Files.readAllBytes(source))
+            assertArrayEquals(foreignBytes!!, Files.readAllBytes(displaced))
+            assertFalse(File(root, ".chunks-write-probe-0000000000000000.ok").exists())
+        } finally { root.deleteRecursively() }
+    }
+
+    @Test fun symlinkReplacementAtRenameBoundaryPreservesLinkAndTarget() {
+        val root = File(context.cacheDir, "probe-link-" + System.nanoTime())
+        assertTrue(root.mkdirs())
+        try {
+            val source = File(root, ".chunks-write-probe-0000000000000000.tmp").toPath()
+            val displaced = File(root, "original-inode").toPath()
+            val foreign = File(root, "foreign.bin")
+            val bytes = byteArrayOf(2, 4, 6, 8)
+            foreign.writeBytes(bytes)
+            val predictable = object : Random() {
+                override fun nextBytes(out: ByteArray) { out.fill(0) }
+            }
+            val refused = LocalPlaceWriteProbe.verify(root, predictable, beforeRename = {
+                Files.move(source, displaced)
+                Files.createSymbolicLink(source, foreign.toPath())
+            })
+            assertNotNull(refused)
+            assertTrue(Files.isSymbolicLink(source))
+            assertArrayEquals(bytes, foreign.readBytes())
+            assertTrue(Files.exists(displaced))
+        } finally { root.deleteRecursively() }
+    }
+
 }

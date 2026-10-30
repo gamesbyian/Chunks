@@ -35,7 +35,13 @@ class CreateTorrentScreenTest {
     private fun screen(source: CreateTorrentSource) = rule.setContent {
         ChunksTheme {
             Surface(color = ChunksColors.Background) {
-                CreateTorrentScreen(onBack = {}, initialSource = source)
+                // Robolectric's ShadowLinux fstat(fd) does not model descriptor
+                // identity. This UI fixture supplies a read-only Place preview;
+                // production fd capability is exercised by Android instrumentation.
+                CreateTorrentScreen(onBack = {}, initialSource = source,
+                    seedCopyReview = { _, result, request ->
+                        makeSeedCopyReview(result, request, "Synthetic phone folder", 1L shl 30, dhtOff = true)
+                    })
             }
         }
     }

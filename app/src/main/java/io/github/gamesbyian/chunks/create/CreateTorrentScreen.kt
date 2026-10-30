@@ -67,7 +67,10 @@ internal fun CreateTorrentScreen(
     initialSource: CreateTorrentSource? = null,
     /** A file shared to the "Create torrent" target; listed once, then consumed. */
     shared: SharedCreateDocument.Request? = null,
-    onSharedConsumed: () -> Unit = {}
+    onSharedConsumed: () -> Unit = {},
+    /** Read-only preview; actual copying independently validates the Place again. */
+    seedCopyReview: (Context, TorrentMetainfoBuilder.Result, TorrentMetainfoBuilder.Request?) -> SeedReview =
+        ::reviewSeedCopy
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -225,7 +228,7 @@ internal fun CreateTorrentScreen(
                         }
                     }
                     else -> ActionTile("Seed a copy on this phone", ChunksColors.Green, {
-                        scope.launch { seedReview = withContext(Dispatchers.IO) { reviewSeedCopy(context, done, builtWith) } }
+                        scope.launch { seedReview = withContext(Dispatchers.IO) { seedCopyReview(context, done, builtWith) } }
                     }, Modifier.fillMaxWidth(), icon = R.drawable.chunks_ic_phone, stacked = false)
                 }
             }
@@ -282,12 +285,22 @@ internal fun reviewSeedCopy(
     context: Context, result: TorrentMetainfoBuilder.Result, request: TorrentMetainfoBuilder.Request?
 ): SeedReview {
     val place = io.github.gamesbyian.chunks.LocalDownloadPlaces.resolve(context).selected
-        ?: return SeedReview("No verified download folder is available on this phone, so Chunks cannot seed a copy.", null)
+        ?: return makeSeedCopyReview(result, request, null, 0L, dhtOff = false)
     val free = place.root.let { if (it.exists()) it else it.parentFile }?.usableSpace ?: 0L
+    return makeSeedCopyReview(result, request, place.title, free,
+        dhtOff = !io.github.gamesbyian.chunks.LocalEngineHolder.dhtPreferred(context))
+}
+
+/** Pure preview wording, separately testable from Android descriptor/storage capability. */
+internal fun makeSeedCopyReview(
+    result: TorrentMetainfoBuilder.Result, request: TorrentMetainfoBuilder.Request?,
+    destinationTitle: String?, free: Long, dhtOff: Boolean
+): SeedReview {
+    if (destinationTitle == null) return SeedReview(
+        "No verified download folder is available on this phone, so Chunks cannot seed a copy.", null)
     val trackerless = request?.trackerTiers.isNullOrEmpty()
-    val dhtOff = !io.github.gamesbyian.chunks.LocalEngineHolder.dhtPreferred(context)
     return SeedReview(
-        "Chunks copies ${Units.bytes(result.totalBytes)} into a new folder in ${place.title} and seeds that copy. " +
+        "Chunks copies ${Units.bytes(result.totalBytes)} into a new folder in $destinationTitle and seeds that copy. " +
             "Your original files are not moved or changed. ${Units.bytes(free)} is free there.",
         when {
             request?.private == true && trackerless -> "This private torrent has no tracker, so no peer can find it."
