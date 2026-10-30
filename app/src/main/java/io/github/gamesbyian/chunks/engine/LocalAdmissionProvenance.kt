@@ -57,6 +57,14 @@ internal object LocalAdmissionProvenance {
         } catch (_: Exception) { null }
     }
 
+    /** A receipt is accepted only after its containing directory can be synced. */
+    private fun syncDirectory(parent: java.nio.file.Path): Boolean = try {
+        FileChannel.open(parent, StandardOpenOption.READ).use { it.force(true) }
+        true
+    } catch (_: Exception) {
+        false
+    }
+
     /**
      * Create and sync a uniquely named private receipt first, then publish it
      * with an atomic, exclusive hard link. ATOMIC_MOVE alone can replace a
@@ -75,7 +83,7 @@ internal object LocalAdmissionProvenance {
         val destination = receipt(directory, hash).toPath()
         if (Files.exists(destination, LinkOption.NOFOLLOW_LINKS) ||
             !Files.notExists(destination, LinkOption.NOFOLLOW_LINKS))
-            return read(directory, hash) == mode
+            return read(directory, hash) == mode && syncDirectory(parent)
 
         val temporary = File(directory, "$hash.admission.${UUID.randomUUID()}.pending").toPath()
         var created = false
@@ -94,7 +102,7 @@ internal object LocalAdmissionProvenance {
             } catch (_: FileAlreadyExistsException) {
                 return read(directory, hash) == mode
             }
-            FileChannel.open(parent, StandardOpenOption.READ).use { it.force(true) }
+            if (!syncDirectory(parent)) return false
             return read(directory, hash) == mode
         } catch (_: Exception) {
             return false
