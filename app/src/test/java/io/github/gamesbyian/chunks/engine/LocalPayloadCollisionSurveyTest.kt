@@ -71,16 +71,30 @@ class LocalPayloadCollisionSurveyTest {
             is LocalPayloadCollisionSurvey.Result.Unknown)
     }
 
-    @Test fun selectedRootCannotHideAParentSymlink() {
+    @Test fun chosenRootAncestorAliasIsResolvedBeforeCollisionSurvey() {
         val selected = temp.newFolder("selected-parent")
         val external = temp.newFolder("external-target")
         val actual = File(external, "download")
         assertTrue(actual.mkdir())
+        val foreign = File(actual, "episode.mkv")
+        foreign.writeText("foreign bytes")
         Files.createSymbolicLink(File(selected, "indirect").toPath(), external.toPath())
+        // OS-managed parent aliases also occur in Android's app-private tree.
+        // Inspect the real destination, never claim a lexical path is clear.
+        assertEquals(LocalPayloadCollisionSurvey.Result.ExistingPaths(
+            listOf("episode.mkv"), 1),
+            LocalPayloadCollisionSurvey.inspect(
+                File(selected, "indirect/download"), listOf("episode.mkv")))
+        assertEquals("foreign bytes", foreign.readText())
+    }
+
+    @Test fun rootItselfCannotBeAnIndirectDestination() {
+        val selected = temp.newFolder("symlink-selected")
+        val actual = temp.newFolder("symlink-real")
+        val alias = File(selected, "direct-link")
+        Files.createSymbolicLink(alias.toPath(), actual.toPath())
         assertTrue(LocalPayloadCollisionSurvey.inspect(
-            File(selected, "indirect/download"), listOf("episode.mkv"))
-            is LocalPayloadCollisionSurvey.Result.Unknown)
-        assertTrue(actual.list().isEmpty())
+            alias, listOf("episode.mkv")) is LocalPayloadCollisionSurvey.Result.Unknown)
     }
 
     @Test fun lexicalParentTraversalCannotSurveyDifferentTreeThanNativeWriter() {
