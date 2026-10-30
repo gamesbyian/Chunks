@@ -75,6 +75,10 @@ class CombinedViewModelTest {
         assertFalse(d(TransferLockMode.ONCE_PER_PROCESS, secure = false).mayShow)
         // A failed configure never turns a stale opt-out into disclosure.
         assertFalse(d(TransferLockMode.NEVER, sync = false, may = false).mayShow)
+        assertFalse("An old authorized grant must not override a mismatched NEVER policy",
+            d(TransferLockMode.NEVER, sync = false, secure = true, may = true).mayShow)
+        assertFalse("An old authorized grant must not override a mismatched protected policy",
+            d(TransferLockMode.ONCE_PER_PROCESS, sync = false, secure = true, may = true).mayShow)
         assertTrue(d(TransferLockMode.NEVER, sync = false).needsSecureWindow)
     }
 
