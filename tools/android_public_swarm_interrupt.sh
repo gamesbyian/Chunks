@@ -15,7 +15,10 @@ if [[ -z "$serial" ]]; then
   serial="${attached[0]}"
 fi
 export ANDROID_SERIAL="$serial"
-[[ "$(adb get-state | tr -d '\r\n')" == "device" ]] || { echo "::error::Selected Android device unavailable" >&2; exit 2; }
+# Check the request's exit status as well as stdout before installing or running.
+if ! device_state="$(adb get-state | tr -d '\r\n')" || [[ "$device_state" != device ]]; then
+  echo "::error::Selected Android device unavailable" >&2; exit 2
+fi
 # Exit status alone is insufficient: adb can return zero for package errors.
 install_verified() {
   local output

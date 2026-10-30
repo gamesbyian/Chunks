@@ -13,7 +13,9 @@ case "$*" in
   devices)
     printf 'List of devices attached\nMOCK_USB\tdevice\n'
     if [[ "${MOCK_SECOND_DEVICE:-0}" == 1 ]]; then printf 'SECOND\tdevice\n'; fi ;;
-  get-state) printf 'device\n' ;;
+  get-state)
+    printf 'device\n'
+    [[ "${MOCK_GET_STATE_FAILURE:-0}" != 1 ]] || exit 1 ;;
   'shell settings get global wifi_on') cat "$MOCK_DIR/wifi" ;;
   'shell settings get global mobile_data')
     if [[ "${MOCK_UNREADABLE_DATA:-0}" == 1 ]]; then printf 'null\n'
@@ -28,7 +30,9 @@ case "$*" in
   exec-in\ run-as\ *) cat >/dev/null ;;
   exec-out\ run-as\ *)
     case "$*" in *'files/net-off') touch "$MOCK_DIR/net-off";; *'files/net-on') touch "$MOCK_DIR/net-on";; esac ;;
-  shell\ am\ instrument\ *) printf 'INSTRUMENTATION_RESULT: stream=OK (1 test)\nOK (1 test)\n' ;;
+  shell\ am\ instrument\ *)
+    printf 'instrument\n' >> "$MOCK_DIR/commands"
+    printf 'INSTRUMENTATION_RESULT: stream=OK (1 test)\nOK (1 test)\n' ;;
   *) printf 'Unexpected mock adb operation: %s\n' "$*" >&2; exit 1 ;;
 esac
 MOCK_ADB
@@ -62,4 +66,12 @@ if ADB_SERIAL=192.0.2.10:5555 bash "$repo/android_public_swarm_netflap.sh" > "$t
   echo 'Wireless adb was accepted' >&2; exit 1
 fi
 [[ ! -s "$MOCK_DIR/commands" ]]
-echo 'CHUNKS_NETFLAP_MOCK: baseline preservation, outage signaling, unknown state, ambiguous/wireless adb all passed'
+# A query printing "device" before failing must not authorize any device work.
+rm -f "$MOCK_DIR/net-off" "$MOCK_DIR/net-on"
+if ADB_SERIAL=MOCK_USB MOCK_GET_STATE_FAILURE=1 bash "$repo/android_public_swarm_netflap.sh" > "$temp/state-failed.log" 2>&1; then
+  echo 'Failed adb get-state with plausible output was accepted' >&2; exit 1
+fi
+grep -q 'Selected adb device unavailable' "$temp/state-failed.log"
+[[ ! -s "$MOCK_DIR/commands" && ! -e "$MOCK_DIR/net-off" && ! -e "$MOCK_DIR/net-on" ]]
+[[ "$(cat "$MOCK_DIR/wifi")" == 1 && "$(cat "$MOCK_DIR/data")" == 0 ]]
+echo 'CHUNKS_NETFLAP_MOCK: baseline preservation, outage signaling, failed state query, unknown state, ambiguous/wireless adb all passed'

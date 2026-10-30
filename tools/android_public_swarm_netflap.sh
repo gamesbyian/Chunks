@@ -22,7 +22,10 @@ if [[ -z "$serial" ]]; then
 fi
 [[ "$serial" != *:* ]] || { echo "Network-flap acceptance requires USB adb, not wireless adb" >&2; exit 2; }
 export ANDROID_SERIAL="$serial"
-[[ "$(adb get-state | tr -d '\r\n')" == device ]] || { echo "Selected adb device unavailable" >&2; exit 2; }
+# Failed ADB queries can leave plausible output; neither alone verifies a target.
+if ! device_state="$(adb get-state | tr -d '\r\n')" || [[ "$device_state" != device ]]; then
+  echo "Selected adb device unavailable" >&2; exit 2
+fi
 
 CHUNKS_WIFI_BASELINE= CHUNKS_DATA_BASELINE=
 # Reject unsupported OEM settings *before* installing APKs or launching
