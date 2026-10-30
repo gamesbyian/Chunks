@@ -40,7 +40,8 @@ internal object LocalAdmissionProvenance {
      * This is admission provenance only, not native payload inode ownership.
      */
     fun read(directory: File?, hash: String): Mode? {
-        if (directory == null || !identity.matches(hash)) return null
+        if (directory == null || !identity.matches(hash) ||
+            !Files.isDirectory(directory.toPath(), LinkOption.NOFOLLOW_LINKS)) return null
         val file = receipt(directory, hash).toPath()
         return try {
             FileChannel.open(file, StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS).use { channel ->
