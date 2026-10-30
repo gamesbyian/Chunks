@@ -173,6 +173,10 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     // independent zero-verified-path check before the first native Start in
     // this new process. This remains only an observational safeguard.
     private val restoredFirstStarts: MutableSet<String> = ConcurrentHashMap.newKeySet()
+    // No admission receipt means a pre-provenance / corrupted / ambiguous
+    // restored record. It may contain existing native payload, so never treat
+    // an old unknown record as an expressly reviewed existing-data seed.
+    private val restoredUnknownAdmissions: MutableSet<String> = ConcurrentHashMap.newKeySet()
     // Metadata-ready upload-only magnets are intentionally persisted paused;
     // native UPLOAD_MODE remains their durable don't-write-payload marker.
     // The next explicit Start rechecks paths, including after process restart.
@@ -486,6 +490,12 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         if (handles.containsKey(hash) || session.find(info.infoHash())?.isValid == true)
             return LocalAddResult.Refused("This torrent is already in the local engine")
 
+        val provenance = if (checkedFirstStarts.containsKey(hash))
+            LocalAdmissionProvenance.Mode.CHECKED
+        else LocalAdmissionProvenance.Mode.REVIEWED_EXISTING
+        if (!LocalAdmissionProvenance.persist(config.stateDirectory, hash, provenance))
+            return LocalAddResult.Refused(
+                "Could not securely persist the native Add review; nothing added")
         val params = AddTorrentParams()
         params.setTorrentInfo(info)
         params.setSavePath(saveDirectory.absolutePath)
@@ -557,6 +567,10 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         val params = try { AddTorrentParams.parseMagnetUri(magnet) } catch (_: RuntimeException) {
             return LocalAddResult.Refused("This magnet link could not be read")
         }
+        if (!LocalAdmissionProvenance.persist(config.stateDirectory, hash,
+                LocalAdmissionProvenance.Mode.CHECKED))
+            return LocalAddResult.Refused(
+                "Could not securely persist the magnet Add review; nothing added")
         params.setSavePath(saveDirectory.absolutePath)
         params.setFlags(torrent_flags_t().or_(org.libtorrent4j.TorrentFlags.UPLOAD_MODE)
             .or_(org.libtorrent4j.TorrentFlags.DUPLICATE_IS_ERROR))
@@ -599,6 +613,11 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             // status() caches metadata for 500 ms. Query the same fresh native
             // flags as snapshot(), including persisted upload-only on restart.
             val state = handle.status(TorrentHandle.QUERY_NAME)
+            if (restoredUnknownAdmissions.contains(key)) {
+                checkedStartProblems[key] =
+                    "Native Add review is unavailable after restoration; re-review the transfer before starting"
+                return@command false
+            }
             checkedFirstStarts[key]?.let { pending ->
                 // Add's earlier ClearAtObservation is not permission to write
                 // during a later Start. Re-survey the exact recorded native
@@ -1266,6 +1285,8 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         startWhenMetadataArrives.remove(key)
         magnetCollisionProblems.remove(key)
         checkedFirstStarts.remove(key)
+        restoredFirstStarts.remove(key)
+        restoredUnknownAdmissions.remove(key)
         checkedStartProblems.remove(key)
         // remove_torrent is non-blocking: the old native handle may still
         // have queued payload I/O. Keep its path claim as a tombstone until
@@ -1275,7 +1296,9 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         val saved = config.stateDirectory?.let { File(it, "$key.resume") } ?: return true
         // A removed session with an undeletable .resume file can reappear on
         // restart. Do not report that as a fully confirmed removal.
-        return try { !saved.exists() || saved.delete() } catch (_: Exception) { false }
+        val erased = try { !saved.exists() || saved.delete() } catch (_: Exception) { false }
+        if (erased) LocalAdmissionProvenance.retire(config.stateDirectory, key)
+        return erased
     }
 
     @Synchronized
@@ -1370,6 +1393,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         magnetCollisionProblems.clear()
         checkedFirstStarts.clear()
         restoredFirstStarts.clear()
+        restoredUnknownAdmissions.clear()
         checkedStartProblems.clear()
         session.stop()
         // The native session has stopped before its in-process path claims
@@ -1409,7 +1433,19 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             } catch (_: Exception) { null }
             if (restored == null) { problems += file.name; continue }
             handles[key] = restored
-            restoredFirstStarts.add(key)
+            // Only the persisted checked Add path inherits checked restart
+            // admission. A recorded reviewed-existing seed uses its explicitly
+            // separate native seeding workflow. Unknown legacy/corrupt
+            // provenance is stopped and requires a fresh user review.
+            when (LocalAdmissionProvenance.read(config.stateDirectory, key)) {
+                LocalAdmissionProvenance.Mode.CHECKED -> restoredFirstStarts.add(key)
+                LocalAdmissionProvenance.Mode.REVIEWED_EXISTING -> Unit
+                null -> {
+                    restoredUnknownAdmissions.add(key)
+                    checkedStartProblems[key] =
+                        "Native Add review is unavailable after restoration; re-review required"
+                }
+            }
             // Reserve before a newly added checked job can compete with this
             // stopped restored handle. Any ambiguous/duplicate record stays
             // visible and stopped, with a discoverable refusal on explicit Start.
