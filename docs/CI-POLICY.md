@@ -2,6 +2,23 @@
 
 **Documentation-only changes:** validate repository-local targets offline with `python3 tools/check_docs.py` and its unit tests. Do not dispatch Android, native, host or font Actions merely to validate Markdown. A docs PR merged to main does not justify an unrelated font fan-out; retain path-specific workflow triggers and the [font-lab isolation contract](design/CHUNKS-FONT-LAB-OPERATIONS.md). See [documentation standard](DOCUMENTATION-STANDARD.md).
 
+## Read-only, exact-head PR receipt checker (integration QA)
+
+`tools/check_pr_exact_head.py` verifies GitHub Actions records for a **specified full PR head SHA**, optional exact base SHA, and explicitly named workflow/check contexts. It double-reads the PR refs to reject head/base movement during inspection; rejects missing, cancelled, skipped or failed required contexts and workflow runs belonging to another PR; and returns nonzero on incomplete/unavailable evidence. It is a **review helper**, not branch protection, an Actions job, proof that the test exercised the promised scenario, or authority to merge. It does not start workflows or access protected testing hosts.
+
+For example, to check the narrowly scoped current collision PR at a known SHA (replace SHA values with the **live** PR refs before running):
+
+```sh
+python3 tools/check_pr_exact_head.py --repo gamesbyian/Chunks --pr 703 \
+  --head ae30defb8071447c1d86ddabec01a1a4ba0c70b5 \
+  --require-workflow 'Chunks Android foundation' \
+  --require-workflow 'Android 10 shared Downloads instrumentation' \
+  --require-workflow 'Chunks R8 minified smoke'
+python3 -m unittest discover -s tests -p 'test_check_pr_exact_head.py'
+```
+
+Workflow names are exact and must be selected from the change's actual path-triggered gate policy; optional/manual/secret-bearing workflows are not blanket requirements. If R8 was cancelled before creating a job, the checker correctly refuses to count it as success even when all observed check-run jobs are green. A separate R8 rerun or explicitly reviewed gate disposition is required; do not silently promote the other successes. Use the named SHA to prevent stale evidence, review the actual patches/test logs, and continue recording emulator versus handset/host evidence separately in [QUALITY-LEDGER](QUALITY-LEDGER.md). Never publish `GITHUB_TOKEN` or API response secrets in logs. See [#9](https://github.com/gamesbyian/Chunks/issues/9) and [#10](https://github.com/gamesbyian/Chunks/issues/10).
+
 ## Source-audit guardrails and future checks (2026-10-30)
 
 The [AUD-01–15 register](ANDROID-ARCHITECTURE-AUDIT-2026-10-30.md) and [WORK-QUEUE](WORK-QUEUE.md) place integrity and reproducibility ahead of cosmetic CI expansion. These are **required future acceptance criteria, not checks claimed already running**:
