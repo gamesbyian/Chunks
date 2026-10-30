@@ -73,8 +73,14 @@ data class EnvironmentCapabilitySnapshot(
 
 object EnvironmentCapabilities {
     /** The phone engine's operations are part of this build, not negotiated. */
-    fun phone(environment: EnvironmentId = EnvironmentSnapshots.PHONE, observedAtEpochMillis: Long? = null) =
-        EnvironmentCapabilitySnapshot(environment, "phone engine", observedAtEpochMillis,
+    fun phone(environment: EnvironmentId = EnvironmentSnapshots.PHONE, observedAtEpochMillis: Long? = null):
+        EnvironmentCapabilitySnapshot {
+        // A built-in capability is evidence about the bundled phone engine, never
+        // a shortcut for an arbitrary server profile with the same torrent hash.
+        require(environment == EnvironmentSnapshots.PHONE) {
+            "Phone engine capabilities cannot be attached to a remote environment"
+        }
+        return EnvironmentCapabilitySnapshot(environment, "phone engine", observedAtEpochMillis,
             EnvironmentOperation.entries.associateWith {
                 when (it) {
                     // Server-side concepts with no phone-engine counterpart.
@@ -83,6 +89,7 @@ object EnvironmentCapabilities {
                     else -> CapabilityEvidence.BUILT_IN
                 }
             })
+    }
 
     /** Grades one server's own read-only probe. */
     fun fromProbe(environment: EnvironmentId, probe: RemoteProbe, observedAtEpochMillis: Long?): EnvironmentCapabilitySnapshot {
