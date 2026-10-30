@@ -1149,7 +1149,9 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         magnetCollisionProblems.remove(key)
         checkedFirstStarts.remove(key)
         checkedStartProblems.remove(key)
-        checkedPayloadReservations.release(key)
+        // remove_torrent is non-blocking: the old native handle may still
+        // have queued payload I/O. Keep its path claim as a tombstone until
+        // session.stop() joins native work; immediate reuse is unsafe.
         pendingFlushes.cancel(key, handle)
         pendingSaves.cancel(key, handle)
         val saved = config.stateDirectory?.let { File(it, "$key.resume") } ?: return true
