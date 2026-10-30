@@ -216,3 +216,7 @@ No mandatory accounts, **undisclosed or unstoppable** tracker/content search, pi
 ## Pre-alpha queue-wide alias review acceptance (2026-10-24)
 
 [PR #98](https://github.com/gamesbyian/Chunks/pull/98) merged the first queue-wide alias preview with conservative local filename proposals, explicit selection and per-name edits, a second confirmation, atomic scoped local save and conditional Undo protecting any subsequent manual changes. Limited to 100 proposals from the current server view; existing manual overrides are never included. Android/JVM and native emulator passed at source `f3f6b0238f71c5e167cf9b679d00db708a609f43`, with screenshot inspection. This is neither physical data rename, server-side synchronization, external metadata enrichment nor an unlimited queue batch engine. Style rules, metadata consent and high-scale paging remain future acceptance gates.
+
+## Per-transfer home-screen widgets (deferred)
+
+Users may pin an independently movable/resizable Android home-screen widget for **one specific transfer**. Its artwork-backed progress/status and tap-to-open behavior are shared across local and remote environments. The owner wants the indicator gone automatically when the transfer job is removed; launcher-enforced widget removal limitations make this a documented unresolved compatibility/UX requirement, rather than a guarantee. The canonical [per-transfer widget contract](PER-TRANSFER-HOME-WIDGETS.md) covers identity, security, offline states and rollout after foundational gates.
