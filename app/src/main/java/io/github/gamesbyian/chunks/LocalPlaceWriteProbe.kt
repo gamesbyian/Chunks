@@ -55,7 +55,14 @@ internal object LocalPlaceWriteProbe {
     }
 
     /** Returns null when [folder] passed every check, otherwise a short reason. */
-    fun verify(folder: File, random: Random = SecureRandom()): String? {
+    fun verify(
+        folder: File,
+        random: Random = SecureRandom(),
+        // Deterministic test seam to plant a destination AFTER the final
+        // precheck. Never used in production, where this window can still
+        // race a different filesystem writer.
+        beforeRename: () -> Unit = {}
+    ): String? {
         if (!folder.isAbsolute) return "Folder path is not absolute"
         try {
             if (Files.isSymbolicLink(folder.toPath())) return "Folder is a symbolic link"
@@ -128,6 +135,7 @@ internal object LocalPlaceWriteProbe {
             if (!Files.notExists(renamedPath, LinkOption.NOFOLLOW_LINKS))
                 return "Probe destination is already occupied or cannot be inspected"
             try {
+                beforeRename()
                 Files.move(probePath, renamedPath)
                 ownsProbe = false
                 ownsRenamed = true
