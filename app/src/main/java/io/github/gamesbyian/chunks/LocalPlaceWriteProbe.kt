@@ -17,7 +17,7 @@ import java.util.Random
 /**
  * Proves that a candidate phone download Place accepts the kind of file I/O
  * the native engine performs: a sparse write beyond end-of-file, a write at
- * offset zero, fsync, independent readback, rename and delete. It never
+ * offset zero, fsync, independent readback, exclusive publication and delete. It never
  * inspects or touches any existing file other than its own hidden probe.
  *
  * Passing this probe is necessary but NOT sufficient to claim a Place works
@@ -66,7 +66,11 @@ internal object LocalPlaceWriteProbe {
         openExclusive: (Path, () -> Unit) -> ExclusiveProbeFile = ::openAndroidExclusive,
         // Test-only interleaving after exclusive open, before descriptor fstat.
         afterCreate: () -> Unit = {},
-        // Deterministic interleaving; final pathname check/action races remain.
+        // Inject a competing foreign destination AFTER the final pathname
+        // check. Exclusive publication must still refuse without modifying it.
+        beforePublish: () -> Unit = {},
+        // Keep this original last parameter for callers that use a trailing
+        // lambda to inject races at the pre-publication rename boundary.
         beforeRename: () -> Unit = {}
     ): String? {
         if (!folder.isAbsolute) return "Folder path is not absolute"
@@ -87,11 +91,15 @@ internal object LocalPlaceWriteProbe {
         var ownsProbe = false
         var ownsRenamed = false
         var created: ExclusiveProbeFile? = null
+        var published: ExclusiveProbeFile? = null
         // Identity comes from the exclusively opened descriptor, never a later
         // pathname lookup. Retain that descriptor through cleanup so its inode
         // cannot be recycled while we compare dev/inode against lstat.
         fun isStillOwned(path: Path): Boolean = try {
             created?.owns(path) == true
+        } catch (_: Exception) { false }
+        fun isStillPublished(path: Path): Boolean = try {
+            published?.owns(path) == true
         } catch (_: Exception) { false }
         try {
             // A collision with either generated name must NEVER permit the probe
@@ -135,45 +143,78 @@ internal object LocalPlaceWriteProbe {
             }
             if (!isStillOwned(probePath))
                 return "Probe source identity changed during readback"
-            // Files.move without REPLACE_EXISTING must refuse an occupied target.
-            // A fresh existence probe narrows the window but cannot lock a
-            // shared directory against another writer racing this operation.
+            // Do not rename over a path checked only at a point in time.
+            // Standard Files.move without REPLACE_EXISTING is not uniformly
+            // non-replacing on POSIX providers under a concurrent race.
+            // A second exclusively created no-follow descriptor instead has
+            // genuine fail-on-existing-name semantics, including on providers
+            // where hard links are unsupported (e.g. emulated shared storage).
             if (!Files.notExists(renamedPath, LinkOption.NOFOLLOW_LINKS))
                 return "Probe destination is already occupied or cannot be inspected"
             try {
                 if (!isStillOwned(probePath))
-                    return "Probe source identity changed before rename"
+                    return "Probe source identity changed before publication"
                 beforeRename()
-                // Revalidate the source AFTER any competing change. This narrows
-                // the native rename race, but Java Files.move does not offer a
-                // portable, atomic NOREPLACE guarantee on every provider.
                 if (!isStillOwned(probePath) ||
                     !Files.notExists(renamedPath, LinkOption.NOFOLLOW_LINKS))
-                    return "Probe source or destination changed before rename"
-                Files.move(probePath, renamedPath)
-                ownsProbe = false
+                    return "Probe source or destination changed before publication"
+                beforePublish()
+                // If another app creates this name after the last survey,
+                // CREATE_NEW/O_EXCL refuses atomically instead of truncating
+                // or replacing its bytes. The new inode has distinct ownership
+                // from the still-pinned source probe descriptor.
+                val destination = openExclusive(renamedPath) {}
+                published = destination
                 ownsRenamed = true
+                destination.writeAt(SPARSE_OFFSET, tail)
+                destination.writeAt(0, head)
+                destination.sync()
+                if (!isStillPublished(renamedPath) || !isStillOwned(probePath))
+                    return "Probe source or destination ownership changed"
+                // Verify a separately opened read descriptor, not merely the
+                // in-memory bytes or an acknowledgement from writeAt().
+                FileChannel.open(renamedPath, StandardOpenOption.READ,
+                    LinkOption.NOFOLLOW_LINKS).use { channel ->
+                    if (channel.size() != SPARSE_OFFSET + BLOCK)
+                        return "Published probe size could not be verified"
+                    fun readAt(offset: Long): ByteArray {
+                        val buffer = ByteBuffer.allocate(BLOCK)
+                        channel.position(offset)
+                        while (buffer.hasRemaining()) {
+                            if (channel.read(buffer) <= 0)
+                                throw java.io.IOException("Published readback incomplete")
+                        }
+                        return buffer.array()
+                    }
+                    if (!readAt(0).contentEquals(head) ||
+                        !readAt(SPARSE_OFFSET).contentEquals(tail))
+                        return "Published probe bytes failed readback"
+                }
+                if (!isStillPublished(renamedPath) || !isStillOwned(probePath))
+                    return "Probe ownership changed before cleanup"
+                Files.delete(probePath)
+                ownsProbe = false
             } catch (_: Exception) {
-                return "Folder does not allow non-replacing rename"
+                return "Folder does not allow exclusive probe publication"
             }
-            if (!isStillOwned(renamedPath))
-                return "Renamed probe ownership cannot be verified"
+            if (!isStillPublished(renamedPath))
+                return "Published probe ownership cannot be verified"
             try {
-                // Only the file created by this call may be removed.
-                if (!isStillOwned(renamedPath))
-                    return "Renamed probe identity changed before cleanup"
+                if (!isStillPublished(renamedPath))
+                    return "Published probe identity changed before cleanup"
                 Files.delete(renamedPath)
                 ownsRenamed = false
             } catch (_: Exception) {
-                return "Folder does not allow deleting Chunks' own files"
+                return "Folder does not allow deleting Chunks' owned probe"
             }
         } finally {
             // A failed CREATE_NEW does not grant ownership; importantly,
             // never delete an existing name that the probe failed to create.
             if (ownsProbe && isStillOwned(probePath))
                 try { Files.deleteIfExists(probePath) } catch (_: Exception) {}
-            if (ownsRenamed && isStillOwned(renamedPath))
+            if (ownsRenamed && isStillPublished(renamedPath))
                 try { Files.deleteIfExists(renamedPath) } catch (_: Exception) {}
+            try { published?.close() } catch (_: Exception) {}
             try { created?.close() } catch (_: Exception) {}
         }
         return if (bothNamesDefinitelyAbsent(probePath, renamedPath)) null
