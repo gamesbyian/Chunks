@@ -224,7 +224,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         synchronized(handles) {
             if (!started || handles[key] != handle || !handle.isValid || !awaitingMetadata.remove(key)) return
             val autoStart = startWhenMetadataArrives.remove(key)
-            val problem = inspectMagnetCollision(handle)
+            val problem = inspectMagnetCollision(key, handle)
             if (problem != null) magnetCollisionProblems[key] = problem
             else magnetCollisionProblems.remove(key)
             if (problem != null || !autoStart) {
@@ -240,7 +240,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         }
     }
 
-    private fun inspectMagnetCollision(handle: TorrentHandle): String? {
+    private fun inspectMagnetCollision(key: String, handle: TorrentHandle): String? {
         val paths = try {
             val info = handle.torrentFile() ?: return "Metadata file layout is unavailable"
             val files = info.files()
@@ -251,13 +251,24 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                 .filterNot { files.padFileAt(it) }.map { files.filePath(it) }.toList()
         } catch (_: Exception) { return "Torrent file layout cannot be inspected" }
         if (paths.isEmpty()) return "Torrent has no inspectable payload files"
-        return when (val survey = LocalPayloadCollisionSurvey.inspect(File(handle.savePath()), paths)) {
-            is LocalPayloadCollisionSurvey.Result.ClearAtObservation -> null
+        val root = File(handle.savePath())
+        when (val survey = LocalPayloadCollisionSurvey.inspect(root, paths)) {
+            is LocalPayloadCollisionSurvey.Result.ClearAtObservation -> Unit
             is LocalPayloadCollisionSurvey.Result.ExistingPaths ->
-                "Existing files conflict with this magnet (" + survey.total +
+                return "Existing files conflict with this magnet (" + survey.total +
                     " path(s)); choose a clean destination or review existing data"
             is LocalPayloadCollisionSurvey.Result.Unknown ->
-                "Cannot verify magnet payload paths: " + survey.problem
+                return "Cannot verify magnet payload paths: " + survey.problem
+        }
+        // Metadata becomes available asynchronously. The first metadata
+        // callback or explicit Start MUST reserve prospective writer paths
+        // before removing UPLOAD_MODE. Otherwise a checked .torrent can hold
+        // the same currently empty names and both native handles may write.
+        // Rechecking an already reserved magnet at Start must not block itself.
+        if (checkedPayloadReservations.hasReservation(key)) return null
+        return when (val admission = checkedPayloadReservations.reserve(key, root, paths)) {
+            LocalCheckedPayloadReservations.Result.Reserved -> null
+            is LocalCheckedPayloadReservations.Result.Refused -> admission.problem
         }
     }
 
@@ -574,7 +585,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             if (state.hasMetadata() &&
                 (state.flags().and_(org.libtorrent4j.TorrentFlags.UPLOAD_MODE).non_zero() ||
                     magnetCollisionProblems.containsKey(key))) {
-                val problem = inspectMagnetCollision(handle)
+                val problem = inspectMagnetCollision(key, handle)
                 if (problem != null) {
                     magnetCollisionProblems[key] = problem
                     return@command false
