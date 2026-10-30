@@ -70,7 +70,6 @@ internal object LocalDownloadPlaces {
             }
         } catch (_: Exception) { null }
         if (removable != null) {
-            val ready = removable.isDirectory || removable.mkdirs()
             result += LocalPlaceChoice(LocalDownloadPlace(LocalPlaceKind.REMOVABLE_APP_STORAGE, removable,
                 "SD card (Chunks app folder)",
                 "Direct native writes are unavailable until non-clobbering storage is implemented."),
