@@ -64,6 +64,60 @@ class LocalAdmissionProvenanceTest {
             LocalAdmissionProvenance.Mode.REVIEWED_EXISTING))
     }
 
+    @Test fun leftoverHardlinkedTemporaryNeverTruncatesUnrelatedBytes() {
+        val state = temp.newFolder("hardlinked-old-temporary")
+        val external = temp.newFile("not-owned-by-admission-writer")
+        val original = ByteArray(8192) { (it * 31).toByte() }
+        external.writeBytes(original)
+        val oldTemporary = File(state, "$hash.admission.tmp")
+        Files.createLink(oldTemporary.toPath(), external.toPath())
+        assertTrue(LocalAdmissionProvenance.persist(state, hash,
+            LocalAdmissionProvenance.Mode.CHECKED))
+        assertArrayEquals("An old tmp path may be a hardlink to unrelated bytes",
+            original, external.readBytes())
+        assertArrayEquals(original, oldTemporary.readBytes())
+        assertEquals(LocalAdmissionProvenance.Mode.CHECKED,
+            LocalAdmissionProvenance.read(state, hash))
+    }
+
+    @Test fun interruptedSymlinkTemporaryDoesNotBlockSafeUniqueReceiptPublication() {
+        val state = temp.newFolder("symlink-old-temporary")
+        val external = temp.newFile("not-owned-by-admission-writer-symlink")
+        external.writeText("foreign never overwritten")
+        Files.createSymbolicLink(File(state, "$hash.admission.tmp").toPath(),
+            external.toPath())
+        assertTrue(LocalAdmissionProvenance.persist(state, hash,
+            LocalAdmissionProvenance.Mode.REVIEWED_EXISTING))
+        assertEquals("foreign never overwritten", external.readText())
+        assertEquals(LocalAdmissionProvenance.Mode.REVIEWED_EXISTING,
+            LocalAdmissionProvenance.read(state, hash))
+    }
+
+    @Test fun simultaneousConflictingModesCannotReplaceAnAlreadyPublishedReceipt() {
+        repeat(8) { trial ->
+            val state = temp.newFolder("racing-$trial")
+            val gate = java.util.concurrent.CountDownLatch(1)
+            val pool = java.util.concurrent.Executors.newFixedThreadPool(2)
+            try {
+                val tasks = LocalAdmissionProvenance.Mode.entries.map { mode ->
+                    pool.submit<Boolean> {
+                        gate.await()
+                        LocalAdmissionProvenance.persist(state, hash, mode)
+                    }
+                }
+                gate.countDown()
+                val outcomes = tasks.map { it.get(10, java.util.concurrent.TimeUnit.SECONDS) }
+                assertEquals("Exactly one conflicting immutable mode may be published", 1,
+                    outcomes.count { it })
+                assertEquals(LocalAdmissionProvenance.Mode.entries[outcomes.indexOf(true)],
+                    LocalAdmissionProvenance.read(state, hash))
+            } finally {
+                gate.countDown()
+                pool.shutdownNow()
+            }
+        }
+    }
+
     @Test fun interruptedTemporaryOrOversizedReceiptDoesNotAuthorizeUnownedData() {
         val state = temp.newFolder("interrupted")
         File(state, "$hash.admission.tmp").writeText("incomplete transaction")
