@@ -1,5 +1,10 @@
 # Chunks active engineering work queue
 
+## Deferred roadmap after foundations (non-executable today)
+
+**Owner-approved expansion, 2026-10-29:** once rTorrent is bulletproof by explicit real-host and mutation-safety gates, add isolated support for all practical maintainable remote torrent backends; prove the generalized adapter model first with Transmission and qBittorrent, then expand. Separately, pursue native Android TV/Google TV support with phone-core reuse, an independently D-pad-first Compose UI, BiglyBT reference-source audit and GPL/license review. This paragraph does not grant agents permission to leave the P0 queue, start a new navigation rewrite, or weaken current acceptance. Detailed requirements and staged gates: [ANDROID-TV-AND-REMOTE-BACKENDS](ANDROID-TV-AND-REMOTE-BACKENDS.md), [#660](https://github.com/gamesbyian/Chunks/issues/660).
+
+
 **Status:** dependency-order reset, 2026-10-29 UTC, based on checked `main` at `3a4fc69d`, 17 then-open feature issues, zero then-open PRs and observed app/engine source. This is the **only live execution queue**. Recheck current main, PRs, issues, claims and CI before starting; historical timestamps are snapshots, not live evidence. The superseded queue is archived [verbatim](archive/WORK-QUEUE-2026-10-29-pre-dependency-reset.txt). Product requirements are **retained**, not cancelled, by changed scheduling.
 
 [Permanent instructions](../AGENTS.md) · [Product](PRODUCT.md) · [Architecture](ARCHITECTURE.md) · [Unified environments](UNIFIED-ENVIRONMENTS.md) · [Coverage](SPEC-COVERAGE.md) · [Evidence](QUALITY-LEDGER.md) · [CI](CI-POLICY.md) · [Documentation standard](DOCUMENTATION-STANDARD.md)
