@@ -10,6 +10,7 @@ import io.github.gamesbyian.chunks.engine.LocalCommandOutcome
 import java.io.File
 import java.util.Random
 import org.junit.After
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
@@ -59,6 +60,7 @@ class LocalEngineServiceInstrumentedTest {
     @Test fun ongoingNotificationWhileRunningAndStopAllPausesEverything() {
         val root = File(work, "Service fixture").apply { mkdirs() }
         File(root, "data.bin").writeBytes(ByteArray(50_000).also { Random(3).nextBytes(it) })
+        val originalSeed = File(root, "data.bin").readBytes()
         val torrent = TorrentBuilder().path(root).pieceSize(16 * 1024).generate().entry().bencode()
         val engine = LocalEngineHolder.get(context)
         val added = (engine.addStopped(torrent, work) as LocalAddResult.AddedStopped).status
@@ -72,6 +74,8 @@ class LocalEngineServiceInstrumentedTest {
             .setAction(LocalEngineService.ACTION_STOP_ALL))
         waitFor("transfer paused by Stop all") { engine.status(added.infoHash)?.stopped == true }
         waitFor("notification removed") { !ongoing() }
+        assertArrayEquals("Stop all may not delete or mutate seed bytes",
+            originalSeed, File(root, "data.bin").readBytes())
     }
 
     @Test fun notificationStopAllPausesEveryRunningTransferNotJustTheFirst() {
@@ -83,10 +87,14 @@ class LocalEngineServiceInstrumentedTest {
             return TorrentBuilder().path(root).pieceSize(16 * 1024).generate()
                 .entry().bencode()
         }
+        val firstTorrent = torrent("Batch one", 9)
+        val secondTorrent = torrent("Batch two", 10)
+        val firstBytes = File(work, "Batch one/payload.bin").readBytes()
+        val secondBytes = File(work, "Batch two/payload.bin").readBytes()
         val engine = LocalEngineHolder.get(context)
-        val first = (engine.addStopped(torrent("Batch one", 9), work)
+        val first = (engine.addStopped(firstTorrent, work)
             as LocalAddResult.AddedStopped).status
-        val second = (engine.addStopped(torrent("Batch two", 10), work)
+        val second = (engine.addStopped(secondTorrent, work)
             as LocalAddResult.AddedStopped).status
         hash = first.infoHash
         secondHash = second.infoHash
@@ -104,6 +112,10 @@ class LocalEngineServiceInstrumentedTest {
         waitFor("foreground notification removed after both paused") { !ongoing() }
         assertEquals(0L, engine.status(first.infoHash)?.payloadDownloadedBytes)
         assertEquals(0L, engine.status(second.infoHash)?.payloadDownloadedBytes)
+        assertArrayEquals("First source bytes must survive Stop all unchanged",
+            firstBytes, File(work, "Batch one/payload.bin").readBytes())
+        assertArrayEquals("Second source bytes must survive Stop all unchanged",
+            secondBytes, File(work, "Batch two/payload.bin").readBytes())
     }
 
     @Test fun serviceStopsItselfOnceNothingIsRunning() {
