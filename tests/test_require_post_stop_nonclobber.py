@@ -101,5 +101,43 @@ class PostStopReceiptSafetyTest(unittest.TestCase):
         self.blocked(ET.Element("testsuites"), "no test suite")
 
 
+    def test_counterfeit_prefixed_classname_cannot_qualify(self):
+        root = sample()
+        root.find("testcase").set("classname", "engine.Counterfeit" + validator.TEST_CLASS)
+        self.blocked(root, "Expected exactly one executed")
+
+    def test_unrelated_suite_cannot_supply_native_post_stop_timeline(self):
+        native = sample()
+        stdout = native.find("system-out")
+        native.remove(stdout)
+        unrelated = ET.Element("testsuite", {
+            "name": "UnrelatedFixture", "tests": "1", "failures": "0",
+            "errors": "0", "skipped": "0"
+        })
+        ET.SubElement(unrelated, "testcase", {
+            "classname": "other.UnrelatedFixture", "name": "unrelated"
+        })
+        ET.SubElement(unrelated, "system-out").text = stdout.text
+        root = ET.Element("testsuites")
+        root.extend((native, unrelated))
+        self.blocked(root, "different JUnit test suite")
+
+    def test_unrelated_suite_native_witness_contamination_refuses_acceptance(self):
+        native = sample()
+        unrelated = ET.Element("testsuite", {
+            "name": "UnrelatedFixture", "tests": "1", "failures": "0",
+            "errors": "0", "skipped": "0"
+        })
+        ET.SubElement(unrelated, "testcase", {
+            "classname": "other.UnrelatedFixture", "name": "unrelated"
+        })
+        ET.SubElement(unrelated, "system-out").text = (
+            f"{FAMILY} foreign_file_replaced=false")
+        root = ET.Element("testsuites")
+        root.extend((native, unrelated))
+        self.blocked(root, "different JUnit test suite")
+
+
+
 if __name__ == "__main__":
     unittest.main()
