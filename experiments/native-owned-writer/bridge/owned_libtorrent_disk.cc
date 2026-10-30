@@ -196,23 +196,43 @@ class NativeDisk final : public lt::disk_interface, public lt::buffer_allocator_
     }, failure)) failure();
   }
 
-  bool async_write(lt::storage_index_t index, lt::peer_request const& req,
+  bool async_write(lt::storage_index_t index, lt::peer_request const& request,
       char const* buffer, std::shared_ptr<lt::disk_observer>,
       std::function<void(lt::storage_error const&)> callback,
       lt::disk_job_flags_t) override {
-    auto& state = *torrents_[index];
-    lt::storage_error problem;
+    auto state = torrents_[index];
+    auto failure = [this, callback] {
+      auto denied = Denied(lt::operation_t::file_write);
+      boost::asio::post(io_, [callback, denied] { callback(denied); });
+    };
     CheckedPieceRange bounds{};
     std::string reason;
-    if (buffer == nullptr || !state.checked || !state.refusal.empty() ||
-        !DecodePieceRange(static_cast<std::uint64_t>(state.files.total_size()),
-                          static_cast<std::uint32_t>(state.files.piece_length()),
-                          static_cast<int>(req.piece), req.start, req.length, true, &bounds, &reason) ||
-        !state.storage->WriteRange(bounds.absolute_offset, buffer, bounds.length, &reason)) {
-      problem = Denied(lt::operation_t::file_write);
+    // A peer's raw buffer is not valid once this method returns. Validate
+    // the entire geometry before allocating/copying any network-owned bytes.
+    if (!state || !buffer ||
+        !DecodePieceRange(static_cast<std::uint64_t>(state->files.total_size()),
+                          static_cast<std::uint32_t>(state->files.piece_length()),
+                          static_cast<int>(request.piece), request.start, request.length,
+                          true, &bounds, &reason)) {
+      failure();
+      return false;
     }
-    boost::asio::post(io_, [callback, problem] { callback(problem); });
-    return false; // no deferred write queue in this synchronous experiment
+    try {
+      std::vector<char> owned(buffer, buffer + bounds.length);
+      if (!queue_.Submit([this, state, bounds, owned=std::move(owned), callback] {
+        std::string error;
+        lt::storage_error result;
+        if (!state->checked || !state->refusal.empty() ||
+            !state->storage->WriteRange(bounds.absolute_offset, owned.data(),
+                                         owned.size(), &error)) {
+          result = Denied(lt::operation_t::file_write);
+        }
+        boost::asio::post(io_, [callback, result] { callback(result); });
+      }, failure)) failure();
+    } catch (...) {
+      failure();
+    }
+    return false; // successful enqueue is bounded; overflow receives an error
   }
 
   void async_hash(lt::storage_index_t index, lt::piece_index_t piece,
