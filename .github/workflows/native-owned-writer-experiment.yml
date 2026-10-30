@@ -36,7 +36,7 @@ jobs:
 
   pinned-libtorrent-disk-abi:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - name: Fetch exact libtorrent commit embedded by libtorrent4j 2.1.0-39
@@ -119,3 +119,21 @@ jobs:
             -DTORRENT_ABI_VERSION=4 -DTORRENT_USE_OPENSSL=1 \
             -I "$RUNNER_TEMP/chunks-libtorrent/include" \
             experiments/native-owned-writer/bridge/owned_libtorrent_disk.cc
+
+      - name: Build forked host JNI shared library with owned disk backend
+        run: |
+          set -euo pipefail
+          sudo apt-get install -y -qq ninja-build libboost-system-dev zlib1g-dev
+          upstream="$RUNNER_TEMP/chunks-libtorrent4j"
+          build="$RUNNER_TEMP/chunks-owned-jni-host-build"
+          cmake -S "$upstream/swig" -B "$build" -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=OFF -Dwebtorrent=OFF -DUSE_JUICE=OFF \
+            -DUSE_NETTLE=OFF -DBoost_USE_STATIC_LIBS=ON \
+            -DOPENSSL_USE_STATIC_LIBS=ON
+          cmake --build "$build" --target torrent4j --parallel 2
+          library="$(find "$build" -type f -name 'libtorrent4j.so' -print -quit)"
+          test -n "$library" && test -s "$library"
+          nm -C "$library" | grep -F 'chunks::MakeOwnedDiskConstructor'
+          nm -D "$library" | grep -F 'Java_org_libtorrent4j_swig_libtorrent_1jni_'
+          echo "CHUNKS_OWNED_HOST_JNI_LINK=PASS"
