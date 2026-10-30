@@ -94,6 +94,45 @@ class CreateSeedCopyOwnershipTest {
         assertFalse(absent.exists())
     }
 
+    @Test fun swappedDestinationDirectoryCannotRedirectCopyOrCleanupToForeignFiles() {
+        val root = temp.newFolder("reparent-during-copy")
+        val external = temp.newFolder("reparent-unrelated")
+        val foreign = File(external, "one.bin")
+        val unrelated = byteArrayOf(9, 9, 1, 1, 9)
+        foreign.writeBytes(unrelated)
+        val first = ByteArray(80_000) { 7 }
+        val second = ByteArray(4_096) { 8 }
+        val req = TorrentMetainfoBuilder.Request("Shared set", listOf(
+            TorrentMetainfoBuilder.Entry(listOf("one.bin"), first.size.toLong()) {
+                ByteArrayInputStream(first)
+            },
+            TorrentMetainfoBuilder.Entry(listOf("two.bin"), second.size.toLong()) {
+                ByteArrayInputStream(second)
+            }
+        ))
+        val expected = TorrentMetainfoBuilder.build(req)
+        val target = File(root, "Shared set")
+        val ownMoved = File(root, "held-owned-folder")
+        var swapped = false
+        val result = CreateSeedCopy.copyVerifyAndSeed(
+            req, expected, root, engine(),
+            onProgress = {
+                if (!swapped) {
+                    Files.move(target.toPath(), ownMoved.toPath())
+                    Files.createSymbolicLink(target.toPath(), external.toPath())
+                    swapped = true
+                }
+            }
+        )
+        assertTrue(swapped)
+        assertTrue(result is CreateSeedCopy.Outcome.Refused)
+        assertTrue("A replaced parent must not be deleted", Files.isSymbolicLink(target.toPath()))
+        assertArrayEquals("The original unrelated bytes must remain unchanged",
+            unrelated, foreign.readBytes())
+        assertFalse(File(external, "two.bin").exists())
+        assertTrue(ownMoved.isDirectory)
+    }
+
     @Test fun sourceGrowthAfterCreationNeverWritesBeyondReviewedLength() {
         val root = temp.newFolder("source-grown-after-hashing")
         val keep = File(root, "keep.txt")
