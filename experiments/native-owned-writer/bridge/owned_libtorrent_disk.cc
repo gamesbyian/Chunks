@@ -344,10 +344,21 @@ class NativeDisk final : public lt::disk_interface, public lt::buffer_allocator_
   }
 
   void async_release_files(lt::storage_index_t index, std::function<void()> cb) override {
-    std::string error;
-    if (torrents_[index]->storage && !torrents_[index]->storage->Flush(&error))
-      torrents_[index]->refusal = error;
-    if (cb) boost::asio::post(io_, cb);
+    auto state = torrents_[index];
+    auto flush = [this, state, cb] {
+      std::string reason;
+      if (state && state->storage && !state->storage->Flush(&reason))
+        state->refusal = reason;
+      if (cb) boost::asio::post(io_, cb);
+    };
+    // Flush must follow queued writes, not race on libtorrent's network
+    // thread. On queue exhaustion, synchronously drain and fail closed.
+    if (!queue_.Submit(flush, [this, cb] {
+      if (cb) boost::asio::post(io_, cb);
+    })) {
+      queue_.DrainAndStop();
+      flush();
+    }
   }
 
   void async_stop_torrent(lt::storage_index_t index, std::function<void()> cb) override {
@@ -379,12 +390,22 @@ class NativeDisk final : public lt::disk_interface, public lt::buffer_allocator_
 
   void async_clear_piece(lt::storage_index_t, lt::piece_index_t piece,
       std::function<void(lt::piece_index_t)> cb) override {
-    boost::asio::post(io_, [cb, piece] { cb(piece); });
+    auto complete = [this, cb, piece] {
+      boost::asio::post(io_, [cb, piece] { cb(piece); });
+    };
+    if (!queue_.Submit(complete, complete)) {
+      // Complete only after all in-flight writes have drained.
+      queue_.DrainAndStop();
+      complete();
+    }
   }
 
   void update_stats_counters(lt::counters&) const override {}
   std::vector<lt::open_file_state> get_status(lt::storage_index_t) const override { return {}; }
   void abort(bool) override {
+    // No read/write/hash can run concurrently with this final flush.
+    // The destructor also drains if libtorrent omits abort().
+    queue_.DrainAndStop();
     for (auto const& state : torrents_) {
       if (!state || !state->storage) continue;
       std::string error;
