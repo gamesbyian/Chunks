@@ -37,6 +37,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.key
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -97,6 +98,18 @@ import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withContext
 
 /** The connected server's latest accepted list, as the server screen holds it. */
+/** Ephemeral selection owner. Never save credentials, sessions or selections to instance state. */
+private data class CombinedBatchViewIdentity(
+    val signedInServer: EnvironmentId?,
+    val authenticatedScope: String?,
+    val authenticatedSession: Any?,
+    val savedScopes: List<Pair<String, String?>>,
+    val privacyEpoch: String,
+    val phoneVisible: Boolean,
+    val serverVisible: Boolean?,
+    val savedVisibility: List<Pair<String, Boolean>>
+)
+
 internal data class CombinedServerSource(
     val aliasScope: String,
     val transfers: List<RemoteTransfer>,
@@ -231,14 +244,9 @@ internal fun CombinedTransfersScreen(
     var phoneConfirmed by remember { mutableStateOf(false) }
     var phoneRunning by remember { mutableStateOf(LocalEngineHolder.current() != null) }
     var phoneObservedAt by remember { mutableStateOf<Long?>(null) }
-    // Explicit cross-environment selection; never derived from the view scope.
-    var selecting by remember { mutableStateOf(false) }
     // Restores only a read-only detail target, never an in-flight command or batch selection.
     var savedDetailTarget by rememberSaveable { mutableStateOf<ArrayList<String>?>(null) }
     val detailKey = restoreCombinedDetailTarget(savedDetailTarget)
-    var selected by remember { mutableStateOf<Set<UnifiedTransferKey>>(emptySet()) }
-    var batchRunning by remember { mutableStateOf(false) }
-    var batchResult by remember { mutableStateOf<List<String>>(emptyList()) }
     val batchScope = rememberCoroutineScope()
     var listings by remember { mutableStateOf<Map<EnvironmentId, SavedServerListing>>(emptyMap()) }
     var now by remember { mutableStateOf(System.currentTimeMillis()) }
@@ -316,6 +324,27 @@ internal fun CombinedTransfersScreen(
                 activeSavedScopes[id] == listing.sourceAliasScope
         }
     }
+    // A selection and its confirmation belong to an exact authenticated UI
+    // session, saved-profile roster and privacy state, not merely to a hash.
+    // Preserve independent browse/sort state when a session changes, but never
+    // carry an armed cross-environment Start/Stop confirmation into the next.
+    val batchIdentity = CombinedBatchViewIdentity(
+        signedInServer = serverId,
+        authenticatedScope = server?.aliasScope,
+        authenticatedSession = server?.authenticatedSession,
+        savedScopes = savedProfiles.map { it.id to it.aliasScope }.sortedBy { it.first },
+        privacyEpoch = privacyRevision.toString(),
+        phoneVisible = phonePrivacy.mayShow,
+        serverVisible = serverPrivacy?.mayShow,
+        savedVisibility = savedPrivacy.map { (id, decision) -> id.value to decision.mayShow }
+            .sortedBy { it.first }
+    )
+    val latestBatchIdentity = rememberUpdatedState(batchIdentity)
+    // All four state fields must share exactly the same identity boundary.
+    var selecting by remember(batchIdentity) { mutableStateOf(false) }
+    var selected by remember(batchIdentity) { mutableStateOf<Set<UnifiedTransferKey>>(emptySet()) }
+    var batchRunning by remember(batchIdentity) { mutableStateOf(false) }
+    var batchResult by remember(batchIdentity) { mutableStateOf<List<String>>(emptyList()) }
     val labels = LinkedHashMap<EnvironmentId, String>().apply {
         put(EnvironmentSnapshots.PHONE, PHONE_ENVIRONMENT_LABEL)
         if (server != null && serverId != null) put(serverId, serverEnvironmentLabel(server.aliasScope))
@@ -501,6 +530,7 @@ internal fun CombinedTransfersScreen(
                 style = MaterialTheme.typography.bodySmall)
         }
         item {
+            key(batchIdentity) {
             CombinedBatchSection(
                 selecting = selecting,
                 onSelecting = { selecting = it; if (!it) selected = emptySet(); batchResult = emptyList() },
@@ -515,18 +545,28 @@ internal fun CombinedTransfersScreen(
                     batchResult = emptyList()
                     val chosen = selected
                     val snapshot = sources
+                    val owner = batchIdentity
+                    val lifecycle = server?.lifecycle
+                    val targetServer = serverId
                     batchScope.launch {
+                        // Dispatch may be queued behind a server/account switch.
+                        if (latestBatchIdentity.value != owner) return@launch
                         try {
-                            batchResult = describeCombinedBatchSafely({ labels[it] ?: it.value }) {
-                                runCombinedLifecycle(chosen, start, snapshot, server?.lifecycle, serverId)
+                            val report = describeCombinedBatchSafely({ labels[it] ?: it.value }) {
+                                runCombinedLifecycle(chosen, start, snapshot, lifecycle, targetServer)
                             }
+                            // A late completion is evidence about the OLD owner only.
+                            if (latestBatchIdentity.value == owner) batchResult = report
                         } finally {
-                            selected = emptySet()
-                            batchRunning = false
+                            if (latestBatchIdentity.value == owner) {
+                                selected = emptySet()
+                                batchRunning = false
+                            }
                         }
                     }
                 }
             )
+            }
         }
         item {
             Text("Show", style = MaterialTheme.typography.labelLarge)
