@@ -1,5 +1,11 @@
 # Lean CI and evidence economy
 
+## Post-Stop native restart proof must explicitly refuse occupied foreign bytes
+
+The strict post-Stop [native receipt gate](../tools/require_post_stop_nonclobber.py) requires a *real executed* JUnit native collision witness with unchanged foreign SHA-256 bytes across priority change and restart, truthful negative replacement flags, and an explicitly **REFUSED** restart. An accepted `VERIFIED` restart against the unowned planted file is **not** safe merely because its bytes happen to remain unchanged at the final sample; delayed writes could still overwrite it after observation. An `UNCERTAIN` restart is likewise insufficient. The independent negative controls in [tests/test_require_post_stop_nonclobber.py](../tests/test_require_post_stop_nonclobber.py) refuse both. A valid positive transfer to a genuinely owned fresh path is tested separately, never by reclassifying a foreign-file collision as permitted adoption.
+
+This is an *offline validator correctness rule*, not evidence that Chunks production native libtorrent has started refusing collisions. In particular actual [native witness run 41130188712](https://github.com/gamesbyian/Chunks/actions/runs/41130188712) still shows `restart_outcome=VERIFIED` and `foreign_file_replaced=true`; [#568](https://github.com/gamesbyian/Chunks/issues/568) remains G0 RED.
+
 ## Strict raw Add and magnet collision evidence (offline controls, not native acceptance)
 
 `tools/require_add_magnet_nonclobber.py` consumes a **real executed** `LocalNativePostAddCollisionProbeTest` JUnit XML, independently of the native characterization workflow's green/red-neutral job result. Both raw Add-after-foreign-path creation and magnet-metadata-arrival witnesses must come from that exact test class and suite, with complete distinct SHA-256 before/expected/after values, unchanged foreign bytes, and truthful negative replacement flags. Raw collision must return an explicit `REFUSED` Start; deferred magnet must remain stopped in upload-only mode after metadata. `VERIFIED`, `UNCERTAIN`, auto-start or overwritten bytes are **not release-safety receipts** even when the underlying diagnostic is green. Counterfeit classname, borrowed unrelated-suite lines, missing/duplicate witnesses, failed/skipped tests and contradictory byte flags refuse acceptance.
