@@ -16,6 +16,12 @@ on:
 permissions:
   contents: read
 
+# Iterating a two-ABI OpenSSL + Android emulator experiment is expensive.
+# Only the latest commit on each PR/ref can supply exact-head evidence.
+concurrency:
+  group: chunks-owned-tls-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   tls-android-jni:
     name: "TLS-enabled owned JNI / ${{ matrix.abi }}"
