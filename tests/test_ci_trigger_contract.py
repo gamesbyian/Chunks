@@ -67,7 +67,7 @@ class AndroidCiTriggerContract(unittest.TestCase):
                 self.assertIn("!experiments/native-owned-writer/*.md", allowed)
                 self.assertIn(f".github/workflows/{name}", allowed)
                 paths = [
-                    line.split("-", 1)[1].strip().strip("'\\\"")
+                    line.split("-", 1)[1].strip().strip(chr(34) + chr(39))
                     for line in source.splitlines()
                     if line.startswith("      - ")
                 ]
