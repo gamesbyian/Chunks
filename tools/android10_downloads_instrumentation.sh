@@ -83,4 +83,14 @@ status=$?
 set -e
 grep -E '^INSTRUMENTATION_STATUS: test=|^INSTRUMENTATION_STATUS_CODE:|^OK |^FAILURES' "$log" || true
 fail_if_skipped_or_failed "$status" 'OK (3 tests)' "Android 10 foreground download service"
+# 4. Native resume reader must refuse FIFO/symlink/hardlink substitution on
+#    actual Android 10, not only API35 or synthetic desktop test fixtures.
+set +e
+adb shell am instrument -w -r \
+ -e class io.github.gamesbyian.chunks.engine.LocalResumeFileReaderInstrumentedTest \
+ io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner >"$log" 2>&1
+status=$?
+set -e
+grep -E '^INSTRUMENTATION_STATUS: test=|^INSTRUMENTATION_STATUS_CODE:|^OK |^FAILURES' "$log" || true
+fail_if_skipped_or_failed "$status" 'OK (2 tests)' "Android 10 pinned native resume recovery"
 echo "CHUNKS_ANDROID10_DOWNLOADS: API 29 user tapped Allow storage access then Android's own Allow, and new Adds switched to Downloads/Chunks Downloads; legacy storage + grant let the native engine write, resume and seed there; the foreground service ran, showed its notification and Stop all paused transfers"
