@@ -188,6 +188,9 @@ internal class LocalResumeEventStore private constructor(
 
     @Synchronized fun problems(): List<String> = failures.toList()
 
+    @Synchronized fun current(key: String): ByteArray? =
+        states[key]?.takeIf { it.phase == Phase.SAVED }?.payload?.copyOf()
+
     @Synchronized private fun append(key: String, kind: String, payload: ByteArray) {
         require(HASH.matches(key))
         if (payload.size > MAX_PAYLOAD_BYTES) throw IOException("Resume record exceeds safety limit")
@@ -195,7 +198,7 @@ internal class LocalResumeEventStore private constructor(
         val nextPhase = when (kind) {
             "SAVE" -> if (previous.phase in setOf(Phase.EMPTY, Phase.SAVED, Phase.REMOVED) && payload.isNotEmpty())
                 Phase.SAVED else null
-            "REMOVE_INTENT" -> if (previous.phase == Phase.SAVED && payload.isEmpty())
+            "REMOVE_INTENT" -> if (previous.phase in setOf(Phase.EMPTY, Phase.SAVED) && payload.isEmpty())
                 Phase.REMOVE_INTENT else null
             "REMOVED" -> if (previous.phase == Phase.REMOVE_INTENT && payload.isEmpty())
                 Phase.REMOVED else null
