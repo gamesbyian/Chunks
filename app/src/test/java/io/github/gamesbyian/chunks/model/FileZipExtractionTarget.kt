@@ -6,6 +6,8 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
+import java.net.URLDecoder
+import java.net.URLEncoder
 import java.nio.file.FileAlreadyExistsException
 import java.nio.file.Files
 import java.nio.file.LinkOption
@@ -46,4 +48,27 @@ class FileZipExtractionTarget(override val root: File) : ZipExtractionTarget<Fil
     } catch (_: FileAlreadyExistsException) { null }
     override fun delete(node: File): Boolean = try { Files.deleteIfExists(node.toPath()) } catch (_: IOException) { false }
     override fun availableBytes(): Long? = root.usableSpace.takeIf { it > 0 }
+}
+
+
+/** Test-only legacy named journal. It MUST NOT be used by production filesystem code. */
+/** Append-only, fsynced, percent-encoded journal file for one operation. */
+class FileZipExtractionJournal(private val file: File) : ZipExtractionJournal {
+    override fun append(fields: List<String>) {
+        val line = fields.joinToString("\t") { URLEncoder.encode(it, "UTF-8") } + "\n"
+        FileOutputStream(file, true).use { output ->
+            output.write(line.toByteArray(Charsets.UTF_8))
+            output.fd.sync()
+        }
+    }
+
+    override fun read(): List<List<String>> {
+        if (!file.isFile) return emptyList()
+        // A torn final line from a crash is ignored rather than misparsed.
+        val text = file.readText(Charsets.UTF_8)
+        val complete = if (text.endsWith("\n")) text else text.substringBeforeLast("\n", "")
+        return complete.lineSequence().filter { it.isNotEmpty() }.map { line ->
+            line.split("\t").map { URLDecoder.decode(it, "UTF-8") }
+        }.toList()
+    }
 }
