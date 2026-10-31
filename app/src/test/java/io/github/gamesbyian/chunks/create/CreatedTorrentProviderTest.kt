@@ -5,6 +5,8 @@ import android.provider.OpenableColumns
 import androidx.test.core.app.ApplicationProvider
 import java.io.File
 import java.io.FileNotFoundException
+import java.nio.file.Files
+import java.util.UUID
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
@@ -26,9 +28,11 @@ class CreatedTorrentProviderTest {
     @Test fun servesOnlyTheCreatedTorrentReadOnly() {
         val bytes = byteArrayOf(1, 2, 3)
         val uri = CreatedTorrentProvider.publish(context, "Season.torrent", bytes)
-        provider.openFile(uri, "r").use { pfd ->
-            assertArrayEquals(bytes, android.os.ParcelFileDescriptor.AutoCloseInputStream(pfd).readBytes())
-        }
+        // Robolectric does not reproduce the Android Os.open(O_NOFOLLOW)
+        // descriptor path. Assert the exclusive cache bytes here, and use
+        // CreatedTorrentProviderInstrumentedTest for real ContentResolver FD read.
+        assertArrayEquals(bytes, File(CreatedTorrentProvider.folder(context),
+            requireNotNull(uri.lastPathSegment)).readBytes())
         provider.query(uri, null, null, null, null).use { c ->
             assertTrue(c.moveToFirst())
             assertEquals("Season.torrent", c.getString(c.getColumnIndexOrThrow(OpenableColumns.DISPLAY_NAME)))
@@ -36,6 +40,53 @@ class CreatedTorrentProviderTest {
         }
         assertEquals("application/x-bittorrent", provider.getType(uri))
         try { provider.openFile(uri, "w"); fail("must be read-only") } catch (_: SecurityException) { }
+    }
+
+    @Test fun repeatedNameNeverTruncatesEarlierShare() {
+        val name = "Collision-" + UUID.randomUUID() + ".torrent"
+        val first = CreatedTorrentProvider.publish(context, name, byteArrayOf(11, 12, 13))
+        val second = CreatedTorrentProvider.publish(context, name, byteArrayOf(21, 22))
+        assertNotEquals(first, second)
+        val folder = CreatedTorrentProvider.folder(context)
+        assertArrayEquals(byteArrayOf(11, 12, 13), File(folder, first.lastPathSegment!!).readBytes())
+        assertArrayEquals(byteArrayOf(21, 22), File(folder, second.lastPathSegment!!).readBytes())
+        assertEquals(name, first.lastPathSegment)
+        assertTrue(second.lastPathSegment!!.contains(" (2).torrent"))
+    }
+
+    @Test fun foreignSymlinkAndHardlinkCollisionsRemainByteExact() {
+        val folder = CreatedTorrentProvider.folder(context).apply { mkdirs() }
+        val foreign = File(context.cacheDir, "foreign-" + UUID.randomUUID()).apply {
+            writeBytes("foreign bytes".toByteArray())
+        }
+        val before = foreign.readBytes()
+        val linkName = "Link-" + UUID.randomUUID() + ".torrent"
+        val link = File(folder, linkName)
+        try {
+            Files.createSymbolicLink(link.toPath(), foreign.toPath())
+            val result = CreatedTorrentProvider.publish(context, linkName, byteArrayOf(1))
+            assertNotEquals(linkName, result.lastPathSegment)
+            assertArrayEquals(before, foreign.readBytes())
+            try {
+                provider.openFile(Uri.parse("content://" + CreatedTorrentProvider.authority(context) +
+                    "/" + Uri.encode(linkName)), "r")
+                fail("Symlinked share must be rejected")
+            } catch (_: FileNotFoundException) { }
+        } finally {
+            Files.deleteIfExists(link.toPath())
+        }
+
+        val hardlinkName = "Hardlink-" + UUID.randomUUID() + ".torrent"
+        val hardlink = File(folder, hardlinkName)
+        try {
+            Files.createLink(hardlink.toPath(), foreign.toPath())
+            val result = CreatedTorrentProvider.publish(context, hardlinkName, byteArrayOf(2))
+            assertNotEquals(hardlinkName, result.lastPathSegment)
+            assertArrayEquals(before, foreign.readBytes())
+        } finally {
+            Files.deleteIfExists(hardlink.toPath())
+            Files.deleteIfExists(foreign.toPath())
+        }
     }
 
     @Test fun refusesEverythingOutsideItsFolderOrNotATorrent() {

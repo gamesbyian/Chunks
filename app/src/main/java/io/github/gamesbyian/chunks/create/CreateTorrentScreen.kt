@@ -49,6 +49,8 @@ import io.github.gamesbyian.chunks.ChunksColors
 import io.github.gamesbyian.chunks.ChunksTone
 import io.github.gamesbyian.chunks.R
 import io.github.gamesbyian.chunks.model.Units
+import io.github.gamesbyian.chunks.exports.OwnedDiagnosticExportProvider
+import io.github.gamesbyian.chunks.exports.OwnedDiagnosticShare
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -101,12 +103,6 @@ internal fun CreateTorrentScreen(
     }
     val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         if (uri != null) scan { CreateTorrentSource.fromTree(context, uri) { cancel.get() } }
-    }
-    val saver = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/x-bittorrent")) { uri ->
-        val bytes = result?.torrent ?: return@rememberLauncherForActivityResult
-        if (uri != null) scope.launch {
-            message = withContext(Dispatchers.IO) { save(context, uri, bytes) }
-        }
     }
     LaunchedEffect(shared) {
         when (shared) {
@@ -232,19 +228,23 @@ internal fun CreateTorrentScreen(
                     }, Modifier.fillMaxWidth(), icon = R.drawable.chunks_ic_phone, stacked = false)
                 }
             }
-            ActionTile("Save .torrent file", ChunksColors.Blue, { saver.launch(fileName(source?.name)) },
-                Modifier.fillMaxWidth(), icon = R.drawable.chunks_ic_document, stacked = false)
-            ActionTile("Share .torrent file", ChunksColors.Cyan, {
-                val uri = try { CreatedTorrentProvider.publish(context, fileName(source?.name), done.torrent) }
-                    catch (_: Exception) { null }
-                if (uri == null) message = "The .torrent could not be prepared for sharing."
-                else context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
-                    type = "application/x-bittorrent"
-                    putExtra(Intent.EXTRA_STREAM, uri)
-                    // ClipData carries the read grant through the chooser.
-                    clipData = ClipData.newRawUri(fileName(source?.name), uri)
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                }, "Share .torrent file"))
+            ActionTile("Share or save .torrent file", ChunksColors.Blue, {
+                scope.launch {
+                    try {
+                        val uri = withContext(Dispatchers.IO) {
+                            OwnedDiagnosticExportProvider.publish(context,
+                                "chunks-created-${done.infoHashV1}.torrent", done.torrent)
+                        }
+                        OwnedDiagnosticShare.openChooser(context, uri,
+                            "application/x-bittorrent", ".torrent file")
+                        message = "A new read-only .torrent is ready to share or save. " +
+                            "The receiving app controls where it goes. No torrent was added or started."
+                    } catch (failure: Exception) {
+                        message = "Could not prepare .torrent sharing: " +
+                            (failure.message ?: "Private export unavailable") +
+                            ". Existing documents were left unchanged."
+                    }
+                }
             }, Modifier.fillMaxWidth(), icon = R.drawable.chunks_ic_document, stacked = false)
             done.magnet?.let { magnet ->
                 ActionTile("Share magnet link", ChunksColors.Purple, {
@@ -331,8 +331,3 @@ internal fun seedCopyOnPhone(
 internal fun fileName(name: String?): String =
     (name ?: "shared").replace(Regex("[\\\\/:*?\"<>|\\p{Cntrl}]"), "_").take(120) + ".torrent"
 
-private fun save(context: Context, uri: Uri, bytes: ByteArray): String = try {
-    val stream = context.contentResolver.openOutputStream(uri, "wt")
-    if (stream == null) "The .torrent could not be saved there."
-    else { stream.use { it.write(bytes) }; "Saved." }
-} catch (_: Exception) { "The .torrent could not be saved there." }

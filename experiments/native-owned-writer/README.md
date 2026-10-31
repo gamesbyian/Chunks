@@ -6,6 +6,38 @@ Run: bash experiments/native-owned-writer/test.sh --sanitizers
 
 The earlier 22-case prototype passed a local C++17 and ASan/UBSan run on October 30. The current tree defines **27 regression scenarios** across two native suites, including subsequent ownership-token and non-mutating read protections. **The 26-case exact-head result is not yet confirmed; its GitHub CI is pending.** Cases include an already-existing foreign file, symlink parents, live file/root/ancestor replacement, hardlink alias, corrupt receipt, invalid path, overflowing offset, receipt collision, concurrent same-path Create (exactly one winner), and durable reopen. The multi-file suite exercises multi-file piece offsets, cross-file preflight, padding that never creates a file, preserved foreign contents, resumable absent-file reservations, file-as-parent alias refusal and readback from durable receipts. This is not BitTorrent traffic, Android FUSE, API29/API35, or physical-device evidence.
 
+## Android private-receipt publication without mutable temporary pathnames
+
+Production Kotlin diagnostic tests saw `Files.createLink` denied with
+`AccessDeniedException` on both API29 and API35. The first candidate in
+#816 retained a named `.tmp-*` pathname, making `linkat` source resolution
+and `unlinkat` cleanup vulnerable to same-UID post-create substitution.
+Independent review caught both gaps; this revision **eliminates named
+staging and pathname cleanup entirely**.
+
+Where supported, `openat(O_TMPFILE)` creates an **unnamed descriptor-held**
+private receipt stage. After `fsync` of its data, `linkat(stage_fd, "",
+dir_fd, id, AT_EMPTY_PATH)` publishes exactly the pinned inode without
+replacing an existing claim. The code verifies both descriptor and final
+inode identities and forces the parent directory. Closing a failed anonymous
+stage implicitly drops that inode without resolving a mutable pathname.
+If anonymous staging or descriptor publication is unsupported/denied for
+a recognized capability reason, exclusive
+`openat(O_CREAT|O_EXCL|O_NOFOLLOW)` creates the **final** name directly,
+and a checked file+directory fsync and exact inode comparison are required.
+Unexpected errors and an existing final name always refuse. If a crash
+interrupts direct publication, the partial finalized receipt stays corrupt
+and UNKNOWN until explicit recovery; no cleanup guesses file ownership.
+
+Native host regression now injects a foreign hardlink at the attempted
+descriptor publication boundary and rejects *any* named-temp `unlinkat`
+during receipt creation. Separate negative tests retain foreign payload and
+final-receipt contents, plus verified positive owned readback. An
+`LD_PRELOAD` fixture denies anonymous descriptor publication in the real
+libtorrent peer session; it must still complete genuine positive traffic
+and reject planted foreign paths. These are host experiments, never Android
+FUSE/SD/SAF acceptance. No production JNI replacement is included.
+
 ## Reason for the native seam
 
 The current checked Start and Java path guards are time-of-check observers. Native libtorrent can still open and overwrite names after the checks. P0 #715 and #733 reproduce these failure modes. libtorrent 2.1's actual extensibility point is the session-level disk_interface configured via session_params.disk_io_constructor, not a Java wrapper around default mmap/POSIX async_write.

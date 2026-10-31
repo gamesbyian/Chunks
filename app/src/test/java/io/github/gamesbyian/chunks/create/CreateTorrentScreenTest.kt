@@ -61,7 +61,7 @@ class CreateTorrentScreenTest {
             .performTextInput("udp://tracker.example:6969/announce")
         createAndWait()
         rule.onNodeWithText("Not seeding yet").performScrollTo().assertIsDisplayed()
-        rule.onNodeWithText("Save .torrent file").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("Share or save .torrent file").performScrollTo().assertIsDisplayed()
         rule.onNodeWithText("Share magnet link").performScrollTo().assertIsDisplayed()
         rule.onNodeWithText("Copy magnet link").performScrollTo().performClick()
         rule.onNodeWithText("Magnet link copied.").assertExists()
@@ -72,7 +72,7 @@ class CreateTorrentScreenTest {
         screen(source("Private"))
         rule.onNodeWithText("Private torrent", substring = true).performScrollTo().performClick()
         createAndWait()
-        rule.onNodeWithText("Save .torrent file").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("Share or save .torrent file").performScrollTo().assertIsDisplayed()
         rule.onNodeWithText("Share magnet link").assertDoesNotExist()
         rule.onNodeWithText("Copy magnet link").assertDoesNotExist()
     }
