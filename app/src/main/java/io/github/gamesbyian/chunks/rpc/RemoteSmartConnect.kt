@@ -197,8 +197,13 @@ object RemoteSmartConnect {
             return entries.values.toList()
         }
 
-        val safeUser = username.trim().takeIf {
-            it.length in 1..64 && Regex("[A-Za-z0-9_.-]+").matches(it) &&
+        // HTTP principals are opaque. Do not turn " alice " into the tenant
+        // mount /alice/ during hostname-only discovery. Such accounts must
+        // paste their exact RPC/ruTorrent path; authentication itself still
+        // sends the supplied username verbatim.
+        val safeUser = username.takeIf {
+            it == it.trim() && it.length in 1..64 &&
+                Regex("[A-Za-z0-9_.-]+").matches(it) &&
                 it != "." && it != ".."
         }
         // Reviewed provider templates (source URL + date in the catalog), or
