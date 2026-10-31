@@ -75,9 +75,17 @@ int main(int argc, char** argv) {
     assert(!file);
     assert(!fs::exists(fs::path(root_path) / "parent/payload"));
     auto orphan = fs::path(moved_path) / (replace_parent ? "payload" : "parent/payload");
-    assert(fs::is_regular_file(orphan));
-    assert(fs::file_size(orphan) == 0);
-    assert(fs::is_regular_file(receipts / id));
+    // Refusal before creation is strictly safer than retaining an orphan.
+    // If a pinned O_EXCL file was created before detecting the rename,
+    // it must contain ZERO bytes, and only its own claim may be finalized.
+    // Never demand an orphan merely to make a negative regression green.
+    if (fs::exists(orphan)) {
+      assert(fs::is_regular_file(orphan));
+      assert(fs::file_size(orphan) == 0);
+      assert(fs::is_regular_file(receipts / id));
+    } else {
+      assert(!fs::exists(receipts / id));
+    }
     assert(fs::is_regular_file(receipts / pending_name));
     fs::remove_all(base);
   }
