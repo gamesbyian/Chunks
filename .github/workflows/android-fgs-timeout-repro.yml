@@ -10,6 +10,13 @@ on:
       - "app/src/main/java/io/github/gamesbyian/chunks/LocalServiceTimeoutNotice.kt"
       # Restore after process death lives in the engine.
       - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalTorrentEngine.kt"
+      # Private admission receipts, checked path claims and restart surveys
+      # determine whether a restored job can be safely resumed after SIGKILL.
+      - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalAdmissionProvenance.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalCheckedRestartGuard.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalCheckedPayloadReservations.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalPayloadCollisionSurvey.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalResumeFileReader.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalEngineServiceTimeoutInstrumentedTest.kt"
       - "tools/fgs_timeout_repro.sh"
       - "tools/test_fgs_timeout_repro.sh"

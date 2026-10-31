@@ -235,6 +235,283 @@ class LocalTorrentEngineTest {
         assertFalse(File(dest, "Chunks public fixture/episode.bin").exists())
     }
 
+    @Test fun nativeRemoveTombstoneCannotBeEvadedThroughRawAdd() {
+        val fixture = fixture()
+        val root = temp.newFolder("removed-tombstone-raw-destination")
+        val native = engine()
+        val checked = added(native.addStoppedChecked(fixture.torrent, root))
+        assertTrue(checked.stopped)
+        assertTrue(native.removeKeepingData(checked.infoHash))
+        assertNull(native.status(checked.infoHash))
+        val bypass = native.addStopped(fixture.torrent, root)
+        assertTrue("A raw Add must not resurrect an asynchronously removed native writer: $bypass",
+            bypass is LocalAddResult.Refused)
+        assertTrue((bypass as LocalAddResult.Refused).reason.contains("reserves"))
+        assertTrue(native.list().isEmpty())
+        assertFalse(File(root, "Chunks public fixture/episode.bin").exists())
+    }
+
+    @Test fun missingAdmissionReceiptNeverSilentlyUpgradesRestoredJobToReviewedSeed() {
+        val fixture = fixture()
+        val state = temp.newFolder("unknown-admission-state")
+        val destination = temp.newFolder("unknown-admission-destination")
+        val first = persistentEngine(state)
+        val stopped = added(first.addStopped(fixture.torrent, destination))
+        assertTrue(stopped.stopped)
+        val receipt = File(state, "${stopped.infoHash}.admission")
+        assertTrue("All restorable Adds must persist an admission type", receipt.isFile)
+        first.close()
+
+        // Simulate an old/corrupt/lost private provenance record, not a
+        // permission to infer ownership from a resumed name and file size.
+        assertTrue("Only remove our test-owned admission record", receipt.delete())
+        val file = File(destination, "Chunks public fixture/episode.bin")
+        assertTrue(file.parentFile.mkdirs() || file.parentFile.isDirectory)
+        val foreign = ByteArray(fixture.files.getValue("episode.bin").size).also {
+            Random(5793L).nextBytes(it)
+        }
+        file.writeBytes(foreign)
+        val resumed = persistentEngine(state)
+        assertTrue(resumed.restoreProblems.isEmpty())
+        val status = requireNotNull(resumed.status(stopped.infoHash))
+        assertTrue(status.stopped)
+        assertTrue(status.error.orEmpty().contains("review"))
+        assertEquals(LocalCommandOutcome.REFUSED, resumed.resume(stopped.infoHash).outcome)
+        assertArrayEquals("Unknown Add origin must not overwrite foreign data",
+            foreign, file.readBytes())
+    }
+
+    @Test fun restoredStoppedJobExcludesDifferentCheckedHashBeforeEitherStarts() {
+        val firstFixture = fixture()
+        val competingFixture = conflictingFixture()
+        val state = temp.newFolder("restored-reservation-state")
+        val root = temp.newFolder("restored-reservation-root")
+        val original = persistentEngine(state)
+        val first = added(original.addStoppedChecked(firstFixture.torrent, root))
+        assertTrue(first.stopped)
+        val firstPath = File(root, "Chunks public fixture/episode.bin")
+        assertFalse(firstPath.exists())
+        assertTrue(File(state, "${first.infoHash}.resume").isFile)
+        original.close()
+
+        val restored = persistentEngine(state)
+        assertTrue(restored.restoreProblems.isEmpty())
+        assertTrue(requireNotNull(restored.status(first.infoHash)).stopped)
+        assertFalse(firstPath.exists())
+        val blocked = restored.addStoppedChecked(competingFixture.torrent, root)
+        assertTrue("Restored stopped destination must already be reserved: $blocked",
+            blocked is LocalAddResult.Refused)
+        assertTrue((blocked as LocalAddResult.Refused).reason.contains("reserves"))
+        assertEquals("No second native handle must be registered", 1, restored.list().size)
+        assertFalse("Both stopped native jobs must leave payload absent", firstPath.exists())
+    }
+
+    @Test fun reviewedExistingSeedRetainsNativeStartAfterProcessRestoration() {
+        val fixture = fixture()
+        val state = temp.newFolder("reviewed-existing-seed-resume-state")
+        val source = File(fixture.root, "episode.bin")
+        val expected = source.readBytes()
+        val original = persistentEngine(state)
+        val reviewed = added(original.addStopped(fixture.torrent, fixture.root.parentFile))
+        assertEquals(LocalAdmissionProvenance.Mode.REVIEWED_EXISTING,
+            LocalAdmissionProvenance.read(state, reviewed.infoHash))
+        assertTrue(reviewed.stopped)
+        original.close()
+        val restored = persistentEngine(state)
+        assertTrue(restored.restoreProblems.isEmpty())
+        assertTrue(requireNotNull(restored.status(reviewed.infoHash)).stopped)
+        // Valid reviewed source data can exist even when native fileProgress
+        // reports zero until recheck. Reservations prevent competing writers;
+        // they must not reinterpret previously reviewed seed bytes as foreign.
+        assertEquals(LocalCommandOutcome.VERIFIED,
+            restored.resume(reviewed.infoHash).outcome)
+        waitFor { restored.status(reviewed.infoHash)?.state == LocalTransferState.SEEDING }
+        assertArrayEquals(expected, source.readBytes())
+        assertEquals(LocalCommandOutcome.VERIFIED,
+            restored.pause(reviewed.infoHash).outcome)
+    }
+
+    @Test fun distinctRawReviewedAddsCannotClaimOneStillEmptyNativeDestination() {
+        val firstFixture = fixture()
+        val secondFixture = conflictingFixture()
+        val root = temp.newFolder("dual-raw-empty-destination")
+        val engine = engine()
+        val first = added(engine.addStopped(firstFixture.torrent, root))
+        assertTrue(first.stopped)
+        assertFalse(File(root, "Chunks public fixture/episode.bin").exists())
+        val refused = engine.addStopped(secondFixture.torrent, root)
+        assertTrue("A second raw reviewed Add may not share the first writer path: $refused",
+            refused is LocalAddResult.Refused)
+        assertTrue((refused as LocalAddResult.Refused).reason.contains("reserves"))
+        assertEquals(1, engine.list().size)
+        assertFalse("No rejected Add may materialize a native payload",
+            File(root, "Chunks public fixture/episode.bin").exists())
+        val independentRoot = temp.newFolder("independent-raw-destination")
+        val independent = added(engine.addStopped(secondFixture.torrent, independentRoot))
+        assertTrue(independent.stopped)
+        assertEquals(2, engine.list().size)
+    }
+
+    @Test fun rawReviewedAddCannotBypassDifferentCheckedHashPathReservation() {
+        val firstFixture = fixture()
+        val secondFixture = conflictingFixture()
+        val root = temp.newFolder("checked-versus-raw-empty-destination")
+        val engine = engine()
+        val checked = added(engine.addStoppedChecked(firstFixture.torrent, root))
+        assertTrue(checked.stopped)
+        val blocked = engine.addStopped(secondFixture.torrent, root)
+        assertTrue("Reviewed raw admission still cannot take another checked job's paths: $blocked",
+            blocked is LocalAddResult.Refused)
+        assertTrue((blocked as LocalAddResult.Refused).reason.contains("reserves"))
+        assertEquals(1, engine.list().size)
+        assertFalse(File(root, "Chunks public fixture/episode.bin").exists())
+    }
+
+    @Test fun competingReviewedExistingRestoresCannotBypassRejectedPathClaimAtStart() {
+        val left = fixture()
+        val right = conflictingFixture()
+        val root = temp.newFolder("reviewed-restored-collision-root")
+        val stateA = temp.newFolder("reviewed-restored-collision-state-a")
+        val stateB = temp.newFolder("reviewed-restored-collision-state-b")
+        // Each independently reviewed native Add is legal in its original
+        // process, but two saved sessions can later be combined into one.
+        // Neither stopped Add is permitted to create payload bytes.
+        val originA = persistentEngine(stateA)
+        val first = added(originA.addStopped(left.torrent, root))
+        val originB = persistentEngine(stateB)
+        val second = added(originB.addStopped(right.torrent, root))
+        assertTrue(first.infoHash != second.infoHash)
+        assertEquals(LocalAdmissionProvenance.Mode.REVIEWED_EXISTING,
+            LocalAdmissionProvenance.read(stateA, first.infoHash))
+        assertEquals(LocalAdmissionProvenance.Mode.REVIEWED_EXISTING,
+            LocalAdmissionProvenance.read(stateB, second.infoHash))
+        originA.close()
+        originB.close()
+        for (suffix in listOf(".resume", ".admission")) {
+            File(stateB, second.infoHash + suffix)
+                .copyTo(File(stateA, second.infoHash + suffix))
+        }
+        val foreign = File(root, "Chunks public fixture/episode.bin")
+        assertFalse("No test must materialize payload during stopped Add", foreign.exists())
+
+        val restored = persistentEngine(stateA)
+        assertTrue("Both exact-hash native resumes must remain observable",
+            restored.restoreProblems.isEmpty())
+        val records = restored.list()
+        assertEquals(2, records.size)
+        assertTrue(records.all { it.stopped })
+        val conflicting = requireNotNull(records.singleOrNull {
+            it.error.orEmpty().contains("Restored path admission requires review")
+        }) { "Exactly one restored reviewed-existing job must have a path reservation refusal" }
+        val refused = restored.resume(conflicting.infoHash)
+        assertEquals("A display-only restore problem cannot permit native Start",
+            LocalCommandOutcome.REFUSED, refused.outcome)
+        assertTrue(requireNotNull(refused.status).stopped)
+        assertTrue(refused.status?.error.orEmpty().contains("Restored path admission"))
+        assertFalse("The conflicting restored Start may not create or replace payload",
+            foreign.exists())
+
+        val winner = records.single { it.infoHash != conflicting.infoHash }
+        assertEquals("The nonconflicting reviewed-existing job remains operable",
+            LocalCommandOutcome.VERIFIED, restored.resume(winner.infoHash).outcome)
+        assertEquals(LocalCommandOutcome.VERIFIED, restored.pause(winner.infoHash).outcome)
+    }
+
+    @Test fun restoredCheckedStoppedAddRefusesForeignFileBeforeFirstNativeStart() {
+        val sourceParent = temp.newFolder("restore-admission-seed")
+        val source = File(sourceParent, "Restore admission fixture").apply { mkdirs() }
+        val expected = ByteArray(384 * 1024).also { Random(5683L).nextBytes(it) }
+        File(source, "payload.bin").writeBytes(expected)
+        val metainfo = TorrentBuilder().path(source).pieceSize(32 * 1024)
+            .flags(TorrentBuilder.V1_ONLY).generate().entry().bencode()
+        val seed = engine()
+        val seeded = added(seed.addStopped(metainfo, sourceParent))
+        assertEquals(LocalCommandOutcome.VERIFIED, seed.resume(seeded.infoHash).outcome)
+        waitFor { seed.status(seeded.infoHash)?.state == LocalTransferState.SEEDING }
+
+        val state = temp.newFolder("restore-admission-state")
+        val target = temp.newFolder("restore-admission-target")
+        val original = persistentEngine(state)
+        val transfer = added(original.addStoppedChecked(metainfo, target))
+        assertTrue("Checked stopped Add must persist a resume record",
+            File(state, "${transfer.infoHash}.resume").isFile)
+        assertEquals("A checked native Add must never be restored as reviewed existing data",
+            LocalAdmissionProvenance.Mode.CHECKED,
+            LocalAdmissionProvenance.read(state, transfer.infoHash))
+        assertTrue(original.status(transfer.infoHash)?.stopped == true)
+        original.close()
+
+        val foreignPath = File(target, "Restore admission fixture/payload.bin")
+        assertTrue(foreignPath.parentFile.mkdirs() || foreignPath.parentFile.isDirectory)
+        val foreignBytes = ByteArray(expected.size).also { Random(5684L).nextBytes(it) }
+        foreignPath.writeBytes(foreignBytes)
+        val restored = persistentEngine(state)
+        assertTrue(restored.restoreProblems.isEmpty())
+        assertTrue(requireNotNull(restored.status(transfer.infoHash)).stopped)
+        val refused = restored.resume(transfer.infoHash)
+        assertEquals("First Start after restore must not trust a foreign file",
+            LocalCommandOutcome.REFUSED, refused.outcome)
+        assertTrue(requireNotNull(refused.status).stopped)
+        assertTrue(refused.status?.error.orEmpty().contains("no verified native bytes"))
+        assertArrayEquals("Restored checked job must not replace planted foreign bytes",
+            foreignBytes, foreignPath.readBytes())
+
+        assertTrue("Delete only the deliberately planted test file", foreignPath.delete())
+        assertTrue("Connect real loopback peer only after removing the foreign fixture",
+            restored.connectPeer(transfer.infoHash,
+                InetSocketAddress("127.0.0.1", seed.listenPort())))
+        assertEquals(LocalCommandOutcome.VERIFIED, restored.resume(transfer.infoHash).outcome)
+        requireFlushed(restored, transfer.infoHash)
+        assertArrayEquals(expected, foreignPath.readBytes())
+        assertArrayEquals(expected, File(source, "payload.bin").readBytes())
+    }
+
+    @Test fun activeCheckedPriorityWritersRefuseNewForeignSkippedFileBeforeNativeWrite() {
+        val fixture = fixture()
+        val root = temp.newFolder("active-checked-priority-destination")
+        val receiver = engine()
+        val checked = added(receiver.addStoppedChecked(fixture.torrent, root))
+        val files = requireNotNull(receiver.files(checked.infoHash))
+        val skipped = files.single { it.path.endsWith("/extras/notes.txt") }
+        assertEquals(LocalCommandOutcome.VERIFIED,
+            receiver.setFileWanted(checked.infoHash, skipped.index, false))
+        assertEquals(LocalCommandOutcome.VERIFIED,
+            receiver.resume(checked.infoHash).outcome)
+
+        val foreign = File(root, "Chunks public fixture/extras/notes.txt")
+        assertTrue(foreign.parentFile.mkdirs() || foreign.parentFile.isDirectory)
+        val planted = "Unrelated local app data: not torrent payload".toByteArray()
+        foreign.writeBytes(planted)
+
+        val observed = requireNotNull(receiver.files(checked.infoHash))
+        val episode = observed.single { it.path.endsWith("/episode.bin") }
+        val policy = FinishInOrderPlanner.policyFor(
+            FinishInOrderPlanner.Mode.BALANCED, observed, observed.map { it.index })
+        val record = FinishInOrderRecord(policy)
+        assertEquals("Finish in Order must not bypass a blocked checked path",
+            LocalFileBatchOutcome.STALE_REVIEW,
+            receiver.applyFinishInOrder(checked.infoHash, record,
+                listOf(FinishInOrderPlanner.Change(episode.index, episode.priority, 7))))
+        assertEquals(episode.priority,
+            requireNotNull(receiver.files(checked.infoHash))
+                .single { it.index == episode.index }.priority)
+        assertEquals(LocalCommandOutcome.REFUSED,
+            receiver.setFileWanted(checked.infoHash, skipped.index, true))
+        assertTrue("The user must see an explicit safety refusal",
+            requireNotNull(receiver.status(checked.infoHash)).error.orEmpty()
+                .contains("no verified native bytes"))
+        assertArrayEquals("Neither active native-priority control may clobber unrelated bytes",
+            planted, foreign.readBytes())
+
+        assertEquals(LocalCommandOutcome.VERIFIED, receiver.pause(checked.infoHash).outcome)
+        assertEquals(LocalCommandOutcome.REFUSED,
+            receiver.setFileWanted(checked.infoHash, skipped.index, true))
+        assertArrayEquals(planted, foreign.readBytes())
+        assertEquals(LocalCommandOutcome.REFUSED, receiver.resume(checked.infoHash).outcome)
+        assertArrayEquals("Stop, selection and refused Start preserve foreign bytes",
+            planted, foreign.readBytes())
+    }
+
     @Test fun checkedPostStopRestartRefusesForeignSkippedFileThenDownloadsAfterClear() {
         val sourceParent = temp.newFolder("checked-post-stop-source")
         val sourceRoot = File(sourceParent, "Stopped checked fixture").apply { mkdirs() }
@@ -324,6 +601,31 @@ class LocalTorrentEngineTest {
         assertArrayEquals(first, File(root, "Stopped checked fixture/initial.bin").readBytes())
     }
 
+    @Test fun missingAdmissionDirectoryRefusesBeforeRegisteringNativeHandle() {
+        val fixture = fixture()
+        val state = temp.newFolder("early-admission-state")
+        val moved = File(temp.root, "early-admission-preserved")
+        val instance = persistentEngine(state)
+        assertTrue(state.renameTo(moved))
+        state.writeText("private state disappeared before Add")
+        val destination = temp.newFolder("early-admission-destination")
+        val refused = instance.addStoppedChecked(fixture.torrent, destination)
+        assertTrue("Unreadable admission cannot register native work: $refused",
+            refused is LocalAddResult.Refused)
+        assertTrue("A pre-admission refusal cannot create a native handle",
+            instance.list().isEmpty())
+        assertEquals("private state disappeared before Add", state.readText())
+        assertTrue(state.delete())
+        assertTrue(moved.renameTo(state))
+        // An early failure must release uncommitted in-session path claims.
+        val retried = instance.addStoppedChecked(fixture.torrent, destination)
+        assertTrue("After storage recovery, clean Add must be possible: $retried",
+            retried is LocalAddResult.AddedStopped)
+        val saved = (retried as LocalAddResult.AddedStopped).status
+        assertTrue(saved.stopped)
+        assertTrue(instance.removeKeepingData(saved.infoHash))
+    }
+
     @Test fun checkedCompletedRestartRefusesSymlinkReplacedVerifiedPayload() {
         val fixture = fixture()
         val seeder = engine()
@@ -357,8 +659,12 @@ class LocalTorrentEngineTest {
         val state = temp.newFolder("checked-partial-state")
         val moved = File(temp.root, "checked-state-still-preserved")
         val target = persistentEngine(state)
-        assertTrue(state.renameTo(moved))
-        state.writeText("no longer a writable resume directory")
+        // Trigger access loss only AFTER the native handle is registered,
+        // preserving coverage of the partial-registration Start fence.
+        target.beforeInitialResumeWriteForTest = {
+            assertTrue(state.renameTo(moved))
+            state.writeText("no longer a writable resume directory")
+        }
 
         val destination = temp.newFolder("checked-partial-destination")
         try {
@@ -459,15 +765,49 @@ class LocalTorrentEngineTest {
         listenInterfaces = "127.0.0.1:0", allowMultipleConnectionsPerIp = true, stateDirectory = state
     )).also { it.start(); engines += it }
 
+    @Test fun actualRemoveNeverUnlinksSubstitutedForeignAdmissionEntry() {
+        val fixture = fixture()
+        val state = temp.newFolder("remove-receipt-collision-state")
+        val destination = temp.newFolder("remove-receipt-collision-dest")
+        val instance = persistentEngine(state)
+        val status = added(instance.addStoppedChecked(fixture.torrent, destination))
+        val receipt = File(state, status.infoHash + ".admission")
+        assertEquals(LocalAdmissionProvenance.Mode.CHECKED,
+            LocalAdmissionProvenance.read(state, status.infoHash))
+        val displaced = File(state, "owned-admission-displaced")
+        assertTrue(receipt.renameTo(displaced))
+        val foreign = temp.newFile("unrelated-removal-sentinel")
+        val canary = ByteArray(4096) { (it * 31 + 17).toByte() }
+        foreign.writeBytes(canary)
+        Files.createLink(receipt.toPath(), foreign.toPath())
+        assertTrue("Actual native Remove must still succeed without touching payload",
+            instance.removeKeepingData(status.infoHash))
+        assertNull(instance.status(status.infoHash))
+        assertTrue("Remove cannot unlink an unowned final receipt entry",
+            Files.exists(receipt.toPath(), java.nio.file.LinkOption.NOFOLLOW_LINKS))
+        assertTrue(Files.isSameFile(receipt.toPath(), foreign.toPath()))
+        assertArrayEquals(canary, receipt.readBytes())
+        assertArrayEquals(canary, foreign.readBytes())
+        assertTrue("Former immutable receipt must also remain untouched", displaced.isFile)
+        assertNull("Foreign replacement cannot authorize resumed native admission",
+            LocalAdmissionProvenance.read(state, status.infoHash))
+        assertFalse("The ambiguous occupied receipt cannot be overwritten by a retry",
+            LocalAdmissionProvenance.persist(state, status.infoHash,
+                LocalAdmissionProvenance.Mode.CHECKED))
+    }
+
     @Test fun lostResumeDirectoryDuringAddIsObservableWithoutDeletingPayload() {
         val fixture = fixture()
         val state = temp.newFolder("state-disappears-on-add")
         val moved = File(temp.root, "state-preserved-on-add")
         val instance = persistentEngine(state)
-        // Simulate access loss AFTER startup preflight, but BEFORE the initial
-        // app-private resume write. This must not become a false successful Add.
-        assertTrue(state.renameTo(moved))
-        state.writeText("temporary inaccessible state placeholder")
+        // Keep the admission root valid until AFTER native registration.
+        // This covers the more dangerous uncertain/partial-Add path, rather
+        // than inadvertently stopping at the newer pre-admission refusal.
+        instance.beforeInitialResumeWriteForTest = {
+            assertTrue(state.renameTo(moved))
+            state.writeText("temporary inaccessible state placeholder")
+        }
         val destination = temp.newFolder("lost-resume-destination")
         try {
             instance.addStopped(fixture.torrent, destination)
@@ -816,6 +1156,9 @@ class LocalTorrentEngineTest {
         val magnet = "magnet:?xt=urn:btih:${seed.infoHash}"
         assertTrue(first.addMagnet(magnet, destination,
             listOf(InetSocketAddress("127.0.0.1", seeder.listenPort()))) is LocalAddResult.FetchingMetadata)
+        assertEquals("Magnet admission must remain checked across restoration",
+            LocalAdmissionProvenance.Mode.CHECKED,
+            LocalAdmissionProvenance.read(state, seed.infoHash))
         waitFor {
             val current = first.status(seed.infoHash)
             current != null && current.metadataKnown && current.stopped
