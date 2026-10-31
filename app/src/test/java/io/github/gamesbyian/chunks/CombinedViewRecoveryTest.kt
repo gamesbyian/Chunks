@@ -36,7 +36,9 @@ class CombinedViewRecoveryTest {
             direction = UnifiedSortDirection.ASCENDING)
         assertFalse(CombinedViewPreferences.narrowingActive(sorted))
         assertEquals(sorted, CombinedViewPreferences.showAll(sorted))
-        assertTrue(CombinedViewPreferences.narrowingActive(sorted.copy(search = "   ")))
+        assertFalse(CombinedViewPreferences.narrowingActive(sorted.copy(search = "   ")))
         assertEquals(sorted, CombinedViewPreferences.showAll(sorted.copy(search = "   ")))
+        assertTrue(CombinedViewPreferences.narrowingActive(sorted.copy(search = "needle")))
+        assertEquals(sorted, CombinedViewPreferences.showAll(sorted.copy(search = "needle")))
     }
 }
