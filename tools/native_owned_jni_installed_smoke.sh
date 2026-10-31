@@ -32,8 +32,9 @@ status=$?
 set -e
 cat "$log"
 if [[ "$status" != 0 ]] ||
-   ! grep -qx 'OK (1 test)' "$log" ||
+   ! grep -qx 'OK (2 tests)' "$log" ||
    ! grep -q '^INSTRUMENTATION_STATUS: test=pinnedOwnedDiskConstructorStartsOnlyInsideDisposablePrivateRoot' "$log" ||
+   ! grep -q '^INSTRUMENTATION_STATUS: test=ownedJniActuallyRefusesPreexistingForeignNativePayload' "$log" ||
    ! grep -q '^INSTRUMENTATION_STATUS_CODE: 0' "$log" ||
    grep -qE '^FAILURES|^INSTRUMENTATION_STATUS_CODE: -(1|2|3|4)' "$log"; then
   echo "CHUNKS_OWNED_ANDROID_INSTALLED=REFUSED instrumentation not fully verified"
@@ -47,4 +48,4 @@ if [[ "$status" != 0 ]] ||
   echo "CHUNKS_OWNED_ANDROID_CRASH_DIAGNOSTICS_END"
   exit 1
 fi
-echo "CHUNKS_OWNED_ANDROID_INSTALLED=PASS api=35 abi=x86_64 scope=app-private-no-payload-writes"
+echo "CHUNKS_OWNED_ANDROID_INSTALLED=PASS api=35 abi=x86_64 scope=app-private native-foreign-refusal-constructor-only-no-peer"
