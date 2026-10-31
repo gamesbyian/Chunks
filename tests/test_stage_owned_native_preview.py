@@ -114,6 +114,8 @@ class OwnedPreviewStageTests(unittest.TestCase):
         self.assertIn("params.setOwnedDiskIO(receipts.absolutePath)", src)
         self.assertIn("native.start(params)", src)
         self.assertIn("context.cacheDir", src)
+        self.assertIn("Files.createTempDirectory", src)
+        self.assertNotIn("deleteRecursively", src)
         self.assertNotIn("Downloads", src)
         self.assertNotIn("addTorrent", src)
         self.assertIn("no torrent bytes", receipt["proof_limit"])
