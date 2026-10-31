@@ -24,6 +24,24 @@ class RemoteSmartConnectTest {
                 RemoteSmartConnect.candidates(input, "ianseeds").map { it.endpoint })
     }
 
+    @Test fun hostnameDiscoveryNeverTrimsAnAuthenticatedPrincipalIntoAnotherTenant() = runBlocking {
+        val candidates = RemoteSmartConnect.candidates("wood.seedhost.eu", " alice ")
+        assertTrue(candidates.isNotEmpty())
+        assertTrue(candidates.all { it.endpoint.startsWith("https://wood.seedhost.eu/") })
+        assertFalse(candidates.any { it.endpoint.contains("/alice/") })
+        // If the owner supplies an exact path, never refuse it or change the
+        // actual HTTP auth username. A read-only probe observes those bytes.
+        val selected = RemoteSmartConnect.connect(
+            "https://wood.seedhost.eu/alice/RPC1", " alice ", "secret"
+        ) { credentials ->
+            assertEquals(" alice ", credentials.username)
+            assertEquals("https://wood.seedhost.eu/alice/RPC1", credentials.endpoint)
+            "read-only accepted"
+        }
+        assertEquals(1, selected.attempts)
+        assertEquals(" alice ", selected.credentials.username)
+    }
+
     @Test fun providerRootSuggestionsUseDocumentedPathsAndSameOrigin() {
         val choices = mapOf(
             "mybox.usbx.me" to "/RPC2",
