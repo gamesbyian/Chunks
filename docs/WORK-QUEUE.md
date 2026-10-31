@@ -1,3 +1,5 @@
+> **Requirements-rationality review (2026-10-31; proposal, not an override):** Before promoting a newly hypothesized failure into a universal G0 blocker, apply [REQUIREMENTS-RATIONALITY-AUDIT-2026-10-31](REQUIREMENTS-RATIONALITY-AUDIT-2026-10-31.md). Distinguish explicit user-authorized replacement from unintended cleanup, observed failures from speculative universal requirements, and provider/OS capability limits from product-wide defects. #809's observed unsafe ZIP/library paths remain contained pending tested repair; #865 metadata integrity and cross-account authorization remain genuine blockers. Review dispositions require evidence and applicable owner approval; this note does not itself enable any feature.
+
 # Chunks active engineering work queue
 
 ## Current owner correction: #568 strict file-ownership premise superseded (2026-10-31)
