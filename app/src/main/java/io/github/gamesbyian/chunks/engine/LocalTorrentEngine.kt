@@ -163,6 +163,9 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     private val checkedStartProblems = ConcurrentHashMap<String, String>()
     // Native remove is asynchronous: hold identity until session.stop joins I/O.
     private val retiredThisSession = ConcurrentHashMap.newKeySet<String>()
+    // Restored stopped jobs must reclaim their declared paths before another
+    // checked torrent can reserve the same backing files in this process.
+    private val restoredNativeJobs = ConcurrentHashMap.newKeySet<String>()
     // A different stopped checked job may target the same EMPTY native paths.
     // Reserve declared paths through Start/Stop, not just until the first Start.
     // This in-session exclusion is NOT a durable native ownership boundary.
@@ -268,6 +271,40 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         )) {
             LocalCheckedPayloadReservations.Result.Reserved -> null
             is LocalCheckedPayloadReservations.Result.Refused -> admission.problem
+        }
+    }
+
+    /**
+     * Resume records reconstruct native handles, not in-process reservations.
+     * Reject unsupported/escaping paths and mutually exclusive torrent writers,
+     * while allowing ordinary existing regular files at the selected destination.
+     * A returned reservation is only a session-local conflict exclusion, not an
+     * atomic filesystem ownership or cross-process race guarantee.
+     */
+    private fun reserveRestoredJobPaths(key: String, handle: TorrentHandle): String? {
+        val paths = try {
+            val info = handle.torrentFile() ?: return "Restored torrent metadata is unavailable"
+            val files = info.files()
+            val count = files.numFiles()
+            if (!LocalPayloadCollisionSurvey.supportsNativeFileCount(count))
+                return "Restored torrent file count is unsupported"
+            (0 until count).asSequence().filterNot { files.padFileAt(it) }
+                .map { files.filePath(it) }.toList()
+        } catch (_: Exception) {
+            return "Restored torrent file paths cannot be inspected"
+        }
+        if (paths.isEmpty()) return "Restored torrent has no inspectable files"
+        val root = File(handle.savePath())
+        when (val survey = LocalPayloadCollisionSurvey.inspect(root, paths)) {
+            is LocalPayloadCollisionSurvey.Result.Unknown ->
+                return "Restored download paths are unsafe: " + survey.problem
+            else -> Unit
+        }
+        return when (val reserved = checkedPayloadReservations.reserve(
+            key, root, paths, allowExistingOwner = true
+        )) {
+            LocalCheckedPayloadReservations.Result.Reserved -> null
+            is LocalCheckedPayloadReservations.Result.Refused -> reserved.problem
         }
     }
 
@@ -563,6 +600,18 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             // status() caches metadata for 500 ms. Query the same fresh native
             // flags as snapshot(), including persisted upload-only on restart.
             val state = handle.status(TorrentHandle.QUERY_NAME)
+            // A stopped restored job does not inherit in-process Add claims.
+            // Recheck and reacquire on every Start, including after permissions
+            // or the selected destination changed since the previous session.
+            if (restoredNativeJobs.contains(key)) {
+                val problem = reserveRestoredJobPaths(key, handle)
+                if (problem != null) {
+                    checkedStartProblems[key] = "Restored path admission: $problem"
+                    return@command false
+                }
+                if (checkedStartProblems[key]?.startsWith("Restored path admission:") == true)
+                    checkedStartProblems.remove(key)
+            }
             checkedFirstStarts[key]?.let { pending ->
                 // Add's earlier ClearAtObservation is not permission to write
                 // during a later Start. Re-survey the exact recorded native
@@ -1244,6 +1293,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         startWhenMetadataArrives.remove(key)
         magnetCollisionProblems.remove(key)
         checkedFirstStarts.remove(key)
+        restoredNativeJobs.remove(key)
         checkedStartProblems.remove(key)
         // remove_torrent is non-blocking: the old native handle may still
         // have queued payload I/O. Keep its path claim as a tombstone until
@@ -1346,6 +1396,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         startWhenMetadataArrives.clear()
         magnetCollisionProblems.clear()
         checkedFirstStarts.clear()
+        restoredNativeJobs.clear()
         checkedStartProblems.clear()
         session.stop()
         retiredThisSession.clear()
@@ -1381,6 +1432,13 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             } catch (_: Exception) { null }
             if (restored == null) { problems += store.savedSourceName(key); continue }
             handles[key] = restored
+            restoredNativeJobs.add(key)
+            // Reserve before subsequent fresh checked Adds register native
+            // handles. A failed reservation leaves this restored job stopped
+            // and visible, with a refusal until the conflict is resolved.
+            reserveRestoredJobPaths(key, restored)?.let {
+                checkedStartProblems[key] = "Restored path admission: $it"
+            }
         }
         restoreProblems = problems
     }
