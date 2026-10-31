@@ -172,6 +172,19 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - name: Install pinned Chunks Gradle 9.3.1
+        if: matrix.abi == 'x86_64'
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+      - name: Install Android SDK compile 37.0 for disposable APK
+        if: matrix.abi == 'x86_64'
+        run: |
+          set -euo pipefail
+          printf 'y\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
+          if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          fi
       - name: Rebuild exact forked Java jar and stage non-shipping debug APK
         if: matrix.abi == 'x86_64'
         run: |
@@ -189,7 +202,7 @@ jobs:
             --jar-sha256 "$(sha256sum "$jar" | cut -d' ' -f1)" \
             --so-sha256 "$(sha256sum "$so" | cut -d' ' -f1)"
           cp "$RUNNER_TEMP/chunks-owned-installed-lab/build.gradle.kts" app/build.gradle.kts
-          ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon --console=plain
+          gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest --console=plain
           test -s app/build/outputs/apk/debug/app-debug.apk
           test -s app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
           # Never confuse an otherwise successful Gradle build with a proof
