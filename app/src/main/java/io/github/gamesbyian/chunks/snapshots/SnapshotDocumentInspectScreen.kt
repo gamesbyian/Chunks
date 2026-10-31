@@ -36,6 +36,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import io.github.gamesbyian.chunks.exports.OwnedDiagnosticExportProvider
+import io.github.gamesbyian.chunks.exports.OwnedDiagnosticShare
 
 /** Bounded Android document reader. Never creates files or contacts any torrent engine. */
 internal object SnapshotDocumentReaderV1 {
@@ -82,43 +84,8 @@ internal fun SnapshotDocumentInspectScreen(onBack: () -> Unit) {
     var search by remember { mutableStateOf("") }
     var recoveryFilter by remember { mutableStateOf<SnapshotManifestV1.Recovery?>(null) }
     var pageIndex by remember { mutableIntStateOf(0) }
-    var pendingTorrent by remember {
-        mutableStateOf<SnapshotVerifiedTorrentDocumentV1.Prepared?>(null)
-    }
     var savingTorrent by remember { mutableStateOf(false) }
     var saveNotice by remember { mutableStateOf<String?>(null) }
-    val saveTorrent = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("application/x-bittorrent")
-    ) { uri ->
-        val prepared = pendingTorrent
-        pendingTorrent = null
-        if (uri != null) {
-            if (prepared == null ||
-                inspected?.metainfoByHash?.get(prepared.infoHashV1)
-                    ?.contentEquals(prepared.bytes) != true) {
-                saveNotice = "Torrent selection expired or the source changed. Choose it again."
-            } else {
-                savingTorrent = true
-                saveNotice = null
-                scope.launch {
-                    try {
-                        withContext(Dispatchers.IO) {
-                            SnapshotDocumentWriterV1.writeAndVerify(
-                                context.contentResolver, uri, prepared.bytes)
-                        }
-                        saveNotice = "Original .torrent saved and byte-verified in the chosen document. " +
-                            "No torrent was added or changed."
-                    } catch (cancel: CancellationException) {
-                        throw cancel
-                    } catch (failure: Exception) {
-                        saveNotice = "Saved .torrent could not be verified: " +
-                            (failure.message ?: "Document provider error") +
-                            ". Do not trust that file until verified."
-                    } finally { savingTorrent = false }
-                }
-            }
-        }
-    }
     val choose = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             busy = true
@@ -153,7 +120,7 @@ internal fun SnapshotDocumentInspectScreen(onBack: () -> Unit) {
         }
         Text("Inspect transfer snapshot", style = MaterialTheme.typography.headlineMedium)
         Text("Open a .chunksnap file saved from Chunks. Inspect it offline, or " +
-            "separately save a verified original .torrent definition to a document you choose. " +
+            "separately share a verified original .torrent definition for another app to save. " +
             "No transfer is added, started, stopped, deleted or altered.")
         Button(
             onClick = { choose.launch(arrayOf("*/*")) },
@@ -234,18 +201,41 @@ internal fun SnapshotDocumentInspectScreen(onBack: () -> Unit) {
                             try {
                                 val selected = SnapshotVerifiedTorrentDocumentV1.prepare(
                                     checked, item.infoHashV1)
-                                pendingTorrent = selected
+                                savingTorrent = true
                                 saveNotice = null
-                                saveTorrent.launch(selected.suggestedFilename)
+                                scope.launch {
+                                    try {
+                                        if (inspected?.metainfoByHash?.get(selected.infoHashV1)
+                                            ?.contentEquals(selected.bytes) != true) {
+                                            saveNotice = "Torrent selection expired or the source changed."
+                                        } else {
+                                            val uri = withContext(Dispatchers.IO) {
+                                                OwnedDiagnosticExportProvider.publish(context,
+                                                    "chunks-original-${selected.infoHashV1}.torrent",
+                                                    selected.bytes)
+                                            }
+                                            OwnedDiagnosticShare.openChooser(context, uri,
+                                                "application/x-bittorrent", "original .torrent")
+                                            saveNotice = "The verified original .torrent was prepared as a " +
+                                                "read-only share. The receiving app has not saved it yet; " +
+                                                "no torrent was added or changed."
+                                        }
+                                    } catch (cancel: CancellationException) {
+                                        throw cancel
+                                    } catch (failure: Exception) {
+                                        saveNotice = "Could not prepare original .torrent sharing: " +
+                                            (failure.message ?: "Private export unavailable") +
+                                            ". Existing documents remain unchanged."
+                                    } finally { savingTorrent = false }
+                                }
                             } catch (failure: Exception) {
-                                pendingTorrent = null
                                 saveNotice = "Cannot prepare the verified original: " +
                                     (failure.message ?: "Unsupported torrent definition")
                             }
                         },
                         enabled = !busy && !savingTorrent,
                         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                    ) { Text("Save this original .torrent") }
+                    ) { Text("Share or save original .torrent") }
                 }
             }
             if (result.items.isEmpty()) {
