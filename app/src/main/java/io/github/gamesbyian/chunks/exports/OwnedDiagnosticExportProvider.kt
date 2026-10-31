@@ -67,11 +67,15 @@ class OwnedDiagnosticExportProvider : ContentProvider() {
             }
             // The random suffix prevents misleading reuse across simultaneous
             // exports, while CREATE_NEW is the actual no-replace protection.
-            val stem = name.substringBeforeLast('.')
+            // The provider also validates the *generated* basename on every
+            // read. Reserve 33 characters for the hyphen and 128-bit UUID;
+            // otherwise a valid 160-character input can create an unreadable URI.
+            val stem = name.substringBeforeLast('.').take(127)
             val extension = name.substringAfterLast('.')
             for (attempt in 0 until 16) {
                 val unique = "${stem}-" + UUID.randomUUID().toString().replace("-", "") +
                     "." + extension
+                check(VALID_NAME.matches(unique)) { "Export name is not round-trip safe" }
                 val file = root.resolve(unique)
                 val channel = try {
                     FileChannel.open(file, StandardOpenOption.CREATE_NEW, StandardOpenOption.READ,
