@@ -85,9 +85,9 @@ class LocalPublicDownloadsPlaceInstrumentedTest {
                     java.nio.file.Files.notExists(published,
                         java.nio.file.LinkOption.NOFOLLOW_LINKS))
             } else {
-                assertEquals("stage probe", java.nio.file.Files.readString(published))
+                assertEquals("stage probe", String(java.nio.file.Files.readAllBytes(published), Charsets.UTF_8))
             }
-            assertEquals("stage probe", java.nio.file.Files.readString(temporary))
+            assertEquals("stage probe", String(java.nio.file.Files.readAllBytes(temporary), Charsets.UTF_8))
             val hash = "a".repeat(40)
             assertTrue("Real Android exclusive receipt commit and parent fsync refused",
                 LocalAdmissionProvenance.persist(root.toFile(), hash,
