@@ -168,34 +168,34 @@ class LocalTorrentEngineTest {
         assertEquals(LocalCommandOutcome.NOT_FOUND, engine.pause("b".repeat(40)).outcome)
     }
 
-    @Test fun checkedTorrentRefusesForeignPayloadPlantedAfterAddBeforeFirstStart() {
+    @Test fun checkedTorrentRechecksAndReplacesExistingRegularPayloadWithoutTouchingSibling() {
         val fixture = fixture()
-        val destination = temp.newFolder("checked-first-start-race")
-        val target = engine()
-        val added = added(target.addStoppedChecked(fixture.torrent, destination))
-        val foreign = File(destination, "Chunks public fixture/episode.bin")
-        assertTrue(foreign.parentFile.isDirectory || foreign.parentFile.mkdirs())
-        val original = ByteArray(fixture.files.getValue("episode.bin").size)
+        val seeder = engine()
+        val source = added(seeder.addStopped(fixture.torrent, fixture.root.parentFile))
+        assertEquals(LocalCommandOutcome.VERIFIED, seeder.resume(source.infoHash).outcome)
+        waitFor { seeder.status(source.infoHash)?.state == LocalTransferState.SEEDING }
+
+        val destination = temp.newFolder("checked-first-start-existing")
+        val receiver = engine()
+        val added = added(receiver.addStoppedChecked(fixture.torrent, destination,
+            listOf(InetSocketAddress("127.0.0.1", seeder.listenPort()))))
+        val payload = File(destination, "Chunks public fixture/episode.bin")
+        assertTrue(payload.parentFile.isDirectory || payload.parentFile.mkdirs())
+        val existing = ByteArray(fixture.files.getValue("episode.bin").size)
             .also { Random(568).nextBytes(it) }
-        foreign.writeBytes(original)
+        payload.writeBytes(existing)
+        val unrelated = File(destination, "Important unrelated document.txt")
+        val siblingBytes = byteArrayOf(11, 22, 33, 44)
+        unrelated.writeBytes(siblingBytes)
 
-        val refused = target.resume(added.infoHash)
-        assertEquals(LocalCommandOutcome.REFUSED, refused.outcome)
-        val blocked = requireNotNull(refused.status)
-        assertTrue("Refused Start must leave the handle stopped", blocked.stopped)
-        assertTrue("A user-visible cause must survive readback",
-            blocked.error.orEmpty().contains("since Add"))
-        Thread.sleep(500)
-        assertArrayEquals("Checked Start must not overwrite foreign bytes",
-            original, foreign.readBytes())
-        assertFalse("Refused Start cannot create another unowned payload",
-            File(destination, "Chunks public fixture/extras/notes.txt").exists())
-
-        // The same job can be started after the test-owned collision is removed.
-        assertTrue(foreign.delete())
-        assertEquals(LocalCommandOutcome.VERIFIED, target.resume(added.infoHash).outcome)
-        assertNull("Cleared admission must remove the prior refusal",
-            target.status(added.infoHash)?.error)
+        assertEquals(LocalCommandOutcome.VERIFIED, receiver.resume(added.infoHash).outcome)
+        requireFlushed(receiver, added.infoHash)
+        assertArrayEquals("Conventional same-path BitTorrent replacement",
+            fixture.files.getValue("episode.bin"), payload.readBytes())
+        assertArrayEquals("A differently named sibling is not torrent payload",
+            siblingBytes, unrelated.readBytes())
+        assertArrayEquals(fixture.files.getValue("extras/notes.txt"),
+            File(destination, "Chunks public fixture/extras/notes.txt").readBytes())
     }
 
     @Test fun checkedDifferentInfohashesCannotReserveOneStillEmptyNativePayload() {
@@ -235,7 +235,7 @@ class LocalTorrentEngineTest {
         assertFalse(File(dest, "Chunks public fixture/episode.bin").exists())
     }
 
-    @Test fun checkedPostStopRestartRefusesForeignSkippedFileThenDownloadsAfterClear() {
+    @Test fun checkedStoppedRestartMayRecheckExistingSkippedRegularFile() {
         val sourceParent = temp.newFolder("checked-post-stop-source")
         val sourceRoot = File(sourceParent, "Stopped checked fixture").apply { mkdirs() }
         val first = ByteArray(512 * 1024).also { Random(5681L).nextBytes(it) }
@@ -244,84 +244,35 @@ class LocalTorrentEngineTest {
         File(sourceRoot, "delayed.bin").writeBytes(delayed)
         val metainfo = TorrentBuilder().path(sourceRoot).pieceSize(32 * 1024)
             .flags(TorrentBuilder.V1_ONLY).generate().entry().bencode()
-
         val seeder = engine()
-        val seeded = added(seeder.addStopped(metainfo, sourceParent))
-        assertEquals(LocalCommandOutcome.VERIFIED, seeder.resume(seeded.infoHash).outcome)
-        waitFor { seeder.status(seeded.infoHash)?.state == LocalTransferState.SEEDING }
+        val source = added(seeder.addStopped(metainfo, sourceParent))
+        assertEquals(LocalCommandOutcome.VERIFIED, seeder.resume(source.infoHash).outcome)
+        waitFor { seeder.status(source.infoHash)?.state == LocalTransferState.SEEDING }
 
-        val root = temp.newFolder("post-stop-checked-dest")
+        val root = temp.newFolder("checked-stopped-existing-dest")
         val leecher = engine()
-        // A peer-free first Start makes the active-file-priority collision
-        // deterministic and avoids waiting for intentionally skipped data.
         val transfer = added(leecher.addStoppedChecked(metainfo, root))
         val skipped = requireNotNull(leecher.files(transfer.infoHash))
             .single { it.path.endsWith("/delayed.bin") }
         assertEquals(LocalCommandOutcome.VERIFIED,
             leecher.setFileWanted(transfer.infoHash, skipped.index, false))
         assertEquals(LocalCommandOutcome.VERIFIED, leecher.resume(transfer.infoHash).outcome)
-        assertEquals(0L, requireNotNull(leecher.status(transfer.infoHash)).doneBytes)
-        // Even without an explicit Stop/Start, unskipping can schedule disk
-        // writes on an active native job. Reject foreign bytes BEFORE JNI.
-        val activeForeign = File(root, "Stopped checked fixture/delayed.bin")
-        assertFalse(activeForeign.exists())
-        val activeBytes = ByteArray(delayed.size).also { Random(9982L).nextBytes(it) }
-        assertTrue("Create only the disposable backing parent", activeForeign.parentFile.mkdirs() ||
-            activeForeign.parentFile.isDirectory)
-        activeForeign.writeBytes(activeBytes)
-        val beforeOrder = requireNotNull(leecher.files(transfer.infoHash))
-        val firstSelected = beforeOrder.single { it.path.endsWith("/initial.bin") }
-        val orderRecord = FinishInOrderRecord(FinishInOrderPlanner.policyFor(
-            FinishInOrderPlanner.Mode.BALANCED, beforeOrder, beforeOrder.map { it.index }))
-        // Automatic Finish in Order is a separate JNI file-priority writer.
-        // Its existing journal/planner preflight must not bypass the shared
-        // native foreign-path gate, even when only a different file is targeted.
-        assertEquals(LocalFileBatchOutcome.STALE_REVIEW,
-            leecher.applyFinishInOrder(transfer.infoHash, orderRecord,
-                listOf(FinishInOrderPlanner.Change(firstSelected.index,
-                    firstSelected.priority, 7))))
-        assertEquals(firstSelected.priority, requireNotNull(leecher.files(transfer.infoHash))
-            .single { it.index == firstSelected.index }.priority)
-        assertTrue("A planner stale-review safety refusal must be explained on the transfer",
-            requireNotNull(leecher.status(transfer.infoHash)).error.orEmpty()
-                .contains("no verified native bytes"))
-        assertEquals(LocalCommandOutcome.REFUSED,
-            leecher.setFileWanted(transfer.infoHash, skipped.index, true))
-        assertArrayEquals("Active file selection cannot clobber planted bytes",
-            activeBytes, activeForeign.readBytes())
-        assertTrue(activeForeign.delete())
         assertEquals(LocalCommandOutcome.VERIFIED, leecher.pause(transfer.infoHash).outcome)
 
-        val foreign = File(root, "Stopped checked fixture/delayed.bin")
-        assertFalse("Skipped file had no verified bytes and may not be claimed",
-            foreign.exists())
-        val unrelated = ByteArray(delayed.size).also { Random(9878L).nextBytes(it) }
-        foreign.writeBytes(unrelated)
-        assertEquals(LocalCommandOutcome.REFUSED,
+        val payload = File(root, "Stopped checked fixture/delayed.bin")
+        assertTrue(payload.parentFile.isDirectory || payload.parentFile.mkdirs())
+        payload.writeBytes(ByteArray(delayed.size).also { Random(9878L).nextBytes(it) })
+        val unrelated = File(root, "do-not-touch.txt").apply { writeText("keep me") }
+        assertEquals(LocalCommandOutcome.VERIFIED,
             leecher.setFileWanted(transfer.infoHash, skipped.index, true))
-        val refused = leecher.resume(transfer.infoHash)
-        assertEquals(LocalCommandOutcome.REFUSED, refused.outcome)
-        assertTrue("Native handle stays stopped on refused restart",
-            requireNotNull(refused.status).stopped)
-        assertTrue("User must see a specific no-verified-bytes reason",
-            refused.status?.error.orEmpty().contains("no verified native bytes"))
-        assertArrayEquals("The checked restart must preserve foreign bytes",
-            unrelated, foreign.readBytes())
-
-        assertTrue("Only remove the fixture we planted", foreign.delete())
-        // A trackerless native session that previously finished with skipped
-        // files may have no peer rediscovery. Use a fresh verified checked Add
-        // into the now-clean test-owned destination as the positive control.
-        // This must never imply the refused original native handle auto-retried.
-        leecher.close()
-        val clean = engine()
-        val cleanAdded = added(clean.addStoppedChecked(metainfo, root,
-            listOf(InetSocketAddress("127.0.0.1", seeder.listenPort()))))
-        assertEquals(LocalCommandOutcome.VERIFIED, clean.resume(cleanAdded.infoHash).outcome)
-        requireFlushed(clean, cleanAdded.infoHash)
-        assertArrayEquals("Fresh reviewed native Add receives real torrent bytes",
-            delayed, foreign.readBytes())
-        assertArrayEquals(first, File(root, "Stopped checked fixture/initial.bin").readBytes())
+        assertEquals(LocalCommandOutcome.VERIFIED, leecher.resume(transfer.infoHash).outcome)
+        assertTrue(leecher.connectPeer(transfer.infoHash,
+            InetSocketAddress("127.0.0.1", seeder.listenPort())))
+        requireFlushed(leecher, transfer.infoHash)
+        assertArrayEquals(delayed, payload.readBytes())
+        assertArrayEquals(first,
+            File(root, "Stopped checked fixture/initial.bin").readBytes())
+        assertEquals("keep me", unrelated.readText())
     }
 
     @Test fun checkedCompletedRestartRefusesSymlinkReplacedVerifiedPayload() {
@@ -352,30 +303,30 @@ class LocalTorrentEngineTest {
         assertTrue(Files.isSymbolicLink(payload.toPath()))
     }
 
-    @Test fun checkedPartialAddStillRequiresFreshSurveyBeforeFirstStart() {
+    @Test fun checkedPartialAddStillRefusesSymlinkEscapeBeforeFirstStart() {
         val fixture = fixture()
         val state = temp.newFolder("checked-partial-state")
         val moved = File(temp.root, "checked-state-still-preserved")
         val target = persistentEngine(state)
         assertTrue(state.renameTo(moved))
         state.writeText("no longer a writable resume directory")
-
         val destination = temp.newFolder("checked-partial-destination")
         try {
             target.addStoppedChecked(fixture.torrent, destination)
             fail("A failed initial resume write cannot report a complete Add")
         } catch (_: java.io.IOException) {
-            // The native job was registered but its resume write failed.
-            // A later UI Start must still have the original collision fence.
+            // The native handle survives an uncertain resume commit.
         }
         val partial = target.list().single()
         assertTrue(partial.stopped)
-        val foreign = File(destination, "Chunks public fixture/episode.bin")
-        assertTrue(foreign.parentFile.isDirectory || foreign.parentFile.mkdirs())
-        val bytes = byteArrayOf(8, 6, 7, 5, 3, 0, 9)
-        foreign.writeBytes(bytes)
+        val outside = File(temp.newFolder("external-target"), "critical.bin")
+            .apply { writeText("stay intact") }
+        val payload = File(destination, "Chunks public fixture/episode.bin")
+        assertTrue(payload.parentFile.isDirectory || payload.parentFile.mkdirs())
+        Files.createSymbolicLink(payload.toPath(), outside.toPath())
         assertEquals(LocalCommandOutcome.REFUSED, target.resume(partial.infoHash).outcome)
-        assertArrayEquals("Uncertain Add cannot bypass protection", bytes, foreign.readBytes())
+        assertEquals("stay intact", outside.readText())
+        assertTrue(Files.isSymbolicLink(payload.toPath()))
     }
 
     @Test fun checkedTorrentRefusesSymlinkParentIntroducedAfterAdd() {
