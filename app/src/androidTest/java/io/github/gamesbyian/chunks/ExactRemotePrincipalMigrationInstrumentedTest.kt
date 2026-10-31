@@ -374,6 +374,36 @@ class ExactRemotePrincipalMigrationInstrumentedTest {
         }
     }
 
+    @Test fun malformedRememberingPolicyFailsClosedWithoutDroppingEncryptedLogin() {
+        val vault = RememberedRemoteLogin(context)
+        val roster = RememberedRemoteProfileRoster(context)
+        val prior = vault.rememberingEnabled()
+        val prefs = context.getSharedPreferences("remembered-remote-login-v1",
+            Context.MODE_PRIVATE)
+        assertTrue(vault.setRememberingEnabled(true))
+        try {
+            assertTrue(roster.clearAll())
+            assertTrue(vault.clear())
+            assertTrue(vault.save(plain))
+            val ciphertext = requireNotNull(prefs.getString("ciphertext", null))
+            assertTrue(prefs.edit().putString("remember_enabled", "invalid-boolean").commit())
+            assertFalse(vault.rememberingEnabled())
+            assertNull(vault.load())
+            assertFalse(vault.save(padded))
+            assertEquals(ciphertext, prefs.getString("ciphertext", null))
+            // Explicit opt-out and subsequent opt-in repair the bad policy,
+            // but neither may resurrect the old saved login.
+            assertTrue(vault.setRememberingEnabled(false))
+            assertTrue(vault.setRememberingEnabled(true))
+            assertNull(vault.load())
+            assertFalse(prefs.contains("ciphertext"))
+        } finally {
+            vault.clear()
+            roster.clearAll()
+            vault.setRememberingEnabled(prior)
+        }
+    }
+
     private fun prefKey(scope: String): String = "policy_" +
         MessageDigest.getInstance("SHA-256").digest(scope.toByteArray(Charsets.UTF_8))
             .joinToString("") { "%02x".format(it.toInt() and 255) }
