@@ -10,9 +10,13 @@ install_verified() {
   result="$(adb install -r "$1" 2>&1)" || {
     echo "CHUNKS_OWNED_ANDROID_INSTALLED=REFUSED adb install failed"; return 1;
   }
-  [[ "$result" == "Success" ]] || {
-    echo "CHUNKS_OWNED_ANDROID_INSTALLED=REFUSED package manager: $result"; return 1;
-  }
+  # adb may print "Performing Streamed Install" before its final success.
+  # Accept only an EXACT Success line, with no Failure marker anywhere.
+  if ! grep -qx 'Success' <<<"$result" ||
+     grep -qi 'Failure' <<<"$result"; then
+    echo "CHUNKS_OWNED_ANDROID_INSTALLED=REFUSED package manager: $result"
+    return 1
+  fi
 }
 install_verified app/build/outputs/apk/debug/app-debug.apk
 install_verified app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
