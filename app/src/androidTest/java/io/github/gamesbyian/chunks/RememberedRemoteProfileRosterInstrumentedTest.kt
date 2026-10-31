@@ -97,6 +97,12 @@ class RememberedRemoteProfileRosterInstrumentedTest {
                 "chunks_remote_profiles_encrypted_v1", Context.MODE_PRIVATE)
             assertTrue(prefs.edit().putString("roster", "corrupted-garbage").commit())
             assertTrue(RememberedRemoteProfileRoster(context).list().isEmpty())
+            // Unreadable encrypted bytes may become recoverable after a key
+            // outage or an explicit repair. A read must never erase them.
+            assertEquals("corrupted-garbage", prefs.getString("roster", null))
+            assertFalse(RememberedRemoteProfileRoster(context).saveVerified(bob))
+            assertEquals("corrupted-garbage", prefs.getString("roster", null))
+            assertTrue(vault.clearAll())
             assertFalse(prefs.contains("roster"))
         } finally { vault.clearAll() }
     }

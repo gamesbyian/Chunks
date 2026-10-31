@@ -66,14 +66,25 @@ class RememberedRemoteLoginInstrumentedTest {
     @Test fun corruptedEncryptedBlobCannotBeUsedAsLogin() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val vault = RememberedRemoteLogin(context)
+        val previousPolicy = vault.rememberingEnabled()
+        assertTrue(vault.setRememberingEnabled(true))
         try {
             assertTrue(vault.clear())
             context.getSharedPreferences("remembered-remote-login-v1", 0)
                 .edit().putString("ciphertext", "not a valid GCM record").commit()
             assertNull(RememberedRemoteLogin(context).load())
+            // The ciphertext remains occupied but unreadable. A transient key
+            // failure or malformed record cannot authorize silent deletion.
+            assertTrue(vault.hasSavedLogin())
+            assertEquals("not a valid GCM record",
+                context.getSharedPreferences("remembered-remote-login-v1", 0)
+                    .getString("ciphertext", null))
+            assertFalse(vault.save(RemoteCredentials("https://example.org/RPC2", "viewer", "new-secret")))
+            assertTrue(vault.clear())
             assertFalse(vault.hasSavedLogin())
         } finally {
             assertTrue(vault.clear())
+            assertTrue(vault.setRememberingEnabled(previousPolicy))
         }
     }
 }

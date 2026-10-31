@@ -1,6 +1,7 @@
 package io.github.gamesbyian.chunks.privacy
 
 import java.security.MessageDigest
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * A privacy scope is one authenticated rTorrent endpoint + username.
@@ -10,16 +11,29 @@ import java.security.MessageDigest
  */
 internal object RemoteTransferPrivacyScope {
     private const val PREFIX = "chunks-rtorrent-account-v1:"
-    fun fromAccount(endpoint: String, username: String): String? {
-        val normalizedEndpoint = endpoint.trim()
-        val normalizedUser = username.trim()
-        if (normalizedEndpoint.isBlank() || normalizedEndpoint.length > 2048 ||
-            normalizedUser.length > 512) return null
-        val identity = normalizedEndpoint + "\u0000" + normalizedUser
+    // A process-local, secret-free migration hint. Callers construct a scope
+    // from the authenticated account before loading its policy (including the
+    // combined saved-profile view). Never use the legacy scope for tickets.
+    private val legacyByExactScope = ConcurrentHashMap<String, String>()
+
+    internal fun legacyForScope(exactScope: String): String? = legacyByExactScope[exactScope]
+
+    private fun digest(endpoint: String, username: String): String {
         val hash = MessageDigest.getInstance("SHA-256")
-            .digest(identity.toByteArray(Charsets.UTF_8))
+            .digest((endpoint + "\u0000" + username).toByteArray(Charsets.UTF_8))
             .joinToString("") { "%02x".format(it.toInt() and 255) }
         return PREFIX + hash
+    }
+    fun fromAccount(endpoint: String, username: String): String? {
+        val normalizedEndpoint = endpoint.trim()
+        if (normalizedEndpoint.isBlank() || normalizedEndpoint.length > 2048 ||
+            username.length > 512) return null
+        // A web server can authenticate " alice " and "alice" as two accounts.
+        // Only the URL input is normalized; the authenticated user is opaque.
+        val exact = digest(normalizedEndpoint, username)
+        val legacy = digest(normalizedEndpoint, username.trim())
+        if (legacy != exact) legacyByExactScope[exact] = legacy
+        return exact
     }
 
     /** The connection's established authenticated scope, never a draft. */

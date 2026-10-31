@@ -31,6 +31,12 @@ internal class RememberedRemoteProfileRoster(context: Context) {
         internal fun identityOf(endpoint: String, username: String): String =
             io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverId(endpoint, username).value
 
+        // Old releases trimmed the authenticated username when deriving the ID.
+        // Accept that exact old derivation only for decrypting/migrating a
+        // previously encrypted roster row, never for a new connection or action.
+        private fun legacyIdentityOf(endpoint: String, username: String): String =
+            identityOf(endpoint, username.trim())
+
         internal fun addressOf(endpoint: String): String = try {
             val uri = URI(endpoint.trim())
             val port = if (uri.port == -1) "" else ":" + uri.port
@@ -59,6 +65,17 @@ internal class RememberedRemoteProfileRoster(context: Context) {
     private val alias = "io.github.gamesbyian.chunks.remote-profile-roster-v1"
     private val validId = Regex("[a-f0-9]{64}")
     private val legacy = RememberedRemoteLogin(context.applicationContext)
+    // A failed encrypted-ID migration must never let a subsequent save replace
+    // the entire old vault as though it had been genuinely empty.
+    private var migrationBlocked = false
+
+    /** Inject a durable-save refusal in device tests, without touching the live key. */
+    @androidx.annotation.VisibleForTesting
+    internal var rejectPersistForTest = false
+
+    /** Simulate Android Keystore becoming unavailable during a read only. */
+    @androidx.annotation.VisibleForTesting
+    internal var rejectDecryptForTest = false
 
     private fun keystore() = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
 
@@ -92,16 +109,22 @@ internal class RememberedRemoteProfileRoster(context: Context) {
             credentials.username.take(40) + " @ " + host
     }
 
-    /** Corrupt/inaccessible encrypted records fail closed and are cleared. */
-    @Synchronized
-    fun list(): List<Profile> {
+    /** Unreadable ciphertext fails closed without destruction or empty-roster overwrite. */
+    fun list(): List<Profile> = synchronized(RemoteCredentialLock.monitor) {
+        migrationBlocked = false
         if (!legacy.rememberingEnabled()) return emptyList()
         val packed = try { prefs.getString("roster", null) }
-            catch (_: ClassCastException) { null } ?: return emptyList()
+            catch (_: ClassCastException) {
+                // A corrupted preferences type is still an occupied vault.
+                // No new login can replace it until explicit user clearing.
+                migrationBlocked = true
+                return emptyList()
+            } ?: return emptyList()
         return try {
             require(packed.length in 20..MAX_ENCODED)
             val bytes = Base64.decode(packed, Base64.NO_WRAP)
             require(bytes.size in 29..131_072)
+            if (rejectDecryptForTest) throw IllegalStateException("Injected encrypted-roster key outage")
             val savedKey = keystore().getKey(alias, null) as? SecretKey
                 ?: throw IllegalStateException("Profile encryption key unavailable")
             val cipher = Cipher.getInstance("AES/GCM/NoPadding")
@@ -112,6 +135,8 @@ internal class RememberedRemoteProfileRoster(context: Context) {
             require(rows.length() <= MAX_PROFILES)
             val output = ArrayList<Profile>()
             val seen = HashSet<String>()
+            val seenStored = HashSet<String>()
+            var needsMigration = false
             for (i in 0 until rows.length()) {
                 val entry = rows.getJSONArray(i)
                 // Five fields before last-verified times were recorded.
@@ -121,31 +146,43 @@ internal class RememberedRemoteProfileRoster(context: Context) {
                 val credentials = RemoteCredentials(entry.getString(2),
                     entry.getString(3), entry.getString(4))
                 val verifiedAt = if (entry.length() == 6) entry.getLong(5).takeIf { it > 0 } else null
+                val exactId = identity(credentials)
+                val legacyId = legacyIdentityOf(credentials.endpoint, credentials.username)
                 require(validId.matches(id) && valid(credentials) &&
-                    identity(credentials) == id &&
+                    (id == exactId || id == legacyId) &&
                     label.length in 1..100 && label.none { it.code < 32 || it.code == 127 } &&
-                    seen.add(id))
-                output += Profile(id, label, credentials, verifiedAt)
+                    seenStored.add(id) && seen.add(exactId))
+                if (id != exactId) needsMigration = true
+                output += Profile(exactId, label, credentials, verifiedAt)
             }
-            output
+            // Do not silently drop old encrypted profiles when the identifier
+            // scheme changes. Save the exact-principal keys durably first.
+            // If migration cannot be committed, refuse the saved-profile list.
+            if (needsMigration && !persist(output)) {
+                migrationBlocked = true
+                emptyList()
+            } else output
         } catch (_: Exception) {
-            prefs.edit().remove("roster").commit()
+            // A transient Android Keystore failure, malformed ciphertext or
+            // future unsupported encoding cannot authorize deleting credentials
+            // or treating the encrypted roster as an empty, writable one.
+            migrationBlocked = true
             emptyList()
         }
     }
 
     /** Never call until remote authentication has succeeded and opt-out is off. */
-    @Synchronized
     fun saveVerified(
         credentials: RemoteCredentials, preferredLabel: String? = null,
         verifiedAt: Long = System.currentTimeMillis()
-    ): Boolean {
+    ): Boolean = synchronized(RemoteCredentialLock.monitor) {
         if (!legacy.rememberingEnabled() || !valid(credentials)) return false
         val name = preferredLabel?.trim()?.takeIf {
             it.length in 1..100 && it.none { c -> c.code < 32 || c.code == 127 }
         } ?: displayName(credentials)
         val id = identity(credentials)
         val current = list().toMutableList()
+        if (migrationBlocked) return false
         val existing = current.indexOfFirst { it.id == id }
         if (existing >= 0) current.removeAt(existing)
         else if (current.size >= MAX_PROFILES) return false
@@ -153,19 +190,30 @@ internal class RememberedRemoteProfileRoster(context: Context) {
         return persist(current)
     }
 
-    @Synchronized
-    fun forget(id: String): Boolean {
+    /**
+     * Asynchronous Connect may save only while its original credential-policy
+     * generation is current. The token is captured before Connect begins,
+     * never derived from a mutable UI text field after network suspension.
+     */
+    fun saveVerifiedIfCurrent(credentials: RemoteCredentials, ticket: Long): Boolean =
+        synchronized(RemoteCredentialLock.monitor) {
+            if (!RemoteCredentialLock.current(ticket)) false else saveVerified(credentials)
+        }
+
+    fun forget(id: String): Boolean = synchronized(RemoteCredentialLock.monitor) {
         if (!validId.matches(id)) return false
         val current = list()
-        if (current.none { it.id == id }) return false
-        return persist(current.filterNot { it.id == id })
+        if (migrationBlocked || current.none { it.id == id }) return false
+        val committed = persist(current.filterNot { it.id == id })
+        if (committed) RemoteCredentialLock.invalidate()
+        return committed
     }
 
     /** Clear ciphertext before removing the key. Never restore stale secrets. */
-    @Synchronized
-    fun clearAll(): Boolean {
+    fun clearAll(): Boolean = synchronized(RemoteCredentialLock.monitor) {
         val erased = prefs.edit().remove("roster").commit()
         if (!erased) return false
+        RemoteCredentialLock.invalidate()
         runCatching { keystore().deleteEntry(alias) }
         return true
     }
@@ -185,7 +233,9 @@ internal class RememberedRemoteProfileRoster(context: Context) {
 
     /** Encrypts and stores [rows] as-is; tests use it to write older record shapes. */
     @androidx.annotation.VisibleForTesting
-    internal fun writeRows(rows: JSONArray): Boolean {
+    internal fun writeRows(rows: JSONArray): Boolean = synchronized(RemoteCredentialLock.monitor) {
+        // No commit, ciphertext replacement or delete when fault injection fires.
+        if (rejectPersistForTest) return@synchronized false
         return try {
             val raw = rows.toString().toByteArray(Charsets.UTF_8)
             require(raw.size <= 100_000)
