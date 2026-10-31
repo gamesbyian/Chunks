@@ -512,9 +512,12 @@ private fun ChunksApp(
                                 try {
                                     val old = vault.load()
                                     val removedRoster = profileRoster.forget(profile.id)
-                                    val removedLegacy = if (RemoteVerifiedUiIdentity.samePrincipal(old, profile.credentials))
+                                    // A failed roster write can be transient Keystore
+                                    // unavailability. Do not independently erase a
+                                    // recoverable legacy login after that refusal.
+                                    if (!removedRoster) false
+                                    else if (RemoteVerifiedUiIdentity.samePrincipal(old, profile.credentials))
                                         vault.clear() else true
-                                    removedRoster && removedLegacy
                                 } catch (_: Exception) { false }
                             }
                             savedProfiles = withContext(Dispatchers.IO) { profileRoster.list() }
