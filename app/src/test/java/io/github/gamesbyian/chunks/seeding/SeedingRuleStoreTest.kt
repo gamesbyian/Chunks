@@ -112,6 +112,49 @@ class SeedingRuleStoreTest {
         assertEquals(safe, SeedingRuleStore.decode(SeedingRuleStore.encode(safe)))
     }
 
+    @Test fun legacyPreferencesAreReadOnlyOnFirstLoadAndArchiveSurvivesRuleDeletion() {
+        val id = "remote:" + "f".repeat(64)
+        val old = rule.copy(environments = setOf("phone", id),
+            knownEnvironments = setOf("phone", id), includeFutureEnvironments = true)
+        val root = org.json.JSONObject(SeedingRuleStore.encode(
+            SeedingRuleStore.Snapshot(listOf(old), mapOf(id to capped))))
+        root.remove("identityScheme")
+        root.remove("quarantinedRemoteRules")
+        root.remove("quarantinedRemoteDefaults")
+        val original = root.toString()
+        val prefs = context.getSharedPreferences("chunks_seeding_rules", 0)
+        assertTrue(prefs.edit().putString("rules", original).commit())
+        val store = SeedingRuleStore(context)
+        val safe = store.load()
+        assertFalse(safe.unreadable)
+        assertFalse(safe.rules.single().appliesTo(id))
+        assertEquals("A read is never permission to rewrite the original policy",
+            original, prefs.getString("rules", null))
+        assertTrue(store.save(safe))
+        val upgraded = prefs.getString("rules", null).orEmpty()
+        assertTrue(upgraded.contains("remote-principal-exact-v2"))
+        assertEquals(safe, SeedingRuleStore(context).load())
+        assertTrue(store.save(safe.copy(rules = emptyList())))
+        val afterDeletion = SeedingRuleStore(context).load()
+        assertTrue(afterDeletion.rules.isEmpty())
+        assertEquals("Historical assignments remain recoverable after deleting a rule",
+            safe.quarantinedRemoteRules, afterDeletion.quarantinedRemoteRules)
+        assertEquals(safe.quarantinedRemoteDefaults, afterDeletion.quarantinedRemoteDefaults)
+    }
+
+    @Test fun unknownIdentitySchemeIsUnreadableInsteadOfReassigningOldAccounts() {
+        val root = org.json.JSONObject(SeedingRuleStore.encode(
+            SeedingRuleStore.Snapshot(listOf(rule), emptyMap())))
+        root.put("identityScheme", "future-unreviewed-scheme")
+        val prefs = context.getSharedPreferences("chunks_seeding_rules", 0)
+        val stored = root.toString()
+        assertTrue(prefs.edit().putString("rules", stored).commit())
+        val store = SeedingRuleStore(context)
+        assertTrue(store.load().unreadable)
+        assertFalse(store.save(SeedingRuleStore.Snapshot(emptyList(), emptyMap())))
+        assertEquals(stored, prefs.getString("rules", null))
+    }
+
     @Test fun urlsDuplicateIdsAndBadValuesNeverLoad() {
         val good = SeedingRuleStore.encode(SeedingRuleStore.Snapshot(listOf(rule), emptyMap()))
         val withUrl = good.replace("\"iptorrents.com\"", "\"https://iptorrents.com/announce?passkey=x\"")
