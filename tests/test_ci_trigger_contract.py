@@ -40,7 +40,7 @@ def dispatches_for_changed_paths(source: str, changed: tuple[str, ...]) -> bool:
     )
     if not match:
         return False
-    patterns = [line.split("- ", 1)[1].strip().strip("'\\"")
+    patterns = [line.split("- ", 1)[1].strip().strip(chr(34) + chr(39))
                 for line in match.group(1).splitlines()
                 if line.strip().startswith("- ")]
     for changed_path in changed:
