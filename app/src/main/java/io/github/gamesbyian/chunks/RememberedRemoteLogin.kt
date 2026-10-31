@@ -21,34 +21,55 @@ import org.json.JSONArray
  * A lost/inaccessible Keystore key is a fail-closed logged-out state. Chunks
  * never falls back to a hardcoded key or unencrypted password storage.
  */
+/**
+ * One process-wide serialization boundary for the legacy encrypted login,
+ * roster, and remember/forget policy. Never hold instance monitors across
+ * these stores: opposite lock orders can deadlock concurrent Connect/Forget.
+ */
+internal object RemoteCredentialLock {
+    val monitor = Any()
+}
+
 internal class RememberedRemoteLogin(context: Context) {
-    private val prefs = context.applicationContext.getSharedPreferences(
+    private val appContext = context.applicationContext
+    private val prefs = appContext.getSharedPreferences(
         "remembered-remote-login-v1", Context.MODE_PRIVATE
     )
     private val alias = "io.github.gamesbyian.chunks.remembered-remote-login-v1"
 
     /** Default-on only for users who have never explicitly opted out. */
-    @Synchronized fun rememberingEnabled(): Boolean =
+    fun rememberingEnabled(): Boolean = synchronized(RemoteCredentialLock.monitor) {
         prefs.getBoolean("remember_enabled", true)
+    }
 
     /**
      * Opting out is durable across process restarts. Commit both the policy
      * and removal of encrypted credentials in a single preferences transaction.
      * Losing the Keystore key is acceptable once no ciphertext can reference it.
      */
-    @Synchronized fun setRememberingEnabled(enabled: Boolean): Boolean {
+    fun setRememberingEnabled(enabled: Boolean): Boolean = synchronized(RemoteCredentialLock.monitor) {
+        // Opt-out first durably revokes BOTH vaults' read permissions.
+        // If an older app or a crash left roster ciphertext behind, purge it
+        // BEFORE re-enabling; a failed purge must leave remembering disabled.
+        if (enabled && !rememberingEnabled() &&
+            !RememberedRemoteProfileRoster(appContext).clearAll()) return false
         val editor = prefs.edit().putBoolean("remember_enabled", enabled)
         if (!enabled) editor.remove("ciphertext")
         if (!editor.commit()) return false
         if (!enabled) {
             runCatching { keyStore().deleteEntry(alias) }
+            // If a roster scrub fails, the OFF policy is already committed.
+            // Re-enabling is blocked until its scrub succeeds.
+            return RememberedRemoteProfileRoster(appContext).clearAll()
         }
         return true
     }
 
-    @Synchronized fun hasSavedLogin(): Boolean = prefs.contains("ciphertext")
+    fun hasSavedLogin(): Boolean = synchronized(RemoteCredentialLock.monitor) {
+        rememberingEnabled() && prefs.contains("ciphertext")
+    }
 
-    @Synchronized fun load(): RemoteCredentials? {
+    fun load(): RemoteCredentials? = synchronized(RemoteCredentialLock.monitor) {
         if (!rememberingEnabled()) return null
         val text = prefs.getString("ciphertext", null) ?: return null
         return try {
@@ -77,7 +98,7 @@ internal class RememberedRemoteLogin(context: Context) {
     }
 
     /** Return true only after encrypted state is durably committed. */
-    @Synchronized fun save(credentials: RemoteCredentials): Boolean {
+    fun save(credentials: RemoteCredentials): Boolean = synchronized(RemoteCredentialLock.monitor) {
         if (!rememberingEnabled()) return false
         require(credentials.endpoint.length in 1..2048 &&
             credentials.username.length <= 512 && credentials.password.length <= 4096)
@@ -92,7 +113,7 @@ internal class RememberedRemoteLogin(context: Context) {
     }
 
     /** Clear encrypted profile first; remove its key if the store is empty. */
-    @Synchronized fun clear(): Boolean {
+    fun clear(): Boolean = synchronized(RemoteCredentialLock.monitor) {
         if (!prefs.edit().remove("ciphertext").commit()) return false
         return try {
             keyStore().deleteEntry(alias)
