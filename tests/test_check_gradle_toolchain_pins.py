@@ -61,6 +61,26 @@ class PinContractTest(unittest.TestCase):
         bad = GOOD_WORKFLOW.replace('gradle-version: "9.3.1"', 'gradle-version: "9.4"')
         self.assertTrue(self.check(workflows={name: bad for name in module.WORKFLOWS}))
 
+    def test_audited_immutable_gradle_and_jdk_action_revisions_pass(self):
+        reviewed = GOOD_WORKFLOW.replace(
+            "gradle/actions/setup-gradle@v4",
+            "gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a"
+        ).replace(
+            "actions/setup-java@v4",
+            "actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3"
+        )
+        self.assertEqual([], self.check(
+            workflows={name: reviewed for name in module.WORKFLOWS}
+        ))
+
+    def test_unreviewed_action_sha_fails(self):
+        unreviewed = GOOD_WORKFLOW.replace(
+            "gradle/actions/setup-gradle@v4", "gradle/actions/setup-gradle@" + "a" * 40
+        ).replace("actions/setup-java@v4", "actions/setup-java@" + "b" * 40)
+        self.assertTrue(self.check(
+            workflows={name: unreviewed for name in module.WORKFLOWS}
+        ))
+
     def test_missing_gradle_action_fails(self):
         bad = GOOD_WORKFLOW.replace('gradle/actions/setup-gradle@v4', 'some/other-action@v4')
         self.assertTrue(self.check(workflows={name: bad for name in module.WORKFLOWS}))
