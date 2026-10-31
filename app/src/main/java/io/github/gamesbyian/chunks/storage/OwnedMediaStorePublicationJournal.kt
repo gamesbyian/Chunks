@@ -2,6 +2,8 @@ package io.github.gamesbyian.chunks.storage
 
 import android.content.ContentUris
 import android.content.Context
+import android.os.Build
+import android.os.Bundle
 import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
@@ -155,7 +157,19 @@ internal class OwnedMediaStorePublicationJournal private constructor(
                     MediaStore.MediaColumns._ID, MediaStore.MediaColumns.OWNER_PACKAGE_NAME,
                     MediaStore.MediaColumns.DISPLAY_NAME, MediaStore.MediaColumns.RELATIVE_PATH,
                     MediaStore.MediaColumns.MIME_TYPE, MediaStore.MediaColumns.IS_PENDING)
-                resolver.query(uri, cols, null, null, null)?.use { c ->
+                // Platform MediaStore filters pending rows from some
+                // ordinary operations. Include them explicitly for a
+                // read-only recovery view; never broaden mutation authority.
+                val observed = if (Build.VERSION.SDK_INT == 29) {
+                    resolver.query(MediaStore.setIncludePending(uri),
+                        cols, null, null, null)
+                } else {
+                    val args = Bundle().apply {
+                        putInt(MediaStore.QUERY_ARG_MATCH_PENDING, MediaStore.MATCH_INCLUDE)
+                    }
+                    resolver.query(uri, cols, args, null)
+                }
+                observed?.use { c ->
                     if (!c.moveToFirst()) false else {
                         val id = ContentUris.parseId(uri)
                         val same = c.getLong(0) == id &&
