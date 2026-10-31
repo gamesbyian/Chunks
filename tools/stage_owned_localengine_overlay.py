@@ -58,7 +58,7 @@ def stage(source: Path, output: Path) -> Path:
     if not str(original_path).replace("\\", "/").endswith(str(intended)):
         raise ValueError("Input must be Chunks actual LocalTorrentEngine.kt")
     target = output.expanduser().resolve()
-    project_root = original_path.parents[8]  # repository root from app/src/main/...
+    project_root = original_path.parents[9]  # repository root, not app/
     if target == original_path or project_root in target.parents or target == project_root:
         raise ValueError("Refuse writing patched engine inside repository")
     if target.exists() or target.with_suffix(".json").exists():
