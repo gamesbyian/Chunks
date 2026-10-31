@@ -51,24 +51,45 @@ class CombinedSavedServersTest {
     }
 
     @Test fun loadsOtherSavedServersOnlyWhenAskedAndReportsFailures() {
+        // Dispatcher.IO work does not participate in the Compose test clock.
+        // Count loader completion separately from its main-thread UI apply:
+        // a heavily loaded runner must never pass because one read finished
+        // while the second was still queued, or fail with an opaque combined
+        // timeout that obscures which asynchronous boundary was delayed.
+        val completedReads = AtomicInteger(0)
         show(listOf(
             CombinedSavedProfile(id(scopeA), "ann @ a.example/RPC2", scopeA) {
-                calls.incrementAndGet(); listOf(RemoteTransfer("a".repeat(40), "Linux ISO", 100, 100, true, "/d", 0, 5))
+                try {
+                    calls.incrementAndGet()
+                    listOf(RemoteTransfer("a".repeat(40), "Linux ISO", 100, 100, true, "/d", 0, 5))
+                } finally {
+                    completedReads.incrementAndGet()
+                }
             },
             CombinedSavedProfile(id(scopeB), "bob @ b.example/RPC2", scopeB) {
-                calls.incrementAndGet(); throw java.net.ConnectException("refused")
+                try {
+                    calls.incrementAndGet()
+                    throw java.net.ConnectException("refused")
+                } finally {
+                    completedReads.incrementAndGet()
+                }
             }))
         rule.onNodeWithText("Server · ann @ a.example/RPC2: Not connected · 0 transfers").assertExists()
         assertEquals("nothing is fetched until the user asks", 0, calls.get())
+        assertEquals("no list callback may finish before the explicit tap", 0, completedReads.get())
         rule.onNodeWithText("Load other saved servers (read-only)").performScrollTo().performClick()
-        // Both fetches starting is not both results applied: the listings land
-        // from a background coroutine that waitForIdle does not wait for.
-        rule.waitUntil(5_000) {
-            calls.get() == 2 &&
-                rule.onAllNodesWithText("Server · ann @ a.example/RPC2: Live · 1 transfers")
-                    .fetchSemanticsNodes().isNotEmpty() &&
-                rule.onAllNodesWithText("Server · bob @ b.example/RPC2: Could not load (connection refused) · 0 transfers")
-                    .fetchSemanticsNodes().isNotEmpty()
+        // First qualify both real background callbacks. This wait is not a
+        // UI assertion and does not use blocking CountDownLatch.await(), which
+        // could starve Robolectric's main looper during Compose resumption.
+        rule.waitUntil(15_000) { completedReads.get() == 2 }
+        assertEquals("both saved servers fetched exactly once", 2, calls.get())
+        // Then independently qualify both UI outcomes after their suspended
+        // Dispatchers.IO continuations return to the composition.
+        rule.waitUntil(15_000) {
+            rule.onAllNodesWithText("Server · ann @ a.example/RPC2: Live · 1 transfers")
+                .fetchSemanticsNodes().isNotEmpty() &&
+            rule.onAllNodesWithText("Server · bob @ b.example/RPC2: Could not load (connection refused) · 0 transfers")
+                .fetchSemanticsNodes().isNotEmpty()
         }
         rule.onNodeWithText("Linux ISO").performScrollTo().assertExists()
         rule.onNodeWithText("Server · ann @ a.example/RPC2: Live · 1 transfers").assertExists()
