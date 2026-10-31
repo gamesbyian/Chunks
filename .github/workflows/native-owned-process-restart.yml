@@ -21,5 +21,5 @@ jobs:
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
-      - name: Check five actual child-process restart and foreign byte witnesses
+      - name: Check seven actual child-process restart and foreign byte witnesses
         run: bash tools/test_native_owned_process_restart.sh --sanitizers
