@@ -1,5 +1,9 @@
 # Chunks canonical product contract
 
+## Existing torrent payloads in a chosen directory (binding owner correction, 2026-10-31)
+
+The chosen or accepted **Save to** directory permits ordinary BitTorrent piece verification, reuse and replacement of existing regular files at the exact torrent-declared relative paths. An unfamiliar same-name file is not a reason to block a download or mandate an exclusive proprietary writer. Do not affect unrelated siblings, traverse/escape the selected Place, follow payload symlinks or delete source files through a job-only Remove. Keep concurrent writer exclusions and true Android access/permission integrity. Existing data is checked against actual torrent hashes before Chunks claims verification or seeding. [Normative collision and acceptance policy](LOCAL-TORRENT-COLLISION-POLICY.md) · [D-LOCAL-COLLISIONS-20261031](DECISIONS.md).
+
 ## Optional external destination delivery (owner-approved, planned)
 
 A locally executed torrent MAY deliver verified downloaded files to a separately authorized Google Drive/SAF or FTP-family destination without moving its execution environment. Use verified local staging and independently verified, recoverable destination publication; show download and delivery as separate outcomes. Keep original seeding and local retention by default; offer only separately consented post-verification cleanup. No required cloud-backed torrent engine or cloud seeding. This edge-case convenience remains deferred behind native integrity and primary release gates. [Canonical contract](EXTERNAL-DESTINATION-DELIVERY.md).
@@ -23,7 +27,7 @@ Once rTorrent is release-quality and independently verified, Chunks shall expand
 - **Future agency:** a user who used defaults can subsequently find their files, change the ordinary relevant options when supported, and see what effect a new choice would have on existing versus future transfers. Show safe copy, verified move or reconfiguration where available; never promise an arbitrary live move, silent in-place rename or retroactive policy when capabilities cannot support it. Distinguish **Change for this transfer**, **Make default**, **Reset to automatic** and **Keep my current setting** when those scopes matter.
 - **Outcome continuity:** after an ignored choice, future transfer status, completion, sharing, retrieval, file opening, repair and removal must remain intelligible without reconstructing original setup decisions. Surface the next likely action at the point it becomes useful, rather than making a person discover the omission in Settings much later. Exact observed status and file locations always override optimistic labels.
 
-The engineering gate remains [WORK-QUEUE](WORK-QUEUE.md). These are product/UX requirements, **not claims of current implementation or release safety**; [#568](https://github.com/gamesbyian/Chunks/issues/568) remains a blocking integrity issue.
+The engineering gate remains [WORK-QUEUE](WORK-QUEUE.md). These are product/UX requirements, **not claims of current implementation or release safety**; the old #568 blanket payload-ownership requirement has been superseded by the owner's conventional-torrent policy. Android destination and lifecycle acceptance remain open.
 
 ## Combined transfer browsing and environment colour identity (owner direction, 2026-10-29)
 
