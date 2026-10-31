@@ -37,6 +37,14 @@ if [[ "$status" != 0 ]] ||
    ! grep -q '^INSTRUMENTATION_STATUS_CODE: 0' "$log" ||
    grep -qE '^FAILURES|^INSTRUMENTATION_STATUS_CODE: -(1|2|3|4)' "$log"; then
   echo "CHUNKS_OWNED_ANDROID_INSTALLED=REFUSED instrumentation not fully verified"
+  # A real native process crash may return INSTRUMENTATION_CODE: 0 while
+  # skipping all JUnit results. Dump only bounded crash-buffer diagnostics
+  # from the disposable emulator so the actual JNI signal/stack is visible.
+  # Log retrieval can itself fail after a fatal emulator disconnect, but it
+  # must never change this negative test receipt into PASS.
+  echo "CHUNKS_OWNED_ANDROID_CRASH_DIAGNOSTICS_BEGIN"
+  adb logcat -d -b crash -v time 2>&1 | tail -n 180 || true
+  echo "CHUNKS_OWNED_ANDROID_CRASH_DIAGNOSTICS_END"
   exit 1
 fi
 echo "CHUNKS_OWNED_ANDROID_INSTALLED=PASS api=35 abi=x86_64 scope=app-private-no-payload-writes"
