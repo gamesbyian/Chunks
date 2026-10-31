@@ -21,7 +21,7 @@ def pull_request_paths(source: str) -> set[str]:
     if not match:
         raise AssertionError("Android workflow has no pull_request.paths allowlist")
     return {
-        line.split("-", 1)[1].strip().strip("'\"")
+        line.split("-", 1)[1].strip().strip(chr(34) + chr(39))
         for line in match.group(1).splitlines() if line.strip().startswith("- ")
     }
 
