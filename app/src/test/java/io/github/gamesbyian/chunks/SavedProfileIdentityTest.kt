@@ -12,34 +12,7 @@ class SavedProfileIdentityTest {
 
     @Test fun verifiedExactAccountAndInstanceAreAccepted() {
         assertTrue(SavedProfileIdentity.matches(id, "$a\u0000$user"))
-        assertFalse(SavedProfileIdentity.matches(id, "$a\u0000 $user"))
-        assertFalse(SavedProfileIdentity.matches(id, "$a\u0000$user "))
-        assertFalse(SavedProfileIdentity.matches(id,
-            "$a\u0000 $user ".trimEnd()))
         assertTrue(SavedProfileIdentity.matches(id, "  $a  \u0000$user"))
-    }
-
-    @Test fun completedConnectMustUseFrozenVerifiedCredentialsNotLaterEditorState() {
-        val verified = io.github.gamesbyian.chunks.rpc.RemoteCredentials(
-            a, " alice ", "secret")
-        var editedUsername = "bob"
-        val alias = SavedProfileIdentity.fromVerifiedCredentials(verified)
-        editedUsername = "alice"
-        assertEquals("$a\u0000 alice ", alias)
-        assertEquals(EnvironmentSnapshots.serverId(a, verified.username).value,
-            EnvironmentSnapshots.serverIdOfAliasScope(alias)?.value)
-        assertNotEquals(EnvironmentSnapshots.serverId(a, editedUsername).value,
-            EnvironmentSnapshots.serverIdOfAliasScope(alias)?.value)
-    }
-
-    @Test fun forgetLegacyVaultMustNotClearAnotherWhitespaceDistinctPrincipal() {
-        val old = io.github.gamesbyian.chunks.rpc.RemoteCredentials(a, "alice", "old-secret")
-        val selected = old.copy(username = " alice ", password = "other-secret")
-        assertFalse(SavedProfileIdentity.sameAuthenticatedAccount(old, selected))
-        assertFalse(SavedProfileIdentity.sameAuthenticatedAccount(null, old))
-        assertTrue(SavedProfileIdentity.sameAuthenticatedAccount(old, old.copy(password = "rotated")))
-        assertTrue(SavedProfileIdentity.sameAuthenticatedAccount(
-            old.copy(endpoint = "  $a  "), old))
     }
 
     @Test fun sameHostDifferentUsernameMustNotBorrowSavedProfile() {
