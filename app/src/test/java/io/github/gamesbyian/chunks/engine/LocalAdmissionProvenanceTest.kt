@@ -52,9 +52,73 @@ class LocalAdmissionProvenanceTest {
             LocalAdmissionProvenance.read(state, hash))
         assertFalse(LocalAdmissionProvenance.persist(state, hash,
             LocalAdmissionProvenance.Mode.CHECKED))
+        val receipt = File(state, "$hash.admission")
+        val before = receipt.readBytes()
         LocalAdmissionProvenance.retire(state, hash)
-        assertNull(LocalAdmissionProvenance.read(state, hash))
+        assertArrayEquals("Remove must retain immutable admission history", before,
+            receipt.readBytes())
+        assertEquals(LocalAdmissionProvenance.Mode.REVIEWED_EXISTING,
+            LocalAdmissionProvenance.read(state, hash))
+        assertFalse("Remove cannot silently convert reviewed seed into checked download",
+            LocalAdmissionProvenance.persist(state, hash,
+                LocalAdmissionProvenance.Mode.CHECKED))
+        assertTrue("A re-add of the same mode can safely reuse an fsynced exact claim",
+            LocalAdmissionProvenance.persist(state, hash,
+                LocalAdmissionProvenance.Mode.REVIEWED_EXISTING))
+    }
+
+    @Test fun retirementNeverDeletesForeignRegularSymlinkOrHardlinkEntries() {
+        for (kind in listOf("regular", "symlink", "hardlink")) {
+            val state = temp.newFolder("retire-$kind")
+            val foreign = temp.newFile("foreign-$kind")
+            val foreignBytes = ByteArray(3072) { (it * 23 + 9).toByte() }
+            foreign.writeBytes(foreignBytes)
+            val marker = File(state, "$hash.admission")
+            when (kind) {
+                "regular" -> marker.writeBytes(foreignBytes)
+                "symlink" -> Files.createSymbolicLink(marker.toPath(), foreign.toPath())
+                "hardlink" -> Files.createLink(marker.toPath(), foreign.toPath())
+            }
+            val beforeType = Files.isSymbolicLink(marker.toPath())
+            val beforeSame = if (kind == "regular") false
+                else Files.isSameFile(marker.toPath(), foreign.toPath())
+            LocalAdmissionProvenance.retire(state, hash)
+            assertTrue("Foreign directory entry MUST survive retirement: $kind",
+                Files.exists(marker.toPath(), java.nio.file.LinkOption.NOFOLLOW_LINKS))
+            assertEquals("Foreign entry type changed after retirement: $kind",
+                beforeType, Files.isSymbolicLink(marker.toPath()))
+            if (kind != "regular") assertEquals(
+                "Foreign target identity changed after retirement: $kind",
+                beforeSame, Files.isSameFile(marker.toPath(), foreign.toPath()))
+            assertArrayEquals("Foreign directory-entry bytes changed: $kind",
+                foreignBytes, marker.readBytes())
+            assertArrayEquals("Foreign underlying bytes changed: $kind",
+                foreignBytes, foreign.readBytes())
+            assertNull("Foreign entry cannot become admitted after Remove",
+                LocalAdmissionProvenance.read(state, hash))
+        }
+    }
+
+    @Test fun retirementNeverDeletesAReceiptPathSubstitutedAfterItsCreation() {
+        val state = temp.newFolder("retire-substitution")
         assertTrue(LocalAdmissionProvenance.persist(state, hash,
+            LocalAdmissionProvenance.Mode.CHECKED))
+        val original = File(state, "$hash.admission")
+        val displaced = File(state, "original-admission-preserved")
+        assertTrue(original.renameTo(displaced))
+        val foreign = temp.newFile("retire-planted-foreign")
+        val foreignBytes = ByteArray(1024) { (it * 11 + 5).toByte() }
+        foreign.writeBytes(foreignBytes)
+        Files.createLink(original.toPath(), foreign.toPath())
+        LocalAdmissionProvenance.retire(state, hash)
+        assertTrue("Original receipt must survive an ambiguous Remove", displaced.isFile)
+        assertTrue("Foreign substituted name must survive an ambiguous Remove",
+            Files.exists(original.toPath(), java.nio.file.LinkOption.NOFOLLOW_LINKS))
+        assertTrue(Files.isSameFile(original.toPath(), foreign.toPath()))
+        assertArrayEquals(foreignBytes, original.readBytes())
+        assertArrayEquals(foreignBytes, foreign.readBytes())
+        assertNull(LocalAdmissionProvenance.read(state, hash))
+        assertFalse(LocalAdmissionProvenance.persist(state, hash,
             LocalAdmissionProvenance.Mode.CHECKED))
     }
 
