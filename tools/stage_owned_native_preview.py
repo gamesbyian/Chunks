@@ -36,6 +36,55 @@ APP_ID = ('applicationId = if (sideBySide) "io.github.gamesbyian.chunks.preview"
 SOURCE_SET_ANCHOR = '    testBuildType = providers.gradleProperty("chunks.testBuildType").getOrElse("debug")'
 
 
+# Generated ONLY into an external staging directory. This test instantiates
+# the rebuilt owned-disk JNI constructor inside an installed disposable APK.
+# It never downloads pieces, opens a user-selected path or accesses Downloads.
+ANDROID_SMOKE = """package io.github.gamesbyian.chunks.engine
+
+import android.system.Os
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import java.io.File
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.libtorrent4j.SessionManager
+import org.libtorrent4j.SessionParams
+import org.libtorrent4j.SettingsPack
+
+@RunWith(AndroidJUnit4::class)
+class OwnedJniSessionSmokeInstrumentedTest {
+    @Test fun pinnedOwnedDiskConstructorStartsOnlyInsideDisposablePrivateRoot() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val root = File(context.cacheDir, "owned-jni-smoke")
+        assertTrue("Cannot create isolated app-private fixture", root.mkdir())
+        val receipts = File(root, "receipts")
+        try {
+            assertTrue(receipts.mkdir())
+            Os.chmod(receipts.absolutePath, 448) // 0700 decimal
+            val config = SettingsPack().listenInterfaces("127.0.0.1:0")
+            config.setEnableDht(false)
+            config.setEnableLsd(false)
+            val params = SessionParams(config)
+            params.setOwnedDiskIO(receipts.absolutePath)
+            val native = SessionManager(false)
+            try {
+                native.start(params)
+                assertNotNull("Installed custom JNI did not start", native.swig())
+            } finally {
+                native.stop()
+            }
+            assertTrue(receipts.isDirectory)
+        } finally {
+            // The only cleanup scope is this test's own unique fixture under
+            // the target app's sandbox. No Download or provider URI is touched.
+            root.deleteRecursively()
+        }
+    }
+}
+"""
+
 def require(condition: bool, reason: str) -> None:
     if not condition:
         raise ValueError(reason)
@@ -76,7 +125,7 @@ def verify_elf(library: Path, abi: str) -> None:
             f"Owned JNI ELF machine {machine} differs from requested {abi}")
 
 
-def render_gradle(original: str, jar: Path, jni_root: Path) -> str:
+def render_gradle(original: str, jar: Path, jni_root: Path, test_source: Path) -> str:
     required = (MAIN_JAR_DEP, ARM_DEP, X86_DEP, APP_ID, SOURCE_SET_ANCHOR)
     for part in required:
         require(original.count(part) == 1,
@@ -85,6 +134,7 @@ def render_gradle(original: str, jar: Path, jni_root: Path) -> str:
     # Gradle copy has no reusable release artifact.
     jar_literal = jar.as_posix().replace("\\", "\\\\").replace('"', '\\"')
     jni_literal = jni_root.as_posix().replace("\\", "\\\\").replace('"', '\\"')
+    tests_literal = test_source.as_posix().replace("\\", "\\\\").replace('"', '\\"')
     result = original.replace(
         MAIN_JAR_DEP,
         '    implementation(files("' + jar_literal + '"))  // OWNED LAB ONLY')
@@ -95,7 +145,8 @@ def render_gradle(original: str, jar: Path, jni_root: Path) -> str:
     result = result.replace(SOURCE_SET_ANCHOR,
         SOURCE_SET_ANCHOR + '\n'
         '    // Non-shipping owned-JNI lab: never construct release/R8 artifacts.\n'
-        '    sourceSets.getByName("main").jniLibs.srcDir("' + jni_literal + '")')
+        '    sourceSets.getByName("main").jniLibs.srcDir("' + jni_literal + '")\n'
+        '    sourceSets.getByName("androidTest").java.srcDir("' + tests_literal + '")')
     guard = (
         '// Generated disposable owned-JNI test overlay. DO NOT COMMIT OR SHIP.\n'
         'val ownedLabPermittedTasks = setOf(\n'
@@ -153,7 +204,7 @@ def prepare(
     target_jar = output / "libtorrent4j-owned-lab.jar"
     target_so = output / "jniLibs" / abi / "libtorrent4j.so"
     staged_gradle = output / "build.gradle.kts"
-    patched = render_gradle(original, target_jar, output / "jniLibs")
+    patched = render_gradle(original, target_jar, output / "jniLibs", output / "androidTest")
     target_so.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(jar, target_jar)
     shutil.copyfile(library, target_so)
@@ -164,6 +215,9 @@ def prepare(
             "Staged JNI inputs changed between verification and copy")
     verify_jar(target_jar)
     verify_elf(target_so, abi)
+    smoke_path = output / "androidTest" / "io" / "github" / "gamesbyian" / "chunks" / "engine" / "OwnedJniSessionSmokeInstrumentedTest.kt"
+    smoke_path.parent.mkdir(parents=True, exist_ok=True)
+    smoke_path.write_text(ANDROID_SMOKE, encoding="utf-8")
     staged_gradle.write_text(patched, encoding="utf-8")
     receipt = {
         "purpose": "NON-SHIPPING JNI TEST OVERLAY ONLY",
@@ -175,6 +229,9 @@ def prepare(
         "expected_upstream_libtorrent_commit": UPSTREAM_LIBTORRENT,
         "artifact_validation": "ELF architecture and SWIG class presence; independent provenance required",
         "allowed_build_type": "debug",
+        "instrumented_test": "io.github.gamesbyian.chunks.engine.OwnedJniSessionSmokeInstrumentedTest",
+        "instrumented_test_sha256": sha256(smoke_path),
+        "proof_limit": "owned disk constructor started only, no torrent bytes or external storage acceptance",
     }
     (output / "PREVIEW-ONLY.json").write_text(
         json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8")
