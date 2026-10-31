@@ -261,6 +261,18 @@ internal object ImmutableNativeResumeV2 {
             // A visible complete event is still not committed until its parent
             // entry has been fsynced. Never clean up an uncertain final name.
             FileChannel.open(dir, StandardOpenOption.READ).use { it.force(true) }
+            // A successful write+fsync is not yet an observed restore receipt.
+            // Reopen the exact new immutable generation independently through
+            // the pinned bounded reader, then validate the full chain. No
+            // pathname cleanup or blind retry on an uncertain result.
+            val readback = load(privateStateRoot, hash)
+            val latest = readback.events.lastOrNull()
+            if (readback.events.size != seq || latest?.phase != phase ||
+                latest.epoch != epoch || latest.sequence != seq ||
+                !(latest.payload?.contentEquals(bytes ?: ByteArray(0))
+                    ?: (bytes == null))) {
+                throw IOException("Immutable resume event failed independent durable readback")
+            }
             return
         }
         throw IOException("Could not exclusively allocate resume generation")
