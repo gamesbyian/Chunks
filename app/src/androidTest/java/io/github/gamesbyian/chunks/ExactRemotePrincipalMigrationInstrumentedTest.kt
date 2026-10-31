@@ -106,6 +106,39 @@ class ExactRemotePrincipalMigrationInstrumentedTest {
         }
     }
 
+    @Test fun staleConnectCannotRestoreRememberedCredentialsAfterForgetOrPolicyToggle() {
+        val vault = RememberedRemoteLogin(context)
+        val roster = RememberedRemoteProfileRoster(context)
+        val original = vault.rememberingEnabled()
+        assertTrue(vault.setRememberingEnabled(true))
+        try {
+            assertTrue(roster.clearAll())
+            assertTrue(vault.clear())
+            val pendingConnect = RemoteCredentialLock.capture()
+            assertTrue(vault.setRememberingEnabled(false))
+            assertTrue(vault.setRememberingEnabled(true))
+            assertFalse(vault.saveIfCurrent(padded, pendingConnect))
+            assertFalse(roster.saveVerifiedIfCurrent(padded, pendingConnect))
+            assertNull(vault.load())
+            assertTrue(roster.list().isEmpty())
+
+            val accepted = RemoteCredentialLock.capture()
+            assertTrue(vault.saveIfCurrent(plain, accepted))
+            assertTrue(roster.saveVerifiedIfCurrent(plain, accepted))
+            assertEquals(plain, vault.load())
+            assertEquals(listOf(plain.username), roster.list().map { it.credentials.username })
+            val beforeForget = RemoteCredentialLock.capture()
+            assertTrue(roster.forget(RememberedRemoteProfileRoster.identityOf(
+                endpoint, plain.username)))
+            assertFalse(roster.saveVerifiedIfCurrent(plain, beforeForget))
+            assertTrue(roster.list().isEmpty())
+        } finally {
+            roster.clearAll()
+            vault.clear()
+            vault.setRememberingEnabled(original)
+        }
+    }
+
     private fun prefKey(scope: String): String = "policy_" +
         MessageDigest.getInstance("SHA-256").digest(scope.toByteArray(Charsets.UTF_8))
             .joinToString("") { "%02x".format(it.toInt() and 255) }
