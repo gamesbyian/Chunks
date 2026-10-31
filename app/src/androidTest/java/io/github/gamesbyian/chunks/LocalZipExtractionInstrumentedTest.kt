@@ -153,18 +153,27 @@ class LocalZipExtractionInstrumentedTest {
         assertTrue(base.list().orEmpty().isEmpty())
     }
 
-    @Test fun disposableProviderTargetRefusesAlreadyObservedNames() {
+    @Test fun legacySafTargetRefusesAllMutationsEvenForAnUnoccupiedName() {
         File(base, "taken").mkdirs()
-        File(base, "file.txt").writeText("keep")
+        val foreign = File(base, "file.txt").apply { writeText("foreign bytes") }
+        val before = foreign.readBytes()
         val target = SafZipExtractionTarget(context.contentResolver, tree)
+        val foreignUri = requireNotNull(target.child(target.root, "file.txt"))
+        val existingDirectory = requireNotNull(target.child(target.root, "taken"))
+
+        assertNull(target.createDirectory(target.root, "fresh"))
+        assertNull(target.createFile(target.root, "fresh.txt"))
         assertNull(target.createDirectory(target.root, "taken"))
         assertNull(target.createFile(target.root, "file.txt"))
-        val dir = requireNotNull(target.createDirectory(target.root, "fresh"))
-        requireNotNull(target.createFile(dir, "inside.txt"))
-        assertFalse("Non-empty folders must not be deleted", target.delete(dir))
-        assertNull(target.rename(dir, target.root, "taken"))
-        assertEquals(setOf("taken", "file.txt", "fresh"), base.list().orEmpty().toSet())
-        assertEquals("keep", File(base, "file.txt").readText())
+        assertNull(target.rename(existingDirectory, target.root, "renamed"))
+        assertFalse(target.delete(existingDirectory))
+        assertFalse(target.delete(foreignUri))
+        try {
+            target.openNewOutput(foreignUri)
+            org.junit.Assert.fail("Unowned URI must never be opened for writing")
+        } catch (_: java.io.IOException) { }
+        assertEquals(setOf("taken", "file.txt"), base.list().orEmpty().toSet())
+        assertArrayEquals(before, foreign.readBytes())
     }
 
     @Test fun interruptedJournalIsPreservedForReviewWithoutDestinationMutation() {
