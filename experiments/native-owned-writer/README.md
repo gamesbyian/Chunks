@@ -6,6 +6,28 @@ Run: bash experiments/native-owned-writer/test.sh --sanitizers
 
 The earlier 22-case prototype passed a local C++17 and ASan/UBSan run on October 30. The current tree defines **27 regression scenarios** across two native suites, including subsequent ownership-token and non-mutating read protections. **The 26-case exact-head result is not yet confirmed; its GitHub CI is pending.** Cases include an already-existing foreign file, symlink parents, live file/root/ancestor replacement, hardlink alias, corrupt receipt, invalid path, overflowing offset, receipt collision, concurrent same-path Create (exactly one winner), and durable reopen. The multi-file suite exercises multi-file piece offsets, cross-file preflight, padding that never creates a file, preserved foreign contents, resumable absent-file reservations, file-as-parent alias refusal and readback from durable receipts. This is not BitTorrent traffic, Android FUSE, API29/API35, or physical-device evidence.
 
+## Android private-receipt hardlink feasibility (unshipped candidate)
+
+The production Kotlin receipt diagnostic observed `Files.createLink` failing with
+`AccessDeniedException` on Android API29 and API35. This C++ experiment now
+tries `linkat` first for fully synced, no-replace publication; **only** when
+linking is denied by a recognized capability error does it attempt
+`openat(O_CREAT|O_EXCL|O_NOFOLLOW)` on the final app-private receipt name.
+All writes and `fsync` stay on the exclusive original file descriptor, and
+the parent directory is also synced. No `rename` replacement or preexisting
+receipt mutation is allowed. An interrupted direct publication can leave a
+partially written final record: that record is corrupt and must be handled by
+explicit recovery rather than overwritten on retry.
+
+`owned_receipt_nohardlink_test.cc` uses deterministic linker wrapping to
+make **every** `linkat` return `EPERM`. It then checks positive pending
+reservation, finalized ownership, exact readback after reopen, and refusal
+to mutate both occupied payload bytes and foreign receipt bytes. This is
+a *host-simulated* Android restriction. Actual Android runtime, scoped
+Downloads/SD xattr, TLS-enabled libtorrent4j packaging, and physical
+peer-seeding acceptance remain unproved; the existing default Android
+libtorrent library still has the known #568 overwrite hazard.
+
 ## Reason for the native seam
 
 The current checked Start and Java path guards are time-of-check observers. Native libtorrent can still open and overwrite names after the checks. P0 #715 and #733 reproduce these failure modes. libtorrent 2.1's actual extensibility point is the session-level disk_interface configured via session_params.disk_io_constructor, not a Java wrapper around default mmap/POSIX async_write.
