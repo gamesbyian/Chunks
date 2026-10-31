@@ -27,6 +27,9 @@ internal class RemoteCredentialActionQueue {
         return job
     }
 
+    /** Snapshot UI action ordering before a suspending Connect or profile refresh. */
+    fun snapshotRevision(): Long = revision
+
     fun isLatest(ticket: Long): Boolean = ticket == revision
 
     /**
