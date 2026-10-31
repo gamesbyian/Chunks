@@ -19,6 +19,19 @@ class SavedProfileIdentityTest {
         assertTrue(SavedProfileIdentity.matches(id, "  $a  \u0000$user"))
     }
 
+    @Test fun completedConnectMustUseFrozenVerifiedCredentialsNotLaterEditorState() {
+        val verified = io.github.gamesbyian.chunks.rpc.RemoteCredentials(
+            a, " alice ", "secret")
+        var editedUsername = "bob"
+        val alias = SavedProfileIdentity.fromVerifiedCredentials(verified)
+        editedUsername = "alice"
+        assertEquals("$a\u0000 alice ", alias)
+        assertEquals(EnvironmentSnapshots.serverId(a, verified.username).value,
+            EnvironmentSnapshots.serverIdOfAliasScope(alias)?.value)
+        assertNotEquals(EnvironmentSnapshots.serverId(a, editedUsername).value,
+            EnvironmentSnapshots.serverIdOfAliasScope(alias)?.value)
+    }
+
     @Test fun sameHostDifferentUsernameMustNotBorrowSavedProfile() {
         assertFalse(SavedProfileIdentity.matches(id, "$a\u0000bob"))
         assertFalse(SavedProfileIdentity.matches(id, "$a\u0000ALICE"))
