@@ -1,10 +1,7 @@
 package io.github.gamesbyian.chunks.engine
 
 import java.io.File
-import java.io.FileOutputStream
 import java.net.InetSocketAddress
-import java.nio.file.Files
-import java.nio.file.StandardCopyOption
 import java.util.Collections
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
@@ -140,6 +137,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     // Keep timed-out requests pending until their real alert arrives: a late
     // alert must not confirm a different save generation.
     private val pendingSaves = LocalResumeSaveRequests<TorrentHandle>()
+    @Volatile private var resumeEvents: LocalResumeEventStore? = null
 
     // Cache flushes need the same handle-bound completion semantics as resume
     // saves. In particular, a late alert for a removed torrent must never
@@ -295,6 +293,9 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         // Verify the complete app-private resume inventory before starting JNI.
         // A failed File.listFiles() must never masquerade as zero saved jobs.
         val resumeFiles = config.stateDirectory?.let(LocalResumeDirectoryInventory::prepare)
+        val store = if (resumeFiles != null) LocalResumeEventStore.open(
+            requireNotNull(config.stateDirectory), resumeFiles) else null
+        resumeEvents = store
         val pack = SettingsPack().listenInterfaces(config.listenInterfaces)
         pack.setEnableDht(config.enableDht)
         pack.setEnableLsd(config.enableLsd)
@@ -316,7 +317,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             session.swig().set_peer_class_filter(filter)
         }
         started = true
-        if (resumeFiles != null) restore(resumeFiles)
+        if (store != null) restore(store)
     }
 
     /**
@@ -450,6 +451,8 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         val hash = identity(info)
         if (handles.containsKey(hash) || session.find(info.infoHash())?.isValid == true)
             return LocalAddResult.Refused("This torrent is already in the local engine")
+        if (resumeEvents?.canRegister(hash) == false)
+            return LocalAddResult.Refused("Existing or uncertain saved state requires recovery before a new Add")
 
         val params = AddTorrentParams()
         params.setTorrentInfo(info)
@@ -514,6 +517,8 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             return LocalAddResult.Refused("Choose an existing folder for this download")
         val hash = magnetIdentity(magnet) ?: return LocalAddResult.Refused("Use a magnet link with exactly one v1 info hash")
         if (handles.containsKey(hash)) return LocalAddResult.Refused("This torrent is already in the local engine")
+        if (resumeEvents?.canRegister(hash) == false)
+            return LocalAddResult.Refused("Existing or uncertain saved state requires recovery before a new Add")
         // The previous handle may have been removed from the visible list
         // while native disk I/O still holds it. Its path claims are tombstoned
         // until session shutdown; do not resurrect the same hash via a magnet.
@@ -792,13 +797,13 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         // A fresh in-memory tracker list does not establish crash-safe repair.
         // Require the exact stopped torrent's persisted resume data to contain
         // the same tracker list before declaring completion.
-        val state = config.stateDirectory ?: return LocalTrackerRepairOutcome.UNCERTAIN
+        if (resumeEvents == null) return LocalTrackerRepairOutcome.UNCERTAIN
         val saved = try { saveResumeData() } catch (_: Exception) {
             return LocalTrackerRepairOutcome.UNCERTAIN
         }
         if (saved != handles.size) return LocalTrackerRepairOutcome.UNCERTAIN
         val onDisk = try {
-            val bytes = LocalResumeFileReader.read(File(state, "$key.resume"), MAX_RESUME_BYTES)
+            val bytes = resumeEvents?.current(key)
             bytes?.let {
                 val error = error_code()
                 val params = libtorrent.read_resume_data_ex(Vectors.bytes2byte_vector(it), error)
@@ -1234,9 +1239,12 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     fun removeKeepingData(infoHash: String): Boolean {
         val key = normal(infoHash)
         val handle = handles[key] ?: return false
-        // Do not lose the only tracked handle before the native session accepts
-        // the removal request. A thrown JNI call must leave it inspectable.
-        session.remove(handle)
+        // Persist REMOVE_INTENT before asynchronous JNI removal. A crash,
+        // timeout or rejected native call must not resurrect the old job.
+        val store = resumeEvents
+        if (config.stateDirectory != null && store == null) return false
+        try { store?.removeIntent(key) } catch (_: Exception) { return false }
+        try { session.remove(handle) } catch (_: Exception) { return false }
         // Must use the same monitor held across an asynchronous resume write.
         // Any writer already admitted finishes before we delete the file; any
         // late alert for this handle is refused by LocalResumeWriteFence.
@@ -1251,10 +1259,9 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         // session.stop() joins native work; immediate reuse is unsafe.
         pendingFlushes.cancel(key, handle)
         pendingSaves.cancel(key, handle)
-        val saved = config.stateDirectory?.let { File(it, "$key.resume") } ?: return true
-        // A removed session with an undeletable .resume file can reappear on
-        // restart. Do not report that as a fully confirmed removal.
-        return try { !saved.exists() || saved.delete() } catch (_: Exception) { false }
+        // Never unlink a mutable path, including legacy .resume/.resume.tmp.
+        // A failed commit is uncertain, but the fsynced intent bars restore.
+        return try { store?.removeCommit(key); true } catch (_: Exception) { false }
     }
 
     @Synchronized
@@ -1356,21 +1363,16 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         started = false
     }
 
-    /** Restore every well-formed resume file, always stopped and unmanaged. */
-    private fun restore(resumeFiles: List<File>) {
-        val problems = ArrayList<String>()
-        for (file in resumeFiles) {
-            val key = file.name.removeSuffix(".resume")
-            if (!file.name.endsWith(".resume") || !identityPattern.matches(key)) continue
-            val bytes = LocalResumeFileReader.read(file, MAX_RESUME_BYTES)
+    /** Restore verified immutable SAVE generations (or pre-upgrade legacy snapshots). */
+    private fun restore(store: LocalResumeEventStore) {
+        val problems = ArrayList<String>(store.problems())
+        for ((key, bytes) in store.restorable()) {
             val params = try {
-                bytes?.let {
-                    val error = error_code()
-                    val raw = libtorrent.read_resume_data_ex(Vectors.bytes2byte_vector(it), error)
-                    if (raw == null || error.value() != 0) null else AddTorrentParams(raw)
-                }
+                val error = error_code()
+                val raw = libtorrent.read_resume_data_ex(Vectors.bytes2byte_vector(bytes), error)
+                if (raw == null || error.value() != 0) null else AddTorrentParams(raw)
             } catch (_: Exception) { null }
-            if (params == null) { problems += file.name; continue }
+            if (params == null) { problems += "$key.resume-event"; continue }
             // A single invalid native record must not abort restoration of
             // unrelated, valid transfers. Preserve every failed input on disk.
             val restored = try {
@@ -1385,22 +1387,16 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                     else TorrentHandle(handle)
                 }
             } catch (_: Exception) { null }
-            if (restored == null) { problems += file.name; continue }
+            if (restored == null) { problems += "$key.resume-event"; continue }
             handles[key] = restored
         }
         restoreProblems = problems
     }
 
-    /** Atomic replace of our own resume file: temp file, fsync, rename. */
+    /** Append through an exclusive original descriptor; never replace a known path. */
     private fun writeResume(key: String, bytes: ByteArray) {
-        val directory = config.stateDirectory ?: return
-        val temporary = File(directory, "$key.resume.tmp")
-        FileOutputStream(temporary).use { output ->
-            output.write(bytes)
-            output.fd.sync()
-        }
-        Files.move(temporary.toPath(), File(directory, "$key.resume").toPath(),
-            StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+        if (config.stateDirectory == null) return
+        checkNotNull(resumeEvents) { "Resume store is not initialized" }.save(key, bytes)
     }
 
     private fun snapshot(hash: String, handle: TorrentHandle): LocalTransferStatus? {
