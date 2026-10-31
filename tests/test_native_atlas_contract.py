@@ -75,6 +75,31 @@ class NativeAtlasContractTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "exactly one"):
             required_images(script("a-real-compose.png") + script("b-real-compose.png"))
 
+    def test_existing_android_job_runs_contract_before_any_sdk_or_emulator_setup(self):
+        workflow = (ROOT / ".github/workflows/native-add-instrumentation.yml"
+                    ).read_text(encoding="utf-8")
+        call = "python3 tools/check_native_atlas_contract.py"
+        self.assertEqual(1, workflow.count(call))
+        self.assertLess(workflow.index("uses: actions/checkout@v4"),
+                        workflow.index(call))
+        self.assertLess(workflow.index(call),
+                        workflow.index("uses: actions/setup-java@v4"))
+        self.assertLess(workflow.index(call),
+                        workflow.index("Install pinned Android compile toolchain"))
+        self.assertIn("python3 -m unittest discover -s tests -p test_native_atlas_contract.py",
+                      workflow)
+
+    def test_offline_controls_run_from_existing_docs_workflow(self):
+        workflow = (ROOT / ".github/workflows/documentation-validation.yml"
+                    ).read_text(encoding="utf-8")
+        # Push and PR filters both include validator changes, without making
+        # this new tool a reason to run the heavyweight emulator by itself.
+        self.assertEqual(2, workflow.count("- 'tools/check_native_atlas_contract.py'"))
+        self.assertEqual(2, workflow.count("- 'tests/test_native_atlas_contract.py'"))
+        self.assertIn("python3 tools/check_native_atlas_contract.py", workflow)
+        self.assertIn("python3 -m unittest discover -s tests -p test_native_atlas_contract.py",
+                      workflow)
+
     def test_non_png_or_external_path_cannot_pass(self):
         for name in ["../a-real-compose.png", "foo.txt", "a.png", ""]:
             with self.subTest(name=name), self.assertRaisesRegex(ValueError, "Invalid"):
