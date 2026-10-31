@@ -83,11 +83,22 @@ internal class AnonymousZipReviewStage private constructor(
                 val stat = Os.fstat(descriptor.fileDescriptor)
                 if (!OsConstants.S_ISREG(stat.st_mode) || stat.st_nlink != 0L)
                     throw IOException("Review staging is not an anonymous, unlinked regular file")
-                // Reopening /proc/self/fd is independent of the staged file's
-                // former logical name, and never targets an external pathname.
+                // Verify that the /proc capability path reopens the same
+                // anonymous object, without following any user-controlled
+                // directory entry. Do not validate ZIP contents here: the
+                // existing inventory must still classify malformed archives
+                // as a normal read-only BLOCKED verdict.
                 val view = File("/proc/self/fd/${descriptor.fd}")
-                java.util.zip.ZipFile(view).use { _ ->
-                    // Probe the actual ZIP open, not merely fstat success.
+                val readonly = Os.open(view.absolutePath,
+                    OsConstants.O_RDONLY or OsConstants.O_CLOEXEC or
+                        OsConstants.O_NONBLOCK, 0)
+                try {
+                    val observed = Os.fstat(readonly)
+                    if (!OsConstants.S_ISREG(observed.st_mode) ||
+                        observed.st_dev != stat.st_dev || observed.st_ino != stat.st_ino)
+                        throw IOException("Anonymous ZIP identity changed during readback")
+                } finally {
+                    Os.close(readonly)
                 }
                 val staged = AnonymousZipReviewStage(descriptor, view, total)
                 transferred = true
