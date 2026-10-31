@@ -32,6 +32,16 @@ class SafCreationCandidateTest {
             before.scope, "new-unique-id", "new.bin"))
     }
 
+    @Test fun nameCollisionsAndDisappearedForeignEntriesCannotBeCandidates() {
+        val occupied = before.copy(children = before.children + Gate.Child("taken-id", "new.bin"))
+        val seenAfter = after.copy(children = after.children + Gate.Child("taken-id", "new.bin"))
+        assertEquals(Gate.Result.REJECT,
+            Gate.inspect(occupied, seenAfter, before.scope, "new-unique-id", "new.bin"))
+        val displaced = after.copy(children = listOf(Gate.Child("new-unique-id", "new.bin")))
+        assertEquals(Gate.Result.REJECT,
+            Gate.inspect(before, displaced, before.scope, "new-unique-id", "new.bin"))
+    }
+
     @Test fun incompleteOrDifferentScopeInventoriesRefuse() {
         assertEquals(Gate.Result.REJECT, Gate.inspect(null, after, before.scope, "new-unique-id", "new.bin"))
         assertEquals(Gate.Result.REJECT, Gate.inspect(before.copy(complete = false), after,

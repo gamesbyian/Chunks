@@ -19,7 +19,14 @@ internal object SafCreationCandidate {
             return Result.REJECT
         // An existing URI may be renamed or re-labeled by the provider. Never
         // accept it as a new file or open it using a truncating write mode.
-        if (before.children.any { it.documentId == returnedDocumentId }) return Result.REJECT
+        if (before.children.any { it.documentId == returnedDocumentId ||
+                it.displayName == requestedName }) return Result.REJECT
+        if (before.children.any { old ->
+                after.children.none { it.documentId == old.documentId && it.displayName == old.displayName }
+            }) return Result.REJECT
+        if (before.children.map { it.documentId }.toSet().size != before.children.size ||
+            before.children.any { it.documentId.isBlank() || it.displayName.isBlank() })
+            return Result.REJECT
         val matched = after.children.filter { it.documentId == returnedDocumentId }
         if (matched.size != 1 || matched[0].displayName != requestedName) return Result.REJECT
         if (after.children.count { it.displayName == requestedName } != 1) return Result.REJECT
