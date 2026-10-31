@@ -103,9 +103,19 @@ def render_gradle(original: str, jar: Path, jni_root: Path) -> str:
         '    it.contains("qaMinified", ignoreCase = true)\n'
         '}) error("Non-shipping owned native JNI overlay cannot build release/R8")\n'
     )
+    plugins = (
+        'plugins {\n'
+        '    id("com.android.application")\n'
+        '    id("org.jetbrains.kotlin.plugin.compose")\n'
+        '}\n'
+    )
+    require(result.count(plugins) == 1, "Unknown Kotlin plugins block")
+    # Gradle Kotlin DSL requires plugins{} before ordinary statements, so
+    # append the defensive release guard *after* this exact plugin block.
+    result = result.replace(plugins, plugins + guard)
     require("OWNED LAB ONLY" in result and result.count("OWNED LAB ONLY") == 3,
             "Owned lab dependency rewrite incomplete")
-    return guard + result
+    return result
 
 
 def prepare(
@@ -121,7 +131,7 @@ def prepare(
             "Provide the real checked-out app/build.gradle.kts")
     require(output != app_gradle.parent and
             output not in app_gradle.parents and
-            app_gradle not in output.parents,
+            app_gradle.parent not in output.parents,
             "Output must not be a production app source directory or ancestor")
     require(not output.exists() or not any(output.iterdir()),
             "Output directory must be absent or empty to prevent stale JNI collision")
