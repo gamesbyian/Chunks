@@ -91,12 +91,20 @@ def make_digest(paths, status, suite, env=None):
     }
 
 
+def rejects_unverified_green(digest, status, require_executed):
+    """Fail closed only when prior steps claimed green; preserve original red cause."""
+    return bool(require_executed and status.lower() == "success" and (
+        not digest["evidence_executed"] or digest["junit"]["failed"] > 0
+    ))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--glob", action="append", default=[], dest="patterns")
     parser.add_argument("--status", required=True)
     parser.add_argument("--suite", required=True)
     parser.add_argument("--output", required=True)
+    parser.add_argument("--require-executed", action="store_true")
     args = parser.parse_args()
     paths = [path for pattern in args.patterns
              for path in glob.glob(pattern, recursive=True)]
@@ -123,6 +131,9 @@ def main():
             out.write("\n")
     print(json.dumps({"phase": digest["phase"], "junit": digest["junit"],
                       "evidence_executed": digest["evidence_executed"]}))
+    if rejects_unverified_green(digest, args.status, args.require_executed):
+        print("::error::Required JUnit evidence absent, invalid, all-skipped or failed")
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
