@@ -4,7 +4,6 @@ import android.content.ContentResolver
 import android.content.Context
 import android.net.Uri
 import android.os.Environment
-import android.os.ParcelFileDescriptor
 import android.os.StatFs
 import android.provider.DocumentsContract
 import android.provider.DocumentsContract.Document
@@ -17,10 +16,16 @@ import java.io.OutputStream
 import java.io.InputStream
 
 /**
- * A user-approved Storage Access Framework tree. Every create/rename is read back:
- * providers that silently pick another name ("x (1)") are treated as refusals and
- * the substitute is undone, so extraction never lands somewhere unreviewed.
- * Directory deletes are guarded by an emptiness check because SAF deletes recurse.
+ * Read-only compatibility facade for legacy SAF extraction journals.
+ *
+ * DocumentsContract.createDocument() cannot establish exclusive creation:
+ * a provider can return an existing URI. The former implementation then
+ * opened that URI with truncating "w" or deleted/renamed provider substitutes
+ * based on names alone. Until a separately reviewed ownership-bound adapter
+ * exists, all mutation entry points in this class refuse *before* provider I/O.
+ *
+ * Production extraction/copy already refuse at LocalZipExtraction; this
+ * defence-in-depth boundary protects future and direct model callers too.
  */
 internal class SafZipExtractionTarget(
     private val resolver: ContentResolver,
@@ -57,49 +62,22 @@ internal class SafZipExtractionTarget(
     override fun isDirectory(node: Uri) = describe(node)?.directory == true
     override fun hasChildren(directory: Uri) = children(directory).isNotEmpty()
 
-    private fun create(parent: Uri, mime: String, name: String): Uri? {
-        if (child(parent, name) != null) return null
-        val created = DocumentsContract.createDocument(resolver, parent, mime, name) ?: return null
-        if (describe(created)?.name == name) return created
-        // Provider substituted a name: remove our own just-created, empty substitute.
-        DocumentsContract.deleteDocument(resolver, created)
-        return null
-    }
+    // No exclusive create or object-identity proof is available through this
+    // generic SAF interface. Refuse without querying or mutating the provider.
+    override fun createDirectory(parent: Uri, name: String): Uri? = null
+    override fun createFile(parent: Uri, name: String): Uri? = null
 
-    override fun createDirectory(parent: Uri, name: String) = create(parent, Document.MIME_TYPE_DIR, name)
-    override fun createFile(parent: Uri, name: String) = create(parent, "application/octet-stream", name)
-
-    override fun openNewOutput(file: Uri): OutputStream {
-        val descriptor = resolver.openFileDescriptor(file, "w")
-            ?: throw java.io.IOException("Destination file could not be opened")
-        return object : ParcelFileDescriptor.AutoCloseOutputStream(descriptor) {
-            override fun close() {
-                try { flush(); fd.sync() } catch (_: java.io.SyncFailedException) {
-                    // Some providers expose pipes; the CRC was already checked on bytes written.
-                } finally {
-                    super.close()
-                }
-            }
-        }
-    }
+    override fun openNewOutput(file: Uri): OutputStream =
+        throw java.io.IOException("SAF destination ownership is not proven; write refused")
 
     override fun openExistingInput(file: Uri): InputStream? = resolver.openInputStream(file)
 
-    override fun rename(node: Uri, parent: Uri, newName: String): Uri? {
-        if (child(parent, newName) != null) return null
-        val previous = describe(node)?.name ?: return null
-        val renamed = DocumentsContract.renameDocument(resolver, node, newName) ?: return null
-        if (describe(renamed)?.name == newName) return renamed
-        // Provider chose a different unique name; put it back rather than publish it.
-        DocumentsContract.renameDocument(resolver, renamed, previous)
-        return null
-    }
+    override fun rename(node: Uri, parent: Uri, newName: String): Uri? = null
 
-    override fun delete(node: Uri): Boolean {
-        val row = describe(node) ?: return true
-        if (row.directory && hasChildren(node)) return false
-        return DocumentsContract.deleteDocument(resolver, node)
-    }
+    // Never call DocumentsContract.deleteDocument without an ownership-bound
+    // node and deletion authorization. Even a supposedly empty returned URI
+    // might alias a foreign directory, and deleteDocument may be recursive.
+    override fun delete(node: Uri): Boolean = false
 
     /**
      * SAF has no general free-space query. Only the primary shared-storage provider
