@@ -92,7 +92,7 @@ adb shell am instrument -w -r \
 status=$?
 set -e
 grep -E '^INSTRUMENTATION_STATUS: (class|test)=|^INSTRUMENTATION_STATUS_CODE:|^OK |^FAILURES|^Tests run' "$log" || true
-fail_if_skipped_or_failed "$status" 'OK (3 tests)' "Android 10 exclusive admission receipt durability"
+fail_if_skipped_or_failed "$status" 'OK (4 tests)' "Android 10 exclusive admission receipt durability"
 
 echo "CHUNKS_ANDROID10_DOWNLOADS: API 29 user tapped Allow storage access then Android's own Allow, and new Adds switched to Downloads/Chunks Downloads; legacy storage + grant let the native engine write, resume and seed there; the foreground service ran, showed its notification and Stop all paused transfers"
 echo 'CHUNKS_ANDROID10_ADMISSION_RECEIPTS: API29 private CREATE_NEW, checked directory fsync, exact-mode retry and foreign-byte refusal verified'
