@@ -161,6 +161,8 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     private data class CheckedFirstStart(val saveDirectory: File, val paths: List<String>)
     private val checkedFirstStarts = ConcurrentHashMap<String, CheckedFirstStart>()
     private val checkedStartProblems = ConcurrentHashMap<String, String>()
+    // Native remove is asynchronous: hold identity until session.stop joins I/O.
+    private val retiredThisSession = ConcurrentHashMap.newKeySet<String>()
     // A different stopped checked job may target the same EMPTY native paths.
     // Reserve declared paths through Start/Stop, not just until the first Start.
     // This in-session exclusion is NOT a durable native ownership boundary.
@@ -451,8 +453,8 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         val hash = identity(info)
         if (handles.containsKey(hash) || session.find(info.infoHash())?.isValid == true)
             return LocalAddResult.Refused("This torrent is already in the local engine")
-        if (resumeEvents?.canRegister(hash) == false)
-            return LocalAddResult.Refused("Existing or uncertain saved state requires recovery before a new Add")
+        if (resumeEvents?.canRegister(hash) == false || hash in retiredThisSession)
+            return LocalAddResult.Refused("Existing, removed or uncertain state requires restart/recovery before a new Add")
 
         val params = AddTorrentParams()
         params.setTorrentInfo(info)
@@ -517,8 +519,8 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             return LocalAddResult.Refused("Choose an existing folder for this download")
         val hash = magnetIdentity(magnet) ?: return LocalAddResult.Refused("Use a magnet link with exactly one v1 info hash")
         if (handles.containsKey(hash)) return LocalAddResult.Refused("This torrent is already in the local engine")
-        if (resumeEvents?.canRegister(hash) == false)
-            return LocalAddResult.Refused("Existing or uncertain saved state requires recovery before a new Add")
+        if (resumeEvents?.canRegister(hash) == false || hash in retiredThisSession)
+            return LocalAddResult.Refused("Existing, removed or uncertain state requires restart/recovery before a new Add")
         // The previous handle may have been removed from the visible list
         // while native disk I/O still holds it. Its path claims are tombstoned
         // until session shutdown; do not resurrect the same hash via a magnet.
@@ -1245,6 +1247,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         if (config.stateDirectory != null && store == null) return false
         try { store?.removeIntent(key) } catch (_: Exception) { return false }
         try { session.remove(handle) } catch (_: Exception) { return false }
+        retiredThisSession += key
         // Must use the same monitor held across an asynchronous resume write.
         // Any writer already admitted finishes before we delete the file; any
         // late alert for this handle is refused by LocalResumeWriteFence.
@@ -1357,6 +1360,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         checkedFirstStarts.clear()
         checkedStartProblems.clear()
         session.stop()
+        retiredThisSession.clear()
         // The native session has stopped before its in-process path claims
         // are discarded. This does not grant ownership to any restored job.
         checkedPayloadReservations.clear()
