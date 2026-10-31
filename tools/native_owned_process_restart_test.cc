@@ -136,6 +136,54 @@ int main() {
     ++cases;
   }
   {
+    // Completed owner died and a symlink now redirects its old filename to
+    // unrelated bytes. Native reopen must not follow the link or mutate
+    // either the planted target or the displaced owned file.
+    Sandbox s;
+    DieAfter([&]() {
+      std::string error;
+      auto out = OwnedPayloadFile::Create(s.payload.string(), "season/f.bin",
+          s.receipts.string(), kHash, kMapping, &error);
+      return out && out->WriteAt(0, kBytes.data(), kBytes.size(), &error)
+          && out->Sync(&error);
+    });
+    const auto selected = s.payload / "season/f.bin";
+    const auto displaced = s.payload / "season/original-f.bin";
+    const auto canary = s.base / "foreign-symlink-target";
+    WriteExclusive(canary, kForeign);
+    fs::rename(selected, displaced);
+    fs::create_symlink(canary, selected);
+    std::string error;
+    assert(!OwnedPayloadFile::Reopen(s.payload.string(), "season/f.bin",
+        s.receipts.string(), kHash, kMapping, &error));
+    assert(Read(canary) == kForeign && Read(displaced) == kBytes);
+    assert(fs::is_symlink(selected));
+    ++cases;
+  }
+  {
+    // The pending reservation's target becomes a symlink during shutdown;
+    // neither Verify nor CreateFromReservation may follow it into bytes
+    // owned by a completely separate actor.
+    Sandbox s;
+    DieAfter([&]() {
+      std::string error;
+      return OwnedPayloadFile::Reserve(s.payload.string(), "season/g.bin",
+          s.receipts.string(), kHash, kMapping, &error);
+    });
+    const auto canary = s.base / "pending-foreign-target";
+    WriteExclusive(canary, kForeign);
+    const auto selected = s.payload / "season/g.bin";
+    fs::create_symlink(canary, selected);
+    std::string error;
+    assert(!OwnedPayloadFile::VerifyReservation(s.payload.string(), "season/g.bin",
+        s.receipts.string(), kHash, kMapping, &error));
+    error.clear();
+    assert(!OwnedPayloadFile::CreateFromReservation(s.payload.string(), "season/g.bin",
+        s.receipts.string(), kHash, kMapping, &error));
+    assert(Read(canary) == kForeign && fs::is_symlink(selected));
+    ++cases;
+  }
+  {
     // Positive continuation after reservation-only process death: the exact
     // private receipt and original free destination still match, so a new
     // process can complete creation and persist bytes without abandoning the
