@@ -75,6 +75,23 @@ jobs:
               app/build/test-results/testDebugUnitTest/*.xml 2>/dev/null | sort | tail -60 || true
             exit 1
           fi
+      - name: Emit agent-readable CI evidence (without test output or secrets)
+        if: always()
+        env:
+          CHUNKS_JOB_STATUS: ${{ job.status }}
+        run: |
+          if [ -f tools/ci_failure_digest.py ]; then
+            python3 tools/ci_failure_digest.py --suite "android-jvm" --status "$CHUNKS_JOB_STATUS" \
+              --glob 'app/build/test-results/testDebugUnitTest/*.xml' --output "$RUNNER_TEMP/chunks-ci-digest.json"
+          fi
+      - name: Retain structured failure digest
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-ci-failure-digest-android-jvm
+          path: ${{ runner.temp }}/chunks-ci-digest.json
+          retention-days: 14
+          if-no-files-found: warn
       # A chained native handler that re-raises shows only "SIGSEGV (sent by
       # kill)"; the full report's thread list is needed to find the real fault.
       # This workflow holds no secrets, so the report's environment is safe.

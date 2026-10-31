@@ -3,11 +3,7 @@ name: Chunks Doze harness safety
 # Offline fake-adb checks only. The actual Doze/peer-download proof is an
 # independently dispatched public-swarm workflow, not an ordinary PR action.
 on:
-  pull_request:
-    paths:
-      - "tools/android_public_swarm_doze.sh"
-      - "tools/test_android_public_swarm_doze_mock.sh"
-      - ".github/workflows/android-doze-harness-qa.yml"
+  # Retained as an opt-in historical harness. PR coverage is in radio-harness-qa.
   workflow_dispatch:
 
 permissions:
