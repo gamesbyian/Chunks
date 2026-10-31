@@ -1,5 +1,7 @@
 # Storage budgets, reclaim and archive extraction
 
+For the exact positive destination identity, multi-file transaction, crash journal, and provider-specific acceptance requirements, see [Owned publication and recovery protocol](OWNED-PUBLICATION-PROTOCOL.md). The contract is a proposed release gate, not permission to reenable generic SAF writes.
+
 ## G0 follow-up: live ZIP review, owned export handoff and limited positive publication (2026-10-31)
 
 **Current ZIP review is read-only and non-destructive.** [#829](https://github.com/gamesbyian/Chunks/pull/829) merged after an exact-head Android 10 (API29) anonymous-descriptor test, API35 instrumentation, JVM and R8 passed. The inspector no longer creates a named temporary output or deletes a cache pathname. Linux O_TMPFILE or an Android-supported memfd keeps the staged bytes in an **unlinked, pinned object**, read through the still-live `/proc/self/fd` capability and released by descriptor close. The old filename/24h-age cleanup is inert, preserving ambiguous historical cache nodes instead of deleting substitutes. Unsupported devices decline ZIP review safely. ZIP extraction and independent finished-transfer library copy **remain blocked** by #811/#824; verification of an archive is no permission to publish files.
