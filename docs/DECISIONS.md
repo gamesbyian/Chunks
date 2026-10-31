@@ -1,5 +1,9 @@
 # Chunks: canonical decision ledger
 
+## Ordinary local torrent file replacement (binding owner correction, 2026-10-31)
+
+**D-LOCAL-COLLISIONS-20261031 | Owner, binding.** Choosing a download directory authorizes libtorrent to verify/reuse/replace existing **regular files with the exact relative torrent payload paths** there, as conventional BitTorrent clients do. No blanket proof of Chunks-exclusive prior ownership or custom native owner-writer is required. Enforce selected-root containment, reject traversal/symlinks/special targets, avoid overlapping simultaneous writer jobs, preserve unrelated sibling files, verify pieces before claiming content, and never infer permission to delete/move source bytes or rewrite app metadata. Ordinary same-name replacement is not G0 #568 data-loss evidence. Detailed product, UX and regression contract: [LOCAL-TORRENT-COLLISION-POLICY](LOCAL-TORRENT-COLLISION-POLICY.md). This explicitly supersedes the strict 2026-10-29/30 foreign-file non-clobber premise, not the Android storage/permission/lifecycle requirements.
+
 ## External destination delivery decision (2026-10-30)
 
 **D-EXTERNAL-DELIVERY-20261030 | Owner, binding scope; planned implementation.** Support unusual local-torrent workflows whose *final* payload destination is user-authorized Google Drive/SAF or FTP-family storage. Optimize for safe download → verified delivery → optional explicitly approved cleanup, not operating a cloud-backed seedbox from Android. Local engine execution is independent of destination Place; seeding remains local while retained; direct cloud-backed torrent random writes and seeding are excluded from initial scope. Prioritize after core integrity and release quality, using [EXTERNAL-DESTINATION-DELIVERY](EXTERNAL-DESTINATION-DELIVERY.md) as the canonical feature contract.
