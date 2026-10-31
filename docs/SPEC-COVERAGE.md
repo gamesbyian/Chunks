@@ -1,5 +1,8 @@
 # Chunks specification coverage and acceptance map
 
+**Owner correction 2026-10-31:** [D-LOCAL-COLLISIONS-20261031](DECISIONS.md) supersedes the blanket same-path regular-file non-clobber G0 requirement in historical #568 entries below. Recheck/reuse/overwrite *exact declared torrent paths in the chosen root* is conventional authorized behavior, not by itself a release blocker. Unrelated paths, metadata, Android storage/permissions and true containment still require separate evidence. [Canonical contract](LOCAL-TORRENT-COLLISION-POLICY.md).
+
+
 ## Intelligent defaults and post-skip continuity: specification coverage (2026-10-30)
 
 **Status: product/UX specification expanded; runtime implementation and independent acceptance not established.** [#779](https://github.com/gamesbyian/Chunks/issues/779) tracks the 40-second teach-back and skipped-choice outcomes. The canonical product, UX and domain-contract additions were reconciled in merged [#797](https://github.com/gamesbyian/Chunks/pull/797) and [#799](https://github.com/gamesbyian/Chunks/pull/799); [#783](https://github.com/gamesbyian/Chunks/pull/783) was closed unmerged as superseded. All current G0 data-integrity gates remain unchanged, especially [#568](https://github.com/gamesbyian/Chunks/issues/568). No device or novice evidence is implied by documentation.

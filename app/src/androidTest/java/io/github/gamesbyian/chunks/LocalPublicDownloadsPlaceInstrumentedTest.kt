@@ -134,7 +134,7 @@ class LocalPublicDownloadsPlaceInstrumentedTest {
             !File(destination, "Clean checked fixture/payload.bin").exists())
     }
 
-    @Test fun checkedAddRejectsUnrelatedCollisionInSharedDownloadsWithoutMutation() {
+    @Test fun checkedAddAcceptsExistingRegularPayloadInChosenSharedDownloads() {
         allowSharedDownloads()
         val public = LocalDownloadPlaces.choices(context)
             .single { it.place.kind == LocalPlaceKind.PUBLIC_DOWNLOADS }
@@ -156,13 +156,16 @@ class LocalPublicDownloadsPlaceInstrumentedTest {
         val original = ByteArray(expected.size).also { Random(9876).nextBytes(it) }
         foreign.writeBytes(original)
 
+        val sibling = File(destination, "not-in-torrent.txt")
+        sibling.writeText("unrelated sibling")
         val native = engine()
         val result = native.addStoppedChecked(torrent, destination)
-        assertTrue("Existing foreign file must be refused: " + result,
-            result is LocalAddResult.Refused)
-        assertTrue("Refusal must not register a native transfer", native.list().isEmpty())
-        assertArrayEquals("Refusal must preserve exact public Downloads bytes",
-            original, foreign.readBytes())
+        assertTrue("A chosen destination permits existing regular torrent payloads: " + result,
+            result is LocalAddResult.AddedStopped)
+        assertTrue((result as LocalAddResult.AddedStopped).status.stopped)
+        assertEquals(1, native.list().size)
+        assertArrayEquals("Stopped Add must not download yet", original, foreign.readBytes())
+        assertEquals("unrelated sibling", sibling.readText())
     }
 
     @Test fun twoCheckedHashesCannotReserveOneEmptyPublicDownloadsBackingPath() {
@@ -207,7 +210,7 @@ class LocalPublicDownloadsPlaceInstrumentedTest {
         assertTrue("No payload created after admission refusal", !path.exists())
     }
 
-    @Test fun checkedFirstStartRefusesLateForeignFileInSharedDownloads() {
+    @Test fun checkedFirstStartAcceptsLateRegularPayloadAndPreservesSibling() {
         allowSharedDownloads()
         val public = LocalDownloadPlaces.choices(context)
             .single { it.place.kind == LocalPlaceKind.PUBLIC_DOWNLOADS }
@@ -235,16 +238,18 @@ class LocalPublicDownloadsPlaceInstrumentedTest {
         val original = ByteArray(payload.size).also { Random(9876).nextBytes(it) }
         foreign.writeBytes(original)
 
-        assertEquals(LocalCommandOutcome.REFUSED,
+        val sibling = File(destination, "outside-the-torrent.txt")
+        sibling.writeText("keep sibling")
+        assertEquals(LocalCommandOutcome.VERIFIED,
             native.resume(transfer.infoHash).outcome)
-        val stopped = requireNotNull(native.status(transfer.infoHash))
-        assertTrue("First Start collision must remain stopped", stopped.stopped)
-        assertTrue("User sees the refusal", stopped.error.orEmpty().contains("since Add"))
-        assertArrayEquals("Android shared Downloads collision must retain exact foreign bytes",
-            original, foreign.readBytes())
+        assertTrue("Start must be permitted in the chosen destination",
+            requireNotNull(native.status(transfer.infoHash)).stopped == false)
+        // No peer is connected. This validates permission to start, not a
+        // completed download. The separate positive test supplies real peers.
+        assertEquals("keep sibling", sibling.readText())
     }
 
-    @Test fun magnetMetadataCollisionPreservesPublicDownloadsAcrossStartAndRestart() {
+    @Test fun magnetAutoStartsOverExistingRegularPayloadInPublicDownloadsAndRestores() {
         allowSharedDownloads()
         val public = LocalDownloadPlaces.choices(context)
             .single { it.place.kind == LocalPlaceKind.PUBLIC_DOWNLOADS }
@@ -283,48 +288,32 @@ class LocalPublicDownloadsPlaceInstrumentedTest {
             autoStartAfterMetadata = true)
         assertTrue("The magnet must fetch real metadata, rather than be refused at intake: $added",
             added is LocalAddResult.FetchingMetadata)
-        waitFor("metadata-ready collision to remain stopped") {
-            leecher.status(seed.infoHash)?.let { it.metadataKnown && it.stopped } == true
+        val sibling = File(destination, "never-a-torrent-path.txt")
+        sibling.writeText("untouched sibling")
+        waitFor("magnet metadata and authorized peer download") {
+            val current = leecher.status(seed.infoHash)
+            current?.metadataKnown == true && current.progressPpm == 1_000_000
         }
-        val blocked = requireNotNull(leecher.status(seed.infoHash))
-        assertTrue("Early Start consent must retain the native upload-only gate", blocked.uploadOnly)
-        assertTrue("The actual colliding path must produce a visible refusal",
-            blocked.error.orEmpty().contains("Existing files"))
-        assertEquals("Metadata exchange must not download payload into foreign files",
-            0L, blocked.payloadDownloadedBytes)
-        assertArrayEquals("Metadata arrival must preserve exact public Downloads bytes",
-            original, foreign.readBytes())
-
-        assertEquals("Explicit Start must refuse the newly known payload collision",
-            LocalCommandOutcome.REFUSED, leecher.resume(seed.infoHash).outcome)
-        val afterStart = requireNotNull(leecher.status(seed.infoHash))
-        assertTrue(afterStart.stopped)
-        assertTrue(afterStart.uploadOnly)
-        assertArrayEquals("Refused Start must preserve exact public Downloads bytes",
-            original, foreign.readBytes())
-
-        // Metadata's own resume save must persist the native gate, so restarting
-        // cannot turn rejected early consent into permission to overwrite files.
-        waitFor("collision-gated native resume data", timeoutMs = 15_000) {
-            File(state, seed.infoHash + ".resume").let { it.isFile && it.length() > 0L }
-        }
+        assertTrue("Actual libtorrent payload must reach a cache-flushed state",
+            leecher.flushCompletedForLibraryRead(seed.infoHash, timeoutMs = 30_000L))
+        waitForExact(foreign, payload, "magnet writes selected path")
+        assertEquals("untouched sibling", sibling.readText())
+        assertTrue("Completed magnet must persist resume state", leecher.saveResumeData() >= 1)
         leecher.close()
-        assertArrayEquals(original, foreign.readBytes())
+
         val restarted = engine(state)
-        assertTrue("Blocked magnet resume must restore cleanly", restarted.restoreProblems.isEmpty())
+        assertTrue("Completed magnet must restore without errors",
+            restarted.restoreProblems.isEmpty())
         val restored = requireNotNull(restarted.status(seed.infoHash))
         assertTrue(restored.metadataKnown)
-        assertTrue("Blocked metadata-ready magnet must restore stopped", restored.stopped)
-        assertTrue("Native upload-only protection must survive restart", restored.uploadOnly)
+        assertTrue("Restore starts stopped", restored.stopped)
         assertEquals(destination.absolutePath, restored.savePath)
-        assertEquals(LocalCommandOutcome.REFUSED, restarted.resume(seed.infoHash).outcome)
-        val afterRestartStart = requireNotNull(restarted.status(seed.infoHash))
-        assertTrue(afterRestartStart.stopped)
-        assertTrue(afterRestartStart.uploadOnly)
-        assertEquals(0L, afterRestartStart.payloadDownloadedBytes)
-        restarted.close()
-        assertArrayEquals("Refused Start after restart must preserve foreign public Downloads bytes",
-            original, foreign.readBytes())
+        assertEquals(LocalCommandOutcome.VERIFIED, restarted.resume(seed.infoHash).outcome)
+        waitFor("restored public Downloads magnet to seed") {
+            restarted.status(seed.infoHash)?.state == LocalTransferState.SEEDING
+        }
+        assertArrayEquals(payload, foreign.readBytes())
+        assertEquals("untouched sibling", sibling.readText())
     }
 
     @Test fun nativeEngineWritesResumesAndSeedsFromPublicChunksDownloads() {

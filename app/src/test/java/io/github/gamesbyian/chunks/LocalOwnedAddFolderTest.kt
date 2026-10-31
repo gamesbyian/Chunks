@@ -26,12 +26,12 @@ class LocalOwnedAddFolderTest {
         assertEquals(path, LocalOwnedAddFolder.prepare(root, "Season 01"))
     }
 
-    @Test fun refusesNonemptyOrFileCollisionsBeforeEngineAdd() {
+    @Test fun acceptsNonemptyChosenDirectoryButStillRefusesFileTargets() {
         val root = root()
         val occupied = java.io.File(root, "Occupied")
         assertTrue(occupied.mkdir())
         assertTrue(java.io.File(occupied, "existing.dat").writeText("leave alone").let { true })
-        assertNull(LocalOwnedAddFolder.prepare(root, "Occupied"))
+        assertEquals(occupied, LocalOwnedAddFolder.prepare(root, "Occupied"))
         assertEquals("leave alone", java.io.File(occupied, "existing.dat").readText())
         assertTrue(java.io.File(root, "file").writeText("x").let { true })
         assertNull(LocalOwnedAddFolder.prepare(root, "file"))

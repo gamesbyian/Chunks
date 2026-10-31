@@ -1,5 +1,7 @@
 # Native admission and immutable resume reconciliation contract
 
+**Owner-policy update (2026-10-31):** this reconciliation is now scoped to **app-private resume/admission metadata durability, no unrelated metadata-entry overwrite/unlink and restoration correctness** ([#865](https://github.com/gamesbyian/Chunks/issues/865)). The owner's [D-LOCAL-COLLISIONS-20261031](DECISIONS.md) authorizes normal libtorrent reuse/replacement of same-name regular **payload** files inside the selected destination. Any older instructions here to require custom JNI payload owner receipts or strict refusal of ordinary existing payload files are superseded, not release gates. Do not discard the independent metadata safety tests.
+
 Status: G0 / release blocking. This is an integration plan, not acceptance evidence. Last source comparison: 2026-10-31. The live PR heads, CI and source must be re-fetched before any action.
 
 ## Scope and source authorities

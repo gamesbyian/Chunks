@@ -1,5 +1,9 @@
 # Chunks evidence and release gate ledger
 
+## 2026-10-31 owner correction: historical native collision witness reclassified
+
+**Policy changed; evidence has NOT changed.** The stock libtorrent JNI witness 41130188712 still observed 3/4 ordinary same-path regular-file replacements. Under [D-LOCAL-COLLISIONS-20261031](DECISIONS.md) these outcomes are authorized by a chosen download root and **not individually a G0 native ownership defect**. Prior RED labels in dated sections below refer to the superseded absolute non-clobber contract. Do **not** infer path-escape, unrelated sibling preservation, multi-writer exclusion, resumed piece hash correctness, Android permissions, native reliability, or physical handset acceptance from that diagnostic. Metadata `.resume`/`.admission` overwrite hazards are separate concerns and stay open until verified. [Policy and scoped acceptance](LOCAL-TORRENT-COLLISION-POLICY.md).
+
 ## 2026-10-31 native resume metadata and Remove nonclobber review
 
 **#568 remains release G0 RED.** Separate from libtorrent's native payload overwrite (3/4 planted files overwritten in actual [production witness 41130188712](https://github.com/gamesbyian/Chunks/actions/runs/41130188712)), the consolidated [#812](https://github.com/gamesbyian/Chunks/pull/812) admission candidate has three metadata-path integrity surfaces:
