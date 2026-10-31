@@ -193,17 +193,51 @@ bool PublishReceipt(int dir, const std::string& id, const Receipt& receipt, std:
     for (unsigned char byte : bytes) { temp += alphabet[byte >> 4]; temp += alphabet[byte & 15]; }
     Fd stage(::openat(dir, temp.c_str(), O_CREAT | O_EXCL | O_WRONLY | O_NOFOLLOW | O_CLOEXEC, 0600));
     if (stage.v < 0) { if (errno == EEXIST) continue; return Fail(err, "Receipt stage creation failed"); }
-    const bool wrote = FullyWrite(stage.v, Encode(receipt));
-    if (!wrote) { ::unlinkat(dir, temp.c_str(), 0); return Fail(err, "Receipt stage sync failed"); }
-    // Link-to-claim refuses to replace an existing receipt, unlike rename().
-    const bool linked = ::linkat(dir, temp.c_str(), dir, id.c_str(), 0) == 0;
-    // Never remove a published claim on uncertain parent fsync; manual review.
-    if (linked && ::fsync(dir) != 0) {
+    const std::string encoded = Encode(receipt);
+    if (!FullyWrite(stage.v, encoded)) {
       ::unlinkat(dir, temp.c_str(), 0);
-      return Fail(err, "Receipt parent sync failed; claim may exist and must be reviewed");
+      return Fail(err, "Receipt stage sync failed");
     }
-    ::unlinkat(dir, temp.c_str(), 0); // only this exclusive staging file
-    if (!linked) return Fail(err, "Receipt already claimed or publication unsupported");
+    // Prefer an atomic, no-replace hardlink from an already durable inode.
+    // Some Android app-private filesystems deny linkat(2). If that specific
+    // capability is unavailable, use CREATE_NEW on the FINAL pathname with a
+    // pinned file descriptor, then fsync file and parent. A crash mid-write
+    // may leave an incomplete final receipt; it stays corrupt/UNKNOWN and
+    // must NEVER be overwritten or silently adopted on retry.
+    const bool linked = ::linkat(dir, temp.c_str(), dir, id.c_str(), 0) == 0;
+    const int link_error = linked ? 0 : errno;
+    if (linked) {
+      if (::fsync(dir) != 0) {
+        ::unlinkat(dir, temp.c_str(), 0);
+        return Fail(err, "Receipt parent sync failed; claim may exist and must be reviewed");
+      }
+      ::unlinkat(dir, temp.c_str(), 0);
+      return true;
+    }
+    if (link_error != EPERM && link_error != EACCES &&
+        link_error != EOPNOTSUPP && link_error != ENOSYS) {
+      ::unlinkat(dir, temp.c_str(), 0);
+      return Fail(err, "Receipt already claimed or publication unsupported");
+    }
+    Fd finalized(::openat(dir, id.c_str(),
+        O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0600));
+    if (finalized.v < 0) {
+      ::unlinkat(dir, temp.c_str(), 0);
+      return Fail(err, "Exclusive fallback receipt publication refused");
+    }
+    // Never follow/reopen the final name to write. A concurrent same-UID
+    // substitution can only redirect the pathname, not this original FD.
+    const bool committed = FullyWrite(finalized.v, encoded) &&
+                           ::fsync(dir) == 0;
+    struct stat pinned{}, named{};
+    const bool same_owner = ::fstat(finalized.v, &pinned) == 0 &&
+        ::fstatat(dir, id.c_str(), &named, AT_SYMLINK_NOFOLLOW) == 0 &&
+        S_ISREG(pinned.st_mode) && S_ISREG(named.st_mode) &&
+        pinned.st_nlink == 1 && named.st_nlink == 1 &&
+        pinned.st_dev == named.st_dev && pinned.st_ino == named.st_ino;
+    ::unlinkat(dir, temp.c_str(), 0);
+    if (!committed || !same_owner)
+      return Fail(err, "Exclusive receipt fallback uncertain; never adopt or overwrite final record");
     return true;
   }
   return Fail(err, "Receipt staging collisions exhausted");
