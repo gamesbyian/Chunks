@@ -240,6 +240,29 @@ class RemoteSmartConnectTest {
         }
     }
 
+    @Test fun gatewayServerFailureNeverTriggersSiblingInstancePathSearch() = runBlocking {
+        for (code in listOf(500, 502, 503, 504)) {
+            val tried = mutableListOf<String>()
+            val failed = try {
+                RemoteSmartConnect.connect("wood.seedhost.eu", "alice", "secret") { creds ->
+                    tried += creds.endpoint
+                    throw IOException("rTorrent gateway returned HTTP $code")
+                }
+                fail("Server-side HTTP $code must stop before guessing a sibling path")
+                null
+            } catch (problem: RemoteSmartConnect.ConnectionFailed) { problem }
+            assertEquals(RemoteSmartConnect.Category.SERVICE, failed?.category)
+            assertEquals(1, failed?.tested)
+            assertEquals(1, tried.size)
+            assertEquals(listOf("Server gateway error; no further paths tried"),
+                failed?.attempts?.map { it.outcome })
+            val visible = failed?.message.orEmpty() +
+                RemoteSmartConnect.repairAdvice(requireNotNull(failed), "wood.seedhost.eu").joinToString()
+            assertFalse(visible.contains("secret"))
+            assertTrue(visible.contains("other"))
+        }
+    }
+
     @Test fun rateLimitedConnectStopsBeforeTryingOtherEndpoints() = runBlocking {
         for (message in listOf(
             "rTorrent gateway returned HTTP 429",
