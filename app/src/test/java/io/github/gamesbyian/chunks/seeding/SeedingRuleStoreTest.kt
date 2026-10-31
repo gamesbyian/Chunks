@@ -56,6 +56,105 @@ class SeedingRuleStoreTest {
         assertEquals(listOf(rule), SeedingRuleStore(context).load().rules)
     }
 
+    @Test fun legacyTrimmedServerIdsAreQuarantinedEvenWhenTheyMatchAnotherExactAccount() {
+        val endpoint = "https://box.invalid/RPC2"
+        val oldHash = java.security.MessageDigest.getInstance("SHA-256")
+            .digest((endpoint + "\u0000" + "alice").toByteArray())
+            .joinToString("") { "%02x".format(it.toInt() and 255) }
+        // This is the old ID for authenticated username " alice " AND the
+        // current exact ID of a DIFFERENT username "alice".
+        val collision = "remote:" + oldHash
+        val before = rule.copy(environments = setOf("phone", collision),
+            knownEnvironments = setOf("phone", collision),
+            includeFutureEnvironments = true)
+        val policy = SeedingPolicy(ratioGoal = BigDecimal("2.00"))
+        val encoded = org.json.JSONObject(SeedingRuleStore.encode(
+            SeedingRuleStore.Snapshot(listOf(before),
+                mapOf("phone" to capped, collision to policy))))
+        // Reproduce bytes stored before the exact-account identity marker.
+        encoded.remove("identityScheme")
+        encoded.remove("quarantinedRemoteRules")
+        encoded.remove("quarantinedRemoteDefaults")
+        val legacy = encoded.toString()
+        val safe = SeedingRuleStore.decode(legacy)
+        val safeRule = safe.rules.single()
+        assertEquals(setOf("phone"), safeRule.environments)
+        assertEquals(setOf("phone"), safeRule.knownEnvironments)
+        assertFalse(safeRule.includeFutureEnvironments)
+        assertFalse(safeRule.appliesTo(collision))
+        assertEquals(mapOf("phone" to capped), safe.defaults)
+        assertEquals(policy, safe.quarantinedRemoteDefaults.getValue(collision))
+        assertEquals(before.environments, safe.quarantinedRemoteRules.single().environments)
+        assertTrue(safe.quarantinedRemoteRules.single().includeFutureEnvironments)
+        val stored = SeedingRuleStore.encode(safe)
+        assertTrue(stored.contains("remote-principal-exact-v2"))
+        assertEquals(safe, SeedingRuleStore.decode(stored))
+        // Only an explicit v2 edit can authorize a current exact server.
+        val reviewed = safe.copy(rules = listOf(safeRule.copy(
+            environments = setOf("phone", collision))))
+        assertEquals(setOf("phone", collision),
+            SeedingRuleStore.decode(SeedingRuleStore.encode(reviewed)).rules.single().environments)
+    }
+
+    @Test fun legacyUnknownScopeAndFutureWildcardCannotAutomaticallyReachAnyServer() {
+        val before = rule.copy(environments = setOf("remote:unknown"),
+            knownEnvironments = emptySet(), includeFutureEnvironments = true)
+        val root = org.json.JSONObject(SeedingRuleStore.encode(
+            SeedingRuleStore.Snapshot(listOf(before), emptyMap())))
+        root.remove("identityScheme")
+        root.remove("quarantinedRemoteRules")
+        root.remove("quarantinedRemoteDefaults")
+        val safe = SeedingRuleStore.decode(root.toString())
+        assertFalse(safe.rules.single().appliesTo("remote:another-server"))
+        assertFalse(safe.rules.single().appliesTo("remote:unknown"))
+        assertEquals(emptySet<String>(), safe.rules.single().environments)
+        assertEquals(before.environments, safe.quarantinedRemoteRules.single().environments)
+        assertEquals(safe, SeedingRuleStore.decode(SeedingRuleStore.encode(safe)))
+    }
+
+    @Test fun legacyPreferencesAreReadOnlyOnFirstLoadAndArchiveSurvivesRuleDeletion() {
+        val id = "remote:" + "f".repeat(64)
+        val old = rule.copy(environments = setOf("phone", id),
+            knownEnvironments = setOf("phone", id), includeFutureEnvironments = true)
+        val root = org.json.JSONObject(SeedingRuleStore.encode(
+            SeedingRuleStore.Snapshot(listOf(old), mapOf(id to capped))))
+        root.remove("identityScheme")
+        root.remove("quarantinedRemoteRules")
+        root.remove("quarantinedRemoteDefaults")
+        val original = root.toString()
+        val prefs = context.getSharedPreferences("chunks_seeding_rules", 0)
+        assertTrue(prefs.edit().putString("rules", original).commit())
+        val store = SeedingRuleStore(context)
+        val safe = store.load()
+        assertFalse(safe.unreadable)
+        assertFalse(safe.rules.single().appliesTo(id))
+        assertEquals("A read is never permission to rewrite the original policy",
+            original, prefs.getString("rules", null))
+        assertTrue(store.save(safe))
+        val upgraded = prefs.getString("rules", null).orEmpty()
+        assertTrue(upgraded.contains("remote-principal-exact-v2"))
+        assertEquals(safe, SeedingRuleStore(context).load())
+        assertTrue(store.save(safe.copy(rules = emptyList())))
+        val afterDeletion = SeedingRuleStore(context).load()
+        assertTrue(afterDeletion.rules.isEmpty())
+        assertEquals("Historical assignments remain recoverable after deleting a rule",
+            safe.quarantinedRemoteRules, afterDeletion.quarantinedRemoteRules)
+        assertEquals(safe.quarantinedRemoteDefaults, afterDeletion.quarantinedRemoteDefaults)
+    }
+
+    @Test fun unknownIdentitySchemeIsUnreadableInsteadOfReassigningOldAccounts() {
+        val root = org.json.JSONObject(SeedingRuleStore.encode(
+            SeedingRuleStore.Snapshot(listOf(rule), emptyMap())))
+        root.put("identityScheme", "future-unreviewed-scheme")
+        val prefs = context.getSharedPreferences("chunks_seeding_rules", 0)
+        val stored = root.toString()
+        assertTrue(prefs.edit().putString("rules", stored).commit())
+        val store = SeedingRuleStore(context)
+        assertTrue(store.load().unreadable)
+        assertFalse(store.save(SeedingRuleStore.Snapshot(emptyList(), emptyMap())))
+        assertEquals(stored, prefs.getString("rules", null))
+    }
+
     @Test fun urlsDuplicateIdsAndBadValuesNeverLoad() {
         val good = SeedingRuleStore.encode(SeedingRuleStore.Snapshot(listOf(rule), emptyMap()))
         val withUrl = good.replace("\"iptorrents.com\"", "\"https://iptorrents.com/announce?passkey=x\"")
