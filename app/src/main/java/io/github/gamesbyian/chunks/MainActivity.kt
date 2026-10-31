@@ -431,7 +431,7 @@ private fun ChunksApp(
                 },
                 savedProfiles = savedProfiles.map { profile ->
                     CombinedSavedProfile(profile.id, profile.label + " · " + profile.address,
-                        aliasScope = profile.credentials.endpoint.trim() + "\u0000" + profile.credentials.username.trim(),
+                        aliasScope = RemoteVerifiedUiIdentity.aliasScopeOf(profile.credentials),
                         // Read-only "main" list with this profile's own saved credentials (HTTPS enforced).
                         listOnly = { RTorrentRemote(profile.credentials).listTransfers("main") })
                 },
@@ -511,9 +511,7 @@ private fun ChunksApp(
                                 try {
                                     val old = vault.load()
                                     val removedRoster = profileRoster.forget(profile.id)
-                                    val removedLegacy = if (old?.endpoint?.trim() ==
-                                            profile.credentials.endpoint.trim() &&
-                                        old.username.trim() == profile.credentials.username.trim())
+                                    val removedLegacy = if (RemoteVerifiedUiIdentity.samePrincipal(old, profile.credentials))
                                         vault.clear() else true
                                     removedRoster && removedLegacy
                                 } catch (_: Exception) { false }
@@ -624,7 +622,7 @@ private fun ChunksApp(
                                     transfersObservedAt = System.currentTimeMillis()
                                     snapshotRevision++
                                     version = v
-                                    aliasScope = verifiedSettings.endpoint.trim() + "\u0000" + username.trim()
+                                    aliasScope = RemoteVerifiedUiIdentity.aliasScopeOf(verifiedSettings)
                                     endpoint = verifiedSettings.endpoint
                                     // The full address now carries the path.
                                     rpcPath = ""
