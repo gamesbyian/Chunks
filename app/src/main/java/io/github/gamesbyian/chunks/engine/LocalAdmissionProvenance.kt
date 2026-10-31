@@ -1,5 +1,8 @@
 package io.github.gamesbyian.chunks.engine
 
+import android.os.Build
+import android.system.Os
+import android.system.OsConstants
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
@@ -36,11 +39,22 @@ internal object LocalAdmissionProvenance {
         if (directory == null || !identity.matches(hash)) return null
         val file = receipt(directory, hash)
         return try {
-            if (!Files.isRegularFile(file.toPath(), LinkOption.NOFOLLOW_LINKS) ||
-                Files.size(file.toPath()) > 160) null
-            else {
-                val actual = Files.readAllBytes(file.toPath())
-                Mode.entries.singleOrNull { actual.contentEquals(bytes(hash, it)) }
+            // Read through the descriptor opened with NOFOLLOW. A separate
+            // pathname survey followed by readAllBytes could follow a swapped
+            // symlink between the two calls.
+            if (!Files.isRegularFile(file.toPath(), LinkOption.NOFOLLOW_LINKS)) null
+            else FileChannel.open(file.toPath(), StandardOpenOption.READ,
+                LinkOption.NOFOLLOW_LINKS).use { channel ->
+                val length = channel.size()
+                if (length <= 0 || length > 160) null
+                else {
+                    val buffer = ByteBuffer.allocate(length.toInt())
+                    while (buffer.hasRemaining()) {
+                        if (channel.read(buffer) < 0) return@use null
+                    }
+                    val actual = buffer.array()
+                    Mode.entries.singleOrNull { actual.contentEquals(bytes(hash, it)) }
+                }
             }
         } catch (_: Exception) { null }
     }
@@ -51,54 +65,87 @@ internal object LocalAdmissionProvenance {
      * mode refuses rather than rewriting evidence of an earlier admission.
      * A crash that loses this record causes conservative UNKNOWN restoration.
      */
-    fun persist(
-        directory: File?, hash: String, mode: Mode,
-        syncDirectory: (Path) -> Unit = { root ->
+    /**
+     * Android's private app storage does not guarantee hardlink creation (both
+     * API29 and API35 denied Files.createLink in the receipt diagnostic).
+     * A final-path CREATE_NEW is the same no-replace primitive without a link.
+     * Keep the initially opened descriptor through write and force: never
+     * close and reopen a temporary pathname that can be substituted.
+     *
+     * If the process dies after exclusive creation but before the final fsync,
+     * a partial receipt stays UNKNOWN. This deliberately trades recoverability
+     * of a failed Add for preserving other files; it does NOT grant ownership.
+     */
+    private fun forceDirectory(root: Path) {
+        if (Build.VERSION.SDK_INT > 0) {
+            // Android's NIO directory FileChannel.force is not portable.
+            // Use a real directory descriptor and a checked kernel fsync.
+            val flags = OsConstants.O_RDONLY or OsConstants.O_DIRECTORY or
+                OsConstants.O_NOFOLLOW or OsConstants.O_CLOEXEC
+            val fd = Os.open(root.toString(), flags, 0)
+            try { Os.fsync(fd) } finally { Os.close(fd) }
+        } else {
             FileChannel.open(root, StandardOpenOption.READ).use { it.force(true) }
         }
+    }
+
+    /** Fsync the already-published exact receipt before accepting a retry. */
+    private fun forceExistingFile(path: Path) {
+        if (Build.VERSION.SDK_INT > 0) {
+            val fd = Os.open(path.toString(), OsConstants.O_RDONLY or
+                OsConstants.O_NOFOLLOW or OsConstants.O_CLOEXEC, 0)
+            try { Os.fsync(fd) } finally { Os.close(fd) }
+        } else {
+            FileChannel.open(path, StandardOpenOption.READ,
+                LinkOption.NOFOLLOW_LINKS).use { it.force(true) }
+        }
+    }
+
+    fun persist(
+        directory: File?, hash: String, mode: Mode,
+        syncDirectory: (Path) -> Unit = ::forceDirectory,
+        // Controlled deterministic race seam; production leaves it empty.
+        afterExclusiveCreate: (Path) -> Unit = {}
     ): Boolean {
         if (directory == null) return true // No native session restoration.
         if (!identity.matches(hash) || !directory.isDirectory) return false
         val path = receipt(directory, hash).toPath()
         val root = directory.toPath()
-        var temporary: java.nio.file.Path? = null
         fun syncMatchingReceipt(): Boolean = try {
             if (read(directory, hash) != mode) false
-            else { syncDirectory(root); true }
+            else {
+                // A simultaneous same-mode creator may have written the bytes
+                // but not yet issued force(). Do not accept just a pathname
+                // match as proof that its data survived a crash.
+                forceExistingFile(path)
+                syncDirectory(root)
+                read(directory, hash) == mode
+            }
         } catch (_: Exception) { false }
+
         return try {
             if (!Files.isDirectory(root, LinkOption.NOFOLLOW_LINKS) ||
                 Files.isSymbolicLink(root)) return false
-            if (Files.exists(path, LinkOption.NOFOLLOW_LINKS) ||
-                !Files.notExists(path, LinkOption.NOFOLLOW_LINKS))
-                return syncMatchingReceipt()
-
-            // Never truncate a predictable .tmp path: an interrupted prior
-            // transaction may have left a hardlink to unrelated bytes there.
-            // CREATE_NEW selects a fresh, exclusive file in this private root.
-            val fresh = Files.createTempFile(root, "$hash.admission.", ".tmp")
-            temporary = fresh
-            FileChannel.open(fresh, StandardOpenOption.WRITE, LinkOption.NOFOLLOW_LINKS).use {
+            // CREATE_NEW and NOFOLLOW are required. A pre-existing (even
+            // matching) receipt is separately fsynced; a symlink or an
+            // invalid/incomplete receipt cannot be silently replaced.
+            FileChannel.open(path, StandardOpenOption.CREATE_NEW,
+                StandardOpenOption.WRITE, LinkOption.NOFOLLOW_LINKS).use { channel ->
+                afterExclusiveCreate(path)
                 val contents = ByteBuffer.wrap(bytes(hash, mode))
-                while (contents.hasRemaining()) it.write(contents)
-                it.force(true)
+                while (contents.hasRemaining()) channel.write(contents)
+                channel.force(true)
             }
-            // A link is an atomic NO-REPLACE publication within one filesystem:
-            // unlike ATOMIC_MOVE, it can never replace a concurrently installed
-            // receipt, even on Linux where atomic rename replaces by default.
-            Files.createLink(path, fresh)
-            // Receipt must survive a crash before native resume state is
-            // permitted to claim its admission mode after process restoration.
             syncDirectory(root)
             read(directory, hash) == mode
         } catch (_: java.nio.file.FileAlreadyExistsException) {
-            // Another writer won publication; accept only the exact same
-            // immutable mode. Never convert checked to reviewed-existing.
             syncMatchingReceipt()
         } catch (_: Exception) {
+            // Deliberately leave a possibly incomplete new final receipt
+            // untouched. Deleting it by pathname after an unknown failure
+            // could unlink another writer's replacement; a future retry
+            // treats the incomplete receipt as UNKNOWN and refuses.
             false
-        } finally {
-            temporary?.let { runCatching { Files.deleteIfExists(it) } }
         }
     }
 
