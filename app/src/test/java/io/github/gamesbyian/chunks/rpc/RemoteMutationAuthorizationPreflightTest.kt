@@ -30,6 +30,11 @@ class RemoteMutationAuthorizationPreflightTest {
         val endpoint get() = "http://127.0.0.1:${server.address.port}/RPC2"
         init {
             server.createContext("/RPC2") { exchange ->
+                if (exchange.requestMethod == "HEAD") {
+                    exchange.sendResponseHeaders(405, -1)
+                    exchange.close()
+                    return@createContext
+                }
                 val xml = exchange.requestBody.bufferedReader().use { it.readText() }
                 val method = Regex("<methodName>([^<]+)</methodName>")
                     .find(xml)?.groupValues?.get(1).orEmpty()
