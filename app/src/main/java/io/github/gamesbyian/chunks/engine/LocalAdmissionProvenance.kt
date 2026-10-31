@@ -194,10 +194,22 @@ internal object LocalAdmissionProvenance {
         }
     }
 
-    /** Only call after native Remove has been accepted and its resume removed. */
+    /**
+     * A successful native Remove does NOT authorize deleting the admission
+     * receipt by pathname. Another same-UID actor may replace its directory
+     * entry after any ownership survey, including with a foreign hardlink.
+     * Java/Android offers no atomic compare-inode-and-unlink primitive.
+     *
+     * Retain this immutable claim as a fail-closed tombstone. A later Add of
+     * the SAME admission mode may still verify and fsync its exact receipt;
+     * switching from checked download to reviewed-existing (or vice versa)
+     * refuses instead of discarding historical admission provenance. Future
+     * generation-bound reclamation requires a separately proved protocol.
+     * Never infer payload ownership from the retained claim (#568).
+     */
     fun retire(directory: File?, hash: String) {
+        // Intentionally no filesystem operations, including existence tests.
+        // Parameters retained for source compatibility with removal callers.
         if (directory == null || !identity.matches(hash)) return
-        try { Files.deleteIfExists(receipt(directory, hash).toPath()) }
-        catch (_: Exception) { /* stale receipt is fail-closed, never ownership */ }
     }
 }
