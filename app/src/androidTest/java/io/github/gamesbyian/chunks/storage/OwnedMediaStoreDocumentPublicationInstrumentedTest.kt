@@ -97,4 +97,68 @@ class OwnedMediaStoreDocumentPublicationInstrumentedTest {
         assertFalse("No invalid request may create an ordinary filesystem path",
             java.io.File(context.cacheDir, "outside.txt").exists())
     }
+
+    @Test fun durableExclusiveJournalConfirmsOnlyAnUnchangedExactPublishedRow() {
+        val root = OwnedMediaStorePublicationJournal.journalRoot(context)
+        val originalIds = root.toFile().list().orEmpty().toSet()
+        val contents = ByteArray(151_411) { (it * 17 + 1).toByte() }
+        val receipt = OwnedMediaStoreDocumentPublication.publish(context,
+            "durable-journal-test.txt", "text/plain", contents)
+        try {
+            val created = root.toFile().list().orEmpty().toSet() - originalIds
+            assertEquals("One exclusive new journal per publication", 1, created.size)
+            val id = requireNotNull(created.single().removeSuffix(".log"))
+            val recorded = OwnedMediaStorePublicationJournal.parse(id,
+                io.github.gamesbyian.chunks.storage.ExclusiveFsyncJournal
+                    .readCompleteLines(root.resolve("${id}.log")))
+            assertEquals(OwnedMediaStorePublicationJournal.Phase.VERIFIED_PUBLISHED,
+                recorded?.phase)
+            assertEquals(receipt.uri.toString(), recorded?.rowUri)
+            assertEquals(OwnedMediaStorePublicationJournal.Verdict.VERIFIED_PUBLISHED,
+                OwnedMediaStorePublicationJournal.assess(context, id).verdict)
+            requireNotNull(resolver.openFileDescriptor(receipt.uri, "rw")).use {
+                val corrupt = byteArrayOf(99, 88)
+                assertEquals(corrupt.size,
+                    android.system.Os.pwrite(it.fileDescriptor, corrupt, 0, corrupt.size, 0L))
+                android.system.Os.fsync(it.fileDescriptor)
+            }
+            assertEquals(OwnedMediaStorePublicationJournal.Verdict.NEEDS_ATTENTION,
+                OwnedMediaStorePublicationJournal.assess(context, id).verdict)
+        } finally {
+            // Only the exact test-created row, never a guessed name/path.
+            assertEquals(1, resolver.delete(receipt.uri, null, null))
+        }
+    }
+
+    @Test fun cancellationAfterJournaledRowPreservesAmbiguousPendingObjectForReview() {
+        val root = OwnedMediaStorePublicationJournal.journalRoot(context)
+        val before = root.toFile().list().orEmpty().toSet()
+        var count = 0
+        try {
+            OwnedMediaStoreDocumentPublication.publish(context,
+                "cancelled-journal-test.txt", "text/plain", byteArrayOf(1, 2, 3),
+                cancelled = { ++count >= 2 })
+            throw AssertionError("Cancelled pending publication was accepted")
+        } catch (_: IOException) { }
+        val newFiles = root.toFile().list().orEmpty().toSet() - before
+        assertEquals(1, newFiles.size)
+        val id = newFiles.single().removeSuffix(".log")
+        val evidence = requireNotNull(OwnedMediaStorePublicationJournal.parse(
+            id, ExclusiveFsyncJournal.readCompleteLines(root.resolve("${id}.log"))))
+        assertEquals(OwnedMediaStorePublicationJournal.Phase.ROW_RECEIVED, evidence.phase)
+        val uri = android.net.Uri.parse(requireNotNull(evidence.rowUri))
+        try {
+            assertEquals(OwnedMediaStorePublicationJournal.Verdict.NEEDS_ATTENTION,
+                OwnedMediaStorePublicationJournal.assess(context, id).verdict)
+            val cols = arrayOf(MediaStore.MediaColumns.IS_PENDING)
+            requireNotNull(resolver.query(uri, cols, null, null, null)).use {
+                assertTrue(it.moveToFirst())
+                assertEquals(1, it.getInt(0))
+            }
+        } finally {
+            // Test fixture only; production NEVER does this recovery cleanup.
+            assertEquals(1, resolver.delete(uri, null, null))
+        }
+    }
+
 }
