@@ -117,8 +117,13 @@ internal object OwnedMediaStoreDocumentPublication {
             ?: throw IOException("Published row cannot be independently reopened")
         parcel.use { descriptor ->
             val stat = Os.fstat(descriptor.fileDescriptor)
-            if (!OsConstants.S_ISREG(stat.st_mode))
-                throw IOException("MediaStore did not supply a regular read descriptor")
+            // MediaColumns.SIZE is provider-indexed metadata that can lag
+            // actual fsynced bytes while IS_PENDING=1. The fresh, reopened
+            // descriptor's physical length and content are the prepublication
+            // receipt. Do NOT weaken owner/row-id/scope/name/pending checks.
+            if (!OsConstants.S_ISREG(stat.st_mode) ||
+                stat.st_size != expectedBytes.size.toLong())
+                throw IOException("MediaStore reopened object type or physical length disagrees")
             val digest = MessageDigest.getInstance("SHA-256")
             val buffer = ByteArray(CHUNK)
             var done = 0
@@ -195,8 +200,12 @@ internal object OwnedMediaStoreDocumentPublication {
             }
             Os.fsync(out.fileDescriptor)
         }
-        requireRow(resolver, returned, id, unique, context.packageName, relative, mime, 1,
-            bytes.size.toLong())
+        // Pre-publish MediaStore's indexed SIZE can remain zero until the
+        // platform's synchronous publication scan. Accept this *one*
+        // metadata lag ONLY after checking all other exact-row fields.
+        // Immediately require physical length and source-independent digest
+        // through a freshly opened FD, before any unpend mutation.
+        requireRow(resolver, returned, id, unique, context.packageName, relative, mime, 1)
         readIndependent(resolver, returned, bytes)
         if (cancelled()) throw IOException("Export cancelled; verified row left pending")
         val published = ContentValues().apply {
