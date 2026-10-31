@@ -25,6 +25,8 @@ gradle --no-daemon :app:verifyChunksLauncherArtwork :app:assembleDebug
 The dependency-free Node 22 converter runs in `--check` mode in Android build/release/visual CI. Gradle `preBuild` verifies that the SVG's Git blob matches the generated vector provenance, the reference PNG is unchanged, and manifest/adaptive wiring is intact. Ordinary Gradle builds do not require Node unless regenerating the asset. Never add runtime PNG back. A successful build is not physical-device launcher-mask or themed-icon acceptance. Avoid uninstalling installed debug builds solely to change the icon, as that can delete app-owned torrent data.
 
 
+> **Signed-release workflow supply chain (2026-10-31):** The manual main-only `release-apk.yml` job references immutable reviewed commits for checkout, Java/Node setup, Gradle setup and artifact upload, with offline tests rejecting unreviewed action revisions. This constrains action-tag drift and does not authorize a signing dispatch or demonstrate publisher-key/device acceptance. Signing credentials are supplied only at manual workflow invocation. The general security and verification requirements remain in [CI-POLICY](CI-POLICY.md).
+
 ## Downloadable APK in GitHub Releases
 
 A dedicated [Publish Chunks installable Android debug APK](../.github/workflows/publish-debug-apk.yml) workflow builds and JVM-tests the exact checked-out `main` SHA, verifies the Android versionName suffix, produces a paired SHA-256 receipt and publishes both files as assets of an immutable pre-release tag `android-debug-<12-character-source-SHA>`. The workflow runs once when added to `main` and may later be dispatched manually. The release asset URL is stable, unlike the seven-day Actions artifact.
