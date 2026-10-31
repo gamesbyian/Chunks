@@ -69,6 +69,10 @@ internal class RememberedRemoteProfileRoster(context: Context) {
     // the entire old vault as though it had been genuinely empty.
     private var migrationBlocked = false
 
+    /** Inject a durable-save refusal in device tests, without touching the live key. */
+    @androidx.annotation.VisibleForTesting
+    internal var rejectPersistForTest = false
+
     private fun keystore() = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
 
     private fun key(): SecretKey {
@@ -225,6 +229,8 @@ internal class RememberedRemoteProfileRoster(context: Context) {
     /** Encrypts and stores [rows] as-is; tests use it to write older record shapes. */
     @androidx.annotation.VisibleForTesting
     internal fun writeRows(rows: JSONArray): Boolean = synchronized(RemoteCredentialLock.monitor) {
+        // No commit, ciphertext replacement or delete when fault injection fires.
+        if (rejectPersistForTest) return@synchronized false
         return try {
             val raw = rows.toString().toByteArray(Charsets.UTF_8)
             require(raw.size <= 100_000)
