@@ -33,8 +33,9 @@ class ImmutableNativeResumeV2InstrumentedTest {
         assertEquals(epoch, one.epoch)
         assertArrayEquals(first, one.snapshot)
         val folder = state.resolve("immutable-resume-v2")
-        val earlier = Files.list(folder).use { stream ->
-            stream.toList().associateWith { Files.readAllBytes(it) }
+        val earlier = LinkedHashMap<Path, ByteArray>()
+        Files.newDirectoryStream(folder).use { stream ->
+            for (name in stream) earlier[name] = Files.readAllBytes(name)
         }
         ImmutableNativeResumeV2.save(state, hash, second)
         assertArrayEquals(second, (ImmutableNativeResumeV2.inspect(state, hash) as
