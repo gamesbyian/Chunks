@@ -124,9 +124,13 @@ class SeedingRuleStore(context: Context) {
             val oldDefaults = root.getJSONObject("quarantinedRemoteDefaults").let { o ->
                 o.keys().asSequence().associateWith { policy(o.getJSONObject(it)) }
             }
-            require(oldRules.all { it.ruleId in rules.map { r -> r.id } } &&
-                oldDefaults.keys.none { it in defaults }) {
-                "Inconsistent quarantined server bindings"
+            // Archived identities can intentionally outlive a deleted rule,
+            // and a user may explicitly rebind today's account to an ID that
+            // coincides with an older trimmed principal. The archive is never
+            // active, so neither case must make the whole vault unreadable.
+            require(oldRules.all { it.ruleId.length in 1..64 } &&
+                oldRules.size <= 2048 && oldDefaults.size <= 2048) {
+                "Invalid archived server binding"
             }
             return Snapshot(rules, defaults, quarantinedRemoteRules = oldRules,
                 quarantinedRemoteDefaults = oldDefaults)
