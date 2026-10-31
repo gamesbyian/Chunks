@@ -8,6 +8,7 @@
 #include <jni.h>
 #include <array>
 #include <string>
+#include <unistd.h>
 
 using chunks::research::PinnedProviderFd;
 
@@ -15,14 +16,25 @@ extern "C" JNIEXPORT jboolean JNICALL
 Java_io_github_gamesbyian_chunks_engine_OwnedProviderFdAndroidProbe_nativeRoundTrip(
     JNIEnv* env, jobject /* instance */, jint fd, jlong declared,
     jstring generation) {
-  if (declared != 65552 || generation == nullptr) return JNI_FALSE;
+  // fd comes only from ParcelFileDescriptor.detachFd(): JNI consumes this
+  // integer on EVERY path. After Bind makes a private duplicate, close the
+  // original immediately so no Kotlin alias can flip shared O_APPEND flags.
+  if (fd < 0) return JNI_FALSE;
+  if (declared != 65552 || generation == nullptr) {
+    ::close(fd);
+    return JNI_FALSE;
+  }
   const char* token = env->GetStringUTFChars(generation, nullptr);
-  if (!token) return JNI_FALSE;
+  if (!token) {
+    ::close(fd);
+    return JNI_FALSE;
+  }
   const std::string validated_token(token);
   env->ReleaseStringUTFChars(generation, token);
   std::string error;
   auto owner = PinnedProviderFd::Bind(fd, static_cast<std::uint64_t>(declared),
                                      validated_token, &error);
+  ::close(fd);  // no remaining app-held alias when native piece writes begin
   if (!owner) return JNI_FALSE;
   std::array<char, 4096> first{};
   std::array<char, 16> second{};
