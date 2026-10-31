@@ -240,6 +240,27 @@ class RemoteSmartConnectTest {
         }
     }
 
+    @Test fun droppedScgiStreamsCannotTriggerAnotherAuthenticatedCandidate() = runBlocking {
+        for (reason in listOf(
+            java.net.SocketException("Connection reset"),
+            java.io.EOFException("Unexpected end of file from server")
+        )) {
+            var contacted = 0
+            val failed = try {
+                RemoteSmartConnect.connect("wood.seedhost.eu", "alice", "secret") {
+                    contacted++
+                    throw reason
+                }
+                fail("A broken response cannot authorize probing other mounts")
+                null
+            } catch (problem: RemoteSmartConnect.ConnectionFailed) { problem }
+            assertEquals(RemoteSmartConnect.Category.NETWORK, failed?.category)
+            assertEquals(1, failed?.tested)
+            assertEquals(1, contacted)
+            assertFalse(failed?.message.orEmpty().contains("secret"))
+        }
+    }
+
     @Test fun gatewayServerFailureNeverTriggersSiblingInstancePathSearch() = runBlocking {
         for (code in listOf(500, 502, 503, 504)) {
             val tried = mutableListOf<String>()
