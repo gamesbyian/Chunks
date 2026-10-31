@@ -60,6 +60,8 @@ import org.libtorrent4j.TorrentBuilder
 import org.libtorrent4j.TorrentFlags
 import org.libtorrent4j.TorrentHandle
 import org.libtorrent4j.TorrentInfo
+import org.libtorrent4j.TcpEndpoint
+import org.libtorrent4j.swig.settings_pack
 import org.libtorrent4j.swig.error_code
 import org.libtorrent4j.swig.torrent_flags_t
 
@@ -207,6 +209,110 @@ class OwnedJniSessionSmokeInstrumentedTest {
         }
         assertArrayEquals("Stopped native session must durably preserve exact payload",
             payload, out.readBytes())
+    }
+
+    @Test fun installedOwnedJniDownloadsActualPeerPieceWithoutTouchingForeignData() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val root = Files.createTempDirectory(context.cacheDir.toPath(), "owned-peer-").toFile()
+        val receipts = File(root, "private-receipts")
+        val destination = File(root, "actual-peer-target")
+        assertTrue(receipts.mkdir())
+        assertTrue(destination.mkdir())
+        Os.chmod(receipts.absolutePath, 448)
+        val seedFolder = File(root, "seed/Owned peer fixture").apply { mkdirs() }
+        val payload = ByteArray(16 * 1024) { ((it * 31 + 17) % 251).toByte() }
+        File(seedFolder, "payload.bin").writeBytes(payload)
+        val torrentBytes = TorrentBuilder().path(seedFolder).pieceSize(16 * 1024)
+            .flags(TorrentBuilder.V1_ONLY).generate().entry().bencode()
+        val seedSettings = SettingsPack().listenInterfaces("127.0.0.1:0")
+        seedSettings.setEnableDht(false)
+        seedSettings.setEnableLsd(false)
+        seedSettings.setBoolean(settings_pack.bool_types.allow_multiple_connections_per_ip.swigValue(), true)
+        val source = SessionManager(false)
+        val ownedSettings = SettingsPack().listenInterfaces("127.0.0.1:0")
+        ownedSettings.setEnableDht(false)
+        ownedSettings.setEnableLsd(false)
+        ownedSettings.setBoolean(settings_pack.bool_types.allow_multiple_connections_per_ip.swigValue(), true)
+        val ownedParams = SessionParams(ownedSettings)
+        ownedParams.setOwnedDiskIO(receipts.absolutePath)
+        val target = SessionManager(false)
+        val downloaded = File(destination, "Owned peer fixture/payload.bin")
+        try {
+            source.start(SessionParams(seedSettings))
+            target.start(ownedParams)
+            val sourceParams = AddTorrentParams()
+            sourceParams.setTorrentInfo(TorrentInfo.bdecode(torrentBytes))
+            sourceParams.setSavePath(requireNotNull(seedFolder.parentFile).absolutePath)
+            sourceParams.setFlags(torrent_flags_t().or_(TorrentFlags.SEED_MODE)
+                .or_(TorrentFlags.DUPLICATE_IS_ERROR))
+            val seedError = error_code()
+            val rawSeeder = source.swig().add_torrent(sourceParams.swig(), seedError)
+            assertEquals("Seed peer native Add failed", 0, seedError.value())
+            assertTrue(rawSeeder.is_valid)
+            val seedHandle = TorrentHandle(rawSeeder)
+
+            val downloadParams = AddTorrentParams()
+            downloadParams.setTorrentInfo(TorrentInfo.bdecode(torrentBytes))
+            downloadParams.setSavePath(destination.absolutePath)
+            downloadParams.setFlags(torrent_flags_t().or_(TorrentFlags.PAUSED)
+                .or_(TorrentFlags.DUPLICATE_IS_ERROR))
+            val downloadError = error_code()
+            val rawTarget = target.swig().add_torrent(downloadParams.swig(), downloadError)
+            assertEquals("Owned peer native Add failed", 0, downloadError.value())
+            assertTrue(rawTarget.is_valid)
+            val ownedHandle = TorrentHandle(rawTarget)
+
+            val reservationDeadline = System.currentTimeMillis() + 15000L
+            var reserved = false
+            while (System.currentTimeMillis() < reservationDeadline) {
+                if (ownedHandle.status().errorCode()?.isError == true)
+                    throw AssertionError("Owned writer rejected clean peer destination")
+                reserved = receipts.listFiles()?.any { it.name.endsWith(".pending") } == true
+                if (reserved) break
+                Thread.sleep(50)
+            }
+            assertTrue("Native destination was not durably reserved", reserved)
+            assertTrue("Stopped peer target must be absent", !downloaded.exists())
+            ownedHandle.resume()
+            var port = 0
+            val listenDeadline = System.currentTimeMillis() + 10000L
+            while (System.currentTimeMillis() < listenDeadline) {
+                port = source.swig().listen_port()
+                if (port in 1..65535) break
+                Thread.sleep(50)
+            }
+            assertTrue("Live source peer never opened a listening port", port in 1..65535)
+            val deadline = System.currentTimeMillis() + 45000L
+            var connected = false
+            var verified = false
+            while (System.currentTimeMillis() < deadline) {
+                if (!connected) {
+                    try {
+                        ownedHandle.swig().connect_peer(TcpEndpoint("127.0.0.1", port).swig())
+                        connected = true
+                    } catch (_: Exception) { }
+                }
+                val status = ownedHandle.status()
+                if (status.errorCode()?.isError == true)
+                    throw AssertionError("Installed owned JNI failed actual peer download: " +
+                        status.errorCode()?.message())
+                if (status.isSeeding && downloaded.isFile &&
+                    downloaded.length() == payload.size.toLong()) {
+                    assertArrayEquals("Actual peer-supplied bytes differ", payload, downloaded.readBytes())
+                    verified = true
+                    break
+                }
+                Thread.sleep(100)
+            }
+            assertTrue("Peer connection was never attempted", connected)
+            assertTrue("Owned JNI never completed actual loopback peer download", verified)
+            assertTrue("Source peer did not remain valid", seedHandle.isValid)
+        } finally {
+            target.stop()
+            source.stop()
+        }
+        assertArrayEquals("After peer shutdown, owned bytes must still match",
+            payload, downloaded.readBytes())
     }
 }
 """
