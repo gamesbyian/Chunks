@@ -36,7 +36,7 @@ import io.github.gamesbyian.chunks.model.ZipPayloadVerifier
 import io.github.gamesbyian.chunks.model.ZipPreflightResult
 import io.github.gamesbyian.chunks.model.ZipPreflightStatus
 import java.io.File
-import java.io.FileOutputStream
+import io.github.gamesbyian.chunks.storage.AnonymousZipReviewStage
 import java.io.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -62,35 +62,18 @@ internal data class LocalZipReview(
  */
 internal object LocalZipDocumentInspector {
     const val MAX_INPUT_BYTES = ZipArchiveInventory.DEFAULT_MAX_INPUT_BYTES
-    private const val ABANDONED_AFTER_MS = 24L * 60 * 60 * 1000
-    private val stageFile = Regex("^chunks-zip-review-[A-Za-z0-9_-]+\\.zip$")
-
     /**
-     * Repair only old, abandoned temporary files in our *own* cache root.
-     * Never recursively remove directories or touch documents/remote payload.
-     * A 24h grace prevents racing an in-progress review in another caller.
+     * Legacy cache objects are not authority to delete. Names, age and file
+     * type cannot prove that the current node is the original stage. The new
+     * anonymous staging path leaves NO directory entry; its close releases
+     * bytes without a delete operation. Preserve old ambiguous named copies
+     * for user/OS cache review instead of risking unrelated bytes.
      */
+    @Suppress("UNUSED_PARAMETER")
     fun cleanAbandonedCopies(
         cacheDir: File,
         nowMs: Long = System.currentTimeMillis()
-    ): Int {
-        var removed = 0
-        for (child in cacheDir.listFiles().orEmpty()) {
-            try {
-                if (!stageFile.matches(child.name) || !child.isFile ||
-                    java.nio.file.Files.isSymbolicLink(child.toPath())) continue
-                val modified = child.lastModified()
-                if (modified <= 0 || nowMs < modified ||
-                    nowMs - modified < ABANDONED_AFTER_MS) continue
-                if (child.delete()) removed++
-            } catch (_: SecurityException) {
-                // Recoverable advisory cleanup failure: preserve unknown bytes.
-            } catch (_: IOException) {
-                // Never turn housekeeping into destructive fallback behavior.
-            }
-        }
-        return removed
-    }
+    ): Int = 0
 
     fun inspect(context: Context, uri: Uri, maxInputBytes: Long = MAX_INPUT_BYTES): LocalZipReview {
         require(maxInputBytes in 1..MAX_INPUT_BYTES)
@@ -111,69 +94,48 @@ internal object LocalZipDocumentInspector {
             ?.trim()?.takeIf { it.isNotBlank() } ?: "Selected document"
 
         val staged = stage(context, uri, maxInputBytes)
-        val stagedFile = staged.file
-            ?: return LocalZipReview(safeLabel, staged.copiedBytes, failure = staged.failure)
-        try {
+        return staged.use { owned ->
+            val stagedFile = owned.file
+                ?: return@use LocalZipReview(safeLabel, owned.copiedBytes, failure = owned.failure)
             val inventory = ZipArchiveInventory.inspect(stagedFile, maxInputBytes = maxInputBytes)
             if (inventory.status == ZipPreflightStatus.BLOCKED)
-                return LocalZipReview(safeLabel, staged.copiedBytes, inventory = inventory)
+                return@use LocalZipReview(safeLabel, owned.copiedBytes, inventory = inventory)
             val verified = ZipPayloadVerifier.verify(stagedFile)
-            return LocalZipReview(safeLabel, staged.copiedBytes, inventory, verified)
-        } finally {
-            // Only the randomized app-private staging copy is ever deleted.
-            // The original SAF document, torrent bytes and external files stay untouched.
-            stagedFile.delete()
+            LocalZipReview(safeLabel, owned.copiedBytes, inventory, verified)
         }
     }
 
-    internal class Staged(val file: File?, val copiedBytes: Long, val failure: String?)
+    internal class Staged(
+        val file: File?, val copiedBytes: Long, val failure: String?,
+        private val retained: AnonymousZipReviewStage? = null
+    ) : java.io.Closeable {
+        /** Never delete a pathname. Release the owned anonymous descriptor. */
+        override fun close() { retained?.close() }
+    }
 
     /**
-     * Copy a selected document into a new randomized app-private file, bounded
-     * even when providers lie about length. The caller owns and must delete it.
+     * Stage into an anonymous, pinned inode without a public name or cleanup
+     * journal. API29 requires O_TMPFILE; API30+ may use memfd. If the actual
+     * Android kernel/filesystem cannot provide either, fail closed instead
+     * of reopening a named cache path for destructive writing.
      */
     fun stage(context: Context, uri: Uri, maxInputBytes: Long = MAX_INPUT_BYTES): Staged {
         require(maxInputBytes in 1..MAX_INPUT_BYTES)
         if (uri.scheme != "content")
             return Staged(null, 0, "Choose a document using Android's file picker.")
-        // A prior process may have died before its finally block ran.
-        cleanAbandonedCopies(context.cacheDir)
-        var temporary: File? = null
-        var copied = 0L
-        var keep = false
-        try {
-            temporary = File.createTempFile("chunks-zip-review-", ".zip", context.cacheDir)
-            val staged = temporary
-            val stream = context.contentResolver.openInputStream(uri)
-                ?: return Staged(null, 0, "Android could not open this document.")
-            stream.use { input ->
-                FileOutputStream(staged).use { output ->
-                    val buffer = ByteArray(32 * 1024)
-                    while (true) {
-                        if (Thread.currentThread().isInterrupted)
-                            return Staged(null, copied, "Review interrupted.")
-                        val count = input.read(buffer)
-                        if (count < 0) break
-                        if (count == 0)
-                            return Staged(null, copied, "Document stream made no progress.")
-                        if (count.toLong() > maxInputBytes - copied)
-                            return Staged(null, copied,
-                                "Local ZIP exceeds the " + Units.bytes(maxInputBytes) + " review input limit.")
-                        output.write(buffer, 0, count)
-                        copied += count
-                    }
-                }
-            }
-            keep = true
-            return Staged(staged, copied, null)
-        } catch (_: IOException) {
-            return Staged(null, copied, "This document could not be read completely.")
+        return try {
+            val owned = AnonymousZipReviewStage.stage(context.contentResolver, uri,
+                context.cacheDir, maxInputBytes)
+            Staged(owned.file, owned.copiedBytes, null, owned)
         } catch (_: SecurityException) {
-            return Staged(null, copied, "Android did not grant access to this document.")
-        } finally {
-            if (!keep) temporary?.delete()
+            Staged(null, 0, "Android did not grant access to this document.")
+        } catch (_: IOException) {
+            Staged(null, 0, "Safe anonymous ZIP staging is unsupported or the document could not be read.")
+        } catch (_: RuntimeException) {
+            Staged(null, 0, "The ZIP document provider could not be inspected safely.")
         }
     }
+
 }
 
 @Composable
