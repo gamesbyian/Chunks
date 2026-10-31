@@ -4,6 +4,8 @@ import java.net.URI
 import java.net.UnknownHostException
 import java.net.ConnectException
 import java.net.SocketTimeoutException
+import java.net.SocketException
+import java.io.EOFException
 import java.net.NoRouteToHostException
 import java.io.IOException
 import kotlinx.coroutines.CancellationException
@@ -53,11 +55,13 @@ object RemoteSmartConnect {
             Category.RATE_LIMIT -> "The server is limiting connection attempts (HTTP 429). Chunks stopped checking addresses to protect your login."
             Category.TLS -> "Secure connection failed. Check the HTTPS hostname/certificate. Chunks will not bypass TLS."
             Category.NETWORK -> "The server is unreachable or did not respond. Check its address and network."
+            Category.SERVICE -> "The seedbox gateway could not process a read-only connection check. Chunks stopped checking other paths rather than risking another instance."
+            Category.PROTOCOL -> "The server answered, but its rTorrent identity could not be verified. Chunks stopped looking at other paths."
             Category.ENDPOINT -> "No compatible rTorrent XML-RPC endpoint was verified. Paste the complete ruTorrent URL, or enter your provider's exact RPC path under Advanced connection settings."
         }
     )
 
-    enum class Category { AUTH, PROXY, RATE_LIMIT, TLS, NETWORK, ENDPOINT }
+    enum class Category { AUTH, PROXY, RATE_LIMIT, TLS, NETWORK, SERVICE, PROTOCOL, ENDPOINT }
 
     /** Targeted next steps for a failed connection; never echoes secrets. */
     fun repairAdvice(failure: ConnectionFailed, input: String): List<String> {
@@ -81,6 +85,12 @@ object RemoteSmartConnect {
             Category.NETWORK -> listOf(
                 "Check the hostname for typos and that the phone is online.",
                 "If the server is only reachable on a home network or VPN, connect to that network first.")
+            Category.SERVICE -> listOf(
+                "The exact seedbox gateway returned a server-side error; it may be temporarily unavailable.",
+                "Check your provider status or retry this exact address later. Chunks will not search other account paths after this response.")
+            Category.PROTOCOL -> listOf(
+                "The server replied, but Chunks could not prove that the response came from the expected rTorrent instance.",
+                "Paste your exact ruTorrent or XML-RPC address; Chunks will not try another account path after an ambiguous reply.")
             Category.ENDPOINT -> buildList {
                 if (!explicit) add("Open ruTorrent in your browser and paste the full address from the address bar " +
                     "(for example https://host/username/rutorrent/).")
@@ -197,8 +207,13 @@ object RemoteSmartConnect {
             return entries.values.toList()
         }
 
-        val safeUser = username.trim().takeIf {
-            it.length in 1..64 && Regex("[A-Za-z0-9_.-]+").matches(it) &&
+        // HTTP principals are opaque. Do not turn " alice " into the tenant
+        // mount /alice/ during hostname-only discovery. Such accounts must
+        // paste their exact RPC/ruTorrent path; authentication itself still
+        // sends the supplied username verbatim.
+        val safeUser = username.takeIf {
+            it == it.trim() && it.length in 1..64 &&
+                Regex("[A-Za-z0-9_.-]+").matches(it) &&
                 it != "." && it != ".."
         }
         // Reviewed provider templates (source URL + date in the catalog), or
@@ -240,14 +255,24 @@ object RemoteSmartConnect {
                 if (failure is CancellationException) throw failure
                 val category = when {
                     failure is SSLException -> Category.TLS
+                    // Connection resets and prematurely truncated response
+                    // streams do not prove the current RPC path is wrong.
+                    // Never let them trigger another credential-bearing path probe.
                     failure is UnknownHostException || failure is ConnectException ||
-                        failure is SocketTimeoutException || failure is NoRouteToHostException -> Category.NETWORK
+                        failure is SocketTimeoutException || failure is SocketException ||
+                        failure is EOFException || failure is NoRouteToHostException -> Category.NETWORK
                     failure is IOException &&
                         Regex("(?i)HTTP(?:/\\d+(?:\\.\\d+)?)?\\s+429(?:\\D|$)")
                             .containsMatchIn(failure.message.orEmpty()) -> Category.RATE_LIMIT
                     failure is IOException &&
                         Regex("(?i)HTTP(?:/\\d+(?:\\.\\d+)?)?\\s+407(?:\\D|$)")
                             .containsMatchIn(failure.message.orEmpty()) -> Category.PROXY
+                    // A reverse-proxy 5xx is not evidence that its path is
+                    // wrong. Trying sibling mounts could target a different
+                    // tenant and multiply credential-bearing requests.
+                    failure is IOException &&
+                        Regex("(?i)HTTP(?:/\\d+(?:\\.\\d+)?)?\\s+5\\d{2}(?:\\D|$)")
+                            .containsMatchIn(failure.message.orEmpty()) -> Category.SERVICE
                     failure is IOException &&
                         Regex("(?i)HTTP(?:/\\d+(?:\\.\\d+)?)?\\s+(?:401|403)(?:\\D|$)")
                             .containsMatchIn(failure.message.orEmpty()) ->
@@ -257,7 +282,12 @@ object RemoteSmartConnect {
                             failure.message.orEmpty().contains("authentication identity", true) ||
                             failure.message.orEmpty().contains("Digest", true)) ->
                         Category.AUTH
-                    else -> Category.ENDPOINT
+                    // A real HTTP 404 is the one safe signal that this
+                    // candidate URL has no gateway. RPC faults, malformed
+                    // responses and arbitrary IO failures are ambiguous and
+                    // must not trigger another credential-bearing path probe.
+                    failure is RpcHttpStatusException && failure.status == 404 -> Category.ENDPOINT
+                    else -> Category.PROTOCOL
                 }
                 attempts += Attempt(candidate.description, path, when (category) {
                     Category.ENDPOINT -> describe(failure)
@@ -266,6 +296,8 @@ object RemoteSmartConnect {
                     Category.RATE_LIMIT -> "Server is limiting connection attempts"
                     Category.TLS -> "Secure connection failed"
                     Category.NETWORK -> "Unreachable"
+                    Category.SERVICE -> "Server gateway error; no further paths tried"
+                    Category.PROTOCOL -> "Could not verify rTorrent identity; no further paths tried"
                 })
                 if (category != Category.ENDPOINT)
                     throw ConnectionFailed(category, attempted, attempts)

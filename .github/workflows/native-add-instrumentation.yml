@@ -27,6 +27,10 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
+      - name: Check required native atlas captures before SDK and emulator allocation
+        run: |
+          python3 tools/check_native_atlas_contract.py
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_native_atlas_contract.py
       - uses: actions/setup-java@v4
         with:
           distribution: temurin

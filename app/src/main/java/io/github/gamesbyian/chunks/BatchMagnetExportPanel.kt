@@ -1,7 +1,5 @@
 package io.github.gamesbyian.chunks
 
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -27,7 +25,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.model.BatchMagnetHandoff
-import io.github.gamesbyian.chunks.snapshots.SnapshotDocumentWriterV1
+import io.github.gamesbyian.chunks.exports.OwnedDiagnosticExportProvider
+import io.github.gamesbyian.chunks.exports.OwnedDiagnosticShare
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
@@ -54,7 +53,6 @@ internal fun BatchMagnetExportPanel(
     var selected by remember { mutableStateOf<Set<String>>(emptySet()) }
     var includeTitles by remember { mutableStateOf(false) }
     var reviewed by remember { mutableStateOf(false) }
-    var pending by remember { mutableStateOf<BatchMagnetHandoff.Prepared?>(null) }
     var saving by remember { mutableStateOf(false) }
     var feedback by remember { mutableStateOf<String?>(null) }
     var verified by remember { mutableStateOf(false) }
@@ -66,38 +64,6 @@ internal fun BatchMagnetExportPanel(
         if (stale) expanded = false
     }
 
-    val choose = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("text/plain")
-    ) { uri ->
-        val archive = pending
-        pending = null
-        if (uri == null || archive == null) {
-            saving = false
-            feedback = if (uri == null) "No file saved. Transfer sources are untouched."
-                else "No reviewed export available for the selected file."
-        } else {
-            scope.launch {
-                verified = false
-                try {
-                    withContext(Dispatchers.IO) {
-                        SnapshotDocumentWriterV1.writeAndVerify(
-                            context.contentResolver, uri, archive.bytes)
-                    }
-                    verified = true
-                    feedback = "Saved and SHA-256 verified ${archive.exported} trackerless " +
-                        "v1 magnets. ${archive.unsupported} selected unsupported entries omitted. " +
-                        "Original torrents and payload files are untouched."
-                } catch (cancel: CancellationException) {
-                    feedback = "Export interrupted. Output may be incomplete."
-                    throw cancel
-                } catch (error: Exception) {
-                    feedback = "Export NOT verified: " +
-                        (error.message ?: "The document provider refused readback") +
-                        ". Inspect or discard the file."
-                } finally { saving = false }
-            }
-        }
-    }
 
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth().padding(14.dp),
@@ -189,18 +155,38 @@ internal fun BatchMagnetExportPanel(
                                 "source selection changed. Nothing was saved."
                             reviewed = false
                         } else {
-                            pending = report
                             saving = true
                             verified = false
                             feedback = null
                             val stamp = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")
                                 .withZone(ZoneOffset.UTC).format(Instant.now())
-                            choose.launch("chunks-${sourceLabel}-magnet-handoff-${stamp}.txt")
+                            scope.launch {
+                                try {
+                                    val uri = withContext(Dispatchers.IO) {
+                                        OwnedDiagnosticExportProvider.publish(context,
+                                            "chunks-magnet-handoff-${stamp}.txt", report.bytes)
+                                    }
+                                    OwnedDiagnosticShare.openChooser(context, uri,
+                                        "text/plain", "magnet identity handoff")
+                                    verified = true
+                                    feedback = "Prepared ${report.exported} trackerless v1 magnets from " +
+                                        sourceLabel + " for sharing. ${report.unsupported} unsupported " +
+                                        "entries omitted. No receiving app has saved them yet; " +
+                                        "source torrents and payloads are unchanged."
+                                } catch (cancel: CancellationException) {
+                                    feedback = "Export interrupted; no external file was written by Chunks."
+                                    throw cancel
+                                } catch (error: Exception) {
+                                    feedback = "Cannot prepare safe magnet handoff: " +
+                                        (error.message ?: "Private export unavailable") +
+                                        ". No existing document was changed."
+                                } finally { saving = false }
+                            }
                         }
                     }
                 }, enabled = !saving && !stale && selected.isNotEmpty(),
                     modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
-                    Text(if (reviewed) "Choose file for reviewed handoff"
+                    Text(if (reviewed) "Share reviewed magnet identities"
                         else "Review magnet identity export")
                 }
                 feedback?.let {

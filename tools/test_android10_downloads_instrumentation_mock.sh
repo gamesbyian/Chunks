@@ -46,6 +46,14 @@ case "$1" in
             printf 'OK (16 tests)\n'
             ;;
           *LocalEngineServiceInstrumentedTest*) printf 'OK (3 tests)\n' ;;
+          *LocalResumeFileReaderInstrumentedTest*)
+            [[ "$MOCK_RESUME_SKIP" != 1 ]] || echo 'INSTRUMENTATION_STATUS_CODE: -3'
+            printf 'OK (2 tests)\n'
+            ;;
+          *ExclusiveFsyncJournalInstrumentedTest*)
+            [[ "$MOCK_JOURNAL_SKIP" != 1 ]] || echo 'INSTRUMENTATION_STATUS_CODE: -3'
+            printf 'OK (2 tests)\n'
+            ;;
           *) exit 1 ;;
         esac
         ;;
@@ -57,14 +65,14 @@ esac
 MOCK
 chmod +x "$temp/bin/adb"
 export PATH="$temp/bin:$PATH" MOCK_DIR="$temp/device"
-export MOCK_UNINSTALL_STICKY=0 MOCK_INSTALL_FAIL=0 MOCK_GETPROP_FAIL=0 MOCK_PM_LIST_FAIL=0 MOCK_SKIP=0
+export MOCK_UNINSTALL_STICKY=0 MOCK_INSTALL_FAIL=0 MOCK_GETPROP_FAIL=0 MOCK_PM_LIST_FAIL=0 MOCK_SKIP=0 MOCK_RESUME_SKIP=0 MOCK_JOURNAL_SKIP=0
 : > "$MOCK_DIR/instruments"
 bash -n "$root/android10_downloads_instrumentation.sh"
 bash -n "$root/test_android10_downloads_instrumentation_mock.sh"
 
 output="$(bash "$root/android10_downloads_instrumentation.sh")"
 [[ "$output" == *'CHUNKS_ANDROID10_DOWNLOADS: API 29'* ]]
-[[ "$(wc -l < "$MOCK_DIR/instruments")" -eq 3 ]]
+[[ "$(wc -l < "$MOCK_DIR/instruments")" -eq 5 ]]
 
 refuse_before_tests() {
   : > "$MOCK_DIR/instruments"
@@ -90,4 +98,16 @@ if MOCK_SKIP=1 bash "$root/android10_downloads_instrumentation.sh" > "$temp/skip
   exit 1
 fi
 [[ "$(wc -l < "$MOCK_DIR/instruments")" -eq 2 ]]
-echo 'CHUNKS_ANDROID10_HARNESS_TEST: valid 1+16+3 case passed; stale install, failed adb readbacks, zero-exit install Failure and skipped instrumentation refused'
+: > "$MOCK_DIR/instruments"
+if MOCK_RESUME_SKIP=1 bash "$root/android10_downloads_instrumentation.sh" > "$temp/skip-resume.log" 2>&1; then
+  echo 'Skipped native resume API29 instrumentation was accepted' >&2
+  exit 1
+fi
+[[ "$(wc -l < "$MOCK_DIR/instruments")" -eq 4 ]]
+: > "$MOCK_DIR/instruments"
+if MOCK_JOURNAL_SKIP=1 bash "$root/android10_downloads_instrumentation.sh" > "$temp/skip-private-journal.log" 2>&1; then
+  echo 'Skipped app-private journal API29 instrumentation was accepted' >&2
+  exit 1
+fi
+[[ "$(wc -l < "$MOCK_DIR/instruments")" -eq 5 ]]
+echo 'CHUNKS_ANDROID10_HARNESS_TEST: valid 1+16+3+2+2 cases passed; stale install, failed readbacks and skipped storage/resume/private-journal cases refused'

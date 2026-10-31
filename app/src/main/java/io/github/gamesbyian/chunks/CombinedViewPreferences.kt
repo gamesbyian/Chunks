@@ -26,6 +26,16 @@ internal class CombinedViewPreferences(context: Context) {
         preferences.edit().putString("view", encode(query)).commit()
 
     companion object {
+        /** A saved scope, search or filter may hide every result without hiding the recovery. */
+        fun narrowingActive(query: UnifiedTransferQuery): Boolean =
+            query.search.isNotBlank() || query.filter != UnifiedTransferFilter.ALL ||
+                query.scope !is EnvironmentViewScope.All
+
+        /** View-only escape hatch; retain the user's chosen sorting and grouping. */
+        fun showAll(query: UnifiedTransferQuery): UnifiedTransferQuery =
+            query.copy(search = "", filter = UnifiedTransferFilter.ALL,
+                scope = EnvironmentViewScope.All)
+
         /**
          * A saved view load can finish after the user has already touched the
          * screen. In that case keep the user's current input exactly; a stale

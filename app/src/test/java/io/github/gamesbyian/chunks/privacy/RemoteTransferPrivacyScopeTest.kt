@@ -21,8 +21,13 @@ class RemoteTransferPrivacyScopeTest {
         }
         assertEquals(a, RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(
             "https://seed.example/RPC2\u0000alice"))
-        assertEquals(a, RemoteTransferPrivacyScope.fromAccount(
+        assertNotEquals(a, RemoteTransferPrivacyScope.fromAccount(
             " https://seed.example/RPC2 ", " alice "))
+        assertEquals(a, RemoteTransferPrivacyScope.fromAccount(
+            " https://seed.example/RPC2 ", "alice"))
+        assertEquals(a, RemoteTransferPrivacyScope.legacyForScope(
+            requireNotNull(RemoteTransferPrivacyScope.fromAccount(
+                "https://seed.example/RPC2", " alice "))))
     }
 
     @Test fun invalidOrUnconfirmedAliasScopeNeverTurnsIntoUnprotectedRemoteScope() {
@@ -43,13 +48,17 @@ class RemoteTransferPrivacyScopeTest {
             "https://seed.example/RPC2", "alice"))
         val b = requireNotNull(RemoteTransferPrivacyScope.fromAccount(
             "https://seed.example/RPC2", "bob"))
+        val padded = requireNotNull(RemoteTransferPrivacyScope.fromAccount(
+            "https://seed.example/RPC2", " alice "))
+        assertNotEquals(a, padded)
         val session = TransferPrivacySession { 3_000L }
-        for (scope in listOf(local, a, b))
+        for (scope in listOf(local, a, b, padded))
             assertTrue(session.configure(scope, TransferLockMode.ONCE_PER_PROCESS, false))
         assertTrue(session.finishUnlock(requireNotNull(session.beginUnlock(a)), true))
         assertTrue(session.mayView(a))
         assertFalse(session.mayView(b))
         assertFalse(session.mayView(local))
+        assertFalse("Exact principal must never inherit an old unlock", session.mayView(padded))
         session.lockNow(a)
         assertFalse(session.mayView(a))
     }

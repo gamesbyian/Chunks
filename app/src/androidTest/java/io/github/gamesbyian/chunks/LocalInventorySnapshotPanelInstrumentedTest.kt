@@ -32,7 +32,7 @@ class LocalInventorySnapshotPanelInstrumentedTest {
         }
         compose.onNodeWithText("Save phone transfer inventory").performClick()
         compose.onNodeWithText("Local transfer inventory only").assertExists()
-        compose.onNodeWithText("Choose file for phone inventory").assertIsEnabled()
+        compose.onNodeWithText("Share phone inventory").assertIsEnabled()
         compose.onNodeWithText(
             "Observed: 1; recorded: 1; omitted: 0; verified restorable: 0."
         ).assertExists()
@@ -45,12 +45,12 @@ class LocalInventorySnapshotPanelInstrumentedTest {
             }
         }
         compose.onNodeWithText("Save phone transfer inventory").performClick()
-        compose.onNodeWithText("Choose file for phone inventory").assertIsEnabled()
+        compose.onNodeWithText("Share phone inventory").assertIsEnabled()
         compose.onNodeWithText("Recover verified .torrent definitions (sensitive)")
             .performClick()
         compose.onNodeWithText("Preview verified torrent definitions").assertIsEnabled()
         compose.onNodeWithText("Private tracker credentials", substring = true).assertExists()
-        compose.onNodeWithText("Save reviewed sensitive .chunksnap").assertDoesNotExist()
+        compose.onNodeWithText("Share reviewed sensitive .chunksnap").assertDoesNotExist()
     }
 
     @Test fun staleNativeViewNeverAllowsSensitiveMetainfoPreview() {
@@ -72,7 +72,7 @@ class LocalInventorySnapshotPanelInstrumentedTest {
             }
         }
         compose.onNodeWithText("Save phone transfer inventory").performClick()
-        compose.onNodeWithText("Choose file for phone inventory").assertIsNotEnabled()
+        compose.onNodeWithText("Share phone inventory").assertIsNotEnabled()
     }
 
     @Test fun inFlightNativeMutationCannotExport() {
@@ -82,6 +82,6 @@ class LocalInventorySnapshotPanelInstrumentedTest {
             }
         }
         compose.onNodeWithText("Save phone transfer inventory").performClick()
-        compose.onNodeWithText("Choose file for phone inventory").assertIsNotEnabled()
+        compose.onNodeWithText("Share phone inventory").assertIsNotEnabled()
     }
 }

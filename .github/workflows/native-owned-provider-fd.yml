@@ -1,0 +1,25 @@
+name: Experimental native provider FD (host-only)
+on:
+  pull_request:
+    paths:
+      - "tools/native_owned_provider_fd.*"
+      - "tools/native_owned_provider_fd_test.cc"
+      - "tools/test_native_owned_provider_fd.sh"
+      - ".github/workflows/native-owned-provider-fd.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chunks-provider-fd-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-host-fd:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify ten descriptor I/O positive and refusal tests
+        run: bash tools/test_native_owned_provider_fd.sh --sanitizers

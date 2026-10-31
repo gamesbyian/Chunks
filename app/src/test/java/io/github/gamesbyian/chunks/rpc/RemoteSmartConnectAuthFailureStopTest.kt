@@ -47,7 +47,7 @@ class RemoteSmartConnectAuthFailureStopTest {
                 input = "https://unlisted.example", username = "alice", password = "secret",
                 probe = {
                     tries++
-                    throw IOException("rTorrent gateway returned HTTP 404")
+                    throw RpcHttpStatusException(404)
                 }
             )
             fail("No endpoint should be verified")

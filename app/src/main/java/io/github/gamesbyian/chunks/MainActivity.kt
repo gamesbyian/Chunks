@@ -239,6 +239,7 @@ private fun ChunksApp(
     var serverHandoffTorrent by remember { mutableStateOf<ByteArray?>(null) }
     var draftPath by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
+    val credentialChanges = remember { RemoteCredentialActionQueue() }
     val aliasStore = remember(context) { TransferAliasStore(context) }
     val recentPlaceStore = remember(context) { RecentRemotePlaceStore(context) }
     var recentPlaceRevision by remember { mutableStateOf(0) }
@@ -431,7 +432,7 @@ private fun ChunksApp(
                 },
                 savedProfiles = savedProfiles.map { profile ->
                     CombinedSavedProfile(profile.id, profile.label + " · " + profile.address,
-                        aliasScope = profile.credentials.endpoint.trim() + "\u0000" + profile.credentials.username.trim(),
+                        aliasScope = RemoteVerifiedUiIdentity.aliasScopeOf(profile.credentials),
                         // Read-only "main" list with this profile's own saved credentials (HTTPS enforced).
                         listOnly = { RTorrentRemote(profile.credentials).listTransfers("main") })
                 },
@@ -490,6 +491,7 @@ private fun ChunksApp(
                     // Discovery is read-only, so abandoning it changes nothing.
                     connectJob?.cancel()
                     remoteFence.invalidate()
+                    RemoteCredentialLock.invalidate()
                     loading = false
                     connectDiagnostics = ConnectionDiagnostics()
                     error = "Connection check cancelled. Nothing was changed on the server."
@@ -506,30 +508,35 @@ private fun ChunksApp(
                 },
                 onForgetProfile = { profile ->
                     if (!loading) {
-                        scope.launch {
+                        // Revoke pending Connect saves at the moment Forget
+                        // is requested, not after its IO coroutine starts.
+                        RemoteCredentialLock.invalidate()
+                        credentialChanges.submit(scope) { revision ->
                             val removed = withContext(Dispatchers.IO) {
                                 try {
-                                    val old = vault.load()
-                                    val removedRoster = profileRoster.forget(profile.id)
-                                    val removedLegacy = if (old?.endpoint?.trim() ==
-                                            profile.credentials.endpoint.trim() &&
-                                        old.username.trim() == profile.credentials.username.trim())
-                                        vault.clear() else true
-                                    removedRoster && removedLegacy
+                                    RemoteProfileForget.forget(profileRoster, vault, profile)
                                 } catch (_: Exception) { false }
                             }
-                            savedProfiles = withContext(Dispatchers.IO) { profileRoster.list() }
-                            savedLoginPresent = vault.hasSavedLogin() || savedProfiles.isNotEmpty()
-                            if (removed && endpoint == profile.credentials.endpoint &&
-                                username == profile.credentials.username) password = ""
-                            credentialNotice = if (removed) "Saved profile forgotten on this device."
-                                else "Could not confirm full credential removal. Review saved profiles."
+                            if (credentialChanges.isLatest(revision)) {
+                                val refreshed = withContext(Dispatchers.IO) { profileRoster.list() }
+                                // A newer tap may occur while this IO read is suspended.
+                                if (!credentialChanges.isLatest(revision)) return@submit
+                                savedProfiles = refreshed
+                                savedLoginPresent = vault.hasSavedLogin() || refreshed.isNotEmpty()
+                                if (removed && endpoint == profile.credentials.endpoint &&
+                                    username == profile.credentials.username) password = ""
+                                credentialNotice = if (removed) "Saved profile forgotten on this device."
+                                    else "Could not confirm full credential removal. Review saved profiles."
+                            }
                         }
                     }
                 },
                 onRememberLogin = { enabled ->
+                    // A pending Connect must never persist under an obsolete
+                    // remember preference while the durable edit is queued.
+                    RemoteCredentialLock.invalidate()
                     rememberLogin = enabled
-                    scope.launch {
+                    credentialChanges.submit(scope) { revision ->
                         val persisted = withContext(Dispatchers.IO) {
                             try {
                                 if (enabled) {
@@ -544,19 +551,28 @@ private fun ChunksApp(
                                 }
                             } catch (_: Exception) { false }
                         }
-                        rememberLogin = vault.rememberingEnabled()
-                        savedProfiles = withContext(Dispatchers.IO) { profileRoster.list() }
-                        savedLoginPresent = vault.hasSavedLogin() || savedProfiles.isNotEmpty()
-                        credentialNotice = when {
-                            !persisted -> "Could not save the credential remembering preference. Retry this change."
-                            !enabled -> "Login remembering disabled across restarts; saved credentials erased."
-                            else -> "Login remembering enabled. Credentials are saved after your next successful Connect."
+                        if (credentialChanges.isLatest(revision)) {
+                            val refreshed = withContext(Dispatchers.IO) {
+                                val profiles = profileRoster.list()
+                                Triple(vault.rememberingEnabled(), profiles,
+                                    vault.hasSavedLogin() || profiles.isNotEmpty())
+                            }
+                            if (!credentialChanges.isLatest(revision)) return@submit
+                            rememberLogin = refreshed.first
+                            savedProfiles = refreshed.second
+                            savedLoginPresent = refreshed.third
+                            credentialNotice = when {
+                                !persisted -> "Could not save the credential remembering preference. Retry this change."
+                                !enabled -> "Login remembering disabled across restarts; saved credentials erased."
+                                else -> "Login remembering enabled. Credentials are saved after your next successful Connect."
+                            }
                         }
                     }
                 },
                 onForgetLogin = {
+                    RemoteCredentialLock.invalidate()
                     rememberLogin = false
-                    scope.launch {
+                    credentialChanges.submit(scope) { revision ->
                         val cleared = withContext(Dispatchers.IO) {
                             try {
                                 val disabled = vault.setRememberingEnabled(false)
@@ -564,12 +580,16 @@ private fun ChunksApp(
                                 disabled && rosterErased
                             } catch (_: Exception) { false }
                         }
-                        savedProfiles = withContext(Dispatchers.IO) { profileRoster.list() }
-                        savedLoginPresent = vault.hasSavedLogin() || savedProfiles.isNotEmpty()
-                        if (cleared) {
-                            password = ""
-                            credentialNotice = "Saved login erased. This session's password field was cleared."
-                        } else credentialNotice = "Could not erase saved login. Retry before leaving the app."
+                        if (credentialChanges.isLatest(revision)) {
+                            val refreshed = withContext(Dispatchers.IO) { profileRoster.list() }
+                            if (!credentialChanges.isLatest(revision)) return@submit
+                            savedProfiles = refreshed
+                            savedLoginPresent = vault.hasSavedLogin() || refreshed.isNotEmpty()
+                            if (cleared) {
+                                password = ""
+                                credentialNotice = "Saved login erased. This session's password field was cleared."
+                            } else credentialNotice = "Could not erase saved login. Retry before leaving the app."
+                        }
                     }
                 },
                 onLocalZipReview = { section = Section.ARCHIVES },
@@ -590,13 +610,26 @@ private fun ChunksApp(
                         loading = true
                         error = null
                         val ticket = remoteFence.begin("main")
+                        // Invalidate every earlier pending Connect's right to
+                        // remember credentials, before any network suspension.
+                        RemoteCredentialLock.invalidate()
                         // Freeze credentials for this one connection attempt.
                         // A later edit or lifecycle reset cannot redirect it.
                         val settings = RemoteCredentials(target, username, password)
-                        val saveThisLogin = rememberLogin
                         connectDiagnostics = ConnectionDiagnostics()
                         connectJob = scope.launch {
                             try {
+                                // A previously requested OFF→ON/Forget must
+                                // commit in tap order before this Connect
+                                // claims fresh credential-saving authority.
+                                credentialChanges.awaitSettled()
+                                if (!remoteFence.current(ticket)) return@launch
+                                // Human Forget/Remember taps occurring during the
+                                // ensuing RPC or saved-profile IO must own the
+                                // notice and profile UI, even on a successful Connect.
+                                val connectedUiRevision = credentialChanges.snapshotRevision()
+                                val saveThisLogin = rememberLogin
+                                val credentialTicket = RemoteCredentialLock.beginConnection()
                                 val discovered = RemoteSmartConnect.connect(
                                     settings.endpoint, settings.username, settings.password,
                                     onAttempt = { index, total, candidate ->
@@ -610,13 +643,11 @@ private fun ChunksApp(
                                     Triple(connection, verifiedVersion, verifiedList)
                                 }
                                 val (candidate, v, list) = discovered.response
-                                // Preserve a user's explicit saved URL and its
-                                // existing alias scope. For hostname-only auto
-                                // discovery, remember the verified exact RPC
-                                // endpoint so reconnection needs no path scan.
-                                val verifiedSettings = if (
-                                    RemoteSmartConnect.candidates(settings.endpoint, settings.username).size == 1
-                                ) settings else discovered.credentials
+                                // The verified RPC endpoint may differ from
+                                // the pasted browser URL or a hostname with a
+                                // single candidate. Never scope a verified
+                                // principal to an unverified draft address.
+                                val verifiedSettings = discovered.credentials
                                 if (remoteFence.current(ticket) && server == null) {
                                     inspectionFence.invalidate()
                                     mutationGate.reset()
@@ -624,8 +655,13 @@ private fun ChunksApp(
                                     transfersObservedAt = System.currentTimeMillis()
                                     snapshotRevision++
                                     version = v
-                                    aliasScope = verifiedSettings.endpoint.trim() + "\u0000" + username.trim()
+                                    aliasScope = RemoteVerifiedUiIdentity.aliasScopeOf(verifiedSettings)
                                     endpoint = verifiedSettings.endpoint
+                                    // The fields stay aligned with the authenticated
+                                    // probe even if edited while Connect was running.
+                                    // Otherwise Disconnect could offer a reconnect
+                                    // to an unverified different account.
+                                    username = verifiedSettings.username
                                     // The full address now carries the path.
                                     rpcPath = ""
                                     // Never carry another server/account's custom destination
@@ -646,26 +682,44 @@ private fun ChunksApp(
                                     val retained = withContext(Dispatchers.IO) {
                                         try {
                                             if (saveThisLogin) {
-                                                val singleSaved = vault.save(verifiedSettings)
-                                                val rosterSaved = profileRoster.saveVerified(verifiedSettings)
-                                                singleSaved && rosterSaved
+                                                RemoteCredentialLock.saveVerifiedPairIfCurrent(
+                                                    vault, profileRoster, verifiedSettings,
+                                                    credentialTicket
+                                                )
                                             } else {
-                                                val disabled = vault.setRememberingEnabled(false)
-                                                val rosterErased = profileRoster.clearAll()
-                                                disabled && rosterErased
+                                                // A superseded or canceled Connect must not
+                                                // erase a newer account's saved credentials.
+                                                // Hold the same monitor across the epoch
+                                                // check and the destructive opt-out.
+                                                RemoteRememberChoice.declineIfCurrent(
+                                                    vault, credentialTicket
+                                                )
                                             }
                                         } catch (_: Exception) { false }
                                     }
-                                    savedProfiles = withContext(Dispatchers.IO) { profileRoster.list() }
-                                    savedLoginPresent = vault.hasSavedLogin() || savedProfiles.isNotEmpty()
-                                    credentialNotice = when {
-                                        !retained -> "Connected, but login remembering settings could not be saved. " +
-                                            "Confirm the preference before restarting."
-                                        !saveThisLogin -> "Connected without remembering credentials. Your opt-out persists across restarts."
-                                        else -> null
+                                    // IO can outlive a UI session change. Never write a
+                                    // stale Connect's notice/profile state over a new
+                                    // authenticated session or a disconnected form.
+                                    if (remoteFence.current(ticket) && server === candidate &&
+                                        credentialChanges.isLatest(connectedUiRevision)) {
+                                        val refreshed = withContext(Dispatchers.IO) { profileRoster.list() }
+                                        // Either IO may suspend; do not let this
+                                        // Connect overwrite a subsequent Forget or
+                                        // another authenticated screen's state.
+                                        if (remoteFence.current(ticket) && server === candidate &&
+                                            credentialChanges.isLatest(connectedUiRevision)) {
+                                            savedProfiles = refreshed
+                                            savedLoginPresent = vault.hasSavedLogin() || refreshed.isNotEmpty()
+                                            credentialNotice = when {
+                                                !retained -> "Connected, but login remembering settings could not be saved. " +
+                                                    "Confirm the preference before restarting."
+                                                !saveThisLogin -> "Connected without remembering credentials. Your opt-out persists across restarts."
+                                                else -> null
+                                            }
+                                            // Do not retain another copy in the screen field.
+                                            password = ""
+                                        }
                                     }
-                                    // Do not retain another copy in the screen field.
-                                    password = ""
                                 }
                             } catch (cancel: kotlinx.coroutines.CancellationException) {
                                 throw cancel
@@ -957,8 +1011,16 @@ private fun ChunksApp(
                     credentialNotice = credentialNotice,
                     savedLoginPresent = savedLoginPresent,
                     onForgetLogin = {
+                        // The connected screen shares the same credential epoch
+                        // and ordered mutation queue as the Connect screen.
+                        // Revoke in-flight saves at TAP time, before IO can wait
+                        // or a quick Disconnect + new Connect can interleave.
+                        RemoteCredentialLock.invalidate()
                         rememberLogin = false
-                        scope.launch {
+                        // Forget removes any lingering copy of a verified
+                        // password even when a previous UI refresh is pending.
+                        password = ""
+                        credentialChanges.submit(scope) { revision ->
                             val cleared = withContext(Dispatchers.IO) {
                                 try {
                                     val disabled = vault.setRememberingEnabled(false)
@@ -966,18 +1028,28 @@ private fun ChunksApp(
                                     disabled && rosterErased
                                 } catch (_: Exception) { false }
                             }
-                            savedProfiles = withContext(Dispatchers.IO) { profileRoster.list() }
-                            savedLoginPresent = vault.hasSavedLogin() || savedProfiles.isNotEmpty()
-                            credentialNotice = if (cleared) "Saved login erased. Current connection remains active."
+                            // Older queued Forget jobs still erase as requested,
+                            // but only the latest user command controls the UI.
+                            if (credentialChanges.isLatest(revision)) {
+                                val refreshed = withContext(Dispatchers.IO) { profileRoster.list() }
+                                // A newer tap may occur while this IO read is suspended.
+                                if (!credentialChanges.isLatest(revision)) return@submit
+                                savedProfiles = refreshed
+                                savedLoginPresent = vault.hasSavedLogin() || refreshed.isNotEmpty()
+                                credentialNotice = if (cleared)
+                                    "Saved login erased. Current connection remains active."
                                 else "Could not erase saved login."
+                            }
                         }
                     },
                     onRefresh = refresh,
                     onSeedingRules = { section = Section.SEEDING },
                     environmentLabel = serverEnvironmentLabel(aliasScope),
                     onDisconnect = {
-                        // Invalidate every in-flight read before clearing UI state.
+                        // Invalidate every in-flight read and credential save
+                        // before switching/clearing the authenticated scope.
                         remoteFence.invalidate()
+                        RemoteCredentialLock.invalidate()
                         inspectionFence.invalidate()
                         mutationGate.reset()
                         server = null
