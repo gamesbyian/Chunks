@@ -213,9 +213,9 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     }
 
     /**
-     * Metadata-ready magnets must prove their prospective destination paths
-     * are free of unreviewed files BEFORE leaving UPLOAD_MODE. A blocked
-     * magnet can retry after the user clears the conflicting file.
+     * Metadata-ready magnets must verify their prospective native paths stay
+     * inside the chosen Place. Existing regular files may be rechecked/replaced
+     * as normal torrent payload, including after deferred metadata arrival.
      */
     private fun transitionMagnetMetadata(key: String, handle: TorrentHandle) {
         // The alert dispatcher must never acquire the engine monitor: close()
@@ -254,9 +254,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         val root = File(handle.savePath())
         when (val survey = LocalPayloadCollisionSurvey.inspect(root, paths)) {
             is LocalPayloadCollisionSurvey.Result.ClearAtObservation -> Unit
-            is LocalPayloadCollisionSurvey.Result.ExistingPaths ->
-                return "Existing files conflict with this magnet (" + survey.total +
-                    " path(s)); choose a clean destination or review existing data"
+            is LocalPayloadCollisionSurvey.Result.ExistingPaths -> Unit
             is LocalPayloadCollisionSurvey.Result.Unknown ->
                 return "Cannot verify magnet payload paths: " + survey.problem
         }
@@ -362,12 +360,10 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     fun listenPort(): Int = session.swig()?.listen_port() ?: 0
 
     /**
-     * Production Add: inspect torrent-relative payload paths before registering
-     * a job. The raw addStopped method remains for separately reviewed
-     * existing-file seeding and native interoperability fixtures.
-     *
-     * A clean survey is point-in-time only, not a race-free write capability.
-     * It does not authorize consuming a matching file merely by name.
+     * Production Add: validate torrent-relative payload paths before registering
+     * a job. Existing regular files inside the selected directory are permitted
+     * as ordinary libtorrent recheck/reuse/replacement candidates.
+     * A clean survey is point-in-time only, not a race-free containment guarantee.
      */
     @Synchronized
     fun addStoppedChecked(
@@ -395,10 +391,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         if (paths.isEmpty()) return LocalAddResult.Refused("Torrent has no inspectable payload")
         when (val survey = LocalPayloadCollisionSurvey.inspect(saveDirectory, paths)) {
             is LocalPayloadCollisionSurvey.Result.ClearAtObservation -> Unit
-            is LocalPayloadCollisionSurvey.Result.ExistingPaths ->
-                return LocalAddResult.Refused("Existing files conflict with this torrent (" +
-                    survey.total + " path(s)). Nothing added. Choose a new folder or use " +
-                    "an explicitly reviewed existing-files recovery workflow.")
+            is LocalPayloadCollisionSurvey.Result.ExistingPaths -> Unit
             is LocalPayloadCollisionSurvey.Result.Unknown ->
                 return LocalAddResult.Refused("Cannot verify download file paths: " +
                     survey.problem + ". Nothing added.")
@@ -576,9 +569,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                     pending.saveDirectory, pending.paths
                 )) {
                     is LocalPayloadCollisionSurvey.Result.ClearAtObservation -> null
-                    is LocalPayloadCollisionSurvey.Result.ExistingPaths ->
-                        "Files appeared since Add (" + survey.total +
-                            " path(s)); Start refused to protect existing data"
+                    is LocalPayloadCollisionSurvey.Result.ExistingPaths -> null
                     is LocalPayloadCollisionSurvey.Result.Unknown ->
                         "Cannot verify file paths before Start: " + survey.problem
                 }
@@ -622,12 +613,10 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         }
 
     /**
-     * Point-in-time checked-job restart guard. A libtorrent file with ZERO
-     * verified bytes cannot be assumed to belong to this job just because the
-     * same name exists after Stop; another app may have planted it. Exact
-     * reserved path identity is also required before each native Start.
-     * This does not protect positive-progress files against inode replacement,
-     * or an attacker racing a check before the actual native disk open.
+     * Point-in-time checked-job restart guard: retain path containment and
+     * native layout checks, but allow existing regular files at authorized
+     * torrent paths. Native piece verification decides usable data. This
+     * survey cannot defeat path replacement after inspection.
      */
     private fun inspectCheckedRestartCollision(key: String, handle: TorrentHandle): String? {
         val root = File(handle.savePath())
@@ -835,7 +824,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
      * the result is VERIFIED only once readback shows the requested selection.
      * Skipping never deletes bytes already written.
      */
-    /** Fail closed before scheduling native writes to unverified checked paths. */
+    /** Reject unsupported native path targets before priority-driven writes. */
     private fun checkedPriorityMutationProblem(key: String, handle: TorrentHandle): String? {
         if (!checkedPayloadReservations.hasReservation(key) ||
             checkedFirstStarts.containsKey(key)) return null
@@ -992,8 +981,8 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                             FinishInOrderPlanner.NORMAL, FinishInOrderPlanner.HIGH)
                 }) return LocalFileBatchOutcome.STALE_REVIEW
             // Finish in Order is an independent native filePriority writer.
-            // Apply the same no-foreign-zero-progress fence before the first
-            // write; an earlier read-only planner result is not authorization.
+            // Recheck destination path containment before priority-driven writes;
+            // a completed read-only planner is not authorization to escape it.
             if (checkedPriorityMutationProblem(key, handle) != null)
                 return LocalFileBatchOutcome.STALE_REVIEW
             try {
