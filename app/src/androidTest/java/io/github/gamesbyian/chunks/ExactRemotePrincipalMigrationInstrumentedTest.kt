@@ -217,6 +217,80 @@ class ExactRemotePrincipalMigrationInstrumentedTest {
         }
     }
 
+    @Test fun failedLegacyIdMigrationPreservesEncryptedRowsAndRetriesOnlyWhenCommitWorks() {
+        val vault = RememberedRemoteLogin(context)
+        val roster = RememberedRemoteProfileRoster(context)
+        val original = vault.rememberingEnabled()
+        assertTrue(vault.setRememberingEnabled(true))
+        val prefs = context.getSharedPreferences("chunks_remote_profiles_encrypted_v1",
+            Context.MODE_PRIVATE)
+        try {
+            assertTrue(roster.clearAll())
+            val oldId = RememberedRemoteProfileRoster.identityOf(endpoint, plain.username)
+            val exactId = RememberedRemoteProfileRoster.identityOf(endpoint, padded.username)
+            assertNotEquals(oldId, exactId)
+            assertTrue(roster.writeRows(JSONArray().put(JSONArray()
+                .put(oldId).put("Old principal").put(endpoint)
+                .put(padded.username).put(padded.password))))
+            val originalBytes = requireNotNull(prefs.getString("roster", null))
+            roster.rejectPersistForTest = true
+            assertTrue(roster.list().isEmpty())
+            assertFalse(roster.saveVerified(plain))
+            assertFalse(roster.forget(exactId))
+            assertEquals(originalBytes, prefs.getString("roster", null))
+            // Simulate the same failed disk commit after recreating a store.
+            val reopened = RememberedRemoteProfileRoster(context)
+            reopened.rejectPersistForTest = true
+            assertTrue(reopened.list().isEmpty())
+            assertFalse(reopened.saveVerified(plain))
+            assertEquals(originalBytes, prefs.getString("roster", null))
+            reopened.rejectPersistForTest = false
+            val recovered = reopened.list().single()
+            assertEquals(exactId, recovered.id)
+            assertEquals(padded, recovered.credentials)
+            assertTrue(reopened.saveVerified(plain))
+            assertEquals(setOf(plain.username, padded.username),
+                reopened.list().map { it.credentials.username }.toSet())
+        } finally {
+            roster.rejectPersistForTest = false
+            roster.clearAll()
+            vault.setRememberingEnabled(original)
+        }
+    }
+
+    @Test fun validCiphertextWithConflictingLegacyIdentityIsPreservedNotDeleted() {
+        val vault = RememberedRemoteLogin(context)
+        val roster = RememberedRemoteProfileRoster(context)
+        val original = vault.rememberingEnabled()
+        assertTrue(vault.setRememberingEnabled(true))
+        val prefs = context.getSharedPreferences("chunks_remote_profiles_encrypted_v1",
+            Context.MODE_PRIVATE)
+        try {
+            assertTrue(roster.clearAll())
+            // A structurally valid encrypted row with a valid-shaped but
+            // mismatched ID must not be rewritten or silently erased.
+            val wrongId = "a".repeat(64)
+            assertTrue(roster.writeRows(JSONArray().put(JSONArray()
+                .put(wrongId).put("Mismatched identity").put(endpoint)
+                .put(padded.username).put(padded.password))))
+            val originalBytes = requireNotNull(prefs.getString("roster", null))
+            assertTrue(roster.list().isEmpty())
+            assertFalse(roster.saveVerified(plain))
+            assertFalse(roster.forget(wrongId))
+            assertEquals(originalBytes, prefs.getString("roster", null))
+            val reopened = RememberedRemoteProfileRoster(context)
+            assertTrue(reopened.list().isEmpty())
+            assertFalse(reopened.saveVerified(plain))
+            assertEquals(originalBytes, prefs.getString("roster", null))
+            assertTrue(reopened.clearAll())
+            assertTrue(reopened.saveVerified(plain))
+            assertEquals(plain, reopened.list().single().credentials)
+        } finally {
+            roster.clearAll()
+            vault.setRememberingEnabled(original)
+        }
+    }
+
     private fun prefKey(scope: String): String = "policy_" +
         MessageDigest.getInstance("SHA-256").digest(scope.toByteArray(Charsets.UTF_8))
             .joinToString("") { "%02x".format(it.toInt() and 255) }
