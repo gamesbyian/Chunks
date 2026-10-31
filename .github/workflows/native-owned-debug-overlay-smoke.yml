@@ -7,6 +7,8 @@ on:
     paths:
       - "tools/stage_owned_native_preview.py"
       - "tests/test_stage_owned_native_preview.py"
+      - "tools/native_owned_android_instrumentation_diagnostics.sh"
+      - "tools/test_native_owned_android_instrumentation_diagnostics_mock.sh"
       - ".github/workflows/native-owned-debug-overlay-smoke.yml"
   workflow_dispatch:
 
@@ -24,6 +26,10 @@ jobs:
           set -euo pipefail
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
             -s tests -p 'test_stage_owned_native_preview.py' -v
+      - name: Refuse unsafe or unqualified native lab crash receipts
+        run: |
+          set -euo pipefail
+          bash tools/test_native_owned_android_instrumentation_diagnostics_mock.sh
       - name: Refuse source drift in actual production Gradle dependency seam
         run: |
           python3 - <<'PY'
