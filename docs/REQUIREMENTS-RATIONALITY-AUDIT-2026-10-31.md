@@ -31,6 +31,9 @@ Prioritize ordinary successful Add/download/recheck/seed, exact-profile remote o
 
 ## Evidence anchors and cautions
 
+**Android API distinction, verified against current official documentation:** Provider-side `DocumentsProvider.createDocument` requires a new document ID and may adjust names. However `ACTION_CREATE_DOCUMENT` Intent reference says its result *may be an existing document*, while the Android storage training page describes auto-suffix non-overwrite. Avoid generalizing either guarantee to all higher-level picker results or to arbitrary providers; see [USER-DIRECTED-FILE-OPERATIONS](USER-DIRECTED-FILE-OPERATIONS.md). An explicitly reviewed Replace is not equivalent to unexpectedly receiving an existing document from a Create new action.
+
+
 - libtorrent's documented move storage flags include `always_replace_files` as default and `fail_if_exist` as an optional policy, with a documented race window. See https://libtorrent.org/reference-Torrent_Handle.html . This is precedent for normal user-directed overwrite semantics, **not** evidence that arbitrary cleanup or path escape is authorized.
 - Android's DocumentsProvider `createDocument` contract calls for a newly generated document ID but permits provider-adjusted names: https://developer.android.com/reference/android/provider/DocumentsProvider . Provider implementations and grants must still be tested, and replacement of a selected existing object must be a separate explicit operation.
 - Existing #809 witnesses demonstrate specific deletion/truncation hazards. This audit does not mark #809 resolved and does not authorize reactivation of currently contained unsafe paths.
