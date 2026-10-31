@@ -57,6 +57,55 @@ class ExactRemotePrincipalMigrationInstrumentedTest {
         }
     }
 
+    @Test fun optOutBlocksConcurrentSaveAndReenableCannotResurrectOldRoster() {
+        val vault = RememberedRemoteLogin(context)
+        val roster = RememberedRemoteProfileRoster(context)
+        val original = vault.rememberingEnabled()
+        assertTrue(vault.setRememberingEnabled(true))
+        val failures = java.util.concurrent.CopyOnWriteArrayList<Throwable>()
+        try {
+            assertTrue(roster.clearAll())
+            val entered = java.util.concurrent.CountDownLatch(1)
+            // The worker signals just before attempting Save. The shared
+            // credential monitor is held until OFF commits, so the worker
+            // cannot authenticate a stale enabled state or race a later wipe.
+            val worker = synchronized(RemoteCredentialLock.monitor) {
+                Thread {
+                    try {
+                        entered.countDown()
+                        assertFalse(roster.saveVerified(padded))
+                    } catch (t: Throwable) { failures.add(t) }
+                }.also { thread ->
+                    thread.start()
+                    assertTrue(entered.await(3, java.util.concurrent.TimeUnit.SECONDS))
+                    assertTrue(vault.setRememberingEnabled(false))
+                }
+            }
+            worker.join(5_000)
+            assertFalse(worker.isAlive)
+            assertTrue(failures.joinToString(), failures.isEmpty())
+            assertFalse(vault.rememberingEnabled())
+            assertTrue(roster.list().isEmpty())
+            // Fault injection for a legacy interrupted opt-out: a roster
+            // ciphertext exists while the remembering policy is OFF.
+            val row = JSONArray().put(JSONArray()
+                .put(RememberedRemoteProfileRoster.identityOf(endpoint, padded.username))
+                .put("Legacy").put(padded.endpoint).put(padded.username).put(padded.password))
+            assertTrue(roster.writeRows(row))
+            assertTrue(roster.list().isEmpty())
+            // Enabling must clear that ciphertext before the policy says ON.
+            assertTrue(vault.setRememberingEnabled(true))
+            assertTrue(roster.list().isEmpty())
+            assertTrue(roster.saveVerified(plain))
+            assertEquals(listOf(plain.username), roster.list().map { it.credentials.username })
+            assertTrue(vault.setRememberingEnabled(false))
+            assertTrue(roster.list().isEmpty())
+        } finally {
+            roster.clearAll()
+            vault.setRememberingEnabled(original)
+        }
+    }
+
     private fun prefKey(scope: String): String = "policy_" +
         MessageDigest.getInstance("SHA-256").digest(scope.toByteArray(Charsets.UTF_8))
             .joinToString("") { "%02x".format(it.toInt() and 255) }
