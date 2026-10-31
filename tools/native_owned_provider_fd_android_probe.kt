@@ -107,7 +107,14 @@ class OwnedProviderFdAndroidProbe {
         run {
             assertTrue("Platform MediaStore owner and fresh pending identity required",
                 exactOwner(minted, 1, 0L))
-
+            // On API35, insert() can return a pending ROW whose underlying
+            // inode does not yet exist. Opening it "r" immediately gives
+            // ENOENT. First ask the verified platform provider to materialize
+            // the test-owned empty backing with "rw", CLOSE it without writes,
+            // and require unchanged owner, pending flag and zero byte count.
+            requireNotNull(resolver.openFileDescriptor(uri, "rw")).use { }
+            assertTrue("Empty owner-created backing changed during materialization",
+                exactOwner(minted, 1, 0L))
             requireNotNull(resolver.openFileDescriptor(uri, "r")).use {
                 assertFalse("Readonly provider FD must be refused before native I/O",
                     nativeRoundTrip(it.detachFd(), 65552, "a".repeat(64)))
