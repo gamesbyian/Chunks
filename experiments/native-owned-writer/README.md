@@ -6,27 +6,37 @@ Run: bash experiments/native-owned-writer/test.sh --sanitizers
 
 The earlier 22-case prototype passed a local C++17 and ASan/UBSan run on October 30. The current tree defines **27 regression scenarios** across two native suites, including subsequent ownership-token and non-mutating read protections. **The 26-case exact-head result is not yet confirmed; its GitHub CI is pending.** Cases include an already-existing foreign file, symlink parents, live file/root/ancestor replacement, hardlink alias, corrupt receipt, invalid path, overflowing offset, receipt collision, concurrent same-path Create (exactly one winner), and durable reopen. The multi-file suite exercises multi-file piece offsets, cross-file preflight, padding that never creates a file, preserved foreign contents, resumable absent-file reservations, file-as-parent alias refusal and readback from durable receipts. This is not BitTorrent traffic, Android FUSE, API29/API35, or physical-device evidence.
 
-## Android private-receipt hardlink feasibility (unshipped candidate)
+## Android private-receipt publication without mutable temporary pathnames
 
-The production Kotlin receipt diagnostic observed `Files.createLink` failing with
-`AccessDeniedException` on Android API29 and API35. This C++ experiment now
-tries `linkat` first for fully synced, no-replace publication; **only** when
-linking is denied by a recognized capability error does it attempt
-`openat(O_CREAT|O_EXCL|O_NOFOLLOW)` on the final app-private receipt name.
-All writes and `fsync` stay on the exclusive original file descriptor, and
-the parent directory is also synced. No `rename` replacement or preexisting
-receipt mutation is allowed. An interrupted direct publication can leave a
-partially written final record: that record is corrupt and must be handled by
-explicit recovery rather than overwritten on retry.
+Production Kotlin diagnostic tests saw `Files.createLink` denied with
+`AccessDeniedException` on both API29 and API35. The first candidate in
+#816 retained a named `.tmp-*` pathname, making `linkat` source resolution
+and `unlinkat` cleanup vulnerable to same-UID post-create substitution.
+Independent review caught both gaps; this revision **eliminates named
+staging and pathname cleanup entirely**.
 
-`owned_receipt_nohardlink_test.cc` uses deterministic linker wrapping to
-make **every** `linkat` return `EPERM`. It then checks positive pending
-reservation, finalized ownership, exact readback after reopen, and refusal
-to mutate both occupied payload bytes and foreign receipt bytes. This is
-a *host-simulated* Android restriction. Actual Android runtime, scoped
-Downloads/SD xattr, TLS-enabled libtorrent4j packaging, and physical
-peer-seeding acceptance remain unproved; the existing default Android
-libtorrent library still has the known #568 overwrite hazard.
+Where supported, `openat(O_TMPFILE)` creates an **unnamed descriptor-held**
+private receipt stage. After `fsync` of its data, `linkat(stage_fd, "",
+dir_fd, id, AT_EMPTY_PATH)` publishes exactly the pinned inode without
+replacing an existing claim. The code verifies both descriptor and final
+inode identities and forces the parent directory. Closing a failed anonymous
+stage implicitly drops that inode without resolving a mutable pathname.
+If anonymous staging or descriptor publication is unsupported/denied for
+a recognized capability reason, exclusive
+`openat(O_CREAT|O_EXCL|O_NOFOLLOW)` creates the **final** name directly,
+and a checked file+directory fsync and exact inode comparison are required.
+Unexpected errors and an existing final name always refuse. If a crash
+interrupts direct publication, the partial finalized receipt stays corrupt
+and UNKNOWN until explicit recovery; no cleanup guesses file ownership.
+
+Native host regression now injects a foreign hardlink at the attempted
+descriptor publication boundary and rejects *any* named-temp `unlinkat`
+during receipt creation. Separate negative tests retain foreign payload and
+final-receipt contents, plus verified positive owned readback. An
+`LD_PRELOAD` fixture denies anonymous descriptor publication in the real
+libtorrent peer session; it must still complete genuine positive traffic
+and reject planted foreign paths. These are host experiments, never Android
+FUSE/SD/SAF acceptance. No production JNI replacement is included.
 
 ## Reason for the native seam
 
