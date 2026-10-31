@@ -1262,6 +1262,10 @@ internal fun LocalEngineScreen(
         } else if (displayedTransfers.isEmpty()) {
             Text("No transfers match this search or filter.",
                 style = MaterialTheme.typography.bodySmall)
+            OutlinedButton(
+                onClick = { transferSearch = ""; transferFilter = LocalQueueFilter.ALL },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+            ) { Text("Clear search and filter") }
         } else {
             // Only 20 heavy cards are composed at a time. Search, filtering and
             // sorting run against an immutable observed frame, never native JNI.
