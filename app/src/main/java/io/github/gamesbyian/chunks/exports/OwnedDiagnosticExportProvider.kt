@@ -116,50 +116,82 @@ class OwnedDiagnosticExportProvider : ContentProvider() {
         val ctx = requireNotNull(context)
         val name = uri.pathSegments.singleOrNull() ?: throw FileNotFoundException()
         if (uri.authority != authority(ctx) || uri.scheme != "content" ||
+            uri.query != null || uri.fragment != null ||
             mime(name) == null || !VALID_NAME.matches(name))
             throw FileNotFoundException()
         val root = folder(ctx)
         val file = File(root, name)
-        if (file.parentFile != root || !Files.isDirectory(root.toPath(), LinkOption.NOFOLLOW_LINKS) ||
-            !Files.isRegularFile(file.toPath(), LinkOption.NOFOLLOW_LINKS))
+        if (file.parentFile != root ||
+            !Files.isDirectory(root.toPath(), LinkOption.NOFOLLOW_LINKS))
             throw FileNotFoundException()
+        // Do not classify a mutable leaf pathname here. pinShare() opens the
+        // actual file NONBLOCKING before deciding what can be disclosed.
         return file
+    }
+
+    private data class PinnedExport(
+        val name: String,
+        val sizeBytes: Long,
+        val descriptor: ParcelFileDescriptor
+    )
+
+    /**
+     * No filename preflight followed by a blocking open: a same-UID process
+     * can substitute a FIFO after the survey, freezing the provider thread.
+     * Pin O_NONBLOCK and O_NOFOLLOW first, then validate the actual FD as
+     * a uniquely linked regular file. Every caller closes its duplicate.
+     *
+     * This proves safe read-side file type and identity at observation,
+     * not the durable owner of an adversarial single-link regular replacement.
+     */
+    private fun pinShare(uri: Uri): PinnedExport {
+        val file = ownedFile(uri)
+        val fd = try {
+            Os.open(file.absolutePath,
+                OsConstants.O_RDONLY or OsConstants.O_NOFOLLOW or
+                    OsConstants.O_NONBLOCK or OsConstants.O_CLOEXEC, 0)
+        } catch (e: ErrnoException) {
+            throw FileNotFoundException("Export is unavailable").apply { initCause(e) }
+        }
+        try {
+            val st = Os.fstat(fd)
+            if (!OsConstants.S_ISREG(st.st_mode) || st.st_nlink != 1L ||
+                st.st_size < 0L)
+                throw FileNotFoundException("Export is not an isolated regular file")
+            return PinnedExport(file.name, st.st_size, ParcelFileDescriptor.dup(fd))
+        } catch (e: ErrnoException) {
+            throw FileNotFoundException("Export type cannot be verified").apply { initCause(e) }
+        } finally {
+            Os.close(fd)
+        }
     }
 
     override fun onCreate() = true
 
     override fun openFile(uri: Uri, mode: String): ParcelFileDescriptor {
         if (mode != "r") throw SecurityException("Export documents are read-only")
-        val file = ownedFile(uri)
-        val fd = try {
-            Os.open(file.absolutePath,
-                OsConstants.O_RDONLY or OsConstants.O_NOFOLLOW or OsConstants.O_CLOEXEC, 0)
-        } catch (e: ErrnoException) {
-            throw FileNotFoundException("Export is unavailable").apply { initCause(e) }
-        }
-        try {
-            val st = Os.fstat(fd)
-            if (!OsConstants.S_ISREG(st.st_mode) || st.st_nlink != 1L)
-                throw FileNotFoundException("Export is not an isolated regular file")
-            return ParcelFileDescriptor.dup(fd)
-        } finally {
-            Os.close(fd)
-        }
+        return pinShare(uri).descriptor
     }
 
     override fun query(uri: Uri, projection: Array<out String>?, selection: String?,
                        selectionArgs: Array<out String>?, sortOrder: String?): Cursor {
-        val file = ownedFile(uri)
-        val cols = projection ?: arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE)
-        val fields: Map<String, Any?> = mapOf(
-            OpenableColumns.DISPLAY_NAME to file.name,
-            OpenableColumns.SIZE to file.length()
-        )
-        return MatrixCursor(cols).apply { addRow(cols.map { fields[it] }.toTypedArray()) }
+        val pinned = pinShare(uri)
+        return pinned.descriptor.use {
+            val cols = projection ?: arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE)
+            val fields: Map<String, Any?> = mapOf(
+                OpenableColumns.DISPLAY_NAME to pinned.name,
+                OpenableColumns.SIZE to pinned.sizeBytes
+            )
+            MatrixCursor(cols).apply { addRow(cols.map { fields[it] }.toTypedArray()) }
+        }
     }
 
-    override fun getType(uri: Uri): String =
-        mime(ownedFile(uri).name) ?: throw FileNotFoundException()
+    override fun getType(uri: Uri): String {
+        val pinned = pinShare(uri)
+        return pinned.descriptor.use {
+            mime(pinned.name) ?: throw FileNotFoundException()
+        }
+    }
 
     override fun insert(uri: Uri, values: ContentValues?): Uri? = throw UnsupportedOperationException()
     override fun delete(uri: Uri, selection: String?, selectionArgs: Array<out String>?): Int =
