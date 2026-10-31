@@ -4,12 +4,12 @@ on:
   pull_request:
     paths:
       - "app/**"
+      # API35 native Add workflow runs all instrumented classes and assembles
+      # the test APK; test-only edits do not need a duplicate JVM/APK build.
+      - "!app/src/androidTest/**"
       - "docs/design/approved/chunks-app-icon-master.svg"
       - "tools/generate_launcher_vector.cjs"
       - "tools/generate_icon_vectors.cjs"
-      - "tools/physical_android_preflight.sh"
-      - "tools/test_physical_android_preflight.sh"
-      - "tests/test_ci_trigger_contract.py"
       - "docs/design/svg/icons/**"
       - "gradle/**"
       - "*.gradle.kts"
