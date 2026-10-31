@@ -12,7 +12,6 @@ import java.security.MessageDigest
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -106,9 +105,10 @@ class OwnedMediaStoreDescriptorInstrumentedTest {
         val firstUri = createUniqueOwnedDownload()
         var secondUri: Uri? = null
         try {
-            secondUri = createUniqueOwnedDownload()
+            val other = createUniqueOwnedDownload()
+            secondUri = other
             assertFalse("Two provider-owned documents cannot share URI identity",
-                firstUri == secondUri)
+                firstUri == other)
             val firstBytes = ByteArray(2048) { (it * 11).toByte() }
             val secondBytes = ByteArray(2048) { (it * 7 + 1).toByte() }
             resolver.openFileDescriptor(firstUri, "rw")!!.use {
@@ -116,13 +116,13 @@ class OwnedMediaStoreDescriptorInstrumentedTest {
                     Os.pwrite(it.fileDescriptor, firstBytes, 0, firstBytes.size, 0L))
                 Os.fsync(it.fileDescriptor)
             }
-            resolver.openFileDescriptor(secondUri, "rw")!!.use {
+            resolver.openFileDescriptor(other, "rw")!!.use {
                 assertEquals(secondBytes.size,
                     Os.pwrite(it.fileDescriptor, secondBytes, 0, secondBytes.size, 0L))
                 Os.fsync(it.fileDescriptor)
             }
             exactRead(firstUri, 0L, firstBytes)
-            exactRead(secondUri, 0L, secondBytes)
+            exactRead(other, 0L, secondBytes)
             exactRead(firstUri, 0L, firstBytes)
         } finally {
             secondUri?.let { resolver.delete(it, null, null) }
