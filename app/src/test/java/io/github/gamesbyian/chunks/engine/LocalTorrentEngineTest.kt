@@ -601,6 +601,31 @@ class LocalTorrentEngineTest {
         assertArrayEquals(first, File(root, "Stopped checked fixture/initial.bin").readBytes())
     }
 
+    @Test fun missingAdmissionDirectoryRefusesBeforeRegisteringNativeHandle() {
+        val fixture = fixture()
+        val state = temp.newFolder("early-admission-state")
+        val moved = File(temp.root, "early-admission-preserved")
+        val instance = persistentEngine(state)
+        assertTrue(state.renameTo(moved))
+        state.writeText("private state disappeared before Add")
+        val destination = temp.newFolder("early-admission-destination")
+        val refused = instance.addStoppedChecked(fixture.torrent, destination)
+        assertTrue("Unreadable admission cannot register native work: $refused",
+            refused is LocalAddResult.Refused)
+        assertTrue("A pre-admission refusal cannot create a native handle",
+            instance.list().isEmpty())
+        assertEquals("private state disappeared before Add", state.readText())
+        assertTrue(state.delete())
+        assertTrue(moved.renameTo(state))
+        // An early failure must release uncommitted in-session path claims.
+        val retried = instance.addStoppedChecked(fixture.torrent, destination)
+        assertTrue("After storage recovery, clean Add must be possible: $retried",
+            retried is LocalAddResult.AddedStopped)
+        val saved = (retried as LocalAddResult.AddedStopped).status
+        assertTrue(saved.stopped)
+        assertTrue(instance.removeKeepingData(saved.infoHash))
+    }
+
     @Test fun checkedCompletedRestartRefusesSymlinkReplacedVerifiedPayload() {
         val fixture = fixture()
         val seeder = engine()
@@ -634,8 +659,12 @@ class LocalTorrentEngineTest {
         val state = temp.newFolder("checked-partial-state")
         val moved = File(temp.root, "checked-state-still-preserved")
         val target = persistentEngine(state)
-        assertTrue(state.renameTo(moved))
-        state.writeText("no longer a writable resume directory")
+        // Trigger access loss only AFTER the native handle is registered,
+        // preserving coverage of the partial-registration Start fence.
+        target.beforeInitialResumeWriteForTest = {
+            assertTrue(state.renameTo(moved))
+            state.writeText("no longer a writable resume directory")
+        }
 
         val destination = temp.newFolder("checked-partial-destination")
         try {
@@ -741,10 +770,13 @@ class LocalTorrentEngineTest {
         val state = temp.newFolder("state-disappears-on-add")
         val moved = File(temp.root, "state-preserved-on-add")
         val instance = persistentEngine(state)
-        // Simulate access loss AFTER startup preflight, but BEFORE the initial
-        // app-private resume write. This must not become a false successful Add.
-        assertTrue(state.renameTo(moved))
-        state.writeText("temporary inaccessible state placeholder")
+        // Keep the admission root valid until AFTER native registration.
+        // This covers the more dangerous uncertain/partial-Add path, rather
+        // than inadvertently stopping at the newer pre-admission refusal.
+        instance.beforeInitialResumeWriteForTest = {
+            assertTrue(state.renameTo(moved))
+            state.writeText("temporary inaccessible state placeholder")
+        }
         val destination = temp.newFolder("lost-resume-destination")
         try {
             instance.addStopped(fixture.torrent, destination)
