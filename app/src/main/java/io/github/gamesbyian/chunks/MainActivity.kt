@@ -239,6 +239,7 @@ private fun ChunksApp(
     var serverHandoffTorrent by remember { mutableStateOf<ByteArray?>(null) }
     var draftPath by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
+    val credentialChanges = remember { RemoteCredentialActionQueue() }
     val aliasStore = remember(context) { TransferAliasStore(context) }
     val recentPlaceStore = remember(context) { RecentRemotePlaceStore(context) }
     var recentPlaceRevision by remember { mutableStateOf(0) }
@@ -510,18 +511,20 @@ private fun ChunksApp(
                         // Revoke pending Connect saves at the moment Forget
                         // is requested, not after its IO coroutine starts.
                         RemoteCredentialLock.invalidate()
-                        scope.launch {
+                        credentialChanges.submit(scope) { revision ->
                             val removed = withContext(Dispatchers.IO) {
                                 try {
                                     RemoteProfileForget.forget(profileRoster, vault, profile)
                                 } catch (_: Exception) { false }
                             }
-                            savedProfiles = withContext(Dispatchers.IO) { profileRoster.list() }
-                            savedLoginPresent = vault.hasSavedLogin() || savedProfiles.isNotEmpty()
-                            if (removed && endpoint == profile.credentials.endpoint &&
-                                username == profile.credentials.username) password = ""
-                            credentialNotice = if (removed) "Saved profile forgotten on this device."
-                                else "Could not confirm full credential removal. Review saved profiles."
+                            if (credentialChanges.isLatest(revision)) {
+                                savedProfiles = withContext(Dispatchers.IO) { profileRoster.list() }
+                                savedLoginPresent = vault.hasSavedLogin() || savedProfiles.isNotEmpty()
+                                if (removed && endpoint == profile.credentials.endpoint &&
+                                    username == profile.credentials.username) password = ""
+                                credentialNotice = if (removed) "Saved profile forgotten on this device."
+                                    else "Could not confirm full credential removal. Review saved profiles."
+                            }
                         }
                     }
                 },
@@ -530,7 +533,7 @@ private fun ChunksApp(
                     // remember preference while the durable edit is queued.
                     RemoteCredentialLock.invalidate()
                     rememberLogin = enabled
-                    scope.launch {
+                    credentialChanges.submit(scope) { revision ->
                         val persisted = withContext(Dispatchers.IO) {
                             try {
                                 if (enabled) {
@@ -545,20 +548,22 @@ private fun ChunksApp(
                                 }
                             } catch (_: Exception) { false }
                         }
-                        rememberLogin = vault.rememberingEnabled()
-                        savedProfiles = withContext(Dispatchers.IO) { profileRoster.list() }
-                        savedLoginPresent = vault.hasSavedLogin() || savedProfiles.isNotEmpty()
-                        credentialNotice = when {
-                            !persisted -> "Could not save the credential remembering preference. Retry this change."
-                            !enabled -> "Login remembering disabled across restarts; saved credentials erased."
-                            else -> "Login remembering enabled. Credentials are saved after your next successful Connect."
+                        if (credentialChanges.isLatest(revision)) {
+                            rememberLogin = vault.rememberingEnabled()
+                            savedProfiles = withContext(Dispatchers.IO) { profileRoster.list() }
+                            savedLoginPresent = vault.hasSavedLogin() || savedProfiles.isNotEmpty()
+                            credentialNotice = when {
+                                !persisted -> "Could not save the credential remembering preference. Retry this change."
+                                !enabled -> "Login remembering disabled across restarts; saved credentials erased."
+                                else -> "Login remembering enabled. Credentials are saved after your next successful Connect."
+                            }
                         }
                     }
                 },
                 onForgetLogin = {
                     RemoteCredentialLock.invalidate()
                     rememberLogin = false
-                    scope.launch {
+                    credentialChanges.submit(scope) { revision ->
                         val cleared = withContext(Dispatchers.IO) {
                             try {
                                 val disabled = vault.setRememberingEnabled(false)
@@ -566,12 +571,14 @@ private fun ChunksApp(
                                 disabled && rosterErased
                             } catch (_: Exception) { false }
                         }
-                        savedProfiles = withContext(Dispatchers.IO) { profileRoster.list() }
-                        savedLoginPresent = vault.hasSavedLogin() || savedProfiles.isNotEmpty()
-                        if (cleared) {
-                            password = ""
-                            credentialNotice = "Saved login erased. This session's password field was cleared."
-                        } else credentialNotice = "Could not erase saved login. Retry before leaving the app."
+                        if (credentialChanges.isLatest(revision)) {
+                            savedProfiles = withContext(Dispatchers.IO) { profileRoster.list() }
+                            savedLoginPresent = vault.hasSavedLogin() || savedProfiles.isNotEmpty()
+                            if (cleared) {
+                                password = ""
+                                credentialNotice = "Saved login erased. This session's password field was cleared."
+                            } else credentialNotice = "Could not erase saved login. Retry before leaving the app."
+                        }
                     }
                 },
                 onLocalZipReview = { section = Section.ARCHIVES },
