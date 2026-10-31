@@ -642,6 +642,11 @@ private fun ChunksApp(
                                     version = v
                                     aliasScope = RemoteVerifiedUiIdentity.aliasScopeOf(verifiedSettings)
                                     endpoint = verifiedSettings.endpoint
+                                    // The fields stay aligned with the authenticated
+                                    // probe even if edited while Connect was running.
+                                    // Otherwise Disconnect could offer a reconnect
+                                    // to an unverified different account.
+                                    username = verifiedSettings.username
                                     // The full address now carries the path.
                                     rpcPath = ""
                                     // Never carry another server/account's custom destination
