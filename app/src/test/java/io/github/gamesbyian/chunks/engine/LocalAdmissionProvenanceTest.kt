@@ -118,6 +118,41 @@ class LocalAdmissionProvenanceTest {
         }
     }
 
+    @Test fun competingCheckedAndReviewedExistingAdmissionCannotReplaceTheOther() {
+        val pool = java.util.concurrent.Executors.newFixedThreadPool(2)
+        try {
+            repeat(24) { index ->
+                val state = temp.newFolder("race-$index")
+                val begin = java.util.concurrent.CountDownLatch(1)
+                val checked = pool.submit<Boolean> {
+                    begin.await()
+                    LocalAdmissionProvenance.persist(
+                        state, hash, LocalAdmissionProvenance.Mode.CHECKED)
+                }
+                val existing = pool.submit<Boolean> {
+                    begin.await()
+                    LocalAdmissionProvenance.persist(
+                        state, hash, LocalAdmissionProvenance.Mode.REVIEWED_EXISTING)
+                }
+                begin.countDown()
+                val checkedWon = checked.get(5L, java.util.concurrent.TimeUnit.SECONDS)
+                val existingWon = existing.get(5L, java.util.concurrent.TimeUnit.SECONDS)
+                assertTrue("Exactly one mode is allowed to create the target",
+                    checkedWon != existingWon)
+                val admitted = LocalAdmissionProvenance.read(state, hash)
+                assertEquals("The durable receipt must identify the winner",
+                    if (checkedWon) LocalAdmissionProvenance.Mode.CHECKED
+                    else LocalAdmissionProvenance.Mode.REVIEWED_EXISTING, admitted)
+                assertFalse("A loser cannot later convert a checked into an existing seed",
+                    LocalAdmissionProvenance.persist(state, hash,
+                        if (checkedWon) LocalAdmissionProvenance.Mode.REVIEWED_EXISTING
+                        else LocalAdmissionProvenance.Mode.CHECKED))
+            }
+        } finally {
+            pool.shutdownNow()
+        }
+    }
+
     @Test fun interruptedTemporaryOrOversizedReceiptDoesNotAuthorizeUnownedData() {
         val state = temp.newFolder("interrupted")
         File(state, "$hash.admission.tmp").writeText("incomplete transaction")
