@@ -68,9 +68,9 @@ internal class ExclusiveFsyncJournal private constructor(
 
         private fun completedLines(bytes: ByteArray): List<String> {
             val text = bytes.toString(Charsets.UTF_8)
-            val end = text.lastIndexOf('\\n')
+            val end = text.lastIndexOf('\n')
             if (end < 0) return emptyList()
-            return text.substring(0, end).split('\\n')
+            return text.substring(0, end).split('\n')
         }
 
         fun readCompleteLines(path: Path): List<String>? {
