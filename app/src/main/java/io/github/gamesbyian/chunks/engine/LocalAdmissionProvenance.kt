@@ -28,6 +28,19 @@ internal object LocalAdmissionProvenance {
 
     private val identity = Regex("^[a-f0-9]{40}([a-f0-9]{24})?$")
 
+    /**
+     * Android instrumentation runs with framework classes; the standalone
+     * native shutdown witness runs in a child desktop JVM whose classpath
+     * deliberately contains only Kotlin/Java and libtorrent4j. The child's
+     * missing android.os.Build must select the non-Android NIO path without
+     * obscuring a real Android filesystem refusal.
+     */
+    private fun isAndroidRuntime(): Boolean = try {
+        Build.VERSION.SDK_INT >= 29
+    } catch (_: NoClassDefFoundError) {
+        false
+    }
+
     private fun receipt(directory: File, hash: String): File =
         File(directory, "$hash.admission")
 
@@ -39,7 +52,7 @@ internal object LocalAdmissionProvenance {
         if (directory == null || !identity.matches(hash)) return null
         val file = receipt(directory, hash)
         return try {
-            val actual = if (Build.VERSION.SDK_INT > 0) {
+            val actual = if (isAndroidRuntime()) {
                 // A symlink or FIFO substituted between isRegularFile and
                 // FileChannel.open could redirect or block the read. Pin a
                 // nonblocking Android FD first, inspect that FD, and read
@@ -96,7 +109,7 @@ internal object LocalAdmissionProvenance {
      * of a failed Add for preserving other files; it does NOT grant ownership.
      */
     private fun forceDirectory(root: Path) {
-        if (Build.VERSION.SDK_INT > 0) {
+        if (isAndroidRuntime()) {
             // Android's NIO directory FileChannel.force is not portable.
             // Use a real directory descriptor and a checked kernel fsync.
             // Android's public OsConstants API does not expose O_DIRECTORY.
@@ -117,7 +130,7 @@ internal object LocalAdmissionProvenance {
 
     /** Fsync the already-published exact receipt before accepting a retry. */
     private fun forceExistingFile(path: Path) {
-        if (Build.VERSION.SDK_INT > 0) {
+        if (isAndroidRuntime()) {
             val fd = Os.open(path.toString(), OsConstants.O_RDONLY or
                 OsConstants.O_NOFOLLOW or OsConstants.O_NONBLOCK or
                 OsConstants.O_CLOEXEC, 0)
