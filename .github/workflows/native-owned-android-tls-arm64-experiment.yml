@@ -1,0 +1,118 @@
+name: Experimental owned JNI with patched Android TLS (NON-SHIPPING)
+
+# Explicitly isolated: one ABI, source-pinned and fail-closed. Never deploy the
+# result to the app. Production must additionally verify peer security, JNI
+# packaging, Android public/SD/SAF payload ownership and foreign nonclobber.
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/native-owned-android-tls-arm64-experiment.yml"
+      - "experiments/native-owned-writer/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tls-arm64-jni:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Obtain exactly pinned OpenSSL 3.5.9 security-patched source
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq perl make cmake ninja-build swig libboost-dev
+          source="$RUNNER_TEMP/openssl-3.5.9-source"
+          git init "$source"
+          git -C "$source" remote add origin https://github.com/openssl/openssl.git
+          git -C "$source" fetch --depth 1 origin 45e844fa2a14ec92d146bd8f5778ac130b6625fb
+          git -C "$source" checkout --detach FETCH_HEAD
+          test "$(git -C "$source" rev-parse HEAD)" = "45e844fa2a14ec92d146bd8f5778ac130b6625fb"
+          grep -Fxq 'MAJOR=3' "$source/VERSION.dat"
+          grep -Fxq 'MINOR=5' "$source/VERSION.dat"
+          grep -Fxq 'PATCH=9' "$source/VERSION.dat"
+      - name: Cross-build statically linked OpenSSL for NDK API29 arm64
+        run: |
+          set -euo pipefail
+          ndk_root="$(find "$ANDROID_HOME/ndk" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n1)"
+          test -n "$ndk_root"
+          export ANDROID_NDK_HOME="$ndk_root"
+          export PATH="$ndk_root/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH"
+          prefix="$RUNNER_TEMP/openssl-android29-arm64"
+          cd "$RUNNER_TEMP/openssl-3.5.9-source"
+          ./Configure android-arm64 no-shared no-tests no-apps no-module \
+            --prefix="$prefix" -D__ANDROID_API__=29
+          make -j2 build_libs
+          make install_sw
+          test -s "$prefix/lib/libssl.a"
+          test -s "$prefix/lib/libcrypto.a"
+          grep -F 'OPENSSL_VERSION_TEXT "OpenSSL 3.5.9 ' "$prefix/include/openssl/opensslv.h"
+          echo "CHUNKS_PATCHED_ANDROID_OPENSSL=PASS abi=arm64-v8a api=29 version=3.5.9"
+      - name: Fetch pinned libtorrent4j/Arvid sources and stage owned-disk constructor
+        run: |
+          set -euo pipefail
+          upstream="$RUNNER_TEMP/chunks-libtorrent4j"
+          git init "$upstream"
+          git -C "$upstream" remote add origin https://github.com/aldenml/libtorrent4j.git
+          git -C "$upstream" fetch --depth 1 origin da7d2403f06a0939bc2c51a88e67a6c4a85512ef
+          git -C "$upstream" checkout --detach FETCH_HEAD
+          test "$(git -C "$upstream" rev-parse HEAD)" = "da7d2403f06a0939bc2c51a88e67a6c4a85512ef"
+          git -C "$upstream" submodule update --init --recursive --depth 1 swig/deps/libtorrent
+          test "$(git -C "$upstream/swig/deps/libtorrent" rev-parse HEAD)" = "24a3adf35d3e689bde700371337aad61b160bafa"
+          python3 experiments/native-owned-writer/bridge/apply_to_libtorrent4j_fork.py "$upstream"
+          python3 experiments/native-owned-writer/bridge/apply_to_libtorrent4j_fork.py "$upstream"
+          test "$(grep -F -c 'chunks/owned_payload_file.cc' "$upstream/swig/Jamfile")" -eq 1
+      - name: Regenerate real JNI SWIG with target OpenSSL headers
+        run: |
+          set -euo pipefail
+          upstream="$RUNNER_TEMP/chunks-libtorrent4j"
+          python3 - "$upstream/swig/run-swig.sh" "$RUNNER_TEMP/run-chunks-swig-linux.sh" <<'PY'
+          from pathlib import Path
+          import sys
+          script = Path(sys.argv[1]).read_text()
+          script = script.replace("sed -i ''", "sed -i")
+          script = script.replace("BOOST_ROOT=$DEVELOPMENT_ROOT/boost_1_90_0",
+                                  "BOOST_ROOT=/usr/include")
+          Path(sys.argv[2]).write_text(script)
+          PY
+          (cd "$upstream/swig" && bash "$RUNNER_TEMP/run-chunks-swig-linux.sh")
+          grep -F 'set_owned_disk_io_constructor' "$upstream/swig/libtorrent_jni.cpp"
+      - name: Link actual owned JNI with STATIC OpenSSL 3.5.9 enabled
+        run: |
+          set -euo pipefail
+          ndk_root="$(find "$ANDROID_HOME/ndk" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n1)"
+          llvm="$ndk_root/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          prefix="$RUNNER_TEMP/openssl-android29-arm64"
+          mkdir -p "$RUNNER_TEMP/chunks-boost-includes"
+          ln -s /usr/include/boost "$RUNNER_TEMP/chunks-boost-includes/boost"
+          upstream="$RUNNER_TEMP/chunks-libtorrent4j"
+          build="$RUNNER_TEMP/chunks-owned-tls-arm64"
+          cmake -S "$upstream/swig" -B "$build" -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE="$ndk_root/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-29 \
+            -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF \
+            -Dwebtorrent=OFF -DUSE_JUICE=OFF \
+            -DCMAKE_CXX_FLAGS="-I$RUNNER_TEMP/chunks-boost-includes -I$prefix/include" \
+            -DOPENSSL_ROOT_DIR="$prefix" -DOPENSSL_INCLUDE_DIR="$prefix/include" \
+            -DOPENSSL_SSL_LIBRARY="$prefix/lib/libssl.a" \
+            -DOPENSSL_CRYPTO_LIBRARY="$prefix/lib/libcrypto.a" \
+            -DOPENSSL_USE_STATIC_LIBS=ON \
+            -DBoost_ROOT=/usr -DBoost_INCLUDE_DIR=/usr/include \
+            -DBoost_USE_STATIC_LIBS=ON
+          # A configured TLS-off backend is a hard failure, even if it links.
+          grep -F 'TORRENT_USE_OPENSSL' "$build/build.ninja" >/dev/null
+          cmake --build "$build" --target torrent4j --parallel 2
+          lib="$build/libtorrent4j.so"
+          test -s "$lib"
+          "$llvm/llvm-readelf" -d "$lib" > "$RUNNER_TEMP/owned-tls-needed.txt"
+          "$llvm/llvm-nm" -C "$lib" > "$RUNNER_TEMP/owned-tls-all-symbols.txt"
+          "$llvm/llvm-nm" -D "$lib" > "$RUNNER_TEMP/owned-tls-exported-symbols.txt"
+          grep -F 'chunks::MakeOwnedDiskConstructor' "$RUNNER_TEMP/owned-tls-all-symbols.txt"
+          grep -F 'Java_org_libtorrent4j_swig_libtorrent_1jni_' "$RUNNER_TEMP/owned-tls-exported-symbols.txt" >/dev/null
+          # Static target crypto must be present and not accidentally taken
+          # from the host or omitted via the old non-TLS experiment flags.
+          grep -E ' SSL_CTX_new| SSL_new| OPENSSL_init_ssl' "$RUNNER_TEMP/owned-tls-all-symbols.txt"
+          ! grep -E 'NEEDED.*(libssl|libcrypto)' "$RUNNER_TEMP/owned-tls-needed.txt"
+          echo "CHUNKS_OWNED_ANDROID_TLS_LINK=PASS abi=arm64-v8a api=29 openssl=3.5.9 experiment-only"
