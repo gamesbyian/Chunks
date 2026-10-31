@@ -97,7 +97,22 @@ sealed class LifecycleOutcome {
  * rTorrent XML-RPC adapter with strictly named, hash-scoped operations.\n * No automatic retries after a mutation and no raw arbitrary command surface.
  * HTTPS only, except HTTP on literal loopback used for controlled development fixtures.
  */
+/** Evidence about HTTP authentication, never proof of human/account ownership. */
+internal enum class RemoteReadAuthEvidence {
+    NO_READ_CHALLENGE, READ_CHALLENGE_ACCEPTED
+}
+
 class RTorrentRemote(private val auth: RemoteCredentials) {
+    @Volatile private var acceptedReadChallenge = false
+
+    /**
+     * A public HTTP 200 version/inventory does not authenticate the supplied
+     * username. A challenged-and-accepted read is stronger transport evidence,
+     * but a reverse proxy may still authenticate a different principal.
+     */
+    internal fun readAuthenticationEvidence(): RemoteReadAuthEvidence =
+        if (acceptedReadChallenge) RemoteReadAuthEvidence.READ_CHALLENGE_ACCEPTED
+        else RemoteReadAuthEvidence.NO_READ_CHALLENGE
     private val endpoint: URI = URI(RemoteEndpointHints.rpcAddress(auth.endpoint)).also { uri ->
         require(uri.scheme?.lowercase() == "https" ||
             (uri.scheme?.lowercase() == "http" && uri.host in listOf("localhost", "127.0.0.1", "[::1]"))) {
@@ -1173,8 +1188,19 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                         }
                         sb.toString()
                     }
-                    return@withContext try { XmlRpcCodec.response(xml) }
-                        catch (tooWide: XmlRpcSizeLimitExceeded) { throw RpcReplyTooLarge(tooWide.message.orEmpty()) }
+                    return@withContext try {
+                        val decoded = XmlRpcCodec.response(xml)
+                        // Only a successfully decoded READ that first received
+                        // HTTP 401 and retried with this exact endpoint's
+                        // challenge provides read-authentication evidence.
+                        // An anonymous 200, failed 401, malformed XML or write
+                        // preflight does not prove a supplied username.
+                        if (!mutation && attemptedChallenge && authorization != null)
+                            acceptedReadChallenge = true
+                        decoded
+                    } catch (tooWide: XmlRpcSizeLimitExceeded) {
+                        throw RpcReplyTooLarge(tooWide.message.orEmpty())
+                    }
                 } finally {
                     connection.disconnect()
                 }
