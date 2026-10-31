@@ -10,6 +10,9 @@ on:
       - 'AGENTS.md'
       - 'assets/fonts/README.md'
       - 'tools/check_docs.py'
+      - 'tools/physical_android_preflight.sh'
+      - 'tools/test_physical_android_preflight.sh'
+      - 'tests/test_ci_trigger_contract.py'
       - 'tools/ci_failure_digest.py'
       - 'tests/test_ci_failure_digest.py'
       - 'tests/test_ci_orchestration.py'
@@ -53,6 +56,9 @@ on:
       - 'AGENTS.md'
       - 'assets/fonts/README.md'
       - 'tools/check_docs.py'
+      - 'tools/physical_android_preflight.sh'
+      - 'tools/test_physical_android_preflight.sh'
+      - 'tests/test_ci_trigger_contract.py'
       - 'tools/ci_failure_digest.py'
       - 'tests/test_ci_failure_digest.py'
       - 'tests/test_ci_orchestration.py'
@@ -104,6 +110,10 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+      - name: Validate physical APK preflight and trigger selection (offline)
+        run: |
+          bash tools/test_physical_android_preflight.sh
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_trigger_contract.py
       - name: Validate native atlas names offline (no Android)
         run: |
           python3 tools/check_native_atlas_contract.py
