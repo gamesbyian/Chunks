@@ -56,7 +56,7 @@ def make_digest(paths, status, suite, env=None):
     elif status in ("failure", "timed_out"):
         phase = "unknown_pre_or_post_test"
         next_action = "Inspect the earliest failed Actions step; tests may not have started"
-    elif reports == 0 or tests == 0:
+    elif reports == 0 or tests == skipped:
         phase = "unexecuted"
         next_action = "Verify that the intended suite produced JUnit results"
     else:
@@ -79,7 +79,7 @@ def make_digest(paths, status, suite, env=None):
         "runner_os": env.get("RUNNER_OS"),
         "suite": suite,
         "reported_job_status": status,
-        "evidence_executed": bool(reports and tests and not invalid),
+        "evidence_executed": bool(reports and tests > skipped and not invalid),
         "phase": phase,
         "junit": {"reports": reports, "tests": tests, "failed": failures,
                   "skipped": skipped, "executed": tests - skipped},
