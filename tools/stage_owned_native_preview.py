@@ -152,6 +152,13 @@ def prepare(
     target_so.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(jar, target_jar)
     shutil.copyfile(library, target_so)
+    # An input pathname could change after its first hash. The actual
+    # staged bytes, not the pre-copy survey, are the intended build inputs.
+    require(sha256(target_jar) == expected_jar and
+            sha256(target_so) == expected_so,
+            "Staged JNI inputs changed between verification and copy")
+    verify_jar(target_jar)
+    verify_elf(target_so, abi)
     staged_gradle.write_text(patched, encoding="utf-8")
     receipt = {
         "purpose": "NON-SHIPPING JNI TEST OVERLAY ONLY",
