@@ -267,10 +267,11 @@ internal object ImmutableNativeResumeV2 {
             // pathname cleanup or blind retry on an uncertain result.
             val readback = load(privateStateRoot, hash)
             val latest = readback.events.lastOrNull()
+            val samePayload = if (bytes == null) latest?.payload == null
+                else latest?.payload?.contentEquals(bytes) == true
             if (readback.events.size != seq || latest?.phase != phase ||
-                latest.epoch != epoch || latest.sequence != seq ||
-                !(latest.payload?.contentEquals(bytes ?: ByteArray(0))
-                    ?: (bytes == null))) {
+                latest?.epoch != epoch || latest?.sequence != seq ||
+                !samePayload) {
                 throw IOException("Immutable resume event failed independent durable readback")
             }
             return
