@@ -31,8 +31,10 @@ internal object LocalOwnedAddFolder {
         return if (valid.isEmpty()) folder else File(folder, valid)
     }
 
-    /** Called on IO lane only after explicit Add confirmation. Existing nonempty
-     * or symlinked folders are refused to avoid payload collision/overwrite. */
+    /** Called on IO lane only after explicit Add confirmation. An existing
+     * regular directory is allowed even if nonempty: exact torrent payload
+     * paths therein are authorized for normal hash-check/reuse/replacement.
+     * Non-directories, symlinks and roots outside this one-level scope refuse. */
     fun prepare(root: File?, draft: String): File? {
         val name = normalizedName(draft) ?: return null
         val base = root ?: return null
@@ -44,8 +46,7 @@ internal object LocalOwnedAddFolder {
             val path = candidate.toPath()
             if (Files.exists(path, LinkOption.NOFOLLOW_LINKS)) {
                 if (!Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS) ||
-                    Files.isSymbolicLink(path) || candidate.list()?.isNotEmpty() != false)
-                    return null
+                    Files.isSymbolicLink(path)) return null
             } else if (!candidate.mkdir()) return null
             if (candidate.canonicalFile.parentFile != canonicalBase ||
                 !candidate.isDirectory || !candidate.canWrite()) return null
