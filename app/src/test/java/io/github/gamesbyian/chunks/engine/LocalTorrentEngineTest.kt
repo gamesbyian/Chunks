@@ -235,6 +235,63 @@ class LocalTorrentEngineTest {
         assertFalse(File(dest, "Chunks public fixture/episode.bin").exists())
     }
 
+    @Test fun restoredStoppedTorrentReservesItsPayloadPathsBeforeAnotherCheckedAdd() {
+        val fixture = fixture()
+        val otherParent = temp.newFolder("restored-conflict-source")
+        val otherRoot = File(otherParent, "Chunks public fixture").apply { mkdirs() }
+        File(otherRoot, "episode.bin").writeBytes(
+            ByteArray(1_300_000).also { Random(1570).nextBytes(it) })
+        File(otherRoot, "extras/notes.txt").apply {
+            parentFile.mkdirs()
+            writeText("Different content, identical declared backing path")
+        }
+        val otherTorrent = TorrentBuilder().path(otherRoot)
+            .pieceSize(64 * 1024).generate().entry().bencode()
+
+        val state = temp.newFolder("restored-reservation-state")
+        val destination = temp.newFolder("restored-reservation-destination")
+        val first = persistentEngine(state)
+        val registered = added(first.addStoppedChecked(fixture.torrent, destination))
+        assertTrue(registered.stopped)
+        assertTrue(verifiedSavedResumeEvent(state, registered.infoHash))
+        first.close()
+
+        val restored = persistentEngine(state)
+        assertTrue("A valid stopped job must restore: " + restored.restoreProblems,
+            restored.restoreProblems.isEmpty())
+        assertTrue(requireNotNull(restored.status(registered.infoHash)).stopped)
+        val competing = restored.addStoppedChecked(otherTorrent, destination)
+        assertTrue("Restored job must exclude a second checked native writer: $competing",
+            competing is LocalAddResult.Refused)
+        assertTrue((competing as LocalAddResult.Refused).reason.contains("reserves"))
+        assertEquals(1, restored.list().size)
+        assertEquals(LocalCommandOutcome.VERIFIED,
+            restored.resume(registered.infoHash).outcome)
+    }
+
+    @Test fun restoredCheckedTorrentRefusesPayloadSymlinkOutsideChosenFolder() {
+        val fixture = fixture()
+        val state = temp.newFolder("restored-symlink-state")
+        val destination = temp.newFolder("restored-symlink-destination")
+        val first = persistentEngine(state)
+        val registered = added(first.addStoppedChecked(fixture.torrent, destination))
+        first.close()
+
+        val outside = File(temp.newFolder("restored-external-canary"), "critical.txt")
+            .apply { writeText("unrelated external data") }
+        val link = File(destination, "Chunks public fixture/episode.bin")
+        assertTrue(link.parentFile.isDirectory || link.parentFile.mkdirs())
+        Files.createSymbolicLink(link.toPath(), outside.toPath())
+
+        val restored = persistentEngine(state)
+        assertNotNull("Recovered torrent remains visible, but stopped",
+            restored.status(registered.infoHash))
+        assertEquals(LocalCommandOutcome.REFUSED,
+            restored.resume(registered.infoHash).outcome)
+        assertEquals("unrelated external data", outside.readText())
+        assertTrue(Files.isSymbolicLink(link.toPath()))
+    }
+
     @Test fun checkedStoppedRestartMayRecheckExistingSkippedRegularFile() {
         val sourceParent = temp.newFolder("checked-post-stop-source")
         val sourceRoot = File(sourceParent, "Stopped checked fixture").apply { mkdirs() }
