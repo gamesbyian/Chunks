@@ -224,7 +224,14 @@ internal class LocalResumeEventStore private constructor(
         states[key] = State(nextPhase, seq, digest(raw), payload.takeIf { nextPhase == Phase.SAVED })
     }
 
-    @Synchronized fun save(key: String, bytes: ByteArray) = append(key, "SAVE", bytes)
+    @Synchronized fun save(key: String, bytes: ByteArray) {
+        // A repeated successful resume callback with identical bytes does not
+        // need another on-disk generation. Retain the last fsynced receipt.
+        val previous = states[key]
+        if (previous?.phase == Phase.SAVED && previous.payload?.contentEquals(bytes) == true)
+            return
+        append(key, "SAVE", bytes)
+    }
     @Synchronized fun removeIntent(key: String) = append(key, "REMOVE_INTENT", ByteArray(0))
     @Synchronized fun removeCommit(key: String) = append(key, "REMOVED", ByteArray(0))
 }
