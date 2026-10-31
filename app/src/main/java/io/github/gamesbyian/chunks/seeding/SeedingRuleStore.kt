@@ -24,8 +24,12 @@ class SeedingRuleStore(context: Context) {
     private val prefs = context.applicationContext.getSharedPreferences("chunks_seeding_rules", Context.MODE_PRIVATE)
 
     fun load(): Snapshot {
-        val raw = try { prefs.getString(KEY, null) } catch (_: RuntimeException) { null }
-            ?: return Snapshot(emptyList(), emptyMap())
+        // An occupied preference of the wrong type is an unreadable record,
+        // NOT an empty ruleset. Turning it into an empty, writable snapshot
+        // would allow a routine Save to destroy the user's original policy.
+        val raw = try { prefs.getString(KEY, null) }
+            catch (_: RuntimeException) { return Snapshot(emptyList(), emptyMap(), unreadable = true) }
+            ?: return Snapshot(emptyList(), emptyMap(), unreadable = prefs.contains(KEY))
         return try { decode(raw) } catch (_: Exception) { Snapshot(emptyList(), emptyMap(), unreadable = true) }
     }
 

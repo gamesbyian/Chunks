@@ -42,6 +42,20 @@ class SeedingRuleStoreTest {
         assertEquals(listOf(rule), store.load().rules)
     }
 
+    @Test fun occupiedWrongTypePreferenceCannotBeMistakenForEmptyWritableRules() {
+        val prefs = context.getSharedPreferences("chunks_seeding_rules", 0)
+        assertTrue(prefs.edit().putInt("rules", 42).commit())
+        val store = SeedingRuleStore(context)
+        assertTrue(store.load().unreadable)
+        assertFalse(store.save(SeedingRuleStore.Snapshot(listOf(rule), emptyMap())))
+        assertTrue(prefs.contains("rules"))
+        assertEquals(42, prefs.getInt("rules", -1))
+        // Only an explicitly authorized replacement may replace the record.
+        assertTrue(store.save(SeedingRuleStore.Snapshot(listOf(rule), emptyMap()),
+            replaceUnreadable = true))
+        assertEquals(listOf(rule), SeedingRuleStore(context).load().rules)
+    }
+
     @Test fun urlsDuplicateIdsAndBadValuesNeverLoad() {
         val good = SeedingRuleStore.encode(SeedingRuleStore.Snapshot(listOf(rule), emptyMap()))
         val withUrl = good.replace("\"iptorrents.com\"", "\"https://iptorrents.com/announce?passkey=x\"")
