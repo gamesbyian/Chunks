@@ -10,6 +10,8 @@ on:
       - 'AGENTS.md'
       - 'assets/fonts/README.md'
       - 'tools/check_docs.py'
+      - 'tools/check_native_atlas_contract.py'
+      - 'tests/test_native_atlas_contract.py'
       - 'tests/test_docs_check.py'
       - 'tools/verify_release_apk_identity.py'
       - 'tests/test_verify_release_apk_identity.py'
@@ -45,6 +47,8 @@ on:
       - 'AGENTS.md'
       - 'assets/fonts/README.md'
       - 'tools/check_docs.py'
+      - 'tools/check_native_atlas_contract.py'
+      - 'tests/test_native_atlas_contract.py'
       - 'tests/test_docs_check.py'
       - 'tools/verify_release_apk_identity.py'
       - 'tests/test_verify_release_apk_identity.py'
@@ -88,6 +92,10 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+      - name: Validate native atlas names offline (no Android)
+        run: |
+          python3 tools/check_native_atlas_contract.py
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_native_atlas_contract.py
       - name: Validate repository-wide local documentation links
         run: python3 tools/check_docs.py
       - name: Test documentation validator
