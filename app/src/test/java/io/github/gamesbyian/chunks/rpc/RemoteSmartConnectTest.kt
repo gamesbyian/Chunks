@@ -382,7 +382,7 @@ class RemoteSmartConnectDiagnosticsTest {
         assertFalse(visible.contains("secret-pass"))
         assertFalse(visible.contains("https://custom.example"))
         assertTrue(RemoteSmartConnect.repairAdvice(failure, "custom.example")
-            .first().contains("paste the full address"))
+            .any { it.contains("exact ruTorrent or XML-RPC address") })
     }
 
     @Test fun authFailureStopsAfterFirstRefusalWithAccountSafeAdvice() {
