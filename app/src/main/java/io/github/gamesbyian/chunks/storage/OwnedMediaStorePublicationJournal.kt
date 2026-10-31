@@ -63,17 +63,19 @@ internal class OwnedMediaStorePublicationJournal private constructor(
             require(NAME.matches(name) && mime in MIME && size in 1..OwnedMediaStoreDocumentPublication.MAX_BYTES.toLong() &&
                 SHA.matches(sha256)) { "Unsafe publication receipt" }
             val dir = journalRoot(context)
-            val created = try {
+            try {
                 Files.createDirectory(dir)
-                true
-            } catch (_: FileAlreadyExistsException) { false }
+            } catch (_: FileAlreadyExistsException) {
+                // A concurrent operation may have created the directory.
+            }
             check(Files.isDirectory(dir, LinkOption.NOFOLLOW_LINKS)) {
                 "Publication journal root must be an owned private directory"
             }
-            if (created) {
-                FileChannel.open(context.filesDir.toPath(), StandardOpenOption.READ)
-                    .use { it.force(true) }
-            }
+            // Always flush the parent, even if the directory preexisted:
+            // another thread could have just created it but not yet fsynced
+            // its parent before our own operation starts.
+            FileChannel.open(context.filesDir.toPath(), StandardOpenOption.READ)
+                .use { it.force(true) }
             for (attempt in 1..16) {
                 val id = UUID.randomUUID().toString().replace("-", "")
                 val out = try { ExclusiveFsyncJournal.create(dir, id) }
