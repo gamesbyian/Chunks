@@ -1,5 +1,7 @@
 # BitTorrent UX friction: multilingual evidence and Chunks opportunities (2026-10-30)
 
+
+> **Research snapshot, not live release status (2026-10-31):** Subsequent owner decision closed #568's universal same-name regular payload non-clobber gate. Lines below saying '#568 red' describe the state at the research date, not current release policy. Today's live issues are #865 metadata, #809 ZIP/library operations and #5/#569 device constraints; consult [WORK-QUEUE](../WORK-QUEUE.md) and the [reconciliation audit](../REPOSITORY-DOCS-AND-TRACKING-AUDIT-2026-10-31.md).
 **Status:** non-normative qualitative research, not implemented behaviour, not an independent work queue.  
 **Scope:** experienced-user complaints, repeated manual actions, discoverability, remote/client parity, misleading states, file operations, safe defaults and mobile ergonomics.  
 **Provenance:** owner-requested two-pass research on 2026-10-30. The initial exploratory pass preceded this expanded search. URLs below are public source references; source descriptions are paraphrases, and reports may reflect older software/versions. Never infer population prevalence or current Chunks implementation from another project's issue.
