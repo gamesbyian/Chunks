@@ -37,7 +37,9 @@ class CiJvmTwoForkTest(unittest.TestCase):
 
     def test_only_foundation_includes_explicit_init_script(self):
         for path in (ROOT / ".github/workflows").glob("*.yml"):
-            if path.name == "android-check.yml":
+            # Documentation validation references this script to test it,
+            # but must never pass it to Gradle. All other workflows stay untouched.
+            if path.name in ("android-check.yml", "documentation-validation.yml"):
                 continue
             with self.subTest(path=path.name):
                 self.assertNotIn("ci_jvm_two_forks.init.gradle",
