@@ -19,6 +19,9 @@ internal object LocalRestoreDiscovery {
         if (siblings.none { it.name == directory.name }) return false
         val entries = try { listFiles(directory) } catch (_: Exception) { null }
             ?: return true
-        return entries.any { it.name.endsWith(".resume") }
+        // Immutable resume events also represent restorable jobs or durable
+        // retirement intents; both require strict engine reconciliation.
+        return entries.any { it.name.endsWith(".resume") ||
+            it.name.contains(".resume-event.") }
     }
 }

@@ -305,8 +305,9 @@ class LocalPublicDownloadsPlaceInstrumentedTest {
 
         // Metadata's own resume save must persist the native gate, so restarting
         // cannot turn rejected early consent into permission to overwrite files.
-        waitFor("collision-gated native resume data", timeoutMs = 15_000) {
-            File(state, seed.infoHash + ".resume").let { it.isFile && it.length() > 0L }
+        waitFor("collision-gated immutable native resume event", timeoutMs = 15_000) {
+            val expected = Regex(Regex.escape(seed.infoHash) + """\.resume-event\.[0-9]{12}""")
+            state.listFiles()?.any { expected.matches(it.name) && it.isFile && it.length() > 0L } == true
         }
         leecher.close()
         assertArrayEquals(original, foreign.readBytes())

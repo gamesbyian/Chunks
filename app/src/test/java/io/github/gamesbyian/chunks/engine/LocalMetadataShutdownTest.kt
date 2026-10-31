@@ -91,7 +91,7 @@ object LocalMetadataShutdownWitness {
             }
             println("METADATA_CLOSE: callback_ready=" + if (processed) "processed" else "blocked")
             leecher.close()
-            check(File(root, "resume-state/" + seed.infoHash + ".resume").length() > 0L) {
+            check(verifiedSavedResumeEvent(File(root, "resume-state"), seed.infoHash)) {
                 "Closing after metadata must preserve a nonempty resume witness"
             }
             println("METADATA_CLOSE: close_completed")
