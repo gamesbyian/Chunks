@@ -45,6 +45,7 @@ import android.system.Os
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
+import java.net.InetSocketAddress
 import java.nio.file.Files
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
@@ -318,6 +319,81 @@ class OwnedJniSessionSmokeInstrumentedTest {
             payload, downloaded.readBytes())
         assertArrayEquals("Actual peer transfer must preserve unrelated bytes",
             expectedCanary, foreignCanary.readBytes())
+    }
+
+    @Test fun actualChunksLocalEngineUsesOwnedBackendForPeerTransfer() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val root = Files.createTempDirectory(context.cacheDir.toPath(), "owned-real-engine-").toFile()
+        val sourceFolder = File(root, "seed/Chunks native engine fixture").apply { mkdirs() }
+        val bytes = ByteArray(16 * 1024) { ((it * 7 + 129) % 251).toByte() }
+        File(sourceFolder, "payload.bin").writeBytes(bytes)
+        val metainfo = TorrentBuilder().path(sourceFolder).pieceSize(16 * 1024)
+            .flags(TorrentBuilder.V1_ONLY).generate().entry().bencode()
+        val destination = File(root, "destination").apply { mkdirs() }
+        val foreign = File(destination, "unrelated-app-private-foreign.bin")
+        val foreignBytes = ByteArray(1024) { (it % 127).toByte() }
+        foreign.writeBytes(foreignBytes)
+        val state = File(root, "state")
+        val seeded = LocalTorrentEngine(LocalEngineConfig(
+            listenInterfaces = "127.0.0.1:0",
+            allowMultipleConnectionsPerIp = true))
+        val owned = LocalTorrentEngine(LocalEngineConfig(
+            listenInterfaces = "127.0.0.1:0",
+            allowMultipleConnectionsPerIp = true,
+            stateDirectory = state, diskIoMode = LocalDiskIoMode.OWNED_TEST_ONLY))
+        val received = File(destination, "Chunks native engine fixture/payload.bin")
+        try {
+            seeded.start()
+            owned.start()
+            val addedSeed = seeded.addStopped(metainfo, requireNotNull(sourceFolder.parentFile))
+            assertTrue("Actual Chunks seeder Add failed", addedSeed is LocalAddResult.AddedStopped)
+            val hash = (addedSeed as LocalAddResult.AddedStopped).status.infoHash
+            assertEquals(LocalCommandOutcome.VERIFIED, seeded.resume(hash).outcome)
+            val seedingDeadline = System.currentTimeMillis() + 30000L
+            var seededReady = false
+            while (System.currentTimeMillis() < seedingDeadline) {
+                seededReady = seeded.status(hash)?.state == LocalTransferState.SEEDING &&
+                    seeded.listenPort() in 1..65535
+                if (seededReady) break
+                Thread.sleep(100)
+            }
+            assertTrue("Actual Chunks native seeder never became ready", seededReady)
+            val peer = InetSocketAddress("127.0.0.1", seeded.listenPort())
+            val added = owned.addStopped(metainfo, destination, listOf(peer))
+            assertTrue("Chunks owned engine Add failed", added is LocalAddResult.AddedStopped)
+            assertTrue("Stopped native Add must not create payload", !received.exists())
+            val claims = File(state, "owned-native-receipts")
+            val claimDeadline = System.currentTimeMillis() + 15000L
+            var claimed = false
+            while (System.currentTimeMillis() < claimDeadline) {
+                claimed = claims.listFiles()?.any { it.name.endsWith(".pending") } == true
+                if (claimed) break
+                Thread.sleep(50)
+            }
+            assertTrue("Chunks LocalTorrentEngine did not install owned disk reservations", claimed)
+            assertEquals(LocalCommandOutcome.VERIFIED, owned.resume(hash).outcome)
+            owned.connectPeer(hash, peer)
+            val deadline = System.currentTimeMillis() + 45000L
+            var complete = false
+            while (System.currentTimeMillis() < deadline) {
+                val status = owned.status(hash)
+                if (status?.error != null) throw AssertionError(status.error)
+                complete = status?.state == LocalTransferState.SEEDING && received.isFile &&
+                    received.length() == bytes.size.toLong()
+                if (complete) break
+                Thread.sleep(100)
+            }
+            assertTrue("Actual app engine never completed JNI-owned peer download", complete)
+            assertArrayEquals(bytes, received.readBytes())
+            assertArrayEquals(foreignBytes, foreign.readBytes())
+        } finally {
+            owned.close()
+            seeded.close()
+        }
+        assertArrayEquals("Owned app engine peer data changed during native shutdown",
+            bytes, received.readBytes())
+        assertArrayEquals("An unrelated destination file changed during app-engine lifecycle",
+            foreignBytes, foreign.readBytes())
     }
 }
 """
