@@ -286,9 +286,7 @@ object RemoteSmartConnect {
                     // candidate URL has no gateway. RPC faults, malformed
                     // responses and arbitrary IO failures are ambiguous and
                     // must not trigger another credential-bearing path probe.
-                    failure is IOException &&
-                        Regex("(?i)HTTP(?:/\\d+(?:\\.\\d+)?)?\\s+404(?:\\D|$)")
-                            .containsMatchIn(failure.message.orEmpty()) -> Category.ENDPOINT
+                    failure is RpcHttpStatusException && failure.status == 404 -> Category.ENDPOINT
                     else -> Category.PROTOCOL
                 }
                 attempts += Attempt(candidate.description, path, when (category) {
