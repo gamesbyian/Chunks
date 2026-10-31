@@ -48,6 +48,36 @@ class OwnedDiagnosticExportProviderInstrumentedTest {
         } catch (_: Exception) { }
     }
 
+    @Test fun maximumAcceptedNameAlwaysReturnsReadableUniqueContentUri() {
+        // Before the bounded-name fix a valid 160-character stem + UUID made
+        // a file which the same provider refused to reopen.
+        for (extension in listOf("json", "chunksnap", "torrent", "txt")) {
+            val name = "A" + "b".repeat(159) + "." + extension
+            val firstBytes = byteArrayOf(3, 8, 13)
+            val secondBytes = byteArrayOf(21, 34)
+            val first = OwnedDiagnosticExportProvider.publish(context, name, firstBytes)
+            val second = OwnedDiagnosticExportProvider.publish(context, name, secondBytes)
+            assertNotEquals(first, second)
+            for ((uri, expected) in listOf(first to firstBytes, second to secondBytes)) {
+                val filename = requireNotNull(uri.lastPathSegment)
+                assertTrue("Generated filename exceeds provider acceptance", filename.length <= 160 + 1 + extension.length)
+                assertTrue("A unique suffix must fit before extension",
+                    Regex("[A-Za-z0-9][A-Za-z0-9._() -]{0,159}\\." +
+                        extension).matches(filename))
+                context.contentResolver.openInputStream(uri).use {
+                    assertArrayEquals("Generated URI must reopen for its actual recipient",
+                        expected, requireNotNull(it).readBytes())
+                }
+                assertEquals(expected.size.toLong(), context.contentResolver.query(
+                    uri, arrayOf(android.provider.OpenableColumns.SIZE), null, null, null)
+                    .use { cursor ->
+                        requireNotNull(cursor).moveToFirst()
+                        cursor.getLong(0)
+                    })
+            }
+        }
+    }
+
     @Test fun repeatedNameAndForeignExistingBytesDoNotReplace() {
         val baseName = "health-" + UUID.randomUUID() + ".json"
         val first = OwnedDiagnosticExportProvider.publish(context, baseName, byteArrayOf(1, 2, 3))
