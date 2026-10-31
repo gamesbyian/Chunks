@@ -55,31 +55,49 @@ class LocalPublicDownloadsPlaceInstrumentedTest {
         listenInterfaces = "127.0.0.1:0", allowMultipleConnectionsPerIp = true,
         stateDirectory = state)).also { it.start(); engines += it }
 
-    @Test fun privateAdmissionReceiptPublicationReportsTheFailingFilesystemStage() {
+    @Test fun privateAdmissionReceiptAcceptsAndroidNoHardlinkAndRequiresDurableExclusiveCommit() {
         val root = File(work, "receipt-stages").apply { assertTrue(mkdir()) }.toPath()
-        var stage = "inspect private root"
+        val temporary = java.nio.file.Files.createTempFile(root, "receipt.", ".tmp")
         try {
-            assertTrue(java.nio.file.Files.isDirectory(root, java.nio.file.LinkOption.NOFOLLOW_LINKS))
-            stage = "exclusive temporary creation"
-            val temporary = java.nio.file.Files.createTempFile(root, "receipt.", ".tmp")
-            stage = "temporary write and fsync"
             java.nio.channels.FileChannel.open(temporary, java.nio.file.StandardOpenOption.WRITE,
                 java.nio.file.LinkOption.NOFOLLOW_LINKS).use { channel ->
                 val bytes = java.nio.ByteBuffer.wrap("stage probe".toByteArray())
                 while (bytes.hasRemaining()) channel.write(bytes)
                 channel.force(true)
             }
-            stage = "non-replacing hardlink publication"
-            java.nio.file.Files.createLink(root.resolve("receipt"), temporary)
-            stage = "directory fsync"
-            java.nio.channels.FileChannel.open(root, java.nio.file.StandardOpenOption.READ)
-                .use { it.force(true) }
-            stage = "production admission persistence"
-            assertTrue("Production admission persistence refused after filesystem stages passed",
-                LocalAdmissionProvenance.persist(root.toFile(), "a".repeat(40),
-                LocalAdmissionProvenance.Mode.CHECKED))
-        } catch (failure: Exception) {
-            throw AssertionError("Admission receipt stage failed: $stage", failure)
+            // Characterize legacy linkat capability explicitly. Android API29
+            // and API35 may deny even same-UID hardlinks under app-private files.
+            // Rejection is expected and MUST NOT disable a clean native Add.
+            var deniedLink = false
+            val published = root.resolve("old-link-publication")
+            try {
+                java.nio.file.Files.createLink(published, temporary)
+            } catch (_: java.nio.file.AccessDeniedException) {
+                deniedLink = true
+            } catch (_: java.nio.file.FileSystemException) {
+                // Other inability to hardlink is a capability refusal, not an
+                // authorization to replace the final receipt by rename.
+                deniedLink = true
+            }
+            if (deniedLink) {
+                assertTrue("A refused link must not publish a final claim",
+                    java.nio.file.Files.notExists(published,
+                        java.nio.file.LinkOption.NOFOLLOW_LINKS))
+            } else {
+                assertEquals("stage probe", java.nio.file.Files.readString(published))
+            }
+            assertEquals("stage probe", java.nio.file.Files.readString(temporary))
+            val hash = "a".repeat(40)
+            assertTrue("Real Android exclusive receipt commit and parent fsync refused",
+                LocalAdmissionProvenance.persist(root.toFile(), hash,
+                    LocalAdmissionProvenance.Mode.CHECKED))
+            assertEquals(LocalAdmissionProvenance.Mode.CHECKED,
+                LocalAdmissionProvenance.read(root.toFile(), hash))
+            assertFalse("Previous immutable receipt mode must not be changed",
+                LocalAdmissionProvenance.persist(root.toFile(), hash,
+                    LocalAdmissionProvenance.Mode.REVIEWED_EXISTING))
+        } finally {
+            java.nio.file.Files.deleteIfExists(temporary)
         }
     }
 
