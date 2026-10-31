@@ -651,22 +651,32 @@ private fun ChunksApp(
                                                     credentialTicket
                                                 )
                                             } else {
-                                                val disabled = vault.setRememberingEnabled(false)
-                                                val rosterErased = profileRoster.clearAll()
-                                                disabled && rosterErased
+                                                // A superseded or canceled Connect must not
+                                                // erase a newer account's saved credentials.
+                                                // Hold the same monitor across the epoch
+                                                // check and the destructive opt-out.
+                                                synchronized(RemoteCredentialLock.monitor) {
+                                                    if (!RemoteCredentialLock.current(credentialTicket)) false
+                                                    else vault.setRememberingEnabled(false)
+                                                }
                                             }
                                         } catch (_: Exception) { false }
                                     }
-                                    savedProfiles = withContext(Dispatchers.IO) { profileRoster.list() }
-                                    savedLoginPresent = vault.hasSavedLogin() || savedProfiles.isNotEmpty()
-                                    credentialNotice = when {
-                                        !retained -> "Connected, but login remembering settings could not be saved. " +
-                                            "Confirm the preference before restarting."
-                                        !saveThisLogin -> "Connected without remembering credentials. Your opt-out persists across restarts."
-                                        else -> null
+                                    // IO can outlive a UI session change. Never write a
+                                    // stale Connect's notice/profile state over a new
+                                    // authenticated session or a disconnected form.
+                                    if (remoteFence.current(ticket) && server === candidate) {
+                                        savedProfiles = withContext(Dispatchers.IO) { profileRoster.list() }
+                                        savedLoginPresent = vault.hasSavedLogin() || savedProfiles.isNotEmpty()
+                                        credentialNotice = when {
+                                            !retained -> "Connected, but login remembering settings could not be saved. " +
+                                                "Confirm the preference before restarting."
+                                            !saveThisLogin -> "Connected without remembering credentials. Your opt-out persists across restarts."
+                                            else -> null
+                                        }
+                                        // Do not retain another copy in the screen field.
+                                        password = ""
                                     }
-                                    // Do not retain another copy in the screen field.
-                                    password = ""
                                 }
                             } catch (cancel: kotlinx.coroutines.CancellationException) {
                                 throw cancel
