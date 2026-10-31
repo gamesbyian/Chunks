@@ -23,6 +23,10 @@ trap 'rm -rf "$tmp"' EXIT
     -o "$tmp/serial-native-io-queue-test"
 "$tmp/serial-native-io-queue-test"
 "$tmp/owned-payload-file-test"
+"$compiler" -std=c++17 -O2 -pthread -Wall -Wextra -Werror -pedantic \
+    owned_payload_file.cc owned_reservation_race_test.cc \
+    -Wl,--wrap=open -Wl,--wrap=openat -o "$tmp/owned-reservation-race-test"
+"$tmp/owned-reservation-race-test"
 if [[ "$#" -gt 0 && "$1" == "--sanitizers" ]]; then
   "$compiler" -std=c++17 -O1 -g -pthread -fno-omit-frame-pointer \
       -fsanitize=address,undefined \
