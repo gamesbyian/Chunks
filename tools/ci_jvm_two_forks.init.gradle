@@ -1,0 +1,16 @@
+// CI-only test-worker experiment; NEVER change normal Gradle or release builds.
+// Scope the fork limit to the JVM Debug unit test task. Android connected tests,
+// R8 smoke, Gradle build tasks and signed release are untouched.
+// Native libtorrent4j signal chaining and per-process Robolectric isolation remain
+// configured in app/build.gradle.kts; parallel JVMs must retain exact test counts.
+import org.gradle.api.tasks.testing.Test
+
+gradle.beforeProject { project ->
+    if (project.path == ":app") {
+        project.tasks.withType(Test).configureEach { task ->
+            if (task.name == "testDebugUnitTest") {
+                task.maxParallelForks = 2
+            }
+        }
+    }
+}
