@@ -40,6 +40,11 @@ jobs:
           test -n "$ndk_root"
           export ANDROID_NDK_HOME="$ndk_root"
           export PATH="$ndk_root/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH"
+          # OpenSSL's android-arm64 Configure searches for GCC by default.
+          # NDK r29 exposes versioned Clang, so pin the actual target compiler.
+          export CC="$ndk_root/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android29-clang"
+          export CXX="$ndk_root/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android29-clang++"
+          test -x "$CC" && test -x "$CXX"
           prefix="$RUNNER_TEMP/openssl-android29-arm64"
           cd "$RUNNER_TEMP/openssl-3.5.9-source"
           ./Configure android-arm64 no-shared no-tests no-apps no-module \
