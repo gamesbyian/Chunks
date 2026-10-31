@@ -834,6 +834,22 @@ internal fun CombinedTransfersScreen(
                     style = MaterialTheme.typography.titleSmall)
             }
         }
+        // Even when a saved subset or a filter hides every row, the way back
+        // remains visible without finding an offscreen chip or opening Settings.
+        // This changes presentation only, never an Add destination or command target.
+        if (result.transfers.isEmpty() && CombinedViewPreferences.narrowingActive(query)) {
+            item(key = "recover-empty-combined-view") {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("No transfers are visible with these view choices. " +
+                        "Locked or offline environments may still need attention.",
+                        style = MaterialTheme.typography.bodySmall)
+                    OutlinedButton(
+                        onClick = { update(CombinedViewPreferences.showAll(query)) },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    ) { Text("Show all transfers") }
+                }
+            }
+        }
         if (query.groupByEnvironment) {
             result.groups.forEach { group ->
                 item(key = "header-" + group.source.environment.value) {
