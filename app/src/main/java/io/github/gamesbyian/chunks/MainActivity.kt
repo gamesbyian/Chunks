@@ -518,8 +518,11 @@ private fun ChunksApp(
                                 } catch (_: Exception) { false }
                             }
                             if (credentialChanges.isLatest(revision)) {
-                                savedProfiles = withContext(Dispatchers.IO) { profileRoster.list() }
-                                savedLoginPresent = vault.hasSavedLogin() || savedProfiles.isNotEmpty()
+                                val refreshed = withContext(Dispatchers.IO) { profileRoster.list() }
+                                // A newer tap may occur while this IO read is suspended.
+                                if (!credentialChanges.isLatest(revision)) return@submit
+                                savedProfiles = refreshed
+                                savedLoginPresent = vault.hasSavedLogin() || refreshed.isNotEmpty()
                                 if (removed && endpoint == profile.credentials.endpoint &&
                                     username == profile.credentials.username) password = ""
                                 credentialNotice = if (removed) "Saved profile forgotten on this device."
@@ -549,9 +552,15 @@ private fun ChunksApp(
                             } catch (_: Exception) { false }
                         }
                         if (credentialChanges.isLatest(revision)) {
-                            rememberLogin = vault.rememberingEnabled()
-                            savedProfiles = withContext(Dispatchers.IO) { profileRoster.list() }
-                            savedLoginPresent = vault.hasSavedLogin() || savedProfiles.isNotEmpty()
+                            val refreshed = withContext(Dispatchers.IO) {
+                                val profiles = profileRoster.list()
+                                Triple(vault.rememberingEnabled(), profiles,
+                                    vault.hasSavedLogin() || profiles.isNotEmpty())
+                            }
+                            if (!credentialChanges.isLatest(revision)) return@submit
+                            rememberLogin = refreshed.first
+                            savedProfiles = refreshed.second
+                            savedLoginPresent = refreshed.third
                             credentialNotice = when {
                                 !persisted -> "Could not save the credential remembering preference. Retry this change."
                                 !enabled -> "Login remembering disabled across restarts; saved credentials erased."
@@ -572,8 +581,10 @@ private fun ChunksApp(
                             } catch (_: Exception) { false }
                         }
                         if (credentialChanges.isLatest(revision)) {
-                            savedProfiles = withContext(Dispatchers.IO) { profileRoster.list() }
-                            savedLoginPresent = vault.hasSavedLogin() || savedProfiles.isNotEmpty()
+                            val refreshed = withContext(Dispatchers.IO) { profileRoster.list() }
+                            if (!credentialChanges.isLatest(revision)) return@submit
+                            savedProfiles = refreshed
+                            savedLoginPresent = vault.hasSavedLogin() || refreshed.isNotEmpty()
                             if (cleared) {
                                 password = ""
                                 credentialNotice = "Saved login erased. This session's password field was cleared."
@@ -1005,8 +1016,11 @@ private fun ChunksApp(
                             // Older queued Forget jobs still erase as requested,
                             // but only the latest user command controls the UI.
                             if (credentialChanges.isLatest(revision)) {
-                                savedProfiles = withContext(Dispatchers.IO) { profileRoster.list() }
-                                savedLoginPresent = vault.hasSavedLogin() || savedProfiles.isNotEmpty()
+                                val refreshed = withContext(Dispatchers.IO) { profileRoster.list() }
+                                // A newer tap may occur while this IO read is suspended.
+                                if (!credentialChanges.isLatest(revision)) return@submit
+                                savedProfiles = refreshed
+                                savedLoginPresent = vault.hasSavedLogin() || refreshed.isNotEmpty()
                                 credentialNotice = if (cleared)
                                     "Saved login erased. Current connection remains active."
                                 else "Could not erase saved login."
