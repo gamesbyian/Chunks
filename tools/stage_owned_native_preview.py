@@ -544,7 +544,7 @@ def prepare(
         "allowed_build_type": "debug",
         "instrumented_test": "io.github.gamesbyian.chunks.engine.OwnedJniSessionSmokeInstrumentedTest",
         "instrumented_test_sha256": sha256(smoke_path),
-        "proof_limit": "owned disk constructor started only, no torrent bytes or external storage acceptance",
+        "proof_limit": "five installed tests requested, no pass inferred until verified instrument receipts; app-private only; never shipping payload safety",
     }
     (output / "PREVIEW-ONLY.json").write_text(
         json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8")
