@@ -42,7 +42,9 @@ jobs:
           CHUNKS_LIVE_RUTORRENT_URL: https://ianseeds.wood.seedhost.eu/rutorrent${{ matrix.instance }}/
           CHUNKS_LIVE_RTORRENT_USER: ianseeds
           # Owner-named, per-instance secrets; never the primary instance's pair.
-          CHUNKS_LIVE_RTORRENT_PASS: ${{ matrix.instance == '2' && secrets.rTorrent_pass2 || secrets.rtorrent_pass3 }}
+          # Resolve the selected name after the choice: an absent instance 2
+          # secret must never fall through to instance 3's password.
+          CHUNKS_LIVE_RTORRENT_PASS: ${{ secrets[matrix.instance == '2' && 'rTorrent_pass2' || 'rtorrent_pass3'] }}
         run: |
           test -n "$CHUNKS_LIVE_RTORRENT_PASS" || { echo "::error::Password secret for instance ${{ matrix.instance }} is not configured"; exit 1; }
           gradle --no-daemon --console=plain :app:testDebugUnitTest \
