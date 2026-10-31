@@ -1,5 +1,12 @@
 # Documentation architecture and agent authoring standard
 
+
+## Current-status hygiene after the 2026-10-31 full repository inventory
+
+The [dated tracking audit](REPOSITORY-DOCS-AND-TRACKING-AUDIT-2026-10-31.md) enumerated all Markdown/text docs and all then-open issues/PRs. This standard is prospective: every *live* status claim should name the governing issue/PR, observed exact-head evidence and current disposition. Historical dated tests and red classifications are preserved as historical evidence, **not** repeated as current release blockers after a binding owner correction. Write the supersession next to the claim when it would otherwise direct an agent incorrectly; a disclaimer at the front alone may not cure a contradictory imperative deeper in the active contract.
+
+For issue and PR descriptions, place current status, exact base/head, red CI and missing acceptance at the top. Keep old detail only in an explicitly dated section or linked quality ledger. Do not treat an old PR run as proof for a newer stacked commit, silence a test because other jobs are green, or close a draft while unported unique source/test contributions remain. Review and update reference links after changes; use the one [WORK-QUEUE](WORK-QUEUE.md) and refrain from creating a new active backlog inside a dated audit.
+
 **Status:** normative repository maintenance policy. **Applies to:** human maintainers and autonomous agents. **Purpose:** make product intent, implementation evidence, and next actions independently discoverable without competing sources of truth.
 
 ## Start here: authority by question
