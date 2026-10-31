@@ -786,80 +786,58 @@ class LocalTorrentEngineTest {
         assertEquals(destination.absolutePath, restored.savePath)
     }
 
-    @Test fun metadataReadyMagnetWithForeignFileRefusesPayloadUntilCollisionCleared() {
+    @Test fun metadataReadyMagnetRechecksExistingRegularPayloadAndRestoresVerifiedSeeding() {
         val fixture = fixture()
         val seeder = engine()
         val seed = added(seeder.addStopped(fixture.torrent, fixture.root.parentFile))
         assertEquals(LocalCommandOutcome.VERIFIED, seeder.resume(seed.infoHash).outcome)
         waitFor { seeder.status(seed.infoHash)?.state == LocalTransferState.SEEDING }
 
-        val destination = temp.newFolder("magnet-collision-destination")
-        val collision = File(destination, "Chunks public fixture/episode.bin")
-        assertTrue(collision.parentFile.mkdirs())
-        val unrelated = ByteArray(fixture.files.getValue("episode.bin").size)
-        java.util.Random(568L).nextBytes(unrelated)
-        collision.writeBytes(unrelated)
+        val destination = temp.newFolder("magnet-existing-payload-destination")
+        val payload = File(destination, "Chunks public fixture/episode.bin")
+        assertTrue(payload.parentFile.mkdirs())
+        val existing = ByteArray(fixture.files.getValue("episode.bin").size)
+        java.util.Random(568L).nextBytes(existing)
+        payload.writeBytes(existing)
+        val unrelated = File(destination, "not-a-torrent-file.txt")
+        val siblingBytes = "Unrelated data must survive".toByteArray()
+        unrelated.writeBytes(siblingBytes)
         val magnet = "magnet:?xt=urn:btih:" + seed.infoHash
 
-        val state = temp.newFolder("magnet-blocked-resume-state")
+        val state = temp.newFolder("magnet-existing-resume-state")
         val leecher = persistentEngine(state)
         assertTrue(leecher.addMagnet(magnet, destination,
             listOf(InetSocketAddress("127.0.0.1", seeder.listenPort())),
             autoStartAfterMetadata = true) is LocalAddResult.FetchingMetadata)
         waitFor {
-            leecher.status(seed.infoHash)?.let { it.metadataKnown && it.stopped } == true
+            leecher.status(seed.infoHash)?.let {
+                it.metadataKnown && it.progressPpm == 1_000_000
+            } == true
         }
-        val blocked = requireNotNull(leecher.status(seed.infoHash))
-        assertTrue("Blocked magnet must remain upload-only", blocked.uploadOnly)
-        assertTrue("Collision must be visible", blocked.error.orEmpty().contains("Existing files"))
-        assertArrayEquals("Early Start consent cannot overwrite unrelated bytes",
-            unrelated, collision.readBytes())
-        // The unoccupied sibling path must not be materialized during rejected
-        // metadata-time auto-Start. Empty files are still unauthorized writes.
-        Thread.sleep(500)
-        assertFalse("Rejected magnet created an unowned sibling payload path",
-            File(destination, "Chunks public fixture/extras/notes.txt").exists())
-        // Narrow synthetic diagnostic: isolate a stale stored collision
-        // witness from a genuinely missing native payload pathname. This
-        // read-only survey must match the same destination used by Start.
-        val beforeStart = requireNotNull(leecher.status(seed.infoHash))
-        val observedSurvey = LocalPayloadCollisionSurvey.inspect(
-            File(beforeStart.savePath),
-            listOf("Chunks public fixture/episode.bin", "Chunks public fixture/extras/notes.txt")
-        )
-        println("CHUNKS_MAGNET_START_GATE metadata=${beforeStart.metadataKnown} " +
-            "uploadOnly=${beforeStart.uploadOnly} stopped=${beforeStart.stopped} " +
-            "foreignExists=${collision.isFile} survey=${observedSurvey::class.simpleName} " +
-            "nativeSavePathMatches=${File(beforeStart.savePath).canonicalPath == destination.canonicalPath}")
-        assertTrue("The same pathname must still have the foreign bytes before Start",
-            collision.isFile && unrelated.contentEquals(collision.readBytes()))
-        assertTrue("The production survey must still see the deliberately planted foreign file",
-            observedSurvey is LocalPayloadCollisionSurvey.Result.ExistingPaths)
-        assertEquals(LocalCommandOutcome.REFUSED, leecher.resume(seed.infoHash).outcome)
-        assertArrayEquals(unrelated, collision.readBytes())
-
-        // A blocked magnet must be restorable without making a previously
-        // rejected payload collision writable after process restart.
-        waitFor(15_000L) {
-            File(state, seed.infoHash + ".resume").let { it.isFile && it.length() > 0L }
-        }
+        requireFlushed(leecher, seed.infoHash)
+        assertArrayEquals("Peer must replace mismatched bytes at the selected declared path",
+            fixture.files.getValue("episode.bin"), payload.readBytes())
+        assertArrayEquals("Unrelated sibling cannot become torrent payload",
+            siblingBytes, unrelated.readBytes())
+        assertArrayEquals(fixture.files.getValue("extras/notes.txt"),
+            File(destination, "Chunks public fixture/extras/notes.txt").readBytes())
+        assertTrue("Completed magnet must persist a restorable native state",
+            leecher.saveResumeData() >= 1)
         leecher.close()
-        val restarted = persistentEngine(state)
-        val paused = requireNotNull(restarted.status(seed.infoHash))
-        assertTrue("Blocked magnet must restore stopped", paused.stopped)
-        assertTrue("Persistent upload-only gate must survive a process restart", paused.uploadOnly)
-        assertTrue(paused.metadataKnown)
-        assertEquals(LocalCommandOutcome.REFUSED, restarted.resume(seed.infoHash).outcome)
-        assertArrayEquals("Failed re-Start after process death must not overwrite foreign bytes",
-            unrelated, collision.readBytes())
 
-        // Test-only recovery: remove our synthetic foreign fixture, then retry
-        // Start against an independently observed clean path.
-        assertTrue(collision.delete())
+        val restarted = persistentEngine(state)
+        assertTrue("Rechecked magnet restore must not invent errors: " + restarted.restoreProblems,
+            restarted.restoreProblems.isEmpty())
+        val restored = requireNotNull(restarted.status(seed.infoHash))
+        assertTrue("Restore starts stopped", restored.stopped)
+        assertTrue(restored.metadataKnown)
+        assertEquals(destination.absolutePath, restored.savePath)
         assertEquals(LocalCommandOutcome.VERIFIED, restarted.resume(seed.infoHash).outcome)
-        waitFor { restarted.status(seed.infoHash)?.progressPpm == 1_000_000 }
-        requireFlushed(restarted, seed.infoHash)
-        assertArrayEquals(fixture.files.getValue("episode.bin"), collision.readBytes())
+        waitFor { restarted.status(seed.infoHash)?.state == LocalTransferState.SEEDING }
+        assertArrayEquals("Restart must seed the verified selected-path payload",
+            fixture.files.getValue("episode.bin"), payload.readBytes())
+        assertArrayEquals("Restart must not alter unrelated sibling",
+            siblingBytes, unrelated.readBytes())
     }
 
     @Test fun manualStartBeforeMagnetMetadataPersistsThroughDiscoveryAndDownloadsBytes() {
