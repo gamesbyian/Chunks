@@ -6,7 +6,14 @@ import java.net.URI
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-data class RemoteCredentials(val endpoint: String, val username: String, val password: String)
+/**
+ * Credentials are passed verbatim to HTTP authentication, but must never be
+ * printable through Kotlin's generated data-class toString. Endpoint paths
+ * and usernames can also identify private hosted accounts.
+ */
+data class RemoteCredentials(val endpoint: String, val username: String, val password: String) {
+    override fun toString(): String = "RemoteCredentials(<redacted>)"
+}
 
 /**
  * Method enumeration is nullable: legacy or restricted installations may
