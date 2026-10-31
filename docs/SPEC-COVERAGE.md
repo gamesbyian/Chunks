@@ -1,5 +1,8 @@
 # Chunks specification coverage and acceptance map
 
+
+**Current coverage reconciliation (2026-10-31):** [#568](https://github.com/gamesbyian/Chunks/issues/568) is **closed as a superseded policy**, not currently G0 RED for exact-path regular-file replacement. Active gates are [#865](https://github.com/gamesbyian/Chunks/issues/865) app-private metadata, [#809](https://github.com/gamesbyian/Chunks/issues/809) wrong-target ZIP/library operations, [#5](https://github.com/gamesbyian/Chunks/issues/5) actual phone acceptance and remote #1/#4. The stacked #865 branch [#869](https://github.com/gamesbyian/Chunks/pull/869) failed native API35 Add/restart [run 41246130576](https://github.com/gamesbyian/Chunks/actions/runs/41246130576) on completed magnet resume persistence; #868's earlier green head is not the integrated final source. Dated table rows below retain their historical status at their recorded SHA; do not classify them as today's release verdict. [Full status audit](REPOSITORY-DOCS-AND-TRACKING-AUDIT-2026-10-31.md).
+
 **Owner correction 2026-10-31:** [D-LOCAL-COLLISIONS-20261031](DECISIONS.md) supersedes the blanket same-path regular-file non-clobber G0 requirement in historical #568 entries below. Recheck/reuse/overwrite *exact declared torrent paths in the chosen root* is conventional authorized behavior, not by itself a release blocker. Unrelated paths, metadata, Android storage/permissions and true containment still require separate evidence. [Canonical contract](LOCAL-TORRENT-COLLISION-POLICY.md).
 
 
