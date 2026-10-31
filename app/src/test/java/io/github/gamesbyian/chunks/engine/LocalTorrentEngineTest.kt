@@ -280,7 +280,7 @@ class LocalTorrentEngineTest {
         val outside = File(temp.newFolder("restored-external-canary"), "critical.txt")
             .apply { writeText("unrelated external data") }
         val link = File(destination, "Chunks public fixture/episode.bin")
-        assertTrue(link.parentFile.mkdirs())
+        assertTrue(link.parentFile.isDirectory || link.parentFile.mkdirs())
         Files.createSymbolicLink(link.toPath(), outside.toPath())
 
         val restored = persistentEngine(state)
