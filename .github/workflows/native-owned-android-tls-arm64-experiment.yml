@@ -32,6 +32,19 @@ jobs:
             suffix: x86_64
     steps:
       - uses: actions/checkout@v4
+      - name: Reject pre-review mutable receipt pathname publication
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path("experiments/native-owned-writer/owned_payload_file.cc").read_text()
+          assert 'O_TMPFILE | O_WRONLY | O_CLOEXEC' in s, "Missing anonymous pinned receipt stage"
+          assert 'AT_EMPTY_PATH' in s and '::linkat(stage.v, "", dir, id.c_str(), AT_EMPTY_PATH)' in s
+          assert 'O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW' in s
+          assert '::unlinkat(dir, temp.c_str(), 0)' not in s, "Unsafe mutable temporary deletion"
+          assert '::linkat(dir, temp.c_str()' not in s, "Unsafe mutable source publication"
+          print("CHUNKS_HARDENED_RECEIPT_SOURCE=PASS source-only; NOT JNI runtime proof")
+          PY
       - name: Obtain exactly pinned OpenSSL 3.5.9 security-patched source
         run: |
           set -euo pipefail
