@@ -45,6 +45,7 @@ import android.system.Os
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
+import java.nio.file.Files
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -57,12 +58,12 @@ import org.libtorrent4j.SettingsPack
 class OwnedJniSessionSmokeInstrumentedTest {
     @Test fun pinnedOwnedDiskConstructorStartsOnlyInsideDisposablePrivateRoot() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val root = File(context.cacheDir, "owned-jni-smoke")
-        assertTrue("Cannot create isolated app-private fixture", root.mkdir())
+        // Unique, exclusively created test-owned root. No name-based cleanup:
+        // the emulator is disposable and its app-data volume is discarded.
+        val root = Files.createTempDirectory(context.cacheDir.toPath(), "owned-jni-").toFile()
         val receipts = File(root, "receipts")
-        try {
-            assertTrue(receipts.mkdir())
-            Os.chmod(receipts.absolutePath, 448) // 0700 decimal
+        assertTrue(receipts.mkdir())
+        Os.chmod(receipts.absolutePath, 448) // 0700 decimal
             val config = SettingsPack().listenInterfaces("127.0.0.1:0")
             config.setEnableDht(false)
             config.setEnableLsd(false)
@@ -76,11 +77,6 @@ class OwnedJniSessionSmokeInstrumentedTest {
                 native.stop()
             }
             assertTrue(receipts.isDirectory)
-        } finally {
-            // The only cleanup scope is this test's own unique fixture under
-            // the target app's sandbox. No Download or provider URI is touched.
-            root.deleteRecursively()
-        }
     }
 }
 """
