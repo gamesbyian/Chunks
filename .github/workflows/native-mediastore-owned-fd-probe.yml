@@ -7,6 +7,8 @@ on:
     paths:
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/engine/OwnedMediaStoreDescriptorInstrumentedTest.kt"
       - ".github/workflows/native-mediastore-owned-fd-probe.yml"
+      - "tools/native_mediastore_fd_probe.sh"
+      - "tools/test_native_mediastore_fd_probe_mock.sh"
   workflow_dispatch:
 
 permissions:
@@ -27,6 +29,8 @@ jobs:
         api: [29, 35]
     steps:
       - uses: actions/checkout@v4
+      - name: Offline harness negative controls
+        run: bash tools/test_native_mediastore_fd_probe_mock.sh
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -55,26 +59,4 @@ jobs:
           profile: pixel_6
           emulator-boot-timeout: 600
           disable-animations: true
-          script: |
-            set -eu
-            # Android emulator runner invokes script using /bin/sh; no Bash pipefail.
-            # Every authoritative adb command has an explicit checked result.
-            expected_api="${{ matrix.api }}"
-            observed_api="$(adb shell getprop ro.build.version.sdk)"
-            observed_api="$(printf '%s' "$observed_api" | tr -d '\r\n')"
-            test "$observed_api" = "$expected_api"
-            adb install -r app/build/outputs/apk/debug/app-debug.apk
-            adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
-            log="$(mktemp)"
-            trap 'rm -f "$log"' EXIT
-            set +e
-            adb shell am instrument -w -r \
-              -e class io.github.gamesbyian.chunks.engine.OwnedMediaStoreDescriptorInstrumentedTest \
-              io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner >"$log" 2>&1
-            status=$?
-            set -e
-            cat "$log"
-            test "$status" -eq 0
-            grep -q '^OK (2 tests)' "$log"
-            ! grep -qE '^INSTRUMENTATION_STATUS_CODE: -(1|2|3|4)' "$log"
-            echo "CHUNKS_MEDIASTORE_OWNED_FD_PROBE=PASS api=$expected_api seekable-fsync-reopen-publish"
+          script: bash tools/native_mediastore_fd_probe.sh ${{ matrix.api }}
