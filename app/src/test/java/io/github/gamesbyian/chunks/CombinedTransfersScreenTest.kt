@@ -12,6 +12,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.test.core.app.ApplicationProvider
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -117,6 +118,24 @@ class CombinedTransfersScreenTest {
         assertTrue(saved.scope is EnvironmentViewScope.Only)
         assertEquals(1, (saved.scope as EnvironmentViewScope.Only).ids.size)
         assertTrue(saved.groupByEnvironment)
+    }
+
+    @Test fun emptySearchHasOneTapRecoveryWithoutMutatingOrResettingSort() {
+        CombinedViewPreferences(context).save(io.github.gamesbyian.chunks.model.UnifiedTransferQuery(
+            sortKey = UnifiedSortKey.SIZE, direction = UnifiedSortDirection.ASCENDING))
+        show()
+        rule.onNodeWithText("Search all selected").performTextInput("not-in-any-transfer")
+        rule.onNodeWithText("Showing 0", substring = true).assertExists()
+        rule.onNodeWithText("Show all transfers").performScrollTo().performClick()
+        rule.onNodeWithText("Showing 2", substring = true).assertExists()
+        rule.onNodeWithText("Big Archive").assertExists()
+        rule.onNodeWithText("Small Episode").assertExists()
+        val recovered = CombinedViewPreferences(context).load()
+        assertEquals(io.github.gamesbyian.chunks.model.UnifiedTransferFilter.ALL, recovered.filter)
+        assertTrue(recovered.scope is EnvironmentViewScope.All)
+        assertEquals(UnifiedSortKey.SIZE, recovered.sortKey)
+        assertEquals(UnifiedSortDirection.ASCENDING, recovered.direction)
+        assertTrue("View-only recovery must not issue Start/Stop", commands.isEmpty())
     }
 
     @Test fun combinedFilterIsAppliedToUnionAndPersistsForNextOpening() {
