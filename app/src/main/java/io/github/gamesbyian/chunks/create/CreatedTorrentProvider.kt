@@ -8,6 +8,9 @@ import android.database.MatrixCursor
 import android.net.Uri
 import android.os.ParcelFileDescriptor
 import android.provider.OpenableColumns
+import android.system.ErrnoException
+import android.system.Os
+import android.system.OsConstants
 import java.io.File
 import java.io.FileNotFoundException
 import java.nio.ByteBuffer
@@ -98,7 +101,22 @@ class CreatedTorrentProvider : ContentProvider() {
 
     override fun openFile(uri: Uri, mode: String): ParcelFileDescriptor {
         if (mode != "r") throw SecurityException("Read-only")
-        return ParcelFileDescriptor.open(file(uri), ParcelFileDescriptor.MODE_READ_ONLY)
+        val candidate = file(uri)
+        // Pin and validate the actual opened object. The earlier no-follow
+        // metadata probe is insufficient if a same-UID actor swaps the final
+        // pathname between the probe and ParcelFileDescriptor.open().
+        val fd = try {
+            Os.open(candidate.absolutePath,
+                OsConstants.O_RDONLY or OsConstants.O_NOFOLLOW or OsConstants.O_CLOEXEC, 0)
+        } catch (e: ErrnoException) {
+            throw FileNotFoundException("Share is unavailable").apply { initCause(e) }
+        }
+        try {
+            if (!OsConstants.S_ISREG(Os.fstat(fd).st_mode)) throw FileNotFoundException()
+            return ParcelFileDescriptor.dup(fd)
+        } finally {
+            Os.close(fd)
+        }
     }
 
     override fun query(uri: Uri, projection: Array<out String>?, selection: String?, args: Array<out String>?, sort: String?): Cursor {
