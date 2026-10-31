@@ -19,15 +19,13 @@ class LocalCheckedRestartGuardTest {
                 listOf("episode1.bin", "episode2.bin"), listOf(18L, 0L)))
     }
 
-    @Test fun skippedFilePlantedAfterStopMustRefuseWithoutMutation() {
+    @Test fun regularFileWithZeroNativeProgressMayBeRecheckedAfterStop() {
         val root = temp.newFolder("foreign")
         val verified = File(root, "owned.bin").apply { writeText("old verified data") }
         val foreign = File(root, "ignored.bin").apply { writeText("foreign untrusted") }
         val result = LocalCheckedRestartGuard.inspect(root,
             listOf("owned.bin", "ignored.bin"), listOf(17L, 0L))
-        assertTrue(result is LocalCheckedRestartGuard.Result.Refused)
-        assertTrue((result as LocalCheckedRestartGuard.Result.Refused)
-            .reason.contains("no verified native bytes"))
+        assertEquals(LocalCheckedRestartGuard.Result.ClearAtObservation, result)
         assertEquals("foreign untrusted", foreign.readText())
         assertEquals("old verified data", verified.readText())
     }
@@ -35,9 +33,8 @@ class LocalCheckedRestartGuardTest {
     @Test fun knownPartialFileIsNotDeclaredOwnedByThisTest() {
         val root = temp.newFolder("partial")
         File(root, "partial.bin").writeBytes(ByteArray(400))
-        // This only means the observation did not find a zero-progress
-        // collision. A modified same-name file with positive progress still
-        // requires descriptor-backed ownership checks elsewhere.
+        // Content rechecking is the responsibility of native libtorrent,
+        // never a filename/size comparison performed by this path survey.
         assertEquals(LocalCheckedRestartGuard.Result.ClearAtObservation,
             LocalCheckedRestartGuard.inspect(root, listOf("partial.bin"), listOf(200L)))
     }
@@ -52,12 +49,12 @@ class LocalCheckedRestartGuardTest {
         assertTrue(external.list().isEmpty())
     }
 
-    @Test fun existingUnverifiedZeroLengthFilesAlsoBlock() {
+    @Test fun existingZeroLengthRegularFileIsAnAuthorizedPayloadCandidate() {
         val root = temp.newFolder("zero")
         val path = File(root, "empty.bin").apply { createNewFile() }
-        assertTrue(LocalCheckedRestartGuard.inspect(root,
-            listOf("empty.bin"), listOf(0L))
-            is LocalCheckedRestartGuard.Result.Refused)
+        assertEquals(LocalCheckedRestartGuard.Result.ClearAtObservation,
+            LocalCheckedRestartGuard.inspect(root,
+                listOf("empty.bin"), listOf(0L)))
         assertEquals(0L, path.length())
     }
 
