@@ -59,7 +59,9 @@ internal class ExclusiveFsyncJournal private constructor(
          * just before FileChannel.open(), hanging process recovery forever.
          *
          * Only the originally pinned FD is read, never a reopened pathname.
-         * A hardlink, symlink, FIFO, too-large or changing file fails closed.
+         * Hardlinks, symlinks, FIFOs, oversized files, and changes to the
+         * pinned file's identity, link count or length fail closed. These
+         * checks cannot detect same-length in-place content changes.
          * Host-only JVM fixtures keep NIO compatibility without Android APIs.
          */
         private fun runningOnAndroid(): Boolean = try {
