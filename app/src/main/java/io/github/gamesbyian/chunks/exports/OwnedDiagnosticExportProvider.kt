@@ -35,7 +35,7 @@ import java.util.UUID
 class OwnedDiagnosticExportProvider : ContentProvider() {
     companion object {
         private const val MAX_BYTES = 64 * 1024 * 1024
-        private val VALID_NAME = Regex("[A-Za-z0-9][A-Za-z0-9._() -]{0,159}\\.(json|chunksnap)")
+        private val VALID_NAME = Regex("[A-Za-z0-9][A-Za-z0-9._() -]{0,159}\\.(json|chunksnap|torrent|txt)")
 
         fun authority(context: Context) = context.packageName + ".owned-exports"
         fun folder(context: Context) = File(context.cacheDir, "owned-diagnostic-exports")
@@ -43,6 +43,8 @@ class OwnedDiagnosticExportProvider : ContentProvider() {
         private fun mime(name: String) = when {
             name.endsWith(".chunksnap") -> "application/octet-stream"
             name.endsWith(".json") -> "application/json"
+            name.endsWith(".torrent") -> "application/x-bittorrent"
+            name.endsWith(".txt") -> "text/plain"
             else -> null
         }
 
