@@ -404,6 +404,50 @@ class ExactRemotePrincipalMigrationInstrumentedTest {
         }
     }
 
+    @Test fun pairSaveRefusesStaleConnectAndDoesNotChangeLegacyWhenRosterCannotSave() {
+        val vault = RememberedRemoteLogin(context)
+        val roster = RememberedRemoteProfileRoster(context)
+        val originalPolicy = vault.rememberingEnabled()
+        assertTrue(vault.setRememberingEnabled(true))
+        val prefs = context.getSharedPreferences("chunks_remote_profiles_encrypted_v1",
+            Context.MODE_PRIVATE)
+        try {
+            assertTrue(roster.clearAll())
+            assertTrue(vault.clear())
+            val first = RemoteCredentialLock.beginConnection()
+            assertTrue(RemoteCredentialLock.saveVerifiedPairIfCurrent(vault, roster, plain, first))
+            assertEquals(plain, vault.load())
+            assertEquals(listOf(plain), roster.list().map { it.credentials })
+            val second = RemoteCredentialLock.beginConnection()
+            assertFalse(RemoteCredentialLock.saveVerifiedPairIfCurrent(vault, roster, padded, first))
+            assertEquals(plain, vault.load())
+            assertTrue(RemoteCredentialLock.saveVerifiedPairIfCurrent(vault, roster, padded, second))
+            assertEquals(padded, vault.load())
+            assertEquals(setOf(plain.username, padded.username),
+                roster.list().map { it.credentials.username }.toSet())
+
+            // A malformed but still occupied roster is read-only. The paired
+            // operation MUST refuse before changing the legacy login.
+            val inaccessible = "encrypted-roster-undecryptable"
+            assertTrue(prefs.edit().putString("roster", inaccessible).commit())
+            val third = RemoteCredentialLock.beginConnection()
+            assertFalse(RemoteCredentialLock.saveVerifiedPairIfCurrent(vault, roster, plain, third))
+            assertEquals(padded, vault.load())
+            assertEquals(inaccessible, prefs.getString("roster", null))
+
+            // An explicit policy opt-out must revoke even the most recent
+            // ticket and clear both credential stores.
+            assertTrue(vault.setRememberingEnabled(false))
+            assertFalse(RemoteCredentialLock.saveVerifiedPairIfCurrent(vault, roster, plain, third))
+            assertNull(vault.load())
+            assertTrue(roster.list().isEmpty())
+        } finally {
+            roster.clearAll()
+            vault.clear()
+            vault.setRememberingEnabled(originalPolicy)
+        }
+    }
+
     private fun prefKey(scope: String): String = "policy_" +
         MessageDigest.getInstance("SHA-256").digest(scope.toByteArray(Charsets.UTF_8))
             .joinToString("") { "%02x".format(it.toInt() and 255) }
