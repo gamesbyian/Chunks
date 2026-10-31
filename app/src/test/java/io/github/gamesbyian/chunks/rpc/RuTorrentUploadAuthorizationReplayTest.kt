@@ -18,15 +18,21 @@ class RuTorrentUploadAuthorizationReplayTest {
         """Digest realm="Fixture", nonce="one", qop="auth", algorithm=SHA-256"""
     private class Fake(
         private val challenge: String?,
-        private val rejectAfterUpload: Boolean
+        private val rejectAfterUpload: Boolean,
+        private val headChallenge: String? = null,
+        private val headStatus: Int = 405,
+        private val protectListing: Boolean = false
     ) : AutoCloseable {
         private fun result(value: String) =
             "<methodResponse><params><param><value>$value</value></param></params></methodResponse>"
         private val server = HttpServer.create(
             InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0)
         val methods: MutableList<String> = Collections.synchronizedList(mutableListOf())
+        val rpcAuthorizations: MutableList<String?> = Collections.synchronizedList(mutableListOf())
         val authorizations: MutableList<String?> = Collections.synchronizedList(mutableListOf())
         @Volatile var uploads = 0
+            private set
+        @Volatile var heads = 0
             private set
         val root get() = "http://127.0.0.1:${server.address.port}/rutorrent/"
         init {
@@ -35,7 +41,10 @@ class RuTorrentUploadAuthorizationReplayTest {
                 val method = Regex("<methodName>([^<]+)</methodName>")
                     .find(xml)?.groupValues?.get(1).orEmpty()
                 methods += method
-                if (method == "system.client_version" && challenge != null) {
+                rpcAuthorizations += e.requestHeaders.getFirst("Authorization")
+                if (challenge != null && (method == "system.client_version" ||
+                        (protectListing && method == "d.multicall2" &&
+                            e.requestHeaders.getFirst("Authorization") == null))) {
                     e.responseHeaders.add("WWW-Authenticate", challenge)
                     e.sendResponseHeaders(401, -1)
                     e.close()
@@ -55,6 +64,15 @@ class RuTorrentUploadAuthorizationReplayTest {
                 }
             }
             server.createContext("/rutorrent/php/addtorrent.php") { e ->
+                if (e.requestMethod == "HEAD") {
+                    heads++
+                    check(e.requestHeaders.getFirst("Authorization") == null)
+                    if (headChallenge != null) e.responseHeaders.add("WWW-Authenticate", headChallenge)
+                    if (headStatus == 302) e.responseHeaders.add("Location", "http://127.0.0.1:1/elsewhere")
+                    e.sendResponseHeaders(if (headChallenge == null) headStatus else 401, -1)
+                    e.close()
+                    return@createContext
+                }
                 e.requestBody.use { it.readBytes() }
                 uploads++
                 authorizations += e.requestHeaders.getFirst("Authorization")
@@ -75,13 +93,13 @@ class RuTorrentUploadAuthorizationReplayTest {
 
     @Test fun basicAndDigestChallengeAreResolvedReadOnlyBeforeOneUpload() = runBlocking {
         for (challenge in listOf(challengeBasic, challengeDigest)) {
-            Fake(challenge, rejectAfterUpload = true).use { fake ->
+            Fake(challenge, rejectAfterUpload = true, headChallenge = challenge).use { fake ->
                 val remote = RTorrentRemote(RemoteCredentials(fake.root, "alice", "secret"))
                 val result = remote.loadStoppedViaRuTorrentUpload(torrent, "/srv/media")
                 assertEquals(RemoteAddOutcome.Uncertain(hash), result)
                 assertEquals(1, fake.uploads)
-                assertEquals(1, fake.methods.count { it == "system.client_version" })
-                assertEquals(listOf("d.multicall2", "d.name", "system.client_version"),
+                assertEquals(1, fake.heads)
+                assertEquals(listOf("d.multicall2", "d.name"),
                     fake.methods)
                 val header = fake.authorizations.single().orEmpty()
                 assertTrue("Expected preauthorized form", header.startsWith(
@@ -100,7 +118,49 @@ class RuTorrentUploadAuthorizationReplayTest {
                 remote.loadStoppedViaRuTorrentUpload(torrent, "/srv/media"))
             assertEquals(1, fake.uploads)
             assertNull(fake.authorizations.single())
-            assertEquals(listOf("d.multicall2", "d.name", "system.client_version"), fake.methods)
+            assertEquals(listOf("d.multicall2", "d.name"), fake.methods)
+        }
+    }
+
+    @Test fun uploadTargetHeadChallengeAuthorizesOneFormWithoutReplay() = runBlocking {
+        for (challenge in listOf(challengeBasic, challengeDigest)) {
+            Fake(null, rejectAfterUpload = true, headChallenge = challenge).use { fake ->
+                val remote = RTorrentRemote(RemoteCredentials(fake.root, "alice", "secret"))
+                assertEquals(RemoteAddOutcome.Uncertain(hash),
+                    remote.loadStoppedViaRuTorrentUpload(torrent, "/srv/media"))
+                assertEquals(1, fake.uploads)
+                val header = fake.authorizations.single().orEmpty()
+                assertTrue(header.startsWith(if (challenge == challengeBasic) "Basic " else "Digest "))
+                if (challenge == challengeDigest)
+                    assertTrue(header.contains("uri=\"/rutorrent/php/addtorrent.php\""))
+            }
+        }
+    }
+
+    @Test fun rpcChallengeDoesNotAuthorizeASeparateUploadPath() = runBlocking {
+        for (headStatus in listOf(200, 403, 404, 405, 501)) {
+            Fake(challengeDigest, rejectAfterUpload = true, headStatus = headStatus, protectListing = true).use { fake ->
+                val remote = RTorrentRemote(RemoteCredentials(fake.root, "alice", "secret"))
+                assertEquals(RemoteAddOutcome.Uncertain(hash),
+                    remote.loadStoppedViaRuTorrentUpload(torrent, "/srv/media"))
+                assertEquals(1, fake.heads)
+                assertEquals(1, fake.uploads)
+                assertNull(fake.authorizations.single())
+                assertEquals(2, fake.methods.count { it == "d.multicall2" })
+                assertNull(fake.rpcAuthorizations[0])
+                assertTrue(fake.rpcAuthorizations[1].orEmpty().startsWith("Digest "))
+                assertTrue(fake.methods.none { it == "system.client_version" })
+            }
+        }
+    }
+
+    @Test fun uploadHeadRedirectPreventsAnyFormSubmission() = runBlocking {
+        Fake(challengeBasic, rejectAfterUpload = true, headStatus = 302).use { fake ->
+            val remote = RTorrentRemote(RemoteCredentials(fake.root, "alice", "secret"))
+            assertEquals(RemoteAddOutcome.Uncertain(hash),
+                remote.loadStoppedViaRuTorrentUpload(torrent, "/srv/media"))
+            assertEquals(1, fake.heads)
+            assertEquals(0, fake.uploads)
         }
     }
 

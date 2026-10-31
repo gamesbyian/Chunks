@@ -29,9 +29,8 @@ import org.junit.runner.RunWith
 import org.libtorrent4j.TorrentBuilder
 
 /**
- * A finished local transfer copied through the real ContentResolver into a
- * debug-only DocumentsProvider tree, while the engine keeps seeding the originals.
- * Not proof for vendor providers, SD cards or the system folder picker.
+ * A finished local transfer remains intact and seeding when publication is
+ * refused. The disposable provider fixture is not proof for vendor providers.
  */
 @RunWith(AndroidJUnit4::class)
 class LocalLibraryCopyInstrumentedTest {
@@ -63,7 +62,7 @@ class LocalLibraryCopyInstrumentedTest {
         }
     }
 
-    @Test fun finishedTransferIsCopiedIntoANewFolderAndKeepsSeeding() {
+    @Test fun finishedTransferCopyIsRefusedAndKeepsSeeding() {
         val root = File(work, "Library fixture").apply { mkdirs() }
         val random = Random(11)
         val payload = linkedMapOf(
@@ -87,10 +86,10 @@ class LocalLibraryCopyInstrumentedTest {
 
         val result = LocalZipExtraction.copyFinished(context, source.sourceRoot, source.files, status.name, tree,
             allowUnknownFreeSpace = true) { false }
-        assertEquals(result.reason, ZipExtractionStatus.EXTRACTED, result.status)
-        assertEquals("Library fixture (2)", result.folderName)
+        assertEquals(result.reason, ZipExtractionStatus.BLOCKED, result.status)
+        assertNull(result.folderName)
+        assertTrue(!File(base, "Library fixture (2)").exists())
         for ((path, bytes) in payload) {
-            assertArrayEquals(path, bytes, File(base, "Library fixture (2)/$path").readBytes())
             assertArrayEquals(path, bytes, File(root, path).readBytes())
         }
         assertEquals("user's own", File(base, "Library fixture/Episode 1.bin").readText())
