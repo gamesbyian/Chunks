@@ -21,8 +21,15 @@ internal object RemoteCredentialLock {
     val monitor = Any()
     private var generation = 0L
 
-    /** Capture before an asynchronous Connect. Never persist on a stale ticket. */
+    /** Read the current generation without claiming a new connection. */
     fun capture(): Long = synchronized(monitor) { generation }
+
+    /**
+     * Every new asynchronous Connect has its own generation. Even when two
+     * Connect requests start with remembering enabled, only the most recent
+     * one can persist credentials after network suspension.
+     */
+    fun beginConnection(): Long = synchronized(monitor) { ++generation }
     fun current(ticket: Long): Boolean = synchronized(monitor) { ticket == generation }
     fun invalidate() = synchronized(monitor) { generation++ }
 }
