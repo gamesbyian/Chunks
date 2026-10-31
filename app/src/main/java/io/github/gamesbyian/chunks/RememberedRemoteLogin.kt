@@ -13,6 +13,21 @@ import javax.crypto.spec.GCMParameterSpec
 import org.json.JSONArray
 
 /**
+ * One process-wide serialization boundary for the legacy encrypted login,
+ * roster, and remember/forget policy. Never hold instance monitors across
+ * these stores: opposite lock orders can deadlock concurrent Connect/Forget.
+ */
+internal object RemoteCredentialLock {
+    val monitor = Any()
+    private var generation = 0L
+
+    /** Capture before an asynchronous Connect. Never persist on a stale ticket. */
+    fun capture(): Long = synchronized(monitor) { generation }
+    fun current(ticket: Long): Boolean = synchronized(monitor) { ticket == generation }
+    fun invalidate() = synchronized(monitor) { generation++ }
+}
+
+/**
  * One opt-out saved rTorrent profile, encrypted with a device-bound Android
  * Keystore AES-GCM key. The credential record never enters source, backups,
  * exported components, or cleartext preferences. No biometric requirement:
@@ -21,14 +36,6 @@ import org.json.JSONArray
  * A lost/inaccessible Keystore key is a fail-closed logged-out state. Chunks
  * never falls back to a hardcoded key or unencrypted password storage.
  */
-/**
- * One process-wide serialization boundary for the legacy encrypted login,
- * roster, and remember/forget policy. Never hold instance monitors across
- * these stores: opposite lock orders can deadlock concurrent Connect/Forget.
- */
-internal object RemoteCredentialLock {
-    val monitor = Any()
-}
 
 internal class RememberedRemoteLogin(context: Context) {
     private val appContext = context.applicationContext
@@ -56,6 +63,9 @@ internal class RememberedRemoteLogin(context: Context) {
         val editor = prefs.edit().putBoolean("remember_enabled", enabled)
         if (!enabled) editor.remove("ciphertext")
         if (!editor.commit()) return false
+        // Invalidate any pending Connect's right to persist even if a user
+        // toggles remembering OFF and back ON before its network call finishes.
+        RemoteCredentialLock.invalidate()
         if (!enabled) {
             runCatching { keyStore().deleteEntry(alias) }
             // If a roster scrub fails, the OFF policy is already committed.
@@ -112,9 +122,20 @@ internal class RememberedRemoteLogin(context: Context) {
         ).commit()
     }
 
+    /**
+     * Save a verified connection only if the policy and explicit Forget state
+     * have not changed since Connect began. UI must pass a ticket captured at
+     * Connect start and invalidate it on disconnect/replacement.
+     */
+    fun saveIfCurrent(credentials: RemoteCredentials, ticket: Long): Boolean =
+        synchronized(RemoteCredentialLock.monitor) {
+            if (!RemoteCredentialLock.current(ticket)) false else save(credentials)
+        }
+
     /** Clear encrypted profile first; remove its key if the store is empty. */
     fun clear(): Boolean = synchronized(RemoteCredentialLock.monitor) {
         if (!prefs.edit().remove("ciphertext").commit()) return false
+        RemoteCredentialLock.invalidate()
         return try {
             keyStore().deleteEntry(alias)
             true
