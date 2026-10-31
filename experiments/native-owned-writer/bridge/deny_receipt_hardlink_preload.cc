@@ -4,13 +4,13 @@
 #include <unistd.h>
 
 // Disposable Linux host acceptance ONLY. When the actual rebuilt libtorrent
-// custom writer tries to publish a private .tmp- receipt through linkat,
+// custom writer tries to publish an unnamed pinned receipt FD through linkat,
 // simulate Android app-private EPERM. This must execute during positive
 // libtorrent loopback download AND foreign-file collision refusals.
 // In any real app or Android binary this source must NEVER be compiled.
 extern "C" int linkat(int olddirfd, const char* oldpath,
                         int newdirfd, const char* newpath, int flags) {
-  if (std::strncmp(oldpath, ".tmp-", 5) == 0) {
+  if (oldpath[0] == '\0') {
     static constexpr char marker[] =
         "CHUNKS_HOST_RECEIPT_LINKAT_DENIED=EPERM\\n";
     const ssize_t emitted = ::write(STDERR_FILENO, marker, sizeof(marker) - 1);
