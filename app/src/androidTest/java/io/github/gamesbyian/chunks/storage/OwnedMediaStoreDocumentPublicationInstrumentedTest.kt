@@ -108,6 +108,8 @@ class OwnedMediaStoreDocumentPublicationInstrumentedTest {
             val created = root.toFile().list().orEmpty().toSet() - originalIds
             assertEquals("One exclusive new journal per publication", 1, created.size)
             val id = requireNotNull(created.single().removeSuffix(".log"))
+            assertEquals("Receipt must link directly to its exact durable operation",
+                receipt.operationId, id)
             val recorded = OwnedMediaStorePublicationJournal.parse(id,
                 io.github.gamesbyian.chunks.storage.ExclusiveFsyncJournal
                     .readCompleteLines(root.resolve("${id}.log")))
