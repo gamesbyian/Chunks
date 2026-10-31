@@ -74,10 +74,17 @@ internal object LocalAdmissionProvenance {
         if (Build.VERSION.SDK_INT > 0) {
             // Android's NIO directory FileChannel.force is not portable.
             // Use a real directory descriptor and a checked kernel fsync.
-            val flags = OsConstants.O_RDONLY or OsConstants.O_DIRECTORY or
-                OsConstants.O_NOFOLLOW or OsConstants.O_CLOEXEC
+            // Android's public OsConstants API does not expose O_DIRECTORY.
+            // Open without following symlinks, then confirm the pinned FD
+            // itself refers to a directory before attempting fsync.
+            val flags = OsConstants.O_RDONLY or OsConstants.O_NOFOLLOW or
+                OsConstants.O_CLOEXEC
             val fd = Os.open(root.toString(), flags, 0)
-            try { Os.fsync(fd) } finally { Os.close(fd) }
+            try {
+                if (!OsConstants.S_ISDIR(Os.fstat(fd).st_mode))
+                    throw java.io.IOException("Admission state root is not a directory")
+                Os.fsync(fd)
+            } finally { Os.close(fd) }
         } else {
             FileChannel.open(root, StandardOpenOption.READ).use { it.force(true) }
         }
