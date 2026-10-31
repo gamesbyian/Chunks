@@ -90,12 +90,22 @@ internal object OwnedMediaStoreDocumentPublication {
         expectedSize: Long? = null
     ) {
         val actual = row(resolver, uri)
-        if (actual.id != expectedId || actual.name != expectedName ||
-            actual.owner != expectedOwner ||
-            actual.relativePath.trimEnd('/') != expectedPath.trimEnd('/') ||
-            actual.mime != expectedMime || actual.pending != pending ||
-            (expectedSize != null && actual.size != expectedSize))
-            throw IOException("MediaStore row identity or publication state changed; refusing")
+        // Report only *which* independent assertion failed, never private
+        // filenames, exact URI, filesystem path or personally identifying
+        // values. A stale platform SIZE index must be distinguished from
+        // wrong owner/row ID before deciding how to handle an API variation.
+        val mismatches = buildList {
+            if (actual.id != expectedId) add("row-id")
+            if (actual.name != expectedName) add("name")
+            if (actual.owner != expectedOwner) add("owner")
+            if (actual.relativePath.trimEnd('/') != expectedPath.trimEnd('/')) add("relative-path")
+            if (actual.mime != expectedMime) add("mime-type")
+            if (actual.pending != pending) add("pending-state")
+            if (expectedSize != null && actual.size != expectedSize) add("provider-size")
+        }
+        if (mismatches.isNotEmpty())
+            throw IOException("MediaStore rejected " + mismatches.joinToString(",") +
+                "; no unknown document was modified or deleted")
     }
 
     private fun readIndependent(
