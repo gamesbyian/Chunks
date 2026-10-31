@@ -2,6 +2,7 @@ package io.github.gamesbyian.chunks.storage
 
 import android.content.ContentValues
 import android.os.Environment
+import android.os.Build
 import android.provider.MediaStore
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -162,18 +163,20 @@ class OwnedMediaStoreDocumentPublicationInstrumentedTest {
             // for an app-owned still-pending row even when its read/query
             // succeeded. Do not confuse this test teardown counter with the
             // *production* promise to leave ambiguous rows untouched.
+            val includingPending = if (Build.VERSION.SDK_INT == 29)
+                MediaStore.setIncludePending(uri) else uri
             fun stillVisible(): Boolean = try {
-                resolver.query(uri, arrayOf(MediaStore.MediaColumns._ID),
+                resolver.query(includingPending, arrayOf(MediaStore.MediaColumns._ID),
                     null, null, null)?.use { it.moveToFirst() } ?: false
             } catch (_: Exception) { false }
-            resolver.delete(uri, null, null)
+            resolver.delete(includingPending, null, null)
             if (stillVisible()) {
                 // Only this exact newly created test URI, never a name/path
                 // or an operation discovered from any production journal.
-                resolver.update(uri, ContentValues().apply {
+                resolver.update(includingPending, ContentValues().apply {
                     put(MediaStore.MediaColumns.IS_PENDING, 0)
                 }, null, null)
-                resolver.delete(uri, null, null)
+                resolver.delete(includingPending, null, null)
             }
             assertFalse("Test-created row remained visible after test-only cleanup",
                 stillVisible())
