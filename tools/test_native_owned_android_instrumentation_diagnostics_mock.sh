@@ -27,7 +27,6 @@ case "$1" in
     ;;
 esac
 MOCK
-sed -i 's/$/\$/g' "$temp/bin/adb"
 chmod +x "$temp/bin/adb"
 export PATH="$temp/bin:$PATH"
 script="$root/native_owned_android_instrumentation_diagnostics.sh"
