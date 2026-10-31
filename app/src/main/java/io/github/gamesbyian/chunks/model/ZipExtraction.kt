@@ -1,12 +1,9 @@
 package io.github.gamesbyian.chunks.model
 
 import java.io.File
-import java.io.FileOutputStream
 import java.io.InputStream
 import java.io.IOException
 import java.io.OutputStream
-import java.net.URLDecoder
-import java.net.URLEncoder
 import java.util.Locale
 import java.util.UUID
 import java.util.zip.CRC32
@@ -429,27 +426,6 @@ object ZipExtractor {
     }
 }
 
-// The legacy plain-file target was moved to src/test: its path-based output
-// reopen/rename/delete cannot prove ownership and must never ship to Android.
-// The provider-specific shipping SAF adapter refuses all output operations.
-
-/** Append-only, fsynced, percent-encoded journal file for one operation. */
-class FileZipExtractionJournal(private val file: File) : ZipExtractionJournal {
-    override fun append(fields: List<String>) {
-        val line = fields.joinToString("\t") { URLEncoder.encode(it, "UTF-8") } + "\n"
-        FileOutputStream(file, true).use { output ->
-            output.write(line.toByteArray(Charsets.UTF_8))
-            output.fd.sync()
-        }
-    }
-
-    override fun read(): List<List<String>> {
-        if (!file.isFile) return emptyList()
-        // A torn final line from a crash is ignored rather than misparsed.
-        val text = file.readText(Charsets.UTF_8)
-        val complete = if (text.endsWith("\n")) text else text.substringBeforeLast("\n", "")
-        return complete.lineSequence().filter { it.isNotEmpty() }.map { line ->
-            line.split("\t").map { URLDecoder.decode(it, "UTF-8") }
-        }.toList()
-    }
-}
+// Deliberately no filesystem writer/journal here. The legacy File adapter
+// and its pathname-reopened append journal live solely in test source.
+// Production SAF destination mutation remains blocked under #809.
