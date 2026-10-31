@@ -63,6 +63,12 @@ class LocalEngineProcessDeathInstrumentedTest {
         val torrent = TorrentBuilder().path(root).pieceSize(16 * 1024).generate().entry().bencode()
         val engine = LocalEngineHolder.get(context)
         val added = (engine.addStopped(torrent, work) as LocalAddResult.AddedStopped).status
+        val provenance = File(context.filesDir, "local-engine/${added.infoHash}.admission")
+        val expectedAdmission = "chunks-native-admission-v1\\n${added.infoHash}\\nreviewed-existing\\n"
+        assertTrue("Explicit seeding Add must durably publish its private admission receipt",
+            provenance.isFile)
+        assertEquals("The fixture must not masquerade as a checked download",
+            expectedAdmission.replace("\\n", "\n"), provenance.readText())
         assertEquals(LocalCommandOutcome.VERIFIED, engine.resume(added.infoHash).outcome)
         LocalEngineService.start(context)
         waitFor("ongoing notification", 30) {
@@ -91,7 +97,16 @@ class LocalEngineProcessDeathInstrumentedTest {
             val restored = engine.status(hash)
             assertNotNull("transfer missing after restart", restored)
             assertTrue("restored transfer must not auto-start", restored!!.stopped)
-            assertEquals(LocalCommandOutcome.VERIFIED, engine.resume(hash).outcome)
+            val admission = File(context.filesDir, "local-engine/$hash.admission")
+            val expectedAdmission = "chunks-native-admission-v1\\n$hash\\nreviewed-existing\\n"
+                .replace("\\n", "\n")
+            assertTrue("Private Add admission receipt must survive sudden SIGKILL",
+                admission.isFile)
+            assertEquals("Previously reviewed seed must retain its exact admission mode",
+                expectedAdmission, admission.readText())
+            val command = engine.resume(hash)
+            assertEquals("Restored native Start refused: ${command.status?.error}",
+                LocalCommandOutcome.VERIFIED, command.outcome)
             waitFor("recheck to 100%", 90) { engine.status(hash)?.progressPpm == 1_000_000 }
             assertEquals(LocalCommandOutcome.VERIFIED, engine.pause(hash).outcome)
             assertEquals("payload bytes changed after recheck", digest, sha(File(path)))
