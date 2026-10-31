@@ -23,6 +23,17 @@
 | Issue/PR descriptions | Two legacy PRs still embed native writer prerequisites; #809 and #5 have outdated #568 references. | Update live summaries and status headers with exact new owner/branch evidence, preserve traceability for original work. |
 | Other 107-file inventory | Many design, research, history and UX documents are already explicitly dated/deferred and do not independently assert new live release gates. | No cosmetic mass rewrite; preserve historical/source material and adjust only live-misleading assertions. |
 
+## Complete open-tracker disposition index (snapshot before #870 merged)
+
+| Disposition | Issue numbers | Current handling |
+|---|---|---|
+| Genuine G0/G1 code, transport, Android, evidence | **#1, #4, #5, #9, #10, #569, #865, #809** | Active current engineering and acceptance; exact policy and test tiers matter. #865/#809 had concrete source/tests and status reconciled; #569 historical test status fixed. |
+| Shared UX/capability foundation with pending acceptance | **#8, #464, #567, #687, #779** | Retain active/dependency scope, no new code acceptance implied; #687's old AUD-01 nonclobber premise explicitly superseded. |
+| G3 storage/recovery and dependent features | **#2, #6, #7, #70, #289** | Retain linked feature contract and dependency, no unsupported general filesystem guarantees; #7/#70 updated to current #809 semantics. |
+| Deferred optional/future features | **#3, #151, #347, #403, #415, #660, #663, #689** | Retain explicitly deferred scope; do not convert into core release blocks or inflate active queue. |
+
+Open PR descriptions checked individually: **#870** merged after exact-head Markdown CI; **#812** legacy unique admission receipt/test source, do not merge or discard; **#856** legacy immutable resume research, reconcile unique tests; **#868** active #865 base with bounded isolated green suites; **#869** stacked #865 top with observed Android native red. All four remaining descriptions have been rewritten to lead with accurate current status, unresolved acceptance and historical source provenance.
+
 ## Continuing acceptance and operational hygiene
 
 - **Current priority is not changed by this report:** genuine native metadata integrity #865; tested local and remote successful paths #5/#1/#4; #809 provider- and operation-specific positive functionality; platform seeding limitations #569; independent acceptance #9/#10. Follow the one [work queue](WORK-QUEUE.md) for ordered executable slices.
