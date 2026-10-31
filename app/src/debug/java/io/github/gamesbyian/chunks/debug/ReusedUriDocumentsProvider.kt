@@ -38,13 +38,17 @@ class ReusedUriDocumentsProvider : DocumentsProvider() {
 
     private fun row(cursor: MatrixCursor, id: String) {
         val file = if (id == ROOT_ID) baseDir(requireNotNull(context)) else foreignFile()
-        cursor.newRow()
-            .add(Document.COLUMN_DOCUMENT_ID, id)
-            .add(Document.COLUMN_DISPLAY_NAME, if (id == ROOT_ID) "Adversarial fixture" else "foreign.txt")
-            .add(Document.COLUMN_MIME_TYPE,
-                if (id == ROOT_ID) Document.MIME_TYPE_DIR else "text/plain")
-            .add(Document.COLUMN_SIZE, if (id == ROOT_ID) null else file.length())
-            .add(Document.COLUMN_FLAGS, if (id == ROOT_ID) Document.FLAG_DIR_SUPPORTS_CREATE else 0)
+        // A provider must honour the caller's projection. Android code commonly
+        // requests only document ID and display name; overfilling MatrixCursor
+        // here would make our adversarial test fail before the identity check.
+        val values: Map<String, Any?> = mapOf(
+            Document.COLUMN_DOCUMENT_ID to id,
+            Document.COLUMN_DISPLAY_NAME to if (id == ROOT_ID) "Adversarial fixture" else "foreign.txt",
+            Document.COLUMN_MIME_TYPE to if (id == ROOT_ID) Document.MIME_TYPE_DIR else "text/plain",
+            Document.COLUMN_SIZE to if (id == ROOT_ID) null else file.length(),
+            Document.COLUMN_FLAGS to if (id == ROOT_ID) Document.FLAG_DIR_SUPPORTS_CREATE else 0
+        )
+        cursor.addRow(cursor.columnNames.map { values[it] }.toTypedArray())
     }
 
     private val columns = arrayOf(Document.COLUMN_DOCUMENT_ID, Document.COLUMN_DISPLAY_NAME,
@@ -53,10 +57,13 @@ class ReusedUriDocumentsProvider : DocumentsProvider() {
     override fun queryRoots(projection: Array<out String>?): Cursor =
         MatrixCursor(projection ?: arrayOf(Root.COLUMN_ROOT_ID, Root.COLUMN_DOCUMENT_ID,
             Root.COLUMN_TITLE, Root.COLUMN_FLAGS)).apply {
-            newRow().add(Root.COLUMN_ROOT_ID, ROOT_ID)
-                .add(Root.COLUMN_DOCUMENT_ID, ROOT_ID)
-                .add(Root.COLUMN_TITLE, "Reused URI test fixture")
-                .add(Root.COLUMN_FLAGS, Root.FLAG_SUPPORTS_CREATE or Root.FLAG_LOCAL_ONLY)
+            val values: Map<String, Any?> = mapOf(
+                Root.COLUMN_ROOT_ID to ROOT_ID,
+                Root.COLUMN_DOCUMENT_ID to ROOT_ID,
+                Root.COLUMN_TITLE to "Reused URI test fixture",
+                Root.COLUMN_FLAGS to (Root.FLAG_SUPPORTS_CREATE or Root.FLAG_LOCAL_ONLY)
+            )
+            addRow(columnNames.map { values[it] }.toTypedArray())
         }
 
     override fun queryDocument(documentId: String, projection: Array<out String>?): Cursor {
