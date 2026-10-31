@@ -102,8 +102,7 @@ internal class RememberedRemoteProfileRoster(context: Context) {
     }
 
     /** Corrupt/inaccessible encrypted records fail closed and are cleared. */
-    @Synchronized
-    fun list(): List<Profile> {
+    fun list(): List<Profile> = synchronized(RemoteCredentialLock.monitor) {
         migrationBlocked = false
         if (!legacy.rememberingEnabled()) return emptyList()
         val packed = try { prefs.getString("roster", null) }
@@ -156,11 +155,10 @@ internal class RememberedRemoteProfileRoster(context: Context) {
     }
 
     /** Never call until remote authentication has succeeded and opt-out is off. */
-    @Synchronized
     fun saveVerified(
         credentials: RemoteCredentials, preferredLabel: String? = null,
         verifiedAt: Long = System.currentTimeMillis()
-    ): Boolean {
+    ): Boolean = synchronized(RemoteCredentialLock.monitor) {
         if (!legacy.rememberingEnabled() || !valid(credentials)) return false
         val name = preferredLabel?.trim()?.takeIf {
             it.length in 1..100 && it.none { c -> c.code < 32 || c.code == 127 }
@@ -175,8 +173,7 @@ internal class RememberedRemoteProfileRoster(context: Context) {
         return persist(current)
     }
 
-    @Synchronized
-    fun forget(id: String): Boolean {
+    fun forget(id: String): Boolean = synchronized(RemoteCredentialLock.monitor) {
         if (!validId.matches(id)) return false
         val current = list()
         if (migrationBlocked || current.none { it.id == id }) return false
@@ -184,8 +181,7 @@ internal class RememberedRemoteProfileRoster(context: Context) {
     }
 
     /** Clear ciphertext before removing the key. Never restore stale secrets. */
-    @Synchronized
-    fun clearAll(): Boolean {
+    fun clearAll(): Boolean = synchronized(RemoteCredentialLock.monitor) {
         val erased = prefs.edit().remove("roster").commit()
         if (!erased) return false
         runCatching { keystore().deleteEntry(alias) }
@@ -207,7 +203,7 @@ internal class RememberedRemoteProfileRoster(context: Context) {
 
     /** Encrypts and stores [rows] as-is; tests use it to write older record shapes. */
     @androidx.annotation.VisibleForTesting
-    internal fun writeRows(rows: JSONArray): Boolean {
+    internal fun writeRows(rows: JSONArray): Boolean = synchronized(RemoteCredentialLock.monitor) {
         return try {
             val raw = rows.toString().toByteArray(Charsets.UTF_8)
             require(raw.size <= 100_000)
