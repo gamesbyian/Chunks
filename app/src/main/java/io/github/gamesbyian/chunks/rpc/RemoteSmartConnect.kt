@@ -56,11 +56,12 @@ object RemoteSmartConnect {
             Category.TLS -> "Secure connection failed. Check the HTTPS hostname/certificate. Chunks will not bypass TLS."
             Category.NETWORK -> "The server is unreachable or did not respond. Check its address and network."
             Category.SERVICE -> "The seedbox gateway could not process a read-only connection check. Chunks stopped checking other paths rather than risking another instance."
+            Category.PROTOCOL -> "The server answered, but its rTorrent identity could not be verified. Chunks stopped looking at other paths."
             Category.ENDPOINT -> "No compatible rTorrent XML-RPC endpoint was verified. Paste the complete ruTorrent URL, or enter your provider's exact RPC path under Advanced connection settings."
         }
     )
 
-    enum class Category { AUTH, PROXY, RATE_LIMIT, TLS, NETWORK, SERVICE, ENDPOINT }
+    enum class Category { AUTH, PROXY, RATE_LIMIT, TLS, NETWORK, SERVICE, PROTOCOL, ENDPOINT }
 
     /** Targeted next steps for a failed connection; never echoes secrets. */
     fun repairAdvice(failure: ConnectionFailed, input: String): List<String> {
@@ -87,6 +88,9 @@ object RemoteSmartConnect {
             Category.SERVICE -> listOf(
                 "The exact seedbox gateway returned a server-side error; it may be temporarily unavailable.",
                 "Check your provider status or retry this exact address later. Chunks will not search other account paths after this response.")
+            Category.PROTOCOL -> listOf(
+                "The server replied, but Chunks could not prove that the response came from the expected rTorrent instance.",
+                "Paste your exact ruTorrent or XML-RPC address; Chunks will not try another account path after an ambiguous reply.")
             Category.ENDPOINT -> buildList {
                 if (!explicit) add("Open ruTorrent in your browser and paste the full address from the address bar " +
                     "(for example https://host/username/rutorrent/).")
@@ -278,7 +282,14 @@ object RemoteSmartConnect {
                             failure.message.orEmpty().contains("authentication identity", true) ||
                             failure.message.orEmpty().contains("Digest", true)) ->
                         Category.AUTH
-                    else -> Category.ENDPOINT
+                    // A real HTTP 404 is the one safe signal that this
+                    // candidate URL has no gateway. RPC faults, malformed
+                    // responses and arbitrary IO failures are ambiguous and
+                    // must not trigger another credential-bearing path probe.
+                    failure is IOException &&
+                        Regex("(?i)HTTP(?:/\\d+(?:\\.\\d+)?)?\\s+404(?:\\D|$)")
+                            .containsMatchIn(failure.message.orEmpty()) -> Category.ENDPOINT
+                    else -> Category.PROTOCOL
                 }
                 attempts += Attempt(candidate.description, path, when (category) {
                     Category.ENDPOINT -> describe(failure)
@@ -288,6 +299,7 @@ object RemoteSmartConnect {
                     Category.TLS -> "Secure connection failed"
                     Category.NETWORK -> "Unreachable"
                     Category.SERVICE -> "Server gateway error; no further paths tried"
+                    Category.PROTOCOL -> "Could not verify rTorrent identity; no further paths tried"
                 })
                 if (category != Category.ENDPOINT)
                     throw ConnectionFailed(category, attempted, attempts)
