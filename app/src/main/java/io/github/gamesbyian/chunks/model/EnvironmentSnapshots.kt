@@ -28,7 +28,10 @@ object EnvironmentSnapshots {
         return serverId(aliasScope.substring(0, separator), aliasScope.substring(separator + 1))
     }
 
-    // The authenticated HTTP username is opaque: spaces, case and leading/trailing\n    // whitespace can distinguish principals even on the same RPC endpoint.\n    // Trim only surrounding URL-input whitespace, never the authenticated user.\n    fun serverId(endpoint: String, username: String): EnvironmentId = EnvironmentId(
+    // The authenticated HTTP username is opaque: spaces, case and leading/trailing
+    // whitespace can distinguish principals even on the same RPC endpoint.
+    // Trim only surrounding URL-input whitespace, never the authenticated user.
+    fun serverId(endpoint: String, username: String): EnvironmentId = EnvironmentId(
         MessageDigest.getInstance("SHA-256")
             .digest((endpoint.trim() + "\u0000" + username).toByteArray(Charsets.UTF_8))
             .joinToString("") { "%02x".format(it.toInt() and 255) })
