@@ -87,6 +87,7 @@ class OwnedPreviewStageTests(unittest.TestCase):
         text = path.read_text()
         self.assertIn('applicationId = "io.github.gamesbyian.chunks.ownedlab"', text)
         self.assertIn("sourceSets.getByName", text)
+        self.assertIn('sourceSets.getByName("androidTest")', text)
         self.assertIn("libtorrent4j-owned-lab.jar", text)
         self.assertIn("ownedLabPermittedTasks", text)
         self.assertIn('"assembleDebugAndroidTest"', text)
@@ -105,6 +106,17 @@ class OwnedPreviewStageTests(unittest.TestCase):
         self.assertEqual(receipt["allowed_build_type"], "debug")
         self.assertEqual(receipt["owned_native_so_sha256"], digest(self.so))
         self.assertEqual(receipt["purpose"], "NON-SHIPPING JNI TEST OVERLAY ONLY")
+        smoke = self.output / "androidTest/io/github/gamesbyian/chunks/engine/OwnedJniSessionSmokeInstrumentedTest.kt"
+        self.assertEqual(receipt["instrumented_test_sha256"], digest(smoke))
+        self.assertEqual(receipt["instrumented_test"],
+                         "io.github.gamesbyian.chunks.engine.OwnedJniSessionSmokeInstrumentedTest")
+        src = smoke.read_text()
+        self.assertIn("params.setOwnedDiskIO(receipts.absolutePath)", src)
+        self.assertIn("native.start(params)", src)
+        self.assertIn("context.cacheDir", src)
+        self.assertNotIn("Downloads", src)
+        self.assertNotIn("addTorrent", src)
+        self.assertIn("no torrent bytes", receipt["proof_limit"])
 
     def test_same_output_is_refused_after_a_success(self):
         self.stage()
