@@ -10,6 +10,12 @@ import android.os.ParcelFileDescriptor
 import android.provider.OpenableColumns
 import java.io.File
 import java.io.FileNotFoundException
+import java.nio.ByteBuffer
+import java.nio.channels.FileChannel
+import java.nio.file.FileAlreadyExistsException
+import java.nio.file.Files
+import java.nio.file.LinkOption
+import java.nio.file.StandardOpenOption
 
 /**
  * Read-only, non-exported provider for sharing a just-created .torrent file.
@@ -21,13 +27,49 @@ class CreatedTorrentProvider : ContentProvider() {
         fun authority(context: Context) = context.packageName + ".created-torrents"
         fun folder(context: Context) = File(context.cacheDir, "created-torrents")
 
-        /** Writes [bytes] under a safe name and returns the shareable URI. */
+        /**
+         * Each share creates a NEW owned cache object. Never truncate a prior
+         * export or another file with the same requested name. Retain the
+         * original file descriptor through the write and force content before
+         * returning a URI; ambiguous failures leave a private orphan to review,
+         * not a pathname-based cleanup that could destroy substituted bytes.
+         */
         fun publish(context: Context, name: String, bytes: ByteArray): Uri {
-            val dir = folder(context).apply { mkdirs() }
-            val file = File(dir, name)
-            check(file.parentFile == dir) { "Unsafe name" }
-            file.writeBytes(bytes)
-            return Uri.Builder().scheme("content").authority(authority(context)).appendPath(file.name).build()
+            check(name.length in 9..220 && name.endsWith(".torrent") &&
+                !name.startsWith('.') && name.none { it == '/' || it == '\\' ||
+                    it.isISOControl() }) { "Unsafe torrent share filename" }
+            val dir = folder(context)
+            val path = dir.toPath()
+            try {
+                Files.createDirectory(path)
+            } catch (_: FileAlreadyExistsException) {
+                // Only an actual directory counts, never a symlink.
+            }
+            check(Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS)) {
+                "Cache share root is not a plain private directory"
+            }
+            val stem = name.removeSuffix(".torrent")
+            for (attempt in 1..1000) {
+                val candidate = if (attempt == 1) name else "${stem} (${attempt}).torrent"
+                val outputPath = path.resolve(candidate)
+                val output = try {
+                    FileChannel.open(outputPath, StandardOpenOption.CREATE_NEW,
+                        StandardOpenOption.WRITE, LinkOption.NOFOLLOW_LINKS)
+                } catch (_: FileAlreadyExistsException) {
+                    continue
+                }
+                output.use { channel ->
+                    val remaining = ByteBuffer.wrap(bytes)
+                    while (remaining.hasRemaining()) channel.write(remaining)
+                    channel.force(true)
+                }
+                // Do not announce a URI until the new directory entry is
+                // durably requested. No fallback to an overwrite-capable open.
+                FileChannel.open(path, StandardOpenOption.READ).use { it.force(true) }
+                return Uri.Builder().scheme("content").authority(authority(context))
+                    .appendPath(candidate).build()
+            }
+            throw java.io.IOException("Could not reserve an exclusive share filename")
         }
     }
 
@@ -36,7 +78,10 @@ class CreatedTorrentProvider : ContentProvider() {
         val name = uri.pathSegments.singleOrNull() ?: throw FileNotFoundException()
         val dir = folder(context)
         val file = File(dir, name)
-        if (file.parentFile != dir || !file.name.endsWith(".torrent") || !file.isFile) throw FileNotFoundException()
+        if (file.parentFile != dir || !file.name.endsWith(".torrent") ||
+            !Files.isDirectory(dir.toPath(), LinkOption.NOFOLLOW_LINKS) ||
+            !Files.isRegularFile(file.toPath(), LinkOption.NOFOLLOW_LINKS))
+            throw FileNotFoundException()
         return file
     }
 
