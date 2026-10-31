@@ -31,7 +31,7 @@ TOKEN = re.compile(
 def source_without_comments(source: str) -> str:
     def clean(match: re.Match[str]) -> str:
         value = match.group()
-        if value.startswith("//") or value.startswith("/*"):
+        if value.startswith("//") or value.startswith("/*") or value.startswith('"""'):
             return re.sub(r"[^\n]", " ", value)
         return value
     return TOKEN.sub(clean, source)
