@@ -46,6 +46,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
 import java.nio.file.Files
+import org.junit.Assert.assertArrayEquals
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -53,6 +55,13 @@ import org.junit.runner.RunWith
 import org.libtorrent4j.SessionManager
 import org.libtorrent4j.SessionParams
 import org.libtorrent4j.SettingsPack
+import org.libtorrent4j.AddTorrentParams
+import org.libtorrent4j.TorrentBuilder
+import org.libtorrent4j.TorrentFlags
+import org.libtorrent4j.TorrentHandle
+import org.libtorrent4j.TorrentInfo
+import org.libtorrent4j.swig.error_code
+import org.libtorrent4j.swig.torrent_flags_t
 
 @RunWith(AndroidJUnit4::class)
 class OwnedJniSessionSmokeInstrumentedTest {
@@ -77,6 +86,57 @@ class OwnedJniSessionSmokeInstrumentedTest {
                 native.stop()
             }
             assertTrue(receipts.isDirectory)
+    }
+
+    @Test fun ownedJniActuallyRefusesPreexistingForeignNativePayload() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val root = Files.createTempDirectory(context.cacheDir.toPath(), "owned-native-canary-").toFile()
+        val receipts = File(root, "receipts").apply { mkdir() }
+        Os.chmod(receipts.absolutePath, 448) // exact test-private mode 0700
+        val original = ByteArray(16 * 1024) { (it % 251).toByte() }
+        val source = File(root, "seed/Foreign fixture").apply { mkdirs() }
+        File(source, "payload.bin").writeBytes(original)
+        val metadata = TorrentBuilder().path(source).pieceSize(16 * 1024)
+            .flags(TorrentBuilder.V1_ONLY).generate().entry().bencode()
+        val destination = File(root, "destination").apply { mkdirs() }
+        val foreign = File(destination, "Foreign fixture/payload.bin")
+        assertTrue(foreign.parentFile.mkdirs())
+        val canary = ByteArray(original.size) { ((it + 63) % 251).toByte() }
+        assertTrue(!canary.contentEquals(original))
+        foreign.writeBytes(canary)
+        val settings = SettingsPack().listenInterfaces("127.0.0.1:0")
+        settings.setEnableDht(false)
+        settings.setEnableLsd(false)
+        val sessionParams = SessionParams(settings)
+        sessionParams.setOwnedDiskIO(receipts.absolutePath)
+        val session = SessionManager(false)
+        try {
+            session.start(sessionParams)
+            val params = AddTorrentParams()
+            params.setTorrentInfo(TorrentInfo.bdecode(metadata))
+            params.setSavePath(destination.absolutePath)
+            params.setFlags(torrent_flags_t()
+                .or_(TorrentFlags.PAUSED)
+                .or_(TorrentFlags.DUPLICATE_IS_ERROR))
+            val error = error_code()
+            val raw = session.swig().add_torrent(params.swig(), error)
+            assertEquals("Native Add must register for actual disk refusal inspection", 0, error.value())
+            assertTrue(raw.is_valid)
+            val handle = TorrentHandle(raw)
+            val deadline = System.currentTimeMillis() + 15000L
+            var refused = false
+            while (System.currentTimeMillis() < deadline) {
+                if (handle.status().errorCode()?.isError == true) {
+                    refused = true
+                    break
+                }
+                Thread.sleep(50)
+            }
+            assertTrue("The actual installed owned JNI must refuse a foreign payload", refused)
+            assertArrayEquals("Foreign bytes must survive native Add", canary, foreign.readBytes())
+        } finally { session.stop() }
+        assertArrayEquals("Foreign bytes must survive actual native session shutdown",
+            canary, foreign.readBytes())
     }
 }
 """
