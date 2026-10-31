@@ -28,7 +28,8 @@ status=$?
 set -e
 cat "$log"
 if [[ "$status" != 0 ]] ||
-   ! grep -q '^OK (1 test)' "$log" ||
+   ! grep -qx 'OK (1 test)' "$log" ||
+   ! grep -q '^INSTRUMENTATION_STATUS: test=pinnedOwnedDiskConstructorStartsOnlyInsideDisposablePrivateRoot' "$log" ||
    ! grep -q '^INSTRUMENTATION_STATUS_CODE: 0' "$log" ||
    grep -qE '^FAILURES|^INSTRUMENTATION_STATUS_CODE: -(1|2|3|4)' "$log"; then
   echo "CHUNKS_OWNED_ANDROID_INSTALLED=REFUSED instrumentation not fully verified"
