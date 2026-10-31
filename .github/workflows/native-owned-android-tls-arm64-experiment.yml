@@ -186,6 +186,20 @@ jobs:
           ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon --console=plain
           test -s app/build/outputs/apk/debug/app-debug.apk
           test -s app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+          # Never confuse an otherwise successful Gradle build with a proof
+          # that the app packaged the rebuilt native library rather than Maven.
+          python3 - "$so" app/build/outputs/apk/debug/app-debug.apk <<'PY'
+          import hashlib, sys, zipfile
+          from pathlib import Path
+          source = Path(sys.argv[1]).read_bytes()
+          with zipfile.ZipFile(sys.argv[2]) as apk:
+              packaged = [p for p in apk.namelist() if p.endswith("/libtorrent4j.so")]
+              assert packaged == ["lib/x86_64/libtorrent4j.so"], packaged
+              installed = apk.read(packaged[0])
+          assert installed == source, "APK embedded a different native writer"
+          print("CHUNKS_OWNED_APK_JNI_EXACT_BYTES=PASS sha256=" +
+                hashlib.sha256(source).hexdigest())
+          PY
           echo 'CHUNKS_OWNED_DEBUG_APK_COMPILED=PASS test-only; never publish APK'
       - name: Exercise actual installed owned JNI constructor in private emulator
         if: matrix.abi == 'x86_64'
