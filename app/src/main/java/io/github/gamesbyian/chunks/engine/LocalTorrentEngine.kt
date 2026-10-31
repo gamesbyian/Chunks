@@ -134,6 +134,13 @@ sealed class LocalAddResult {
 }
 
 class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConfig()) : AutoCloseable {
+    /**
+     * Package-internal deterministic test seam. Runs after libtorrent has
+     * registered the stopped handle, before the initial resume write. It must
+     * never be used by production code. An exception exercises the real
+     * partial-registration fence, independently of pre-admission refusals.
+     */
+    internal var beforeInitialResumeWriteForTest: (() -> Unit)? = null
     private val session = SessionManager(false)
     // Guarded by its own monitor so the alert thread never needs the engine lock.
     private val handles: MutableMap<String, TorrentHandle> = Collections.synchronizedMap(LinkedHashMap())
@@ -578,6 +585,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         if (config.stateDirectory != null) {
             val resumeBytes = AddTorrentParams.writeResumeDataBuf(params)
             check(LocalResumeWriteFence.writeIfCurrent(handles, hash, handle) {
+                beforeInitialResumeWriteForTest?.invoke()
                 writeResume(hash, resumeBytes)
             }) { "Initial resume write lost its native handle" }
         }
