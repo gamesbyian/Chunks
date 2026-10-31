@@ -129,8 +129,15 @@ internal object LocalZipDocumentInspector {
             Staged(owned.file, owned.copiedBytes, null, owned)
         } catch (_: SecurityException) {
             Staged(null, 0, "Android did not grant access to this document.")
-        } catch (_: IOException) {
-            Staged(null, 0, "Safe anonymous ZIP staging is unsupported or the document could not be read.")
+        } catch (error: IOException) {
+            val reason = when {
+                error.message?.contains("exceeds permitted staging bytes") == true ->
+                    "Local ZIP exceeds the " + Units.bytes(maxInputBytes) + " review input limit."
+                error.message?.contains("input stream made no progress") == true ->
+                    "The ZIP document stream made no progress."
+                else -> "Safe anonymous ZIP staging is unsupported or the document could not be read."
+            }
+            Staged(null, 0, reason)
         } catch (_: RuntimeException) {
             Staged(null, 0, "The ZIP document provider could not be inspected safely.")
         }
