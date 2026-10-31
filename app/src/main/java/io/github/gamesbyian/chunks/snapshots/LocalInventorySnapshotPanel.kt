@@ -1,7 +1,5 @@
 package io.github.gamesbyian.chunks.snapshots
 
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -29,6 +27,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.engine.LocalTransferStatus
+import io.github.gamesbyian.chunks.exports.OwnedDiagnosticExportProvider
+import io.github.gamesbyian.chunks.exports.OwnedDiagnosticShare
 import java.time.Instant
 import java.io.File
 import java.time.ZoneOffset
@@ -41,7 +41,7 @@ import kotlinx.coroutines.withContext
 /**
  * Read-only local-engine inventory snapshot. The observed queue has no raw
  * torrent metainfo, so all records are INVENTORY ONLY: never promise restore.
- * No libtorrent call is made during capture or SAF publication.
+ * No libtorrent call is made during capture or read-only share publication.
  */
 private data class VerifiedResumeReview(
     val identity: List<Triple<String, String, String>>,
@@ -61,8 +61,6 @@ internal fun LocalInventorySnapshotPanel(
     var saving by remember { mutableStateOf(false) }
     var result by remember { mutableStateOf<String?>(null) }
     var resultVerified by remember { mutableStateOf(false) }
-    var pending by remember { mutableStateOf<ByteArray?>(null) }
-    var pendingVerifiedDefinitions by remember { mutableStateOf(0) }
     var includeDefinitions by remember { mutableStateOf(false) }
     var inspectingResumes by remember { mutableStateOf(false) }
     var verifiedResumes by remember {
@@ -92,42 +90,38 @@ internal fun LocalInventorySnapshotPanel(
         }
     }
     val capture = captureResult.getOrNull()
-    val save = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("application/octet-stream")
-    ) { uri ->
-        val bytes = pending
-        val definitions = pendingVerifiedDefinitions
-        pending = null
-        pendingVerifiedDefinitions = 0
-        if (uri == null || bytes == null) {
-            saving = false
-            if (uri != null) result = "No validated local snapshot was available for saving."
-        } else {
-            scope.launch {
-                resultVerified = false
-                try {
-                    withContext(Dispatchers.IO) {
-                        SnapshotDocumentWriterV1.writeAndVerify(context.contentResolver, uri, bytes)
-                    }
-                    result = if (definitions > 0) {
-                        "Saved and SHA-256 verified $definitions real v1 torrent definitions. " +
-                            "This file may contain private-tracker passkeys; keep it secret. " +
-                            "No downloaded payload bytes or engine resume state are included."
-                    } else {
-                        "Saved and SHA-256 readback verified. Inventory only: " +
-                            "no .torrent definitions, magnets, file payloads or resume data backed up."
-                    }
-                    resultVerified = true
-                } catch (cancel: CancellationException) {
-                    result = "Save interrupted: the document may be incomplete. Verify or discard it."
-                    throw cancel
-                } catch (failure: Exception) {
-                    result = "Backup NOT verified: " +
-                        (failure.message ?: "Document provider readback failed") +
-                        ". Discard or independently inspect the file."
-                } finally {
-                    saving = false
+    // Explicit share handoff replaces unsafe truncating writes to a SAF
+    // CreateDocument URI. The receiving app decides whether to save it.
+    fun shareOwnedSnapshot(bytes: ByteArray, definitions: Int, filename: String) {
+        saving = true
+        resultVerified = false
+        result = null
+        scope.launch {
+            try {
+                val uri = withContext(Dispatchers.IO) {
+                    OwnedDiagnosticExportProvider.publish(context, filename, bytes)
                 }
+                OwnedDiagnosticShare.openChooser(context, uri,
+                    "application/octet-stream", "phone snapshot")
+                result = if (definitions > 0) {
+                    "Prepared $definitions verified original v1 torrent definitions in a " +
+                        "read-only share. This may include private-tracker passkeys. " +
+                        "The receiving app has not saved it yet, and no payload bytes were included."
+                } else {
+                    "Prepared a verified inventory-only snapshot for sharing. " +
+                        "No receiving app has saved it yet. No restorable definitions, " +
+                        "magnets, payload bytes or engine resume state were included."
+                }
+                resultVerified = true
+            } catch (cancel: CancellationException) {
+                result = "Sharing interrupted; Chunks did not modify an external document."
+                throw cancel
+            } catch (failure: Exception) {
+                result = "Unable to prepare private snapshot share: " +
+                    (failure.message ?: "Private export unavailable") +
+                    ". Existing provider files were not changed."
+            } finally {
+                saving = false
             }
         }
     }
@@ -253,12 +247,10 @@ internal fun LocalInventorySnapshotPanel(
                                                 result = "Source became stale. Preview again before saving."
                                                 saving = false
                                             } else {
-                                                pending = encoded
-                                                pendingVerifiedDefinitions =
-                                                    selected.verifiedRestorableCount
                                                 val stamp = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")
                                                     .withZone(ZoneOffset.UTC).format(Instant.now())
-                                                save.launch("chunks-phone-reviewed-$stamp.chunksnap")
+                                                shareOwnedSnapshot(encoded, selected.verifiedRestorableCount,
+                                                    "chunks-phone-reviewed-$stamp.chunksnap")
                                             }
                                         } catch (cancel: CancellationException) {
                                             throw cancel
@@ -272,7 +264,7 @@ internal fun LocalInventorySnapshotPanel(
                                 enabled = !saving && !stale && !busyEngine &&
                                     recovery.verifiedRestorableCount > 0,
                                 modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
-                            ) { Text("Save reviewed sensitive .chunksnap") }
+                            ) { Text("Share reviewed sensitive .chunksnap") }
                         }
                         resumeProblem?.let {
                             Text(it, color = MaterialTheme.colorScheme.error)
@@ -292,19 +284,14 @@ internal fun LocalInventorySnapshotPanel(
                             result = "Could not encode local inventory: " +
                                 (encoded.exceptionOrNull()?.message ?: "Invalid capture")
                         } else {
-                            pending = bytes
-                            pendingVerifiedDefinitions = 0
-                            saving = true
-                            result = null
-                            resultVerified = false
                             val stamp = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")
                                 .withZone(ZoneOffset.UTC).format(Instant.now())
-                            save.launch("chunks-phone-inventory-$stamp.chunksnap")
+                            shareOwnedSnapshot(bytes, 0, "chunks-phone-inventory-$stamp.chunksnap")
                         }
                     },
                     modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
                 ) {
-                    Text(if (saving) "Saving phone inventory…" else "Choose file for phone inventory")
+                    Text(if (saving) "Preparing phone inventory…" else "Share phone inventory")
                 }
                 result?.let {
                     Text(it, color = if (resultVerified) MaterialTheme.colorScheme.primary
