@@ -1,7 +1,5 @@
 package io.github.gamesbyian.chunks
 
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -29,7 +27,8 @@ import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.engine.LocalTransferStatus
 import io.github.gamesbyian.chunks.model.TransferHealthReport
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
-import io.github.gamesbyian.chunks.snapshots.SnapshotDocumentWriterV1
+import io.github.gamesbyian.chunks.exports.OwnedDiagnosticExportProvider
+import io.github.gamesbyian.chunks.exports.OwnedDiagnosticShare
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
@@ -78,47 +77,10 @@ private fun TransferHealthDocumentPanel(
     val coroutine = rememberCoroutineScope()
     var expanded by remember { mutableStateOf(false) }
     var includeNames by remember { mutableStateOf(false) }
-    var pending by remember { mutableStateOf<TransferHealthReport.Prepared?>(null) }
     var saving by remember { mutableStateOf(false) }
     var result by remember { mutableStateOf<String?>(null) }
     var verified by remember { mutableStateOf(false) }
 
-    val choose = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("application/json")
-    ) { uri ->
-        val frozen = pending
-        pending = null
-        if (uri == null) {
-            saving = false
-            result = "Report save cancelled. No transfer was changed."
-        } else if (frozen == null) {
-            saving = false
-            result = "The diagnostic report was not prepared. No file was verified."
-        } else {
-            coroutine.launch {
-                verified = false
-                try {
-                    withContext(Dispatchers.IO) {
-                        SnapshotDocumentWriterV1.writeAndVerify(
-                            context.contentResolver, uri, frozen.bytes)
-                    }
-                    verified = true
-                    result = "Saved and SHA-256 verified ${frozen.reported} of " +
-                        "${frozen.observed} observed transfer records. " +
-                        "Only the selected name-disclosure setting was used."
-                } catch (cancel: CancellationException) {
-                    result = "Save was interrupted; the output may be incomplete."
-                    throw cancel
-                } catch (failure: Exception) {
-                    result = "Report NOT verified: " +
-                        (failure.message ?: "Document readback unavailable") +
-                        ". Review or discard the output."
-                } finally {
-                    saving = false
-                }
-            }
-        }
-    }
 
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth().padding(14.dp),
@@ -146,6 +108,12 @@ private fun TransferHealthDocumentPanel(
                     Checkbox(checked = includeNames, onCheckedChange = null)
                     Text("Include original torrent names (may be sensitive)")
                 }
+                Text(
+                    "Safe export: Chunks makes a new read-only document in its private cache. " +
+                        "Android's Share menu lets you choose an app to save or send it. " +
+                        "No existing provider document is opened for writing.",
+                    style = MaterialTheme.typography.bodySmall
+                )
                 Button(onClick = {
                     val captured = try {
                         prepare(includeNames)
@@ -155,17 +123,38 @@ private fun TransferHealthDocumentPanel(
                         null
                     }
                     if (captured != null) {
-                        pending = captured
                         saving = true
                         verified = false
                         result = null
                         val utc = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")
                             .withZone(ZoneOffset.UTC).format(Instant.now())
-                        choose.launch("chunks-${scope}-health-${utc}.json")
+                        coroutine.launch {
+                            try {
+                                val uri = withContext(Dispatchers.IO) {
+                                    OwnedDiagnosticExportProvider.publish(context,
+                                        "chunks-${scope}-health-${utc}.json", captured.bytes)
+                                }
+                                OwnedDiagnosticShare.openChooser(context, uri,
+                                    "application/json", "download-health report")
+                                verified = true
+                                result = "Prepared a byte-verified read-only report with ${captured.reported} " +
+                                    "of ${captured.observed} observed transfer records. " +
+                                    "The receiving app has not saved it yet."
+                            } catch (cancel: CancellationException) {
+                                result = "Report handoff interrupted; Chunks did not modify an external file."
+                                throw cancel
+                            } catch (failure: Exception) {
+                                result = "Report NOT prepared for sharing: " +
+                                    (failure.message ?: "Private export unavailable") +
+                                    ". Chunks did not write a picker-returned document."
+                            } finally {
+                                saving = false
+                            }
+                        }
                     }
                 }, enabled = !saving,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
-                    Text(if (saving) "Saving report…" else "Choose where to save report")
+                    Text(if (saving) "Preparing report…" else "Share download-health report")
                 }
                 result?.let {
                     Text(it, color = if (verified) MaterialTheme.colorScheme.primary
