@@ -12,9 +12,10 @@ import java.util.Locale
  * A clear result is NOT a write authorization: it cannot defeat races after
  * inspection and does not prove that the selected root is owned by Chunks.
  *
- * Existing files are always classified as collisions, even if their size or
- * name resembles torrent contents. Reuse/rehydration must have a separate,
- * explicitly reviewed native hash-check path. Paths that cannot be inspected
+ * Existing regular files at a declared torrent path are reported as
+ * ExistingPaths for UI visibility, not automatically refused: selecting the
+ * root authorizes libtorrent's ordinary hash-check, reuse and replacement.
+ * Existing non-regular targets must be refused. Paths that cannot be inspected
  * or whose *payload* parents traverse symbolic links are UNKNOWN. System
  * directory aliases in the selected root's ancestors are resolved to their
  * real path before inspecting children (including Android /data/user aliases).
@@ -100,6 +101,8 @@ internal object LocalPayloadCollisionSurvey {
                         !Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS))
                         return Result.Unknown("Torrent payload parent is not a directory")
                     if (index == segments.lastIndex && exists) {
+                        if (!Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS))
+                            return Result.Unknown("Torrent payload target is not a regular file")
                         total++
                         if (collisions.size < 20) collisions += relative
                     }
