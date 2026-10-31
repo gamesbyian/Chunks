@@ -33,7 +33,7 @@ case "$*" in
     [[ "$mode" != WRONG_TEST ]] && echo 'INSTRUMENTATION_STATUS: test=pinnedOwnedDiskConstructorStartsOnlyInsideDisposablePrivateRoot' || echo 'INSTRUMENTATION_STATUS: test=wrongClass'
     [[ "$mode" != MISSING_NATIVE_REFUSAL ]] && echo 'INSTRUMENTATION_STATUS: test=ownedJniActuallyRefusesPreexistingForeignNativePayload'
     [[ "$mode" != MISSING_POSITIVE_PIECE ]] && echo 'INSTRUMENTATION_STATUS: test=ownedJniWritesAndRechecksActualPieceWithPinnedReceipts'
-    [[ "$mode" != MISSING_REAL_PEER ]] && echo 'INSTRUMENTATION_STATUS: test=installedOwnedJniDownloadsActualPeerPieceWithoutTouchingForeignData'
+    [[ "$mode" != MISSING_REAL_PEER ]] && echo 'INSTRUMENTATION_STATUS: test=installedOwnedJniReceivesActualPeerPieceWithoutTouchingForeignData'
     if [[ "$mode" == SKIPPED ]]; then echo 'INSTRUMENTATION_STATUS_CODE: -3'
     else echo 'INSTRUMENTATION_STATUS_CODE: 0'; fi
     if [[ "$mode" == FAILED_TEST ]]; then echo 'FAILURES!!!'; fi
