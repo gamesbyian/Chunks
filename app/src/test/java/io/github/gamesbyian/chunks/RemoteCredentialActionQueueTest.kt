@@ -106,7 +106,7 @@ class RemoteCredentialActionQueueTest {
         val fresh = queue.submit(this) { _ -> }
         fresh.join()
         assertFalse(queue.isLatest(connectRevision))
-        assertEquals(queue.snapshotRevision(), queue.snapshotRevision())
+        assertEquals(1L, queue.snapshotRevision())
     }
 
     @Test fun finalForgetCannotBeUndoneByPriorEnableThatFinishesLate() = runBlocking {
