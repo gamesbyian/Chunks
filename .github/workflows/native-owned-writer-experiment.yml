@@ -4,6 +4,9 @@ on:
   pull_request:
     paths:
       - "experiments/native-owned-writer/**"
+      # Documentation does not change the native build/ABI contract.
+      - "!experiments/native-owned-writer/**/*.md"
+      - "!experiments/native-owned-writer/*.md"
       - ".github/workflows/native-owned-writer-experiment.yml"
   workflow_dispatch:
 
