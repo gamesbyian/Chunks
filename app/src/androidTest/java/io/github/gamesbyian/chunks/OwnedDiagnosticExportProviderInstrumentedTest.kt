@@ -132,13 +132,19 @@ class OwnedDiagnosticExportProviderInstrumentedTest {
                 fail("Unowned or nonregular export must not be served")
             } catch (_: FileNotFoundException) { }
             try {
-                context.contentResolver.query(selected,
-                    arrayOf(OpenableColumns.SIZE), null, null, null)?.use { }
-                fail("Nonregular export metadata must not be served")
+                val returned = context.contentResolver.query(selected,
+                    arrayOf(OpenableColumns.SIZE), null, null, null)
+                if (returned != null) {
+                    returned.close()
+                    fail("Nonregular export metadata must not be served")
+                }
+                // Some Android ContentResolver implementations convert
+                // provider refusal into a null cursor instead of rethrowing.
             } catch (_: FileNotFoundException) { }
             try {
-                context.contentResolver.getType(selected)
-                fail("Nonregular export type must not be advertised")
+                val type = context.contentResolver.getType(selected)
+                if (type != null) fail("Nonregular export type must not be advertised")
+                // Null is also a safe provider-resolution refusal.
             } catch (_: FileNotFoundException) { }
         }
         val fifo = File(root, "fifo-" + UUID.randomUUID() + ".json")
