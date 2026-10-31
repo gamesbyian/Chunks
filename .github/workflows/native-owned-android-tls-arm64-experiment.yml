@@ -9,6 +9,8 @@ on:
       - ".github/workflows/native-owned-android-tls-arm64-experiment.yml"
       - "experiments/native-owned-writer/**"
       - "tools/stage_owned_native_preview.py"
+      - "tools/stage_owned_localengine_overlay.py"
+      - "tests/test_stage_owned_localengine_overlay.py"
       - "tools/native_owned_jni_installed_smoke.sh"
       - "tools/test_native_owned_jni_installed_smoke_mock.sh"
   workflow_dispatch:
@@ -201,7 +203,26 @@ jobs:
             --output-dir "$RUNNER_TEMP/chunks-owned-installed-lab" \
             --jar-sha256 "$(sha256sum "$jar" | cut -d' ' -f1)" \
             --so-sha256 "$(sha256sum "$so" | cut -d' ' -f1)"
+          # Stage an exact-source, NON-SHIPPING app engine implementation.
+          # The app's production source and dependencies are never committed.
+          engine="app/src/main/java/io/github/gamesbyian/chunks/engine/LocalTorrentEngine.kt"
+          preview="$RUNNER_TEMP/chunks-owned-installed-lab/LocalTorrentEngine.preview.kt"
+          python3 tools/stage_owned_localengine_overlay.py \
+            --engine-source "$engine" --output "$preview"
+          python3 - "$engine" "$preview" <<'PY'
+          import hashlib, json, sys
+          from pathlib import Path
+          source, patched = map(Path, sys.argv[1:])
+          manifest = json.loads(patched.with_suffix(".json").read_text())
+          digest = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
+          assert digest(source) == manifest["source_sha256"], "Engine source changed after inspection"
+          assert digest(patched) == manifest["patched_sha256"], "Staged app engine changed after inspection"
+          assert "OWNED_TEST_ONLY" not in source.read_text(), "Refuse already-owned production source"
+          assert "OWNED_TEST_ONLY" in patched.read_text(), "Missing lab-only JNI mode"
+          print("CHUNKS_OWNED_ENGINE_TEST_OVERLAY_VERIFIED=PASS")
+          PY
           cp "$RUNNER_TEMP/chunks-owned-installed-lab/build.gradle.kts" app/build.gradle.kts
+          cp "$preview" "$engine"
           gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest --console=plain
           test -s app/build/outputs/apk/debug/app-debug.apk
           test -s app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
