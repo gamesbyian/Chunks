@@ -31,6 +31,7 @@ class OwnedProviderFdAndroidProbe {
     private val context get() = InstrumentationRegistry.getInstrumentation().targetContext
     private val resolver get() = context.contentResolver
 
+    /** JNI consumes the detached descriptor on all outcomes. No surviving Java FD alias. */
     external fun nativeRoundTrip(fd: Int, declared: Long, generation: String): Boolean
 
     private data class MintedRow(val uri: Uri, val exactName: String)
@@ -107,12 +108,12 @@ class OwnedProviderFdAndroidProbe {
             authorizedCleanup = true
             requireNotNull(resolver.openFileDescriptor(uri, "r")).use {
                 assertFalse("Readonly provider FD must be refused before native I/O",
-                    nativeRoundTrip(it.fd, 65552, "a".repeat(64)))
+                    nativeRoundTrip(it.detachFd(), 65552, "a".repeat(64)))
             }
             assertTrue("Readonly negative may not mutate initial empty row", exactOwner(minted, 1, 0L))
             requireNotNull(resolver.openFileDescriptor(uri, "rw")).use { pfd ->
                 assertTrue("Genuine Android PFD-to-native bounded write/fsync failed",
-                    nativeRoundTrip(pfd.fd, 65552, "a".repeat(64)))
+                    nativeRoundTrip(pfd.detachFd(), 65552, "a".repeat(64)))
             }
             val first = ByteArray(4096) { ((it * 37 + 11) and 255).toByte() }
             val second = ByteArray(16) { ((it * 17 + 3) and 255).toByte() }
@@ -138,7 +139,7 @@ class OwnedProviderFdAndroidProbe {
     @Test fun nativeRefusesPipeWithoutBlockingOrWriting() {
         val pair = ParcelFileDescriptor.createPipe()
         try {
-            assertFalse(nativeRoundTrip(pair[0].fd, 65552, "a".repeat(64)))
+            assertFalse(nativeRoundTrip(pair[0].detachFd(), 65552, "a".repeat(64)))
         } finally {
             pair.forEach { it.close() }
         }
