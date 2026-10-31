@@ -5,6 +5,7 @@ on:
       - "tools/native_owned_provider_fd_android_probe.kt"
       - "tools/native_owned_provider_fd_jni_probe.cc"
       - "tools/test_native_owned_provider_fd_android.sh"
+      - "tools/test_native_owned_provider_fd_android_mock.sh"
       - ".github/workflows/native-owned-provider-fd-android.yml"
   workflow_dispatch:
 
@@ -21,6 +22,8 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
+      - name: Reject false-positive or skipped Android JNI test receipts
+        run: bash tools/test_native_owned_provider_fd_android_mock.sh
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
