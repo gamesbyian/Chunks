@@ -10,6 +10,7 @@ cat >"$temp/bin/adb" <<'MOCK'
 set -euo pipefail
 case "$1" in
   logcat)
+    : > "$MOCK_LOGCAT_READY"
     # Contains a matching app crash and a second UNRELATED platform crash.
     printf '10-31 20:32:01.123  444  555 E AndroidRuntime: FATAL EXCEPTION: main\n'
     printf '10-31 20:32:01.124  444  555 E AndroidRuntime: Process: io.github.gamesbyian.chunks.ownedlab, PID: 444\n'
@@ -28,7 +29,7 @@ case "$1" in
 esac
 MOCK
 chmod +x "$temp/bin/adb"
-export PATH="$temp/bin:$PATH"
+export PATH="$temp/bin:$PATH" MOCK_LOGCAT_READY="$temp/logcat-ready"
 script="$root/native_owned_android_instrumentation_diagnostics.sh"
 bash -n "$script"
 if bash "$script" bash -c 'echo no opt in' >"$temp/refused" 2>&1; then
@@ -38,15 +39,26 @@ fi
 grep -q 'CHUNKS_NATIVE_LAB_DIAGNOSTICS=REFUSED' "$temp/refused"
 
 CHUNKS_OWNED_JNI_LAB=1 bash "$script" bash -c \
-  'echo "OK (4 tests)"; sleep 0.15' >"$temp/success" 2>&1
+  'for i in {1..100}; do
+  [[ -e "$MOCK_LOGCAT_READY" ]] && break
+  sleep 0.02
+done
+[[ -e "$MOCK_LOGCAT_READY" ]] || exit 98
+echo "OK (4 tests)"' >"$temp/success" 2>&1
 grep -q 'OK (4 tests)' "$temp/success"
 grep -q 'CHUNKS_NATIVE_LAB_DIAGNOSTICS=PASS smoke-exit=0' "$temp/success"
 ! grep -q 'CHUNKS_NATIVE_LAB_INTERVAL_EVENTS_BEGIN' "$temp/success"
 
 set +e
+rm -f "$MOCK_LOGCAT_READY" # only our own test-created readiness marker
 CHUNKS_OWNED_JNI_LAB=1 bash "$script" bash -c \
-  'echo "INSTRUMENTATION_RESULT: shortMsg=Process crashed."; sleep 0.15; exit 17' \
-  >"$temp/failure" 2>&1
+  'for i in {1..100}; do
+  [[ -e "$MOCK_LOGCAT_READY" ]] && break
+  sleep 0.02
+done
+[[ -e "$MOCK_LOGCAT_READY" ]] || exit 98
+echo "INSTRUMENTATION_RESULT: shortMsg=Process crashed."
+exit 17' >"$temp/failure" 2>&1
 status=$?
 set -e
 [[ "$status" -eq 17 ]] || { echo "Lost exact smoke failure exit code: $status" >&2; exit 1; }
