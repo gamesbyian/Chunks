@@ -2,6 +2,7 @@ package io.github.gamesbyian.chunks
 
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.joinAll
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Test
@@ -30,6 +31,28 @@ class RemoteCredentialActionQueueTest {
         joinAll(first, second)
         assertEquals(listOf("opt-out and erase", "opt-in"), commits)
         assertEquals(listOf("on"), notices)
+    }
+
+    @Test fun connectWaitsUntilEarlierRememberCommandsAreDurablyOrdered() = runBlocking {
+        val queue = RemoteCredentialActionQueue()
+        val gate = CompletableDeferred<Unit>()
+        val committed = mutableListOf<String>()
+        val off = queue.submit(this) {
+            gate.await()
+            committed += "off"
+        }
+        val on = queue.submit(this) {
+            committed += "on"
+        }
+        val connect = launch {
+            queue.awaitSettled()
+            committed += "connect"
+        }
+        kotlinx.coroutines.yield()
+        assertFalse(committed.contains("connect"))
+        gate.complete(Unit)
+        joinAll(off, on, connect)
+        assertEquals(listOf("off", "on", "connect"), committed)
     }
 
     @Test fun finalForgetCannotBeUndoneByPriorEnableThatFinishesLate() = runBlocking {

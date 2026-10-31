@@ -601,14 +601,20 @@ private fun ChunksApp(
                         val ticket = remoteFence.begin("main")
                         // Invalidate every earlier pending Connect's right to
                         // remember credentials, before any network suspension.
-                        val credentialTicket = RemoteCredentialLock.beginConnection()
+                        RemoteCredentialLock.invalidate()
                         // Freeze credentials for this one connection attempt.
                         // A later edit or lifecycle reset cannot redirect it.
                         val settings = RemoteCredentials(target, username, password)
-                        val saveThisLogin = rememberLogin
                         connectDiagnostics = ConnectionDiagnostics()
                         connectJob = scope.launch {
                             try {
+                                // A previously requested OFF→ON/Forget must
+                                // commit in tap order before this Connect
+                                // claims fresh credential-saving authority.
+                                credentialChanges.awaitSettled()
+                                if (!remoteFence.current(ticket)) return@launch
+                                val saveThisLogin = rememberLogin
+                                val credentialTicket = RemoteCredentialLock.beginConnection()
                                 val discovered = RemoteSmartConnect.connect(
                                     settings.endpoint, settings.username, settings.password,
                                     onAttempt = { index, total, candidate ->

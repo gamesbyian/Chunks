@@ -28,4 +28,18 @@ internal class RemoteCredentialActionQueue {
     }
 
     fun isLatest(ticket: Long): Boolean = ticket == revision
+
+    /**
+     * A Connect initiated after a Forget or Remember toggle must see the
+     * durable effect of that earlier user command before making a new vault
+     * decision. Re-read lastJob after each suspension: another command may
+     * have been queued while the previous one was running.
+     */
+    suspend fun awaitSettled() {
+        while (true) {
+            val pending = lastJob ?: return
+            pending.join()
+            if (lastJob === pending) return
+        }
+    }
 }
