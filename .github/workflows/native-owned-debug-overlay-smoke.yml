@@ -1,0 +1,37 @@
+name: Non-shipping native JNI staging policy (offline)
+
+# This job NEVER builds an APK or fetches native binaries. It checks the
+# fail-closed disposable Gradle overlay generator and negative controls.
+on:
+  pull_request:
+    paths:
+      - "tools/stage_owned_native_preview.py"
+      - "tests/test_stage_owned_native_preview.py"
+      - ".github/workflows/native-owned-debug-overlay-smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-owned-overlay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Stage overlay refusal and supported ABI controls
+        run: |
+          set -euo pipefail
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
+            -s tests -p 'test_stage_owned_native_preview.py' -v
+      - name: Refuse source drift in actual production Gradle dependency seam
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from tools.stage_owned_native_preview import (MAIN_JAR_DEP, ARM_DEP, X86_DEP,
+              APP_ID, SOURCE_SET_ANCHOR)
+          s = Path('app/build.gradle.kts').read_text(encoding='utf-8')
+          for value in (MAIN_JAR_DEP, ARM_DEP, X86_DEP, APP_ID, SOURCE_SET_ANCHOR):
+              assert s.count(value) == 1, f'Unexpected production Gradle seam: {value}'
+          print('CHUNKS_OWNED_PREVIEW_GRADLE_SEAM=PASS source-only')
+          PY
