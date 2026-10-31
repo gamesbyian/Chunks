@@ -1147,7 +1147,11 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                         continue
                     }
                     if (status !in 200..299) {
-                        throw RpcHttpStatusException(status)
+                        if (status in 100..599) throw RpcHttpStatusException(status)
+                        // HttpURLConnection can report -1 for a malformed
+                        // status line. It is NOT an HTTP response receipt and
+                        // cannot be used to advance Smart Connect discovery.
+                        throw IOException("Invalid rTorrent HTTP response")
                     }
                     val length = connection.contentLengthLong
                     if (length > 4_194_304L) throw RpcReplyTooLarge("RPC response exceeded 4 MiB")
