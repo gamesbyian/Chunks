@@ -180,67 +180,66 @@ bool FullyWrite(int fd, const std::string& content) {
 }
 
 bool PublishReceipt(int dir, const std::string& id, const Receipt& receipt, std::string* err) {
-  // Receipt staging uses an exclusive random O_EXCL file under a pinned dirfd.
-  // /dev/urandom random bytes avoid temp collisions; not an ownership secret.
-  Fd random(::open("/dev/urandom", O_RDONLY | O_CLOEXEC));
-  if (random.v < 0) return Fail(err, "Cannot generate private receipt staging identity");
-  const char* alphabet = "0123456789abcdef";
-  for (int attempt = 0; attempt < 8; ++attempt) {
-    unsigned char bytes[16];
-    if (::read(random.v, bytes, sizeof(bytes)) != sizeof(bytes))
-      return Fail(err, "Cannot generate private receipt staging identity");
-    std::string temp = ".tmp-";
-    for (unsigned char byte : bytes) { temp += alphabet[byte >> 4]; temp += alphabet[byte & 15]; }
-    Fd stage(::openat(dir, temp.c_str(), O_CREAT | O_EXCL | O_WRONLY | O_NOFOLLOW | O_CLOEXEC, 0600));
-    if (stage.v < 0) { if (errno == EEXIST) continue; return Fail(err, "Receipt stage creation failed"); }
-    const std::string encoded = Encode(receipt);
-    if (!FullyWrite(stage.v, encoded)) {
-      ::unlinkat(dir, temp.c_str(), 0);
-      return Fail(err, "Receipt stage sync failed");
-    }
-    // Prefer an atomic, no-replace hardlink from an already durable inode.
-    // Some Android app-private filesystems deny linkat(2). If that specific
-    // capability is unavailable, use CREATE_NEW on the FINAL pathname with a
-    // pinned file descriptor, then fsync file and parent. A crash mid-write
-    // may leave an incomplete final receipt; it stays corrupt/UNKNOWN and
-    // must NEVER be overwritten or silently adopted on retry.
-    const bool linked = ::linkat(dir, temp.c_str(), dir, id.c_str(), 0) == 0;
-    const int link_error = linked ? 0 : errno;
-    if (linked) {
-      if (::fsync(dir) != 0) {
-        ::unlinkat(dir, temp.c_str(), 0);
-        return Fail(err, "Receipt parent sync failed; claim may exist and must be reviewed");
-      }
-      ::unlinkat(dir, temp.c_str(), 0);
+  // A named temporary file is not an unforgeable owner: another same-UID
+  // actor may replace its pathname after O_EXCL and before linkat/unlinkat.
+  // Prefer an anonymous O_TMPFILE FD. Publication links THAT descriptor,
+  // never a mutable source name; closing it discards failed staging without
+  // unlinking an uncertain path. On filesystems without this capability,
+  // exclusively create the FINAL receipt itself and leave incomplete bytes
+  // for explicit fail-closed recovery after an interrupted write.
+  const std::string encoded = Encode(receipt);
+#if defined(O_TMPFILE) && defined(AT_EMPTY_PATH)
+  Fd stage(::openat(dir, ".", O_TMPFILE | O_WRONLY | O_CLOEXEC, 0600));
+  if (stage.v >= 0) {
+    if (!FullyWrite(stage.v, encoded))
+      return Fail(err, "Anonymous receipt stage write or sync failed");
+    if (::linkat(stage.v, "", dir, id.c_str(), AT_EMPTY_PATH) == 0) {
+      // The original pinned inode must be the one named by the published
+      // claim. A concurrent same-UID replacement can only force refusal.
+      struct stat pinned{}, named{};
+      const bool same_owner = ::fstat(stage.v, &pinned) == 0 &&
+          ::fstatat(dir, id.c_str(), &named, AT_SYMLINK_NOFOLLOW) == 0 &&
+          S_ISREG(pinned.st_mode) && S_ISREG(named.st_mode) &&
+          pinned.st_nlink == 1 && named.st_nlink == 1 &&
+          pinned.st_dev == named.st_dev && pinned.st_ino == named.st_ino;
+      if (!same_owner || ::fsync(dir) != 0)
+        return Fail(err, "Anonymous receipt publication uncertain; manual recovery required");
       return true;
     }
+    // ENOENT is seen on kernels that refuse linking an anonymous inode;
+    // EPERM/EACCES often reflect private-filesystem hardlink restrictions.
+    // EEXIST is NEVER a fallback invitation: a different owner won.
+    const int link_error = errno;
     if (link_error != EPERM && link_error != EACCES &&
-        link_error != EOPNOTSUPP && link_error != ENOSYS) {
-      ::unlinkat(dir, temp.c_str(), 0);
-      return Fail(err, "Receipt already claimed or publication unsupported");
-    }
-    Fd finalized(::openat(dir, id.c_str(),
-        O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0600));
-    if (finalized.v < 0) {
-      ::unlinkat(dir, temp.c_str(), 0);
-      return Fail(err, "Exclusive fallback receipt publication refused");
-    }
-    // Never follow/reopen the final name to write. A concurrent same-UID
-    // substitution can only redirect the pathname, not this original FD.
-    const bool committed = FullyWrite(finalized.v, encoded) &&
-                           ::fsync(dir) == 0;
-    struct stat pinned{}, named{};
-    const bool same_owner = ::fstat(finalized.v, &pinned) == 0 &&
-        ::fstatat(dir, id.c_str(), &named, AT_SYMLINK_NOFOLLOW) == 0 &&
-        S_ISREG(pinned.st_mode) && S_ISREG(named.st_mode) &&
-        pinned.st_nlink == 1 && named.st_nlink == 1 &&
-        pinned.st_dev == named.st_dev && pinned.st_ino == named.st_ino;
-    ::unlinkat(dir, temp.c_str(), 0);
-    if (!committed || !same_owner)
-      return Fail(err, "Exclusive receipt fallback uncertain; never adopt or overwrite final record");
-    return true;
+        link_error != EOPNOTSUPP && link_error != ENOSYS &&
+        link_error != EINVAL && link_error != ENOENT)
+      return Fail(err, "Anonymous receipt publication refused or already claimed");
+  } else {
+    const int stage_error = errno;
+    if (stage_error != EPERM && stage_error != EACCES &&
+        stage_error != EOPNOTSUPP && stage_error != ENOSYS &&
+        stage_error != EINVAL && stage_error != EISDIR &&
+        stage_error != ENOENT)
+      return Fail(err, "Anonymous receipt staging failed unexpectedly");
   }
-  return Fail(err, "Receipt staging collisions exhausted");
+#endif
+  // Always no-replace and no-follow. Never reopen the final name for
+  // mutation and never delete it on uncertain write/sync/publication.
+  Fd finalized(::openat(dir, id.c_str(),
+      O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC, 0600));
+  if (finalized.v < 0)
+    return Fail(err, "Exclusive final receipt already exists or cannot be created");
+  if (!FullyWrite(finalized.v, encoded))
+    return Fail(err, "Exclusive receipt write or sync uncertain; manual recovery required");
+  struct stat pinned{}, named{};
+  const bool same_owner = ::fstat(finalized.v, &pinned) == 0 &&
+      ::fstatat(dir, id.c_str(), &named, AT_SYMLINK_NOFOLLOW) == 0 &&
+      S_ISREG(pinned.st_mode) && S_ISREG(named.st_mode) &&
+      pinned.st_nlink == 1 && named.st_nlink == 1 &&
+      pinned.st_dev == named.st_dev && pinned.st_ino == named.st_ino;
+  if (!same_owner || ::fsync(dir) != 0)
+    return Fail(err, "Exclusive receipt publication uncertain; manual recovery required");
+  return true;
 }
 
 bool LoadReceipt(int dir, const std::string& id, Receipt* receipt, std::string* err) {
