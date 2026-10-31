@@ -321,6 +321,59 @@ class ExactRemotePrincipalMigrationInstrumentedTest {
         }
     }
 
+    @Test fun temporaryAndroidKeystoreOutagePreservesBothEncryptedVaultsAcrossRetries() {
+        val vault = RememberedRemoteLogin(context)
+        val roster = RememberedRemoteProfileRoster(context)
+        val original = vault.rememberingEnabled()
+        assertTrue(vault.setRememberingEnabled(true))
+        val loginPrefs = context.getSharedPreferences("remembered-remote-login-v1",
+            Context.MODE_PRIVATE)
+        val rosterPrefs = context.getSharedPreferences("chunks_remote_profiles_encrypted_v1",
+            Context.MODE_PRIVATE)
+        try {
+            assertTrue(vault.clear())
+            assertTrue(roster.clearAll())
+            assertTrue(vault.save(plain))
+            assertTrue(roster.saveVerified(plain))
+            val legacyBytes = requireNotNull(loginPrefs.getString("ciphertext", null))
+            val rosterBytes = requireNotNull(rosterPrefs.getString("roster", null))
+            vault.rejectDecryptForTest = true
+            roster.rejectDecryptForTest = true
+            assertNull(vault.load())
+            assertTrue(roster.list().isEmpty())
+            assertFalse(vault.save(padded))
+            assertFalse(roster.saveVerified(padded))
+            assertFalse(roster.forget(RememberedRemoteProfileRoster.identityOf(
+                endpoint, plain.username)))
+            assertEquals(legacyBytes, loginPrefs.getString("ciphertext", null))
+            assertEquals(rosterBytes, rosterPrefs.getString("roster", null))
+            // Fail again in new instances: a process/store recreation cannot
+            // translate inaccessible ciphertext into a writable empty vault.
+            val reopenedLogin = RememberedRemoteLogin(context)
+            val reopenedRoster = RememberedRemoteProfileRoster(context)
+            reopenedLogin.rejectDecryptForTest = true
+            reopenedRoster.rejectDecryptForTest = true
+            assertNull(reopenedLogin.load())
+            assertTrue(reopenedRoster.list().isEmpty())
+            assertFalse(reopenedLogin.save(padded))
+            assertFalse(reopenedRoster.saveVerified(padded))
+            assertEquals(legacyBytes, loginPrefs.getString("ciphertext", null))
+            assertEquals(rosterBytes, rosterPrefs.getString("roster", null))
+            reopenedLogin.rejectDecryptForTest = false
+            reopenedRoster.rejectDecryptForTest = false
+            assertEquals(plain, reopenedLogin.load())
+            assertEquals(listOf(plain), reopenedRoster.list().map { it.credentials })
+            assertEquals(legacyBytes, loginPrefs.getString("ciphertext", null))
+            assertEquals(rosterBytes, rosterPrefs.getString("roster", null))
+        } finally {
+            vault.rejectDecryptForTest = false
+            roster.rejectDecryptForTest = false
+            vault.clear()
+            roster.clearAll()
+            vault.setRememberingEnabled(original)
+        }
+    }
+
     private fun prefKey(scope: String): String = "policy_" +
         MessageDigest.getInstance("SHA-256").digest(scope.toByteArray(Charsets.UTF_8))
             .joinToString("") { "%02x".format(it.toInt() and 255) }
