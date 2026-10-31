@@ -98,10 +98,15 @@ def render_gradle(original: str, jar: Path, jni_root: Path) -> str:
         '    sourceSets.getByName("main").jniLibs.srcDir("' + jni_literal + '")')
     guard = (
         '// Generated disposable owned-JNI test overlay. DO NOT COMMIT OR SHIP.\n'
-        'if (gradle.startParameter.taskNames.any {\n'
-        '    it.contains("release", ignoreCase = true) ||\n'
-        '    it.contains("qaMinified", ignoreCase = true)\n'
-        '}) error("Non-shipping owned native JNI overlay cannot build release/R8")\n'
+        'val ownedLabPermittedTasks = setOf(\n'
+        '    "assembleDebug", "assembleDebugAndroidTest",\n'
+        '    "connectedDebugAndroidTest", "testDebugUnitTest",\n'
+        '    "installDebug", "installDebugAndroidTest"\n'
+        ')\n'
+        'if (gradle.startParameter.taskNames.isEmpty() ||\n'
+        '    gradle.startParameter.taskNames.any {\n'
+        '        it.substringAfterLast(":") !in ownedLabPermittedTasks\n'
+        '    }) error("Owned JNI lab permits explicit Debug tasks only; no build/assemble/release")\n'
     )
     plugins = (
         'plugins {\n'
