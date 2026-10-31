@@ -1,0 +1,186 @@
+name: Native owned-writer G0 experiment
+
+on:
+  pull_request:
+    paths:
+      - "experiments/native-owned-writer/**"
+      - ".github/workflows/native-owned-writer-experiment.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pinned-file-ownership-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Strict C++17 non-clobber and ASan/UBSan negatives
+        run: |
+          bash experiments/native-owned-writer/test.sh --sanitizers
+          CXX=clang++ bash experiments/native-owned-writer/test.sh
+      - name: Cross-compile isolated native writer on Android API29 ABIs
+        run: |
+          set -euo pipefail
+          ndk_root="$(find "$ANDROID_HOME/ndk" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n1)"
+          test -n "$ndk_root" && test -f "$ndk_root/build/cmake/android.toolchain.cmake"
+          for abi in arm64-v8a x86_64; do
+            cmake -S experiments/native-owned-writer -B "$RUNNER_TEMP/owned-$abi" -G Ninja \
+              -DCMAKE_TOOLCHAIN_FILE="$ndk_root/build/cmake/android.toolchain.cmake" \
+              -DANDROID_ABI="$abi" -DANDROID_PLATFORM=android-29 \
+              -DCHUNKS_OWNED_WRITER_HOST_TESTS=OFF
+            cmake --build "$RUNNER_TEMP/owned-$abi" --parallel 2
+          done
+
+
+  pinned-libtorrent-disk-abi:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch exact libtorrent commit embedded by libtorrent4j 2.1.0-39
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/chunks-libtorrent"
+          git -C "$RUNNER_TEMP/chunks-libtorrent" init
+          git -C "$RUNNER_TEMP/chunks-libtorrent" remote add origin https://github.com/arvidn/libtorrent.git
+          git -C "$RUNNER_TEMP/chunks-libtorrent" fetch --depth 1 origin 24a3adf35d3e689bde700371337aad61b160bafa
+          git -C "$RUNNER_TEMP/chunks-libtorrent" checkout --detach FETCH_HEAD
+          test "$(git -C "$RUNNER_TEMP/chunks-libtorrent" rev-parse HEAD)" = "24a3adf35d3e689bde700371337aad61b160bafa"
+      - name: Verify source-only SWIG and Java fork patch is safe and idempotent
+        run: python3 -m unittest discover -s experiments/native-owned-writer/bridge -p 'test_apply_to_libtorrent4j_fork.py' -v
+      - name: Stage custom disk sources into exact libtorrent4j 2.1.0-39 upstream checkout
+        run: |
+          set -euo pipefail
+          upstream="$RUNNER_TEMP/chunks-libtorrent4j"
+          mkdir -p "$upstream"
+          git -C "$upstream" init
+          git -C "$upstream" remote add origin https://github.com/aldenml/libtorrent4j.git
+          git -C "$upstream" fetch --depth 1 origin da7d2403f06a0939bc2c51a88e67a6c4a85512ef
+          git -C "$upstream" checkout --detach FETCH_HEAD
+          test "$(git -C "$upstream" rev-parse HEAD)" = "da7d2403f06a0939bc2c51a88e67a6c4a85512ef"
+          python3 experiments/native-owned-writer/bridge/apply_to_libtorrent4j_fork.py "$upstream"
+          python3 experiments/native-owned-writer/bridge/apply_to_libtorrent4j_fork.py "$upstream"
+          grep -F '%include "chunks/bridge/owned_disk_extension.i"' "$upstream/swig/libtorrent.i"
+          grep -F 'setOwnedDiskIO' "$upstream/src/main/java/org/libtorrent4j/SessionParams.java"
+          grep -F 'chunks/bridge/owned_libtorrent_disk.cc' "$upstream/swig/CMakeLists.txt"
+          grep -F 'chunks/owned_payload_file.cc' "$upstream/swig/Jamfile"
+          grep -F 'chunks/bridge/owned_libtorrent_disk.cc' "$upstream/swig/Jamfile"
+          test "$(grep -F -c 'chunks/bridge/owned_libtorrent_disk.cc' "$upstream/swig/Jamfile")" -eq 1
+          git -C "$upstream" diff --check
+      - name: Generate real SWIG Java and native wrappers for rebuilt fork
+        run: |
+          set -euo pipefail
+          upstream="$RUNNER_TEMP/chunks-libtorrent4j"
+          # The fork's exact pinned native submodule must be populated before
+          # SWIG can parse the actual disk constructor extension.
+          git -C "$upstream" submodule update --init --recursive --depth 1 swig/deps/libtorrent
+          if ! command -v swig >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq swig
+          fi
+          python3 - "$upstream/swig/run-swig.sh" "$RUNNER_TEMP/run-chunks-swig-linux.sh" <<'PY'
+          from pathlib import Path
+          import sys
+          script = Path(sys.argv[1]).read_text()
+          script = script.replace("sed -i ''", "sed -i")
+          script = script.replace("BOOST_ROOT=$DEVELOPMENT_ROOT/boost_1_90_0",
+                                  "BOOST_ROOT=/usr/include")
+          Path(sys.argv[2]).write_text(script)
+          PY
+          (cd "$upstream/swig" && bash "$RUNNER_TEMP/run-chunks-swig-linux.sh")
+          grep -F 'set_owned_disk_io_constructor' "$upstream/src/main/java/org/libtorrent4j/swig/session_params.java"
+          grep -F 'set_owned_disk_io_constructor' "$upstream/swig/libtorrent_jni.cpp"
+          # Ensure SWIG generation didn't accidentally drop core session calls.
+          grep -F 'set_posix_disk_io_constructor' "$upstream/src/main/java/org/libtorrent4j/swig/session_params.java"
+      - name: Syntax-check regenerated full JNI against pinned native ABI
+        run: |
+          set -euo pipefail
+          if ! test -d /usr/include/boost || ! test -d /usr/include/openssl; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq libboost-dev libssl-dev
+          fi
+          upstream="$RUNNER_TEMP/chunks-libtorrent4j"
+          java_home="$(dirname "$(dirname "$(readlink -f "$(command -v javac)")")")"
+          test -f "$java_home/include/jni.h"
+          test -f "$upstream/swig/libtorrent_jni.cpp"
+          c++ -std=c++17 -fsyntax-only \
+            -DTORRENT_ABI_VERSION=4 -DTORRENT_USE_OPENSSL=1 \
+            -I "$java_home/include" -I "$java_home/include/linux" \
+            -I "$upstream/swig" \
+            -I "$upstream/swig/deps/libtorrent/include" \
+            "$upstream/swig/libtorrent_jni.cpp"
+      - name: Compile all custom disk_interface overrides against pinned C++ API
+        run: |
+          set -euo pipefail
+          if ! test -d /usr/include/boost || ! test -d /usr/include/openssl; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq libboost-dev libssl-dev
+          fi
+          c++ -std=c++17 -Wall -Wextra -Werror -pedantic -fsyntax-only \
+            -DTORRENT_ABI_VERSION=4 -DTORRENT_USE_OPENSSL=1 \
+            -I "$RUNNER_TEMP/chunks-libtorrent/include" \
+            experiments/native-owned-writer/bridge/owned_libtorrent_disk.cc
+
+      - name: Cross-compile owned disk-interface adapter for Android API29 arm64 and x86_64
+        run: |
+          set -euo pipefail
+          ndk_root="$(find "$ANDROID_HOME/ndk" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n1)"
+          llvm="$ndk_root/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          test -x "$llvm/aarch64-linux-android29-clang++"
+          mkdir -p "$RUNNER_TEMP/chunks-boost-includes"
+          ln -s /usr/include/boost "$RUNNER_TEMP/chunks-boost-includes/boost"
+          # This is a source-level Android toolchain portability check.
+          # Android crypto must later use the pinned target OpenSSL build.
+          for target in aarch64-linux-android29 x86_64-linux-android29; do
+            "$llvm/$target-clang++" -std=c++17 -Wall -Wextra -Werror -pedantic \
+              -fsyntax-only -DTORRENT_ABI_VERSION=4 -DTORRENT_USE_RTC=0 \
+              -I "$RUNNER_TEMP/chunks-libtorrent/include" \
+              -I "$RUNNER_TEMP/chunks-boost-includes" \
+              experiments/native-owned-writer/bridge/owned_libtorrent_disk.cc
+          done
+      - name: Build forked host JNI shared library with owned disk backend
+        run: |
+          set -euo pipefail
+          sudo apt-get install -y -qq ninja-build libboost-system-dev zlib1g-dev
+          upstream="$RUNNER_TEMP/chunks-libtorrent4j"
+          build="$RUNNER_TEMP/chunks-owned-jni-host-build"
+          cmake -S "$upstream/swig" -B "$build" -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=OFF -Dwebtorrent=OFF -DUSE_JUICE=OFF \
+            -DUSE_NETTLE=OFF -DBoost_USE_STATIC_LIBS=ON \
+            -DOPENSSL_USE_STATIC_LIBS=ON
+          cmake --build "$build" --target torrent4j --parallel 2
+          library="$(find "$build" -type f -name 'libtorrent4j.so' -print -quit)"
+          test -n "$library" && test -s "$library"
+          nm -C "$library" | grep -F 'chunks::MakeOwnedDiskConstructor'
+          nm -D "$library" | grep -F 'Java_org_libtorrent4j_swig_libtorrent_1jni_'
+          echo "CHUNKS_OWNED_HOST_JNI_LINK=PASS"
+          # Unlike syntax/link checks, this actually constructs a libtorrent
+          # session and exercises its owned disk callbacks on disposable
+          # public-like storage with planted foreign bytes.
+          cmake --build "$build" --target chunks_owned_session_smoke --parallel 2
+          # Negative control: the smoke must NOT turn green when compiled
+          # Release/-DNDEBUG and a check is deliberately false.
+          set +e
+          timeout 5 "$build/chunks_owned_session_smoke" --self-test-fail
+          failure_status=$?
+          set -e
+          test "$failure_status" -eq 86
+          timeout 30 "$build/chunks_owned_session_smoke"
+      - name: Compile forked libtorrent4j Java sources and create real owned JNI session
+        run: |
+          set -euo pipefail
+          upstream="$RUNNER_TEMP/chunks-libtorrent4j"
+          build="$RUNNER_TEMP/chunks-owned-jni-host-build"
+          java_out="$RUNNER_TEMP/chunks-owned-java-classes"
+          mkdir -p "$java_out" "$RUNNER_TEMP/chunks-owned-java-fixture"
+          find "$upstream/src/main/java" -name '*.java' -print0 | \
+            xargs -0 javac --release 8 -d "$java_out" \
+              experiments/native-owned-writer/bridge/ChunksOwnedJniSmoke.java
+          timeout 35 java \
+            -Dlibtorrent4j.jni.path="$build/libtorrent4j.so" \
+            -cp "$java_out" ChunksOwnedJniSmoke \
+            "$RUNNER_TEMP/chunks-owned-java-fixture"
+

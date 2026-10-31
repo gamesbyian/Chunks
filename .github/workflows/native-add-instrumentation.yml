@@ -57,6 +57,10 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_6
+          # Explicitly cap userdata: default Pixel 6 data partition exceeded
+          # free runner space (run 41125095089, emulator FATAL 7372.80 MB needed).
+          # Keep enough space for debug/instrumentation APKs and shared-storage fixtures.
+          disk-size: 4096M
           emulator-boot-timeout: 600
           disable-animations: true
           script: bash tools/native_add_review.sh

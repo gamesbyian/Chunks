@@ -26,8 +26,11 @@ class LocalPlaceWriteProbeTest {
         root: File,
         random: java.util.Random = java.security.SecureRandom(),
         afterCreate: () -> Unit = {},
-        beforeRename: () -> Unit = {}
+        beforeRename: () -> Unit = {},
+        beforePublish: () -> Unit = {},
+        onOpen: (Path) -> Unit = {}
     ) = LocalPlaceWriteProbe.verify(root, random, openExclusive = { path, hook ->
+        onOpen(path)
         val channel = FileChannel.open(path, StandardOpenOption.CREATE_NEW,
             StandardOpenOption.READ, StandardOpenOption.WRITE, LinkOption.NOFOLLOW_LINKS)
         val key = Files.readAttributes(path, BasicFileAttributes::class.java,
@@ -47,12 +50,18 @@ class LocalPlaceWriteProbeTest {
             }
             override fun close() = channel.close()
         }
-    }, afterCreate = afterCreate, beforeRename = beforeRename)
+    }, afterCreate = afterCreate, beforeRename = beforeRename,
+        beforePublish = beforePublish)
 
     @Test fun writableFolderPassesAndKeepsNoProbeFiles() {
         val folder = temp.newFolder("Downloads")
         File(folder, "existing.bin").writeBytes(byteArrayOf(1, 2, 3))
-        assertNull(verify(folder))
+        val openNames = mutableListOf<String>()
+        assertNull(verify(folder, onOpen = { openNames += it.fileName.toString() }))
+        assertEquals("Both source and destination must be created exclusively",
+            2, openNames.size)
+        assertTrue(openNames[0].endsWith(".tmp"))
+        assertTrue(openNames[1].endsWith(".ok"))
         assertEquals(listOf("existing.bin"), folder.list()!!.toList())
         assertTrue(File(folder, "existing.bin").readBytes().contentEquals(byteArrayOf(1, 2, 3)))
     }
@@ -155,6 +164,92 @@ class LocalPlaceWriteProbeTest {
         assertTrue(Files.isSymbolicLink(target.toPath()))
         assertTrue(original.contentEquals(foreign.readBytes()))
         assertFalse(File(root, ".chunks-write-probe-0000000000000000.tmp").exists())
+    }
+
+    @Test fun destinationWithoutVerifiedDescriptorIdentityIsRetainedNotDeleted() {
+        val root = temp.newFolder("unverified-exclusive-destination")
+        val target = File(root, ".chunks-write-probe-0000000000000000.ok").toPath()
+        val source = File(root, ".chunks-write-probe-0000000000000000.tmp").toPath()
+        val unknown = byteArrayOf(4, 4, 2, 2)
+        val predictable = object : java.util.Random() {
+            override fun nextBytes(buffer: ByteArray) { buffer.fill(0) }
+        }
+        val result = verify(root, predictable, onOpen = { path ->
+            if (path == target) {
+                // A broken/faulted provider creates the final name but fails
+                // before the descriptor can be pinned and fstat-verified.
+                // Chunks has no deletion authority over that uncertain inode.
+                Files.write(path, unknown, StandardOpenOption.CREATE_NEW)
+                throw java.io.IOException("could not verify destination descriptor")
+            }
+        })
+        assertNotNull("Unverified final inode must never count as a working Place", result)
+        assertTrue("Do not delete a final name without owned fd proof",
+            unknown.contentEquals(Files.readAllBytes(target)))
+        assertFalse("Source staging can still be cleaned by its pinned fd", Files.exists(source))
+    }
+
+    @Test fun destinationCreatedAfterLastSurveyIsNeverReplacedOrDeleted() {
+        val root = temp.newFolder("post-survey-collision")
+        val destination = File(root, ".chunks-write-probe-0000000000000000.ok")
+        val foreign = byteArrayOf(14, 15, 92, 65, 35, 89)
+        val predictable = object : java.util.Random() {
+            override fun nextBytes(buffer: ByteArray) { buffer.fill(0) }
+        }
+        var injected = false
+        val result = verify(root, predictable, beforePublish = {
+            // No more existence survey occurs after this callback. The only
+            // safe outcome is CREATE_NEW refusing the occupied destination.
+            destination.writeBytes(foreign)
+            injected = true
+        })
+        assertTrue("The injected post-survey collision must execute", injected)
+        assertNotNull("An occupied .ok destination must be refused", result)
+        assertTrue("The foreign destination must remain byte-identical",
+            foreign.contentEquals(destination.readBytes()))
+        assertFalse("Owned source staging can be cleaned without touching .ok",
+            File(root, ".chunks-write-probe-0000000000000000.tmp").exists())
+    }
+
+    @Test fun destinationSymlinkArrivingAfterLastSurveyIsNotFollowedOrRemoved() {
+        val root = temp.newFolder("post-survey-link")
+        val outside = temp.newFile("outside-post-survey").apply {
+            writeText("external content remains intact")
+        }
+        val destination = File(root, ".chunks-write-probe-0000000000000000.ok").toPath()
+        val predictable = object : java.util.Random() {
+            override fun nextBytes(buffer: ByteArray) { buffer.fill(0) }
+        }
+        val result = verify(root, predictable, beforePublish = {
+            Files.createSymbolicLink(destination, outside.toPath())
+        })
+        assertNotNull(result)
+        assertTrue("Pre-existing symlink must not be replaced",
+            Files.isSymbolicLink(destination))
+        assertEquals("external content remains intact", outside.readText())
+        assertFalse(File(root, ".chunks-write-probe-0000000000000000.tmp").exists())
+    }
+
+    @Test fun sourceSubstitutedAfterFinalSurveyIsNeverDeletedAsOwned() {
+        val root = temp.newFolder("post-survey-source-substitution")
+        val source = File(root, ".chunks-write-probe-0000000000000000.tmp").toPath()
+        val displaced = File(root, "previous-owned-inode").toPath()
+        val target = File(root, ".chunks-write-probe-0000000000000000.ok").toPath()
+        val foreign = byteArrayOf(9, 9, 8, 8, 7, 7)
+        val predictable = object : java.util.Random() {
+            override fun nextBytes(buffer: ByteArray) { buffer.fill(0) }
+        }
+        val result = verify(root, predictable, beforePublish = {
+            Files.move(source, displaced)
+            Files.write(source, foreign, StandardOpenOption.CREATE_NEW)
+        })
+        assertNotNull("Changed source ownership must refuse publication", result)
+        assertTrue("Foreign replacement must not be cleaned by the probe",
+            foreign.contentEquals(Files.readAllBytes(source)))
+        assertTrue("Displaced owned staging must remain available for diagnosis",
+            Files.size(displaced) > foreign.size)
+        assertFalse("Any exclusively created destination must be cleaned",
+            Files.exists(target))
     }
 
     @Test fun replacedSourceBeforeRenameIsNeverMovedOrDeleted() {

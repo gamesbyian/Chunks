@@ -4,6 +4,8 @@ This directory exists to retain old development context and decision provenance 
 
 ## Preserved pre-consolidation snapshots
 
+- [UX contract snapshot (2026-10-30)](UX-2026-10-30-pre-reconciliation.md): pre-reconciliation interaction plan with original prose preserved and relative links normalized for this folder, dated implementation notes and owner corrections. Follow the [current UX contract](../UX.md) for binding behavior and [audit](../UX-INTEGRATION-AUDIT-2026-10-30.md) for the preservation map.
+
 - [Work queue snapshot](WORK-QUEUE-2026-10-29-preconsolidation.md): previous 92 KB backlog and all its dated checkpoints, link paths normalized for archival location.
 - [Agent instructions snapshot](AGENTS-2026-10-29-preconsolidation.md): previous operational narrative and important historical engineering context, with relative links normalized.
 - [README snapshot](README-2026-10-29-preconsolidation.md): former public project overview and dated feature claims.

@@ -47,6 +47,28 @@ class UnifiedTransferDetailsTest {
             it.operation == EnvironmentOperation.START_STOP }.evidence)
     }
 
+    @Test fun spoofedPhoneBuildEvidenceCanNeverAuthorizeRemoteDetails() {
+        val spoof = EnvironmentCapabilitySnapshot(serverA, "phone engine", now,
+            mapOf(EnvironmentOperation.START_STOP to CapabilityEvidence.BUILT_IN))
+        val detail = UnifiedTransferDetails.resolve(same, listOf(source(serverA)), spoof, now)
+        val action = detail.operations.single { it.operation == EnvironmentOperation.START_STOP }
+        assertEquals(TransferDetailReadState.CURRENT, detail.readState)
+        assertEquals(CapabilityEvidence.UNKNOWN, action.evidence)
+        assertFalse(action.mayOfferAttempt)
+        assertTrue(action.explanation.contains("wrong engine type"))
+    }
+
+    @Test fun remoteAdvertisementCanNeverAuthorizePhoneDetails() {
+        val phoneKey = UnifiedTransferKey.of(phone, hash)
+        val spoof = EnvironmentCapabilitySnapshot(phone, "rTorrent test", now,
+            mapOf(EnvironmentOperation.START_STOP to CapabilityEvidence.ADVERTISED))
+        val detail = UnifiedTransferDetails.resolve(phoneKey, listOf(source(phone)), spoof, now)
+        val action = detail.operations.single { it.operation == EnvironmentOperation.START_STOP }
+        assertEquals(CapabilityEvidence.UNKNOWN, action.evidence)
+        assertFalse(action.mayOfferAttempt)
+        assertTrue(action.explanation.contains("wrong engine type"))
+    }
+
     @Test fun completeFreshListCanReportAbsentWithoutClaimingRemoval() {
         val detail = UnifiedTransferDetails.resolve(same, listOf(source(serverA, rows = emptyList())),
             probe(serverA), now)

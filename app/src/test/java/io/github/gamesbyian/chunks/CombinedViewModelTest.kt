@@ -56,6 +56,22 @@ class CombinedViewModelTest {
         assertEquals(UnifiedTransferQuery(), CombinedViewPreferences.decode("*;SIZE;ASCENDING;0;"))
     }
 
+    @Test fun latePersistedViewNeverOverridesInteractiveSearchOrScope() {
+        val saved = UnifiedTransferQuery(scope = EnvironmentViewScope.Only(setOf(server)),
+            filter = UnifiedTransferFilter.STOPPED, sortKey = UnifiedSortKey.SIZE,
+            direction = UnifiedSortDirection.DESCENDING)
+        val current = UnifiedTransferQuery(scope = EnvironmentViewScope.Only(setOf(phone)),
+            search = "typed during a slow disk read", sortKey = UnifiedSortKey.NAME)
+        assertEquals(current, CombinedViewPreferences.reconcileLoadedView(
+            current, saved, userInteracted = true))
+        assertEquals(saved, CombinedViewPreferences.reconcileLoadedView(
+            UnifiedTransferQuery(), saved, userInteracted = false))
+        assertFalse("Search-only input is still a user edit",
+            CombinedViewPreferences.reconcileLoadedView(current, saved, true).search.isEmpty())
+        assertFalse("Search stays intentionally nonpersistent",
+            CombinedViewPreferences.encode(current).contains("typed during"))
+    }
+
     @Test fun scopeChipsSelectOneThenToggleAndNeverProduceAnEmptySubset() {
         val one = toggleScope(EnvironmentViewScope.All, server)
         assertEquals(EnvironmentViewScope.Only(setOf(server)), one)
@@ -75,6 +91,10 @@ class CombinedViewModelTest {
         assertFalse(d(TransferLockMode.ONCE_PER_PROCESS, secure = false).mayShow)
         // A failed configure never turns a stale opt-out into disclosure.
         assertFalse(d(TransferLockMode.NEVER, sync = false, may = false).mayShow)
+        assertFalse("An old authorized grant must not override a mismatched NEVER policy",
+            d(TransferLockMode.NEVER, sync = false, secure = true, may = true).mayShow)
+        assertFalse("An old authorized grant must not override a mismatched protected policy",
+            d(TransferLockMode.ONCE_PER_PROCESS, sync = false, secure = true, may = true).mayShow)
         assertTrue(d(TransferLockMode.NEVER, sync = false).needsSecureWindow)
     }
 

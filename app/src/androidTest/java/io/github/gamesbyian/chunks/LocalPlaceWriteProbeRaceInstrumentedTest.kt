@@ -14,14 +14,14 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Real Android exclusive-open/fstat/lstat identity and NIO rename semantics.
+ * Real Android exclusive-open/fstat/lstat identity and exclusive publication.
  * Controlled interleavings do not establish atomic pathname check/action safety.
  */
 @RunWith(AndroidJUnit4::class)
 class LocalPlaceWriteProbeRaceInstrumentedTest {
     private val context get() = InstrumentationRegistry.getInstrumentation().targetContext
 
-    @Test fun destinationCreatedAtRenameBoundaryKeepsUnrelatedBytes() {
+    @Test fun destinationCreatedAfterFinalSurveyKeepsUnrelatedBytes() {
         val root = File(context.cacheDir, "probe-race-" + System.nanoTime())
         assertTrue(root.mkdirs())
         try {
@@ -30,15 +30,39 @@ class LocalPlaceWriteProbeRaceInstrumentedTest {
             val predictable = object : Random() {
                 override fun nextBytes(out: ByteArray) { out.fill(0) }
             }
-            val refused = LocalPlaceWriteProbe.verify(root, predictable) {
-                competing.writeBytes(bytes)
-            }
+            val refused = LocalPlaceWriteProbe.verify(root, predictable,
+                beforePublish = { competing.writeBytes(bytes) })
             assertNotNull(refused)
             assertTrue(competing.isFile)
             assertArrayEquals(bytes, competing.readBytes())
             assertFalse(File(root, ".chunks-write-probe-0000000000000000.tmp").exists())
         } finally {
             root.deleteRecursively()
+        }
+
+        // Same executed Android test count: separately prove that a symbolic
+        // link planted after the LAST survey cannot be followed or removed.
+        val linkRoot = File(context.cacheDir, "probe-link-after-survey-" + System.nanoTime())
+        val unrelated = File(context.cacheDir, "probe-link-foreign-" + System.nanoTime())
+        assertTrue(linkRoot.mkdirs())
+        val outsideBytes = byteArrayOf(9, 7, 5, 3, 1)
+        unrelated.writeBytes(outsideBytes)
+        val link = File(linkRoot, ".chunks-write-probe-0000000000000000.ok").toPath()
+        try {
+            val predictable = object : Random() {
+                override fun nextBytes(out: ByteArray) { out.fill(0) }
+            }
+            val refused = LocalPlaceWriteProbe.verify(linkRoot, predictable,
+                beforePublish = { Files.createSymbolicLink(link, unrelated.toPath()) })
+            assertNotNull("O_EXCL must reject a planted final-name symlink", refused)
+            assertTrue(Files.isSymbolicLink(link))
+            assertArrayEquals(outsideBytes, unrelated.readBytes())
+            assertFalse(File(linkRoot, ".chunks-write-probe-0000000000000000.tmp").exists())
+        } finally {
+            // Both paths were created exclusively by this disposable fixture.
+            if (Files.isSymbolicLink(link)) Files.deleteIfExists(link)
+            linkRoot.deleteRecursively()
+            unrelated.delete()
         }
     }
 

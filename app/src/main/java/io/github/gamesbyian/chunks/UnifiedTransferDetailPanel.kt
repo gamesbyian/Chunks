@@ -68,7 +68,17 @@ internal fun UnifiedTransferDetailPanel(
                     DateFormat.MEDIUM, DateFormat.SHORT, Locale.getDefault()
                 ).format(Date(whenObserved)), style = MaterialTheme.typography.bodySmall)
             }
-            detail.observation?.let { transfer -> TransferDetailFacts(transfer) }
+            detail.observation?.let { transfer ->
+                if (detail.readState != TransferDetailReadState.CURRENT) {
+                    Text(
+                        "Last-known transfer facts only. Status, progress and rates may have changed. " +
+                            "Refresh the owning environment before reviewing an action.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                TransferDetailFacts(transfer)
+            }
             if (detail.observation == null) {
                 Text("No currently displayable details from this exact environment.",
                     style = MaterialTheme.typography.bodySmall)

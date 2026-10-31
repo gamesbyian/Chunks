@@ -155,7 +155,9 @@ fun TransferLifecycleControl(
                                 pending = true
                                 scope.launch {
                                     try {
-                                        val outcome = performLifecycle(transfer.hash, requestedStarted)
+                                        val outcome = remoteLifecycleOutcomeOrUnknown {
+                                            performLifecycle(transfer.hash, requestedStarted)
+                                        }
                                         verified = outcome is LifecycleOutcome.Verified
                                         feedback = when (outcome) {
                                             is LifecycleOutcome.Verified ->
@@ -168,10 +170,9 @@ fun TransferLifecycleControl(
                                                     ", not the requested state. Refresh before considering another action."
                                             is LifecycleOutcome.Uncertain ->
                                                 "RPC outcome uncertain. The operation may already have happened. Refresh before considering another action."
+                                            null ->
+                                                "Could not verify the operation. Inspect the latest server state before retrying."
                                         }
-                                    } catch (_: Exception) {
-                                        verified = false
-                                        feedback = "Could not verify the operation. Inspect the latest server state before retrying."
                                     } finally {
                                         pending = false
                                         onSettled()
@@ -179,13 +180,15 @@ fun TransferLifecycleControl(
                                     if (requestedStarted) {
                                         checkingActivity = true
                                         try {
-                                            val fresh = observeActivity(transfer.hash)
-                                            if (!snapshotStale) {
+                                            val fresh = remoteObservationOrUnknown {
+                                                observeActivity(transfer.hash)
+                                            }
+                                            if (fresh == null) activity = null
+                                            else if (!snapshotStale) {
                                                 activity = fresh
                                                 activityAtRevision = snapshotRevision
                                             }
-                                        } catch (_: Exception) { activity = null }
-                                        finally { checkingActivity = false }
+                                        } finally { checkingActivity = false }
                                     }
                                 }
                                 } else {
@@ -214,13 +217,15 @@ fun TransferLifecycleControl(
                     val observedRevision = snapshotRevision
                     scope.launch {
                         try {
-                            val observed = observeActivity(transfer.hash)
-                            if (!snapshotStale && observedRevision == snapshotRevision) {
+                            val observed = remoteObservationOrUnknown {
+                                observeActivity(transfer.hash)
+                            }
+                            if (observed == null) activity = null
+                            else if (!snapshotStale && observedRevision == snapshotRevision) {
                                 activity = observed
                                 activityAtRevision = observedRevision
                             }
-                        } catch (_: Exception) { activity = null }
-                        finally { checkingActivity = false }
+                        } finally { checkingActivity = false }
                     }
                 },
                 enabled = !checkingActivity && !pending,

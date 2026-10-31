@@ -37,6 +37,7 @@ def verify(root: ET.Element) -> tuple[bool, list[str]]:
     tests = failures = skipped = 0
     matches = []
     recorded_cases = 0
+    witness_texts: list[str] = []
     for suite in suites:
         try:
             tests += int(suite.attrib["tests"])
@@ -46,9 +47,19 @@ def verify(root: ET.Element) -> tuple[bool, list[str]]:
             errors.append("JUnit suite has invalid/incomplete execution counters")
             continue
         recorded_cases += len(suite.findall("testcase"))
-        matches.extend(tc for tc in suite.findall("testcase")
-                       if TEST_CLASS in tc.get("classname", "")
-                       and tc.get("name") == TEST_METHOD)
+        # Bind evidence to the actual class/test suite; do not accept
+        # same-named suffix spoofing or output borrowed from another suite.
+        suite_matches = [tc for tc in suite.findall("testcase")
+                         if (tc.get("classname", "") == TEST_CLASS or
+                             tc.get("classname", "").endswith("." + TEST_CLASS))
+                         and tc.get("name") == TEST_METHOD]
+        matches.extend(suite_matches)
+        suite_texts = [out.text or "" for out in suite.iter("system-out")]
+        if suite_matches:
+            witness_texts.extend(suite_texts)
+        elif any(line.strip().startswith(FAMILY + " ")
+                 for output in suite_texts for line in output.splitlines()):
+            errors.append("Post-Stop witness belongs to a different JUnit test suite")
     if recorded_cases != tests:
         errors.append(f"JUnit case count mismatch: declared={tests}, actual={recorded_cases}")
     if tests < 1 or failures != 0 or skipped != 0:
@@ -59,8 +70,7 @@ def verify(root: ET.Element) -> tuple[bool, list[str]]:
                     or matches[0].find("failure") is not None
                     or matches[0].find("error") is not None):
         errors.append("Target case is skipped or failed")
-    texts = [el.text or "" for suite in suites for el in suite.iter("system-out")]
-    lines = [line.strip() for text in texts for line in text.splitlines()]
+    lines = [line.strip() for output in witness_texts for line in output.splitlines()]
     groups: dict[str, str] = {}
     for line in lines:
         if line.startswith(FAMILY + " "):
@@ -85,8 +95,14 @@ def verify(root: ET.Element) -> tuple[bool, list[str]]:
         errors.append("Missing or unsafe foreign_file_replaced=false")
     if groups.get("expected_torrent_data_present") != f"{FAMILY} expected_torrent_data_present=false":
         errors.append("Missing or unsafe expected_torrent_data_present=false")
-    if not LIFECYCLE.fullmatch(groups.get("first_start_outcome", "")):
+    lifecycle = LIFECYCLE.fullmatch(groups.get("first_start_outcome", ""))
+    if not lifecycle:
         errors.append("Missing or invalid verified Start/Stop, priority and restart witness")
+    elif lifecycle.group(2) != "REFUSED":
+        # An accepted or uncertain native restart against deliberately planted
+        # unowned bytes remains capable of a later asynchronous overwrite.
+        # Equal hashes at the observation deadline cannot grant Start authority.
+        errors.append("UNOWNED POST-STOP RESTART WAS NOT EXPLICITLY REFUSED")
     return not errors, errors
 
 
@@ -104,7 +120,7 @@ def main(argv: list[str] | None = None) -> int:
         print("BLOCKED: " + problem, file=sys.stderr)
     if not ok:
         return 1
-    print("PASS: synthetic post-Stop foreign file unchanged before/after priority and restart")
+    print("PASS: synthetic post-Stop native restart explicitly refused; foreign bytes unchanged")
     print("LIMIT: no native atomic ownership, external race, persistent recovery or physical-device proof")
     return 0
 

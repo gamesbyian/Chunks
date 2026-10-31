@@ -24,7 +24,12 @@ object RemoteSmartConnect {
     // Some reverse proxies decode path escapes before selecting a tenant
     // mount. An encoded separator/control must not change which rTorrent
     // instance an explicit user path actually reaches.
-    private val ambiguousPathEscape = Regex("(?i)%(?:2f|5c|0[0-9a-f]|1[0-9a-f]|7f)")
+    private val ambiguousPathEscape =
+        Regex("(?i)%(?:25)*(?:2f|5c|0[0-9a-f]|1[0-9a-f]|7f)")
+    // The transport already refuses traversal after repeated proxy decoding.
+    // Reject the same aliases in discovery before sending any credentials.
+    private val dotTraversalSegment =
+        Regex("(?i)(?:^|/)(?:\\.|%(?:25)*2e){1,2}(?:/|$)")
 
     data class Candidate(val endpoint: String, val description: String)
     data class Verified<T>(
@@ -116,6 +121,7 @@ object RemoteSmartConnect {
         if (path.isEmpty()) return input
         require(path.length <= 512 && path.startsWith("/") && "//" !in path &&
             !ambiguousPathEscape.containsMatchIn(path) &&
+            !dotTraversalSegment.containsMatchIn(path) &&
             Regex("[A-Za-z0-9._~%/-]+").matches(path) &&
             path.split('/').none { it == "." || it == ".." || it.equals("%2e", true) ||
                 it.equals("%2e%2e", true) || it.equals(".%2e", true) || it.equals("%2e.", true) }) {
@@ -137,7 +143,10 @@ object RemoteSmartConnect {
         // Accept a hostname pasted from a provider dashboard, without
         // asking the user to type https:// themselves.
         val prepared = if ("://" in raw) raw else "https://$raw"
-        val uri = URI(prepared)
+        // URISyntaxException includes the entire rejected input in its
+        // message. Never surface a pasted token/password through diagnostics.
+        val uri = try { URI(prepared) }
+            catch (_: Exception) { throw IllegalArgumentException("Enter a valid seedbox address") }
         require(uri.scheme.equals("https", true) ||
             (uri.scheme.equals("http", true) &&
                 uri.host in setOf("localhost", "127.0.0.1", "[::1]"))) {
@@ -152,7 +161,7 @@ object RemoteSmartConnect {
         val rawPath = uri.rawPath.orEmpty().trimEnd('/')
         // Avoid URI normalization/path traversal changing the intended tenant
         // or accidentally selecting a different backend mount.
-        require(!Regex("(?i)(?:^|/)(?:\\.|%2e){1,2}(?:/|$)").containsMatchIn(rawPath) &&
+        require(!dotTraversalSegment.containsMatchIn(rawPath) &&
             !ambiguousPathEscape.containsMatchIn(rawPath)) {
             "Unsafe path segments in server address"
         }
@@ -244,7 +253,9 @@ object RemoteSmartConnect {
                             .containsMatchIn(failure.message.orEmpty()) ->
                         Category.AUTH
                     failure is IOException && (failure.message.orEmpty().contains("authentication challenge", true) ||
-                            failure.message.orEmpty().contains("authentication required", true)) ->
+                            failure.message.orEmpty().contains("authentication required", true) ||
+                            failure.message.orEmpty().contains("authentication identity", true) ||
+                            failure.message.orEmpty().contains("Digest", true)) ->
                         Category.AUTH
                     else -> Category.ENDPOINT
                 }

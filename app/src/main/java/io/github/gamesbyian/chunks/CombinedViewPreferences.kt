@@ -26,6 +26,18 @@ internal class CombinedViewPreferences(context: Context) {
         preferences.edit().putString("view", encode(query)).commit()
 
     companion object {
+        /**
+         * A saved view load can finish after the user has already touched the
+         * screen. In that case keep the user's current input exactly; a stale
+         * preference read must not replace a freshly chosen scope or search.
+         * This rule has no command or Add-destination implications.
+         */
+        fun reconcileLoadedView(
+            current: UnifiedTransferQuery,
+            loaded: UnifiedTransferQuery,
+            userInteracted: Boolean
+        ): UnifiedTransferQuery = if (userInteracted) current else loaded
+
         /** Search text is deliberately not persisted. */
         fun encode(query: UnifiedTransferQuery): String {
             val scope = when (val s = query.scope) {

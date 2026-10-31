@@ -76,7 +76,11 @@ class LocalEngineService : Service() {
             // readback budget across all transfers, but still issue every Stop.
             val timeoutBudget = if (timedOut) LocalServicePauseBudget() else null
             val engine = LocalEngineHolder.current()
-                ?: return LocalServiceTimeoutNotice.PauseSummary(listed = 0, confirmed = 0)
+                // A missing or inaccessible engine is not evidence that zero
+                // torrents were running. Preserve uncertainty in the timeout
+                // notice rather than promising an empty, successfully stopped
+                // phone when the process/engine could not be inspected.
+                ?: return LocalServiceTimeoutNotice.PauseSummary(listed = null, confirmed = 0)
             // Attempt each Stop independently. One uncertain native command
             // must not prevent pausing the other active phone transfers.
             val active = try { engine.list().filter { !it.stopped } }
@@ -152,13 +156,20 @@ class LocalEngineService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (finished) {
-            // A timed-out/retired instance must not call startForeground again:
-            // Android may reject dataSync promotion after the time budget ran out.
-            // Ending this start request promptly also satisfies the service
-            // start contract without reattaching a retired foreground lifetime.
-            stopSelf(startId)
-            return START_NOT_STICKY
+        // The Android 15+ dataSync timeout is a terminal lifetime transition.
+        // A second onStartCommand can arrive between onTimeout and finish:
+        // attempting startForeground again could re-promote an exhausted
+        // service. The existing timeout watchdog still owns stopSelf/notice.
+        when (LocalServiceStartGate.decide(
+            finished = finished, timedOut = timeoutStop.requested
+        )) {
+            LocalServiceStartGate.Decision.RETIRE_FINISHED -> {
+                stopSelf(startId)
+                return START_NOT_STICKY
+            }
+            LocalServiceStartGate.Decision.IGNORE_WHILE_TIMING_OUT ->
+                return START_NOT_STICKY
+            LocalServiceStartGate.Decision.PROMOTE -> Unit
         }
         // Must be called promptly for every admitted startForegroundService request.
         startForeground(NOTIFICATION_ID, notification("Checking transfers…"),

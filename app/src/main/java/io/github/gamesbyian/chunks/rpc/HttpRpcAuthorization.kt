@@ -21,6 +21,15 @@ internal object HttpRpcAuthorization {
         requestTarget: String
     ): String {
         if (credentials.username.isEmpty()) throw IOException("RPC authentication required")
+        // Basic uses the first ':' to delimit the username. Digest places the
+        // username directly in a quoted HTTP header value. Refuse identities
+        // that could select a different Basic principal or inject header
+        // controls before either scheme can construct Authorization.
+        if (credentials.username.length > 256 ||
+            credentials.username.any { it == ':' || it.isISOControl() ||
+                it == '\u2028' || it == '\u2029' }) {
+            throw IOException("Invalid RPC authentication identity")
+        }
         val challenges = supportedChallenges(headers)
         val digest = challenges.firstOrNull { schemeOf(it) == "Digest" }
         if (digest != null) {
@@ -61,7 +70,8 @@ internal object HttpRpcAuthorization {
         val choices = mutableListOf<String>()
         for (header in headers) {
             if (header.length !in 1..8192 ||
-                header.any { it == '\r' || it == '\n' || (it.code < 32 && it != '\t') }) {
+                header.any { it == '\r' || it == '\n' || (it.code < 32 && it != '\t') ||
+                    it.code in 127..159 || it == '\u2028' || it == '\u2029' }) {
                 throw IOException("Invalid RPC authentication challenge")
             }
             val boundaries = mutableListOf(0)
@@ -95,7 +105,8 @@ internal object HttpRpcAuthorization {
 
     private fun parse(header: String): Map<String, String> {
         if (header.length !in 1..8192 ||
-            header.any { it == '\r' || it == '\n' || (it.code < 32 && it != '\t') }) {
+            header.any { it == '\r' || it == '\n' || (it.code < 32 && it != '\t') ||
+                    it.code in 127..159 || it == '\u2028' || it == '\u2029' }) {
             throw IOException("Invalid RPC authentication challenge")
         }
         val out = linkedMapOf<String, String>()

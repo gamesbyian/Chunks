@@ -75,6 +75,10 @@ Use stable states `LOCAL_METADATA`, `QUEUED`, `PROVIDER_SEARCH`, `PARTIAL_METADA
 - No lookup while protected content is locked or during privacy-limited background work. Respect independently authenticated remote profiles, profile boundaries and privacy-screen redaction. Artwork cache must not leak locked title/media identity in previews, notifications, recents screenshots, crash reports or diagnostics. Avoid analytics/tracking by default.
 - User-imported art and API responses are untrusted input: restrict schemes to HTTPS for remote, enforce redirect/host/size/type/pixel bounds, safe image decoding and reasonable timeouts; disallow SVG/XML active content as remote images. Provider API failures must not impede torrent command execution.
 
+## Automatic presentation without surprise enrichment (owner UX, 2026-10-30)
+
+Useful generic or existing verified local artwork may appear automatically; guessing a title or category remains an explicitly labelled suggestion. Remote artwork/metadata lookup requires its separate informed revocable consent and must not be caused by ignoring the artwork picker. A user who never changes artwork must still see a readable, useful transfer with stable names, progress and file access. Provide an obvious later **Artwork · Change** from the transfer; choosing artwork affects presentation and any explicitly selected propagation scope, never silently renames backing files or broadcasts personal metadata. Show **Automatic**, **Suggested**, **Chosen by you**, **Couldn't identify** truthfully. [Default and continuity UX](UX.md#visible-options-automatic-defaults-and-nondecision-continuity-binding-owner-direction-2026-10-30).
+
 ## UI design
 
 - On transfer cards show square, softly rounded thumbnail at leading edge, with reasonable small-screen sizing (target 64–80dp in normal rows where room permits); scale and crop without image stretching. Thumbnail must not cause jitter when loaded. Default placeholders keep stable layout height.

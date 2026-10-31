@@ -29,6 +29,10 @@ Combined Transfers SHALL offer a **Group by environment** presentation toggle, i
 6. Combined batch actions cannot accidentally execute against an unselected/hidden profile, and a view-scope change cannot alter Add destination, saved rule scope or setting target.
 
 
+## Smart scoped defaults without a destination guessing game (owner UX, 2026-10-30)
+
+A person with one eligible environment gets a resolved, obvious destination and no compulsory environment picker. With multiple environments, show the saved explicit Add destination or ask once when genuinely ambiguous; a combined view, filter, recently viewed profile or matching hash is never implicit permission to redirect a command. Display read-only scoped settings as familiar summaries such as **On phone · Save to: [verified folder] · Change**, and provide **Change this transfer**, **Change this environment's default** and **Apply to selected profiles** only where those actions are genuinely distinct. Skipping a scope control must not cause later file-location confusion or force recovery from an accidental server choice. Retain source labels and per-transfer options after Add, reconnect and restart, with honest offline/unknown states. [UX requirement](UX.md#visible-options-automatic-defaults-and-nondecision-continuity-binding-owner-direction-2026-10-30).
+
 ## Configuration and first run
 - Local-only is the default offer and a complete standalone path; no remote account, remote connection, seedbox, or network enrichment is required. An explicit remote-only choice is equally first class and must not force local torrent-engine setup or start the local service.
 - Users may enable local only, remote only, or both; remote may include multiple independently named rTorrent profiles. Enabling, disabling and later re-enabling an environment preserves its configuration and torrent/data state unless a **separate, explicit deletion or credential-forget action** is confirmed. Disable means hidden/inactive in Chunks UI, not a destructive torrent removal or remote server shutdown. Do not stop active local downloads silently: warn of consequences and offer a separate stop/background policy.
@@ -64,6 +68,10 @@ The integrated [Discover experience](INTAKE-QUEUE-AND-POLICIES.md) is a **Chunks
 
 [Server tools](REMOTE-INTEGRATIONS-AND-PREFERENCES.md) are **remote-profile-specific and secondary** under Servers → selected remote → Server tools. No privileged admin actions or dashboard tiles become first-class Transfers/Add/Details controls; remote-only mode still emphasizes torrent use. Local-only mode has no Server tools screen. Multiple remote profiles never inherit one another's admin credentials/permissions, and a disconnected/unverified profile cannot present an optimistic management action.
 
+## Task-centred discovery across selected environments (UX refinement, 2026-10-30)
+
+The same **Transfers / Files** search entry may inspect metadata from a selected union of authorized environments, but a matching filename never merges two jobs or gives file-byte access across machines. Each result and every subsequent command retains (authenticated profile/phone, exact infohash, observed file index), with stale, offline or locked source coverage identified. Surface active scope/filter chips, **Show all** and verified hidden-result counts when known; counts across inaccessible sources remain unknown or partial. An existing saved filter may not make a successful exact-target Add appear to have vanished. Settings entered contextually from a transfer or diagnostic must show actual target and inherited/current value, and changing the current view must not change a settings target. Details and negative acceptance are in [UX](UX.md#findability-and-truthful-outcomes-in-everyday-torrent-journeys-binding-ux-research-informed-2026-10-30); these are required presentation semantics, not present implementation proof.
+
 ## Capability differences
 - Capabilities are negotiated per engine, server profile, authenticated principal, version/build, storage permission and snapshot freshness, not hardcoded 'remote vs local' assumptions.
 - Common supported operations use identical surface and semantics. Unsupported/unknown commands are disabled or replaced by a truthful explanation and safe alternative, never optimistic simulation. Hidden controls are appropriate only for genuinely irrelevant concepts. Retain the placement/context when useful so users can find the expected operation.
@@ -96,14 +104,16 @@ The server label comes from the authenticated alias scope via the same address f
 - **Sources:** the phone engine, but only if it is already running in this process (the view never starts it); the signed-in server's latest accepted list; and every other saved profile, shown as *Not connected* with no rows. Identity is `phone` or the saved profile ID.
 - **List behavior:** multi-select view scope (All, one or several), search, six reversible sort keys with unknowns last, and *Group by environment* with one shared sort. Scope, sort, direction and grouping persist across restart; search text is not saved.
 - **Status:** each source shows Live, Out of date, Not connected or Locked.
-- **Privacy:** each environment's own privacy lock is respected, and the window is secured while protected rows are shown.
+- **Privacy:** each environment's own privacy lock is respected, and the window is secured while protected rows are shown. Load exact-scope privacy policy modes off the Compose thread; while a policy read is pending/failed/stale after account, foreground or saved-mode changes, lock the affected combined view instead of assuming opt-out. Saved server listing/alias authorization requires that the authenticated account+instance reconstruct exactly the saved environment ID. If mismatched, show a reconnect warning, never fetch/display private rows under the old profile, and do not borrow another account's session grant.
 - **Rows:** each row has a text environment label and a decorative rail.
 
 **Cross-environment Start/Stop (PARTIAL).** *Select…* enables an explicit row selection, counting selections hidden by the current view.
 - **Before running:** Start…/Stop… shows a preview naming every target environment and its count.
 - **While running:** each environment runs under its own existing mutation gate: the server list's readback gate, or the process-wide `PhoneMutationFence` shared with the phone screen. Results are reported per environment.
 - **Refusals:** a stale, offline, locked, busy or signed-out environment refuses its items, never redirecting them.
-- **Uncertain results:** the first uncertain result halts the batch, with no retry.
+- **Attempted unresolved/failed command:** the first ACKNOWLEDGED (accepted without authoritative readback), UNCERTAIN, explicit backend REFUSED, or genuine backend NOT_FOUND halts every later target in all environments. No automatic retry or cross-account fallback.
+- **Pre-dispatch invalid target:** a locally unsupported rTorrent v2/64-hex infohash is refused **before any mutation RPC** using the exact environment+hash key. Unlike a backend NOT_FOUND after an attempt, this does not halt unrelated eligible targets; a valid v1 request in that account may continue only while every freshness/privacy/session fence remains true.
+- **Report honesty:** accepted but not verified is never counted as completed; a disappeared transfer must be reread in its owning environment. A failed or retired review never authorizes another command.
 
 **Environment colours (PARTIAL).** Each stable environment ID receives an automatic hue from Chunks' accent palette, never black or white.
 - **Automatic assignment:** a hue is assigned once and persisted, avoiding hues already used until all nine are taken. Error red and warning yellow come last.

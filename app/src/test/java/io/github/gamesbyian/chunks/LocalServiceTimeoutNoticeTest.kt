@@ -16,7 +16,9 @@ class LocalServiceTimeoutNoticeTest {
             "Open Chunks to resume.", text(1, 1))
         assertEquals("Android's background time limit was reached. Chunks paused 1 of 3 transfers; " +
             "2 could not be confirmed. Open Chunks to check.", text(3, 1))
-        assertTrue(text(null, 0).contains("could not confirm"))
+        assertEquals("Android's background time limit was reached. " +
+            "Chunks tried to pause transfers on this phone but could not confirm it. " +
+            "Open Chunks to check.", text(null, 0))
         assertTrue(text(0, 0).contains("No transfers were running"))
     }
 

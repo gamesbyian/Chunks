@@ -101,5 +101,37 @@ class RestoreReceiptTest(unittest.TestCase):
         self.expect_block(ET.Element("testsuites"), "no test suites")
 
 
+    def test_prefixed_counterfeit_classname_cannot_satisfy_native_case(self):
+        root = witness()
+        root.find("testcase").set("classname", "engine.Counterfeit" + module.CLASS)
+        self.expect_block(root, "Expected exactly one executed")
+
+    def test_unrelated_junit_suite_cannot_lend_its_green_witness(self):
+        native = witness()
+        stdout = native.find("system-out")
+        native.remove(stdout)
+        unrelated = ET.Element("testsuite", {"name": "UnrelatedFixture", "tests": "1",
+                                             "failures": "0", "errors": "0", "skipped": "0"})
+        ET.SubElement(unrelated, "testcase", {"classname": "other.UnrelatedFixture",
+                                             "name": "unrelated"})
+        ET.SubElement(unrelated, "system-out").text = stdout.text
+        root = ET.Element("testsuites")
+        root.extend((native, unrelated))
+        self.expect_block(root, "different JUnit test suite")
+
+    def test_unrelated_suite_contamination_blocks_even_clean_native_witness(self):
+        native = witness()
+        unrelated = ET.Element("testsuite", {"name": "UnrelatedFixture", "tests": "1",
+                                             "failures": "0", "errors": "0", "skipped": "0"})
+        ET.SubElement(unrelated, "testcase", {"classname": "other.UnrelatedFixture",
+                                             "name": "unrelated"})
+        ET.SubElement(unrelated, "system-out").text = (
+            f"{F} foreign_file_replaced=false")
+        root = ET.Element("testsuites")
+        root.extend((native, unrelated))
+        self.expect_block(root, "different JUnit test suite")
+
+
+
 if __name__ == "__main__":
     unittest.main()

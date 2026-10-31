@@ -4,6 +4,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -28,6 +29,19 @@ class CombinedSavedServersTest {
     private fun id(scope: String) = io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverId(
         scope.substringBefore('\u0000'), scope.substringAfter('\u0000')).value
     private val calls = AtomicInteger(0)
+
+    /**
+     * Identity changes may be shown as disconnected, privacy-locked or
+     * reconnect-required. This test protects the invariant, not one wording:
+     * exactly this saved slot has zero rows and may never claim Live.
+     */
+    private fun hiddenSavedSlot(name: String): Boolean =
+        rule.onAllNodes(
+            hasText(name + ":", substring = true) and
+                hasText("· 0 transfers", substring = true)
+        ).fetchSemanticsNodes().isNotEmpty() &&
+            rule.onAllNodesWithText(name + ": Live", substring = true)
+                .fetchSemanticsNodes().isEmpty()
 
     private fun show(profiles: List<CombinedSavedProfile>) = rule.setContent {
         ChunksTheme { Surface(color = ChunksColors.Background) {
@@ -110,10 +124,23 @@ class CombinedSavedServersTest {
         // A stale completion may finish on another dispatcher. Even after it
         // has had time to return, the view stays unconnected to account A.
         rule.waitUntil(5_000) {
-            rule.onAllNodesWithText(name + ": Not connected · 0 transfers")
-                .fetchSemanticsNodes().isNotEmpty()
+            hiddenSavedSlot(name)
         }
         rule.onNodeWithText("Old account private payload").assertDoesNotExist()
+        // An edited account cannot inherit the saved environment ID of A.
+        // Refuse both disclosure and fetching until account B has its own
+        // independently verifiable ID; a hidden load button is intentional.
+        rule.onNodeWithText("Load other saved servers (read-only)").assertDoesNotExist()
+        assertEquals("A mismatched saved identity cannot fetch B", 0, newReads.get())
+
+        rule.runOnIdle {
+            // Authorized replacement: the environment ID now matches B.
+            current = CombinedSavedProfile(id(scopeB), "Account slot", scopeB) {
+                newReads.incrementAndGet()
+                listOf(RemoteTransfer("b".repeat(40), "New account ISO",
+                    2048, 1024, true, "/new"))
+            }
+        }
         rule.onNodeWithText("Load other saved servers (read-only)").performScrollTo().performClick()
         rule.waitUntil(5_000) {
             newReads.get() == 1 &&
@@ -130,8 +157,7 @@ class CombinedSavedServersTest {
             }
         }
         rule.waitUntil(5_000) {
-            rule.onAllNodesWithText(name + ": Not connected · 0 transfers")
-                .fetchSemanticsNodes().isNotEmpty()
+            hiddenSavedSlot(name)
         }
         rule.onNodeWithText("New account ISO").assertDoesNotExist()
         assertEquals("No silent read of the new account", 1, newReads.get())

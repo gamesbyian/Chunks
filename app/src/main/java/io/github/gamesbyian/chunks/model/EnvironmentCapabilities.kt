@@ -61,7 +61,17 @@ data class EnvironmentCapabilitySnapshot(
             EnvironmentAvailability.STALE -> return Decision(false, "Transfer list is out of date; refresh first")
             EnvironmentAvailability.LIVE -> Unit
         }
-        return when (of(operation)) {
+        val proof = of(operation)
+        // This DTO can be constructed by callers and must not elevate a
+        // mistyped server snapshot into bundled-phone command authority.
+        if (proof == CapabilityEvidence.BUILT_IN &&
+            (environment != EnvironmentSnapshots.PHONE || source != "phone engine")) {
+            return Decision(false, "${operation.label}: capability evidence belongs to the wrong engine type")
+        }
+        if (proof == CapabilityEvidence.ADVERTISED && environment == EnvironmentSnapshots.PHONE) {
+            return Decision(false, "${operation.label}: a server advertisement cannot authorize the phone engine")
+        }
+        return when (proof) {
             CapabilityEvidence.BUILT_IN -> Decision(true, "${operation.label}: built into the phone engine")
             CapabilityEvidence.ADVERTISED -> Decision(true, "${operation.label}: advertised by $source; checked again when used")
             CapabilityEvidence.UNKNOWN -> Decision(true, "${operation.label}: not pre-checked on $source; the result is verified when used")
@@ -73,8 +83,14 @@ data class EnvironmentCapabilitySnapshot(
 
 object EnvironmentCapabilities {
     /** The phone engine's operations are part of this build, not negotiated. */
-    fun phone(environment: EnvironmentId = EnvironmentSnapshots.PHONE, observedAtEpochMillis: Long? = null) =
-        EnvironmentCapabilitySnapshot(environment, "phone engine", observedAtEpochMillis,
+    fun phone(environment: EnvironmentId = EnvironmentSnapshots.PHONE, observedAtEpochMillis: Long? = null):
+        EnvironmentCapabilitySnapshot {
+        // A built-in capability is evidence about the bundled phone engine, never
+        // a shortcut for an arbitrary server profile with the same torrent hash.
+        require(environment == EnvironmentSnapshots.PHONE) {
+            "Phone engine capabilities cannot be attached to a remote environment"
+        }
+        return EnvironmentCapabilitySnapshot(environment, "phone engine", observedAtEpochMillis,
             EnvironmentOperation.entries.associateWith {
                 when (it) {
                     // Server-side concepts with no phone-engine counterpart.
@@ -83,6 +99,7 @@ object EnvironmentCapabilities {
                     else -> CapabilityEvidence.BUILT_IN
                 }
             })
+    }
 
     /** Grades one server's own read-only probe. */
     fun fromProbe(environment: EnvironmentId, probe: RemoteProbe, observedAtEpochMillis: Long?): EnvironmentCapabilitySnapshot {

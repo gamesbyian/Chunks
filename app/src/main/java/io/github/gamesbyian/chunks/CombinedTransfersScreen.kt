@@ -37,6 +37,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.key
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -67,7 +68,8 @@ import io.github.gamesbyian.chunks.model.UnifiedTransferQuery
 import io.github.gamesbyian.chunks.model.Units
 import io.github.gamesbyian.chunks.privacy.RemoteTransferPrivacyScope
 import io.github.gamesbyian.chunks.privacy.TransferPrivacyRuntime
-import io.github.gamesbyian.chunks.privacy.TransferPrivacyVisibility
+import io.github.gamesbyian.chunks.privacy.TransferDeviceAuthenticator
+import io.github.gamesbyian.chunks.privacy.TransferPrivacyPolicyStore
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
 import io.github.gamesbyian.chunks.model.LifecycleReply
 import io.github.gamesbyian.chunks.model.UnifiedBatchLifecycle
@@ -97,6 +99,26 @@ import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withContext
 
 /** The connected server's latest accepted list, as the server screen holds it. */
+/** Ephemeral selection owner. Never save credentials, sessions or selections to instance state. */
+/** A completed off-main-thread read, valid only for this exact privacy/session view. */
+private data class CombinedAliasLoad(
+    val witness: CombinedBatchViewIdentity,
+    val requests: Set<CombinedAliasRequest>,
+    val revision: Int,
+    val values: Map<CombinedAliasRequest, String>
+)
+
+private data class CombinedBatchViewIdentity(
+    val signedInServer: EnvironmentId?,
+    val authenticatedScope: String?,
+    val authenticatedSession: Any?,
+    val savedScopes: List<Pair<String, String?>>,
+    val privacyEpoch: String,
+    val phoneVisible: Boolean,
+    val serverVisible: Boolean?,
+    val savedVisibility: List<Pair<String, Boolean>>
+)
+
 internal data class CombinedServerSource(
     val aliasScope: String,
     val transfers: List<RemoteTransfer>,
@@ -217,12 +239,31 @@ internal fun CombinedTransfersScreen(
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
-    val preferences = remember(context) { CombinedViewPreferences(context) }
-    val aliases = remember(context) { TransferAliasStore(context) }
-    var query by remember { mutableStateOf(preferences.load()) }
+    // Persistent preference reads run off the composition thread. A saved
+    // snapshot cannot replace a scope/filter/search chosen while it loads.
+    var query by remember { mutableStateOf(UnifiedTransferQuery()) }
+    var queryTouched by remember { mutableStateOf(false) }
+    var loadedPreferences by remember { mutableStateOf<CombinedViewPreferences?>(null) }
+    LaunchedEffect(context) {
+        try {
+            val (store, saved) = withContext(Dispatchers.IO) {
+                val store = CombinedViewPreferences(context)
+                store to store.load()
+            }
+            query = CombinedViewPreferences.reconcileLoadedView(query, saved, queryTouched)
+            loadedPreferences = store
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            // Unknown or unreadable persisted view cannot replace user input.
+        }
+    }
     fun update(next: UnifiedTransferQuery) {
+        queryTouched = true
         query = next
-        preferences.save(next.copy(search = ""))
+        // Save at the explicit event, not during composition; no queued write
+        // can reorder a newer choice behind a late preference read.
+        (loadedPreferences ?: CombinedViewPreferences(context)).save(next.copy(search = ""))
     }
 
     // Phone: read only an engine already running in this process. Opening this
@@ -231,14 +272,9 @@ internal fun CombinedTransfersScreen(
     var phoneConfirmed by remember { mutableStateOf(false) }
     var phoneRunning by remember { mutableStateOf(LocalEngineHolder.current() != null) }
     var phoneObservedAt by remember { mutableStateOf<Long?>(null) }
-    // Explicit cross-environment selection; never derived from the view scope.
-    var selecting by remember { mutableStateOf(false) }
     // Restores only a read-only detail target, never an in-flight command or batch selection.
     var savedDetailTarget by rememberSaveable { mutableStateOf<ArrayList<String>?>(null) }
     val detailKey = restoreCombinedDetailTarget(savedDetailTarget)
-    var selected by remember { mutableStateOf<Set<UnifiedTransferKey>>(emptySet()) }
-    var batchRunning by remember { mutableStateOf(false) }
-    var batchResult by remember { mutableStateOf<List<String>>(emptyList()) }
     val batchScope = rememberCoroutineScope()
     var listings by remember { mutableStateOf<Map<EnvironmentId, SavedServerListing>>(emptyMap()) }
     var now by remember { mutableStateOf(System.currentTimeMillis()) }
@@ -273,25 +309,62 @@ internal fun CombinedTransfersScreen(
         }
     }
 
-    // Privacy follows each environment's own gate. Reading the lifecycle
-    // revision re-evaluates after background/foreground transitions.
+    // Privacy policy storage and SHA-256 preference-key derivation must never
+    // run during composition. Until a cancellable, exact-scope asynchronous
+    // read completes, every environment is locked, including opt-out scopes.
     val privacyRevision = TransferPrivacyRuntime.lifecycleRevision
-    val phonePrivacy = remember(privacyRevision) {
-        TransferPrivacyVisibility.current(context, activity, TransferCollectionStore.LOCAL_ENGINE_SCOPE)
+    val policyRevision = TransferPrivacyPolicyStore.revision
+    val phonePrivacyScope = TransferCollectionStore.LOCAL_ENGINE_SCOPE
+    val serverPrivacyScope = remember(server?.aliasScope) {
+        server?.aliasScope?.let(RemoteTransferPrivacyScope::fromAuthenticatedAliasScope)
     }
-    val serverPrivacy = remember(privacyRevision, server?.aliasScope) {
-        server?.let { RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(it.aliasScope) }
-            ?.let { TransferPrivacyVisibility.current(context, activity, it) }
-    }
-
-    // Keyed on identities, not the profile objects (their loader lambdas change every recomposition).
-    val savedPrivacy = remember(privacyRevision, savedProfiles.map { it.id to it.aliasScope }) {
+    // Profile identity is verified before admission: neither a renamed
+    // account nor a different ruTorrent instance may borrow a prior policy.
+    val savedScopeIdentities = savedProfiles.map { it.id to it.aliasScope }
+    val savedPrivacyScopes = remember(savedScopeIdentities) {
         savedProfiles.associate { profile ->
-            EnvironmentId(profile.id) to (profile.aliasScope
-                ?.let { RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(it) }
-                ?.let { TransferPrivacyVisibility.current(context, activity, it) }
-                ?: TransferPrivacyVisibility.Decision(mayShow = false, needsSecureWindow = true))
+            EnvironmentId(profile.id) to profile.aliasScope
+                ?.takeIf { EnvironmentSnapshots.serverIdOfAliasScope(it)?.value == profile.id }
+                ?.let(RemoteTransferPrivacyScope::fromAuthenticatedAliasScope)
         }
+    }
+    val requestedPrivacyScopes = remember(serverPrivacyScope, savedPrivacyScopes) {
+        buildSet {
+            add(phonePrivacyScope)
+            serverPrivacyScope?.let { add(it) }
+            savedPrivacyScopes.values.filterNotNull().forEach { add(it) }
+        }
+    }
+    var loadedPrivacy by remember { mutableStateOf<CombinedPrivacyEvidence?>(null) }
+    LaunchedEffect(context, requestedPrivacyScopes, policyRevision, privacyRevision) {
+        loadedPrivacy = null
+        try {
+            val modes = withContext(Dispatchers.IO) {
+                val store = TransferPrivacyPolicyStore(context)
+                requestedPrivacyScopes.associateWith(store::mode)
+            }
+            loadedPrivacy = CombinedPrivacyEvidence(
+                requestedPrivacyScopes, policyRevision, privacyRevision, modes)
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            // A failed preference read never turns an unknown mode into NEVER.
+        }
+    }
+    // An old policy result is invisible immediately after lifecycle, account,
+    // or policy changes, even before LaunchedEffect starts the next read.
+    val privacyEvidence = loadedPrivacy?.takeIf {
+        it.current(requestedPrivacyScopes, policyRevision, privacyRevision)
+    }
+    val privacySession = TransferPrivacyRuntime.session
+    val deviceSecure = activity != null && TransferDeviceAuthenticator.hasSecureLock(activity)
+    val phonePrivacy = privacyEvidence?.decision(phonePrivacyScope, privacySession, deviceSecure)
+        ?: CombinedPrivacyEvidence.LOCKED
+    val serverPrivacy = serverPrivacyScope?.let {
+        privacyEvidence?.decision(it, privacySession, deviceSecure) ?: CombinedPrivacyEvidence.LOCKED
+    }
+    val savedPrivacy = savedPrivacyScopes.mapValues { (_, scope) ->
+        privacyEvidence?.decision(scope, privacySession, deviceSecure) ?: CombinedPrivacyEvidence.LOCKED
     }
     val serverId = server?.let {
         EnvironmentSnapshots.serverIdOfAliasScope(it.aliasScope)
@@ -302,9 +375,16 @@ internal fun CombinedTransfersScreen(
     val activeSavedScopes = savedProfiles.mapNotNull { profile ->
         val id = EnvironmentId(profile.id)
         profile.aliasScope?.takeIf { scope ->
-            id != serverId && profile.listOnly != null && savedPrivacy[id]?.mayShow == true
+            id != serverId && SavedProfileIdentity.matches(profile.id, scope) &&
+                profile.listOnly != null && savedPrivacy[id]?.mayShow == true
         }?.let { id to it }
     }.toMap()
+    // An invalid saved authenticated endpoint/account identity may remain
+    // visible as a configured row, but never load or borrow another scope.
+    val invalidSavedProfiles = savedProfiles.filter { it.aliasScope != null &&
+        !SavedProfileIdentity.matches(it.id, it.aliasScope) &&
+        EnvironmentId(it.id) != serverId
+    }.map { EnvironmentId(it.id) }.toSet()
     val currentSavedScopes = rememberUpdatedState(activeSavedScopes)
     val savedListingFence = remember { SavedListingResponseFence() }
     LaunchedEffect(activeSavedScopes) {
@@ -316,6 +396,27 @@ internal fun CombinedTransfersScreen(
                 activeSavedScopes[id] == listing.sourceAliasScope
         }
     }
+    // A selection and its confirmation belong to an exact authenticated UI
+    // session, saved-profile roster and privacy state, not merely to a hash.
+    // Preserve independent browse/sort state when a session changes, but never
+    // carry an armed cross-environment Start/Stop confirmation into the next.
+    val batchIdentity = CombinedBatchViewIdentity(
+        signedInServer = serverId,
+        authenticatedScope = server?.aliasScope,
+        authenticatedSession = server?.authenticatedSession,
+        savedScopes = savedProfiles.map { it.id to it.aliasScope }.sortedBy { it.first },
+        privacyEpoch = privacyRevision.toString(),
+        phoneVisible = phonePrivacy.mayShow,
+        serverVisible = serverPrivacy?.mayShow,
+        savedVisibility = savedPrivacy.map { (id, decision) -> id.value to decision.mayShow }
+            .sortedBy { it.first }
+    )
+    val latestBatchIdentity = rememberUpdatedState(batchIdentity)
+    // All four state fields must share exactly the same identity boundary.
+    var selecting by remember(batchIdentity) { mutableStateOf(false) }
+    var selected by remember(batchIdentity) { mutableStateOf<Set<UnifiedTransferKey>>(emptySet()) }
+    var batchRunning by remember(batchIdentity) { mutableStateOf(false) }
+    var batchResult by remember(batchIdentity) { mutableStateOf<List<String>>(emptyList()) }
     val labels = LinkedHashMap<EnvironmentId, String>().apply {
         put(EnvironmentSnapshots.PHONE, PHONE_ENVIRONMENT_LABEL)
         if (server != null && serverId != null) put(serverId, serverEnvironmentLabel(server.aliasScope))
@@ -346,7 +447,7 @@ internal fun CombinedTransfersScreen(
             ({ onOpenTransfer(key) }) else null
 
     // Keyed on data only: MainActivity rebuilds the server source (and its lifecycle lambdas) each frame.
-    val sources = remember(phoneFrame, phoneConfirmed, phoneRunning, phoneObservedAt, phonePrivacy,
+    val rawSources = remember(phoneFrame, phoneConfirmed, phoneRunning, phoneObservedAt, phonePrivacy,
         server?.aliasScope, server?.transfers, server?.stale, server?.fullView, server?.observedAtEpochMillis,
         serverPrivacy, savedPrivacy, activeSavedScopes, listings, now, batchRunning,
         PhoneMutationFence.revision.blocksMutations()) { buildList {
@@ -360,13 +461,13 @@ internal fun CombinedTransfersScreen(
         else EnvironmentTransferSnapshot(EnvironmentSnapshots.PHONE,
             if (phonePrivacy.mayShow) EnvironmentAvailability.OFFLINE else EnvironmentAvailability.LOCKED,
             false, null, emptyList())
-        add(phone.withAliases { hash -> aliases.get(TransferCollectionStore.LOCAL_ENGINE_SCOPE, hash) })
+        add(phone)
         if (server != null && serverId != null) {
             add(EnvironmentSnapshots.server(serverId, server.transfers, connected = true,
                 stale = server.stale || batchRunning,
                 locked = serverPrivacy?.mayShow != true, fullView = server.fullView,
                 observedAtEpochMillis = server.observedAtEpochMillis, nowEpochMillis = snapshotNow)
-                .withAliases { hash -> aliases.get(server.aliasScope, hash) })
+            )
         }
         savedProfiles.filter { EnvironmentId(it.id) != serverId }.forEach { profile ->
             val id = EnvironmentId(profile.id)
@@ -378,9 +479,53 @@ internal fun CombinedTransfersScreen(
             add(EnvironmentSnapshots.server(id, listing?.transfers.orEmpty(), connected = observed != null,
                 stale = listing?.let { savedListingIsStale(it, snapshotNow) } == true,
                 locked = locked, fullView = true, observedAtEpochMillis = observed, nowEpochMillis = snapshotNow)
-                .withAliases { hash -> profile.aliasScope?.let { aliases.get(it, hash) } })
+            )
         }
     }
+    }
+    // Resolve labels only from explicitly authorized owner scopes. An account
+    // or privacy change makes a previous alias map unusable immediately, even
+    // before the new asynchronous read has finished.
+    val aliasScopes = buildMap<EnvironmentId, String> {
+        if (phonePrivacy.mayShow) put(EnvironmentSnapshots.PHONE, TransferCollectionStore.LOCAL_ENGINE_SCOPE)
+        if (serverId != null && server != null && serverPrivacy?.mayShow == true) {
+            put(serverId, server.aliasScope)
+        }
+        savedProfiles.forEach { profile ->
+            val scope = profile.aliasScope ?: return@forEach
+            val id = EnvironmentId(profile.id)
+            if (id != serverId && savedPrivacy[id]?.mayShow == true &&
+                activeSavedScopes[id] == scope &&
+                EnvironmentSnapshots.serverIdOfAliasScope(scope) == id) {
+                put(id, scope)
+            }
+        }
+    }
+    val aliasRequests = remember(rawSources, aliasScopes) {
+        CombinedAliasProjection.requests(rawSources, aliasScopes)
+    }
+    val aliasRevision = TransferAliasStore.revision
+    var loadedAliases by remember { mutableStateOf<CombinedAliasLoad?>(null) }
+    LaunchedEffect(context, aliasRequests, aliasRevision, batchIdentity) {
+        loadedAliases = null
+        if (aliasRequests.isEmpty()) return@LaunchedEffect
+        try {
+            val found = withContext(Dispatchers.IO) {
+                TransferAliasStore(context).getBatch(aliasRequests)
+            }
+            loadedAliases = CombinedAliasLoad(batchIdentity, aliasRequests, aliasRevision, found)
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            // Raw observed torrent titles remain readable; never use stale
+            // aliases or accidentally import a different account's labels.
+        }
+    }
+    val currentAliases = loadedAliases?.takeIf {
+        it.witness == batchIdentity && it.requests == aliasRequests && it.revision == aliasRevision
+    }?.values.orEmpty()
+    val sources = remember(rawSources, aliasScopes, currentAliases) {
+        CombinedAliasProjection.apply(rawSources, aliasScopes, currentAliases)
     }
     val result = remember(sources, query) { UnifiedTransferCatalog.query(sources, query) }
 
@@ -501,6 +646,7 @@ internal fun CombinedTransfersScreen(
                 style = MaterialTheme.typography.bodySmall)
         }
         item {
+            key(batchIdentity) {
             CombinedBatchSection(
                 selecting = selecting,
                 onSelecting = { selecting = it; if (!it) selected = emptySet(); batchResult = emptyList() },
@@ -515,18 +661,29 @@ internal fun CombinedTransfersScreen(
                     batchResult = emptyList()
                     val chosen = selected
                     val snapshot = sources
+                    val owner = batchIdentity
+                    val lifecycle = server?.lifecycle
+                    val targetServer = serverId
                     batchScope.launch {
+                        // Dispatch may be queued behind a server/account switch.
+                        if (latestBatchIdentity.value != owner) return@launch
                         try {
-                            batchResult = describeCombinedBatchSafely({ labels[it] ?: it.value }) {
-                                runCombinedLifecycle(chosen, start, snapshot, server?.lifecycle, serverId)
+                            val report = describeCombinedBatchSafely({ labels[it] ?: it.value }) {
+                                runCombinedLifecycle(chosen, start, snapshot, lifecycle, targetServer,
+                                    reviewStillCurrent = { latestBatchIdentity.value == owner })
                             }
+                            // A late completion is evidence about the OLD owner only.
+                            if (latestBatchIdentity.value == owner) batchResult = report
                         } finally {
-                            selected = emptySet()
-                            batchRunning = false
+                            if (latestBatchIdentity.value == owner) {
+                                selected = emptySet()
+                                batchRunning = false
+                            }
                         }
                     }
                 }
             )
+            }
         }
         item {
             Text("Show", style = MaterialTheme.typography.labelLarge)
@@ -546,7 +703,10 @@ internal fun CombinedTransfersScreen(
             }
         }
         item {
-            OutlinedTextField(value = query.search, onValueChange = { query = query.copy(search = it) },
+            OutlinedTextField(value = query.search, onValueChange = {
+                    queryTouched = true
+                    query = query.copy(search = it)
+                },
                 label = { Text("Search all selected") }, singleLine = true, modifier = Modifier.fillMaxWidth())
         }
         item {
@@ -589,7 +749,10 @@ internal fun CombinedTransfersScreen(
                     modifier = Modifier.weight(1f))
                 Switch(checked = query.groupByEnvironment,
                     onCheckedChange = { update(query.copy(groupByEnvironment = it)) },
-                    modifier = Modifier.semantics { contentDescription = "Group by environment" })
+                    // The Switch itself, not only its enclosing Row, must have
+                    // an accessible 48dp semantics/touch surface at large text.
+                    modifier = Modifier.heightIn(min = 48.dp)
+                        .semantics { contentDescription = "Group by environment" })
             }
         }
         item {
@@ -599,6 +762,10 @@ internal fun CombinedTransfersScreen(
                         listings[source.environment]?.takeIf { it.sourceAliasScope == witness }
                     }
                     val status = when {
+                        source.environment in invalidSavedProfiles ->
+                            "Saved account identity could not be verified; reconnect this profile"
+                        privacyEvidence == null ->
+                            "Privacy policy not yet verified; transfers hidden"
                         listing?.loading == true -> "Loading list…"
                         listing?.error != null && listing.observedAtEpochMillis == null ->
                             "Could not load (" + listing.error + ")"
@@ -750,9 +917,6 @@ internal fun toggleScope(scope: EnvironmentViewScope, id: EnvironmentId): Enviro
     }
 }
 
-private fun EnvironmentTransferSnapshot.withAliases(alias: (String) -> String?): EnvironmentTransferSnapshot =
-    copy(transfers = transfers.map { item -> alias(item.key.infoHash)?.let { item.copy(displayName = it) } ?: item })
-
 /** Text summary of one row; unknown facts are said as unknown, never as zero. */
 internal fun combinedRowFacts(row: UnifiedTransferObservation): String = listOf(
     when (row.started) { true -> "Started"; false -> "Stopped"; null -> "State unknown" },
@@ -826,7 +990,9 @@ internal suspend fun runCombinedLifecycle(
     serverLifecycle: CombinedServerLifecycle?,
     serverId: EnvironmentId?,
     phoneEngine: () -> io.github.gamesbyian.chunks.engine.LocalTorrentEngine? = { LocalEngineHolder.current() },
-    nowEpochMillis: () -> Long = { System.currentTimeMillis() }
+    nowEpochMillis: () -> Long = { System.currentTimeMillis() },
+    /** Old session, privacy or saved-profile review cannot authorize another mutation. */
+    reviewStillCurrent: () -> Boolean = { true }
 ): UnifiedBatchLifecycle.Report {
     // Confirmation can arrive between clock ticks, after the displayed source
     // expired. Re-evaluate it before acquiring any command lane.
@@ -840,10 +1006,18 @@ internal suspend fun runCombinedLifecycle(
     val byKey = currentSources.flatMap { it.transfers }.associateBy { it.key }
     val targets = chosen.sortedWith(compareBy({ it.environment.value }, { it.infoHash }))
         .map { UnifiedBatchLifecycle.Target(it, byKey[it]?.started) }
+    // rTorrent supports v1 40-hex hashes. This is a local pre-dispatch
+    // refusal, distinct from NOT_FOUND after an actual remote mutation/readback.
+    // Key by full Environment+Hash so another account is never implicated.
+    val unsupportedServerTargets = targets
+        .filter { it.key.environment == serverId &&
+            !it.key.infoHash.matches(Regex("[0-9a-f]{40}")) }
+        .associate { it.key to "Unsupported rTorrent infohash format; no command was sent" }
     val adapters = HashMap<EnvironmentId, UnifiedBatchLifecycle.Adapter>()
     val refusals = HashMap<EnvironmentId, String>()
     var phoneLeased = false
     var serverLeased = false
+    val expiredReview = "Reviewed session, privacy or profile scope changed; select transfers again"
     try {
         // An unavailable, incomplete or unobserved inventory cannot authorize
         // a batch, so never even acquire its engine's mutation gate. The pure
@@ -852,6 +1026,10 @@ internal suspend fun runCombinedLifecycle(
             .map { it.environment }.toSet()
         for (environment in targets.map { it.key.environment }.toSet()) {
             if (environment !in actionable) continue
+            if (!reviewStillCurrent()) {
+                refusals[environment] = expiredReview
+                continue
+            }
             if (environment == EnvironmentSnapshots.PHONE) {
                 val engine = phoneEngine()
                 when {
@@ -874,7 +1052,11 @@ internal suspend fun runCombinedLifecycle(
                 val capability = serverCapabilities(environment, serverLifecycle.probe)
                     .decide(EnvironmentOperation.START_STOP, EnvironmentAvailability.LIVE)
                 val source = currentSources.first { it.environment == environment }
-                if (EnvironmentSnapshots.serverInventoryIsOutOfDate(source.observedAtEpochMillis, nowEpochMillis()))
+                // The read-only method probe can suspend while the user changes
+                // accounts or locks privacy. Check again before taking a lease.
+                if (!reviewStillCurrent())
+                    refusals[environment] = expiredReview
+                else if (EnvironmentSnapshots.serverInventoryIsOutOfDate(source.observedAtEpochMillis, nowEpochMillis()))
                     refusals[environment] = "Transfer list is out of date; refresh first"
                 else if (!capability.allowed) refusals[environment] = capability.explanation
                 else if (!serverLifecycle.begin()) refusals[environment] = "server is busy or refreshing"
@@ -883,15 +1065,21 @@ internal suspend fun runCombinedLifecycle(
                     adapters[environment] = UnifiedBatchLifecycle.Adapter { hash, on ->
                         // rTorrent identities are v1 only: refuse before any RPC rather than
                         // letting a local validation failure read as an uncertain mutation.
-                        if (!hash.matches(Regex("[0-9a-f]{40}"))) LifecycleReply.NOT_FOUND
+                        if (!hash.matches(Regex("[0-9a-f]{40}"))) LifecycleReply.REFUSED
                         else serverLifecycle.setStarted(hash, on).toLifecycleReply(on)
                     }
                 }
             } else refusals[environment] = "only listed here; sign in to this server to change it"
         }
         return UnifiedBatchLifecycle.run(targets, start, currentSources, adapters, refusals,
-            sourceIsFresh = { source -> source.environment == EnvironmentSnapshots.PHONE ||
-                !EnvironmentSnapshots.serverInventoryIsOutOfDate(source.observedAtEpochMillis, nowEpochMillis()) })
+            // Check at each target, including no-ops, after any previous
+            // command or read-only probe may have suspended. A write already
+            // sent keeps its own reported result, but no later write escapes
+            // a retired session/selection/privacy review.
+            sourceIsFresh = { source -> reviewStillCurrent() &&
+                (source.environment == EnvironmentSnapshots.PHONE ||
+                    !EnvironmentSnapshots.serverInventoryIsOutOfDate(source.observedAtEpochMillis, nowEpochMillis())) },
+            preflightRefusals = unsupportedServerTargets)
     } finally {
         if (phoneLeased) PhoneMutationFence.revision.settledMutation()
         if (serverLeased) serverLifecycle?.settled?.invoke()
