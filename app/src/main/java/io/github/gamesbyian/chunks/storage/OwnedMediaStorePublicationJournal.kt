@@ -153,7 +153,7 @@ internal class OwnedMediaStorePublicationJournal private constructor(
                     MediaStore.MediaColumns._ID, MediaStore.MediaColumns.OWNER_PACKAGE_NAME,
                     MediaStore.MediaColumns.DISPLAY_NAME, MediaStore.MediaColumns.RELATIVE_PATH,
                     MediaStore.MediaColumns.MIME_TYPE, MediaStore.MediaColumns.IS_PENDING)
-                val matching = resolver.query(uri, cols, null, null, null)?.use { c ->
+                resolver.query(uri, cols, null, null, null)?.use { c ->
                     if (!c.moveToFirst()) false else {
                         val id = ContentUris.parseId(uri)
                         val same = c.getLong(0) == id &&
@@ -172,7 +172,7 @@ internal class OwnedMediaStorePublicationJournal private constructor(
                             when {
                                 pending == 0 && e.phase >= Phase.PUBLISH_REQUESTED ->
                                     Verdict.VERIFIED_PUBLISHED
-                                pending == 1 && e.phase >= Phase.BYTES_SYNCED ->
+                                pending == 1 && e.phase == Phase.BYTES_SYNCED ->
                                     Verdict.VERIFIED_PENDING
                                 else -> Verdict.NEEDS_ATTENTION
                             }, e.phase, operationId)
@@ -180,7 +180,7 @@ internal class OwnedMediaStorePublicationJournal private constructor(
                 }
                 // No clean-up even if the row disappeared, fields changed, or
                 // an adversarial provider returned another object.
-                if (matching == true) unsure else unsure
+                unsure
             } catch (_: Exception) { unsure }
         }
 
