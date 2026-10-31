@@ -211,7 +211,7 @@ class OwnedJniSessionSmokeInstrumentedTest {
             payload, out.readBytes())
     }
 
-    @Test fun installedOwnedJniDownloadsActualPeerPieceWithoutTouchingForeignData() {
+    @Test fun installedOwnedJniReceivesActualPeerPieceWithoutTouchingForeignData() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val root = Files.createTempDirectory(context.cacheDir.toPath(), "owned-peer-").toFile()
         val receipts = File(root, "private-receipts")
