@@ -507,6 +507,9 @@ private fun ChunksApp(
                 },
                 onForgetProfile = { profile ->
                     if (!loading) {
+                        // Revoke pending Connect saves at the moment Forget
+                        // is requested, not after its IO coroutine starts.
+                        RemoteCredentialLock.invalidate()
                         scope.launch {
                             val removed = withContext(Dispatchers.IO) {
                                 try {
@@ -523,6 +526,9 @@ private fun ChunksApp(
                     }
                 },
                 onRememberLogin = { enabled ->
+                    // A pending Connect must never persist under an obsolete
+                    // remember preference while the durable edit is queued.
+                    RemoteCredentialLock.invalidate()
                     rememberLogin = enabled
                     scope.launch {
                         val persisted = withContext(Dispatchers.IO) {
@@ -550,6 +556,7 @@ private fun ChunksApp(
                     }
                 },
                 onForgetLogin = {
+                    RemoteCredentialLock.invalidate()
                     rememberLogin = false
                     scope.launch {
                         val cleared = withContext(Dispatchers.IO) {
