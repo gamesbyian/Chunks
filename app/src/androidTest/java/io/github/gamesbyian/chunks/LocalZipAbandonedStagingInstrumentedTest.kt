@@ -9,10 +9,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** Repair is restricted to aged generated temporary copies in private cache. */
+/** Legacy cache paths are never automatically deleted by name or timestamp. */
 @RunWith(AndroidJUnit4::class)
 class LocalZipAbandonedStagingInstrumentedTest {
-    @Test fun reclaimsOnlyOldPrivateReviewFilesAndNeverUserOrCurrentData() {
+    @Test fun preservesOldNamedReviewFilesBecauseNamesAndAgeCannotProveOwnership() {
         val cache = InstrumentationRegistry.getInstrumentation().targetContext.cacheDir
         val now = System.currentTimeMillis()
         val old = File.createTempFile("chunks-zip-review-", ".zip", cache)
@@ -27,8 +27,8 @@ class LocalZipAbandonedStagingInstrumentedTest {
             assertTrue(old.setLastModified(now - 48L * 60 * 60 * 1000))
             assertTrue(fresh.setLastModified(now - 60_000L))
             assertTrue(unrelated.setLastModified(now - 48L * 60 * 60 * 1000))
-            assertEquals(1, LocalZipDocumentInspector.cleanAbandonedCopies(cache, now))
-            assertFalse(old.exists())
+            assertEquals(0, LocalZipDocumentInspector.cleanAbandonedCopies(cache, now))
+            assertTrue(old.exists())
             assertTrue(fresh.exists())
             assertTrue(unrelated.exists())
             assertTrue(directory.isDirectory)
