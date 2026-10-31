@@ -228,6 +228,11 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_6
+          # Two exact x86_64 runs linked TLS JNI and packaged the verified APK
+          # but the default userdata image failed to finish API35 emulator boot.
+          # Match the already-green Chunks native Add emulator configuration.
+          disk-size: 4096M
+          emulator-boot-timeout: 600
           disable-animations: true
           script: bash tools/native_owned_jni_installed_smoke.sh
 
