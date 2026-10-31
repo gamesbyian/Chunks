@@ -31,6 +31,12 @@ internal class RememberedRemoteProfileRoster(context: Context) {
         internal fun identityOf(endpoint: String, username: String): String =
             io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverId(endpoint, username).value
 
+        // Old releases trimmed the authenticated username when deriving the ID.
+        // Accept that exact old derivation only for decrypting/migrating a
+        // previously encrypted roster row, never for a new connection or action.
+        private fun legacyIdentityOf(endpoint: String, username: String): String =
+            identityOf(endpoint, username.trim())
+
         internal fun addressOf(endpoint: String): String = try {
             val uri = URI(endpoint.trim())
             val port = if (uri.port == -1) "" else ":" + uri.port
@@ -112,6 +118,8 @@ internal class RememberedRemoteProfileRoster(context: Context) {
             require(rows.length() <= MAX_PROFILES)
             val output = ArrayList<Profile>()
             val seen = HashSet<String>()
+            val seenStored = HashSet<String>()
+            var needsMigration = false
             for (i in 0 until rows.length()) {
                 val entry = rows.getJSONArray(i)
                 // Five fields before last-verified times were recorded.
@@ -121,13 +129,19 @@ internal class RememberedRemoteProfileRoster(context: Context) {
                 val credentials = RemoteCredentials(entry.getString(2),
                     entry.getString(3), entry.getString(4))
                 val verifiedAt = if (entry.length() == 6) entry.getLong(5).takeIf { it > 0 } else null
+                val exactId = identity(credentials)
+                val legacyId = legacyIdentityOf(credentials.endpoint, credentials.username)
                 require(validId.matches(id) && valid(credentials) &&
-                    identity(credentials) == id &&
+                    (id == exactId || id == legacyId) &&
                     label.length in 1..100 && label.none { it.code < 32 || it.code == 127 } &&
-                    seen.add(id))
-                output += Profile(id, label, credentials, verifiedAt)
+                    seenStored.add(id) && seen.add(exactId))
+                if (id != exactId) needsMigration = true
+                output += Profile(exactId, label, credentials, verifiedAt)
             }
-            output
+            // Do not silently drop old encrypted profiles when the identifier
+            // scheme changes. Save the exact-principal keys durably first.
+            // If migration cannot be committed, refuse the saved-profile list.
+            if (needsMigration && !persist(output)) emptyList() else output
         } catch (_: Exception) {
             prefs.edit().remove("roster").commit()
             emptyList()
