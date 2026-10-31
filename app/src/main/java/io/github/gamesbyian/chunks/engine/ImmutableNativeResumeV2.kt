@@ -65,7 +65,8 @@ internal object ImmutableNativeResumeV2 {
         val events: List<Event>,
         val lastSnapshot: ByteArray?,
         val phase: Phase?,
-        val epoch: String?
+        val epoch: String?,
+        val storedBytes: Long
     )
 
     private fun sha256(bytes: ByteArray): String =
@@ -147,7 +148,7 @@ internal object ImmutableNativeResumeV2 {
     private fun load(privateStateRoot: Path, hash: String): Chain {
         validateHash(hash)
         val dir = existingRoot(privateStateRoot)
-            ?: return Chain(emptyList(), null, null, null)
+            ?: return Chain(emptyList(), null, null, null, 0L)
         val candidates = ArrayList<Path>()
         Files.newDirectoryStream(dir).use { entries ->
             for (entry in entries) {
@@ -205,7 +206,7 @@ internal object ImmutableNativeResumeV2 {
             last = event.phase
             prior = event.checksum
         }
-        return Chain(events, snapshot, last, epoch)
+        return Chain(events, snapshot, last, epoch, consumed)
     }
 
     private fun encode(hash: String, event: Event): ByteArray {
@@ -236,12 +237,9 @@ internal object ImmutableNativeResumeV2 {
         val encoded = encode(hash, event)
         if (encoded.size.toLong() > MAX_RECORD_BYTES)
             throw IOException("Immutable resume event exceeds maximum record size")
-        val totalBefore = previous.events.sumOf { e ->
-            // Proven valid events only; the root's final entries are inspected
-            // again by load before accepting a new transition.
-            encoded.size.toLong().coerceAtLeast(0) * 0 + e.payload.orEmpty().size.toLong()
-        }
-        if (totalBefore + encoded.size > MAX_HISTORY_BYTES)
+        // Count each actual fsynced record, not only decoded payload bytes.
+        // The read-only loader already bounds and verifies that total.
+        if (previous.storedBytes + encoded.size > MAX_HISTORY_BYTES)
             throw IOException("Immutable resume history exceeds safe storage budget")
         val dir = ensureRoot(privateStateRoot)
         for (attempt in 1..16) {
