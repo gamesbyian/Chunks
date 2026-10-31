@@ -1,5 +1,7 @@
 # G0 native non-clobbering writer: executable experiment
 
+
+> **Experimental history only (2026-10-31):** #568 is closed as superseded for conventional selected-root torrent regular payload overwrite; this custom native writer is **not a shipping prerequisite**. Preserve this research for actual unrelated path/alias hazards, not to relaunch a blanket non-clobber release gate. App-private metadata belongs to #865 and physical Android acceptance to #5. The dated instructions below are historical.
 **Experimental. Not linked to the Android app or libtorrent.** This module investigates the actual #568 writer-level boundary. Direct public Downloads and SD are targets to retain, not functionality to permanently abandon.
 
 Run: bash experiments/native-owned-writer/test.sh --sanitizers

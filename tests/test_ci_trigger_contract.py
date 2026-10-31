@@ -50,6 +50,32 @@ class AndroidCiTriggerContract(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertIn(path, allowed)
 
+    def test_native_research_source_changes_but_not_markdown_only_edits(self):
+        # Positive allowlist stays active for native source; the following
+        # negative patterns prevent documentation-only edits wasting JNI/NDK CI.
+        for name in (
+            "native-owned-writer-experiment.yml",
+            "native-owned-android-link.yml",
+        ):
+            with self.subTest(workflow=name):
+                source = (ROOT / ".github/workflows" / name).read_text(
+                    encoding="utf-8"
+                )
+                allowed = pull_request_paths(source)
+                self.assertIn("experiments/native-owned-writer/**", allowed)
+                self.assertIn("!experiments/native-owned-writer/**/*.md", allowed)
+                self.assertIn("!experiments/native-owned-writer/*.md", allowed)
+                self.assertIn(f".github/workflows/{name}", allowed)
+                paths = [
+                    line.split("-", 1)[1].strip().strip(chr(34) + chr(39))
+                    for line in source.splitlines()
+                    if line.startswith("      - ")
+                ]
+                self.assertLess(
+                    paths.index("experiments/native-owned-writer/**"),
+                    paths.index("!experiments/native-owned-writer/**/*.md"),
+                )
+
     def test_yaml_comments_do_not_masquerade_as_paths(self):
         sample = ("on:\n  pull_request:\n    paths:\n"
                   "      # safety test comment\n"

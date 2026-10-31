@@ -29,7 +29,7 @@ These are the same opt-in scripts CI runs on emulators; each fails unless its te
 | Check (gate) | Command | Pass means |
 |---|---|---|
 | dataSync timeout honesty (#569) | `bash tools/fgs_timeout_repro.sh` | Shortened limit → readback-confirmed pause, notice, bytes intact. Uses Android's documented test controls; restores them on exit |
-| Sudden death after download (#568/#569) | `bash tools/process_death_repro.sh` (after `fgs_timeout_repro.sh` installed the APKs) | Restored stopped, no leftover notification, SHA unchanged, 100% recheck |
+| Sudden death after download (#5/#569/#865) | `bash tools/process_death_repro.sh` (after `fgs_timeout_repro.sh` installed the APKs) | Restored stopped, no leftover notification, SHA unchanged, 100% recheck |
 | Real-peer download / interrupted resume / Doze / network loss (#568/#569) | Collect the sanitized Debian torrent as in `android-public-swarm.yml`, export `CHUNKS_PUBLIC_SWARM_TORRENT`, `CHUNKS_PUBLIC_SWARM_BUDGET_BYTES`, `CHUNKS_PUBLIC_SWARM_SECONDS`, then run `tools/android_public_swarm.sh`, `…_interrupt.sh`, `…_doze.sh` or `…_netflap.sh` | Verified bytes from ordinary peers; restore + continuation; behaviour under forced Doze; recovery after radios return. INCONCLUSIVE = peer availability, not engine acceptance |
 | Real 200% font Compose (#8) | `bash tools/run_compose_system_font_200pct.sh` (needs `RUNNER_TEMP` set to a writable folder) | Seven real-pixel captures including All environments and Open in its list |
 
