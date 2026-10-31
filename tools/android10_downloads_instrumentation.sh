@@ -107,8 +107,8 @@ fail_if_skipped_or_failed "$status" 'OK (2 tests)' "Android 10 pinned private jo
 # 6. Actual immutable resume generations and native Remove/re-Add must hold
 #    on Android 10 itself, including FIFO/hardlink collision and tombstones.
 set +e
-adb shell am instrument -w -r \\
- -e class io.github.gamesbyian.chunks.engine.LocalResumeEventStoreInstrumentedTest \\
+adb shell am instrument -w -r \
+ -e class io.github.gamesbyian.chunks.engine.LocalResumeEventStoreInstrumentedTest \
  io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner >"$log" 2>&1
 status=$?
 set -e
