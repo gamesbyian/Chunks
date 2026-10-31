@@ -32,6 +32,27 @@ internal object RemoteCredentialLock {
     fun beginConnection(): Long = synchronized(monitor) { ++generation }
     fun current(ticket: Long): Boolean = synchronized(monitor) { ticket == generation }
     fun invalidate() = synchronized(monitor) { generation++ }
+
+    /**
+     * One verified Connect's two encrypted saves are a serialized logical
+     * operation. No Forget, opt-out, newer Connect or disconnect can occur
+     * between them. The two preference files have independent durable commits,
+     * so a commit failure may leave a partial saved state; return false and
+     * let the UI report that explicitly, NEVER delete old recoverable records.
+     *
+     * Save the multi-profile roster first. A full/unreadable roster cannot
+     * silently allow the legacy single-login to replace another principal.
+     */
+    fun saveVerifiedPairIfCurrent(
+        vault: RememberedRemoteLogin,
+        roster: RememberedRemoteProfileRoster,
+        credentials: RemoteCredentials,
+        ticket: Long
+    ): Boolean = synchronized(monitor) {
+        if (ticket != generation || !vault.rememberingEnabled()) return@synchronized false
+        if (!roster.saveVerifiedIfCurrent(credentials, ticket)) return@synchronized false
+        vault.saveIfCurrent(credentials, ticket)
+    }
 }
 
 /**
