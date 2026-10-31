@@ -57,7 +57,11 @@ internal class RememberedRemoteLogin(context: Context) {
 
     /** Default-on only for users who have never explicitly opted out. */
     fun rememberingEnabled(): Boolean = synchronized(RemoteCredentialLock.monitor) {
-        prefs.getBoolean("remember_enabled", true)
+        // Corrupt policy types must never crash Connect or turn remembering
+        // ON by default. Preserve encrypted bytes but deny credential reads
+        // and writes until the user explicitly repairs the preference.
+        try { prefs.getBoolean("remember_enabled", true) }
+        catch (_: ClassCastException) { false }
     }
 
     /**
