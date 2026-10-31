@@ -58,7 +58,8 @@ internal object ImmutableNativeResumeV2 {
         val epoch: String,
         val payload: ByteArray?,
         val previous: String,
-        val checksum: String
+        val checksum: String,
+        val storedBytes: Long = 0L
     )
 
     private data class Chain(
@@ -142,7 +143,7 @@ internal object ImmutableNativeResumeV2 {
         }
         if ((phase == Phase.SNAPSHOT) != (payload != null))
             throw IOException("Resume lifecycle event has impossible payload")
-        return Event(seq, phase, epoch, payload, prior, fields[7])
+        return Event(seq, phase, epoch, payload, prior, fields[7], bytes.size.toLong())
     }
 
     private fun load(privateStateRoot: Path, hash: String): Chain {
@@ -171,10 +172,9 @@ internal object ImmutableNativeResumeV2 {
         var snapshot: ByteArray? = null
         var consumed = 0L
         for ((index, event) in events.withIndex()) {
-            consumed += Files.size(candidates.first { path ->
-                FILE.matchEntire(path.fileName.toString())!!.groupValues[2]
-                    .toInt() == event.sequence
-            })
+            // Count the exact bytes returned by the already-pinned read.
+            // A second pathname stat could observe a substituted inode.
+            consumed += event.storedBytes
             if (consumed > MAX_HISTORY_BYTES)
                 throw IOException("Immutable resume history is over its safe cap")
             if (event.sequence != index + 1 || event.previous != prior)
