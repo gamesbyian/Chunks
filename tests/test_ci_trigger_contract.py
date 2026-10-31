@@ -1,7 +1,7 @@
 """Offline guard against silently skipping Android preflight regressions.
 
-The Android workflow executes both preflight shell scripts, so their edits
-must trigger that workflow rather than waiting for a later unrelated PR.
+The Android build exercises the physical APK preflight, but standalone edits
+of its offline mocks now trigger the cheap documentation validation workflow.
 """
 from pathlib import Path
 import re
@@ -35,12 +35,12 @@ def dispatches_for_changed_paths(source: str, changed: tuple[str, ...]) -> bool:
     Assertions also pin the exact GitHub-compatible patterns and their order.
     """
     match = re.search(
-        r"(?m)^  pull_request:\\s*\\n    paths:\\s*\\n"
-        r"((?:      (?:- [^\\n]+|#[^\\n]*)\\n)+)", source
+        r"(?m)^  pull_request:\s*\n    paths:\s*\n"
+        r"((?:      (?:- [^\n]+|#[^\n]*)\n)+)", source
     )
     if not match:
         return False
-    patterns = [line.split("- ", 1)[1].strip().strip("'\\\"")
+    patterns = [line.split("- ", 1)[1].strip().strip("'\\"")
                 for line in match.group(1).splitlines()
                 if line.strip().startswith("- ")]
     for changed_path in changed:
