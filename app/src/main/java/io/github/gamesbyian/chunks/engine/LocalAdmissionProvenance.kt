@@ -39,23 +39,48 @@ internal object LocalAdmissionProvenance {
         if (directory == null || !identity.matches(hash)) return null
         val file = receipt(directory, hash)
         return try {
-            // Read through the descriptor opened with NOFOLLOW. A separate
-            // pathname survey followed by readAllBytes could follow a swapped
-            // symlink between the two calls.
-            if (!Files.isRegularFile(file.toPath(), LinkOption.NOFOLLOW_LINKS)) null
-            else FileChannel.open(file.toPath(), StandardOpenOption.READ,
-                LinkOption.NOFOLLOW_LINKS).use { channel ->
-                val length = channel.size()
-                if (length <= 0 || length > 160) null
-                else {
-                    val buffer = ByteBuffer.allocate(length.toInt())
-                    while (buffer.hasRemaining()) {
-                        if (channel.read(buffer) <= 0) return@use null
+            val actual = if (Build.VERSION.SDK_INT > 0) {
+                // A symlink or FIFO substituted between isRegularFile and
+                // FileChannel.open could redirect or block the read. Pin a
+                // nonblocking Android FD first, inspect that FD, and read
+                // *only* its bounded regular-file bytes.
+                val fd = Os.open(file.absolutePath, OsConstants.O_RDONLY or
+                    OsConstants.O_NOFOLLOW or OsConstants.O_NONBLOCK or
+                    OsConstants.O_CLOEXEC, 0)
+                try {
+                    val st = Os.fstat(fd)
+                    if (!OsConstants.S_ISREG(st.st_mode) || st.st_nlink != 1L ||
+                        st.st_size <= 0L || st.st_size > 160L) null
+                    else {
+                        val data = ByteArray(st.st_size.toInt())
+                        var received = 0
+                        while (received < data.size) {
+                            val n = Os.read(fd, data, received, data.size - received)
+                            if (n <= 0) return null
+                            received += n
+                        }
+                        data
                     }
-                    val actual = buffer.array()
-                    Mode.entries.singleOrNull { actual.contentEquals(bytes(hash, it)) }
+                } finally { Os.close(fd) }
+            } else {
+                // JVM non-Android unit tests retain the portable NIO path.
+                // The Android admission boundary uses nonblocking Os above.
+                if (!Files.isRegularFile(file.toPath(), LinkOption.NOFOLLOW_LINKS)) null
+                else FileChannel.open(file.toPath(), StandardOpenOption.READ,
+                    LinkOption.NOFOLLOW_LINKS).use { channel ->
+                    val length = channel.size()
+                    if (length <= 0 || length > 160) null
+                    else {
+                        val buffer = ByteBuffer.allocate(length.toInt())
+                        while (buffer.hasRemaining()) {
+                            if (channel.read(buffer) <= 0) return@use null
+                        }
+                        buffer.array()
+                    }
                 }
             }
+            if (actual == null) null
+            else Mode.entries.singleOrNull { actual.contentEquals(bytes(hash, it)) }
         } catch (_: Exception) { null }
     }
 
@@ -94,8 +119,14 @@ internal object LocalAdmissionProvenance {
     private fun forceExistingFile(path: Path) {
         if (Build.VERSION.SDK_INT > 0) {
             val fd = Os.open(path.toString(), OsConstants.O_RDONLY or
-                OsConstants.O_NOFOLLOW or OsConstants.O_CLOEXEC, 0)
-            try { Os.fsync(fd) } finally { Os.close(fd) }
+                OsConstants.O_NOFOLLOW or OsConstants.O_NONBLOCK or
+                OsConstants.O_CLOEXEC, 0)
+            try {
+                val st = Os.fstat(fd)
+                if (!OsConstants.S_ISREG(st.st_mode) || st.st_nlink != 1L)
+                    throw java.io.IOException("Admission receipt is not a unique regular file")
+                Os.fsync(fd)
+            } finally { Os.close(fd) }
         } else {
             FileChannel.open(path, StandardOpenOption.READ,
                 LinkOption.NOFOLLOW_LINKS).use { it.force(true) }
