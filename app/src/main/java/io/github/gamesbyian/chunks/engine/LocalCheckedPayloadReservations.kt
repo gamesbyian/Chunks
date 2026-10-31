@@ -10,10 +10,11 @@ import java.util.TreeMap
 /**
  * Session-local exclusion of *declared backing names* across checked .torrent jobs.
  *
- * This is admission conflict detection, NOT native filesystem ownership:
- * it cannot stop another app from swapping a path after inspection, cannot
- * authorize reusing existing bytes, and is deliberately not an ownership
- * journal across process death. libtorrent still needs owned-descriptor I/O.
+ * This is admission conflict detection between simultaneously registered
+ * torrents, NOT proof of filesystem ownership or a race-free path lock.
+ * The selected root authorizes libtorrent to recheck/reuse/replace existing
+ * regular declared-path files; a custom owned-descriptor backend is not a
+ * prerequisite. This reservation cannot authorize an escape or cleanup.
  *
  * Keep reservations for a running or stopped handle, not merely until Start,
  * so a second checked Add cannot target the same data while the first is live.
@@ -28,10 +29,10 @@ internal class LocalCheckedPayloadReservations {
     private val byOwner = HashMap<String, Set<String>>()
 
     /**
-     * Called only after the non-mutating collision survey passes, and before
-     * native Add. Resolve real roots to equate aliases such as /data/user/0
-     * and /data/data while conservatively folding names for FAT/provider
-     * namespaces. No successful reservation is a permission to write.
+     * Called after the non-mutating path/target survey, before native Add.
+     * Resolve real roots to equate aliases such as /data/user/0 and /data/data
+     * while conservatively folding names for FAT/provider namespaces.
+     * Reservation excludes competing torrent writers, not regular payload reuse.
      */
     @Synchronized
     fun reserve(
