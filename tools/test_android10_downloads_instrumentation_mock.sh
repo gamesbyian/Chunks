@@ -72,7 +72,7 @@ bash -n "$root/test_android10_downloads_instrumentation_mock.sh"
 
 output="$(bash "$root/android10_downloads_instrumentation.sh")"
 [[ "$output" == *'CHUNKS_ANDROID10_DOWNLOADS: API 29'* ]]
-[[ "$(wc -l < "$MOCK_DIR/instruments")" -eq 4 ]]
+[[ "$(wc -l < "$MOCK_DIR/instruments")" -eq 5 ]]
 
 refuse_before_tests() {
   : > "$MOCK_DIR/instruments"
