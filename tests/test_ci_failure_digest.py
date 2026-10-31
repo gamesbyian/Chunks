@@ -2,7 +2,7 @@
 import tempfile
 import unittest
 from pathlib import Path
-from tools.ci_failure_digest import make_digest
+from tools.ci_failure_digest import make_digest, rejects_unverified_green
 
 
 class DigestTests(unittest.TestCase):
@@ -60,6 +60,35 @@ class DigestTests(unittest.TestCase):
         self.assertEqual(len(d["failed_cases"]), 2)
         self.assertEqual(make_digest([], "cancelled", "unit", self.env)["phase"],
                          "cancellation")
+
+    def test_required_evidence_refuses_success_without_executed_tests(self):
+        for xml in (None,
+                    "<testsuite></testsuite>",
+                    '<testsuite><testcase name="skip"><skipped/></testcase></testsuite>',
+                    '<testsuite><testcase>'):
+            if xml is None:
+                paths = []
+            else:
+                self.path.write_text(xml)
+                paths = [str(self.path)]
+            with self.subTest(xml=xml):
+                digest = make_digest(paths, "success", "unit", self.env)
+                self.assertTrue(rejects_unverified_green(digest, "success", True))
+                # Diagnostic step cannot replace the first root cause of a red job.
+                self.assertFalse(rejects_unverified_green(digest, "failure", True))
+                # Non-acceptance summary invocations remain read-only by default.
+                self.assertFalse(rejects_unverified_green(digest, "success", False))
+
+    def test_required_evidence_refuses_failed_junit_when_job_claims_success(self):
+        self.path.write_text('<testsuite><testcase name="bad"><failure/></testcase></testsuite>')
+        digest = make_digest([str(self.path)], "success", "unit", self.env)
+        self.assertTrue(digest["evidence_executed"])
+        self.assertTrue(rejects_unverified_green(digest, "success", True))
+
+    def test_required_evidence_passes_only_executed_clean_suite(self):
+        self.path.write_text('<testsuite><testcase name="good"/></testsuite>')
+        digest = make_digest([str(self.path)], "success", "unit", self.env)
+        self.assertFalse(rejects_unverified_green(digest, "success", True))
 
 
 if __name__ == "__main__":
