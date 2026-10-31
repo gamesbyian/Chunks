@@ -355,9 +355,9 @@ class RemoteSmartConnectDiagnosticsTest {
                     onAttempt = { index, total, candidate -> seen += "$index/$total ${candidate.description}" }
                 ) { credentials ->
                     when {
-                        credentials.endpoint.endsWith("/RPC2") -> throw IOException("rTorrent gateway returned HTTP 404")
-                        credentials.endpoint.endsWith("/xmlrpc") -> throw RpcFault("-506", "Method not defined")
-                        else -> throw IOException("Unexpected reply")
+                        credentials.endpoint.endsWith("/xmlrpc") ->
+                            throw RpcFault("-506", "Method not defined")
+                        else -> throw IOException("rTorrent gateway returned HTTP 404")
                     }
                 }
             }
@@ -365,15 +365,15 @@ class RemoteSmartConnectDiagnosticsTest {
         } catch (failed: RemoteSmartConnect.ConnectionFailed) { failed }
         requireNotNull(failure)
         assertEquals(RemoteSmartConnect.Category.PROTOCOL, failure.category)
-        // 404 is a definitive absent path. A real XML-RPC fault on the
-        // second candidate proves a response, but cannot authorize searching
-        // yet another account mount with the same credentials.
-        assertEquals(2, failure.tested)
+        // Two definitive 404 responses allow the third candidate. A real
+        // XML-RPC fault then stops discovery before the fourth tenant mount.
+        assertEquals(3, failure.tested)
         assertEquals(failure.tested, seen.size)
         assertTrue(seen.first().startsWith("1/${failure.tested} "))
         assertEquals(failure.tested, failure.attempts.size)
         assertTrue(failure.attempts.all { it.path.startsWith("/") })
         val byPath = failure.attempts.associate { it.path to it.outcome }
+        assertEquals("No rTorrent gateway here (HTTP 404)", byPath["/rutorrent/plugins/httprpc/action.php"])
         assertEquals("No rTorrent gateway here (HTTP 404)", byPath["/RPC2"])
         assertEquals("Could not verify rTorrent identity; no further paths tried", byPath["/xmlrpc"])
         // Nothing user-visible may carry the password or a full URL.
