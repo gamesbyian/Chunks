@@ -1,0 +1,113 @@
+# Test-only Android NDK linkage proof for #568. This is intentionally NOT
+# a production/AAR/APK packaging recipe: OpenSSL and WebRTC are disabled
+# in order to isolate ABI/compiler/owned-writer integration. Never publish
+# these non-TLS .so files as a usable BitTorrent Android distribution.
+name: Experimental owned Android JNI link
+
+on:
+  pull_request:
+    paths:
+      - "experiments/native-owned-writer/**"
+      - ".github/workflows/native-owned-android-link.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android-abi-link-experiment:
+    name: NDK API29 non-shipping JNI / ${{ matrix.abi }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        abi: [arm64-v8a, x86_64]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pin exact libtorrent4j native fork, recursively fetch dependencies
+        run: |
+          set -euo pipefail
+          upstream="$RUNNER_TEMP/chunks-libtorrent4j"
+          mkdir -p "$upstream"
+          git -C "$upstream" init
+          git -C "$upstream" remote add origin https://github.com/aldenml/libtorrent4j.git
+          git -C "$upstream" fetch --depth 1 origin da7d2403f06a0939bc2c51a88e67a6c4a85512ef
+          git -C "$upstream" checkout --detach FETCH_HEAD
+          test "$(git -C "$upstream" rev-parse HEAD)" = "da7d2403f06a0939bc2c51a88e67a6c4a85512ef"
+          git -C "$upstream" submodule update --init --recursive --depth 1 swig/deps/libtorrent
+          python3 experiments/native-owned-writer/bridge/apply_to_libtorrent4j_fork.py "$upstream"
+      - name: Generate exact upstream SWIG/Java and native wrapper
+        run: |
+          set -euo pipefail
+          if ! command -v swig >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq swig
+          fi
+          python3 - "$RUNNER_TEMP/chunks-libtorrent4j/swig/run-swig.sh" "$RUNNER_TEMP/run-chunks-swig-linux.sh" <<'PY'
+          from pathlib import Path
+          import sys
+          script = Path(sys.argv[1]).read_text()
+          script = script.replace("sed -i ''", "sed -i")
+          script = script.replace("BOOST_ROOT=$DEVELOPMENT_ROOT/boost_1_90_0", "BOOST_ROOT=/usr/include")
+          Path(sys.argv[2]).write_text(script)
+          PY
+          # Upstream JNI helper imports OpenSSL version text even when
+          # native libtorrent is deliberately built without crypto.
+          # This guard applies ONLY to a disposable non-shipping checkout.
+          python3 - "$RUNNER_TEMP/chunks-libtorrent4j/swig/libtorrent.hpp" <<'PY'
+          from pathlib import Path
+          import sys
+          header = Path(sys.argv[1])
+          value = header.read_text()
+          old = '#include <openssl/opensslv.h>'
+          if value.count(old) != 1:
+              raise ValueError('Unexpected pinned upstream OpenSSL include')
+          value = value.replace(old,
+              '#if defined(TORRENT_USE_OPENSSL)\n'
+              '#include <openssl/opensslv.h>\n'
+              '#else\n'
+              '#define OPENSSL_VERSION_TEXT "NOT LINKED: JNI ABI experiment"\n'
+              '#endif')
+          header.write_text(value)
+          PY
+          (cd "$RUNNER_TEMP/chunks-libtorrent4j/swig" && bash "$RUNNER_TEMP/run-chunks-swig-linux.sh")
+          grep -F 'set_owned_disk_io_constructor' "$RUNNER_TEMP/chunks-libtorrent4j/swig/libtorrent_jni.cpp"
+      - name: Cross-link actual libtorrent4j JNI using Android NDK (NON-SHIPPING, TLS DISABLED)
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ninja-build libboost-dev
+          ndk_root="$(find "$ANDROID_HOME/ndk" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n1)"
+          llvm="$ndk_root/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          test -f "$ndk_root/build/cmake/android.toolchain.cmake"
+          # NDK sysroot cannot resolve host /usr/include directly. Expose
+          # *only* header-only Boost through an isolated include directory;
+          # never let host glibc headers/libraries enter the target link.
+          mkdir -p "$RUNNER_TEMP/chunks-boost-includes"
+          ln -s /usr/include/boost "$RUNNER_TEMP/chunks-boost-includes/boost"
+          upstream="$RUNNER_TEMP/chunks-libtorrent4j"
+          build="$RUNNER_TEMP/chunks-android-owned-${{ matrix.abi }}"
+          cmake -S "$upstream/swig" -B "$build" -G Ninja \
+            -DCMAKE_TOOLCHAIN_FILE="$ndk_root/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=${{ matrix.abi }} -DANDROID_PLATFORM=android-29 \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_FLAGS="-I$RUNNER_TEMP/chunks-boost-includes" \
+            -DBUILD_SHARED_LIBS=OFF -Dwebtorrent=OFF -DUSE_JUICE=OFF \
+            -DCMAKE_DISABLE_FIND_PACKAGE_OpenSSL=TRUE \
+            -DCMAKE_DISABLE_FIND_PACKAGE_GnuTLS=TRUE \
+            -DCMAKE_DISABLE_FIND_PACKAGE_LibGcrypt=TRUE \
+            -DBoost_ROOT=/usr -DBoost_INCLUDE_DIR=/usr/include \
+            -DBoost_USE_STATIC_LIBS=ON
+          cmake --build "$build" --target torrent4j --parallel 2
+          library="$build/libtorrent4j.so"
+          test -s "$library"
+          "$llvm/llvm-readelf" -h "$library" | tee "$RUNNER_TEMP/chunks-android-elf-header.txt"
+          "$llvm/llvm-readelf" -d "$library" | tee "$RUNNER_TEMP/chunks-android-elf-deps.txt"
+          "$llvm/llvm-nm" -C "$library" | grep -F 'chunks::MakeOwnedDiskConstructor'
+          "$llvm/llvm-nm" -D "$library" | grep -F 'Java_org_libtorrent4j_swig_libtorrent_1jni_'
+          if grep -E 'NEEDED.*(libssl|libcrypto|libboost_system)' "$RUNNER_TEMP/chunks-android-elf-deps.txt"; then
+            echo "Unexpected external crypto/Boost target link" >&2
+            exit 1
+          fi
+          echo "CHUNKS_ANDROID_NDK_JNI_LINK=PASS abi=${{ matrix.abi }} api=29 test-only-no-tls"
