@@ -8,6 +8,8 @@ on:
     paths:
       - ".github/workflows/native-owned-android-tls-arm64-experiment.yml"
       - "experiments/native-owned-writer/**"
+      - "tools/stage_owned_native_preview.py"
+      - "tools/native_owned_jni_installed_smoke.sh"
   workflow_dispatch:
 
 permissions:
@@ -153,3 +155,42 @@ jobs:
           grep -E ' SSL_CTX_new| SSL_new| OPENSSL_init_ssl' "$RUNNER_TEMP/owned-tls-all-symbols.txt"
           ! grep -E 'NEEDED.*(libssl|libcrypto)' "$RUNNER_TEMP/owned-tls-needed.txt"
           echo "CHUNKS_OWNED_ANDROID_TLS_LINK=PASS abi=${{ matrix.abi }} api=29 openssl=3.5.9 experiment-only"
+
+      - name: Provision Java17 for disposable Android-only JNI session proof
+        if: matrix.abi == 'x86_64'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Rebuild exact forked Java jar and stage non-shipping debug APK
+        if: matrix.abi == 'x86_64'
+        run: |
+          set -euo pipefail
+          upstream="$RUNNER_TEMP/chunks-libtorrent4j"
+          (cd "$upstream" && ./gradlew jar --no-daemon --console=plain)
+          jar="$(find "$upstream/build/libs" -maxdepth 1 -name 'libtorrent4j-*.jar' ! -name '*-sources.jar' ! -name '*-javadoc.jar' | head -n1)"
+          test -n "$jar" && test -s "$jar"
+          so="$RUNNER_TEMP/chunks-owned-tls-x86_64/libtorrent4j.so"
+          test -s "$so"
+          python3 tools/stage_owned_native_preview.py \
+            --app-gradle app/build.gradle.kts \
+            --fork-jar "$jar" --owned-so "$so" --abi x86_64 \
+            --output-dir "$RUNNER_TEMP/chunks-owned-installed-lab" \
+            --jar-sha256 "$(sha256sum "$jar" | cut -d' ' -f1)" \
+            --so-sha256 "$(sha256sum "$so" | cut -d' ' -f1)"
+          cp "$RUNNER_TEMP/chunks-owned-installed-lab/build.gradle.kts" app/build.gradle.kts
+          ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon --console=plain
+          test -s app/build/outputs/apk/debug/app-debug.apk
+          test -s app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+          echo 'CHUNKS_OWNED_DEBUG_APK_COMPILED=PASS test-only; never publish APK'
+      - name: Exercise actual installed owned JNI constructor in private emulator
+        if: matrix.abi == 'x86_64'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: bash tools/native_owned_jni_installed_smoke.sh
+
