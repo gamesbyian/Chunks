@@ -1,6 +1,10 @@
 # Chunks active engineering work queue
 
-## Live integration priorities (2026-10-30; main 5eeda534)
+## Current handoff (2026-10-31; main 1b00ec5)
+
+G0 #568 remains red: the owned writer is experimental and #755 is not merge-qualified. Review its [receipt-path substitution and Android diagnostic](QUALITY-LEDGER.md#2026-10-31-credential-route-and-native-safety-review), preserve no-replace and durability, and address the API29 hardlink-publication `AccessDeniedException` before another candidate; directory fsync has not yet been reached by that diagnostic. [#805](https://github.com/gamesbyian/Chunks/pull/805) merged with independent host review and exact-head host/ABI/link CI; its post-pin orphan and Android/FUSE runtime gaps remain. [#806](https://github.com/gamesbyian/Chunks/pull/806) fixed numbered Seedhost credential fallback; protected-host acceptance remains separate. For #1, investigate exact upload-path challenge scope and anonymous-read/write authentication without replaying any mutation. The exact-source main foundation run [41152218956](https://github.com/gamesbyian/Chunks/actions/runs/41152218956) passed on `42a35ae`; subsequent non-production-source merges are not exact-head Android evidence.
+
+## Live integration priorities (2026-10-30; main 5eeda534; historical checkpoint)
 
 **G0 release safety is still RED.** The last independently executed production native JNI collision run [41130188712](https://github.com/gamesbyian/Chunks/actions/runs/41130188712) replaced foreign-file bytes in three of four scenarios: raw Add followed by Start, post-Stop restart and checked process-restored Start. Its passing *diagnostic* workflow is evidence of these defects, never acceptance. The strict raw/magnet, restored and post-Stop refusal receipt validators are merged; public Downloads / SD, native file ownership, Android FUSE/SAF and real physical-device peer-transfer acceptance remain blocking under [#568](https://github.com/gamesbyian/Chunks/issues/568).
 
