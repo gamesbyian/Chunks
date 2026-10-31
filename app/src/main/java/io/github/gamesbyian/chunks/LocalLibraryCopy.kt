@@ -1,33 +1,12 @@
 package io.github.gamesbyian.chunks
 
-import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.engine.LocalTorrentEngine
 import io.github.gamesbyian.chunks.engine.LocalTransferStatus
 import io.github.gamesbyian.chunks.model.LibraryCopyByteTotals
 import io.github.gamesbyian.chunks.model.LibraryCopyFile
-import io.github.gamesbyian.chunks.model.ZipExtractionResult
-import io.github.gamesbyian.chunks.model.ZipExtractionStatus
-import io.github.gamesbyian.chunks.model.ZipExtractor
 import java.io.File
-import java.util.concurrent.atomic.AtomicBoolean
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 /**
  * The torrent engine intentionally bounds file enumeration. A published copy
@@ -79,85 +58,9 @@ internal class LocalLibraryCopySource(val sourceRoot: File, val files: List<Libr
 }
 
 /**
- * "Copy to a folder…" for a finished transfer: pick a folder, review, then a
- * verified copy into a new folder. The downloaded originals keep seeding.
+ * Publication remains unavailable while destination ownership safety is addressed.
  */
 @Composable
 internal fun LocalLibraryCopyPanel(transfer: LocalTransferStatus) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    var source by remember(transfer.infoHash) { mutableStateOf<LocalLibraryCopySource?>(null) }
-    var treeUri by remember(transfer.infoHash) { mutableStateOf<Uri?>(null) }
-    var plan by remember(transfer.infoHash) { mutableStateOf<LocalZipExtractionPlan?>(null) }
-    var running by remember(transfer.infoHash) { mutableStateOf(false) }
-    var result by remember(transfer.infoHash) { mutableStateOf<ZipExtractionResult?>(null) }
-    val cancel = remember(transfer.infoHash) { AtomicBoolean(false) }
-
-    val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { picked ->
-        if (picked == null) return@rememberLauncherForActivityResult
-        treeUri = picked
-        result = null
-        scope.launch {
-            val found = withContext(Dispatchers.IO) {
-                try { LocalEngineHolder.current()?.let { LocalLibraryCopySource.of(it, transfer) } } catch (_: Exception) { null }
-            }
-            source = found
-            if (found == null) {
-                result = ZipExtractionResult(ZipExtractionStatus.BLOCKED, null, null, 0, 0,
-                    "Copy unavailable: files may be unfinished, metadata missing, or more than 10,000 files are present. No library copy was started.")
-                return@launch
-            }
-            plan = withContext(Dispatchers.IO) {
-                LocalZipExtractionPlan(transfer.name, LocalZipExtraction.destinationLabel(context, picked),
-                    ZipExtractor.folderBaseName(transfer.name), found.bytes, found.files.size,
-                    LocalZipExtraction.availableBytes(context, picked), copy = true)
-            }
-        }
-    }
-
-    val currentPlan = plan
-    val currentResult = result
-    when {
-        running -> LocalZipExtractionRunning(onCancel = { cancel.set(true) }, copy = true)
-        currentPlan != null -> LocalZipExtractionConfirm(currentPlan,
-            onConfirm = { acknowledgedUnknownSpace ->
-                val destination = treeUri ?: return@LocalZipExtractionConfirm
-                val files = source ?: return@LocalZipExtractionConfirm
-                cancel.set(false)
-                running = true
-                scope.launch {
-                    result = withContext(Dispatchers.IO) {
-                        try {
-                            // Native completion may precede an asynchronous
-                            // filesystem cache flush. A self-consistent SHA-256
-                            // independent copy could otherwise preserve stale
-                            // zero bytes rather than verified torrent contents.
-                            val flushed = LocalEngineHolder.current()
-                                ?.flushCompletedForLibraryRead(transfer.infoHash) == true
-                            when {
-                                !flushed -> ZipExtractionResult(ZipExtractionStatus.BLOCKED,
-                                    null, null, 0, 0,
-                                    "Copy not started: the completed torrent's disk cache could not be confirmed flushed. No destination files were published; retry when status is fresh.")
-                                cancel.get() -> ZipExtractionResult(ZipExtractionStatus.BLOCKED,
-                                    null, null, 0, 0,
-                                    "Copy cancelled before source publication. No destination files were created.")
-                                else -> LocalZipExtraction.copyFinished(context, files.sourceRoot, files.files, transfer.name,
-                                    destination, acknowledgedUnknownSpace) { cancel.get() }
-                            }
-                        } catch (_: Exception) {
-                            ZipExtractionResult(ZipExtractionStatus.NEEDS_ATTENTION, null, null, 0, 0,
-                                "Copying stopped unexpectedly; check the destination folder")
-                        }
-                    }
-                    plan = null
-                    running = false
-                }
-            },
-            onDismiss = { plan = null; treeUri = null })
-        else -> {
-            if (currentResult != null) LocalZipExtractionOutcome(currentResult, transfer.name, copy = true)
-            OutlinedButton(onClick = { folderPicker.launch(null) },
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Copy to a folder…") }
-        }
-    }
+    Text("Copy to a folder is temporarily unavailable while destination file safety is being improved.")
 }
