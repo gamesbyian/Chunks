@@ -31,7 +31,7 @@ trap 'rm -rf "$tmp"' EXIT
 # Android forbids hardlinks; never treat compile-only NDK evidence as a pass.
 "$compiler" -std=c++17 -O2 -pthread -Wall -Wextra -Werror -pedantic \
     owned_payload_file.cc owned_receipt_nohardlink_test.cc \
-    -Wl,--wrap=linkat -o "$tmp/owned-receipt-nohardlink-test"
+    -Wl,--wrap=linkat -Wl,--wrap=unlinkat -o "$tmp/owned-receipt-nohardlink-test"
 "$tmp/owned-receipt-nohardlink-test"
 if [[ "$#" -gt 0 && "$1" == "--sanitizers" ]]; then
   "$compiler" -std=c++17 -O1 -g -pthread -fno-omit-frame-pointer \
@@ -41,7 +41,7 @@ if [[ "$#" -gt 0 && "$1" == "--sanitizers" ]]; then
   "$compiler" -std=c++17 -O1 -g -pthread -fno-omit-frame-pointer \
       -fsanitize=address,undefined \
       owned_payload_file.cc owned_receipt_nohardlink_test.cc \
-      -Wl,--wrap=linkat -o "$tmp/owned-receipt-nohardlink-sanitizers"
+      -Wl,--wrap=linkat -Wl,--wrap=unlinkat -o "$tmp/owned-receipt-nohardlink-sanitizers"
   "$tmp/owned-receipt-nohardlink-sanitizers"
   "$compiler" -std=c++17 -O1 -g -pthread -fno-omit-frame-pointer \
       -fsanitize=address,undefined \
