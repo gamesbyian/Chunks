@@ -4,6 +4,8 @@ import java.net.URI
 import java.net.UnknownHostException
 import java.net.ConnectException
 import java.net.SocketTimeoutException
+import java.net.SocketException
+import java.io.EOFException
 import java.net.NoRouteToHostException
 import java.io.IOException
 import kotlinx.coroutines.CancellationException
@@ -249,8 +251,12 @@ object RemoteSmartConnect {
                 if (failure is CancellationException) throw failure
                 val category = when {
                     failure is SSLException -> Category.TLS
+                    // Connection resets and prematurely truncated response
+                    // streams do not prove the current RPC path is wrong.
+                    // Never let them trigger another credential-bearing path probe.
                     failure is UnknownHostException || failure is ConnectException ||
-                        failure is SocketTimeoutException || failure is NoRouteToHostException -> Category.NETWORK
+                        failure is SocketTimeoutException || failure is SocketException ||
+                        failure is EOFException || failure is NoRouteToHostException -> Category.NETWORK
                     failure is IOException &&
                         Regex("(?i)HTTP(?:/\\d+(?:\\.\\d+)?)?\\s+429(?:\\D|$)")
                             .containsMatchIn(failure.message.orEmpty()) -> Category.RATE_LIMIT
