@@ -167,6 +167,56 @@ class ExactRemotePrincipalMigrationInstrumentedTest {
         }
     }
 
+    @Test fun unreadableRosterCannotBeSilentlyDroppedOrOverwritten() {
+        val vault = RememberedRemoteLogin(context)
+        val roster = RememberedRemoteProfileRoster(context)
+        val original = vault.rememberingEnabled()
+        assertTrue(vault.setRememberingEnabled(true))
+        val prefs = context.getSharedPreferences("chunks_remote_profiles_encrypted_v1",
+            Context.MODE_PRIVATE)
+        try {
+            assertTrue(roster.clearAll())
+            val corrupt = "corrupted-encrypted-roster-not-a-valid-base64-record"
+            assertTrue(prefs.edit().putString("roster", corrupt).commit())
+            assertTrue(roster.list().isEmpty())
+            assertFalse(roster.saveVerified(padded))
+            assertFalse(roster.forget(RememberedRemoteProfileRoster.identityOf(
+                padded.endpoint, padded.username)))
+            assertEquals(corrupt, prefs.getString("roster", null))
+            // An explicit clear is authoritative and restores normal behavior.
+            assertTrue(roster.clearAll())
+            assertTrue(roster.saveVerified(plain))
+            assertEquals(listOf(plain.username), roster.list().map { it.credentials.username })
+        } finally {
+            roster.clearAll()
+            vault.setRememberingEnabled(original)
+        }
+    }
+
+    @Test fun unreadableLegacyLoginCannotBeSilentlyDroppedOrOverwritten() {
+        val vault = RememberedRemoteLogin(context)
+        val roster = RememberedRemoteProfileRoster(context)
+        val original = vault.rememberingEnabled()
+        assertTrue(vault.setRememberingEnabled(true))
+        val prefs = context.getSharedPreferences("remembered-remote-login-v1",
+            Context.MODE_PRIVATE)
+        try {
+            assertTrue(vault.clear())
+            val corrupt = "corrupted-login-ciphertext"
+            assertTrue(prefs.edit().putString("ciphertext", corrupt).commit())
+            assertNull(vault.load())
+            assertFalse(vault.save(plain))
+            assertEquals(corrupt, prefs.getString("ciphertext", null))
+            assertTrue(vault.clear())
+            assertTrue(vault.save(plain))
+            assertEquals(plain, vault.load())
+        } finally {
+            vault.clear()
+            roster.clearAll()
+            vault.setRememberingEnabled(original)
+        }
+    }
+
     private fun prefKey(scope: String): String = "policy_" +
         MessageDigest.getInstance("SHA-256").digest(scope.toByteArray(Charsets.UTF_8))
             .joinToString("") { "%02x".format(it.toInt() and 255) }
