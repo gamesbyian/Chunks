@@ -240,6 +240,31 @@ class RemoteSmartConnectTest {
         }
     }
 
+    @Test fun ambiguousNon404ReplyCannotSweepSiblingAccountPaths() = runBlocking {
+        for (fault in listOf(
+            IOException("Unexpected reply"),
+            RpcFault("-506", "Method not defined"),
+            IllegalStateException("Unparseable XML-RPC response")
+        )) {
+            var contacted = 0
+            val failure = try {
+                RemoteSmartConnect.connect("wood.seedhost.eu", "alice", "secret") {
+                    contacted++
+                    throw fault
+                }
+                fail("Only HTTP 404 may authorize next discovery candidate")
+                null
+            } catch (problem: RemoteSmartConnect.ConnectionFailed) { problem }
+            assertEquals(RemoteSmartConnect.Category.PROTOCOL, failure?.category)
+            assertEquals(1, failure?.tested)
+            assertEquals(1, contacted)
+            val display = failure?.message.orEmpty() +
+                RemoteSmartConnect.repairAdvice(requireNotNull(failure), "wood.seedhost.eu").joinToString()
+            assertFalse(display.contains("secret"))
+            assertFalse(display.contains("https://wood.seedhost.eu"))
+        }
+    }
+
     @Test fun droppedScgiStreamsCannotTriggerAnotherAuthenticatedCandidate() = runBlocking {
         for (reason in listOf(
             java.net.SocketException("Connection reset"),
@@ -339,14 +364,18 @@ class RemoteSmartConnectDiagnosticsTest {
             null
         } catch (failed: RemoteSmartConnect.ConnectionFailed) { failed }
         requireNotNull(failure)
-        assertEquals(RemoteSmartConnect.Category.ENDPOINT, failure.category)
+        assertEquals(RemoteSmartConnect.Category.PROTOCOL, failure.category)
+        // 404 is a definitive absent path. A real XML-RPC fault on the
+        // second candidate proves a response, but cannot authorize searching
+        // yet another account mount with the same credentials.
+        assertEquals(2, failure.tested)
         assertEquals(failure.tested, seen.size)
         assertTrue(seen.first().startsWith("1/${failure.tested} "))
         assertEquals(failure.tested, failure.attempts.size)
         assertTrue(failure.attempts.all { it.path.startsWith("/") })
         val byPath = failure.attempts.associate { it.path to it.outcome }
         assertEquals("No rTorrent gateway here (HTTP 404)", byPath["/RPC2"])
-        assertEquals("Answered, but rTorrent refused the read-only check", byPath["/xmlrpc"])
+        assertEquals("Could not verify rTorrent identity; no further paths tried", byPath["/xmlrpc"])
         // Nothing user-visible may carry the password or a full URL.
         val visible = failure.attempts.joinToString() +
             RemoteSmartConnect.repairAdvice(failure, "custom.example").joinToString()
