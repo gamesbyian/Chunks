@@ -33,29 +33,35 @@ class OwnedProviderFdAndroidProbe {
 
     external fun nativeRoundTrip(fd: Int, declared: Long, generation: String): Boolean
 
-    private fun newlyOwned(): Uri {
+    private data class MintedRow(val uri: Uri, val exactName: String)
+
+    private fun newlyOwned(): MintedRow {
+        val randomName = "chunks-native-pfd-" + java.util.UUID.randomUUID() + ".bin"
         val values = ContentValues().apply {
-            put(MediaStore.MediaColumns.DISPLAY_NAME,
-                "chunks-native-pfd-" + java.util.UUID.randomUUID() + ".bin")
+            put(MediaStore.MediaColumns.DISPLAY_NAME, randomName)
             put(MediaStore.MediaColumns.MIME_TYPE, "application/octet-stream")
             put(MediaStore.MediaColumns.RELATIVE_PATH,
                 Environment.DIRECTORY_DOWNLOADS + "/Chunks Downloads/")
             put(MediaStore.MediaColumns.IS_PENDING, 1)
         }
-        return requireNotNull(resolver.insert(
+        val result = requireNotNull(resolver.insert(
             MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY), values)) {
             "Unable to create disposable test-owned Downloads row"
         }
+        return MintedRow(result, randomName)
     }
 
-    private fun exactOwner(uri: Uri): Boolean {
+    private fun exactOwner(row: MintedRow, pendingExpected: Int,
+                           sizeExpected: Long): Boolean {
+        val uri = row.uri
         val base = MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
         if (uri.scheme != "content" || uri.authority != base.authority ||
             !uri.toString().startsWith(base.toString() + "/")) return false
         if (runCatching { ContentUris.parseId(uri) }.getOrDefault(-1L) <= 0L) return false
         val cols = arrayOf(MediaStore.MediaColumns.OWNER_PACKAGE_NAME,
             MediaStore.MediaColumns.DISPLAY_NAME, MediaStore.MediaColumns.RELATIVE_PATH,
-            MediaStore.MediaColumns.IS_PENDING, MediaStore.MediaColumns.SIZE)
+            MediaStore.MediaColumns.IS_PENDING, MediaStore.MediaColumns.SIZE,
+            MediaStore.MediaColumns.MIME_TYPE)
         return resolver.query(uri, cols, null, null, null)?.use { c ->
             if (c.count != 1 || !c.moveToFirst()) return@use false
             val owner = c.getString(0)
@@ -63,10 +69,11 @@ class OwnedProviderFdAndroidProbe {
             val path = c.getString(2)
             val pending = c.getInt(3)
             val size = if (c.isNull(4)) 0L else c.getLong(4)
-            owner == context.packageName &&
-                name.startsWith("chunks-native-pfd-") && name.endsWith(".bin") &&
+            val mime = c.getString(5)
+            owner == context.packageName && name == row.exactName &&
                 path == Environment.DIRECTORY_DOWNLOADS + "/Chunks Downloads/" &&
-                pending == 1 && size == 0L
+                mime == "application/octet-stream" &&
+                pending == pendingExpected && size == sizeExpected
         } == true
     }
 
@@ -85,17 +92,18 @@ class OwnedProviderFdAndroidProbe {
     }
 
     @Test fun ownedPendingDownloadsDescriptorCrossesJniAndSurvivesPublication() {
-        val uri = newlyOwned()
+        val minted = newlyOwned()
+        val uri = minted.uri
         var authorizedCleanup = false
         try {
             assertTrue("Platform MediaStore owner and fresh pending identity required",
-                exactOwner(uri))
+                exactOwner(minted, 1, 0L))
             authorizedCleanup = true
             requireNotNull(resolver.openFileDescriptor(uri, "r")).use {
                 assertFalse("Readonly provider FD must be refused before native I/O",
                     nativeRoundTrip(it.fd, 65552, "a".repeat(64)))
             }
-            assertTrue("Readonly negative may not mutate initial empty row", exactOwner(uri))
+            assertTrue("Readonly negative may not mutate initial empty row", exactOwner(minted, 1, 0L))
             requireNotNull(resolver.openFileDescriptor(uri, "rw")).use { pfd ->
                 assertTrue("Genuine Android PFD-to-native bounded write/fsync failed",
                     nativeRoundTrip(pfd.fd, 65552, "a".repeat(64)))
@@ -108,6 +116,8 @@ class OwnedProviderFdAndroidProbe {
                 put(MediaStore.MediaColumns.IS_PENDING, 0)
             }
             assertEquals(1, resolver.update(uri, published, null, null))
+            assertTrue("Publication changed owner, row identity or expected byte length",
+                exactOwner(minted, 0, 65552L))
             // Every read is through a new descriptor; the original JNI FD is
             // closed. This proves only the minted object's observed bytes.
             exactRead(uri, 0L, first)
