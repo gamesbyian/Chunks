@@ -16,7 +16,7 @@ class RemoteReadAuthEvidenceTest {
     private val emptyList = "<methodResponse><params><param><value><array><data/>" +
         "</array></value></param></params></methodResponse>"
 
-    private class Gateway(
+    private inner class Gateway(
         val challengeRead: Boolean,
         val rejectAfterAuthorization: Boolean = false,
         val malformedSuccess: Boolean = false
