@@ -226,7 +226,8 @@ bool LoadReceipt(int dir, const std::string& id, Receipt* receipt, std::string* 
 std::unique_ptr<OwnedPayloadFile> OwnedPayloadFile::OpenImpl(
     const std::string& root, const std::string& relative,
     const std::string& receipts, const std::string& id,
-    const std::string& commitment, bool create, std::string* error) {
+    const std::string& commitment, bool create, bool require_reservation,
+    std::string* error) {
   auto reject = [error](const char* why) -> std::unique_ptr<OwnedPayloadFile> {
     Fail(error, why);
     return nullptr;
@@ -249,8 +250,23 @@ std::unique_ptr<OwnedPayloadFile> OwnedPayloadFile::OpenImpl(
   struct stat rs{}, ps{}, fs{};
   if (!GetDirectory(root_fd.v, &rs)) return reject("Invalid payload root");
   Fd parent;
-  if (!ParentPath(root_fd.v, parts, create, &parent, error) || !GetDirectory(parent.v, &ps))
+  if (!ParentPath(root_fd.v, parts, create && !require_reservation, &parent, error) ||
+      !GetDirectory(parent.v, &ps))
     return nullptr;
+  if (require_reservation) {
+    // Bind the saved reservation to the very directory descriptors used by
+    // openat below. A prior path survey cannot authorize a later re-open: the
+    // selected root or its parent may have been replaced between them.
+    Receipt pending{};
+    if (!LoadReceipt(receipt_fd.v, id + ".pending", &pending, error)) return nullptr;
+    if (pending.commitment != commitment || pending.relative_path != relative ||
+        pending.root_dev != static_cast<std::uint64_t>(rs.st_dev) ||
+        pending.root_ino != static_cast<std::uint64_t>(rs.st_ino) ||
+        pending.parent_dev != static_cast<std::uint64_t>(ps.st_dev) ||
+        pending.parent_ino != static_cast<std::uint64_t>(ps.st_ino) ||
+        pending.dev != 0 || pending.ino != 0 || pending.owner_token != kUncreatedToken)
+      return reject("Pending ownership identity does not match pinned destination");
+  }
   Fd file(::openat(parent.v, parts.back().c_str(),
                    (create ? (O_RDWR | O_CREAT | O_EXCL) : O_RDWR) | O_NOFOLLOW | O_CLOEXEC, 0600));
   if (file.v < 0 || !GetFile(file.v, &fs))
@@ -389,33 +405,19 @@ std::unique_ptr<OwnedPayloadFile> OwnedPayloadFile::CreateFromReservation(
     const std::string& root, const std::string& relative,
     const std::string& receipts, const std::string& id,
     const std::string& commitment, std::string* error) {
-  if (!ValidId(id) || !ValidId(commitment)) {
-    Fail(error, "Invalid saved reservation identity");
-    return nullptr;
-  }
-  Fd receipt_fd(::open(receipts.c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC));
-  Receipt pending{};
-  if (receipt_fd.v < 0 || !LoadReceipt(receipt_fd.v, id + ".pending", &pending, error))
-    return nullptr;
-  if (pending.commitment != commitment || pending.relative_path != relative ||
-      pending.dev != 0 || pending.ino != 0 ||
-      pending.owner_token != kUncreatedToken ||
-      !Reserve(root, relative, receipts, id, commitment, error)) return nullptr;
-  // Reserve validated the original identity and absence. O_EXCL rechecks
-  // physical absence at the actual writer open, never trusting observation.
-  return Create(root, relative, receipts, id, commitment, error);
+  return OpenImpl(root, relative, receipts, id, commitment, true, true, error);
 }
 
 std::unique_ptr<OwnedPayloadFile> OwnedPayloadFile::Create(
     const std::string& root, const std::string& rel, const std::string& receipts,
     const std::string& id, const std::string& mapping, std::string* error) {
-  return OpenImpl(root, rel, receipts, id, mapping, true, error);
+  return OpenImpl(root, rel, receipts, id, mapping, true, false, error);
 }
 
 std::unique_ptr<OwnedPayloadFile> OwnedPayloadFile::Reopen(
     const std::string& root, const std::string& rel, const std::string& receipts,
     const std::string& id, const std::string& mapping, std::string* error) {
-  return OpenImpl(root, rel, receipts, id, mapping, false, error);
+  return OpenImpl(root, rel, receipts, id, mapping, false, false, error);
 }
 
 OwnedPayloadFile::OwnedPayloadFile(int root, int parent, int file,

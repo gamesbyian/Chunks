@@ -50,7 +50,8 @@ class OwnedPayloadFile final {
   static std::unique_ptr<OwnedPayloadFile> OpenImpl(
       const std::string& payload_root, const std::string& relative_path,
       const std::string& private_receipt_root, const std::string& receipt_id,
-      const std::string& commitment, bool create, std::string* error);
+      const std::string& commitment, bool create, bool require_reservation,
+      std::string* error);
   OwnedPayloadFile(int root_fd, int parent_fd, int file_fd,
                    std::string root_path, std::string relative_path, std::string leaf,
                    std::string owner_token, std::uint64_t dev, std::uint64_t ino,
