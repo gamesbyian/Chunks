@@ -8,6 +8,14 @@ import io.github.gamesbyian.chunks.model.EnvironmentSnapshots
  * instance must be reconnected and reverified, never silently relabelled.
  */
 internal object SavedProfileIdentity {
+    /**
+     * Freeze the alias scope from credentials that actually passed the
+     * read-only authentication/inventory probe. Never reread an editable
+     * username field after a suspending Connect or trim the HTTP principal.
+     */
+    fun fromVerifiedCredentials(credentials: io.github.gamesbyian.chunks.rpc.RemoteCredentials): String =
+        credentials.endpoint.trim() + "\u0000" + credentials.username
+
     fun matches(savedId: String, aliasScope: String?): Boolean =
         aliasScope != null &&
             EnvironmentSnapshots.serverIdOfAliasScope(aliasScope)?.value == savedId
