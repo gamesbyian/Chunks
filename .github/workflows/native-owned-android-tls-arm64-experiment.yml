@@ -1,6 +1,6 @@
 name: Experimental owned JNI with patched Android TLS (NON-SHIPPING)
 
-# Explicitly isolated: one ABI, source-pinned and fail-closed. Never deploy the
+# Explicitly isolated: two ABIs, source-pinned and fail-closed. Never deploy the
 # result to the app. Production must additionally verify peer security, JNI
 # packaging, Android public/SD/SAF payload ownership and foreign nonclobber.
 on:
@@ -14,9 +14,22 @@ permissions:
   contents: read
 
 jobs:
-  tls-arm64-jni:
+  tls-android-jni:
+    name: "TLS-enabled owned JNI / ${{ matrix.abi }}"
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - abi: arm64-v8a
+            triple: aarch64-linux-android29
+            openssl_target: android-arm64
+            suffix: arm64
+          - abi: x86_64
+            triple: x86_64-linux-android29
+            openssl_target: android-x86_64
+            suffix: x86_64
     steps:
       - uses: actions/checkout@v4
       - name: Obtain exactly pinned OpenSSL 3.5.9 security-patched source
@@ -33,7 +46,7 @@ jobs:
           grep -Fxq 'MAJOR=3' "$source/VERSION.dat"
           grep -Fxq 'MINOR=5' "$source/VERSION.dat"
           grep -Fxq 'PATCH=9' "$source/VERSION.dat"
-      - name: Cross-build statically linked OpenSSL for NDK API29 arm64
+      - name: Cross-build statically linked OpenSSL for NDK API29 / ${{ matrix.abi }}
         run: |
           set -euo pipefail
           ndk_root="$(find "$ANDROID_HOME/ndk" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n1)"
@@ -48,19 +61,19 @@ jobs:
           test -f "$ANDROID_NDK_ROOT/source.properties"
           # OpenSSL's android-arm64 Configure searches for GCC by default.
           # NDK r29 exposes versioned Clang, so pin the actual target compiler.
-          export CC="$ndk_root/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android29-clang"
-          export CXX="$ndk_root/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android29-clang++"
+          export CC="$ndk_root/toolchains/llvm/prebuilt/linux-x86_64/bin/${{ matrix.triple }}-clang"
+          export CXX="$ndk_root/toolchains/llvm/prebuilt/linux-x86_64/bin/${{ matrix.triple }}-clang++"
           test -x "$CC" && test -x "$CXX"
-          prefix="$RUNNER_TEMP/openssl-android29-arm64"
+          prefix="$RUNNER_TEMP/openssl-android29-${{ matrix.suffix }}"
           cd "$RUNNER_TEMP/openssl-3.5.9-source"
-          ./Configure android-arm64 no-shared no-tests no-apps no-module \
+          ./Configure ${{ matrix.openssl_target }} no-shared no-tests no-apps no-module \
             --prefix="$prefix" -D__ANDROID_API__=29
           make -j2 build_libs
           make install_sw
           test -s "$prefix/lib/libssl.a"
           test -s "$prefix/lib/libcrypto.a"
           grep -F 'OPENSSL_VERSION_TEXT "OpenSSL 3.5.9 ' "$prefix/include/openssl/opensslv.h"
-          echo "CHUNKS_PATCHED_ANDROID_OPENSSL=PASS abi=arm64-v8a api=29 version=3.5.9"
+          echo "CHUNKS_PATCHED_ANDROID_OPENSSL=PASS abi=${{ matrix.abi }} api=29 version=3.5.9"
       - name: Fetch pinned libtorrent4j/Arvid sources and stage owned-disk constructor
         run: |
           set -euo pipefail
@@ -95,14 +108,14 @@ jobs:
           set -euo pipefail
           ndk_root="$(find "$ANDROID_HOME/ndk" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n1)"
           llvm="$ndk_root/toolchains/llvm/prebuilt/linux-x86_64/bin"
-          prefix="$RUNNER_TEMP/openssl-android29-arm64"
+          prefix="$RUNNER_TEMP/openssl-android29-${{ matrix.suffix }}"
           mkdir -p "$RUNNER_TEMP/chunks-boost-includes"
           ln -s /usr/include/boost "$RUNNER_TEMP/chunks-boost-includes/boost"
           upstream="$RUNNER_TEMP/chunks-libtorrent4j"
-          build="$RUNNER_TEMP/chunks-owned-tls-arm64"
+          build="$RUNNER_TEMP/chunks-owned-tls-${{ matrix.suffix }}"
           cmake -S "$upstream/swig" -B "$build" -G Ninja \
             -DCMAKE_TOOLCHAIN_FILE="$ndk_root/build/cmake/android.toolchain.cmake" \
-            -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-29 \
+            -DANDROID_ABI=${{ matrix.abi }} -DANDROID_PLATFORM=android-29 \
             -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF \
             -Dwebtorrent=OFF -DUSE_JUICE=OFF \
             -DCMAKE_CXX_FLAGS="-I$RUNNER_TEMP/chunks-boost-includes -I$prefix/include" \
@@ -126,4 +139,4 @@ jobs:
           # from the host or omitted via the old non-TLS experiment flags.
           grep -E ' SSL_CTX_new| SSL_new| OPENSSL_init_ssl' "$RUNNER_TEMP/owned-tls-all-symbols.txt"
           ! grep -E 'NEEDED.*(libssl|libcrypto)' "$RUNNER_TEMP/owned-tls-needed.txt"
-          echo "CHUNKS_OWNED_ANDROID_TLS_LINK=PASS abi=arm64-v8a api=29 openssl=3.5.9 experiment-only"
+          echo "CHUNKS_OWNED_ANDROID_TLS_LINK=PASS abi=${{ matrix.abi }} api=29 openssl=3.5.9 experiment-only"
