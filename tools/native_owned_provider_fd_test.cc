@@ -141,6 +141,23 @@ int main() {
     ++cases;
   }
   {
+    // A surviving alias can mutate status flags shared by dup(). Detect an
+    // O_APPEND change before an attempted offset write and refuse outright.
+    // This deterministic check is not a substitute for exclusive transfer:
+    // concurrent F_SETFL in the last instruction window is still a threat.
+    Lab s;
+    int source = s.CreateOwner();
+    std::string error;
+    auto pinned = PinnedProviderFd::Bind(source, 4, kGeneration, &error);
+    assert(pinned);
+    int flags = ::fcntl(source, F_GETFL);
+    assert(flags >= 0 && ::fcntl(source, F_SETFL, flags | O_APPEND) == 0);
+    assert(!pinned->WriteAt(0, "test", 4, &error));
+    assert(::close(source) == 0);
+    assert(fs::file_size(s.owner) == 0);
+    ++cases;
+  }
+  {
     Lab s;
     int pipefd[2]{};
     assert(::pipe(pipefd) == 0);
