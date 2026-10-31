@@ -13,6 +13,8 @@ The [documentation architecture and authoring standard](DOCUMENTATION-STANDARD.m
 
 - [AGENTS](../AGENTS.md): required operating instructions and safety rules.
 - [WORK-QUEUE](WORK-QUEUE.md): concise active priority/order authority; reconcile with live PRs/issues.
+- [Requirements rationality audit, 2026-10-31](REQUIREMENTS-RATIONALITY-AUDIT-2026-10-31.md): review new release blockers against concrete harm, platform/library practice and independent evidence tiers.
+- [User-directed file operations](USER-DIRECTED-FILE-OPERATIONS.md): canonical conflict/Replace/Keep both/Skip rules and precise Android provider API distinctions; #809 implementation remains gated.
 - [Independent Android architecture audit, 2026-10-30](ANDROID-ARCHITECTURE-AUDIT-2026-10-30.md): AUD-01–15 source findings, evidence and gaps, work-package definitions and unresolved review areas. [#687](https://github.com/gamesbyian/Chunks/issues/687) tracks follow-through; this dated report is **not a second work queue**.
 - [Dependency-reset queue snapshot](archive/WORK-QUEUE-2026-10-29-pre-dependency-reset.txt): verbatim prior active board; historical, never executable.
 - [Older queue archive](archive/WORK-QUEUE-2026-10-29-preconsolidation.md): preserved earlier milestone narratives; not a live plan.
