@@ -9,6 +9,12 @@
 // collection/volume, exact owner and URI identity, journal the mapping with
 // crash durability, then keep that access authorization valid. A forged or
 // substituted document passed by the caller cannot be detected by this class.
+// Also require exclusive ownership of the passed open-file description:
+// dup() shares mutable O_APPEND flags with any surviving descriptor aliases.
+// The class rejects O_APPEND before each operation but cannot eliminate a
+// concurrent F_SETFL race between the check and pwrite on older kernels.
+// Production MUST detach/transfer the authorized descriptor and close all
+// aliases, or prove stronger offset-write kernel semantics separately.
 #include <cstddef>
 #include <cstdint>
 #include <memory>
