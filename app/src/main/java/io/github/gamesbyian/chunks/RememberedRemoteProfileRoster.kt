@@ -173,17 +173,30 @@ internal class RememberedRemoteProfileRoster(context: Context) {
         return persist(current)
     }
 
+    /**
+     * Asynchronous Connect may save only while its original credential-policy
+     * generation is current. The token is captured before Connect begins,
+     * never derived from a mutable UI text field after network suspension.
+     */
+    fun saveVerifiedIfCurrent(credentials: RemoteCredentials, ticket: Long): Boolean =
+        synchronized(RemoteCredentialLock.monitor) {
+            if (!RemoteCredentialLock.current(ticket)) false else saveVerified(credentials)
+        }
+
     fun forget(id: String): Boolean = synchronized(RemoteCredentialLock.monitor) {
         if (!validId.matches(id)) return false
         val current = list()
         if (migrationBlocked || current.none { it.id == id }) return false
-        return persist(current.filterNot { it.id == id })
+        val committed = persist(current.filterNot { it.id == id })
+        if (committed) RemoteCredentialLock.invalidate()
+        return committed
     }
 
     /** Clear ciphertext before removing the key. Never restore stale secrets. */
     fun clearAll(): Boolean = synchronized(RemoteCredentialLock.monitor) {
         val erased = prefs.edit().remove("roster").commit()
         if (!erased) return false
+        RemoteCredentialLock.invalidate()
         runCatching { keystore().deleteEntry(alias) }
         return true
     }
