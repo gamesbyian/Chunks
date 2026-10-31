@@ -1,7 +1,5 @@
 package io.github.gamesbyian.chunks.snapshots
 
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,7 +16,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -30,6 +27,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
+import io.github.gamesbyian.chunks.exports.OwnedDiagnosticExportProvider
+import io.github.gamesbyian.chunks.exports.OwnedDiagnosticShare
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
@@ -60,8 +59,6 @@ internal fun SnapshotInventoryExportScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var includeHistoricalDirectories by remember { mutableStateOf(false) }
-    var pendingBytes by remember { mutableStateOf<ByteArray?>(null) }
-    var pendingRevision by remember { mutableLongStateOf(-1) }
     var busy by remember { mutableStateOf(false) }
     var result by remember { mutableStateOf<String?>(null) }
     var resultIsVerified by remember { mutableStateOf(false) }
@@ -75,43 +72,6 @@ internal fun SnapshotInventoryExportScreen(
         }
     }
     val captured = captureResult.getOrNull()
-    val picker = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("application/octet-stream")
-    ) { uri ->
-        val bytes = pendingBytes
-        val revision = pendingRevision
-        pendingBytes = null
-        pendingRevision = -1
-        if (uri == null || bytes == null) {
-            busy = false
-            if (uri != null) result = "No validated archive was available to write."
-        } else {
-            scope.launch {
-                resultIsVerified = false
-                try {
-                    withContext(Dispatchers.IO) {
-                        SnapshotDocumentWriterV1.writeAndVerify(
-                            context.contentResolver, uri, bytes
-                        )
-                    }
-                    result = "Saved and SHA-256 readback verified for queue revision " +
-                        revision + ". This is an INVENTORY-ONLY snapshot: " +
-                        "torrent definitions and payload bytes were not backed up."
-                    resultIsVerified = true
-                } catch (cancel: CancellationException) {
-                    result = "Save interrupted. The chosen file might be incomplete. " +
-                        "Do not trust it without independent verification."
-                    throw cancel
-                } catch (failure: Exception) {
-                    result = "Backup NOT verified: " +
-                        (failure.message ?: "Document provider write/readback failed") +
-                        ". The chosen file may be incomplete; discard or inspect it."
-                } finally {
-                    busy = false
-                }
-            }
-        }
-    }
 
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
@@ -183,6 +143,12 @@ internal fun SnapshotInventoryExportScreen(
                 color = MaterialTheme.colorScheme.error
             )
         }
+        Text(
+            "Safe export: Chunks prepares an independent read-only document and opens " +
+                "Android's Share menu. The receiving app handles any final Save. " +
+                "Chunks will not overwrite an unproven document selected through a file picker.",
+            style = MaterialTheme.typography.bodySmall
+        )
         Button(
             enabled = !busy && !loading && !stale && snapshotRevision > 0 &&
                 captured != null && captured.inventoriedCount > 0,
@@ -194,20 +160,42 @@ internal fun SnapshotInventoryExportScreen(
                     result = "Could not encode this inventory: " +
                         (archive.exceptionOrNull()?.message ?: "Unknown error")
                 } else {
-                    pendingBytes = bytes
-                    pendingRevision = snapshotRevision
                     busy = true
                     result = null
                     resultIsVerified = false
+                    val revision = snapshotRevision
                     val stamp = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")
                         .withZone(ZoneOffset.UTC).format(Instant.now())
-                    picker.launch("chunks-inventory-$stamp.chunksnap")
+                    scope.launch {
+                        try {
+                            val uri = withContext(Dispatchers.IO) {
+                                OwnedDiagnosticExportProvider.publish(context,
+                                    "chunks-inventory-${stamp}.chunksnap", bytes)
+                            }
+                            OwnedDiagnosticShare.openChooser(context, uri,
+                                "application/octet-stream", "inventory snapshot")
+                            result = "A byte-verified, read-only snapshot is ready to share for queue revision " +
+                                revision + ". Nothing has been saved by the receiving app yet. " +
+                                "This inventory does not contain restorable torrent definitions or payload bytes."
+                            resultIsVerified = true
+                        } catch (cancel: CancellationException) {
+                            result = "Snapshot handoff was interrupted; no external document was modified by Chunks."
+                            throw cancel
+                        } catch (failure: Exception) {
+                            result = "Could not prepare or share the snapshot: " +
+                                (failure.message ?: "Private export unavailable") +
+                                ". Chunks did not write a picker-returned document."
+                        } finally {
+                            busy = false
+                        }
+                    }
                 }
             },
             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
         ) {
-            Text(if (busy) "Saving inventory…" else "Choose where to save inventory snapshot")
+            Text(if (busy) "Preparing snapshot…" else "Share inventory snapshot")
         }
+
         if (result != null) {
             Text(
                 result.orEmpty(),
