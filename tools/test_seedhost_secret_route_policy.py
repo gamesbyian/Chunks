@@ -30,7 +30,64 @@ def assert_primary_binding(source: str, key: str, count: int) -> None:
         raise ValueError(f"Expected {count} exact primary bindings for {key}, got {actual!r}")
 
 
+def instance_password_secret_names(source: str) -> dict[str, str]:
+    """Validate the workflow's fixed endpoints and parse its secret-name choice.
+
+    Restrict the accepted expression deliberately: evaluating secret values in
+    an Actions `&& ... || ...` choice would fall through when a secret is empty.
+    No actual credentials are needed or read by this offline policy check.
+    """
+    if "if: github.ref == 'refs/heads/main'" not in source:
+        raise ValueError("Instance probe must run only on trusted main")
+    if not re.search(r'(?m)^\s*instance:\s*\["2",\s*"3"\]\s*$', source):
+        raise ValueError("Unexpected instance matrix")
+    if not re.search(r'(?m)^\s*CHUNKS_LIVE_RUTORRENT_URL:\s*https://ianseeds\.wood\.seedhost\.eu/rutorrent\$\{\{ matrix\.instance \}\}/\s*$', source):
+        raise ValueError("Unexpected instance endpoint")
+    if not re.search(r'(?m)^\s*CHUNKS_LIVE_RTORRENT_USER:\s*ianseeds\s*$', source):
+        raise ValueError("Unexpected instance account")
+    match = re.search(
+        r"(?m)^\s*CHUNKS_LIVE_RTORRENT_PASS:\s*\$\{\{\s*secrets\[matrix\.instance == '2' && '([^']+)' \|\| '([^']+)'\]\s*\}\}\s*$",
+        source,
+    )
+    if not match or match.groups() != ("rTorrent_pass2", "rtorrent_pass3"):
+        raise ValueError("Expected fixed per-instance secret-name choice before lookup")
+    guard = 'test -n "$CHUNKS_LIVE_RTORRENT_PASS"'
+    invocation = 'gradle --no-daemon --console=plain :app:testDebugUnitTest'
+    if guard not in source or invocation not in source or source.index(guard) > source.index(invocation):
+        raise ValueError("Missing selected-secret empty check before network test")
+    return {"2": match.group(1), "3": match.group(2)}
+
+
 class ProtectedSeedhostCredentialRoutesTest(unittest.TestCase):
+    def test_instance_credentials_remain_bound_when_selected_secret_is_missing(self):
+        source = (ROOT / ".github/workflows/seedhost-instances-readonly.yml").read_text("utf-8")
+        names = instance_password_secret_names(source)
+        # Model the actual Actions lookup after selection with synthetic values.
+        # An absent or empty instance 2 secret must not resolve to instance 3.
+        for secrets in ({"rTorrent_pass2": "", "rtorrent_pass3": "synthetic-3"},
+                        {"rtorrent_pass3": "synthetic-3"}):
+            self.assertFalse(secrets.get(names["2"], ""))
+            self.assertEqual("synthetic-3", secrets.get(names["3"], ""))
+        secrets = {"rTorrent_pass2": "synthetic-2", "rtorrent_pass3": ""}
+        self.assertEqual("synthetic-2", secrets.get(names["2"], ""))
+        self.assertFalse(secrets.get(names["3"], ""))
+        self.assertEqual({"2": "rTorrent_pass2", "3": "rtorrent_pass3"}, names)
+
+    def test_instance_route_policy_rejects_wrong_binding_and_value_fallback(self):
+        source = (ROOT / ".github/workflows/seedhost-instances-readonly.yml").read_text("utf-8")
+        for old, new in (
+            ("secrets[matrix.instance == '2' && 'rTorrent_pass2' || 'rtorrent_pass3']",
+             "matrix.instance == '2' && secrets.rTorrent_pass2 || secrets.rtorrent_pass3"),
+            ("'rTorrent_pass2' || 'rtorrent_pass3'", "'rtorrent_pass3' || 'rTorrent_pass2'"),
+            ("ianseeds.wood.seedhost.eu/rutorrent", "other.wood.seedhost.eu/rutorrent"),
+            ("refs/heads/main", "refs/heads/other"),
+            ('test -n "$CHUNKS_LIVE_RTORRENT_PASS"', 'true'),
+        ):
+            with self.subTest(mutation=old):
+                self.assertIn(old, source)
+                with self.assertRaises(ValueError):
+                    instance_password_secret_names(source.replace(old, new))
+
     def test_live_workflows_pin_primary_credentials_to_approved_origin(self):
         for name, (env_key, count) in WORKFLOWS.items():
             with self.subTest(name=name):

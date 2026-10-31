@@ -5,6 +5,8 @@ on:
     paths:
       - "tools/seedhost_public_add_smoke.py"
       - "tools/test_seedhost_public_add_smoke.py"
+      - "tools/test_seedhost_secret_route_policy.py"
+      - ".github/workflows/seedhost-instances-readonly.yml"
       - ".github/workflows/seedhost-public-add-smoke.yml"
   workflow_dispatch:
     inputs:
