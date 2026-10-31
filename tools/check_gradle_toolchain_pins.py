@@ -46,11 +46,24 @@ def validate(workflows: dict[str, str], root_gradle: str, app_gradle: str) -> li
         # Both reviewed major tags and audited immutable action commits are
         # accepted while the remaining build workflows migrate individually.
         # Arbitrary revisions, including unknown SHAs, never qualify.
-        if not any("gradle/actions/setup-gradle@" + revision in source
-                   for revision in ("v4", "ed408507eac070d1f99cc633dbcf757c94c7933a")):
+        # Require a real steps-level `uses:` declaration, not a string in a
+        # comment, workflow description, or unrelated attacker-controlled step.
+        def has_reviewed_action(action: str, revisions: tuple[str, ...]) -> bool:
+            accepted = "|".join(re.escape(rev) for rev in revisions)
+            return bool(re.search(
+                rf"(?m)^\\s*-\\s+uses:\\s*{re.escape(action)}@(?:{accepted})"
+                rf"\\s*(?:#.*)?$",
+                source,
+            ))
+        if not has_reviewed_action(
+            "gradle/actions/setup-gradle",
+            ("v4", "ed408507eac070d1f99cc633dbcf757c94c7933a"),
+        ):
             errors.append(f"{name}: expected reviewed setup-gradle action")
-        if not any("actions/setup-java@" + revision in source
-                   for revision in ("v4", "cf277c60eb25467037889841efdb72551f06f6c3")):
+        if not has_reviewed_action(
+            "actions/setup-java",
+            ("v4", "cf277c60eb25467037889841efdb72551f06f6c3"),
+        ):
             errors.append(f"{name}: expected reviewed setup-java action")
         pins: dict[str, list[str]] = {"gradle-version": [], "java-version": []}
         for k, v in PIN.findall(source):
