@@ -50,7 +50,7 @@ Use these headings when creating or substantially rewriting a feature contract; 
 - **Implementation/evidence status:** separated from requirements; link to coverage/quality ledger
 - **Related artifacts:** precise links to architecture, UX, tests, queue, issues and PRs
 
-## Agent change protocol
+## Keep execution cards short and source-grounded\n\nUse the [engineering delivery protocol](ENGINEERING-DELIVERY-PROTOCOL.md) six-line card in the owning issue/PR: outcome, evidence, authority/scope, smallest intervention, proof and exit. Do not build another parallel plan document for each hypothesis. Scope release-blocking classifications to the actual reachable unsafe capability; an optional operation that is safely disabled is not automatically a whole-app G0 blocker, although it remains unfinished. After two non-progressing implementation revisions, explicitly revisit assumptions and upstream behavior before adding a new branch or subsystem. CI reds must distinguish unexecuted harness/boot tests from product assertion failures; neither is a success.\n\n## Agent change protocol
 
 1. Inspect live main, active PRs, relevant specs and current work queue before proposing edits. Follow AGENTS and preserve the font-lab exception.
 2. Find a feature's **single canonical contract**. Modify that contract first; update high-level cross-references only where necessary. Do not paste a new owner directive atop every document or append duplicative mini-specs to every file.
