@@ -40,8 +40,6 @@ def source_without_comments(source: str) -> str:
 def required_images(script: str) -> tuple[str, ...]:
     manifests = []
     for match in MANIFEST.finditer(script):
-        if ".png" not in match.group(1):
-            continue
         try:
             images = ast.literal_eval(match.group(1))
         except (ValueError, SyntaxError) as error:
