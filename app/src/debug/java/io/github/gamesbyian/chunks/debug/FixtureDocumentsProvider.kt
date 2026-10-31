@@ -52,14 +52,16 @@ class FixtureDocumentsProvider : DocumentsProvider() {
 
     private fun row(cursor: MatrixCursor, file: File) {
         val directory = file.isDirectory
-        cursor.newRow()
-            .add(Document.COLUMN_DOCUMENT_ID, id(file))
-            .add(Document.COLUMN_DISPLAY_NAME, if (file == base) "Chunks fixture" else file.name)
-            .add(Document.COLUMN_MIME_TYPE, if (directory) Document.MIME_TYPE_DIR else "application/octet-stream")
-            .add(Document.COLUMN_SIZE, if (directory) null else file.length())
-            .add(Document.COLUMN_LAST_MODIFIED, file.lastModified())
-            .add(Document.COLUMN_FLAGS, Document.FLAG_SUPPORTS_DELETE or Document.FLAG_SUPPORTS_RENAME or
+        val fields: Map<String, Any?> = mapOf(
+            Document.COLUMN_DOCUMENT_ID to id(file),
+            Document.COLUMN_DISPLAY_NAME to if (file == base) "Chunks fixture" else file.name,
+            Document.COLUMN_MIME_TYPE to if (directory) Document.MIME_TYPE_DIR else "application/octet-stream",
+            Document.COLUMN_SIZE to if (directory) null else file.length(),
+            Document.COLUMN_LAST_MODIFIED to file.lastModified(),
+            Document.COLUMN_FLAGS to (Document.FLAG_SUPPORTS_DELETE or Document.FLAG_SUPPORTS_RENAME or
                 if (directory) Document.FLAG_DIR_SUPPORTS_CREATE else Document.FLAG_SUPPORTS_WRITE)
+        )
+        cursor.addRow(cursor.columnNames.map { fields[it] }.toTypedArray())
     }
 
     private val documentColumns = arrayOf(Document.COLUMN_DOCUMENT_ID, Document.COLUMN_DISPLAY_NAME,
@@ -68,10 +70,14 @@ class FixtureDocumentsProvider : DocumentsProvider() {
     override fun queryRoots(projection: Array<out String>?): Cursor =
         MatrixCursor(projection ?: arrayOf(Root.COLUMN_ROOT_ID, Root.COLUMN_DOCUMENT_ID, Root.COLUMN_TITLE,
             Root.COLUMN_FLAGS, Root.COLUMN_AVAILABLE_BYTES)).apply {
-            newRow().add(Root.COLUMN_ROOT_ID, ROOT_ID).add(Root.COLUMN_DOCUMENT_ID, ROOT_ID)
-                .add(Root.COLUMN_TITLE, "Chunks debug fixture")
-                .add(Root.COLUMN_FLAGS, Root.FLAG_SUPPORTS_CREATE or Root.FLAG_LOCAL_ONLY or Root.FLAG_SUPPORTS_IS_CHILD)
-                .add(Root.COLUMN_AVAILABLE_BYTES, base.usableSpace)
+            val fields: Map<String, Any?> = mapOf(
+                Root.COLUMN_ROOT_ID to ROOT_ID,
+                Root.COLUMN_DOCUMENT_ID to ROOT_ID,
+                Root.COLUMN_TITLE to "Chunks debug fixture",
+                Root.COLUMN_FLAGS to (Root.FLAG_SUPPORTS_CREATE or Root.FLAG_LOCAL_ONLY or Root.FLAG_SUPPORTS_IS_CHILD),
+                Root.COLUMN_AVAILABLE_BYTES to base.usableSpace
+            )
+            addRow(columnNames.map { fields[it] }.toTypedArray())
         }
 
     override fun queryDocument(documentId: String, projection: Array<out String>?): Cursor =
