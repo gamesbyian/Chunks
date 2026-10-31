@@ -101,12 +101,17 @@ internal class RememberedRemoteProfileRoster(context: Context) {
             credentials.username.take(40) + " @ " + host
     }
 
-    /** Corrupt/inaccessible encrypted records fail closed and are cleared. */
+    /** Unreadable ciphertext fails closed without destruction or empty-roster overwrite. */
     fun list(): List<Profile> = synchronized(RemoteCredentialLock.monitor) {
         migrationBlocked = false
         if (!legacy.rememberingEnabled()) return emptyList()
         val packed = try { prefs.getString("roster", null) }
-            catch (_: ClassCastException) { null } ?: return emptyList()
+            catch (_: ClassCastException) {
+                // A corrupted preferences type is still an occupied vault.
+                // No new login can replace it until explicit user clearing.
+                migrationBlocked = true
+                return emptyList()
+            } ?: return emptyList()
         return try {
             require(packed.length in 20..MAX_ENCODED)
             val bytes = Base64.decode(packed, Base64.NO_WRAP)
@@ -149,7 +154,10 @@ internal class RememberedRemoteProfileRoster(context: Context) {
                 emptyList()
             } else output
         } catch (_: Exception) {
-            prefs.edit().remove("roster").commit()
+            // A transient Android Keystore failure, malformed ciphertext or
+            // future unsupported encoding cannot authorize deleting credentials
+            // or treating the encrypted roster as an empty, writable one.
+            migrationBlocked = true
             emptyList()
         }
     }
