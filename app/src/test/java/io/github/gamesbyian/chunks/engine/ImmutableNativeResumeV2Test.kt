@@ -114,6 +114,29 @@ class ImmutableNativeResumeV2Test {
         assertTrue(Files.isSymbolicLink(symlink))
     }
 
+    @Test fun alteredPreviouslyCommittedRecordRefusesReplayWithoutDeletingItsName() {
+        val root = state()
+        ImmutableNativeResumeV2.beginReviewed(root, hash)
+        ImmutableNativeResumeV2.save(root, hash, first)
+        val saved = events(root).last()
+        val original = Files.readAllBytes(saved)
+        // This is an intentionally test-owned fixture, not an unowned file.
+        // Corrupt exactly one content byte while preserving record length.
+        val changed = original.copyOf()
+        changed[changed.lastIndex - 2] =
+            if (changed[changed.lastIndex - 2] == '0'.code.toByte())
+                '1'.code.toByte() else '0'.code.toByte()
+        Files.write(saved, changed)
+        assertTrue(ImmutableNativeResumeV2.inspect(root, hash) is
+            ImmutableNativeResumeV2.Inspection.Uncertain)
+        try {
+            ImmutableNativeResumeV2.requestRemoval(root, hash)
+            fail("Tampered prior resume must never authorize a new lifecycle event")
+        } catch (_: IOException) { }
+        assertArrayEquals(changed, Files.readAllBytes(saved))
+        assertEquals(2, events(root).size)
+    }
+
     @Test fun invalidHashAndUnreviewedSaveNeverBecomeNativeWriterAuthority() {
         val root = state()
         assertTrue(ImmutableNativeResumeV2.inspect(root, "not-a-hash") is
