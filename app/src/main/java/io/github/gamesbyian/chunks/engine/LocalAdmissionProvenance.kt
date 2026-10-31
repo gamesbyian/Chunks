@@ -50,7 +50,7 @@ internal object LocalAdmissionProvenance {
                 else {
                     val buffer = ByteBuffer.allocate(length.toInt())
                     while (buffer.hasRemaining()) {
-                        if (channel.read(buffer) < 0) return@use null
+                        if (channel.read(buffer) <= 0) return@use null
                     }
                     val actual = buffer.array()
                     Mode.entries.singleOrNull { actual.contentEquals(bytes(hash, it)) }
@@ -59,12 +59,6 @@ internal object LocalAdmissionProvenance {
         } catch (_: Exception) { null }
     }
 
-    /**
-     * Called before native Add. The app-private record is synced and atomically
-     * installed before a restorable native job can exist. A conflicting prior
-     * mode refuses rather than rewriting evidence of an earlier admission.
-     * A crash that loses this record causes conservative UNKNOWN restoration.
-     */
     /**
      * Android's private app storage does not guarantee hardlink creation (both
      * API29 and API35 denied Files.createLink in the receipt diagnostic).
