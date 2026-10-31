@@ -18,7 +18,7 @@ class LocalPayloadCollisionSurveyTest {
         assertEquals(LocalPayloadCollisionSurvey.Result.ClearAtObservation(2), result)
     }
 
-    @Test fun anUnrelatedExistingFileRequiresReviewEvenIfTheNameMatches() {
+    @Test fun existingRegularPayloadFileIsReportedButNotMutatedBySurvey() {
         val root = temp.newFolder("existing-payload")
         val target = File(root, "Series/S01E01.mkv")
         assertTrue(target.parentFile.mkdirs())
@@ -29,14 +29,17 @@ class LocalPayloadCollisionSurveyTest {
         assertEquals("foreign bytes", target.readText())
     }
 
-    @Test fun directoriesAndMultipleFilesAreCountedWithoutMutation() {
-        val root = temp.newFolder("multi-collision")
+    @Test fun directoryAtExpectedPayloadFileIsRefusedRatherThanOverwritten() {
+        val root = temp.newFolder("wrong-payload-type")
         File(root, "directory-as-file").mkdirs()
-        File(root, "episode.mkv").writeText("foreign")
-        val result = LocalPayloadCollisionSurvey.inspect(root,
-            listOf("directory-as-file", "episode.mkv", "not-present"))
+        assertTrue(LocalPayloadCollisionSurvey.inspect(root,
+            listOf("directory-as-file")) is LocalPayloadCollisionSurvey.Result.Unknown)
+        val target = File(root, "episode.mkv").apply { writeText("existing regular bytes") }
         assertEquals(LocalPayloadCollisionSurvey.Result.ExistingPaths(
-            listOf("directory-as-file", "episode.mkv"), 2), result)
+            listOf("episode.mkv"), 1),
+            LocalPayloadCollisionSurvey.inspect(root,
+                listOf("episode.mkv", "not-present")))
+        assertEquals("existing regular bytes", target.readText())
     }
 
     @Test fun malformedOrEscapingNamesAreUnknownNotSafe() {
