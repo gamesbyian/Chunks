@@ -5,6 +5,8 @@ import android.system.OsConstants
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.IOException
+import java.io.File
+import org.libtorrent4j.TorrentBuilder
 import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
@@ -96,4 +98,51 @@ class LocalResumeEventStoreInstrumentedTest {
         assertFalse(recovered.canRegister(hash))
         assertEquals(1, recovered.problems().size)
     }
+    @Test fun realNativeRemoveRetainsForeignLegacyEntryAndReAddAfterRestart() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val testRoot = root()
+        val state = Files.createDirectory(testRoot.resolve("state")).toFile()
+        val sourceRoot = Files.createDirectory(testRoot.resolve("source")).toFile()
+        val name = File(sourceRoot, "Native remove fixture").apply { mkdirs() }
+        File(name, "payload.bin").writeBytes(ByteArray(16_384) { (it % 251).toByte() })
+        val torrent = TorrentBuilder().path(name).pieceSize(16 * 1024)
+            .generate().entry().bencode()
+        val config = LocalEngineConfig(
+            listenInterfaces = "127.0.0.1:0",
+            allowMultipleConnectionsPerIp = true,
+            stateDirectory = state
+        )
+        val original = LocalTorrentEngine(config)
+        original.start()
+        val added = original.addStopped(torrent, sourceRoot)
+        assertTrue("Clean native Add must not regress", added is LocalAddResult.AddedStopped)
+        val id = (added as LocalAddResult.AddedStopped).status.infoHash
+        val foreign = File(state, "unrelated-foreign-bytes")
+        val canary = "foreign entry survives Remove".toByteArray()
+        foreign.writeBytes(canary)
+        val legacyResume = File(state, "$id.resume")
+        val linked = runCatching {
+            Files.createLink(legacyResume.toPath(), foreign.toPath())
+        }.isSuccess
+        if (!linked) legacyResume.writeBytes(canary)
+        assertTrue("Native Remove should be confirmed", original.removeKeepingData(id))
+        assertArrayEquals(canary, foreign.readBytes())
+        assertArrayEquals(canary, legacyResume.readBytes())
+        assertTrue(legacyResume.exists())
+        original.close()
+
+        val restarted = LocalTorrentEngine(config)
+        try {
+            restarted.start()
+            assertTrue("Removed transfer must not resurrect", restarted.list().isEmpty())
+            assertTrue("No false restore failure on committed Remove: ${restarted.restoreProblems}",
+                restarted.restoreProblems.isEmpty())
+            val again = restarted.addStopped(torrent, sourceRoot)
+            assertTrue("Same hash can be re-added after old native I/O has drained: $again",
+                again is LocalAddResult.AddedStopped)
+            assertArrayEquals(canary, foreign.readBytes())
+            assertArrayEquals(canary, legacyResume.readBytes())
+        } finally { restarted.close() }
+    }
+
 }
