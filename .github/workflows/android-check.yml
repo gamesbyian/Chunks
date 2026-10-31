@@ -80,10 +80,8 @@ jobs:
         env:
           CHUNKS_JOB_STATUS: ${{ job.status }}
         run: |
-          if [ -f tools/ci_failure_digest.py ]; then
-            python3 tools/ci_failure_digest.py --suite "android-jvm" --status "$CHUNKS_JOB_STATUS" \
-              --glob 'app/build/test-results/testDebugUnitTest/*.xml' --output "$RUNNER_TEMP/chunks-ci-digest.json"
-          fi
+          python3 tools/ci_failure_digest.py --suite "android-jvm" --status "$CHUNKS_JOB_STATUS" --require-executed \
+            --glob 'app/build/test-results/testDebugUnitTest/*.xml' --output "$RUNNER_TEMP/chunks-ci-digest.json"
       - name: Retain structured failure digest
         if: failure()
         uses: actions/upload-artifact@v4
