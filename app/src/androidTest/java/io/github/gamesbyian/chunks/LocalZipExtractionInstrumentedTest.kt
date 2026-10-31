@@ -38,8 +38,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Real Android ContentResolver + DocumentsContract extraction into a debug-only,
- * disposable DocumentsProvider tree. Not proof for every vendor provider or SD card.
+ * Android containment checks against a debug-only disposable DocumentsProvider.
+ * These checks do not prove safe writing on vendor providers or SD cards.
  */
 @RunWith(AndroidJUnit4::class)
 class LocalZipExtractionInstrumentedTest {
@@ -108,7 +108,7 @@ class LocalZipExtractionInstrumentedTest {
     private fun stagedCopies(): Set<String> = context.cacheDir.listFiles().orEmpty().map { it.name }
         .filter { it.startsWith("chunks-zip-review-") }.toSet()
 
-    @Test fun extractsThroughDocumentsContractIntoANewFolderAndKeepsExistingData() {
+    @Test fun extractionRefusesBeforeTouchingDocumentsAndKeepsExistingData() {
         val episode = ByteArray(90_000) { (it * 31 % 251).toByte() }
         File(base, "chunks-extract-test").mkdirs()
         File(base, "chunks-extract-test/notes.txt").writeText("user's own notes")
@@ -116,10 +116,9 @@ class LocalZipExtractionInstrumentedTest {
         withDocument(zip("Season 1/Episode 01.bin" to episode, "notes.txt" to "archive".toByteArray())) { source ->
             val result = LocalZipExtraction.extract(context, source, tree, "chunks-extract-test.zip",
                 allowUnknownFreeSpace = true) { false }
-            assertEquals(result.reason, ZipExtractionStatus.EXTRACTED, result.status)
-            assertEquals("chunks-extract-test (2)", result.folderName)
-            assertArrayEquals(episode, File(base, "chunks-extract-test (2)/Season 1/Episode 01.bin").readBytes())
-            assertEquals("archive", File(base, "chunks-extract-test (2)/notes.txt").readText())
+            assertEquals(result.reason, ZipExtractionStatus.BLOCKED, result.status)
+            assertNull(result.folderName)
+            assertFalse(File(base, "chunks-extract-test (2)").exists())
             assertEquals("user's own notes", File(base, "chunks-extract-test/notes.txt").readText())
             // The source document is still readable and unchanged in length.
             context.contentResolver.openInputStream(source).use { assertTrue(requireNotNull(it).readBytes().isNotEmpty()) }
@@ -129,7 +128,7 @@ class LocalZipExtractionInstrumentedTest {
         assertTrue(journals.list().orEmpty().isEmpty())
     }
 
-    @Test fun unknownFreeSpaceAndHostileArchivesWriteNothing() {
+    @Test fun containmentRefusesBothOrdinaryAndHostileInputsWithoutWriting() {
         withDocument(zip("a.txt" to "a".toByteArray())) { source ->
             val refused = LocalZipExtraction.extract(context, source, tree, "a.zip", false) { false }
             assertEquals(ZipExtractionStatus.BLOCKED, refused.status)
@@ -142,32 +141,42 @@ class LocalZipExtractionInstrumentedTest {
         assertFalse(File(base.parentFile, "escape.txt").exists())
     }
 
-    @Test fun cancellationRemovesPartialOutputThroughTheProvider() {
+    @Test fun disabledExtractionDoesNotStartOrConsultCancellation() {
         val random = java.util.Random(3)
         val payload = ByteArray(400_000).also { random.nextBytes(it) }
         var checks = 0
         withDocument(zip("big.bin" to payload, "second.bin" to payload)) { source ->
             val result = LocalZipExtraction.extract(context, source, tree, "big.zip", true) { ++checks > 6 }
-            assertEquals(ZipExtractionStatus.CANCELLED, result.status)
+            assertEquals(ZipExtractionStatus.BLOCKED, result.status)
         }
+        assertEquals(0, checks)
         assertTrue(base.list().orEmpty().isEmpty())
     }
 
-    @Test fun safTargetRefusesExistingNamesWithoutLeavingProviderSubstitutes() {
+    @Test fun legacySafTargetRefusesAllMutationsEvenForAnUnoccupiedName() {
         File(base, "taken").mkdirs()
-        File(base, "file.txt").writeText("keep")
+        val foreign = File(base, "file.txt").apply { writeText("foreign bytes") }
+        val before = foreign.readBytes()
         val target = SafZipExtractionTarget(context.contentResolver, tree)
+        val foreignUri = requireNotNull(target.child(target.root, "file.txt"))
+        val existingDirectory = requireNotNull(target.child(target.root, "taken"))
+
+        assertNull(target.createDirectory(target.root, "fresh"))
+        assertNull(target.createFile(target.root, "fresh.txt"))
         assertNull(target.createDirectory(target.root, "taken"))
         assertNull(target.createFile(target.root, "file.txt"))
-        val dir = requireNotNull(target.createDirectory(target.root, "fresh"))
-        requireNotNull(target.createFile(dir, "inside.txt"))
-        assertFalse("Non-empty folders must not be deleted", target.delete(dir))
-        assertNull(target.rename(dir, target.root, "taken"))
-        assertEquals(setOf("taken", "file.txt", "fresh"), base.list().orEmpty().toSet())
-        assertEquals("keep", File(base, "file.txt").readText())
+        assertNull(target.rename(existingDirectory, target.root, "renamed"))
+        assertFalse(target.delete(existingDirectory))
+        assertFalse(target.delete(foreignUri))
+        try {
+            target.openNewOutput(foreignUri)
+            org.junit.Assert.fail("Unowned URI must never be opened for writing")
+        } catch (_: java.io.IOException) { }
+        assertEquals(setOf("taken", "file.txt"), base.list().orEmpty().toSet())
+        assertArrayEquals(before, foreign.readBytes())
     }
 
-    @Test fun interruptedJournalIsRolledBackOnNextVisitWithoutReextracting() {
+    @Test fun interruptedJournalIsPreservedForReviewWithoutDestinationMutation() {
         val operation = "0123456789abcdef0123456789abcdef"
         val partial = File(base, ZipExtractor.PARTIAL_PREFIX + operation).apply { mkdirs() }
         File(partial, "d").mkdirs()
@@ -180,10 +189,10 @@ class LocalZipExtractionInstrumentedTest {
 
         val results = LocalZipExtraction.reconcilePending(context)
         assertEquals(1, results.size)
-        assertEquals(ZipExtractionStatus.FAILED_ROLLED_BACK, results.single().result.status)
+        assertEquals(ZipExtractionStatus.NEEDS_ATTENTION, results.single().result.status)
         assertFalse(results.single().copy)
-        assertTrue(base.list().orEmpty().isEmpty())
-        assertTrue(journals.list().orEmpty().isEmpty())
+        assertArrayEquals(ByteArray(10), File(partial, "d/half.bin").readBytes())
+        assertTrue(File(journals, "$operation.log").isFile)
     }
 
     @Test fun confirmationRequiresAcknowledgingUnknownSpaceAndRendersNatively() {
@@ -214,7 +223,7 @@ class LocalZipExtractionInstrumentedTest {
         rule.onNodeWithText("Extract to new folder").assertIsNotEnabled()
     }
 
-    @Test fun outcomeExplainsResultAndKeptArchive() {
+    @Test fun outcomeExplainsTemporaryRefusal() {
         withDocument(zip("a.txt" to "a".toByteArray())) { source ->
             val result = LocalZipExtraction.extract(context, source, tree, "Show pack.zip", true) { false }
             rule.setContent {
@@ -225,8 +234,8 @@ class LocalZipExtractionInstrumentedTest {
                     }
                 }
             }
-            rule.onNodeWithText("into the new folder \"Show pack\". The ZIP was kept.", substring = true).assertExists()
-            capture("zip-extract-done-real-compose")
+            rule.onNodeWithText("Not extracted: Temporarily unavailable", substring = true).assertExists()
+            capture("zip-extract-unavailable-real-compose")
         }
     }
 }

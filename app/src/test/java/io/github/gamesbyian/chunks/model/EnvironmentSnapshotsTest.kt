@@ -16,8 +16,11 @@ class EnvironmentSnapshotsTest {
     private fun remote(hash: String) = RemoteTransfer(hash, "n", 10, 0, true, "/x")
     private val server = EnvironmentSnapshots.serverId("https://example.org/RPC2", "user")
 
-    @Test fun serverIdIsStableTrimmedAndDistinguishesNumberedInstances() {
-        assertEquals(server, EnvironmentSnapshots.serverId(" https://example.org/RPC2 ", "user "))
+    @Test fun serverIdNormalizesOnlyEndpointAndDistinguishesExactPrincipalAndInstance() {
+        assertEquals(server, EnvironmentSnapshots.serverId(" https://example.org/RPC2 ", "user"))
+        assertNotEquals(server, EnvironmentSnapshots.serverId("https://example.org/RPC2", "user "))
+        assertNotEquals(server, EnvironmentSnapshots.serverId("https://example.org/RPC2", " user"))
+        assertNotEquals(server, EnvironmentSnapshots.serverId("https://example.org/RPC2", "USER"))
         assertNotEquals(server, EnvironmentSnapshots.serverId("https://example.org/rutorrent2/RPC2", "user"))
         assertNotEquals(server, EnvironmentSnapshots.serverId("https://example.org/RPC2", "other"))
         assertTrue(server.value.matches(Regex("[0-9a-f]{64}")))
