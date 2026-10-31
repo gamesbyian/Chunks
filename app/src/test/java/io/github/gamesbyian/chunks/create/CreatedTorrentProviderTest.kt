@@ -28,9 +28,11 @@ class CreatedTorrentProviderTest {
     @Test fun servesOnlyTheCreatedTorrentReadOnly() {
         val bytes = byteArrayOf(1, 2, 3)
         val uri = CreatedTorrentProvider.publish(context, "Season.torrent", bytes)
-        provider.openFile(uri, "r").use { pfd ->
-            assertArrayEquals(bytes, android.os.ParcelFileDescriptor.AutoCloseInputStream(pfd).readBytes())
-        }
+        // Robolectric does not reproduce the Android Os.open(O_NOFOLLOW)
+        // descriptor path. Assert the exclusive cache bytes here, and use
+        // CreatedTorrentProviderInstrumentedTest for real ContentResolver FD read.
+        assertArrayEquals(bytes, File(CreatedTorrentProvider.folder(context),
+            requireNotNull(uri.lastPathSegment)).readBytes())
         provider.query(uri, null, null, null, null).use { c ->
             assertTrue(c.moveToFirst())
             assertEquals("Season.torrent", c.getString(c.getColumnIndexOrThrow(OpenableColumns.DISPLAY_NAME)))
