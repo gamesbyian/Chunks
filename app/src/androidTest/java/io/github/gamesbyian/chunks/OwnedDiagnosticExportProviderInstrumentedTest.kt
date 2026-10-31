@@ -1,17 +1,22 @@
 package io.github.gamesbyian.chunks
 
 import android.net.Uri
+import android.provider.OpenableColumns
+import android.system.Os
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.gamesbyian.chunks.exports.OwnedDiagnosticExportProvider
 import java.io.File
 import java.io.FileNotFoundException
 import java.nio.file.Files
+import java.nio.file.FileSystemException
+import java.nio.file.LinkOption
 import java.util.UUID
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -116,4 +121,51 @@ class OwnedDiagnosticExportProviderInstrumentedTest {
             Files.deleteIfExists(foreign.toPath())
         }
     }
+    @Test fun actualFifoSymlinkAndHardlinkNamesNeverBlockOrExposeForeignExports() {
+        fun uri(name: String) = Uri.Builder().scheme("content")
+            .authority(OwnedDiagnosticExportProvider.authority(context))
+            .appendPath(name).build()
+        fun refusesAll(name: String) {
+            val selected = uri(name)
+            try {
+                context.contentResolver.openFileDescriptor(selected, "r")?.use { }
+                fail("Unowned or nonregular export must not be served")
+            } catch (_: FileNotFoundException) { }
+            try {
+                context.contentResolver.query(selected,
+                    arrayOf(OpenableColumns.SIZE), null, null, null)?.use { }
+                fail("Nonregular export metadata must not be served")
+            } catch (_: FileNotFoundException) { }
+            try {
+                context.contentResolver.getType(selected)
+                fail("Nonregular export type must not be advertised")
+            } catch (_: FileNotFoundException) { }
+        }
+        val fifo = File(root, "fifo-" + UUID.randomUUID() + ".json")
+        Os.mkfifo(fifo.absolutePath, 384) // app-private 0600
+        // A blocking O_RDONLY would hang before it could reject this FIFO.
+        refusesAll(fifo.name)
+        assertTrue(Files.exists(fifo.toPath(), LinkOption.NOFOLLOW_LINKS))
+
+        val foreign = File(context.cacheDir, "unrelated-export-" + UUID.randomUUID())
+        val unchanged = "foreign data remains private and byte-exact".toByteArray()
+        foreign.writeBytes(unchanged)
+        val symlink = File(root, "symlink-" + UUID.randomUUID() + ".json")
+        Files.createSymbolicLink(symlink.toPath(), foreign.toPath())
+        refusesAll(symlink.name)
+        assertTrue(Files.isSymbolicLink(symlink.toPath()))
+        assertArrayEquals(unchanged, foreign.readBytes())
+
+        val hardlink = File(root, "hardlink-" + UUID.randomUUID() + ".json")
+        try {
+            Files.createLink(hardlink.toPath(), foreign.toPath())
+            refusesAll(hardlink.name)
+            assertTrue(Files.isSameFile(hardlink.toPath(), foreign.toPath()))
+        } catch (_: FileSystemException) {
+            // Android app-private storage can deny hardlink creation.
+            // The mandatory FIFO and symlink checks remain executed.
+        }
+        assertArrayEquals(unchanged, foreign.readBytes())
+    }
+
 }
