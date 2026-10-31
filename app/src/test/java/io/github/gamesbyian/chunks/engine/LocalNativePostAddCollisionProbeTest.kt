@@ -336,7 +336,7 @@ class LocalNativePostAddCollisionProbeTest {
         assertFalse(payload.exists())
         beforeProcessDeath.close()
         assertTrue("A fully stopped checked job must persist before engine restart",
-            File(state, "$hash.resume").isFile)
+            verifiedSavedResumeEvent(state, hash))
 
         assertTrue(payload.parentFile.isDirectory || payload.parentFile.mkdirs())
         val foreign = ByteArray(expected.size).also { Random(979L).nextBytes(it) }
@@ -349,7 +349,7 @@ class LocalNativePostAddCollisionProbeTest {
         val afterRestore = sha(payload.readBytes())
         val record = restored.status(hash)
         assertTrue("If native restore refused the collision, the resume witness must survive",
-            record != null || File(state, "$hash.resume").isFile)
+            record != null || verifiedSavedResumeEvent(state, hash))
         assertTrue("Restored handle must remain stopped until explicit Start",
             record?.stopped != false)
         // A future native owner-aware restore may refuse before registering a

@@ -453,7 +453,8 @@ class LocalTorrentEngineTest {
         val first = persistentEngine(state)
         val leech = added(first.addStopped(fixture.torrent, destination,
             listOf(InetSocketAddress("127.0.0.1", seeder.listenPort()))))
-        assertTrue(File(state, leech.infoHash + ".resume").isFile)
+        assertTrue("Completed transfer must persist a validated immutable snapshot",
+            verifiedSavedResumeEvent(state, leech.infoHash))
         first.resume(leech.infoHash)
         waitFor { first.status(leech.infoHash)?.progressPpm == 1_000_000 }
         requireFlushed(first, leech.infoHash)
@@ -572,15 +573,20 @@ class LocalTorrentEngineTest {
         val good = persistentEngine(state)
         val status = added(good.addStopped(fixture.torrent, temp.newFolder("d")))
         good.close()
-        // A valid resume file stored under the wrong identity, and garbage bytes.
-        val wrongName = File(state, "c".repeat(40) + ".resume")
-        File(state, status.infoHash + ".resume").copyTo(wrongName)
+        // A cryptographically valid source resume EVENT copied under a foreign
+        // identity must be detected via the bound key and never adopted.
+        val source = File(state, status.infoHash + ".resume-event.000000000001")
+        assertTrue("Legitimate immutable generation must exist first", source.isFile)
+        val wrongKey = "c".repeat(40)
+        val wrongName = File(state, "$wrongKey.resume-event.000000000001")
+        source.copyTo(wrongName)
         val garbage = File(state, "d".repeat(40) + ".resume").apply { writeText("not bencode") }
         File(state, "notes.txt").writeText("ignored")
 
         val restarted = persistentEngine(state)
         assertEquals(listOf(status.infoHash), restarted.list().map { it.infoHash })
-        assertEquals(setOf(wrongName.name, garbage.name), restarted.restoreProblems.toSet())
+        assertEquals(setOf("$wrongKey.resume-event (unsafe/incomplete history)", garbage.name),
+            restarted.restoreProblems.toSet())
         assertTrue(wrongName.isFile && garbage.isFile)
         assertEquals("not bencode", garbage.readText())
     }
@@ -775,7 +781,7 @@ class LocalTorrentEngineTest {
         // the metadata callback itself must independently persist a usable
         // resume witness before the engine is shut down.
         waitFor(15_000L) {
-            File(state, seed.infoHash + ".resume").let { it.isFile && it.length() > 0L }
+            verifiedSavedResumeEvent(state, seed.infoHash)
         }
         first.close()
         val second = persistentEngine(state)
