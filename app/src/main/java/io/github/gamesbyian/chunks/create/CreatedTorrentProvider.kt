@@ -35,18 +35,27 @@ class CreatedTorrentProvider : ContentProvider() {
          * not a pathname-based cleanup that could destroy substituted bytes.
          */
         fun publish(context: Context, name: String, bytes: ByteArray): Uri {
-            check(name.length in 9..220 && name.endsWith(".torrent") &&
+            check(name.length in 9..220 && name.toByteArray(Charsets.UTF_8).size <= 230 &&
+                name.endsWith(".torrent") &&
                 !name.startsWith('.') && name.none { it == '/' || it == '\\' ||
                     it.isISOControl() }) { "Unsafe torrent share filename" }
             val dir = folder(context)
             val path = dir.toPath()
-            try {
+            val createdDirectory = try {
                 Files.createDirectory(path)
+                true
             } catch (_: FileAlreadyExistsException) {
                 // Only an actual directory counts, never a symlink.
+                false
             }
             check(Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS)) {
                 "Cache share root is not a plain private directory"
+            }
+            if (createdDirectory) {
+                // A newly created private directory must itself be durably
+                // linked before publishing objects inside it.
+                FileChannel.open(context.cacheDir.toPath(), StandardOpenOption.READ)
+                    .use { it.force(true) }
             }
             val stem = name.removeSuffix(".torrent")
             for (attempt in 1..1000) {
