@@ -94,7 +94,6 @@ internal fun SnapshotDocumentInspectScreen(onBack: () -> Unit) {
             search = ""
             recoveryFilter = null
             pageIndex = 0
-            pendingTorrent = null
             saveNotice = null
             scope.launch {
                 try {
