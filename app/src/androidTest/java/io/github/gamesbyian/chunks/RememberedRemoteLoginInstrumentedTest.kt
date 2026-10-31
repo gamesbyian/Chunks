@@ -66,6 +66,8 @@ class RememberedRemoteLoginInstrumentedTest {
     @Test fun corruptedEncryptedBlobCannotBeUsedAsLogin() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val vault = RememberedRemoteLogin(context)
+        val previousPolicy = vault.rememberingEnabled()
+        assertTrue(vault.setRememberingEnabled(true))
         try {
             assertTrue(vault.clear())
             context.getSharedPreferences("remembered-remote-login-v1", 0)
@@ -82,6 +84,7 @@ class RememberedRemoteLoginInstrumentedTest {
             assertFalse(vault.hasSavedLogin())
         } finally {
             assertTrue(vault.clear())
+            assertTrue(vault.setRememberingEnabled(previousPolicy))
         }
     }
 }
