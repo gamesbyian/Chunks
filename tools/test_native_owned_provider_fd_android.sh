@@ -6,7 +6,13 @@ actual="$(adb shell getprop ro.build.version.sdk | tr -d '\r\n')"
 install_verified() {
   local result
   result="$(adb install -r "$1" 2>&1)" || return 1
-  [[ "$result" == Success ]] || { echo "Install failed: $result" >&2; return 1; }
+  # Android adb commonly prints a progress line before its authoritative
+  # exact Success line. Refuse any Failure marker or absent Success line.
+  if ! grep -qx 'Success' <<<"$result" ||
+     grep -qi 'Failure' <<<"$result"; then
+    echo "Install failed: $result" >&2
+    return 1
+  fi
 }
 install_verified app/build/outputs/apk/debug/app-debug.apk
 install_verified app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
