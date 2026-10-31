@@ -73,6 +73,10 @@ internal class RememberedRemoteProfileRoster(context: Context) {
     @androidx.annotation.VisibleForTesting
     internal var rejectPersistForTest = false
 
+    /** Simulate Android Keystore becoming unavailable during a read only. */
+    @androidx.annotation.VisibleForTesting
+    internal var rejectDecryptForTest = false
+
     private fun keystore() = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
 
     private fun key(): SecretKey {
@@ -120,6 +124,7 @@ internal class RememberedRemoteProfileRoster(context: Context) {
             require(packed.length in 20..MAX_ENCODED)
             val bytes = Base64.decode(packed, Base64.NO_WRAP)
             require(bytes.size in 29..131_072)
+            if (rejectDecryptForTest) throw IllegalStateException("Injected encrypted-roster key outage")
             val savedKey = keystore().getKey(alias, null) as? SecretKey
                 ?: throw IllegalStateException("Profile encryption key unavailable")
             val cipher = Cipher.getInstance("AES/GCM/NoPadding")
