@@ -101,11 +101,13 @@ class OwnedProviderFdAndroidProbe {
     @Test fun ownedPendingDownloadsDescriptorCrossesJniAndSurvivesPublication() {
         val minted = newlyOwned()
         val uri = minted.uri
-        var authorizedCleanup = false
-        try {
+        // No provider deletion on failure OR success. The disposable CI
+        // emulator owns its test volume; unknown pending/published rows are
+        // never unlinked by an inferred URI cleanup policy.
+        run {
             assertTrue("Platform MediaStore owner and fresh pending identity required",
                 exactOwner(minted, 1, 0L))
-            authorizedCleanup = true
+
             requireNotNull(resolver.openFileDescriptor(uri, "r")).use {
                 assertFalse("Readonly provider FD must be refused before native I/O",
                     nativeRoundTrip(it.detachFd(), 65552, "a".repeat(64)))
@@ -129,10 +131,6 @@ class OwnedProviderFdAndroidProbe {
             // closed. This proves only the minted object's observed bytes.
             exactRead(uri, 0L, first)
             exactRead(uri, 65536L, second)
-        } finally {
-            // Never delete a returned row unless this test first confirmed
-            // the exact primary platform collection, owner and fresh state.
-            if (authorizedCleanup) resolver.delete(uri, null, null)
         }
     }
 
