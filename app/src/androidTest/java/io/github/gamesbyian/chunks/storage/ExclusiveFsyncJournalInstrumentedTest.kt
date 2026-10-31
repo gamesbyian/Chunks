@@ -27,10 +27,10 @@ class ExclusiveFsyncJournalInstrumentedTest {
     @Test fun completedLinesReadOnlyAndTornTailNeverBecomesCommitted() {
         val dir = freshRoot()
         val source = dir.resolve("private-recovery.log")
-        Files.write(source, "INTENT\\nROW\\nincomplete".toByteArray())
+        Files.write(source, "INTENT\nROW\nincomplete".toByteArray())
         assertEquals(listOf("INTENT", "ROW"),
             ExclusiveFsyncJournal.readCompleteLines(source))
-        assertEquals("INTENT\\nROW\\nincomplete", Files.readString(source))
+        assertEquals("INTENT\nROW\nincomplete", String(Files.readAllBytes(source), Charsets.UTF_8))
     }
 
     @Test fun fifoSymlinkOversizedAndHardlinkCannotBeAdoptedAsJournal() {
@@ -41,12 +41,12 @@ class ExclusiveFsyncJournalInstrumentedTest {
         // recovery indefinitely. This must return null promptly.
         assertNull(ExclusiveFsyncJournal.readCompleteLines(fifo))
         val target = dir.resolve("preserve-foreign-source.log")
-        Files.write(target, "not a private journal\\n".toByteArray())
+        Files.write(target, "not a private journal\n".toByteArray())
         val link = dir.resolve("untrusted-link.log")
         Files.createSymbolicLink(link, target)
         assertTrue(Files.isSymbolicLink(link))
         assertNull(ExclusiveFsyncJournal.readCompleteLines(link))
-        assertEquals("not a private journal\\n", Files.readString(target))
+        assertEquals("not a private journal\n", String(Files.readAllBytes(target), Charsets.UTF_8))
         val hardlink = dir.resolve("untrusted-hardlink.log")
         val linked = try {
             Files.createLink(hardlink, target)
@@ -55,7 +55,7 @@ class ExclusiveFsyncJournalInstrumentedTest {
         if (linked) {
             assertNull("More than one hardlink cannot prove a unique journal",
                 ExclusiveFsyncJournal.readCompleteLines(hardlink))
-            assertEquals("not a private journal\\n", Files.readString(target))
+            assertEquals("not a private journal\n", String(Files.readAllBytes(target), Charsets.UTF_8))
         }
         val oversized = dir.resolve("oversized.log")
         Files.write(oversized, ByteArray(1024 * 1024 + 1) { 42 })
