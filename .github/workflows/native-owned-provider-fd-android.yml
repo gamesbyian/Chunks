@@ -1,0 +1,86 @@
+name: Experimental Android MediaStore to native JNI descriptor (NON-SHIPPING)
+on:
+  pull_request:
+    paths:
+      - "tools/native_owned_provider_fd_android_probe.kt"
+      - "tools/native_owned_provider_fd_jni_probe.cc"
+      - "tools/test_native_owned_provider_fd_android.sh"
+      - "tools/test_native_owned_provider_fd_android_mock.sh"
+      - ".github/workflows/native-owned-provider-fd-android.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chunks-native-provider-android-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android35-pinned-fd-jni:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject false-positive or skipped Android JNI test receipts
+        run: bash tools/test_native_owned_provider_fd_android_mock.sh
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+      - name: Install exact Android compile SDK
+        run: |
+          set -euo pipefail
+          printf 'y\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
+          if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          fi
+      - name: Cross-build Android API29 x86_64 native FD JNI probe
+        run: |
+          set -euo pipefail
+          ndk="$(find "$ANDROID_HOME/ndk" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n1)"
+          test -f "$ndk/source.properties"
+          cxx="$ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/x86_64-linux-android29-clang++"
+          test -x "$cxx"
+          mkdir -p app/src/androidTest/jniLibs/x86_64
+          "$cxx" -std=c++17 -O2 -fPIC -shared -static-libstdc++ -Wall -Wextra -Werror \
+            -Itools tools/native_owned_provider_fd.cc tools/native_owned_provider_fd_jni_probe.cc \
+            -o app/src/androidTest/jniLibs/x86_64/libchunks_provider_fd_probe.so
+          test -s app/src/androidTest/jniLibs/x86_64/libchunks_provider_fd_probe.so
+          file app/src/androidTest/jniLibs/x86_64/libchunks_provider_fd_probe.so | grep -F "ELF 64-bit"
+      - name: Compile actual disposable test-only native Android APK
+        run: |
+          set -euo pipefail
+          mkdir -p app/src/androidTest/java/io/github/gamesbyian/chunks/engine
+          cp tools/native_owned_provider_fd_android_probe.kt \
+            app/src/androidTest/java/io/github/gamesbyian/chunks/engine/OwnedProviderFdAndroidProbe.kt
+          gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
+          test -s app/build/outputs/apk/debug/app-debug.apk
+          test -s app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+          so=Path('app/src/androidTest/jniLibs/x86_64/libchunks_provider_fd_probe.so').read_bytes()
+          with ZipFile('app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk') as apk:
+              hits=[s for s in apk.namelist() if s.endswith('/libchunks_provider_fd_probe.so')]
+              assert hits == ['lib/x86_64/libchunks_provider_fd_probe.so'], hits
+              assert apk.read(hits[0]) == so, 'Test APK JNI is not byte-exact compiled source'
+          print('CHUNKS_NATIVE_MEDIASTORE_PFD_APK=PASS test-only-library-exact-bytes')
+          PY
+      - name: Enable KVM
+        run: |
+          test -c /dev/kvm
+          sudo chmod 0666 /dev/kvm
+      - name: API35 real MediaStore descriptor handoff through JNI
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          emulator-boot-timeout: 600
+          disable-animations: true
+          script: bash tools/test_native_owned_provider_fd_android.sh
