@@ -51,6 +51,10 @@ internal class RememberedRemoteLogin(context: Context) {
     )
     private val alias = "io.github.gamesbyian.chunks.remembered-remote-login-v1"
 
+    /** Inject a transient key-access failure in device tests without changing the key. */
+    @androidx.annotation.VisibleForTesting
+    internal var rejectDecryptForTest = false
+
     /** Default-on only for users who have never explicitly opted out. */
     fun rememberingEnabled(): Boolean = synchronized(RemoteCredentialLock.monitor) {
         prefs.getBoolean("remember_enabled", true)
@@ -98,6 +102,7 @@ internal class RememberedRemoteLogin(context: Context) {
             require(text.length in 16..32768)
             val packed = Base64.decode(text, Base64.NO_WRAP)
             require(packed.size in 13..16384)
+            if (rejectDecryptForTest) throw IllegalStateException("Injected saved-login key outage")
             val key = keyStore().getKey(alias, null) as? SecretKey
                 ?: throw IllegalStateException("Saved encryption key unavailable")
             val decipher = Cipher.getInstance("AES/GCM/NoPadding")
