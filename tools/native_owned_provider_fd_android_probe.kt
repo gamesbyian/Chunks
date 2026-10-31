@@ -56,21 +56,27 @@ class OwnedProviderFdAndroidProbe {
         val uri = row.uri
         val base = MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
         if (uri.scheme != "content" || uri.authority != base.authority ||
-            !uri.toString().startsWith(base.toString() + "/")) return false
-        if (runCatching { ContentUris.parseId(uri) }.getOrDefault(-1L) <= 0L) return false
-        val cols = arrayOf(MediaStore.MediaColumns.OWNER_PACKAGE_NAME,
+            uri.userInfo != null || uri.query != null || uri.fragment != null ||
+            uri.pathSegments.size != base.pathSegments.size + 1 ||
+            uri.pathSegments.dropLast(1) != base.pathSegments) return false
+        val rowId = runCatching { ContentUris.parseId(uri) }.getOrDefault(-1L)
+        if (rowId <= 0L) return false
+        val cols = arrayOf(MediaStore.MediaColumns._ID,
+            MediaStore.MediaColumns.OWNER_PACKAGE_NAME,
             MediaStore.MediaColumns.DISPLAY_NAME, MediaStore.MediaColumns.RELATIVE_PATH,
             MediaStore.MediaColumns.IS_PENDING, MediaStore.MediaColumns.SIZE,
             MediaStore.MediaColumns.MIME_TYPE)
         return resolver.query(uri, cols, null, null, null)?.use { c ->
             if (c.count != 1 || !c.moveToFirst()) return@use false
-            val owner = c.getString(0)
-            val name = c.getString(1)
-            val path = c.getString(2)
-            val pending = c.getInt(3)
-            val size = if (c.isNull(4)) 0L else c.getLong(4)
-            val mime = c.getString(5)
-            owner == context.packageName && name == row.exactName &&
+            val actualId = c.getLong(0)
+            val owner = c.getString(1)
+            val name = c.getString(2)
+            val path = c.getString(3)
+            val pending = c.getInt(4)
+            val size = if (c.isNull(5)) 0L else c.getLong(5)
+            val mime = c.getString(6)
+            actualId == rowId && owner == context.packageName &&
+                name == row.exactName &&
                 path == Environment.DIRECTORY_DOWNLOADS + "/Chunks Downloads/" &&
                 mime == "application/octet-stream" &&
                 pending == pendingExpected && size == sizeExpected
