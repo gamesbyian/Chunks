@@ -156,7 +156,8 @@ internal class LocalResumeEventStore private constructor(
                     val next = when (record.kind) {
                         "SAVE" -> if (state.phase in setOf(Phase.EMPTY, Phase.SAVED, Phase.REMOVED))
                             Phase.SAVED else null
-                        "REMOVE_INTENT" -> if (state.phase == Phase.SAVED) Phase.REMOVE_INTENT else null
+                        "REMOVE_INTENT" -> if (state.phase in setOf(Phase.EMPTY, Phase.SAVED))
+                            Phase.REMOVE_INTENT else null
                         "REMOVED" -> if (state.phase == Phase.REMOVE_INTENT) Phase.REMOVED else null
                         else -> null
                     }
