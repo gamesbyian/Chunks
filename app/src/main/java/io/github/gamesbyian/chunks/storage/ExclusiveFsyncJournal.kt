@@ -1,5 +1,8 @@
 package io.github.gamesbyian.chunks.storage
 
+import android.os.Build
+import android.system.Os
+import android.system.OsConstants
 import java.io.Closeable
 import java.io.IOException
 import java.nio.ByteBuffer
@@ -49,21 +52,71 @@ internal class ExclusiveFsyncJournal private constructor(
             }
         }
 
-        /** Read-only, bounded forensic recovery. This never authorizes cleanup. */
+        /**
+         * Read-only, bounded forensic recovery. The Android branch must open
+         * its final file NONBLOCKING before inspecting its type: a same-UID
+         * attacker can replace an earlier isRegularFile() result with a FIFO
+         * just before FileChannel.open(), hanging process recovery forever.
+         *
+         * Only the originally pinned FD is read, never a reopened pathname.
+         * A hardlink, symlink, FIFO, too-large or changing file fails closed.
+         * Host-only JVM fixtures keep NIO compatibility without Android APIs.
+         */
+        private fun runningOnAndroid(): Boolean = try {
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+        } catch (_: NoClassDefFoundError) { false }
+
+        private fun completedLines(bytes: ByteArray): List<String> {
+            val text = bytes.toString(Charsets.UTF_8)
+            val end = text.lastIndexOf('\\n')
+            if (end < 0) return emptyList()
+            return text.substring(0, end).split('\\n')
+        }
+
         fun readCompleteLines(path: Path): List<String>? {
+            if (runningOnAndroid()) {
+                val fd = try {
+                    Os.open(path.toString(), OsConstants.O_RDONLY or
+                        OsConstants.O_NOFOLLOW or OsConstants.O_NONBLOCK or
+                        OsConstants.O_CLOEXEC, 0)
+                } catch (_: Exception) { return null }
+                try {
+                    val original = Os.fstat(fd)
+                    if (!OsConstants.S_ISREG(original.st_mode) ||
+                        original.st_nlink != 1L ||
+                        original.st_size < 0L ||
+                        original.st_size > MAX_RECOVERY_BYTES) return null
+                    val bytes = ByteArray(original.st_size.toInt())
+                    var received = 0
+                    while (received < bytes.size) {
+                        val count = Os.pread(fd, bytes, received,
+                            bytes.size - received, received.toLong())
+                        if (count <= 0) return null
+                        received += count
+                    }
+                    val after = Os.fstat(fd)
+                    if (!OsConstants.S_ISREG(after.st_mode) ||
+                        after.st_nlink != 1L || after.st_size != original.st_size ||
+                        after.st_dev != original.st_dev ||
+                        after.st_ino != original.st_ino) return null
+                    return completedLines(bytes)
+                } catch (_: Exception) { return null }
+                finally { runCatching { Os.close(fd) } }
+            }
+            // JVM host-only path for non-Android unit fixtures. Android never
+            // takes this point-in-time pathname-survey/open sequence.
             if (!Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)) return null
             val opts = setOf<OpenOption>(StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS)
-            FileChannel.open(path, opts).use { channel ->
-                if (channel.size() > MAX_RECOVERY_BYTES) return null
-                val bytes = ByteBuffer.allocate(channel.size().toInt())
-                while (bytes.hasRemaining()) {
-                    if (channel.read(bytes) <= 0) return null
+            return try {
+                FileChannel.open(path, opts).use { channel ->
+                    if (channel.size() > MAX_RECOVERY_BYTES) return null
+                    val bytes = ByteBuffer.allocate(channel.size().toInt())
+                    while (bytes.hasRemaining()) {
+                        if (channel.read(bytes) <= 0) return null
+                    }
+                    completedLines(bytes.array())
                 }
-                val raw = bytes.array().toString(Charsets.UTF_8)
-                val end = raw.lastIndexOf('\n')
-                if (end < 0) return emptyList()
-                return raw.substring(0, end).split('\n')
-            }
+            } catch (_: Exception) { null }
         }
     }
 
