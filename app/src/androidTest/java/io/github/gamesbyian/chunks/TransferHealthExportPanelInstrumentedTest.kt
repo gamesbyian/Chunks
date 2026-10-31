@@ -35,7 +35,7 @@ class TransferHealthExportPanelInstrumentedTest {
         compose.onNodeWithText("The queue is stale; the report will mark its evidence as stale.")
             .assertExists()
         compose.onNodeWithText("Include original torrent names (may be sensitive)").assertExists()
-        compose.onNodeWithText("Choose where to save report").assertExists()
+        compose.onNodeWithText("Share download-health report").assertExists()
     }
 
     @Test fun phoneReportIsAvailableWithoutAnyNetworkOrLibtorrentAction() {
@@ -44,6 +44,6 @@ class TransferHealthExportPanelInstrumentedTest {
         }
         compose.onNodeWithText("Save download-health report").performClick()
         compose.onNodeWithText("Transfer health, one observation").assertExists()
-        compose.onNodeWithText("Choose where to save report").assertExists()
+        compose.onNodeWithText("Share download-health report").assertExists()
     }
 }
