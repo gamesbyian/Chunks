@@ -391,7 +391,10 @@ class RemoteSmartConnectDiagnosticsTest {
         // XML-RPC fault then stops discovery before the fourth tenant mount.
         assertEquals(3, failure.tested)
         assertEquals(failure.tested, seen.size)
-        assertTrue(seen.first().startsWith("1/${failure.tested} "))
+        // Progress announces the planned candidate count, while fail-closed
+        // discovery may stop after fewer attempts than that total.
+        val advertisedTotal = RemoteSmartConnect.candidates("custom.example", "user").size
+        assertTrue(seen.first().startsWith("1/$advertisedTotal "))
         assertEquals(failure.tested, failure.attempts.size)
         assertTrue(failure.attempts.all { it.path.startsWith("/") })
         val byPath = failure.attempts.associate { it.path to it.outcome }
