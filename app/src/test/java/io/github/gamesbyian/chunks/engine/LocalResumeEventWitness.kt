@@ -11,7 +11,7 @@ import java.io.File
 internal fun verifiedSavedResumeEvent(directory: File, infoHash: String): Boolean = runCatching {
     val key = infoHash.lowercase()
     val files = LocalResumeDirectoryInventory.prepare(directory)
-    val expected = Regex(Regex.escape(key) + """\\.resume-event\\.[0-9]{12}""")
+    val expected = Regex(Regex.escape(key) + """\.resume-event\.[0-9]{12}""")
     files.any { it.isFile && expected.matches(it.name) } &&
         LocalResumeEventStore.open(directory, files).current(key)?.isNotEmpty() == true
 }.getOrDefault(false)
