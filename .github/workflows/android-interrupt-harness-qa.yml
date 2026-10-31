@@ -3,11 +3,7 @@ name: Chunks interruption harness safety
 # Offline fake-adb checks. Real public-peer interruption remains manually
 # dispatched with bounded public torrents, never triggered by PR pushes.
 on:
-  pull_request:
-    paths:
-      - "tools/android_public_swarm_interrupt.sh"
-      - "tools/test_android_public_swarm_interrupt_mock.sh"
-      - ".github/workflows/android-interrupt-harness-qa.yml"
+  # Retained as an opt-in historical harness. PR coverage is in radio-harness-qa.
   workflow_dispatch:
 
 permissions:

@@ -68,6 +68,23 @@ jobs:
           emulator-boot-timeout: 600
           disable-animations: true
           script: bash tools/native_add_review.sh
+      - name: Emit agent-readable CI evidence (without test output or secrets)
+        if: always()
+        env:
+          CHUNKS_JOB_STATUS: ${{ job.status }}
+        run: |
+          if [ -f tools/ci_failure_digest.py ]; then
+            python3 tools/ci_failure_digest.py --suite "api35-native-add" --status "$CHUNKS_JOB_STATUS" \
+              --glob 'app/build/outputs/androidTest-results/connected/**/TEST-*.xml' --output "$RUNNER_TEMP/chunks-ci-digest.json"
+          fi
+      - name: Retain structured failure digest
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-ci-failure-digest-api35-native-add
+          path: ${{ runner.temp }}/chunks-ci-digest.json
+          retention-days: 14
+          if-no-files-found: warn
       - name: Upload native Compose review screenshots
         if: always()
         uses: actions/upload-artifact@v4

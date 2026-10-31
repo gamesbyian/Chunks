@@ -10,6 +10,12 @@ on:
       - 'AGENTS.md'
       - 'assets/fonts/README.md'
       - 'tools/check_docs.py'
+      - 'tools/ci_failure_digest.py'
+      - 'tests/test_ci_failure_digest.py'
+      - 'tests/test_ci_orchestration.py'
+      - '.github/workflows/android-radio-harness-qa.yml'
+      - '.github/workflows/android-doze-harness-qa.yml'
+      - '.github/workflows/android-interrupt-harness-qa.yml'
       - 'tools/check_native_atlas_contract.py'
       - 'tests/test_native_atlas_contract.py'
       - 'tests/test_docs_check.py'
@@ -47,6 +53,12 @@ on:
       - 'AGENTS.md'
       - 'assets/fonts/README.md'
       - 'tools/check_docs.py'
+      - 'tools/ci_failure_digest.py'
+      - 'tests/test_ci_failure_digest.py'
+      - 'tests/test_ci_orchestration.py'
+      - '.github/workflows/android-radio-harness-qa.yml'
+      - '.github/workflows/android-doze-harness-qa.yml'
+      - '.github/workflows/android-interrupt-harness-qa.yml'
       - 'tools/check_native_atlas_contract.py'
       - 'tests/test_native_atlas_contract.py'
       - 'tests/test_docs_check.py'
@@ -114,3 +126,7 @@ jobs:
         run: |
           python3 tools/check_gradle_toolchain_pins.py
           python3 -m unittest discover -s tests -p 'test_check_gradle_toolchain_pins.py'
+      - name: Test CI orchestration and agent failure digest (offline)
+        run: |
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_failure_digest.py
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_orchestration.py

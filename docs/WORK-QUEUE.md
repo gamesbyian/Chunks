@@ -1,5 +1,7 @@
 # Chunks active engineering work queue
 
+> **CI implementation lane (cross-cutting #9/#10, 2026-10-31):** Migrate cheap, duplicated offline Android fake-adb harness dispatches into one PR gate; retain manual historical repros. Add explicit negative trigger/diagnostic tests and structured summaries. Next investigate API35 emulator/build artifact reuse with same-head preservation, check protection migration, cold/warm duration samples, and release/security action pinning before expanding impact-based selection. This is part of the existing 0F QA lane, not a competing queue. See [CI-POLICY](CI-POLICY.md).
+
 **Single executable priority authority; reviewed 2026-10-31.** Fetch current `main`, open PRs, issues, branch ownership and CI **before** picking a task. The [engineering delivery protocol](ENGINEERING-DELIVERY-PROTOCOL.md) governs how to complete it; [AGENTS](../AGENTS.md) governs agent behavior. Product requirements live in [PRODUCT](PRODUCT.md), [UX](UX.md), [ARCHITECTURE](ARCHITECTURE.md), [SECURITY](SECURITY.md), [DECISIONS](DECISIONS.md) and scoped contracts. Implementation truth belongs in [SPEC-COVERAGE](SPEC-COVERAGE.md), test evidence in [QUALITY-LEDGER](QUALITY-LEDGER.md). This queue is **not** a substitute for any of them.
 
 ## Verified checkpoint and current boundaries

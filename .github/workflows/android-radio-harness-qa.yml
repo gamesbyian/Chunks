@@ -6,6 +6,8 @@ on:
       - "tools/android_public_swarm_netflap.sh"
       - "tools/android_public_swarm.sh"
       - "tools/android_public_swarm_interrupt.sh"
+      - "tools/android_public_swarm_doze.sh"
+      - "tools/test_android_public_swarm_doze_mock.sh"
       - "tools/test_android_public_swarm_interrupt_mock.sh"
       - "tools/test_android_public_swarm_mock.sh"
       - "tools/android_radio_baseline.sh"
@@ -38,6 +40,8 @@ jobs:
           bash -n tools/test_android_public_swarm_netflap_mock.sh
       - name: Verify baseline readback and restoration fail closed
         run: bash tools/test_android_radio_baseline.sh
+      - name: Verify Doze controller and compensating cleanup with fake adb
+        run: bash tools/test_android_public_swarm_doze_mock.sh
       - name: Verify network-flap controller with fake adb
         run: bash tools/test_android_public_swarm_netflap_mock.sh
       - name: Reject false baseline public-peer acceptance (offline)
