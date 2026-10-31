@@ -38,7 +38,7 @@ SOURCE_SET_ANCHOR = '    testBuildType = providers.gradleProperty("chunks.testBu
 
 # Generated ONLY into an external staging directory. This test instantiates
 # the rebuilt owned-disk JNI constructor inside an installed disposable APK.
-# It never downloads pieces, opens a user-selected path or accesses Downloads.
+# It exercises only exclusively created disposable app-private payloads, never user Downloads.
 ANDROID_SMOKE = """package io.github.gamesbyian.chunks.engine
 
 import android.system.Os
@@ -137,6 +137,76 @@ class OwnedJniSessionSmokeInstrumentedTest {
         } finally { session.stop() }
         assertArrayEquals("Foreign bytes must survive actual native session shutdown",
             canary, foreign.readBytes())
+    }
+
+    @Test fun ownedJniWritesAndRechecksActualPieceWithPinnedReceipts() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val root = Files.createTempDirectory(context.cacheDir.toPath(), "owned-positive-piece-").toFile()
+        val receipts = File(root, "receipts")
+        val destination = File(root, "destination")
+        assertTrue(receipts.mkdir())
+        assertTrue(destination.mkdir())
+        Os.chmod(receipts.absolutePath, 448) // 0700
+        val source = File(root, "seed/Owned positive fixture").apply { mkdirs() }
+        val payload = ByteArray(16 * 1024) { ((it * 17 + 83) % 251).toByte() }
+        File(source, "payload.bin").writeBytes(payload)
+        val torrentBytes = TorrentBuilder().path(source).pieceSize(16 * 1024)
+            .flags(TorrentBuilder.V1_ONLY).generate().entry().bencode()
+        val out = File(destination, "Owned positive fixture/payload.bin")
+        val settings = SettingsPack().listenInterfaces("127.0.0.1:0")
+        settings.setEnableDht(false)
+        settings.setEnableLsd(false)
+        val nativeParams = SessionParams(settings)
+        nativeParams.setOwnedDiskIO(receipts.absolutePath)
+        val session = SessionManager(false)
+        try {
+            session.start(nativeParams)
+            val params = AddTorrentParams()
+            params.setTorrentInfo(TorrentInfo.bdecode(torrentBytes))
+            params.setSavePath(destination.absolutePath)
+            params.setFlags(torrent_flags_t().or_(TorrentFlags.PAUSED)
+                .or_(TorrentFlags.DUPLICATE_IS_ERROR))
+            val ec = error_code()
+            val raw = session.swig().add_torrent(params.swig(), ec)
+            assertEquals("Actual positive native Add failed", 0, ec.value())
+            assertTrue(raw.is_valid)
+            val handle = TorrentHandle(raw)
+            var reserved = false
+            val reservationDeadline = System.currentTimeMillis() + 15000L
+            while (System.currentTimeMillis() < reservationDeadline) {
+                reserved = receipts.listFiles()?.any { it.name.endsWith(".pending") } == true
+                if (reserved) break
+                if (handle.status().errorCode()?.isError == true)
+                    throw AssertionError("Owned native backend rejected its empty private destination")
+                Thread.sleep(50)
+            }
+            assertTrue("Native writer never persisted a pending ownership reservation", reserved)
+            assertTrue("Stopped Add must not create payload file", !out.exists())
+            handle.resume()
+            // No mocked disk API: libtorrent's actual add_piece dispatch drives
+            // the installed custom libtorrent disk_interface's piece write.
+            handle.addPiece(0, payload)
+            var completed = false
+            val writeDeadline = System.currentTimeMillis() + 30000L
+            while (System.currentTimeMillis() < writeDeadline) {
+                val status = handle.status()
+                if (status.errorCode()?.isError == true)
+                    throw AssertionError("Actual owned native piece write failed: " +
+                        status.errorCode()?.message())
+                if (status.isSeeding && out.isFile && out.length() == payload.size.toLong()) {
+                    assertArrayEquals("Owned native piece bytes differ from source",
+                        payload, out.readBytes())
+                    completed = true
+                    break
+                }
+                Thread.sleep(100)
+            }
+            assertTrue("Actual owned JNI piece never completed and rechecked", completed)
+        } finally {
+            session.stop()
+        }
+        assertArrayEquals("Stopped native session must durably preserve exact payload",
+            payload, out.readBytes())
     }
 }
 """
