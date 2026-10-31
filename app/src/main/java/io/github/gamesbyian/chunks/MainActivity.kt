@@ -988,8 +988,13 @@ private fun ChunksApp(
                     credentialNotice = credentialNotice,
                     savedLoginPresent = savedLoginPresent,
                     onForgetLogin = {
+                        // The connected screen shares the same credential epoch
+                        // and ordered mutation queue as the Connect screen.
+                        // Revoke in-flight saves at TAP time, before IO can wait
+                        // or a quick Disconnect + new Connect can interleave.
+                        RemoteCredentialLock.invalidate()
                         rememberLogin = false
-                        scope.launch {
+                        credentialChanges.submit(scope) { revision ->
                             val cleared = withContext(Dispatchers.IO) {
                                 try {
                                     val disabled = vault.setRememberingEnabled(false)
@@ -997,10 +1002,15 @@ private fun ChunksApp(
                                     disabled && rosterErased
                                 } catch (_: Exception) { false }
                             }
-                            savedProfiles = withContext(Dispatchers.IO) { profileRoster.list() }
-                            savedLoginPresent = vault.hasSavedLogin() || savedProfiles.isNotEmpty()
-                            credentialNotice = if (cleared) "Saved login erased. Current connection remains active."
+                            // Older queued Forget jobs still erase as requested,
+                            // but only the latest user command controls the UI.
+                            if (credentialChanges.isLatest(revision)) {
+                                savedProfiles = withContext(Dispatchers.IO) { profileRoster.list() }
+                                savedLoginPresent = vault.hasSavedLogin() || savedProfiles.isNotEmpty()
+                                credentialNotice = if (cleared)
+                                    "Saved login erased. Current connection remains active."
                                 else "Could not erase saved login."
+                            }
                         }
                     },
                     onRefresh = refresh,
