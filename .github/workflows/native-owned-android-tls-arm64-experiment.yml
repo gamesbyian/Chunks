@@ -38,8 +38,14 @@ jobs:
           set -euo pipefail
           ndk_root="$(find "$ANDROID_HOME/ndk" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n1)"
           test -n "$ndk_root"
+          # OpenSSL 3.5's Configurations/15-android.conf reads
+          # ANDROID_NDK_ROOT (or ANDROID_NDK), not ANDROID_NDK_HOME.
+          # Without it, Configure falls back to a nonexistent GCC toolchain.
+          export ANDROID_NDK_ROOT="$ndk_root"
           export ANDROID_NDK_HOME="$ndk_root"
           export PATH="$ndk_root/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH"
+          test -x "$(command -v clang)"
+          test -f "$ANDROID_NDK_ROOT/source.properties"
           # OpenSSL's android-arm64 Configure searches for GCC by default.
           # NDK r29 exposes versioned Clang, so pin the actual target compiler.
           export CC="$ndk_root/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android29-clang"
