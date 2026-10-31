@@ -13,7 +13,7 @@ namespace {
 int blocked_hardlinks = 0;
 void Check(bool ok, const char* reason) {
   if (!ok) {
-    std::cerr << "CHUNKS_RECEIPT_NOHARDLINK_FAILED: " << reason << '\\n';
+    std::cerr << "CHUNKS_RECEIPT_NOHARDLINK_FAILED: " << reason << '\n';
     std::exit(83);
   }
 }
@@ -88,6 +88,6 @@ int main() {
 
   fs::remove_all(base);
   std::cout << "CHUNKS_NOHARDLINK_RECEIPT_FALLBACK=PASS cases=4 linkat_denied="
-            << blocked_hardlinks << '\\n';
+            << blocked_hardlinks << '\n';
   return 0;
 }
