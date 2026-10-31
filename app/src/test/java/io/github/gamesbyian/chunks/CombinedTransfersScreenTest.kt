@@ -128,7 +128,11 @@ class CombinedTransfersScreenTest {
         rule.onNodeWithText("Showing 0", substring = true).assertExists()
         rule.onNodeWithText("Show all transfers").performScrollTo().performClick()
         rule.onNodeWithText("Showing 2", substring = true).assertExists()
+        // Rows below the recovery button are lazy and may not be composed yet.
+        val viewport = rule.onNode(androidx.compose.ui.test.hasScrollToIndexAction())
+        viewport.performScrollToNode(androidx.compose.ui.test.hasText("Big Archive"))
         rule.onNodeWithText("Big Archive").assertExists()
+        viewport.performScrollToNode(androidx.compose.ui.test.hasText("Small Episode"))
         rule.onNodeWithText("Small Episode").assertExists()
         val recovered = CombinedViewPreferences(context).load()
         assertEquals(io.github.gamesbyian.chunks.model.UnifiedTransferFilter.ALL, recovered.filter)
