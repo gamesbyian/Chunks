@@ -112,6 +112,47 @@ class DigestTests(unittest.TestCase):
                                       check=False, capture_output=True, text=True)
         self.assertEqual(0, actual_green.returncode, actual_green.stdout)
 
+    def test_slowest_class_timings_are_bounded_and_never_used_as_pass_proof(self):
+        self.path.write_text(
+            '<testsuite>'
+            '<testcase classname="Fast" name="one" time="1.0"/>'
+            '<testcase classname="Slow" name="two" time="4.2"/>'
+            '<testcase classname="Slow" name="three" time="3.5"/>'
+            '<testcase classname="Sensitive/unsafe" name="four" time="nan"/>'
+            '<testcase classname="Neg" name="five" time="-1"/>'
+            '<testcase classname="NoTimer" name="six"/>'
+            '</testsuite>'
+        )
+        d = make_digest([str(self.path)], "success", "unit", self.env)
+        tm = d["timing"]
+        self.assertEqual(3, tm["valid_case_durations"])
+        self.assertEqual(2, tm["invalid_case_durations"])
+        self.assertEqual(1, tm["missing_case_durations"])
+        self.assertEqual(8.7, tm["total_case_seconds"])
+        self.assertEqual("Slow", tm["slowest_classes"][0]["class"])
+        self.assertEqual(7.7, tm["slowest_classes"][0]["summed_case_seconds"])
+        self.assertTrue(d["evidence_executed"])
+        self.assertEqual("none", d["phase"])
+
+    def test_duration_is_advisory_not_an_evidence_replacement(self):
+        self.path.write_text(
+            '<testsuite><testcase classname="Slow" name="only" time="9999">'
+            '<skipped/></testcase></testsuite>'
+        )
+        d = make_digest([str(self.path)], "success", "unit", self.env)
+        self.assertEqual("unexecuted", d["phase"])
+        self.assertFalse(d["evidence_executed"])
+        self.assertEqual(9999, d["timing"]["total_case_seconds"])
+        self.assertTrue(rejects_unverified_green(d, "success", True))
+
+    def test_class_timing_identifiers_are_sanitized(self):
+        self.path.write_text(
+            '<testsuite><testcase classname="A/B*Secret" name="foo" time="0.25"/>'
+            '</testsuite>'
+        )
+        d = make_digest([str(self.path)], "success", "unit", self.env)
+        self.assertEqual("A?B?Secret", d["timing"]["slowest_classes"][0]["class"])
+
 
 if __name__ == "__main__":
     unittest.main()
