@@ -655,10 +655,9 @@ private fun ChunksApp(
                                                 // erase a newer account's saved credentials.
                                                 // Hold the same monitor across the epoch
                                                 // check and the destructive opt-out.
-                                                synchronized(RemoteCredentialLock.monitor) {
-                                                    if (!RemoteCredentialLock.current(credentialTicket)) false
-                                                    else vault.setRememberingEnabled(false)
-                                                }
+                                                RemoteRememberChoice.declineIfCurrent(
+                                                    vault, credentialTicket
+                                                )
                                             }
                                         } catch (_: Exception) { false }
                                     }
