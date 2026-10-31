@@ -1,5 +1,7 @@
 # Chunks security, privacy and operation authority
 
+**Local BitTorrent payload authority (owner correction 2026-10-31):** a selected/accepted native download root authorizes normal torrent-declared **regular-file** hash-check/reuse/overwrite within that root; it does not authorize arbitrary sibling access, path traversal, symlinks, special files, dual concurrent writers, cleanup, unlink/rename of unrelated data, or Android permission bypass. The strict rule requiring Chunks to prove prior exclusive ownership of every same-name regular payload is superseded by [D-LOCAL-COLLISIONS-20261031](DECISIONS.md) and the [local torrent collision policy](LOCAL-TORRENT-COLLISION-POLICY.md). Metadata resume journals and independent SAF/ZIP/export publication have distinct, stricter no-replace authority.
+
 > **Authority:** trust boundaries, credentials, privacy and destructive-operation safeguards. Historical acceptance notes below are limited evidence, not permission to bypass capability checks. [Agent instructions](../AGENTS.md) and [documentation standard](DOCUMENTATION-STANDARD.md) apply.
 
 ## Trust boundaries for optional cross-seeding, media, automation and existing services
