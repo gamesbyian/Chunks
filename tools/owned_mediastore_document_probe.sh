@@ -37,8 +37,8 @@ cat "$out"
   echo 'CHUNKS_OWNED_DOCS: instrumentation process failed' >&2
   exit 1
 }
-grep -qx 'OK (3 tests)' "$out" || {
-  echo 'CHUNKS_OWNED_DOCS: exact three tests not confirmed' >&2
+grep -qx 'OK (6 tests)' "$out" || {
+  echo 'CHUNKS_OWNED_DOCS: exact six tests not confirmed' >&2
   exit 1
 }
 if grep -qE '^INSTRUMENTATION_STATUS_CODE: -(1|2|3|4)|^FAILURES|^Tests run: .*Failures: [1-9]' "$out"; then
@@ -48,10 +48,13 @@ fi
 for case_name in \
   createsFreshPendingRowThenPublishesOnlyAfterIndependentByteReadback \
   anExistingOwnedDownloadWithSimilarNameRetainsItsExactBytes \
-  malformedOrCancelledRequestDoesNotCreateAProviderDocument; do
+  malformedOrCancelledRequestDoesNotCreateAProviderDocument \
+  durableExclusiveJournalConfirmsOnlyAnUnchangedExactPublishedRow \
+  cancellationAfterJournaledRowPreservesAmbiguousPendingObjectForReview \
+  independentlyVerifiedPendingRowIsNotConfusedWithPublishedAndTamperingIsRefused; do
   grep -Fxq "INSTRUMENTATION_STATUS: test=$case_name" "$out" || {
     echo "CHUNKS_OWNED_DOCS: missing required real Android case $case_name" >&2
     exit 1
   }
 done
-echo "CHUNKS_OWNED_MEDIASTORE_DOCUMENTS=PASS api=$expected fresh-row-fsync-reopen-publication-foreign-preservation"
+echo "CHUNKS_OWNED_MEDIASTORE_DOCUMENTS=PASS api=$expected fresh-row-fsync-journal-readonly-recovery-foreign-preservation"

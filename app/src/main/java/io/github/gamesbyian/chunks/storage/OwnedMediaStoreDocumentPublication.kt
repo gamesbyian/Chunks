@@ -35,6 +35,8 @@ internal object OwnedMediaStoreDocumentPublication {
     private const val CHUNK = 32 * 1024
 
     data class Receipt(
+        /** Exact durable operation journal, for recovery without guessing filenames. */
+        val operationId: String,
         val uri: Uri,
         val publishedName: String,
         val sizeBytes: Long,
@@ -175,47 +177,59 @@ internal object OwnedMediaStoreDocumentPublication {
             put(MediaStore.MediaColumns.RELATIVE_PATH, relative)
             put(MediaStore.MediaColumns.IS_PENDING, 1)
         }
-        val resolver = context.contentResolver
-        // Do not treat an arbitrary returned content URI as an exclusive row.
-        val returned = resolver.insert(root, values)
-            ?: throw IOException("MediaStore refused fresh Downloads creation")
-        val id = try { ContentUris.parseId(returned) }
-            catch (error: Exception) { throw IOException("MediaStore did not return a stable numeric row", error) }
-        if (id <= 0 || returned != ContentUris.withAppendedId(root, id))
-            throw IOException("MediaStore returned an unexpected document target")
-        requireRow(resolver, returned, id, unique, context.packageName, relative, mime, 1, 0)
-        val descriptor = resolver.openFileDescriptor(returned, "rw")
-            ?: throw IOException("New pending row has no writable descriptor")
-        descriptor.use { out ->
-            val stat = Os.fstat(out.fileDescriptor)
-            if (!OsConstants.S_ISREG(stat.st_mode) || stat.st_size != 0L)
-                throw IOException("New MediaStore row is not an empty regular file")
-            var offset = 0
-            while (offset < bytes.size) {
-                if (cancelled()) throw IOException("Export was cancelled; pending row preserved")
-                val count = Os.pwrite(out.fileDescriptor, bytes, offset,
-                    minOf(CHUNK, bytes.size - offset), offset.toLong())
-                if (count <= 0) throw IOException("MediaStore write stopped making progress")
-                offset += count
+        val digest = shaHex(bytes)
+        val operation = OwnedMediaStorePublicationJournal.begin(context, unique, mime,
+            bytes.size.toLong(), digest)
+        return operation.use { journal ->
+            val resolver = context.contentResolver
+            // Never call insert without a durably fsynced, exclusive intent.
+            // The journal is forensic evidence only, not provider write authority.
+            // Do not ever delete an uncertain row on an exception.
+            // Do not treat an arbitrary returned content URI as an exclusive row.
+            val returned = resolver.insert(root, values)
+                ?: throw IOException("MediaStore refused fresh Downloads creation")
+            val id = try { ContentUris.parseId(returned) }
+                catch (error: Exception) { throw IOException("MediaStore did not return a stable numeric row", error) }
+            if (id <= 0 || returned != ContentUris.withAppendedId(root, id))
+                throw IOException("MediaStore returned an unexpected document target")
+            journal.rowReceived(returned)
+            requireRow(resolver, returned, id, unique, context.packageName, relative, mime, 1, 0)
+            val descriptor = resolver.openFileDescriptor(returned, "rw")
+                ?: throw IOException("New pending row has no writable descriptor")
+            descriptor.use { out ->
+                val stat = Os.fstat(out.fileDescriptor)
+                if (!OsConstants.S_ISREG(stat.st_mode) || stat.st_size != 0L)
+                    throw IOException("New MediaStore row is not an empty regular file")
+                var offset = 0
+                while (offset < bytes.size) {
+                    if (cancelled()) throw IOException("Export was cancelled; pending row preserved")
+                    val count = Os.pwrite(out.fileDescriptor, bytes, offset,
+                        minOf(CHUNK, bytes.size - offset), offset.toLong())
+                    if (count <= 0) throw IOException("MediaStore write stopped making progress")
+                    offset += count
+                }
+                Os.fsync(out.fileDescriptor)
             }
-            Os.fsync(out.fileDescriptor)
+            // Pre-publish MediaStore's indexed SIZE can remain zero until the
+            // platform's synchronous publication scan. Accept this *one*
+            // metadata lag ONLY after checking all other exact-row fields.
+            // Immediately require physical length and source-independent digest
+            // through a freshly opened FD, before any unpend mutation.
+            requireRow(resolver, returned, id, unique, context.packageName, relative, mime, 1)
+            readIndependent(resolver, returned, bytes)
+            journal.bytesSynced()
+            if (cancelled()) throw IOException("Export cancelled; verified row left pending")
+            journal.publicationRequested()
+            val published = ContentValues().apply {
+                put(MediaStore.MediaColumns.IS_PENDING, 0)
+            }
+            if (resolver.update(returned, published, null, null) != 1)
+                throw IOException("MediaStore publication was not acknowledged exactly once")
+            requireRow(resolver, returned, id, unique, context.packageName, relative, mime, 0,
+                bytes.size.toLong())
+            readIndependent(resolver, returned, bytes)
+            journal.publicationVerified()
+            return@use Receipt(journal.operationId, returned, unique, bytes.size.toLong(), digest)
         }
-        // Pre-publish MediaStore's indexed SIZE can remain zero until the
-        // platform's synchronous publication scan. Accept this *one*
-        // metadata lag ONLY after checking all other exact-row fields.
-        // Immediately require physical length and source-independent digest
-        // through a freshly opened FD, before any unpend mutation.
-        requireRow(resolver, returned, id, unique, context.packageName, relative, mime, 1)
-        readIndependent(resolver, returned, bytes)
-        if (cancelled()) throw IOException("Export cancelled; verified row left pending")
-        val published = ContentValues().apply {
-            put(MediaStore.MediaColumns.IS_PENDING, 0)
-        }
-        if (resolver.update(returned, published, null, null) != 1)
-            throw IOException("MediaStore publication was not acknowledged exactly once")
-        requireRow(resolver, returned, id, unique, context.packageName, relative, mime, 0,
-            bytes.size.toLong())
-        readIndependent(resolver, returned, bytes)
-        return Receipt(returned, unique, bytes.size.toLong(), shaHex(bytes))
     }
 }

@@ -2,6 +2,7 @@ package io.github.gamesbyian.chunks.storage
 
 import android.content.ContentValues
 import android.os.Environment
+import android.os.Build
 import android.provider.MediaStore
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -97,4 +98,137 @@ class OwnedMediaStoreDocumentPublicationInstrumentedTest {
         assertFalse("No invalid request may create an ordinary filesystem path",
             java.io.File(context.cacheDir, "outside.txt").exists())
     }
+
+    @Test fun durableExclusiveJournalConfirmsOnlyAnUnchangedExactPublishedRow() {
+        val root = OwnedMediaStorePublicationJournal.journalRoot(context)
+        val originalIds = root.toFile().list().orEmpty().toSet()
+        val contents = ByteArray(151_411) { (it * 17 + 1).toByte() }
+        val receipt = OwnedMediaStoreDocumentPublication.publish(context,
+            "durable-journal-test.txt", "text/plain", contents)
+        try {
+            val created = root.toFile().list().orEmpty().toSet() - originalIds
+            assertEquals("One exclusive new journal per publication", 1, created.size)
+            val id = requireNotNull(created.single().removeSuffix(".log"))
+            assertEquals("Receipt must link directly to its exact durable operation",
+                receipt.operationId, id)
+            val recorded = OwnedMediaStorePublicationJournal.parse(id,
+                io.github.gamesbyian.chunks.storage.ExclusiveFsyncJournal
+                    .readCompleteLines(root.resolve("${id}.log")))
+            assertEquals(OwnedMediaStorePublicationJournal.Phase.VERIFIED_PUBLISHED,
+                recorded?.phase)
+            assertEquals(receipt.uri.toString(), recorded?.rowUri)
+            assertEquals(OwnedMediaStorePublicationJournal.Verdict.VERIFIED_PUBLISHED,
+                OwnedMediaStorePublicationJournal.assess(context, id).verdict)
+            requireNotNull(resolver.openFileDescriptor(receipt.uri, "rw")).use {
+                val corrupt = byteArrayOf(99, 88)
+                assertEquals(corrupt.size,
+                    android.system.Os.pwrite(it.fileDescriptor, corrupt, 0, corrupt.size, 0L))
+                android.system.Os.fsync(it.fileDescriptor)
+            }
+            assertEquals(OwnedMediaStorePublicationJournal.Verdict.NEEDS_ATTENTION,
+                OwnedMediaStorePublicationJournal.assess(context, id).verdict)
+        } finally {
+            // Only the exact test-created row, never a guessed name/path.
+            assertEquals(1, resolver.delete(receipt.uri, null, null))
+        }
+    }
+
+    @Test fun cancellationAfterJournaledRowPreservesAmbiguousPendingObjectForReview() {
+        val root = OwnedMediaStorePublicationJournal.journalRoot(context)
+        val before = root.toFile().list().orEmpty().toSet()
+        var count = 0
+        try {
+            OwnedMediaStoreDocumentPublication.publish(context,
+                "cancelled-journal-test.txt", "text/plain", byteArrayOf(1, 2, 3),
+                cancelled = { ++count >= 2 })
+            throw AssertionError("Cancelled pending publication was accepted")
+        } catch (_: IOException) { }
+        val newFiles = root.toFile().list().orEmpty().toSet() - before
+        assertEquals(1, newFiles.size)
+        val id = newFiles.single().removeSuffix(".log")
+        val evidence = requireNotNull(OwnedMediaStorePublicationJournal.parse(
+            id, ExclusiveFsyncJournal.readCompleteLines(root.resolve("${id}.log"))))
+        assertEquals(OwnedMediaStorePublicationJournal.Phase.ROW_RECEIVED, evidence.phase)
+        val uri = android.net.Uri.parse(requireNotNull(evidence.rowUri))
+        try {
+            assertEquals(OwnedMediaStorePublicationJournal.Verdict.NEEDS_ATTENTION,
+                OwnedMediaStorePublicationJournal.assess(context, id).verdict)
+            val cols = arrayOf(MediaStore.MediaColumns.IS_PENDING)
+            requireNotNull(resolver.query(uri, cols, null, null, null)).use {
+                assertTrue(it.moveToFirst())
+                assertEquals(1, it.getInt(0))
+            }
+        } finally {
+            // Test fixture only. API29's provider can report 0 deleted rows
+            // for an app-owned still-pending row even when its read/query
+            // succeeded. Do not confuse this test teardown counter with the
+            // *production* promise to leave ambiguous rows untouched.
+            val includingPending = if (Build.VERSION.SDK_INT == 29)
+                MediaStore.setIncludePending(uri) else uri
+            fun stillVisible(): Boolean = try {
+                resolver.query(includingPending, arrayOf(MediaStore.MediaColumns._ID),
+                    null, null, null)?.use { it.moveToFirst() } ?: false
+            } catch (_: Exception) { false }
+            resolver.delete(includingPending, null, null)
+            if (stillVisible()) {
+                // Only this exact newly created test URI, never a name/path
+                // or an operation discovered from any production journal.
+                resolver.update(includingPending, ContentValues().apply {
+                    put(MediaStore.MediaColumns.IS_PENDING, 0)
+                }, null, null)
+                resolver.delete(includingPending, null, null)
+            }
+            assertFalse("Test-created row remained visible after test-only cleanup",
+                stillVisible())
+        }
+    }
+
+
+    @Test fun independentlyVerifiedPendingRowIsNotConfusedWithPublishedAndTamperingIsRefused() {
+        val contents = ByteArray(4097) { (it * 23 + 4).toByte() }
+        val name = "pending-evidence-${UUID.randomUUID().toString().replace("-", "")}.txt"
+        val digest = java.security.MessageDigest.getInstance("SHA-256").digest(contents)
+            .joinToString("") { "%02x".format(it.toInt() and 255) }
+        val row = requireNotNull(resolver.insert(
+            MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY),
+            ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, name)
+                put(MediaStore.MediaColumns.MIME_TYPE, "text/plain")
+                put(MediaStore.MediaColumns.RELATIVE_PATH,
+                    Environment.DIRECTORY_DOWNLOADS + "/Chunks Exports/")
+                put(MediaStore.MediaColumns.IS_PENDING, 1)
+            }))
+        val journal = OwnedMediaStorePublicationJournal.begin(
+            context, name, "text/plain", contents.size.toLong(), digest)
+        val operationId = journal.operationId
+        try {
+            journal.use {
+                it.rowReceived(row)
+                requireNotNull(resolver.openFileDescriptor(row, "rw")).use { owned ->
+                    assertEquals(contents.size,
+                        android.system.Os.pwrite(owned.fileDescriptor,
+                            contents, 0, contents.size, 0L))
+                    android.system.Os.fsync(owned.fileDescriptor)
+                }
+                it.bytesSynced()
+            }
+            assertEquals(OwnedMediaStorePublicationJournal.Verdict.VERIFIED_PENDING,
+                OwnedMediaStorePublicationJournal.assess(context, operationId).verdict)
+            // This is a disposable test-created row only. A wrong digest must
+            // never be promoted into either a pending or published receipt.
+            requireNotNull(resolver.openFileDescriptor(row, "rw")).use {
+                val bad = byteArrayOf(99, 11)
+                assertEquals(bad.size,
+                    android.system.Os.pwrite(it.fileDescriptor, bad, 0, bad.size, 0L))
+                android.system.Os.fsync(it.fileDescriptor)
+            }
+            assertEquals(OwnedMediaStorePublicationJournal.Verdict.NEEDS_ATTENTION,
+                OwnedMediaStorePublicationJournal.assess(context, operationId).verdict)
+        } finally {
+            val direct = if (Build.VERSION.SDK_INT == 29)
+                MediaStore.setIncludePending(row) else row
+            resolver.delete(direct, null, null)
+        }
+    }
+
 }

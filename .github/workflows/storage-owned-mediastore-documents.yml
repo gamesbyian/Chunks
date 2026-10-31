@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - "app/src/main/java/io/github/gamesbyian/chunks/storage/OwnedMediaStoreDocumentPublication.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/storage/OwnedMediaStorePublicationJournal.kt"
+      - "app/src/test/java/io/github/gamesbyian/chunks/storage/OwnedMediaStorePublicationJournalTest.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/storage/OwnedMediaStoreDocumentPublicationInstrumentedTest.kt"
       - "tools/owned_mediastore_document_probe.sh"
       - ".github/workflows/storage-owned-mediastore-documents.yml"
