@@ -10,10 +10,11 @@
 // In any real app or Android binary this source must NEVER be compiled.
 extern "C" int linkat(int olddirfd, const char* oldpath,
                         int newdirfd, const char* newpath, int flags) {
-  if (oldpath && std::strncmp(oldpath, ".tmp-", 5) == 0) {
+  if (std::strncmp(oldpath, ".tmp-", 5) == 0) {
     static constexpr char marker[] =
         "CHUNKS_HOST_RECEIPT_LINKAT_DENIED=EPERM\\n";
-    (void)::write(STDERR_FILENO, marker, sizeof(marker) - 1);
+    const ssize_t emitted = ::write(STDERR_FILENO, marker, sizeof(marker) - 1);
+    (void)emitted;
     errno = EPERM;
     return -1;
   }
