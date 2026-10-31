@@ -65,6 +65,9 @@ internal class RememberedRemoteProfileRoster(context: Context) {
     private val alias = "io.github.gamesbyian.chunks.remote-profile-roster-v1"
     private val validId = Regex("[a-f0-9]{64}")
     private val legacy = RememberedRemoteLogin(context.applicationContext)
+    // A failed encrypted-ID migration must never let a subsequent save replace
+    // the entire old vault as though it had been genuinely empty.
+    private var migrationBlocked = false
 
     private fun keystore() = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
 
@@ -101,6 +104,7 @@ internal class RememberedRemoteProfileRoster(context: Context) {
     /** Corrupt/inaccessible encrypted records fail closed and are cleared. */
     @Synchronized
     fun list(): List<Profile> {
+        migrationBlocked = false
         if (!legacy.rememberingEnabled()) return emptyList()
         val packed = try { prefs.getString("roster", null) }
             catch (_: ClassCastException) { null } ?: return emptyList()
@@ -141,7 +145,10 @@ internal class RememberedRemoteProfileRoster(context: Context) {
             // Do not silently drop old encrypted profiles when the identifier
             // scheme changes. Save the exact-principal keys durably first.
             // If migration cannot be committed, refuse the saved-profile list.
-            if (needsMigration && !persist(output)) emptyList() else output
+            if (needsMigration && !persist(output)) {
+                migrationBlocked = true
+                emptyList()
+            } else output
         } catch (_: Exception) {
             prefs.edit().remove("roster").commit()
             emptyList()
@@ -160,6 +167,7 @@ internal class RememberedRemoteProfileRoster(context: Context) {
         } ?: displayName(credentials)
         val id = identity(credentials)
         val current = list().toMutableList()
+        if (migrationBlocked) return false
         val existing = current.indexOfFirst { it.id == id }
         if (existing >= 0) current.removeAt(existing)
         else if (current.size >= MAX_PROFILES) return false
@@ -171,7 +179,7 @@ internal class RememberedRemoteProfileRoster(context: Context) {
     fun forget(id: String): Boolean {
         if (!validId.matches(id)) return false
         val current = list()
-        if (current.none { it.id == id }) return false
+        if (migrationBlocked || current.none { it.id == id }) return false
         return persist(current.filterNot { it.id == id })
     }
 
