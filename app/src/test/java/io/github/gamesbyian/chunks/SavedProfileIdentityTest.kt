@@ -12,6 +12,10 @@ class SavedProfileIdentityTest {
 
     @Test fun verifiedExactAccountAndInstanceAreAccepted() {
         assertTrue(SavedProfileIdentity.matches(id, "$a\u0000$user"))
+        assertFalse(SavedProfileIdentity.matches(id, "$a\u0000 $user"))
+        assertFalse(SavedProfileIdentity.matches(id, "$a\u0000$user "))
+        assertFalse(SavedProfileIdentity.matches(id,
+            "$a\u0000 $user ".trimEnd()))
         assertTrue(SavedProfileIdentity.matches(id, "  $a  \u0000$user"))
     }
 
