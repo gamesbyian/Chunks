@@ -1147,7 +1147,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                         continue
                     }
                     if (status !in 200..299) {
-                        throw IOException("rTorrent gateway returned HTTP $status")
+                        throw RpcHttpStatusException(status)
                     }
                     val length = connection.contentLengthLong
                     if (length > 4_194_304L) throw RpcReplyTooLarge("RPC response exceeded 4 MiB")
