@@ -158,8 +158,25 @@ class OwnedMediaStoreDocumentPublicationInstrumentedTest {
                 assertEquals(1, it.getInt(0))
             }
         } finally {
-            // Test fixture only; production NEVER does this recovery cleanup.
-            assertEquals(1, resolver.delete(uri, null, null))
+            // Test fixture only. API29's provider can report 0 deleted rows
+            // for an app-owned still-pending row even when its read/query
+            // succeeded. Do not confuse this test teardown counter with the
+            // *production* promise to leave ambiguous rows untouched.
+            fun stillVisible(): Boolean = try {
+                resolver.query(uri, arrayOf(MediaStore.MediaColumns._ID),
+                    null, null, null)?.use { it.moveToFirst() } ?: false
+            } catch (_: Exception) { false }
+            resolver.delete(uri, null, null)
+            if (stillVisible()) {
+                // Only this exact newly created test URI, never a name/path
+                // or an operation discovered from any production journal.
+                resolver.update(uri, ContentValues().apply {
+                    put(MediaStore.MediaColumns.IS_PENDING, 0)
+                }, null, null)
+                resolver.delete(uri, null, null)
+            }
+            assertFalse("Test-created row remained visible after test-only cleanup",
+                stillVisible())
         }
     }
 
