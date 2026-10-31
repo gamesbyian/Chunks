@@ -51,8 +51,8 @@ def validate(workflows: dict[str, str], root_gradle: str, app_gradle: str) -> li
         def has_reviewed_action(action: str, revisions: tuple[str, ...]) -> bool:
             accepted = "|".join(re.escape(rev) for rev in revisions)
             return bool(re.search(
-                rf"(?m)^\\s*-\\s+uses:\\s*{re.escape(action)}@(?:{accepted})"
-                rf"\\s*(?:#.*)?$",
+                rf"(?m)^\s*-\s+uses:\s*{re.escape(action)}@(?:{accepted})"
+                rf"\s*(?:#.*)?$",
                 source,
             ))
         if not has_reviewed_action(
