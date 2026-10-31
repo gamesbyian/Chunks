@@ -193,6 +193,10 @@ internal class LocalResumeEventStore private constructor(
     @Synchronized fun current(key: String): ByteArray? =
         states[key]?.takeIf { it.phase == Phase.SAVED }?.payload?.copyOf()
 
+    /** Diagnostics must identify legacy snapshots correctly during migration. */
+    @Synchronized fun savedSourceName(key: String): String =
+        if (states[key]?.sequence == 0L) "$key.resume" else "$key.resume-event"
+
     @Synchronized private fun append(key: String, kind: String, payload: ByteArray) {
         require(HASH.matches(key))
         if (payload.size > MAX_PAYLOAD_BYTES) throw IOException("Resume record exceeds safety limit")
