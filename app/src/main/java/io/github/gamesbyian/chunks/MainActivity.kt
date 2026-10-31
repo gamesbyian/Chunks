@@ -624,6 +624,10 @@ private fun ChunksApp(
                                 // claims fresh credential-saving authority.
                                 credentialChanges.awaitSettled()
                                 if (!remoteFence.current(ticket)) return@launch
+                                // Human Forget/Remember taps occurring during the
+                                // ensuing RPC or saved-profile IO must own the
+                                // notice and profile UI, even on a successful Connect.
+                                val connectedUiRevision = credentialChanges.snapshotRevision()
                                 val saveThisLogin = rememberLogin
                                 val credentialTicket = RemoteCredentialLock.beginConnection()
                                 val discovered = RemoteSmartConnect.connect(
@@ -696,17 +700,25 @@ private fun ChunksApp(
                                     // IO can outlive a UI session change. Never write a
                                     // stale Connect's notice/profile state over a new
                                     // authenticated session or a disconnected form.
-                                    if (remoteFence.current(ticket) && server === candidate) {
-                                        savedProfiles = withContext(Dispatchers.IO) { profileRoster.list() }
-                                        savedLoginPresent = vault.hasSavedLogin() || savedProfiles.isNotEmpty()
-                                        credentialNotice = when {
-                                            !retained -> "Connected, but login remembering settings could not be saved. " +
-                                                "Confirm the preference before restarting."
-                                            !saveThisLogin -> "Connected without remembering credentials. Your opt-out persists across restarts."
-                                            else -> null
+                                    if (remoteFence.current(ticket) && server === candidate &&
+                                        credentialChanges.isLatest(connectedUiRevision)) {
+                                        val refreshed = withContext(Dispatchers.IO) { profileRoster.list() }
+                                        // Either IO may suspend; do not let this
+                                        // Connect overwrite a subsequent Forget or
+                                        // another authenticated screen's state.
+                                        if (remoteFence.current(ticket) && server === candidate &&
+                                            credentialChanges.isLatest(connectedUiRevision)) {
+                                            savedProfiles = refreshed
+                                            savedLoginPresent = vault.hasSavedLogin() || refreshed.isNotEmpty()
+                                            credentialNotice = when {
+                                                !retained -> "Connected, but login remembering settings could not be saved. " +
+                                                    "Confirm the preference before restarting."
+                                                !saveThisLogin -> "Connected without remembering credentials. Your opt-out persists across restarts."
+                                                else -> null
+                                            }
+                                            // Do not retain another copy in the screen field.
+                                            password = ""
                                         }
-                                        // Do not retain another copy in the screen field.
-                                        password = ""
                                     }
                                 }
                             } catch (cancel: kotlinx.coroutines.CancellationException) {
@@ -1005,6 +1017,9 @@ private fun ChunksApp(
                         // or a quick Disconnect + new Connect can interleave.
                         RemoteCredentialLock.invalidate()
                         rememberLogin = false
+                        // Forget removes any lingering copy of a verified
+                        // password even when a previous UI refresh is pending.
+                        password = ""
                         credentialChanges.submit(scope) { revision ->
                             val cleared = withContext(Dispatchers.IO) {
                                 try {
