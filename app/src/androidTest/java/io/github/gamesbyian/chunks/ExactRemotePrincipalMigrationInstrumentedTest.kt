@@ -139,6 +139,34 @@ class ExactRemotePrincipalMigrationInstrumentedTest {
         }
     }
 
+    @Test fun interruptedOldSingleProfileCiphertextCannotReturnAfterOptBackIn() {
+        val vault = RememberedRemoteLogin(context)
+        val roster = RememberedRemoteProfileRoster(context)
+        val original = vault.rememberingEnabled()
+        assertTrue(vault.setRememberingEnabled(true))
+        try {
+            assertTrue(vault.clear())
+            assertTrue(roster.clearAll())
+            assertTrue(vault.save(padded))
+            val preferences = context.getSharedPreferences("remembered-remote-login-v1",
+                Context.MODE_PRIVATE)
+            val oldCiphertext = requireNotNull(preferences.getString("ciphertext", null))
+            assertTrue(vault.setRememberingEnabled(false))
+            // Simulate a corrupted/interrupted legacy OFF transaction where
+            // ciphertext outlived the policy, without involving any real host.
+            assertTrue(preferences.edit().putString("ciphertext", oldCiphertext).commit())
+            assertNull(vault.load())
+            assertTrue(vault.setRememberingEnabled(true))
+            assertFalse(preferences.contains("ciphertext"))
+            assertNull(vault.load())
+            assertTrue(roster.list().isEmpty())
+        } finally {
+            vault.clear()
+            roster.clearAll()
+            vault.setRememberingEnabled(original)
+        }
+    }
+
     private fun prefKey(scope: String): String = "policy_" +
         MessageDigest.getInstance("SHA-256").digest(scope.toByteArray(Charsets.UTF_8))
             .joinToString("") { "%02x".format(it.toInt() and 255) }
