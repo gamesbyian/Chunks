@@ -199,7 +199,7 @@ class RemoteSmartConnectTest {
         val attempted = mutableListOf<String>()
         val success = RemoteSmartConnect.connect("host.whatbox.ca", "user", "pass") { credentials ->
             attempted += credentials.endpoint
-            if (attempted.size == 1) throw IOException("rTorrent gateway returned HTTP 404")
+            if (attempted.size == 1) throw RpcHttpStatusException(404)
             // In production the injected probe must read a version AND a
             // complete torrent view, not merely accept HTTP 200.
             "verified-version-and-list"
@@ -237,6 +237,28 @@ class RemoteSmartConnectTest {
                 .any { it.contains("proxy") })
             assertEquals("Network proxy authentication required (HTTP 407)",
                 RemoteSmartConnect.describe(IOException(message)))
+        }
+    }
+
+    @Test fun untrustedExceptionTextMentioningHttp404CannotTriggerDiscoveryFallback() = runBlocking {
+        val fakes = listOf(
+            IOException("rTorrent gateway returned HTTP 404"),
+            IOException("the proxy said HTTP/1.1 404 but never sent a response"),
+            IllegalArgumentException("HTTP 404 appeared in a malformed RPC payload")
+        )
+        for (fault in fakes) {
+            var calls = 0
+            val failed = try {
+                RemoteSmartConnect.connect("custom.example", "alice", "secret") {
+                    calls++
+                    throw fault
+                }
+                fail("Untrusted exception string is not an HTTP status receipt")
+                null
+            } catch (problem: RemoteSmartConnect.ConnectionFailed) { problem }
+            assertEquals(RemoteSmartConnect.Category.PROTOCOL, failed?.category)
+            assertEquals(1, failed?.tested)
+            assertEquals(1, calls)
         }
     }
 
@@ -357,7 +379,7 @@ class RemoteSmartConnectDiagnosticsTest {
                     when {
                         credentials.endpoint.endsWith("/xmlrpc") ->
                             throw RpcFault("-506", "Method not defined")
-                        else -> throw IOException("rTorrent gateway returned HTTP 404")
+                        else -> throw RpcHttpStatusException(404)
                     }
                 }
             }
