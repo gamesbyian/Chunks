@@ -145,6 +145,23 @@ class OwnedPreviewStageTests(unittest.TestCase):
                                                                   "production app source"):
                 self.stage(output=dest)
 
+    def test_source_substitution_during_copy_refuses_staged_binary(self):
+        from unittest.mock import patch
+        original_copy = module.shutil.copyfile
+
+        def tampered_copy(source, destination):
+            result = original_copy(source, destination)
+            if str(destination).endswith(".so"):
+                Path(destination).write_bytes(b"tampered after first hash")
+            return result
+
+        with patch.object(module.shutil, "copyfile", side_effect=tampered_copy):
+            with self.assertRaisesRegex(ValueError, "between verification and copy"):
+                self.stage()
+        self.assertFalse((self.output / "build.gradle.kts").exists(),
+                         "A mismatched JNI copy cannot yield a buildable overlay")
+        self.assertEqual(BUILD, self.gradle.read_text())
+
     def test_unknown_architecture_or_uppercase_hash_is_refused(self):
         with self.assertRaisesRegex(ValueError, "Only Android 64-bit"):
             self.stage(abi="armeabi-v7a")
