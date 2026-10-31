@@ -58,10 +58,14 @@ internal class RememberedRemoteLogin(context: Context) {
         // Opt-out first durably revokes BOTH vaults' read permissions.
         // If an older app or a crash left roster ciphertext behind, purge it
         // BEFORE re-enabling; a failed purge must leave remembering disabled.
-        if (enabled && !rememberingEnabled() &&
+        val previouslyEnabled = rememberingEnabled()
+        if (enabled && !previouslyEnabled &&
             !RememberedRemoteProfileRoster(appContext).clearAll()) return false
         val editor = prefs.edit().putBoolean("remember_enabled", enabled)
-        if (!enabled) editor.remove("ciphertext")
+        // The one-profile vault must be scrubbed on OFF and on a later
+        // OFF→ON transition. Otherwise a legacy interrupted opt-out could
+        // resurrect its old login when remembering is re-enabled.
+        if (!enabled || !previouslyEnabled) editor.remove("ciphertext")
         if (!editor.commit()) return false
         // Invalidate any pending Connect's right to persist even if a user
         // toggles remembering OFF and back ON before its network call finishes.
