@@ -85,7 +85,8 @@ internal class RememberedRemoteLogin(context: Context) {
 
     fun load(): RemoteCredentials? = synchronized(RemoteCredentialLock.monitor) {
         if (!rememberingEnabled()) return null
-        val text = prefs.getString("ciphertext", null) ?: return null
+        val text = try { prefs.getString("ciphertext", null) }
+            catch (_: ClassCastException) { return null } ?: return null
         return try {
             require(text.length in 16..32768)
             val packed = Base64.decode(text, Base64.NO_WRAP)
@@ -104,9 +105,9 @@ internal class RememberedRemoteLogin(context: Context) {
                 username.length <= 512 && password.length <= 4096)
             RemoteCredentials(endpoint, username, password)
         } catch (_: Exception) {
-            // Corrupt, outdated or device-key-inaccessible data must not be
-            // reused or silently transformed into a blank-password login.
-            prefs.edit().remove("ciphertext").commit()
+            // Keep unopenable ciphertext untouched. A temporary Keystore
+            // failure never authorizes deleting or overwriting the user's
+            // only saved login. Explicit Clear or opt-out still purges it.
             null
         }
     }
@@ -114,6 +115,9 @@ internal class RememberedRemoteLogin(context: Context) {
     /** Return true only after encrypted state is durably committed. */
     fun save(credentials: RemoteCredentials): Boolean = synchronized(RemoteCredentialLock.monitor) {
         if (!rememberingEnabled()) return false
+        // Never silently replace an occupied but unreadable vault with a new
+        // credential. The user must explicitly clear the inaccessible record.
+        if (prefs.contains("ciphertext") && load() == null) return false
         require(credentials.endpoint.length in 1..2048 &&
             credentials.username.length <= 512 && credentials.password.length <= 4096)
         val encoded = JSONArray().put(credentials.endpoint).put(credentials.username)
