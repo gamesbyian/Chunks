@@ -765,6 +765,37 @@ class LocalTorrentEngineTest {
         listenInterfaces = "127.0.0.1:0", allowMultipleConnectionsPerIp = true, stateDirectory = state
     )).also { it.start(); engines += it }
 
+    @Test fun actualRemoveNeverUnlinksSubstitutedForeignAdmissionEntry() {
+        val fixture = fixture()
+        val state = temp.newFolder("remove-receipt-collision-state")
+        val destination = temp.newFolder("remove-receipt-collision-dest")
+        val instance = persistentEngine(state)
+        val status = added(instance.addStoppedChecked(fixture.torrent, destination))
+        val receipt = File(state, status.infoHash + ".admission")
+        assertEquals(LocalAdmissionProvenance.Mode.CHECKED,
+            LocalAdmissionProvenance.read(state, status.infoHash))
+        val displaced = File(state, "owned-admission-displaced")
+        assertTrue(receipt.renameTo(displaced))
+        val foreign = temp.newFile("unrelated-removal-sentinel")
+        val canary = ByteArray(4096) { (it * 31 + 17).toByte() }
+        foreign.writeBytes(canary)
+        Files.createLink(receipt.toPath(), foreign.toPath())
+        assertTrue("Actual native Remove must still succeed without touching payload",
+            instance.removeKeepingData(status.infoHash))
+        assertNull(instance.status(status.infoHash))
+        assertTrue("Remove cannot unlink an unowned final receipt entry",
+            Files.exists(receipt.toPath(), java.nio.file.LinkOption.NOFOLLOW_LINKS))
+        assertTrue(Files.isSameFile(receipt.toPath(), foreign.toPath()))
+        assertArrayEquals(canary, receipt.readBytes())
+        assertArrayEquals(canary, foreign.readBytes())
+        assertTrue("Former immutable receipt must also remain untouched", displaced.isFile)
+        assertNull("Foreign replacement cannot authorize resumed native admission",
+            LocalAdmissionProvenance.read(state, status.infoHash))
+        assertFalse("The ambiguous occupied receipt cannot be overwritten by a retry",
+            LocalAdmissionProvenance.persist(state, status.infoHash,
+                LocalAdmissionProvenance.Mode.CHECKED))
+    }
+
     @Test fun lostResumeDirectoryDuringAddIsObservableWithoutDeletingPayload() {
         val fixture = fixture()
         val state = temp.newFolder("state-disappears-on-add")
