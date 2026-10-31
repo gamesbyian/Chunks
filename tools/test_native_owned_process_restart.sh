@@ -11,7 +11,7 @@ compiler="${CXX:-c++}"
   -o "$out/native-owned-process-restart"
 log="$out/process-restore.log"
 "$out/native-owned-process-restart" | tee "$log"
-grep -Fxq 'CHUNKS_OWNED_PROCESS_RESTART=PASS cases=5 tier=linux-fork-no-powerloss' "$log"
+grep -Fxq 'CHUNKS_OWNED_PROCESS_RESTART=PASS cases=7 tier=linux-fork-no-powerloss' "$log"
 if [[ "${1:-}" == "--sanitizers" ]]; then
   "$compiler" -std=c++17 -O1 -g -fno-omit-frame-pointer \
     -pthread -Wall -Wextra -Werror \
@@ -20,5 +20,5 @@ if [[ "${1:-}" == "--sanitizers" ]]; then
     tools/native_owned_process_restart_test.cc \
     -o "$out/native-owned-process-restart-asan"
   "$out/native-owned-process-restart-asan" | tee "$out/sanitizer.log"
-  grep -Fxq 'CHUNKS_OWNED_PROCESS_RESTART=PASS cases=5 tier=linux-fork-no-powerloss' "$out/sanitizer.log"
+  grep -Fxq 'CHUNKS_OWNED_PROCESS_RESTART=PASS cases=7 tier=linux-fork-no-powerloss' "$out/sanitizer.log"
 fi
