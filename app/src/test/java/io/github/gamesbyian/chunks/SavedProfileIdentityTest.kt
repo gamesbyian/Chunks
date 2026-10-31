@@ -32,6 +32,16 @@ class SavedProfileIdentityTest {
             EnvironmentSnapshots.serverIdOfAliasScope(alias)?.value)
     }
 
+    @Test fun forgetLegacyVaultMustNotClearAnotherWhitespaceDistinctPrincipal() {
+        val old = io.github.gamesbyian.chunks.rpc.RemoteCredentials(a, "alice", "old-secret")
+        val selected = old.copy(username = " alice ", password = "other-secret")
+        assertFalse(SavedProfileIdentity.sameAuthenticatedAccount(old, selected))
+        assertFalse(SavedProfileIdentity.sameAuthenticatedAccount(null, old))
+        assertTrue(SavedProfileIdentity.sameAuthenticatedAccount(old, old.copy(password = "rotated")))
+        assertTrue(SavedProfileIdentity.sameAuthenticatedAccount(
+            old.copy(endpoint = "  $a  "), old))
+    }
+
     @Test fun sameHostDifferentUsernameMustNotBorrowSavedProfile() {
         assertFalse(SavedProfileIdentity.matches(id, "$a\u0000bob"))
         assertFalse(SavedProfileIdentity.matches(id, "$a\u0000ALICE"))
