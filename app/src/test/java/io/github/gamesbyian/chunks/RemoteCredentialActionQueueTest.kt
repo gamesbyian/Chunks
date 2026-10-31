@@ -55,6 +55,30 @@ class RemoteCredentialActionQueueTest {
         assertEquals(listOf("off", "on", "connect"), committed)
     }
 
+    @Test fun connectedScreenForgetFinishesBeforeLaterReconnectCanSaveNewLogin() = runBlocking {
+        val queue = RemoteCredentialActionQueue()
+        val forgetEntered = CompletableDeferred<Unit>()
+        val finishErase = CompletableDeferred<Unit>()
+        val durable = mutableListOf("old-account")
+        val forgotten = queue.submit(this) { _ ->
+            forgetEntered.complete(Unit)
+            finishErase.await()
+            durable.clear()
+        }
+        forgetEntered.await()
+        val reconnect = launch {
+            // This models the Connect gate after a connected-screen Forget
+            // request, including when its IO erase is still suspended.
+            queue.awaitSettled()
+            durable += "new-account"
+        }
+        kotlinx.coroutines.yield()
+        assertEquals(listOf("old-account"), durable)
+        finishErase.complete(Unit)
+        joinAll(forgotten, reconnect)
+        assertEquals(listOf("new-account"), durable)
+    }
+
     @Test fun finalForgetCannotBeUndoneByPriorEnableThatFinishesLate() = runBlocking {
         val queue = RemoteCredentialActionQueue()
         val gate = CompletableDeferred<Unit>()
