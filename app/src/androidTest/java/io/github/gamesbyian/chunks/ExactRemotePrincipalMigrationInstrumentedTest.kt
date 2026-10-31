@@ -291,6 +291,36 @@ class ExactRemotePrincipalMigrationInstrumentedTest {
         }
     }
 
+    @Test fun overlappingVerifiedConnectsCannotCommitOlderPrincipal() {
+        val vault = RememberedRemoteLogin(context)
+        val roster = RememberedRemoteProfileRoster(context)
+        val original = vault.rememberingEnabled()
+        assertTrue(vault.setRememberingEnabled(true))
+        try {
+            assertTrue(vault.clear())
+            assertTrue(roster.clearAll())
+            val firstConnection = RemoteCredentialLock.beginConnection()
+            val secondConnection = RemoteCredentialLock.beginConnection()
+            assertNotEquals(firstConnection, secondConnection)
+            // Out-of-order completion: only the second authenticated attempt
+            // may become the remembered principal, in EITHER encrypted store.
+            assertTrue(vault.saveIfCurrent(plain, secondConnection))
+            assertTrue(roster.saveVerifiedIfCurrent(plain, secondConnection))
+            assertFalse(vault.saveIfCurrent(padded, firstConnection))
+            assertFalse(roster.saveVerifiedIfCurrent(padded, firstConnection))
+            assertEquals(plain, vault.load())
+            assertEquals(listOf(plain.username), roster.list().map { it.credentials.username })
+            // Disconnection must revoke the current attempt's write ticket.
+            RemoteCredentialLock.invalidate()
+            assertFalse(roster.saveVerifiedIfCurrent(padded, secondConnection))
+            assertFalse(vault.saveIfCurrent(padded, secondConnection))
+        } finally {
+            vault.clear()
+            roster.clearAll()
+            vault.setRememberingEnabled(original)
+        }
+    }
+
     private fun prefKey(scope: String): String = "policy_" +
         MessageDigest.getInstance("SHA-256").digest(scope.toByteArray(Charsets.UTF_8))
             .joinToString("") { "%02x".format(it.toInt() and 255) }
