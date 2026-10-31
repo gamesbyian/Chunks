@@ -237,6 +237,9 @@ class OwnedJniSessionSmokeInstrumentedTest {
         ownedParams.setOwnedDiskIO(receipts.absolutePath)
         val target = SessionManager(false)
         val downloaded = File(destination, "Owned peer fixture/payload.bin")
+        val foreignCanary = File(destination, "unrelated-user-canary.txt")
+        val expectedCanary = "unchanged other file in selected destination".toByteArray()
+        foreignCanary.writeBytes(expectedCanary)
         try {
             source.start(SessionParams(seedSettings))
             target.start(ownedParams)
@@ -313,6 +316,8 @@ class OwnedJniSessionSmokeInstrumentedTest {
         }
         assertArrayEquals("After peer shutdown, owned bytes must still match",
             payload, downloaded.readBytes())
+        assertArrayEquals("Actual peer transfer must preserve unrelated bytes",
+            expectedCanary, foreignCanary.readBytes())
     }
 }
 """
