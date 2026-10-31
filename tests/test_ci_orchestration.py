@@ -39,6 +39,8 @@ class DispatchTests(unittest.TestCase):
             self.assertIn("python3 tools/ci_failure_digest.py", text)
             self.assertIn("if: always()", text)
             self.assertIn("CHUNKS_JOB_STATUS: ${{ job.status }}", text)
+            self.assertIn("--require-executed", text)
+            self.assertNotIn("if [ -f tools/ci_failure_digest.py ]; then", text)
 
     def test_orchestration_tests_trigger_docs_validation(self):
         text = (ROOT / "documentation-validation.yml").read_text()

@@ -1,6 +1,8 @@
 """Offline negative controls for CI evidence summaries (never use protected logs)."""
 import tempfile
 import unittest
+import subprocess
+import sys
 from pathlib import Path
 from tools.ci_failure_digest import make_digest, rejects_unverified_green
 
@@ -89,6 +91,26 @@ class DigestTests(unittest.TestCase):
         self.path.write_text('<testsuite><testcase name="good"/></testsuite>')
         digest = make_digest([str(self.path)], "success", "unit", self.env)
         self.assertFalse(rejects_unverified_green(digest, "success", True))
+
+    def test_required_cli_fails_closed_and_preserves_original_red(self):
+        script = Path(__file__).resolve().parents[1] / "tools/ci_failure_digest.py"
+        output = Path(self.tmp.name) / "digest.json"
+        base = [sys.executable, str(script), "--suite", "unit",
+                "--output", str(output), "--require-executed"]
+        no_tests = subprocess.run(base + ["--status", "success"], check=False,
+                                  capture_output=True, text=True)
+        self.assertEqual(1, no_tests.returncode)
+        self.assertIn("Required JUnit evidence", no_tests.stdout)
+        self.assertTrue(output.is_file())
+        # A prior setup/test failure should remain the original red step.
+        already_red = subprocess.run(base + ["--status", "failure"], check=False,
+                                     capture_output=True, text=True)
+        self.assertEqual(0, already_red.returncode)
+        self.path.write_text('<testsuite><testcase name="real"/></testsuite>')
+        actual_green = subprocess.run(base + ["--status", "success",
+                                             "--glob", str(self.path)],
+                                      check=False, capture_output=True, text=True)
+        self.assertEqual(0, actual_green.returncode, actual_green.stdout)
 
 
 if __name__ == "__main__":

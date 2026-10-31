@@ -1,5 +1,8 @@
 # Lean CI and evidence economy
 
+> **Required JUnit positive evidence (2026-10-31):** The Android foundation and API35 native Add jobs now require the JUnit digest to show actual executed non-skipped tests, valid report XML and zero test failures on an otherwise green job. The check script is always invoked even if earlier steps fail and preserves their original red cause. API35 also retains raw JUnit XML and HTML report folders with its synthetic screenshots, without copying protected credentials. The flag and negative controls were separately checked in #879; the workflow change is accepted only after exact-head Android/JVM and emulator checks pass; no signing or physical-handset proof is implied.
+
+
 > **CI dispatch and diagnostics consolidation (2026-10-31):** The radio harness PR workflow now executes Doze, interruption and network-flap fake-adb negative controls together; the two older dedicated workflows are manual-only historical repro entry points. It retains actual shell checks, but no longer starts redundant runners for overlapping interrupt changes. The Android foundation and native Add instrumented workflows emit bounded JSON/JUnit-count job summaries even when tests fail, never copying exception bodies or protected integration data. A successful job without JUnit evidence does not certify tests executed. Offline event-routing and digest tests run under the documentation validation check. Treat the new check topology as a proposed branch-protection migration until any private protection rules are independently confirmed; manual historical jobs do not replace acceptance. Baseline evidence and scope limits are in the quality ledger.
 
 
