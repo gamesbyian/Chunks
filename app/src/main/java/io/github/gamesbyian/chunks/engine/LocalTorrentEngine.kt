@@ -134,6 +134,13 @@ sealed class LocalAddResult {
 }
 
 class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConfig()) : AutoCloseable {
+    /**
+     * Package-internal deterministic test seam. Runs after libtorrent has
+     * registered the stopped handle, before the initial resume write. It must
+     * never be used by production code. An exception exercises the real
+     * partial-registration fence, independently of pre-admission refusals.
+     */
+    internal var beforeInitialResumeWriteForTest: (() -> Unit)? = null
     private val session = SessionManager(false)
     // Guarded by its own monitor so the alert thread never needs the engine lock.
     private val handles: MutableMap<String, TorrentHandle> = Collections.synchronizedMap(LinkedHashMap())
@@ -167,6 +174,24 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     // Reserve declared paths through Start/Stop, not just until the first Start.
     // This in-session exclusion is NOT a durable native ownership boundary.
     private val checkedPayloadReservations = LocalCheckedPayloadReservations()
+    // Native resume data does not preserve the prior checked admission or
+    // first-Start survey. Every restored metadata-ready job, including one
+    // previously added through raw existing-file recovery, must pass an
+    // independent zero-verified-path check before the first native Start in
+    // this new process. This remains only an observational safeguard.
+    private val restoredFirstStarts: MutableSet<String> = ConcurrentHashMap.newKeySet()
+    // No admission receipt means a pre-provenance / corrupted / ambiguous
+    // restored record. It may contain existing native payload, so never treat
+    // an old unknown record as an expressly reviewed existing-data seed.
+    private val restoredUnknownAdmissions: MutableSet<String> = ConcurrentHashMap.newKeySet()
+    // Every native handle reconstructed from saved resume state must
+    // revalidate its path claim on Start, even reviewed-existing seeding jobs.
+    private val restoredNativeJobs: MutableSet<String> = ConcurrentHashMap.newKeySet()
+    // A reviewed existing-data Add may legitimately own non-empty source
+    // paths. Keep it in the session path namespace, but never subject it to
+    // the *checked download's* zero-progress means foreign rule. Unknown
+    // provenance remains refused and is NOT added to this set.
+    private val reviewedExistingNativeJobs: MutableSet<String> = ConcurrentHashMap.newKeySet()
     // Metadata-ready upload-only magnets are intentionally persisted paused;
     // native UPLOAD_MODE remains their durable don't-write-payload marker.
     // The next explicit Start rechecks paths, including after process restart.
@@ -270,6 +295,35 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         )) {
             LocalCheckedPayloadReservations.Result.Reserved -> null
             is LocalCheckedPayloadReservations.Result.Refused -> admission.problem
+        }
+    }
+
+    /**
+     * Restoration is itself a new in-process admission event: decoded resume
+     * records have no durable owner-descriptor guarantee, but their declared
+     * destination names must exclude *new* checked Adds before anyone hits
+     * Start. Do NOT infer ownership of existing file bytes here, nor perform
+     * native writes or any automatic deletion. The Start path separately
+     * rechecks native progress and file existence before authorizing writes.
+     */
+    private fun reserveRestoredJobPaths(key: String, handle: TorrentHandle): String? {
+        val paths = try {
+            val info = handle.torrentFile() ?: return "Restored file metadata is unavailable"
+            val files = info.files()
+            val count = files.numFiles()
+            if (!LocalPayloadCollisionSurvey.supportsNativeFileCount(count))
+                return "Restored torrent file count is unsupported"
+            (0 until count).asSequence().filterNot { files.padFileAt(it) }
+                .map { files.filePath(it) }.toList()
+        } catch (_: Exception) {
+            return "Restored torrent paths cannot be inspected"
+        }
+        if (paths.isEmpty()) return "Restored torrent has no inspectable backing files"
+        return when (val claimed = checkedPayloadReservations.reserve(
+            key, File(handle.savePath()), paths, allowExistingOwner = true
+        )) {
+            LocalCheckedPayloadReservations.Result.Reserved -> null
+            is LocalCheckedPayloadReservations.Result.Refused -> claimed.problem
         }
     }
 
@@ -450,7 +504,48 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         val hash = identity(info)
         if (handles.containsKey(hash) || session.find(info.infoHash())?.isValid == true)
             return LocalAddResult.Refused("This torrent is already in the local engine")
+        // remove_torrent is asynchronous. A checked job's path tombstone
+        // outlives its visible handle and cannot be evaded by switching
+        // from checked Add to the separately reviewed raw Add entrypoint.
+        // The nested raw call inside addStoppedChecked has its own live
+        // checkedFirstStarts admission and remains allowed.
+        if (checkedPayloadReservations.hasReservation(hash) &&
+            !checkedFirstStarts.containsKey(hash))
+            return LocalAddResult.Refused(
+                "A previous checked transfer still reserves native storage until session shutdown")
 
+        val nestedChecked = checkedFirstStarts.containsKey(hash)
+        // A reviewed-existing Add is still a native writer. It cannot bypass
+        // another checked or reviewed job's session-local path reservation
+        // simply by using the raw Add overload with a distinct infohash.
+        // Existing verified seed bytes are permitted; this ONLY reserves the
+        // declared names, it does not infer ownership from file existence.
+        if (!nestedChecked) {
+            val paths = try {
+                val files = info.files()
+                val count = files.numFiles()
+                if (!LocalPayloadCollisionSurvey.supportsNativeFileCount(count))
+                    return LocalAddResult.Refused("Torrent file count is unsupported")
+                (0 until count).asSequence()
+                    .filterNot { files.padFileAt(it) }
+                    .map { files.filePath(it) }.toList()
+            } catch (_: Exception) {
+                return LocalAddResult.Refused("Torrent backing paths cannot be inspected")
+            }
+            when (val claim = checkedPayloadReservations.reserve(hash, saveDirectory, paths)) {
+                LocalCheckedPayloadReservations.Result.Reserved -> Unit
+                is LocalCheckedPayloadReservations.Result.Refused ->
+                    return LocalAddResult.Refused(claim.problem + "; nothing added")
+            }
+        }
+        val provenance = if (nestedChecked)
+            LocalAdmissionProvenance.Mode.CHECKED
+        else LocalAdmissionProvenance.Mode.REVIEWED_EXISTING
+        if (!LocalAdmissionProvenance.persist(config.stateDirectory, hash, provenance)) {
+            if (!nestedChecked) checkedPayloadReservations.release(hash)
+            return LocalAddResult.Refused(
+                "Could not securely persist the native Add review; nothing added")
+        }
         val params = AddTorrentParams()
         params.setTorrentInfo(info)
         params.setSavePath(saveDirectory.absolutePath)
@@ -473,10 +568,16 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             params.peers(peers.map { TcpEndpoint(requireNotNull(it.address?.hostAddress), it.port) })
         val error = error_code()
         val raw = session.swig().add_torrent(params.swig(), error)
-        if (error.value() != 0 || !raw.is_valid)
+        if (error.value() != 0 || !raw.is_valid) {
+            // Never release a path claim while an uncertain native handle can
+            // still retain asynchronous I/O. Release only on confirmed absence.
+            if (!nestedChecked && session.find(info.infoHash())?.isValid != true)
+                checkedPayloadReservations.release(hash)
             return LocalAddResult.Refused("The local engine refused this torrent: " + error.message())
+        }
         val handle = TorrentHandle(raw)
         handles[hash] = handle
+        if (!nestedChecked) reviewedExistingNativeJobs.add(hash)
         // The asynchronous SAVE_RESUME_DATA callback writes the same
         // "$hash.resume.tmp". Serialize the initial Add commit with that
         // callback and Remove using the already established handle fence.
@@ -484,6 +585,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         if (config.stateDirectory != null) {
             val resumeBytes = AddTorrentParams.writeResumeDataBuf(params)
             check(LocalResumeWriteFence.writeIfCurrent(handles, hash, handle) {
+                beforeInitialResumeWriteForTest?.invoke()
                 writeResume(hash, resumeBytes)
             }) { "Initial resume write lost its native handle" }
         }
@@ -522,6 +624,10 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         val params = try { AddTorrentParams.parseMagnetUri(magnet) } catch (_: RuntimeException) {
             return LocalAddResult.Refused("This magnet link could not be read")
         }
+        if (!LocalAdmissionProvenance.persist(config.stateDirectory, hash,
+                LocalAdmissionProvenance.Mode.CHECKED))
+            return LocalAddResult.Refused(
+                "Could not securely persist the magnet Add review; nothing added")
         params.setSavePath(saveDirectory.absolutePath)
         params.setFlags(torrent_flags_t().or_(org.libtorrent4j.TorrentFlags.UPLOAD_MODE)
             .or_(org.libtorrent4j.TorrentFlags.DUPLICATE_IS_ERROR))
@@ -564,6 +670,34 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             // status() caches metadata for 500 ms. Query the same fresh native
             // flags as snapshot(), including persisted upload-only on restart.
             val state = handle.status(TorrentHandle.QUERY_NAME)
+            if (restoredNativeJobs.contains(key)) {
+                val problem = if (state.hasMetadata()) {
+                    reserveRestoredJobPaths(key, handle)
+                } else if (state.flags()
+                        .and_(org.libtorrent4j.TorrentFlags.UPLOAD_MODE).non_zero()) {
+                    // No native payload can be fetched until metadata arrives.
+                    // The metadata callback independently checks its new paths.
+                    null
+                } else {
+                    "Restored native payload layout unavailable; Start refused"
+                }
+                if (problem != null) {
+                    checkedStartProblems[key] =
+                        "Restored path admission requires review: $problem"
+                    return@command false
+                }
+                // A previously inaccessible root may have become available.
+                // Do not keep an obsolete admission error after fresh native
+                // paths have been reserved; preserve unrelated safety notices.
+                if (checkedStartProblems[key]?.startsWith(
+                        "Restored path admission requires review:") == true)
+                    checkedStartProblems.remove(key)
+            }
+            if (restoredUnknownAdmissions.contains(key)) {
+                checkedStartProblems[key] =
+                    "Native Add review is unavailable after restoration; re-review the transfer before starting"
+                return@command false
+            }
             checkedFirstStarts[key]?.let { pending ->
                 // Add's earlier ClearAtObservation is not permission to write
                 // during a later Start. Re-survey the exact recorded native
@@ -589,7 +723,17 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                 checkedStartProblems.remove(key)
             }
             if (state.hasMetadata() && checkedFirstStarts[key] == null &&
-                checkedPayloadReservations.hasReservation(key)) {
+                checkedPayloadReservations.hasReservation(key) &&
+                !reviewedExistingNativeJobs.contains(key)) {
+                val problem = inspectCheckedRestartCollision(key, handle)
+                if (problem != null) {
+                    checkedStartProblems[key] = problem
+                    return@command false
+                }
+                checkedStartProblems.remove(key)
+            }
+            if (state.hasMetadata() && restoredFirstStarts.contains(key) &&
+                !state.flags().and_(org.libtorrent4j.TorrentFlags.UPLOAD_MODE).non_zero()) {
                 val problem = inspectCheckedRestartCollision(key, handle)
                 if (problem != null) {
                     checkedStartProblems[key] = problem
@@ -618,6 +762,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             // Only after native Start submission: an exception keeps the gate.
             // Future Stop/Start and process restoration remain separate P0.
             checkedFirstStarts.remove(key)
+            restoredFirstStarts.remove(key)
             true
         }
 
@@ -835,10 +980,16 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
      * the result is VERIFIED only once readback shows the requested selection.
      * Skipping never deletes bytes already written.
      */
-    /** Fail closed before scheduling native writes to unverified checked paths. */
+    /**
+     * JNI file-priority operations can authorize disk writes even while an
+     * already-started checked job is running; check before each such mutation.
+     * A separately reviewed existing-data seed has different provenance and
+     * must not be mistaken for a fresh checked download with absent files.
+     */
     private fun checkedPriorityMutationProblem(key: String, handle: TorrentHandle): String? {
         if (!checkedPayloadReservations.hasReservation(key) ||
-            checkedFirstStarts.containsKey(key)) return null
+            checkedFirstStarts.containsKey(key) ||
+            reviewedExistingNativeJobs.contains(key)) return null
         val problem = inspectCheckedRestartCollision(key, handle)
         if (problem != null) checkedStartProblems[key] = problem
         else checkedStartProblems.remove(key)
@@ -1245,6 +1396,10 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         startWhenMetadataArrives.remove(key)
         magnetCollisionProblems.remove(key)
         checkedFirstStarts.remove(key)
+        restoredFirstStarts.remove(key)
+        restoredUnknownAdmissions.remove(key)
+        restoredNativeJobs.remove(key)
+        reviewedExistingNativeJobs.remove(key)
         checkedStartProblems.remove(key)
         // remove_torrent is non-blocking: the old native handle may still
         // have queued payload I/O. Keep its path claim as a tombstone until
@@ -1254,7 +1409,9 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         val saved = config.stateDirectory?.let { File(it, "$key.resume") } ?: return true
         // A removed session with an undeletable .resume file can reappear on
         // restart. Do not report that as a fully confirmed removal.
-        return try { !saved.exists() || saved.delete() } catch (_: Exception) { false }
+        val erased = try { !saved.exists() || saved.delete() } catch (_: Exception) { false }
+        if (erased) LocalAdmissionProvenance.retire(config.stateDirectory, key)
+        return erased
     }
 
     @Synchronized
@@ -1348,6 +1505,10 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         startWhenMetadataArrives.clear()
         magnetCollisionProblems.clear()
         checkedFirstStarts.clear()
+        restoredFirstStarts.clear()
+        restoredUnknownAdmissions.clear()
+        restoredNativeJobs.clear()
+        reviewedExistingNativeJobs.clear()
         checkedStartProblems.clear()
         session.stop()
         // The native session has stopped before its in-process path claims
@@ -1387,6 +1548,27 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             } catch (_: Exception) { null }
             if (restored == null) { problems += file.name; continue }
             handles[key] = restored
+            restoredNativeJobs.add(key)
+            // Only the persisted checked Add path inherits checked restart
+            // admission. A recorded reviewed-existing seed uses its explicitly
+            // separate native seeding workflow. Unknown legacy/corrupt
+            // provenance is stopped and requires a fresh user review.
+            when (LocalAdmissionProvenance.read(config.stateDirectory, key)) {
+                LocalAdmissionProvenance.Mode.CHECKED -> restoredFirstStarts.add(key)
+                LocalAdmissionProvenance.Mode.REVIEWED_EXISTING ->
+                    reviewedExistingNativeJobs.add(key)
+                null -> {
+                    restoredUnknownAdmissions.add(key)
+                    checkedStartProblems[key] =
+                        "Native Add review is unavailable after restoration; re-review required"
+                }
+            }
+            // Reserve before a newly added checked job can compete with this
+            // stopped restored handle. Any ambiguous/duplicate record stays
+            // visible and stopped, with a discoverable refusal on explicit Start.
+            reserveRestoredJobPaths(key, restored)?.let {
+                checkedStartProblems[key] = "Restored path admission requires review: $it"
+            }
         }
         restoreProblems = problems
     }

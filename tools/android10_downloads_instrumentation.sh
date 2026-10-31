@@ -72,7 +72,7 @@ adb shell am instrument -w -r \
 status=$?
 set -e
 grep -E '^INSTRUMENTATION_STATUS: (class|test)=|^INSTRUMENTATION_STATUS_CODE:|^OK |^FAILURES|^Tests run' "$log" || true
-fail_if_skipped_or_failed "$status" 'OK (16 tests)' "Android 10 shared Downloads instrumentation"
+fail_if_skipped_or_failed "$status" 'OK (18 tests)' "Android 10 shared Downloads instrumentation"
 # 3. The foreground download service and its notification on API 29
 #    (an API 31-only builder call once crashed it here).
 set +e
@@ -83,4 +83,16 @@ status=$?
 set -e
 grep -E '^INSTRUMENTATION_STATUS: test=|^INSTRUMENTATION_STATUS_CODE:|^OK |^FAILURES' "$log" || true
 fail_if_skipped_or_failed "$status" 'OK (3 tests)' "Android 10 foreground download service"
+# 4. Verify the exact private receipt storage semantics on this Android
+#    kernel/provider. A passing host JVM test cannot prove directory fsync.
+set +e
+adb shell am instrument -w -r \
+ -e class io.github.gamesbyian.chunks.engine.LocalAdmissionReceiptInstrumentedTest \
+ io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner >"$log" 2>&1
+status=$?
+set -e
+grep -E '^INSTRUMENTATION_STATUS: (class|test)=|^INSTRUMENTATION_STATUS_CODE:|^OK |^FAILURES|^Tests run' "$log" || true
+fail_if_skipped_or_failed "$status" 'OK (4 tests)' "Android 10 exclusive admission receipt durability"
+
 echo "CHUNKS_ANDROID10_DOWNLOADS: API 29 user tapped Allow storage access then Android's own Allow, and new Adds switched to Downloads/Chunks Downloads; legacy storage + grant let the native engine write, resume and seed there; the foreground service ran, showed its notification and Stop all paused transfers"
+echo 'CHUNKS_ANDROID10_ADMISSION_RECEIPTS: API29 private CREATE_NEW, checked directory fsync, exact-mode retry and foreign-byte refusal verified'

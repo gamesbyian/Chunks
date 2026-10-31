@@ -44,8 +44,25 @@ class AndroidCiTriggerContract(unittest.TestCase):
         allowed = pull_request_paths(source)
         for path in (
             "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalTorrentEngine.kt",
+            "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalAdmissionProvenance.kt",
+            "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalCheckedRestartGuard.kt",
             "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalCheckedPayloadReservations.kt",
             "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalPayloadCollisionSurvey.kt",
+        ):
+            with self.subTest(path=path):
+                self.assertIn(path, allowed)
+
+    def test_restore_and_provenance_edits_trigger_real_api35_lifecycle(self):
+        source = (ROOT / ".github/workflows/android-fgs-timeout-repro.yml"
+                  ).read_text(encoding="utf-8")
+        allowed = pull_request_paths(source)
+        for path in (
+            "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalTorrentEngine.kt",
+            "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalAdmissionProvenance.kt",
+            "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalCheckedRestartGuard.kt",
+            "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalCheckedPayloadReservations.kt",
+            "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalPayloadCollisionSurvey.kt",
+            "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalResumeFileReader.kt",
         ):
             with self.subTest(path=path):
                 self.assertIn(path, allowed)

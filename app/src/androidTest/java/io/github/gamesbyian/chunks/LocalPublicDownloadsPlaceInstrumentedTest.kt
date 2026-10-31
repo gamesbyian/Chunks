@@ -5,6 +5,7 @@ import android.os.Environment
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.gamesbyian.chunks.engine.LocalAddResult
+import io.github.gamesbyian.chunks.engine.LocalAdmissionProvenance
 import io.github.gamesbyian.chunks.engine.LocalCommandOutcome
 import io.github.gamesbyian.chunks.engine.LocalEngineConfig
 import io.github.gamesbyian.chunks.engine.LocalTorrentEngine
@@ -15,6 +16,7 @@ import java.util.Random
 import org.junit.After
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
@@ -53,6 +55,52 @@ class LocalPublicDownloadsPlaceInstrumentedTest {
     private fun engine(state: File? = null) = LocalTorrentEngine(LocalEngineConfig(
         listenInterfaces = "127.0.0.1:0", allowMultipleConnectionsPerIp = true,
         stateDirectory = state)).also { it.start(); engines += it }
+
+    @Test fun privateAdmissionReceiptAcceptsAndroidNoHardlinkAndRequiresDurableExclusiveCommit() {
+        val root = File(work, "receipt-stages").apply { assertTrue(mkdir()) }.toPath()
+        val temporary = java.nio.file.Files.createTempFile(root, "receipt.", ".tmp")
+        try {
+            java.nio.channels.FileChannel.open(temporary, java.nio.file.StandardOpenOption.WRITE,
+                java.nio.file.LinkOption.NOFOLLOW_LINKS).use { channel ->
+                val bytes = java.nio.ByteBuffer.wrap("stage probe".toByteArray())
+                while (bytes.hasRemaining()) channel.write(bytes)
+                channel.force(true)
+            }
+            // Characterize legacy linkat capability explicitly. Android API29
+            // and API35 may deny even same-UID hardlinks under app-private files.
+            // Rejection is expected and MUST NOT disable a clean native Add.
+            var deniedLink = false
+            val published = root.resolve("old-link-publication")
+            try {
+                java.nio.file.Files.createLink(published, temporary)
+            } catch (_: java.nio.file.AccessDeniedException) {
+                deniedLink = true
+            } catch (_: java.nio.file.FileSystemException) {
+                // Other inability to hardlink is a capability refusal, not an
+                // authorization to replace the final receipt by rename.
+                deniedLink = true
+            }
+            if (deniedLink) {
+                assertTrue("A refused link must not publish a final claim",
+                    java.nio.file.Files.notExists(published,
+                        java.nio.file.LinkOption.NOFOLLOW_LINKS))
+            } else {
+                assertEquals("stage probe", String(java.nio.file.Files.readAllBytes(published), Charsets.UTF_8))
+            }
+            assertEquals("stage probe", String(java.nio.file.Files.readAllBytes(temporary), Charsets.UTF_8))
+            val hash = "a".repeat(40)
+            assertTrue("Real Android exclusive receipt commit and parent fsync refused",
+                LocalAdmissionProvenance.persist(root.toFile(), hash,
+                    LocalAdmissionProvenance.Mode.CHECKED))
+            assertEquals(LocalAdmissionProvenance.Mode.CHECKED,
+                LocalAdmissionProvenance.read(root.toFile(), hash))
+            assertFalse("Previous immutable receipt mode must not be changed",
+                LocalAdmissionProvenance.persist(root.toFile(), hash,
+                    LocalAdmissionProvenance.Mode.REVIEWED_EXISTING))
+        } finally {
+            java.nio.file.Files.deleteIfExists(temporary)
+        }
+    }
 
     private fun waitFor(what: String, timeoutMs: Long = 90_000, condition: () -> Boolean) {
         val deadline = System.currentTimeMillis() + timeoutMs
@@ -242,6 +290,58 @@ class LocalPublicDownloadsPlaceInstrumentedTest {
         assertTrue("User sees the refusal", stopped.error.orEmpty().contains("since Add"))
         assertArrayEquals("Android shared Downloads collision must retain exact foreign bytes",
             original, foreign.readBytes())
+    }
+
+    @Test fun restoredCheckedStartRefusesPlantedForeignPublicDownloadsBytes() {
+        allowSharedDownloads()
+        val public = LocalDownloadPlaces.choices(context)
+            .single { it.place.kind == LocalPlaceKind.PUBLIC_DOWNLOADS }
+        val root = requireNotNull(LocalDownloadPlaces.materialize(public.place)) {
+            "Actual Android Downloads root could not be verified"
+        }
+        val destination = requireNotNull(LocalOwnedAddFolder.prepare(root,
+            "restored-checked-collision-" + System.nanoTime()))
+        publicTestFolder = destination
+
+        val source = File(work, "restore-checked-source/Restored checked Android fixture")
+            .apply { mkdirs() }
+        val payload = ByteArray(96_000).also { Random(5687).nextBytes(it) }
+        File(source, "payload.bin").writeBytes(payload)
+        val torrent = TorrentBuilder().path(source).pieceSize(16 * 1024)
+            .generate().entry().bencode()
+        val state = File(work, "restore-checked-state").apply { mkdirs() }
+        val beforeDeath = engine(state)
+        val added = beforeDeath.addStoppedChecked(torrent, destination)
+        assertTrue("An initially clean public backing path must admit checked Add: $added",
+            added is LocalAddResult.AddedStopped)
+        val hash = (added as LocalAddResult.AddedStopped).status.infoHash
+        assertTrue("A stopped native Add must persist its resume source",
+            File(state, "$hash.resume").isFile)
+        beforeDeath.close()
+
+        // The fixture actor is outside the engine and owns only this uniquely
+        // created test folder. No real user Downloads content may be touched.
+        val foreignPath = File(destination, "Restored checked Android fixture/payload.bin")
+        assertTrue(foreignPath.parentFile.mkdirs() || foreignPath.parentFile.isDirectory)
+        val foreign = ByteArray(payload.size).also { Random(5688).nextBytes(it) }
+        assertTrue(!payload.contentEquals(foreign))
+        foreignPath.writeBytes(foreign)
+
+        val restored = engine(state)
+        assertTrue("Native resume should restore with no malformed records",
+            restored.restoreProblems.isEmpty())
+        val preStart = requireNotNull(restored.status(hash))
+        assertTrue("Restored job must remain stopped", preStart.stopped)
+        assertEquals("No payload should download while stopped", 0L, preStart.doneBytes)
+        assertEquals("A foreign zero-progress file must refuse first restored native Start",
+            LocalCommandOutcome.REFUSED, restored.resume(hash).outcome)
+        val blocked = requireNotNull(restored.status(hash))
+        assertTrue(blocked.stopped)
+        assertTrue(blocked.error.orEmpty().contains("no verified native bytes"))
+        assertArrayEquals("The actual Android Downloads foreign file must survive byte for byte",
+            foreign, foreignPath.readBytes())
+        // No direct filesystem adoption or implicit cleanup: the user/test
+        // must remove only data it independently recognizes as its own.
     }
 
     @Test fun magnetMetadataCollisionPreservesPublicDownloadsAcrossStartAndRestart() {
