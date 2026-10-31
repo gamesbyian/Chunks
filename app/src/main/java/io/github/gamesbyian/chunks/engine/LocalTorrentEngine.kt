@@ -1376,7 +1376,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                 val raw = libtorrent.read_resume_data_ex(Vectors.bytes2byte_vector(bytes), error)
                 if (raw == null || error.value() != 0) null else AddTorrentParams(raw)
             } catch (_: Exception) { null }
-            if (params == null) { problems += "$key.resume-event"; continue }
+            if (params == null) { problems += store.savedSourceName(key); continue }
             // A single invalid native record must not abort restoration of
             // unrelated, valid transfers. Preserve every failed input on disk.
             val restored = try {
@@ -1391,7 +1391,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                     else TorrentHandle(handle)
                 }
             } catch (_: Exception) { null }
-            if (restored == null) { problems += "$key.resume-event"; continue }
+            if (restored == null) { problems += store.savedSourceName(key); continue }
             handles[key] = restored
         }
         restoreProblems = problems
