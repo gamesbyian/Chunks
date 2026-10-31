@@ -35,6 +35,8 @@ internal object OwnedMediaStoreDocumentPublication {
     private const val CHUNK = 32 * 1024
 
     data class Receipt(
+        /** Exact durable operation journal, for recovery without guessing filenames. */
+        val operationId: String,
         val uri: Uri,
         val publishedName: String,
         val sizeBytes: Long,
@@ -227,7 +229,7 @@ internal object OwnedMediaStoreDocumentPublication {
                 bytes.size.toLong())
             readIndependent(resolver, returned, bytes)
             journal.publicationVerified()
-            return@use Receipt(returned, unique, bytes.size.toLong(), digest)
+            return@use Receipt(journal.operationId, returned, unique, bytes.size.toLong(), digest)
         }
     }
 }
