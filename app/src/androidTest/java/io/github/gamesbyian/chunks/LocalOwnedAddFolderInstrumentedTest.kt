@@ -8,7 +8,7 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class LocalOwnedAddFolderInstrumentedTest {
-    @Test fun appOwnedExternalDownloadRootSupportsReviewedSubfolderAndRefusesCollision() {
+    @Test fun appOwnedDownloadRootAcceptsExistingNonemptyChosenSubfolder() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val root = requireNotNull(LocalEngineHolder.appDownloads(context))
         val label = "chunks-folder-test-" + System.nanoTime().toString(16)
@@ -20,7 +20,8 @@ class LocalOwnedAddFolderInstrumentedTest {
             assertTrue(proposed.isDirectory)
             assertEquals(root.canonicalFile, proposed.canonicalFile.parentFile)
             java.io.File(proposed, "test-fixture.dat").writeText("keep")
-            assertNull(LocalOwnedAddFolder.prepare(root, label))
+            assertEquals(proposed.canonicalFile,
+                LocalOwnedAddFolder.prepare(root, label)?.canonicalFile)
             assertEquals("keep", java.io.File(proposed, "test-fixture.dat").readText())
         } finally {
             // This test owns precisely this fresh isolated disposable directory.
