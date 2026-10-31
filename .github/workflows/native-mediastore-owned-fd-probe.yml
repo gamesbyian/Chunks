@@ -1,0 +1,62 @@
+name: Experimental MediaStore owned-FD capability (non-shipping)
+
+# Scope limited to the additive Android instrumented probe. It is deliberately
+# not a general app build gate or a claim of supported SAF/native storage.
+on:
+  pull_request:
+    paths:
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/engine/OwnedMediaStoreDescriptorInstrumentedTest.kt"
+      - ".github/workflows/native-mediastore-owned-fd-probe.yml"
+      - "tools/native_mediastore_fd_probe.sh"
+      - "tools/test_native_mediastore_fd_probe_mock.sh"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chunks-mediastore-owned-fd-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  media-store-fd:
+    name: Real Android MediaStore FD / API${{ matrix.api }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [29, 35]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Offline harness negative controls
+        run: bash tools/test_native_mediastore_fd_probe_mock.sh
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+      - name: Install pinned Android compile tools
+        run: |
+          printf 'y\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
+          if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          fi
+      - name: Compile Android test probe and app
+        run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
+      - name: Enable KVM
+        run: |
+          test -c /dev/kvm
+          sudo chmod 0666 /dev/kvm
+      - name: Verify scoped Downloads descriptor on disposable emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api }}
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          emulator-boot-timeout: 600
+          disable-animations: true
+          script: bash tools/native_mediastore_fd_probe.sh ${{ matrix.api }}

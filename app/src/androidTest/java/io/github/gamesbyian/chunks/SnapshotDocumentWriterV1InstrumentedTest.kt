@@ -31,7 +31,7 @@ class SnapshotDocumentWriterV1InstrumentedTest {
         base.deleteRecursively()
     }
 
-    @Test fun writesAndReopensVerifiedBytesThroughRealAndroidDocumentsProvider() {
+    @Test fun directWriterRefusesBeforeChangingAnExistingProviderDocument() {
         val resolver = context.contentResolver
         val tree = FixtureDocumentsProvider.treeUri(context)
         val parent = DocumentsContract.buildDocumentUriUsingTree(
@@ -40,15 +40,15 @@ class SnapshotDocumentWriterV1InstrumentedTest {
         val file = requireNotNull(DocumentsContract.createDocument(
             resolver, parent, "application/octet-stream", "chunks-inventory.chunksnap"
         ))
-        val expected = ("chunks snapshot test bytes: " + "😀".repeat(1000))
-            .toByteArray(Charsets.UTF_8)
-        SnapshotDocumentWriterV1.writeAndVerify(resolver, file, expected)
-        assertArrayEquals(expected, requireNotNull(resolver.openInputStream(file)).use {
-            it.readBytes()
-        })
-        assertTrue(base.listFiles().orEmpty().any {
-            it.name == "chunks-inventory.chunksnap"
-        })
+        val foreign = base.resolve("chunks-inventory.chunksnap")
+        val original = "foreign existing snapshot bytes".toByteArray()
+        foreign.writeBytes(original)
+        try {
+            SnapshotDocumentWriterV1.writeAndVerify(resolver, file,
+                "replacement contents".toByteArray())
+            throw AssertionError("Unproven document URI must be refused")
+        } catch (_: java.io.IOException) { }
+        assertArrayEquals(original, foreign.readBytes())
     }
 
     @Test fun refusesEmptyAndOversizedContentBeforeCreatingOrWritingAnything() {

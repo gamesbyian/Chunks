@@ -36,7 +36,7 @@ class SnapshotInventoryExportScreenInstrumentedTest {
         }
         compose.onNodeWithText("Save transfer inventory").assertIsDisplayed()
         compose.onNodeWithText(
-            "Choose where to save inventory snapshot"
+            "Share inventory snapshot"
         ).assertIsEnabled()
         compose.onNodeWithText(
             "Include old server directories (may reveal private paths)"
@@ -57,7 +57,7 @@ class SnapshotInventoryExportScreenInstrumentedTest {
             }
         }
         compose.onNodeWithText(
-            "Choose where to save inventory snapshot"
+            "Share inventory snapshot"
         ).assertIsNotEnabled()
     }
 }

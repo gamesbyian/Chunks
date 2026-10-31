@@ -89,6 +89,12 @@
             android:authorities="${applicationId}.created-torrents"
             android:exported="false"
             android:grantUriPermissions="true" />
+        <!-- Read-only, user-initiated shares of independently created private reports. -->
+        <provider
+            android:name=".exports.OwnedDiagnosticExportProvider"
+            android:authorities="${applicationId}.owned-exports"
+            android:exported="false"
+            android:grantUriPermissions="true" />
         <service
             android:name=".LocalEngineService"
             android:exported="false"

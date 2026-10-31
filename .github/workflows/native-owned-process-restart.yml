@@ -1,0 +1,25 @@
+name: Native owned writer process restart (host, no Android)
+
+on:
+  pull_request:
+    paths:
+      - "tools/native_owned_process_restart_test.cc"
+      - "tools/test_native_owned_process_restart.sh"
+      - ".github/workflows/native-owned-process-restart.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chunks-native-owned-process-restart-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  host-process-restart:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check seven actual child-process restart and foreign byte witnesses
+        run: bash tools/test_native_owned_process_restart.sh --sanitizers

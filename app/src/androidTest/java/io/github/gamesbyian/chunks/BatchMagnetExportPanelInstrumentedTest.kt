@@ -28,7 +28,7 @@ class BatchMagnetExportPanelInstrumentedTest {
         compose.onNodeWithText("Export multiple magnet identities").performClick()
         compose.onNodeWithText("Select shown (2)").performClick()
         compose.onNodeWithText("Review magnet identity export").performClick()
-        compose.onNodeWithText("Choose file for reviewed handoff").assertExists()
+        compose.onNodeWithText("Share reviewed magnet identities").assertExists()
         compose.onNodeWithText("Include original titles (may expose private information)")
             .assertExists()
     }

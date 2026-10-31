@@ -1,8 +1,6 @@
 package io.github.gamesbyian.chunks
 
 import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,7 +19,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,9 +34,7 @@ import io.github.gamesbyian.chunks.model.Units
 import io.github.gamesbyian.chunks.model.ZipExtractionResult
 import io.github.gamesbyian.chunks.model.ZipExtractionStatus
 import io.github.gamesbyian.chunks.model.ZipExtractor
-import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** Everything the user must see before approving a write. */
@@ -55,71 +50,16 @@ internal data class LocalZipExtractionPlan(
 )
 
 /**
- * Manual extraction of an already verified local ZIP into a new folder inside a
- * folder the user picks. Nothing starts until the user confirms the plan.
+ * Explain why destination writing is temporarily unavailable; ZIP review remains available.
  */
 @Composable
 internal fun LocalZipExtractionPanel(sourceUri: Uri, review: LocalZipReview) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val verified = review.verification ?: return
-    var treeUri by remember(sourceUri) { mutableStateOf<Uri?>(null) }
-    var plan by remember(sourceUri) { mutableStateOf<LocalZipExtractionPlan?>(null) }
-    var running by remember(sourceUri) { mutableStateOf(false) }
-    var result by remember(sourceUri) { mutableStateOf<ZipExtractionResult?>(null) }
-    val cancel = remember(sourceUri) { AtomicBoolean(false) }
-
-    val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { picked ->
-        if (picked == null) return@rememberLauncherForActivityResult
-        treeUri = picked
-        result = null
-        scope.launch {
-            plan = withContext(Dispatchers.IO) {
-                LocalZipExtractionPlan(review.label,
-                    LocalZipExtraction.destinationLabel(context, picked),
-                    ZipExtractor.folderBaseName(review.label),
-                    verified.actualOutputBytes ?: 0L, verified.verifiedFiles,
-                    LocalZipExtraction.availableBytes(context, picked))
-            }
-        }
-    }
-
-    val currentPlan = plan
-    val currentResult = result
-    when {
-        running -> LocalZipExtractionRunning(onCancel = { cancel.set(true) })
-        currentResult != null -> LocalZipExtractionOutcome(currentResult, review.label)
-        currentPlan != null -> LocalZipExtractionConfirm(currentPlan,
-            onConfirm = { acknowledgedUnknownSpace ->
-                val destination = treeUri ?: return@LocalZipExtractionConfirm
-                cancel.set(false)
-                running = true
-                scope.launch {
-                    val outcome = withContext(Dispatchers.IO) {
-                        try {
-                            LocalZipExtraction.extract(context, sourceUri, destination, review.label,
-                                acknowledgedUnknownSpace) { cancel.get() }
-                        } catch (_: Exception) {
-                            ZipExtractionResult(ZipExtractionStatus.NEEDS_ATTENTION, null, null, 0, 0,
-                                "Extraction stopped unexpectedly; check the destination folder")
-                        }
-                    }
-                    result = outcome
-                    plan = null
-                    running = false
-                }
-            },
-            onDismiss = { plan = null; treeUri = null })
-        else -> Card(Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Extract", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
-                    modifier = Modifier.semantics { heading() })
-                Text("Chunks creates a new folder inside the folder you choose. Existing files are never replaced, and this ZIP is kept.")
-                Button(onClick = { folderPicker.launch(null) },
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
-                    Text("Choose where to extract…")
-                }
-            }
+    if (review.verification == null) return
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Extract", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
+                modifier = Modifier.semantics { heading() })
+            Text("Extraction is temporarily unavailable while destination file safety is being improved. You can still review the ZIP.")
         }
     }
 }
@@ -199,7 +139,7 @@ internal fun extractionMessage(result: ZipExtractionResult, copy: Boolean = fals
         ZipExtractionStatus.FAILED_ROLLED_BACK -> "Extraction failed: " + result.reason +
             ". Partial files were removed; nothing else changed."
         ZipExtractionStatus.NEEDS_ATTENTION -> "Needs attention: " + result.reason +
-            ". Chunks did not retry or delete anything it could not account for. Look for a folder starting with \"" +
+            ". Chunks did not change the destination during this check. Look for a folder starting with \"" +
             ZipExtractor.PARTIAL_PREFIX + "\" in the destination."
     }
 
@@ -211,7 +151,7 @@ private fun copyMessage(result: ZipExtractionResult): String = when (result.stat
     ZipExtractionStatus.FAILED_ROLLED_BACK -> "Copy failed: " + result.reason +
         ". Partial files were removed; nothing else changed."
     ZipExtractionStatus.NEEDS_ATTENTION -> "Needs attention: " + result.reason +
-        ". Chunks did not retry or delete anything it could not account for. Look for a folder starting with \"" +
+        ". Chunks did not change the destination during this check. Look for a folder starting with \"" +
         ZipExtractor.PARTIAL_PREFIX + "\" in the destination."
 }
 
