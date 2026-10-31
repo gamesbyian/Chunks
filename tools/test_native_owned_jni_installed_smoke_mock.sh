@@ -17,7 +17,12 @@ case "$*" in
     [[ "$mode" != BAD_API ]] && echo 35 || echo 29 ;;
   "install -r "*)
     [[ "$mode" != INSTALL_FAIL ]] || exit 28
-    [[ "$mode" != INSTALL_LIE ]] && echo Success || echo 'Failure [INSTALL_FAILED]' ;;
+    if [[ "$mode" == INSTALL_LIE ]]; then echo 'Failure [INSTALL_FAILED]'
+    elif [[ "$mode" == STREAMED_INSTALL ]]; then
+      echo 'Performing Streamed Install'
+      echo Success
+    else echo Success
+    fi ;;
   "shell pm path io.github.gamesbyian.chunks.ownedlab")
     [[ "$mode" != WRONG_PACKAGE ]] || exit 29
     echo 'package:/data/app/io.github.gamesbyian.chunks.ownedlab/base.apk' ;;
@@ -39,6 +44,8 @@ export PATH="$tmp/bin:$PATH"
 (cd "$tmp" && MOCK_MODE=SUCCESS bash "$root/native_owned_jni_installed_smoke.sh" \
     >"$tmp/good.log")
 grep -q '^CHUNKS_OWNED_ANDROID_INSTALLED=PASS api=35' "$tmp/good.log"
+(cd "$tmp" && MOCK_MODE=STREAMED_INSTALL bash "$root/native_owned_jni_installed_smoke.sh" >"$tmp/streamed.log")
+grep -q '^CHUNKS_OWNED_ANDROID_INSTALLED=PASS api=35' "$tmp/streamed.log"
 for mode in ADB_FAIL BAD_API INSTALL_FAIL INSTALL_LIE WRONG_PACKAGE \
   INSTRUMENT_EXIT_FAIL WRONG_TEST SKIPPED FAILED_TEST BAD_COUNT; do
   if (cd "$tmp" && MOCK_MODE="$mode" bash "$root/native_owned_jni_installed_smoke.sh" \
@@ -47,4 +54,4 @@ for mode in ADB_FAIL BAD_API INSTALL_FAIL INSTALL_LIE WRONG_PACKAGE \
     exit 1
   fi
 done
-echo 'CHUNKS_OWNED_JNI_MOCK=PASS true-positive plus 10 negative receipt controls'
+echo 'CHUNKS_OWNED_JNI_MOCK=PASS two-valid-install-formats plus 10 negative receipt controls'
