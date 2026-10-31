@@ -118,7 +118,8 @@ class OwnedPreviewStageTests(unittest.TestCase):
         self.assertNotIn("deleteRecursively", src)
         self.assertNotIn("Downloads", src)
         self.assertNotIn("addTorrent", src)
-        self.assertIn("no torrent bytes", receipt["proof_limit"])
+        self.assertIn("no pass inferred", receipt["proof_limit"])
+        self.assertIn("never shipping payload safety", receipt["proof_limit"])
 
     def test_same_output_is_refused_after_a_success(self):
         self.stage()
