@@ -22,6 +22,9 @@ on:
       - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalPayloadCollisionSurvey.kt"
       # Native resume reader changes must exercise the API29 real backing,
       # restart, and fresh-peer seeding journey, not only host JVM tests.
+      - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalResumeEventStore.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalRestoreDiscovery.kt"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/engine/LocalResumeEventStoreInstrumentedTest.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalResumeFileReader.kt"
       - "app/src/test/java/io/github/gamesbyian/chunks/engine/LocalResumeFileReaderTest.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/LocalEngineService.kt"

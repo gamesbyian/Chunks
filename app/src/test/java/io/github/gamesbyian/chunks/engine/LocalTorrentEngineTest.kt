@@ -235,6 +235,63 @@ class LocalTorrentEngineTest {
         assertFalse(File(dest, "Chunks public fixture/episode.bin").exists())
     }
 
+    @Test fun restoredStoppedTorrentReservesItsPayloadPathsBeforeAnotherCheckedAdd() {
+        val fixture = fixture()
+        val otherParent = temp.newFolder("restored-conflict-source")
+        val otherRoot = File(otherParent, "Chunks public fixture").apply { mkdirs() }
+        File(otherRoot, "episode.bin").writeBytes(
+            ByteArray(1_300_000).also { Random(1570).nextBytes(it) })
+        File(otherRoot, "extras/notes.txt").apply {
+            parentFile.mkdirs()
+            writeText("Different content, identical declared backing path")
+        }
+        val otherTorrent = TorrentBuilder().path(otherRoot)
+            .pieceSize(64 * 1024).generate().entry().bencode()
+
+        val state = temp.newFolder("restored-reservation-state")
+        val destination = temp.newFolder("restored-reservation-destination")
+        val first = persistentEngine(state)
+        val registered = added(first.addStoppedChecked(fixture.torrent, destination))
+        assertTrue(registered.stopped)
+        assertTrue(verifiedSavedResumeEvent(state, registered.infoHash))
+        first.close()
+
+        val restored = persistentEngine(state)
+        assertTrue("A valid stopped job must restore: " + restored.restoreProblems,
+            restored.restoreProblems.isEmpty())
+        assertTrue(requireNotNull(restored.status(registered.infoHash)).stopped)
+        val competing = restored.addStoppedChecked(otherTorrent, destination)
+        assertTrue("Restored job must exclude a second checked native writer: $competing",
+            competing is LocalAddResult.Refused)
+        assertTrue((competing as LocalAddResult.Refused).reason.contains("reserves"))
+        assertEquals(1, restored.list().size)
+        assertEquals(LocalCommandOutcome.VERIFIED,
+            restored.resume(registered.infoHash).outcome)
+    }
+
+    @Test fun restoredCheckedTorrentRefusesPayloadSymlinkOutsideChosenFolder() {
+        val fixture = fixture()
+        val state = temp.newFolder("restored-symlink-state")
+        val destination = temp.newFolder("restored-symlink-destination")
+        val first = persistentEngine(state)
+        val registered = added(first.addStoppedChecked(fixture.torrent, destination))
+        first.close()
+
+        val outside = File(temp.newFolder("restored-external-canary"), "critical.txt")
+            .apply { writeText("unrelated external data") }
+        val link = File(destination, "Chunks public fixture/episode.bin")
+        assertTrue(link.parentFile.isDirectory || link.parentFile.mkdirs())
+        Files.createSymbolicLink(link.toPath(), outside.toPath())
+
+        val restored = persistentEngine(state)
+        assertNotNull("Recovered torrent remains visible, but stopped",
+            restored.status(registered.infoHash))
+        assertEquals(LocalCommandOutcome.REFUSED,
+            restored.resume(registered.infoHash).outcome)
+        assertEquals("unrelated external data", outside.readText())
+        assertTrue(Files.isSymbolicLink(link.toPath()))
+    }
+
     @Test fun checkedStoppedRestartMayRecheckExistingSkippedRegularFile() {
         val sourceParent = temp.newFolder("checked-post-stop-source")
         val sourceRoot = File(sourceParent, "Stopped checked fixture").apply { mkdirs() }
@@ -453,7 +510,8 @@ class LocalTorrentEngineTest {
         val first = persistentEngine(state)
         val leech = added(first.addStopped(fixture.torrent, destination,
             listOf(InetSocketAddress("127.0.0.1", seeder.listenPort()))))
-        assertTrue(File(state, leech.infoHash + ".resume").isFile)
+        assertTrue("Completed transfer must persist a validated immutable snapshot",
+            verifiedSavedResumeEvent(state, leech.infoHash))
         first.resume(leech.infoHash)
         waitFor { first.status(leech.infoHash)?.progressPpm == 1_000_000 }
         requireFlushed(first, leech.infoHash)
@@ -572,15 +630,20 @@ class LocalTorrentEngineTest {
         val good = persistentEngine(state)
         val status = added(good.addStopped(fixture.torrent, temp.newFolder("d")))
         good.close()
-        // A valid resume file stored under the wrong identity, and garbage bytes.
-        val wrongName = File(state, "c".repeat(40) + ".resume")
-        File(state, status.infoHash + ".resume").copyTo(wrongName)
+        // A cryptographically valid source resume EVENT copied under a foreign
+        // identity must be detected via the bound key and never adopted.
+        val source = File(state, status.infoHash + ".resume-event.000000000001")
+        assertTrue("Legitimate immutable generation must exist first", source.isFile)
+        val wrongKey = "c".repeat(40)
+        val wrongName = File(state, "$wrongKey.resume-event.000000000001")
+        source.copyTo(wrongName)
         val garbage = File(state, "d".repeat(40) + ".resume").apply { writeText("not bencode") }
         File(state, "notes.txt").writeText("ignored")
 
         val restarted = persistentEngine(state)
         assertEquals(listOf(status.infoHash), restarted.list().map { it.infoHash })
-        assertEquals(setOf(wrongName.name, garbage.name), restarted.restoreProblems.toSet())
+        assertEquals(setOf("$wrongKey.resume-event (unsafe/incomplete history)", garbage.name),
+            restarted.restoreProblems.toSet())
         assertTrue(wrongName.isFile && garbage.isFile)
         assertEquals("not bencode", garbage.readText())
     }
@@ -775,7 +838,7 @@ class LocalTorrentEngineTest {
         // the metadata callback itself must independently persist a usable
         // resume witness before the engine is shut down.
         waitFor(15_000L) {
-            File(state, seed.infoHash + ".resume").let { it.isFile && it.length() > 0L }
+            verifiedSavedResumeEvent(state, seed.infoHash)
         }
         first.close()
         val second = persistentEngine(state)
