@@ -135,4 +135,24 @@ class LocalResumeEventStoreTest {
         assertArrayEquals("new immutably saved resume".toByteArray(),
             open(dir).restorable().single().second)
     }
+    @Test fun magnetWithoutMetadataCanRetireWithoutForgingResumePayload() {
+        val dir = root()
+        val store = open(dir)
+        assertTrue(store.canRegister(hash))
+        // A metadata-free magnet may have no SAVE record at all when removed.
+        store.removeIntent(hash)
+        assertFalse("An interrupted native Remove must not permit resurrection",
+            open(dir).canRegister(hash))
+        assertTrue("Pending Remove carries no resume bytes",
+            open(dir).restorable().isEmpty())
+        assertTrue("A valid empty-magnet retirement is not a corrupt journal",
+            open(dir).problems().isEmpty())
+        store.removeCommit(hash)
+        val afterRestart = open(dir)
+        assertTrue("Committed removal permits explicit clean same-hash Add",
+            afterRestart.canRegister(hash))
+        assertTrue(afterRestart.restorable().isEmpty())
+        assertTrue(afterRestart.problems().isEmpty())
+    }
+
 }
