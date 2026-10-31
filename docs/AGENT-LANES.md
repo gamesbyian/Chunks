@@ -6,7 +6,7 @@
 |---|---|---|
 | Shared environment catalog and scoped UI | #567 #8 | One immutable (environment, infohash) observation model before combined query; serialize edits to MainActivity/LocalEngineScreen and common model |
 | rTorrent protocol/remote integration | #1 #4 #464 | Exact-hash mutation semantics, auth, paged list, hosted and disposable engine proof; no guessing filesystem authority |
-| Android engine, backing storage and lifecycle | #5 #568 #569 | libtorrent4j, service, grants, public storage, independent copy, quotas; serialize shared engine/Gradle changes |
+| Android engine, backing storage and lifecycle | #5 #569 #865 | libtorrent4j, service, grants, public storage, independent copy, quotas; serialize shared engine/Gradle changes |
 | Restricted filesystem/extraction safety | #2 #7 #70 #289 | Ownership graphs, journal, cancellation, failure recovery, dry-run, disposable fault injection; independent acceptance needed |
 | Native UX, naming and accessibility | #8 #567 #6 | Compose journeys, suggestion provenance, 48dp/200%/TalkBack and physical handset; cannot auto-authorize backing file mutations |
 | Independent acceptance and release | #9 #10 plus cross-cutting | Review exact head, inspect real screenshots and results, verify claimed environment; should not self-certify own risky executor |
