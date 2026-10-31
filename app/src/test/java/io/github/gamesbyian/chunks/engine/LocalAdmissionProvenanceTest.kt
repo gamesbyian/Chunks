@@ -210,7 +210,7 @@ class LocalAdmissionProvenanceTest {
     @Test fun interruptedFinalReceiptIsUnknownAndCannotBeRewritten() {
         val state = temp.newFolder("partial-final")
         val receipt = File(state, "$hash.admission")
-        val incomplete = "chunks-native-admission-v1\\n$hash\\n".toByteArray()
+        val incomplete = "chunks-native-admission-v1\n$hash\n".toByteArray()
         receipt.writeBytes(incomplete)
         assertNull(LocalAdmissionProvenance.read(state, hash))
         assertFalse(LocalAdmissionProvenance.persist(
