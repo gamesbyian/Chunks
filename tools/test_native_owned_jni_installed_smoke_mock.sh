@@ -35,7 +35,9 @@ case "$*" in
     else echo 'INSTRUMENTATION_STATUS_CODE: 0'; fi
     if [[ "$mode" == FAILED_TEST ]]; then echo 'FAILURES!!!'; fi
     if [[ "$mode" == BAD_COUNT ]]; then echo 'OK (2 tests)'
+    elif [[ "$mode" == CRASH ]]; then echo 'INSTRUMENTATION_RESULT: shortMsg=Process crashed.'; echo 'INSTRUMENTATION_CODE: 0'
     else echo 'OK (1 test)'; fi ;;
+  "logcat -d -b crash -v time") echo 'MOCK_NATIVE_FATAL: expected crash diagnostic' ;;
   *) echo "Unexpected adb call: $*" >&2; exit 33 ;;
 esac
 MOCK
@@ -47,11 +49,19 @@ grep -q '^CHUNKS_OWNED_ANDROID_INSTALLED=PASS api=35' "$tmp/good.log"
 (cd "$tmp" && MOCK_MODE=STREAMED_INSTALL bash "$root/native_owned_jni_installed_smoke.sh" >"$tmp/streamed.log")
 grep -q '^CHUNKS_OWNED_ANDROID_INSTALLED=PASS api=35' "$tmp/streamed.log"
 for mode in ADB_FAIL BAD_API INSTALL_FAIL INSTALL_LIE WRONG_PACKAGE \
-  INSTRUMENT_EXIT_FAIL WRONG_TEST SKIPPED FAILED_TEST BAD_COUNT; do
+  INSTRUMENT_EXIT_FAIL WRONG_TEST SKIPPED FAILED_TEST BAD_COUNT CRASH; do
   if (cd "$tmp" && MOCK_MODE="$mode" bash "$root/native_owned_jni_installed_smoke.sh" \
       >"$tmp/failure.log" 2>&1); then
     echo "CHUNKS_OWNED_JNI_MOCK=FAIL accepted $mode" >&2
     exit 1
   fi
 done
-echo 'CHUNKS_OWNED_JNI_MOCK=PASS two-valid-install-formats plus 10 negative receipt controls'
+(cd "$tmp" && MOCK_MODE=CRASH bash "$root/native_owned_jni_installed_smoke.sh" \
+    >"$tmp/native-crash.log" 2>&1) && {
+  echo 'CHUNKS_OWNED_JNI_MOCK=FAIL accepted native crash' >&2
+  exit 1
+}
+grep -Fq 'MOCK_NATIVE_FATAL: expected crash diagnostic' "$tmp/native-crash.log"
+grep -Fq 'CHUNKS_OWNED_ANDROID_CRASH_DIAGNOSTICS_BEGIN' "$tmp/native-crash.log"
+grep -Fq 'CHUNKS_OWNED_ANDROID_CRASH_DIAGNOSTICS_END' "$tmp/native-crash.log"
+echo 'CHUNKS_OWNED_JNI_MOCK=PASS two-valid-install-formats plus 11 negative receipt controls and crash diagnostics'
