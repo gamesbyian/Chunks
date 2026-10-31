@@ -169,6 +169,24 @@ jobs:
           set -e
           test "$failure_status" -eq 86
           timeout 30 "$build/chunks_owned_session_smoke"
+      - name: Real libtorrent peer traffic and collisions with Android-like receipt hardlink denial
+        run: |
+          set -euo pipefail
+          build="$RUNNER_TEMP/chunks-owned-jni-host-build"
+          # This interposes only the private .tmp- receipt linkat operations.
+          # A default-lib-backed download will not emit the denial marker.
+          c++ -std=c++17 -O2 -fPIC -shared -Wall -Wextra -Werror \
+            experiments/native-owned-writer/bridge/deny_receipt_hardlink_preload.cc \
+            -ldl -o "$RUNNER_TEMP/chunks-deny-receipt-linkat.so"
+          LD_PRELOAD="$RUNNER_TEMP/chunks-deny-receipt-linkat.so" \
+            timeout 50 "$build/chunks_owned_session_smoke" 2>&1 | \
+            tee "$RUNNER_TEMP/chunks-denied-link-real-peer.log"
+          grep -F 'CHUNKS_HOST_RECEIPT_LINKAT_DENIED=EPERM' "$RUNNER_TEMP/chunks-denied-link-real-peer.log"
+          grep -F 'CHUNKS_OWNED_LOOPBACK_TRANSFER=PASS size=16384' "$RUNNER_TEMP/chunks-denied-link-real-peer.log"
+          grep -F 'CHUNKS_OWNED_RESTARTED_COMPLETED_COLLISION=PASS' "$RUNNER_TEMP/chunks-denied-link-real-peer.log"
+          grep -F 'CHUNKS_OWNED_RESTARTED_PENDING_COLLISION=PASS' "$RUNNER_TEMP/chunks-denied-link-real-peer.log"
+          grep -F 'CHUNKS_OWNED_LATE_START_COLLISION=PASS' "$RUNNER_TEMP/chunks-denied-link-real-peer.log"
+          grep -F 'CHUNKS_REAL_LIBTORRENT_HOST_SESSION=PASS' "$RUNNER_TEMP/chunks-denied-link-real-peer.log"
       - name: Compile forked libtorrent4j Java sources and create real owned JNI session
         run: |
           set -euo pipefail
