@@ -12,5 +12,16 @@
                 <action android:name="android.content.action.DOCUMENTS_PROVIDER" />
             </intent-filter>
         </provider>
+        <!-- Adversarial test provider: createDocument returns a preexisting URI. -->
+        <provider
+            android:name=".debug.ReusedUriDocumentsProvider"
+            android:authorities="${applicationId}.debug.reuseduri"
+            android:exported="true"
+            android:grantUriPermissions="true"
+            android:permission="android.permission.MANAGE_DOCUMENTS">
+            <intent-filter>
+                <action android:name="android.content.action.DOCUMENTS_PROVIDER" />
+            </intent-filter>
+        </provider>
     </application>
 </manifest>
