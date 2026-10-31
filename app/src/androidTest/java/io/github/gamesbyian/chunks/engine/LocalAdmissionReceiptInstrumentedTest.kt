@@ -1,5 +1,6 @@
 package io.github.gamesbyian.chunks.engine
 
+import android.system.Os
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
@@ -53,6 +54,29 @@ class LocalAdmissionReceiptInstrumentedTest {
             assertArrayEquals("Existing Android-private bytes must remain untouched",
                 original, receipt.readBytes())
             assertNull(LocalAdmissionProvenance.read(root, hash))
+        }
+
+    @Test fun plantedFifoCannotBlockPrivateReceiptReadOrEarnAdmission() =
+        withPrivateRoot("fifo") { root ->
+            val receipt = File(root, "$hash.admission")
+            Os.mkfifo(receipt.absolutePath, 384) // Private mode 0600.
+            val pool = java.util.concurrent.Executors.newSingleThreadExecutor { task ->
+                Thread(task, "chunks-fifo-negative-control").apply { isDaemon = true }
+            }
+            try {
+                val read = pool.submit<LocalAdmissionProvenance.Mode?> {
+                    LocalAdmissionProvenance.read(root, hash)
+                }
+                assertNull("Nonblocking pinned receipt read must refuse FIFO",
+                    read.get(3, java.util.concurrent.TimeUnit.SECONDS))
+                val write = pool.submit<Boolean> {
+                    LocalAdmissionProvenance.persist(
+                        root, hash, LocalAdmissionProvenance.Mode.CHECKED)
+                }
+                assertFalse("FIFO may never authorize or block native Add",
+                    write.get(3, java.util.concurrent.TimeUnit.SECONDS))
+                assertTrue("Refusal must leave foreign FIFO path intact", receipt.exists())
+            } finally { pool.shutdownNow() }
         }
 
     @Test fun interruptedDirectoryForceRefusesAndMatchingRetryCanRecover() =
