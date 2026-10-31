@@ -109,9 +109,9 @@ def main():
         with open(summary, "a", encoding="utf-8") as out:
             j = digest["junit"]
             out.write(f"### CI evidence: {args.suite}\n\n")
-            out.write(f"- Source: \`{digest['source_sha'] or 'unknown'}\`; job: "
-                      f"\`{digest['reported_job_status']}\`; phase: "
-                      f"\`{digest['phase']}\`\n")
+            out.write(f"- Source: `{digest['source_sha'] or 'unknown'}`; job: "
+                      f"`{digest['reported_job_status']}`; phase: "
+                      f"`{digest['phase']}`\n")
             out.write(f"- JUnit: {j['reports']} reports; {j['executed']} executed, "
                       f"{j['failed']} failed, {j['skipped']} skipped\n")
             if digest["failed_cases"]:
