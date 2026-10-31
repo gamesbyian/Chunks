@@ -40,6 +40,10 @@ jobs:
           if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
             ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
           fi
+      - name: Check required native atlas captures before SDK and emulator allocation
+        run: |
+          python3 tools/check_native_atlas_contract.py
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_native_atlas_contract.py
       - name: Compile app and instrumented native UI tests
         run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
       - name: Enable Android emulator KVM
