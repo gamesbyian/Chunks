@@ -1,7 +1,7 @@
 # Chunks: agent concurrency and ownership
 
 
-> **Current active stack (2026-10-31):** no permanent agent roster is presumed; #868/#869 are the #865 metadata integration branches, with #869 **RED** on [actual API35 magnet resume run 41246130576](https://github.com/gamesbyian/Chunks/actions/runs/41246130576). Old #812/#856 remain source/test references until their unique changes are explicitly reconciled. [Repository tracking audit](REPOSITORY-DOCS-AND-TRACKING-AUDIT-2026-10-31.md), [current queue](WORK-QUEUE.md). Do not parallel-merge overlapping engine work or resurrect the superseded native same-path payload ownership gate.
+> **Live scheduling reconciliation (2026-10-31):** GitHub currently reports no open PRs. #868/#869 are merged; old #812/#856 are closed; the old #869 API35 failure belongs to a superseded head and its integrated replacement passed. The only executable priority order is [WORK-QUEUE's authoritative next-work dispatch](WORK-QUEUE.md#authoritative-next-work-dispatch-2026-10-31-reconciled-with-live-github). Recheck live repository state before dispatch and never revive a closed branch merely because an older handoff called it active. Historical evidence remains in [QUALITY-LEDGER](QUALITY-LEDGER.md).
 
 **These are capability areas, never fixed agent jobs.** No permanent app-development roster is established by this document; inspect actual live agent/branch ownership. All agents choose from the **one** [ranked workboard](WORK-QUEUE.md), after reconciling live main, PRs, issues and active branches. No agent is presumed to be running because an old prompt mentions one. One agent may deliver multiple compatible slices; multiple agents must avoid the same source ownership.
 
