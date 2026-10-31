@@ -490,6 +490,7 @@ private fun ChunksApp(
                     // Discovery is read-only, so abandoning it changes nothing.
                     connectJob?.cancel()
                     remoteFence.invalidate()
+                    RemoteCredentialLock.invalidate()
                     loading = false
                     connectDiagnostics = ConnectionDiagnostics()
                     error = "Connection check cancelled. Nothing was changed on the server."
@@ -588,6 +589,9 @@ private fun ChunksApp(
                         loading = true
                         error = null
                         val ticket = remoteFence.begin("main")
+                        // Invalidate every earlier pending Connect's right to
+                        // remember credentials, before any network suspension.
+                        val credentialTicket = RemoteCredentialLock.beginConnection()
                         // Freeze credentials for this one connection attempt.
                         // A later edit or lifecycle reset cannot redirect it.
                         val settings = RemoteCredentials(target, username, password)
@@ -608,13 +612,11 @@ private fun ChunksApp(
                                     Triple(connection, verifiedVersion, verifiedList)
                                 }
                                 val (candidate, v, list) = discovered.response
-                                // Preserve a user's explicit saved URL and its
-                                // existing alias scope. For hostname-only auto
-                                // discovery, remember the verified exact RPC
-                                // endpoint so reconnection needs no path scan.
-                                val verifiedSettings = if (
-                                    RemoteSmartConnect.candidates(settings.endpoint, settings.username).size == 1
-                                ) settings else discovered.credentials
+                                // The verified RPC endpoint may differ from
+                                // the pasted browser URL or a hostname with a
+                                // single candidate. Never scope a verified
+                                // principal to an unverified draft address.
+                                val verifiedSettings = discovered.credentials
                                 if (remoteFence.current(ticket) && server == null) {
                                     inspectionFence.invalidate()
                                     mutationGate.reset()
@@ -644,9 +646,10 @@ private fun ChunksApp(
                                     val retained = withContext(Dispatchers.IO) {
                                         try {
                                             if (saveThisLogin) {
-                                                val singleSaved = vault.save(verifiedSettings)
-                                                val rosterSaved = profileRoster.saveVerified(verifiedSettings)
-                                                singleSaved && rosterSaved
+                                                RemoteCredentialLock.saveVerifiedPairIfCurrent(
+                                                    vault, profileRoster, verifiedSettings,
+                                                    credentialTicket
+                                                )
                                             } else {
                                                 val disabled = vault.setRememberingEnabled(false)
                                                 val rosterErased = profileRoster.clearAll()
@@ -974,8 +977,10 @@ private fun ChunksApp(
                     onSeedingRules = { section = Section.SEEDING },
                     environmentLabel = serverEnvironmentLabel(aliasScope),
                     onDisconnect = {
-                        // Invalidate every in-flight read before clearing UI state.
+                        // Invalidate every in-flight read and credential save
+                        // before switching/clearing the authenticated scope.
                         remoteFence.invalidate()
+                        RemoteCredentialLock.invalidate()
                         inspectionFence.invalidate()
                         mutationGate.reset()
                         server = null
