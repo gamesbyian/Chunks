@@ -12,6 +12,9 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.hasAnyDescendant
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.onAllNodes
 import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.printToString
@@ -268,17 +271,22 @@ class ChunksMainActivityAtlasTest {
         // A late IME/viewport settle can still recycle the item between the
         // scroll and the lookup. Re-scroll until the node is composed; the
         // click itself is issued exactly once, so no duplicate connect occurs.
+        // Button merges its text into clickable semantics; on some API35
+        // viewport transitions only the unmerged button + text are present.
+        // Inspect the actual clickable parent, not a transient merged text
+        // child, and keep one single semantic click after the item is reached.
+        val connectButton = hasClickAction() and hasAnyDescendant(hasText("Connect to rTorrent"))
         var connectComposed = false
         for (attempt in 1..5) {
             rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Connect to rTorrent"))
             rule.waitForIdle()
-            if (rule.onAllNodesWithText("Connect to rTorrent").fetchSemanticsNodes().size == 1) {
+            if (rule.onAllNodes(connectButton, useUnmergedTree = true).fetchSemanticsNodes().size == 1) {
                 connectComposed = true
                 break
             }
         }
-        assertTrue("Connect to rTorrent was never composed after scrolling", connectComposed)
-        rule.onNodeWithText("Connect to rTorrent").performSemanticsAction(SemanticsActions.OnClick)
+        assertTrue("Enabled Connect button was never composed after scrolling", connectComposed)
+        rule.onNode(connectButton, useUnmergedTree = true).performSemanticsAction(SemanticsActions.OnClick)
         try {
             rule.waitUntil(20_000) {
                 rule.onAllNodesWithText("It's all here.").fetchSemanticsNodes().isNotEmpty()
