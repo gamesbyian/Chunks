@@ -32,10 +32,11 @@ status=$?
 set -e
 cat "$log"
 if [[ "$status" != 0 ]] ||
-   ! grep -qx 'OK (3 tests)' "$log" ||
+   ! grep -qx 'OK (4 tests)' "$log" ||
    ! grep -q '^INSTRUMENTATION_STATUS: test=pinnedOwnedDiskConstructorStartsOnlyInsideDisposablePrivateRoot' "$log" ||
    ! grep -q '^INSTRUMENTATION_STATUS: test=ownedJniActuallyRefusesPreexistingForeignNativePayload' "$log" ||
    ! grep -q '^INSTRUMENTATION_STATUS: test=ownedJniWritesAndRechecksActualPieceWithPinnedReceipts' "$log" ||
+   ! grep -q '^INSTRUMENTATION_STATUS: test=installedOwnedJniDownloadsActualPeerPieceWithoutTouchingForeignData' "$log" ||
    ! grep -q '^INSTRUMENTATION_STATUS_CODE: 0' "$log" ||
    grep -qE '^FAILURES|^INSTRUMENTATION_STATUS_CODE: -(1|2|3|4)' "$log"; then
   echo "CHUNKS_OWNED_ANDROID_INSTALLED=REFUSED instrumentation not fully verified"
@@ -49,4 +50,4 @@ if [[ "$status" != 0 ]] ||
   echo "CHUNKS_OWNED_ANDROID_CRASH_DIAGNOSTICS_END"
   exit 1
 fi
-echo "CHUNKS_OWNED_ANDROID_INSTALLED=PASS api=35 abi=x86_64 scope=app-private native-foreign-refusal-positive-piece-no-peer"
+echo "CHUNKS_OWNED_ANDROID_INSTALLED=PASS api=35 abi=x86_64 scope=app-private native-foreign-refusal-positive-piece-loopback-peer"
