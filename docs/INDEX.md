@@ -23,6 +23,7 @@ The [documentation architecture and authoring standard](DOCUMENTATION-STANDARD.m
 - [SPEC-COVERAGE](SPEC-COVERAGE.md): required versus implemented capability and acceptance gaps.
 - [CI-POLICY](CI-POLICY.md): currently applicable runner costs, test gates and workflows.
 - [CI engineering standard](CI-ENGINEERING-STANDARD.md): binding audit, dispatch efficiency, risk-aware verification, parallelism and agent-readable diagnostics requirements.
+- [CI audit and baseline, 2026-10-31](CI-AUDIT-2026-10-31.md): measured workflow inventory, historical failure controls, and next optimization candidates.
 - [Physical handset acceptance](PHYSICAL-HANDSET-ACCEPTANCE.md): receipt template, the opt-in scripts that run unchanged on a handset, and manual lifecycle/accessibility checks.
 
 ## Advanced operations (normative feature contracts)
