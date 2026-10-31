@@ -170,6 +170,55 @@ class LocalAdmissionProvenanceTest {
         }
     }
 
+    @Test fun foreignFinalHardlinkIsNeverTruncatedByExclusivePublication() {
+        val state = temp.newFolder("preexisting-foreign-final-hardlink")
+        val foreign = temp.newFile("foreign-final-hardlink-bytes")
+        val original = ByteArray(4096) { (it * 17 + 9).toByte() }
+        foreign.writeBytes(original)
+        val receipt = File(state, "$hash.admission")
+        Files.createLink(receipt.toPath(), foreign.toPath())
+        assertFalse(LocalAdmissionProvenance.persist(
+            state, hash, LocalAdmissionProvenance.Mode.CHECKED))
+        assertArrayEquals("Existing foreign inode must remain byte-exact",
+            original, foreign.readBytes())
+        assertArrayEquals(original, receipt.readBytes())
+    }
+
+    @Test fun replacingPublishedPathAfterCreateNeverRedirectsDescriptorWrite() {
+        val state = temp.newFolder("replaced-final-race")
+        val foreign = temp.newFile("foreign-replacement-inode")
+        val original = ByteArray(8192) { (it * 29 + 1).toByte() }
+        foreign.writeBytes(original)
+        var substituted = false
+        val accepted = LocalAdmissionProvenance.persist(
+            state, hash, LocalAdmissionProvenance.Mode.CHECKED,
+            afterExclusiveCreate = { path ->
+                // Deterministically substitute a foreign same-UID hardlink
+                // after CREATE_NEW but before the first receipt write.
+                // A reopened pathname would corrupt the foreign inode.
+                assertTrue(Files.deleteIfExists(path))
+                Files.createLink(path, foreign.toPath())
+                substituted = true
+            })
+        assertTrue("The controlled interposition must execute", substituted)
+        assertFalse("Substituted pathname cannot earn native Add admission", accepted)
+        assertArrayEquals("The original foreign inode must be untouched",
+            original, foreign.readBytes())
+        assertNull(LocalAdmissionProvenance.read(state, hash))
+    }
+
+    @Test fun interruptedFinalReceiptIsUnknownAndCannotBeRewritten() {
+        val state = temp.newFolder("partial-final")
+        val receipt = File(state, "$hash.admission")
+        val incomplete = "chunks-native-admission-v1\\n$hash\\n".toByteArray()
+        receipt.writeBytes(incomplete)
+        assertNull(LocalAdmissionProvenance.read(state, hash))
+        assertFalse(LocalAdmissionProvenance.persist(
+            state, hash, LocalAdmissionProvenance.Mode.CHECKED))
+        assertArrayEquals("No retry may truncate partially published evidence",
+            incomplete, receipt.readBytes())
+    }
+
     @Test fun interruptedTemporaryOrOversizedReceiptDoesNotAuthorizeUnownedData() {
         val state = temp.newFolder("interrupted")
         File(state, "$hash.admission.tmp").writeText("incomplete transaction")
