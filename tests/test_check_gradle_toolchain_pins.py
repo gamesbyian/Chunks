@@ -73,6 +73,24 @@ class PinContractTest(unittest.TestCase):
             workflows={name: reviewed for name in module.WORKFLOWS}
         ))
 
+    def test_reviewed_action_reference_cannot_be_spoofed_in_comment(self):
+        bad = GOOD_WORKFLOW.replace(
+            "uses: gradle/actions/setup-gradle@v4",
+            "uses: attacker/install@v1 # gradle/actions/setup-gradle@v4"
+        )
+        self.assertTrue(self.check(
+            workflows={name: bad for name in module.WORKFLOWS}
+        ))
+
+    def test_action_reference_must_be_complete_not_sha_prefix(self):
+        bad = GOOD_WORKFLOW.replace(
+            "actions/setup-java@v4",
+            "actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3BAD"
+        )
+        self.assertTrue(self.check(
+            workflows={name: bad for name in module.WORKFLOWS}
+        ))
+
     def test_unreviewed_action_sha_fails(self):
         unreviewed = GOOD_WORKFLOW.replace(
             "gradle/actions/setup-gradle@v4", "gradle/actions/setup-gradle@" + "a" * 40
