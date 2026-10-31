@@ -8,7 +8,9 @@ in GitHub Actions; this is an index and an honest evidence-execution receipt.
 import argparse
 import glob
 import json
+import math
 import os
+import re
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
@@ -21,6 +23,9 @@ def make_digest(paths, status, suite, env=None):
     failed_cases = []
     invalid = []
     reports = 0
+    timed_cases = 0
+    invalid_case_times = 0
+    class_seconds = {}
     for path in sorted(set(paths)):
         try:
             root = ET.parse(path).getroot()
@@ -30,6 +35,22 @@ def make_digest(paths, status, suite, env=None):
             reports += 1
             for case in cases:
                 tests += 1
+                # Timing is advisory and separate from acceptance. A missing or
+                # nonfinite JUnit duration cannot invent an executed test.
+                duration_text = case.get("time")
+                if duration_text is not None:
+                    try:
+                        duration = float(duration_text)
+                        if not math.isfinite(duration) or duration < 0:
+                            raise ValueError("invalid duration")
+                        # Class identifiers only, sanitized before publishing.
+                        klass = re.sub(r"[^A-Za-z0-9_.$]", "?", (
+                            case.get("classname") or "<unclassified>"
+                        ))[:120]
+                        class_seconds[klass] = class_seconds.get(klass, 0.0) + duration
+                        timed_cases += 1
+                    except (TypeError, ValueError, OverflowError):
+                        invalid_case_times += 1
                 if case.find("skipped") is not None:
                     skipped += 1
                 if case.find("failure") is not None or case.find("error") is not None:
@@ -66,6 +87,19 @@ def make_digest(paths, status, suite, env=None):
     repository = env.get("GITHUB_REPOSITORY", "")
     run_id = env.get("GITHUB_RUN_ID", "")
     run_url = f"{base}/{repository}/actions/runs/{run_id}" if repository and run_id else None
+    slow_classes = sorted(class_seconds.items(), key=lambda pair: (-pair[1], pair[0]))[:8]
+    timing = {
+        "case_duration_unit": "seconds",
+        "valid_case_durations": timed_cases,
+        "invalid_case_durations": invalid_case_times,
+        "missing_case_durations": max(0, tests - timed_cases - invalid_case_times),
+        "total_case_seconds": round(sum(class_seconds.values()), 2),
+        "slowest_classes": [
+            {"class": name, "summed_case_seconds": round(seconds, 2)}
+            for name, seconds in slow_classes
+        ],
+        "interpretation": "Sum of testcase durations, not wall time or per-test concurrency",
+    }
     return {
         "schema_version": VERSION,
         "workflow": env.get("GITHUB_WORKFLOW"),
@@ -85,6 +119,7 @@ def make_digest(paths, status, suite, env=None):
                   "skipped": skipped, "executed": tests - skipped},
         "failed_cases": failed_cases,
         "invalid_reports": invalid[:20],
+        "timing": timing,
         "classification_confidence": "observed" if failures or invalid else "unclassified",
         "next_action": next_action,
         "security_note": "No stdout, exception messages, protected URLs or credentials are copied",
@@ -122,6 +157,14 @@ def main():
                       f"`{digest['phase']}`\n")
             out.write(f"- JUnit: {j['reports']} reports; {j['executed']} executed, "
                       f"{j['failed']} failed, {j['skipped']} skipped\n")
+            if digest["timing"]["slowest_classes"]:
+                top = digest["timing"]["slowest_classes"][:3]
+                out.write("- Highest cumulative test-class durations (not wall time): "
+                          + ", ".join(f"`{v['class']}` {v['summed_case_seconds']:.1f}s"
+                                      for v in top) + "\n")
+            if digest["timing"]["invalid_case_durations"]:
+                out.write(f"- JUnit invalid duration fields: "
+                          f"{digest['timing']['invalid_case_durations']}\n")
             if digest["failed_cases"]:
                 out.write("- First failing tests (no private failure text): "
                           + ", ".join(json.dumps(c["class"] + "." + c["test"])
