@@ -183,4 +183,52 @@ class OwnedMediaStoreDocumentPublicationInstrumentedTest {
         }
     }
 
+
+    @Test fun independentlyVerifiedPendingRowIsNotConfusedWithPublishedAndTamperingIsRefused() {
+        val contents = ByteArray(4097) { (it * 23 + 4).toByte() }
+        val name = "pending-evidence-${UUID.randomUUID().toString().replace("-", "")}.txt"
+        val digest = java.security.MessageDigest.getInstance("SHA-256").digest(contents)
+            .joinToString("") { "%02x".format(it.toInt() and 255) }
+        val row = requireNotNull(resolver.insert(
+            MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY),
+            ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, name)
+                put(MediaStore.MediaColumns.MIME_TYPE, "text/plain")
+                put(MediaStore.MediaColumns.RELATIVE_PATH,
+                    Environment.DIRECTORY_DOWNLOADS + "/Chunks Exports/")
+                put(MediaStore.MediaColumns.IS_PENDING, 1)
+            }))
+        val journal = OwnedMediaStorePublicationJournal.begin(
+            context, name, "text/plain", contents.size.toLong(), digest)
+        val operationId = journal.operationId
+        try {
+            journal.use {
+                it.rowReceived(row)
+                requireNotNull(resolver.openFileDescriptor(row, "rw")).use { owned ->
+                    assertEquals(contents.size,
+                        android.system.Os.pwrite(owned.fileDescriptor,
+                            contents, 0, contents.size, 0L))
+                    android.system.Os.fsync(owned.fileDescriptor)
+                }
+                it.bytesSynced()
+            }
+            assertEquals(OwnedMediaStorePublicationJournal.Verdict.VERIFIED_PENDING,
+                OwnedMediaStorePublicationJournal.assess(context, operationId).verdict)
+            // This is a disposable test-created row only. A wrong digest must
+            // never be promoted into either a pending or published receipt.
+            requireNotNull(resolver.openFileDescriptor(row, "rw")).use {
+                val bad = byteArrayOf(99, 11)
+                assertEquals(bad.size,
+                    android.system.Os.pwrite(it.fileDescriptor, bad, 0, bad.size, 0L))
+                android.system.Os.fsync(it.fileDescriptor)
+            }
+            assertEquals(OwnedMediaStorePublicationJournal.Verdict.NEEDS_ATTENTION,
+                OwnedMediaStorePublicationJournal.assess(context, operationId).verdict)
+        } finally {
+            val direct = if (Build.VERSION.SDK_INT == 29)
+                MediaStore.setIncludePending(row) else row
+            resolver.delete(direct, null, null)
+        }
+    }
+
 }
