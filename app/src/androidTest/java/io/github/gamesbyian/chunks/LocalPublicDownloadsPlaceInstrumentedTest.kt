@@ -5,6 +5,7 @@ import android.os.Environment
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.gamesbyian.chunks.engine.LocalAddResult
+import io.github.gamesbyian.chunks.engine.LocalAdmissionProvenance
 import io.github.gamesbyian.chunks.engine.LocalCommandOutcome
 import io.github.gamesbyian.chunks.engine.LocalEngineConfig
 import io.github.gamesbyian.chunks.engine.LocalTorrentEngine
@@ -53,6 +54,34 @@ class LocalPublicDownloadsPlaceInstrumentedTest {
     private fun engine(state: File? = null) = LocalTorrentEngine(LocalEngineConfig(
         listenInterfaces = "127.0.0.1:0", allowMultipleConnectionsPerIp = true,
         stateDirectory = state)).also { it.start(); engines += it }
+
+    @Test fun privateAdmissionReceiptPublicationReportsTheFailingFilesystemStage() {
+        val root = File(work, "receipt-stages").apply { assertTrue(mkdir()) }.toPath()
+        var stage = "inspect private root"
+        try {
+            assertTrue(java.nio.file.Files.isDirectory(root, java.nio.file.LinkOption.NOFOLLOW_LINKS))
+            stage = "exclusive temporary creation"
+            val temporary = java.nio.file.Files.createTempFile(root, "receipt.", ".tmp")
+            stage = "temporary write and fsync"
+            java.nio.channels.FileChannel.open(temporary, java.nio.file.StandardOpenOption.WRITE,
+                java.nio.file.LinkOption.NOFOLLOW_LINKS).use { channel ->
+                val bytes = java.nio.ByteBuffer.wrap("stage probe".toByteArray())
+                while (bytes.hasRemaining()) channel.write(bytes)
+                channel.force(true)
+            }
+            stage = "non-replacing hardlink publication"
+            java.nio.file.Files.createLink(root.resolve("receipt"), temporary)
+            stage = "directory fsync"
+            java.nio.channels.FileChannel.open(root, java.nio.file.StandardOpenOption.READ)
+                .use { it.force(true) }
+            stage = "production admission persistence"
+            assertTrue("Production admission persistence refused after filesystem stages passed",
+                LocalAdmissionProvenance.persist(root.toFile(), "a".repeat(40),
+                LocalAdmissionProvenance.Mode.CHECKED))
+        } catch (failure: Exception) {
+            throw AssertionError("Admission receipt stage failed: $stage", failure)
+        }
+    }
 
     private fun waitFor(what: String, timeoutMs: Long = 90_000, condition: () -> Boolean) {
         val deadline = System.currentTimeMillis() + timeoutMs

@@ -11,6 +11,23 @@ class LocalAdmissionProvenanceTest {
     @get:Rule val temp = TemporaryFolder()
     private val hash = "a".repeat(40)
 
+    @Test fun failedDirectorySyncCannotBeBypassedByRetryingAnExistingReceipt() {
+        val state = temp.newFolder("failed-directory-sync")
+        val failure: (java.nio.file.Path) -> Unit = { throw java.io.IOException("sync failed") }
+        assertFalse(LocalAdmissionProvenance.persist(state, hash,
+            LocalAdmissionProvenance.Mode.CHECKED, failure))
+        // The hard link can exist despite a failed fsync. Its presence alone is
+        // not evidence that its directory entry will survive a crash.
+        assertEquals(LocalAdmissionProvenance.Mode.CHECKED,
+            LocalAdmissionProvenance.read(state, hash))
+        assertFalse(LocalAdmissionProvenance.persist(state, hash,
+            LocalAdmissionProvenance.Mode.CHECKED, failure))
+        assertTrue(LocalAdmissionProvenance.persist(state, hash,
+            LocalAdmissionProvenance.Mode.CHECKED))
+        assertFalse(LocalAdmissionProvenance.persist(state, hash,
+            LocalAdmissionProvenance.Mode.REVIEWED_EXISTING))
+    }
+
     @Test fun checkedReviewIsDurablyRecognizedButNeverUpgradedToExistingData() {
         val state = temp.newFolder("checked-state")
         assertNull(LocalAdmissionProvenance.read(state, hash))

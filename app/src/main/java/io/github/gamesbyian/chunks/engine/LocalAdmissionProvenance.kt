@@ -5,6 +5,7 @@ import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import java.nio.file.Files
 import java.nio.file.LinkOption
+import java.nio.file.Path
 import java.nio.file.StandardOpenOption
 
 /**
@@ -50,18 +51,27 @@ internal object LocalAdmissionProvenance {
      * mode refuses rather than rewriting evidence of an earlier admission.
      * A crash that loses this record causes conservative UNKNOWN restoration.
      */
-    fun persist(directory: File?, hash: String, mode: Mode): Boolean {
+    fun persist(
+        directory: File?, hash: String, mode: Mode,
+        syncDirectory: (Path) -> Unit = { root ->
+            FileChannel.open(root, StandardOpenOption.READ).use { it.force(true) }
+        }
+    ): Boolean {
         if (directory == null) return true // No native session restoration.
         if (!identity.matches(hash) || !directory.isDirectory) return false
         val path = receipt(directory, hash).toPath()
         val root = directory.toPath()
         var temporary: java.nio.file.Path? = null
+        fun syncMatchingReceipt(): Boolean = try {
+            if (read(directory, hash) != mode) false
+            else { syncDirectory(root); true }
+        } catch (_: Exception) { false }
         return try {
             if (!Files.isDirectory(root, LinkOption.NOFOLLOW_LINKS) ||
                 Files.isSymbolicLink(root)) return false
             if (Files.exists(path, LinkOption.NOFOLLOW_LINKS) ||
                 !Files.notExists(path, LinkOption.NOFOLLOW_LINKS))
-                return read(directory, hash) == mode
+                return syncMatchingReceipt()
 
             // Never truncate a predictable .tmp path: an interrupted prior
             // transaction may have left a hardlink to unrelated bytes there.
@@ -79,12 +89,12 @@ internal object LocalAdmissionProvenance {
             Files.createLink(path, fresh)
             // Receipt must survive a crash before native resume state is
             // permitted to claim its admission mode after process restoration.
-            FileChannel.open(root, StandardOpenOption.READ).use { it.force(true) }
+            syncDirectory(root)
             read(directory, hash) == mode
         } catch (_: java.nio.file.FileAlreadyExistsException) {
             // Another writer won publication; accept only the exact same
             // immutable mode. Never convert checked to reviewed-existing.
-            read(directory, hash) == mode
+            syncMatchingReceipt()
         } catch (_: Exception) {
             false
         } finally {

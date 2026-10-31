@@ -72,7 +72,7 @@ adb shell am instrument -w -r \
 status=$?
 set -e
 grep -E '^INSTRUMENTATION_STATUS: (class|test)=|^INSTRUMENTATION_STATUS_CODE:|^OK |^FAILURES|^Tests run' "$log" || true
-fail_if_skipped_or_failed "$status" 'OK (17 tests)' "Android 10 shared Downloads instrumentation"
+fail_if_skipped_or_failed "$status" 'OK (18 tests)' "Android 10 shared Downloads instrumentation"
 # 3. The foreground download service and its notification on API 29
 #    (an API 31-only builder call once crashed it here).
 set +e
