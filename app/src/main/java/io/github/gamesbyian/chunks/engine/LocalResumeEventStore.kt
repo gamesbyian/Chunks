@@ -67,7 +67,8 @@ internal class LocalResumeEventStore private constructor(
             return header + payload
         }
 
-        private fun parse(raw: ByteArray, key: String, sequence: Long): Record? = try {
+        private fun parse(raw: ByteArray, key: String, sequence: Long): Record? {
+            return try {
             var cursor = 0
             fun line(): String {
                 val end = raw.indexOfFirstFrom(cursor) { it == 10.toByte() }
@@ -88,7 +89,8 @@ internal class LocalResumeEventStore private constructor(
             val bytes = raw.copyOfRange(cursor, raw.size)
             if (sha != digest(bytes)) return null
             Record(key, sequence, kind, prev, bytes, digest(raw))
-        } catch (_: Exception) { null }
+            } catch (_: Exception) { null }
+        }
 
         private inline fun ByteArray.indexOfFirstFrom(from: Int, predicate: (Byte) -> Boolean): Int {
             for (i in from until size) if (predicate(this[i])) return i
