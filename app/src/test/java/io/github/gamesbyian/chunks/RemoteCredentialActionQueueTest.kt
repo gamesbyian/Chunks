@@ -79,6 +79,36 @@ class RemoteCredentialActionQueueTest {
         assertEquals(listOf("new-account"), durable)
     }
 
+    @Test fun suspendedProfileRefreshCannotPublishAfterNewerForgetTap() = runBlocking {
+        val queue = RemoteCredentialActionQueue()
+        val released = CompletableDeferred<Unit>()
+        val started = CompletableDeferred<Unit>()
+        val notices = mutableListOf<String>()
+        val first = queue.submit(this) { revision ->
+            // Durable work completed, but its read-only profile refresh can
+            // suspend while another user tap occurs.
+            started.complete(Unit)
+            released.await()
+            if (queue.isLatest(revision)) notices += "stale enabled notice"
+        }
+        started.await()
+        val second = queue.submit(this) { revision ->
+            if (queue.isLatest(revision)) notices += "latest Forget notice"
+        }
+        released.complete(Unit)
+        joinAll(first, second)
+        assertEquals(listOf("latest Forget notice"), notices)
+    }
+
+    @Test fun connectSnapshotDoesNotAuthorizeUiAfterLaterQueuedPreferenceChange() = runBlocking {
+        val queue = RemoteCredentialActionQueue()
+        val connectRevision = queue.snapshotRevision()
+        val fresh = queue.submit(this) { _ -> }
+        fresh.join()
+        assertFalse(queue.isLatest(connectRevision))
+        assertEquals(queue.snapshotRevision(), queue.snapshotRevision())
+    }
+
     @Test fun finalForgetCannotBeUndoneByPriorEnableThatFinishesLate() = runBlocking {
         val queue = RemoteCredentialActionQueue()
         val gate = CompletableDeferred<Unit>()
