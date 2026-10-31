@@ -77,6 +77,12 @@ verified all 792,723,456 bytes from the real host. This remains a
 **peer-wire test**, not evidence that any alternate management RPC route
 works or that SeedHost permits every inbound port.
 
+## Evidence of an HTTP challenge vs account ownership
+
+A public HTTP 200 `system.client_version` plus valid `main` transfer inventory proves that **one specified RPC endpoint responded**, even if the user supplied an arbitrary wrong username. It does *not* establish that the proxy authenticated that username. Chunks' transport must distinguish `NO_READ_CHALLENGE` from `READ_CHALLENGE_ACCEPTED`, which is set only after an actual same-endpoint 401 Basic/Digest challenge, a retry with Authorization and a successfully parsed read-only XML-RPC reply. A failed 401, malformed response or preflight for a mutating command is not this evidence.
+
+Even accepted challenged reads do not cryptographically prove which upstream rTorrent Unix account a reverse proxy maps to, nor authorize write privileges. Connection UX, privacy locking and saved-credential labeling must remain truthful, and any destructive write requires its own exact-target command authorization and verified readback. Synthetic localhost tests establish transport observations only, **not** actual protected Seedhost or physical Android principal identity. #1/#810 remain open for explicit UI distinction and protected multi-instance acceptance.
+
 ## Smart Connect rTorrent gateway acceptance tiers (2026-10-28)
 
 The [Smart Connect specification](SMART-REMOTE-CONNECTION.md) and [coverage
