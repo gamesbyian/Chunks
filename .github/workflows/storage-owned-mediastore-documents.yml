@@ -9,6 +9,8 @@ on:
       - "app/src/main/java/io/github/gamesbyian/chunks/LocalMultiZipMediaStoreExport.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/storage/OwnedMediaStoreZipBatchJournal.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalMultiZipMediaStoreExportInstrumentedTest.kt"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalZipBatchColdRestoreInstrumentedTest.kt"
+      - "tools/batch_cold_restore_probe.sh"
       - "app/src/main/java/io/github/gamesbyian/chunks/LocalSingleZipMediaStoreExport.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/LocalZipExtractionPanel.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalSingleZipMediaStoreExportInstrumentedTest.kt"
@@ -65,4 +67,4 @@ jobs:
           profile: pixel_6
           emulator-boot-timeout: 600
           disable-animations: true
-          script: bash tools/owned_mediastore_document_probe.sh ${{ matrix.api }}
+          script: bash tools/owned_mediastore_document_probe.sh ${{ matrix.api }} && bash tools/batch_cold_restore_probe.sh ${{ matrix.api }}
