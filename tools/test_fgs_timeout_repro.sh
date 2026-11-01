@@ -41,7 +41,13 @@ fi
 shift
 case "$1 $2" in
   'getprop ro.kernel.qemu')
-    [[ "${MOCK_PHYSICAL:-0}" != 1 ]] && echo 1 || echo 0
+    if [[ "${MOCK_QEMU_UNKNOWN:-0}" == 1 ]]; then
+      echo unknown
+    elif [[ "${MOCK_PHYSICAL:-0}" == 1 ]]; then
+      echo 0
+    else
+      echo 1
+    fi
     [[ "${MOCK_IDENTITY_FAILED:-0}" != 1 ]] || exit 50
     ;;
   'getprop ro.build.version.sdk')
@@ -130,6 +136,10 @@ done
 reset
 run_bad env MOCK_SDK=34
 [[ ! -e "$MOCK_DIR/gradle-installed" && ! -s "$MOCK_DIR/mutations" ]]
+reset
+run_bad env MOCK_QEMU_UNKNOWN=1
+[[ ! -e "$MOCK_DIR/gradle-installed" && ! -s "$MOCK_DIR/mutations" ]]
+grep -q 'unrecognized emulator/physical identity' "$temp/failed.log"
 reset
 run_bad env MOCK_PHYSICAL=1
 [[ ! -e "$MOCK_DIR/gradle-installed" && ! -s "$MOCK_DIR/mutations" ]]
