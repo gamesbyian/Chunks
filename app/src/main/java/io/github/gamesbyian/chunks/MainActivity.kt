@@ -484,7 +484,7 @@ private fun ChunksApp(
         } else if (section == Section.CREATE && server == null) {
             io.github.gamesbyian.chunks.create.CreateTorrentScreen(onBack = { section = Section.TRANSFERS },
                 shared = createRequest, onSharedConsumed = { createRequest = null })
-        } else if (section == Section.LOCAL && server == null) {
+        } else if (section == Section.LOCAL) {
             LocalTransferPrivacyGate(
                 scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
                 onBack = { section = Section.TRANSFERS }
