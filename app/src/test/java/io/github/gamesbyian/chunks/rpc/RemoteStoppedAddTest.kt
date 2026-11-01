@@ -84,7 +84,7 @@ class RemoteStoppedAddTest {
                         else "<value><array><data></data></array></value>"
                     "d.directory" -> value(dir)
                     "d.is_multi_file" -> num(0)
-                    "d.state" -> num(0)
+                    "d.state", "d.is_active" -> num(0)
                     else -> throw AssertionError("Unexpected method: $method")
                 }
                 val response = "<methodResponse><params><param>$body</param></params></methodResponse>"
@@ -105,7 +105,7 @@ class RemoteStoppedAddTest {
             assertEquals("Only ONE Add RPC despite a lost acknowledgement",
                 1, methods.count { it == "load.verbose" })
             assertEquals(listOf("d.multicall2", "d.name", "load.verbose", "d.multicall2",
-                "d.directory", "d.is_multi_file", "d.state"), methods)
+                "d.directory", "d.is_multi_file", "d.state", "d.is_active"), methods)
         } finally { server.stop(0) }
     }
 
@@ -130,7 +130,7 @@ class RemoteStoppedAddTest {
                 }
                 "d.directory" -> value(dir)
                 "d.is_multi_file" -> num(0)
-                "d.state" -> num(0)
+                "d.state", "d.is_active" -> num(0)
                 else -> throw AssertionError("Unsupported test RPC: $method")
             }
             val xml = "<methodResponse><params><param>$responseValue</param></params></methodResponse>"
@@ -146,7 +146,7 @@ class RemoteStoppedAddTest {
             assertEquals(RemoteAddOutcome.VerifiedStopped(hash, dir), remote.loadStopped(plan))
             assertTrue(loaded)
             assertEquals(listOf("d.multicall2", "d.name", "load.verbose", "d.multicall2",
-                "d.directory", "d.is_multi_file", "d.state"),
+                "d.directory", "d.is_multi_file", "d.state", "d.is_active"),
                 requests.map { it.substringBefore('|') })
             val beforeDuplicate = requests.size
             assertEquals(RemoteAddOutcome.AlreadyPresent(hash), remote.loadStopped(plan))
@@ -177,7 +177,7 @@ class RemoteStoppedAddTest {
                 }
                 "d.directory" -> value(dir)
                 "d.is_multi_file" -> num(0)
-                "d.state" -> num(0)
+                "d.state", "d.is_active" -> num(0)
                 else -> throw AssertionError("Unexpected method")
             }
             val response = "<methodResponse><params><param>" + value + "</param></params></methodResponse>"
@@ -193,7 +193,7 @@ class RemoteStoppedAddTest {
             assertTrue(plan.useServerDefault)
             assertEquals(RemoteAddOutcome.VerifiedStopped(hash, dir), remote.loadStopped(plan))
             assertEquals(listOf("d.multicall2", "d.name", "directory.default", "load.verbose",
-                "d.multicall2", "d.directory", "d.is_multi_file", "d.state"),
+                "d.multicall2", "d.directory", "d.is_multi_file", "d.state", "d.is_active"),
                 requests.map { it.first })
             assertFalse(requests.first { it.first == "load.verbose" }.second.contains("d.directory.set"))
         } finally { server.stop(0) }
@@ -255,7 +255,7 @@ class RemoteStoppedAddTest {
                 }
                 "load.verbose" -> { loaded = true; num(0) }
                 "d.directory" -> value(dir)
-                "d.is_multi_file", "d.state" -> num(0)
+                "d.is_multi_file", "d.state", "d.is_active" -> num(0)
                 else -> throw AssertionError("Unexpected RPC")
             }
             val body = "<methodResponse><params><param>$value</param></params></methodResponse>"
@@ -401,4 +401,48 @@ class RemoteStoppedAddTest {
         } finally { server.stop(0) }
     }
 
+    @Test fun visibleStoppedStateWithActiveEngineRemainsPendingUntilInactive() = runBlocking {
+        // The main-view row and d.state both say "stopped", but the engine
+        // is still active. Prior to this regression, that discrepancy was
+        // silently promoted to VerifiedStopped and authorized auto-Start.
+        var active = 1L
+        val methods = mutableListOf<String>()
+        val server = HttpServer.create(
+            InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0)
+        server.createContext("/RPC2") { exchange ->
+            val body = exchange.requestBody.bufferedReader().use { it.readText() }
+            val method = Regex("<methodName>([^<]+)</methodName>")
+                .find(body)?.groupValues?.get(1).orEmpty()
+            methods += method
+            val reply = when (method) {
+                "d.multicall2" -> rowXml()
+                "d.directory" -> value(dir)
+                "d.is_multi_file", "d.state" -> num(0)
+                "d.is_active" -> num(active)
+                else -> throw AssertionError("Unexpected write or getter: $method")
+            }
+            val xml = "<methodResponse><params><param>$reply</param></params></methodResponse>"
+                .toByteArray(Charsets.UTF_8)
+            exchange.sendResponseHeaders(200, xml.size.toLong())
+            exchange.responseBody.use { it.write(xml) }
+        }
+        server.start()
+        try {
+            val remote = RTorrentRemote(RemoteCredentials(
+                "http://127.0.0.1:${server.address.port}/RPC2", "", ""))
+            val plan = StoppedRemoteAddPlan.fromMagnet(magnet, dir)
+            assertEquals(RemoteAddOutcome.PendingVerification(hash),
+                remote.reconcileStoppedAdd(plan))
+            active = 2L // A malformed flag must not be treated as inactive.
+            assertEquals(RemoteAddOutcome.PendingVerification(hash),
+                remote.reconcileStoppedAdd(plan))
+            active = 0L
+            assertEquals(RemoteAddOutcome.VerifiedStopped(hash, dir),
+                remote.reconcileStoppedAdd(plan))
+            assertEquals(3, methods.count { it == "d.is_active" })
+            assertEquals(3, methods.count { it == "d.state" })
+            assertFalse(methods.any { it.startsWith("load.") || it.startsWith("d.start") ||
+                it.startsWith("d.stop") || it == "d.erase" })
+        } finally { server.stop(0) }
+    }
 }

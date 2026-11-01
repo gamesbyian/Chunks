@@ -57,7 +57,7 @@ class RemoteBinaryStoppedAddTest {
                 }
                 "d.directory" -> str(destination)
                 "d.is_multi_file" -> integer(0)
-                "d.state" -> integer(0)
+                "d.state", "d.is_active" -> integer(0)
                 else -> integer(0)
             }
             val body = ("<methodResponse><params><param>" + reply +
@@ -73,7 +73,7 @@ class RemoteBinaryStoppedAddTest {
                 remote.loadStoppedTorrentBytes(bytes, destination))
             assertArrayEquals(bytes, returnedBytes)
             assertEquals(listOf("d.multicall2", "d.name", "load.raw_verbose", "d.multicall2",
-                "d.directory", "d.is_multi_file", "d.state"), methods)
+                "d.directory", "d.is_multi_file", "d.state", "d.is_active"), methods)
             assertEquals(RemoteAddOutcome.AlreadyPresent(expected),
                 remote.loadStoppedTorrentBytes(bytes, destination))
             assertEquals(1, methods.count { it == "load.raw_verbose" })
@@ -115,7 +115,7 @@ class RemoteBinaryStoppedAddTest {
                 }
                 "d.directory" -> str(destination)
                 "d.is_multi_file" -> integer(0)
-                "d.state" -> integer(0)
+                "d.state", "d.is_active" -> integer(0)
                 else -> throw AssertionError("Unexpected method")
             }
             val response = ("<methodResponse><params><param>" + reply +
@@ -131,7 +131,7 @@ class RemoteBinaryStoppedAddTest {
                 remote.loadStoppedTorrentBytes(bytes, destination, useServerDefault = true))
             assertArrayEquals(bytes, inspectedBinary)
             assertEquals(listOf("d.multicall2", "d.name", "directory.default", "load.raw_verbose",
-                "d.multicall2", "d.directory", "d.is_multi_file", "d.state"), commands)
+                "d.multicall2", "d.directory", "d.is_multi_file", "d.state", "d.is_active"), commands)
         } finally { server.stop(0) }
     }
 
