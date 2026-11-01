@@ -168,4 +168,61 @@ class LocalMultiZipMediaStoreExportInstrumentedTest {
         assertTrue("No candidate file may have reached published Downloads",
             newPublished(base).isEmpty())
     }
+    /** Read-only exact-platform observation. A pending object is never a published receipt. */
+    private fun pendingRows(base: String): List<Uri> {
+        val cols = arrayOf(MediaStore.MediaColumns._ID, MediaStore.MediaColumns.DISPLAY_NAME,
+            MediaStore.MediaColumns.OWNER_PACKAGE_NAME, MediaStore.MediaColumns.IS_PENDING)
+        val cursor = if (android.os.Build.VERSION.SDK_INT == 29) {
+            resolver.query(MediaStore.setIncludePending(downloads), cols, null, null, null)
+        } else {
+            val args = android.os.Bundle().apply {
+                putInt(MediaStore.QUERY_ARG_MATCH_PENDING, MediaStore.MATCH_INCLUDE)
+            }
+            resolver.query(downloads, cols, args, null)
+        }
+        return requireNotNull(cursor).use { rows ->
+            buildList {
+                while (rows.moveToNext()) {
+                    if (rows.getString(1)?.startsWith(base + "-") == true &&
+                        rows.getString(2) == context.packageName && rows.getInt(3) == 1)
+                        add(ContentUris.withAppendedId(downloads, rows.getLong(0)))
+                }
+            }
+        }
+    }
+
+    @Test fun failureInsideSecondNewRowKeepsFirstAndLeavesExactPendingForReview() {
+        val base = freshBase()
+        val first = base + ".txt"
+        val second = "later" + base + ".bin"
+        val original = zip(first, second)
+        createOwned("fixture-source-" + base + ".zip", original) { source ->
+            val seenPending = AtomicReference<Uri?>()
+            val result = LocalMultiZipMediaStoreExport.extractNew(context, source) {
+                val current = pendingRows("later" + base)
+                if (current.size == 1) seenPending.set(current.single())
+                current.isNotEmpty()
+            }
+            assertEquals("An interrupted second provider write is uncertain, not rolled back",
+                LocalMultiZipMediaStoreExport.State.NEEDS_ATTENTION, result.state)
+            assertEquals(1, result.published.size)
+            assertEquals(1, result.remaining)
+            val uncertainUri = requireNotNull(seenPending.get())
+            try {
+                assertEquals(first, result.published.single().originalName)
+                assertArrayEquals(("batch content: " + first).toByteArray(),
+                    bytes(result.published.single().uri))
+                assertEquals(listOf(uncertainUri), pendingRows("later" + base))
+                assertTrue("An uncertain pending row needs a visible forensic warning",
+                    LocalSingleZipMediaStoreExport.unfinishedPublications(context)
+                        .any { it.contains("interrupted Downloads export") })
+                assertArrayEquals(original, bytes(source))
+            } finally {
+                // Test-owned returned exact IDs; production never cleans these.
+                assertEquals(1, resolver.delete(result.published.single().uri, null, null))
+                assertEquals(1, resolver.delete(uncertainUri, null, null))
+            }
+        }
+    }
+
 }
