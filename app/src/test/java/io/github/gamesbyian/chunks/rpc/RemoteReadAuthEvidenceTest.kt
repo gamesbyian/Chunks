@@ -221,4 +221,49 @@ class RemoteReadAuthEvidenceTest {
         }
     }
 
+    @Test fun savedCombinedProfileRefusesPublicInventoryWithInventedCredentials() = runBlocking {
+        Gateway(challengeRead = false).use { server ->
+            try {
+                verifiedSavedProfileMainInventory(
+                    RemoteCredentials(server.address, "invented-user", "wrong-secret"))
+                fail("The saved account has not reauthenticated after restart")
+            } catch (_: RemoteIdentityUnverified) { }
+            assertEquals(listOf("system.client_version", "d.multicall2"),
+                server.requests.map { it.first })
+            assertTrue(server.requests.all { it.second == null })
+        }
+    }
+
+    @Test fun savedCombinedProfileAcceptsFreshChallengedCredentialsWithoutMutations() = runBlocking {
+        Gateway(challengeRead = true).use { server ->
+            val rows = verifiedSavedProfileMainInventory(
+                RemoteCredentials(server.address, "alice", "secret"))
+            assertTrue(rows.isEmpty())
+            assertTrue(server.requests.any { it.second.orEmpty().startsWith("Basic ") })
+            assertTrue(server.requests.all {
+                it.first == "system.client_version" || it.first == "d.multicall2"
+            })
+        }
+    }
+
+    @Test fun savedCombinedProfileRejectsExpiredPasswordBeforeShowingRows() = runBlocking {
+        Gateway(challengeRead = true).use { server ->
+            try {
+                verifiedSavedProfileMainInventory(
+                    RemoteCredentials(server.address, "alice", "expired-password"))
+                fail("Rejected saved credentials may not display a live account")
+            } catch (_: java.io.IOException) { }
+            assertEquals(listOf("system.client_version", "system.client_version"),
+                server.requests.map { it.first })
+        }
+    }
+
+    @Test fun savedCombinedProfilePermitsDeliberateAnonymousReadOnlyAccess() = runBlocking {
+        Gateway(challengeRead = false).use { server ->
+            val rows = verifiedSavedProfileMainInventory(RemoteCredentials(server.address, "", ""))
+            assertTrue(rows.isEmpty())
+            assertTrue(server.requests.all { it.second == null })
+        }
+    }
+
 }
