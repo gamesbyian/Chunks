@@ -23,7 +23,7 @@ class RemoteAdaptivePagingTest {
     private fun string(value: String): String = "<value><string>$value</string></value>"
     private fun integer(value: Long): String = "<value><i8>$value</i8></value>"
 
-    private class Gateway(
+    private inner class Gateway(
         private val identities: List<String>,
         private val irreducibleHash: String? = null,
         private val changeViewAtEnd: Boolean = false
