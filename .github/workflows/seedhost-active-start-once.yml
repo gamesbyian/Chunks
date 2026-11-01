@@ -131,8 +131,7 @@ jobs:
           set -euo pipefail
           test "${CHUNKS_LIVE_MUTATION:-}" = apply
           test "$CHUNKS_LIVE_NATIVE_STARTED_ADD" = apply
-          gradle --no-daemon --console=plain :app:testDebugUnitTest \\
-            --tests 'io.github.gamesbyian.chunks.rpc.SeedhostLiveAcceptanceTest.ownerAuthorizedNativeStartedAddFileAndMagnet'
+          gradle --no-daemon --console=plain :app:testDebugUnitTest --tests 'io.github.gamesbyian.chunks.rpc.SeedhostLiveAcceptanceTest.ownerAuthorizedNativeStartedAddFileAndMagnet'
           python3 - <<'PY'
           import pathlib, xml.etree.ElementTree as ET
           p = pathlib.Path('app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.SeedhostLiveAcceptanceTest.xml')
