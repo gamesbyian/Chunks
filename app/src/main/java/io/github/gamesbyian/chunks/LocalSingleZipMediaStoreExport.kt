@@ -33,16 +33,32 @@ internal object LocalSingleZipMediaStoreExport {
         val publishedUri: Uri? = null
     )
 
-    /** Read-only post-process reconciliation. No row update, deletion or replay. */
+    /**
+     * Read-only interruption display; this is not a lifetime integrity monitor
+     * for documents a user deliberately edits or deletes after successful Save.
+     * Never classify a durably VERIFIED_PUBLISHED operation as interrupted.
+     */
     fun unfinishedPublications(context: Context): List<String> {
-        val dir = io.github.gamesbyian.chunks.storage.OwnedMediaStorePublicationJournal.journalRoot(context).toFile()
-        val files = dir.listFiles() ?: return emptyList()
-        return files.asSequence()
-            .filter { Regex("[a-f0-9]{32}\\.log").matches(it.name) }
+        val root = io.github.gamesbyian.chunks.storage.OwnedMediaStorePublicationJournal.journalRoot(context)
+        if (!java.nio.file.Files.exists(root, java.nio.file.LinkOption.NOFOLLOW_LINKS))
+            return emptyList()
+        if (!java.nio.file.Files.isDirectory(root, java.nio.file.LinkOption.NOFOLLOW_LINKS))
+            return listOf("Earlier Downloads export records could not be checked safely.")
+        val files = root.toFile().listFiles()
+            ?: return listOf("Earlier Downloads export records could not be checked safely.")
+        val name = Regex("[a-f0-9]{32}\\.log")
+        val unknown = files.any { !name.matches(it.name) }
+        val issues = files.asSequence()
+            .filter { name.matches(it.name) }
             .map { it.name.removeSuffix(".log") }
             .sorted()
             .map { id ->
                 val assessment = io.github.gamesbyian.chunks.storage.OwnedMediaStorePublicationJournal.assess(context, id)
+                // A completed Save may later be moved/modified/deleted by the
+                // user. That must not become a spurious "interrupted" warning.
+                if (assessment.phase ==
+                    io.github.gamesbyian.chunks.storage.OwnedMediaStorePublicationJournal.Phase.VERIFIED_PUBLISHED)
+                    return@map null
                 when (assessment.verdict) {
                     io.github.gamesbyian.chunks.storage.OwnedMediaStorePublicationJournal.Verdict.VERIFIED_PUBLISHED -> null
                     io.github.gamesbyian.chunks.storage.OwnedMediaStorePublicationJournal.Verdict.VERIFIED_PENDING ->
@@ -50,7 +66,9 @@ internal object LocalSingleZipMediaStoreExport {
                     io.github.gamesbyian.chunks.storage.OwnedMediaStorePublicationJournal.Verdict.NEEDS_ATTENTION ->
                         "An interrupted Downloads export needs review; Chunks did not retry or remove any file."
                 }
-            }.filterNotNull().toList()
+            }.filterNotNull().toMutableList()
+        if (unknown) issues += "An unrecognized Downloads export record needs review."
+        return issues
     }
 
     fun eligible(review: LocalZipReview): Boolean =
