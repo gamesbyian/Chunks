@@ -1,5 +1,7 @@
 # Public torrent and media fixture process
 
+**Owner testing priority (2026-11-01):** use real, legally obtained `.torrent` inputs, metadata-resolving magnets, actual torrent clients/servers and actual peers as the **primary** functional acceptance path. Controlled peer-seeded actual files and magnet metadata exchanges are legitimate real-engine tests; mock replies, fake hashes and artificial magnets remain secondary parser/edge tests and cannot prove everyday downloading. See [real-transfer acceptance](REAL-TRANSFER-ACCEPTANCE.md). Do not confuse a sourced public .torrent with a currently healthy swarm; confirm conventional seeders or provide a genuine local peer, and measure the exact job's verified pieces/bytes. Respect owner-approved hosts, exact-hash cleanup and secret/passkey boundaries.
+
 ## Sources and provenance
 
 Use approved, license-reviewed fixtures before any test Add, Start, Stop, Remove or Relocate. Internet Archive publishes real .torrent metainfo for many public items, with an official metadata API (https://archive.org/developers/metadata.html) and Archive BitTorrents FAQ (https://archivesupport.zendesk.com/hc/en-us/articles/360004715251-Archive-BitTorrents). Archive hosting does not by itself guarantee licensing or swarm availability; mutable Archive items can make old torrents obsolete.
