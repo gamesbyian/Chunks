@@ -6,6 +6,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.unit.Density
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -48,6 +49,11 @@ class LocalPhoneFirstfoldEntryTest {
             torrent.getUnclippedBoundsInRoot().top < warning.getUnclippedBoundsInRoot().top)
         assertTrue("Magnet input must be reachable before the long engine explanation",
             magnet.getUnclippedBoundsInRoot().top < warning.getUnclippedBoundsInRoot().top)
+        magnet.performTextInput("magnet:?xt=urn:btih:" + "a".repeat(40) + "&dn=Open%20test")
+        val submit = rule.onNodeWithText("Add magnet and start")
+        submit.assertExists()
+        assertTrue("The actual phone-only Add action must precede advanced explanation",
+            submit.getUnclippedBoundsInRoot().top < warning.getUnclippedBoundsInRoot().top)
     }
 
     @Test
@@ -59,5 +65,9 @@ class LocalPhoneFirstfoldEntryTest {
         val warning = rule.onNodeWithText("Downloads and seeds with Chunks' own engine.", substring = true)
         assertTrue(torrent.getUnclippedBoundsInRoot().top < warning.getUnclippedBoundsInRoot().top)
         assertTrue(magnet.getUnclippedBoundsInRoot().top < warning.getUnclippedBoundsInRoot().top)
+        magnet.performTextInput("magnet:?xt=urn:btih:" + "b".repeat(40) + "&dn=Open%20test")
+        val submit = rule.onNodeWithText("Add magnet and start")
+        submit.assertExists()
+        assertTrue(submit.getUnclippedBoundsInRoot().top < warning.getUnclippedBoundsInRoot().top)
     }
 }
