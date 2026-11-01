@@ -53,8 +53,7 @@ Exact Stop and session-only Erase retain payload and verify unrelated inventory.
 
 An active bit, fake tracker, UI confirmation or mock success cannot pass. The
 workflow emits its APK + source-SHA evidence **only if both tests pass**, and
-keeps failure/inconclusive results red. It is manual-only, protected by an
-explicit `apply=true` on trusted `main`, first-attempt-only and has the
+keeps failure/inconclusive results red. It is protected by an explicit manual `apply=true` on trusted `main`\n**or a single, exact-text owner-authorized trusted-main merge marker for PR #1001**.\nThat one-time push exception is limited to the new workflow file path and first\nattempt; it cannot run on pull requests or normal pushes. It has the
 same host mutation concurrency group as existing Seedhost Android acceptance.
 The tests use the **production Add Compose screen directly**, not full
 MainActivity Connect navigation, which remains a separate acceptance tier.
@@ -66,8 +65,7 @@ Until an exact-SHA successful protected workflow receipt exists, **do not
 label any APK as rTorrent Add-qualified**. The existing synthetic installed
 MainActivity test and JVM real-byte test do not satisfy this release gate
 separately. The owner's physical device is still final OEM acceptance;
-it is not the primary engine-start discovery tool. No automatic dispatch
-or protected secret access from untrusted pull requests.
+it is not the primary engine-start discovery tool. No protected secret access from untrusted pull requests. The one-time\nmerge dispatch must be treated as real server mutation, with no automatic\nrerun after an ambiguous response.
 
 ## Current concrete baseline and open acceptance (2026-11-01)
 
