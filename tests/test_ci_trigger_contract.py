@@ -135,6 +135,15 @@ class AndroidCiTriggerContract(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertIn(path, allowed)
 
+    def test_transactional_resume_changes_keep_both_android_runtime_tiers(self):
+        api29 = (ROOT / ".github/workflows/android10-downloads-instrumentation.yml").read_text()
+        api35 = (ROOT / ".github/workflows/native-add-instrumentation.yml").read_text()
+        for filename in ("LocalResumeDatabase.kt", "LocalResumeStore.kt"):
+            changed = (f"app/src/main/java/io/github/gamesbyian/chunks/engine/{filename}",)
+            with self.subTest(filename=filename):
+                self.assertTrue(dispatches_for_changed_paths(api29, changed))
+                self.assertTrue(dispatches_for_changed_paths(api35, changed))
+
     def test_native_research_source_changes_but_not_markdown_only_edits(self):
         # Positive allowlist stays active for native source; the following
         # negative patterns prevent documentation-only edits wasting JNI/NDK CI.
