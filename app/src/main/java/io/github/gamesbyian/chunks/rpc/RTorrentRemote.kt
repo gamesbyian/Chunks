@@ -944,11 +944,18 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         require(Regex("[0-9a-fA-F]{40}").matches(hash)) { "Invalid v1 torrent hash" }
         suspend fun get(method: String): Long? = try {
             number(call(method, listOf(hash))).takeIf { it >= 0L }
-        } catch (cancel: kotlinx.coroutines.CancellationException) {
-            throw cancel
-        } catch (_: Exception) {
+        } catch (fault: RpcFault) {
+            // Optional activity getters can be absent on older rTorrent builds.
+            // An unknown exact hash is a disappeared selection, not an
+            // unsupported statistic. Fail that case instead of showing
+            // fictitious "unknown activity" for a vanished transfer.
+            if (fault.isUnknownInfoHash()) throw fault
             null
         }
+        // HTTP 401/403/407/429, TLS/socket loss, truncated or malformed XML,
+        // and cancellation MUST propagate. Swallowing them would send up to
+        // four more requests against an expired login and falsely report a
+        // connected server with merely unavailable optional statistics.
         return RemoteTransferActivity(
             active = get("d.is_active")?.let { it != 0L },
             open = get("d.is_open")?.let { it != 0L },
