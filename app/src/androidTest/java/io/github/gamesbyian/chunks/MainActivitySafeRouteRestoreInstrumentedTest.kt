@@ -2,6 +2,9 @@ package io.github.gamesbyian.chunks
 
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.hasScrollToIndexAction
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -26,14 +29,13 @@ class MainActivitySafeRouteRestoreInstrumentedTest {
     @Test fun disconnectedPhoneAndCombinedRoutesSurviveActivityRecreationWithoutCommands() {
         // The phone surface is reachable without authenticating any rTorrent
         // server and is wrapped by its own separate transfer privacy gate.
-        rule.onNodeWithText("Download on this phone (experimental)")
-            .performScrollTo().performClick()
+        rule.onNodeWithText("Open phone downloads").performClick()
         rule.onNodeWithText("All environments…").assertExists()
 
         rule.activityRule.scenario.recreate()
         rule.waitForIdle()
         rule.onNodeWithText("All environments…").assertExists()
-        rule.onNodeWithText("Hello, server.").assertDoesNotExist()
+        rule.onNodeWithText("Your downloads").assertDoesNotExist()
 
         rule.onNodeWithText("All environments…").performScrollTo().performClick()
         rule.onNodeWithText("All environments").assertExists()
@@ -47,15 +49,16 @@ class MainActivitySafeRouteRestoreInstrumentedTest {
     }
 
     @Test fun createRouteDropsPendingReviewAndReturnsToDisconnectedEntry() {
-        rule.onNodeWithText("Create a torrent from phone files")
-            .performScrollTo().performClick()
-        rule.onNodeWithText("Hello, server.").assertDoesNotExist()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Create a torrent from phone files"))
+        rule.onNodeWithText("Create a torrent from phone files").performClick()
+        rule.onNodeWithText("Your downloads").assertDoesNotExist()
 
         // A restore may never manufacture a pending file-selection or create
         // command. The authenticated remote session remains absent.
         rule.activityRule.scenario.recreate()
         rule.waitForIdle()
-        rule.onNodeWithText("Hello, server.").assertExists()
+        rule.onNodeWithText("Your downloads").assertExists()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Create a torrent from phone files"))
         rule.onNodeWithText("Create a torrent from phone files").assertExists()
         rule.onNodeWithText("Create torrent").assertDoesNotExist()
     }
