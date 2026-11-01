@@ -26,7 +26,8 @@ class RemoteAdaptivePagingTest {
     private inner class Gateway(
         private val identities: List<String>,
         private val irreducibleHash: String? = null,
-        private val changeViewAtEnd: Boolean = false
+        private val changeViewAtEnd: Boolean = false,
+        private val richGetterRpcFault: Boolean = false
     ) : AutoCloseable {
         private val server = HttpServer.create(
             InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0)
@@ -62,7 +63,12 @@ class RemoteAdaptivePagingTest {
                         ).findAll(request).map { it.groupValues[1] }.toList()
                         val count = requestedHashes.size
                         pageSizes.add(count / 9)
-                        if (requestedMethods.size != count ||
+                        if (richGetterRpcFault) {
+                            response = """<methodResponse><fault><value><struct>
+                                <member><name>faultCode</name><value><int>-503</int></value></member>
+                                <member><name>faultString</name><value><string>Server busy</string></value></member>
+                                </struct></value></fault></methodResponse>"""
+                        } else if (requestedMethods.size != count ||
                             requestedMethods.isEmpty() || count % 9 != 0 ||
                             count > 125 * 9 ||
                             (irreducibleHash != null && requestedHashes.contains(irreducibleHash))) {
@@ -118,6 +124,19 @@ class RemoteAdaptivePagingTest {
             assertTrue(gateway.methods.all {
                 it == "d.multicall2" || it == "download_list" || it == "system.multicall"
             })
+        }
+    }
+
+    @Test fun busyRpcFaultDuringPagedProbeAbortsWithoutRetryOrPartialRows() = runBlocking {
+        Gateway(hashes, richGetterRpcFault = true).use { gateway ->
+            val remote = RTorrentRemote(RemoteCredentials(gateway.endpoint, "", ""))
+            val thrown = assertThrows(RpcFault::class.java) {
+                runBlocking { remote.listTransfers("main") }
+            }
+            assertEquals("-503", thrown.code)
+            assertEquals(listOf(1), gateway.pageSizes)
+            assertEquals(listOf("d.multicall2", "download_list", "system.multicall"),
+                gateway.methods)
         }
     }
 

@@ -1,5 +1,152 @@
 # Chunks evidence and release gate ledger
 
+> **2026-11-01 reconciliation follow-up:** #948 real allocated low-space native peer recovery **merged** `9fddd8b` after [isolated API35](https://github.com/gamesbyian/Chunks/actions/runs/41280382837) and [native Add](https://github.com/gamesbyian/Chunks/actions/runs/41280382812) successes. #946 fail-closed remote inventory/peer-source RPC faults **merged** `8b185631`, preserving parent ancestry; dependent #952 capability/default Place operational fault correction **merged** `1982bac` after four exact-head passing workflows. #931 200%-text remote Add controls **merged** `f5299bcd` after foundation/native/R8 successes. #917's initially failed unrelated account-isolation foundation was redispatched and subsequently **green** on the same head (run 41281065428), but source integration after #958 remains unqualified; #922/#923 remain stacked. #927's Android foundation [41281020353](https://github.com/gamesbyian/Chunks/actions/runs/41281020353) has a real `CombinedTransfersScreenTest.sortDirectionScopeAndGroupingPersistAcrossReopen` assertion failure, still open. #940's previous [foundation 41281047564](https://github.com/gamesbyian/Chunks/actions/runs/41281047564) failed Compose handoff consumption; branch test synchronization change `f864f203` awaiting exact-head validation. #953 strict-boolean test fixture correction `21e0fe3` awaits source-head rerun. #957 API35 boot-only rerun remains pending. #961 reapplication of #950 remote filter wrapping awaits its full green candidate-head set; original #950 stays open until its replacement integrates. These are evidence-tier, not unattended completion claims.
+
+
+> **Reconciliation status correction (2026-11-01):** [#958](https://github.com/gamesbyian/Chunks/pull/958) is now **MERGED** `a38eaea` after all four exact-head required workflows passed, including native Add. [#951](https://github.com/gamesbyian/Chunks/pull/951) is **MERGED** `cb3071a` (exact-session Remove feedback; foundation/native/R8 green). [#947](https://github.com/gamesbyian/Chunks/pull/947) is **MERGED** `9a234e8` (phone Add first-fold; four source-head CI groups green). [#960](https://github.com/gamesbyian/Chunks/pull/960) docs reconciled `1e7718b`. Original remote filter #950 conflicted; its exact changes were preserved and reapplied onto current main as [#961](https://github.com/gamesbyian/Chunks/pull/961), pending new-head CI. Older search included #921/#949/#955 as false open candidates despite earlier merges and #954 despite earlier closure; individual PR status is authoritative. #917's account-isolation assertion and #957 emulator startup reruns still require their genuine final results. This is a dated checkpoint, not evidence for unexecuted integration or physical acceptance.
+
+
+## 2026-11-01 open-PR/CI reconciliation: exact failing phases and preserved stacks
+
+At start of consolidation, search returned 18 PR candidates with four already merged/closed (#921/#949/#955 merged, #954 closed) and omitted four genuinely open (#946/#940/#931/#920); true starting total was 18 open PRs. All 27 issues were independently confirmed open. [#959](https://github.com/gamesbyian/Chunks/pull/959) merged as `ec942946` after docs validation [41281470004](https://github.com/gamesbyian/Chunks/actions/runs/41281470004). [#958](https://github.com/gamesbyian/Chunks/pull/958) was reviewed for bounded read-only FIFO refusal with O_NONBLOCK/O_NOFOLLOW and fstat, plus private-FIFO/symlink installed negatives; the owning MediaStore test, R8 and foundation gates passed at source head `a0317c0`; native Add was still running at the time of this checkpoint. The correction must precede #917, then #922, then #923, each separately requalified.
+
+- [#953 foundation 41280310746](https://github.com/gamesbyian/Chunks/actions/runs/41280310746): **actual JVM assertion failure**, `RemoteTrafficSampleRpcTest.postReadIdentityChangeCannotBeMisreportedAsDownload`; 1 failed, 1,249 executed. Android native Add, R8 and disposable RPC passed on this head. Requires a correction and exact-head rerun; not infrastructure.
+- [#917 foundation 41281065428](https://github.com/gamesbyian/Chunks/actions/runs/41281065428): **actual JVM assertion failure**, `CombinedSavedServersTest.lateReadFromPreviousAccountCannotPublishIntoReconfiguredServerSlot` at line 172; 1 failed, 1,245 executed. The owned-MediaStore API29/API35, R8 and native Add gates succeeded. Failed-jobs rerun requested to check reproducibility; outcome not assumed.
+- [#957 native Add 41281109779](https://github.com/gamesbyian/Chunks/actions/runs/41281109779): **emulator startup infrastructure failure**: TCP 5554 refused, zero tests executed. Android 10 shared Downloads and foundation succeeded. Failed-jobs rerun requested; no installed API35 acceptance until a genuine test runs.
+- [#956 lifecycle 41280796550](https://github.com/gamesbyian/Chunks/actions/runs/41280796550): **actual installed test failure**, `PhoneIntakeJourneyInstrumentedTest.phaseB_coldUiRestoreStartsSeedsToFreshPeerAndRemovesKeepingBytes`, timed out waiting for restored verified seeding after emulator test startup. An early ADB connection warning is not grounds to relabel the executed failure as boot-only.
+
+[#949](https://github.com/gamesbyian/Chunks/pull/949), [#955](https://github.com/gamesbyian/Chunks/pull/955) and [#921](https://github.com/gamesbyian/Chunks/pull/921) presently have GitHub merge conflicts despite their earlier passing focused CI. [#952](https://github.com/gamesbyian/Chunks/pull/952) is based on an intermediate remote branch and [#954](https://github.com/gamesbyian/Chunks/pull/954), [#922](https://github.com/gamesbyian/Chunks/pull/922), [#923](https://github.com/gamesbyian/Chunks/pull/923) remain stacked. Do not close or retarget without confirming content ancestry. Comments are recorded on #9 and affected PRs; the above is source-head/historical evidence, not a claim about later reruns.
+
+
+## 2026-11-01 0E first owned Downloads publication merged; stack reconciliation (0F QA)
+
+**Production milestone and exact integrated-head evidence:** [PR #895](https://github.com/gamesbyian/Chunks/pull/895) was promoted as an **ordinary merge commit** `0a05d76925d36f51f33ebebb40be02d8bc64a4fc` to preserve ancestry of dependent source reviews. GitHub reported the draft's final integrated head `d72ad35cc7aefab365f925416f8e486f488e77b7` cleanly mergeable against nonoverlapping new main files. All five required source-head workflows passed: [foundation 41279482069](https://github.com/gamesbyian/Chunks/actions/runs/41279482069) (raw CI digest **1243 executed/30 skipped/0 failed**), [native Add 41279482065](https://github.com/gamesbyian/Chunks/actions/runs/41279482065) (**299 executed/22 skipped/0 failed**, actual installed Compose atlas), [R8 41279482101](https://github.com/gamesbyian/Chunks/actions/runs/41279482101), [anonymous ZIP API29 41279482136](https://github.com/gamesbyian/Chunks/actions/runs/41279482136) and [owned MediaStore 41279482076](https://github.com/gamesbyian/Chunks/actions/runs/41279482076). Raw API29 job `124768276962` and API35 job `124768276771` both explicitly show `CHUNKS_OWNED_DOCS_MOCK` safety negative PASS, `OK (10 tests)`, `INSTRUMENTATION_CODE: -1`, and `CHUNKS_OWNED_MEDIASTORE_DOCUMENTS=PASS` with exact new-row/foreign preservation and pathname-swap test. Independent review of original executor `b5e3924` and a GitHub diff to latest pre-integration `a0935403` established that subsequent work changed only three CI/ADB-test files, no shipping executor. Final merge included twelve disjoint implementation/test/workflow files and kept current main's QA ledger.
+
+**Scope:** one user-confirmed flat ZIP member or one finished local-torrent file can create a **new separately verified** primary Downloads/Chunks Exports document. Original ZIP and seed payload remain intact. No overwrite of an existing provider row, no arbitrary SAF/SD/cloud destination, no generic nested ZIP, no unowned cleanup/Replace, and no physical/power-cut claim.
+
+**Next dependencies:** #917 retargeted from its parent branch to merged `main`, then reconciled as `873392db2ef2860343dec8d217d8e62eaf6a3108`, touching only six multi-ZIP files. Its earlier `37a3eb3` passed 13 Android owned-MediaStore cases per API29/API35, foundation, native Add and R8; those older greens do **not** qualify latest `873392db`. Exact integrated candidate workflows [owned MediaStore 41281065396](https://github.com/gamesbyian/Chunks/actions/runs/41281065396), [foundation 41281065428](https://github.com/gamesbyian/Chunks/actions/runs/41281065428), [R8 41281065391](https://github.com/gamesbyian/Chunks/actions/runs/41281065391) and [native Add 41281065406](https://github.com/gamesbyian/Chunks/actions/runs/41281065406) were **queued** at record time. Downstream #922 `84c71545` (15-test durable batch recovery, unmerged) and #923 `6c2ba411` (two-process recovery and pinned ADB target) remain drafts. The latter's exact-head [API29/API35 batch cold recovery 41279791350](https://github.com/gamesbyian/Chunks/actions/runs/41279791350) is green, both phases in raw logs, but it cannot integrate ahead of its predecessors. Use ordinary merge commits, retarget and qualify one descendant at a time; #809 remains open.
+
+## 2026-11-01 interrupted real-peer acceptance receipt guard (0B #5/#569; 0F #9)
+
+[PR #943](https://github.com/gamesbyian/Chunks/pull/943) merged as
+`fd6466db51074ae3d8c7716400e429a10ab50e99`. Its final source
+`930d58fde8f0bf742cb488c61d5531470a384242` passed
+[radio-harness safety run 41278807324](https://github.com/gamesbyian/Chunks/actions/runs/41278807324),
+job `124766310994`, including the existing interrupted-peer fake-adb
+controls plus new missing/duplicated/contradictory native receipt negatives.
+This is an **offline controller contract**, not real Internet, physical
+handset, long background run or actual OS-kill peer acceptance.
+
+The manual interrupted-peer harness now requires one actual app-side phase-A
+`armed` receipt with v1/v2 infohash, pre-kill verified bytes at or above the
+requested bounded budget but short of total torrent size, observed crash and
+absent process. A second instrumented Android process must report exactly one
+executed passing test AND a unique `VERIFIED restored_stopped=true` native
+receipt showing post-restart verified bytes strictly above both pre-kill and
+rechecked recovered-piece counts, never beyond recorded torrent size. Missing,
+failed logcat, misleading JUnit, duplicate, inconsistent or
+`INCONCLUSIVE` receipts refuse. The actual Android test still resolves
+the same exact infohash from the persisted phase-A marker; its native engine,
+payload data and restart policy are unchanged. A separately dispatched real
+public-peer interrupted download is still required to prove peer recovery
+under a genuinely active network; #5/#569 stay open.
+
+## 2026-11-01 #923 corrected partial-batch cold recovery: exact API29/API35 green
+
+At **draft** source `20712032c178a9901afdc3a37c24e26f7492efa6`, [storage run 41277962860](https://github.com/gamesbyian/Chunks/actions/runs/41277962860) completed **SUCCESS**. Independently inspected raw emulator job logs: API35 job `124763941927` and API29 job `124763942179` each show `OK (15 tests)`, `INSTRUMENTATION_CODE: -1`, `CHUNKS_OWNED_MEDIASTORE_DOCUMENTS=PASS`, phase A's `partial=true verified=1 original=true`, phase B's `cold=true warning=true original=true no_duplicate=true`, and `CHUNKS_BATCH_COLD=PASS`. Compared with the earlier `165e672` run, this head adds per-run unique private fixture ID, a distinct pending-included second-member-prefix query, and proof the warning count increases for **this** batch. Thus the specific earlier second-member false-negative is covered by a real installed-emulator acceptance, at this exact head. No user files or arbitrary SAF paths were mutated by the test. It remains an intentionally stopped batch across two processes, not abrupt mid-write kill, power cut, provider-independent atomic Replace or handset acceptance. This is an **unmerged draft** and is stacked on #922/#917/old #895; its green matrix does not qualify a final integrated main build. The separate native Add workflow is a distinct gate.
+
+**#895 harness requalification:** real API29 [run 41277977764](https://github.com/gamesbyian/Chunks/actions/runs/41277977764) executed all ten Android cases successfully at `b79b021`, but the hardened receipt parser rejected the real runner's paired test-name start/completion events, an **offline harness assertion mismatch after real test execution**. The correction at draft `a0935403c22c4789bbca107997d845f40d6ef0be` requires exactly two test-name events per executed Android case and updates the fake-adb baseline/duplicate negative; new [storage run 41278258097](https://github.com/gamesbyian/Chunks/actions/runs/41278258097) was not yet accepted at this checkpoint. Do not mark previous red CI green by inference.
+
+## 2026-11-01 follow-up: storage QA negatives and exact-head requalification (0E #809 / 0F #9)
+
+**Unmerged revisions, not release acceptance:** [#895](https://github.com/gamesbyian/Chunks/pull/895) has test/harness-only changes after the original accepted `b5e3924` source: enforce one authorized ADB target, emulator identity before any install or publication fixture, exact API, exactly one named test receipt/final instrumentation success, and negative fake-adb checks. Two red candidate heads (`df4c36e`, `60c40ca`) failed in the **offline mock**, before emulator/test execution: first an incorrectly escaped ADB target selector; then the mock suppressed its own positive final-success marker. These are genuine harness failures, neither production MediaStore write failures nor acceptable green receipts. The corrected `b79b0213402530d26914c0ddb1fea18f9c349fbd` head has a new owned-documents run [41277977764](https://github.com/gamesbyian/Chunks/actions/runs/41277977764), pending exact-job acceptance at this checkpoint; do not adopt an earlier green source-head result as its current integrated proof.
+
+[#923](https://github.com/gamesbyian/Chunks/pull/923) now has a repeat-safe per-run fixture shared across actual phase A and B, **both** member-prefix queries with pending rows included, and a count proving the latest batch introduced its own stopped-batch warning rather than reusing a previous run's warning. Latest QA-only head `20712032c178a9901afdc3a37c24e26f7492efa6`, new owned-documents run [41277962860](https://github.com/gamesbyian/Chunks/actions/runs/41277962860), also not accepted until API29/API35 exact source and phase A/B finish. In particular, earlier [#923 run 41275222329](https://github.com/gamesbyian/Chunks/actions/runs/41275222329) did **not** test both member prefixes, notwithstanding its previously overbroad prose receipt. #917/#922 remain stacked on the earlier #895 precursor and must be reconciled in order; no storage executor is merged. Physical handset, arbitrary SAF, exact-target Replace, abrupt mid-write death and power loss remain open. CI is not a substitute for independent storage review.
+
+## 2026-11-01 cross-lane negative-controller and SQLite source review (0F #9)
+
+**Independent review, with bounded tiers:** [#933](https://github.com/gamesbyian/Chunks/pull/933) head `6ee2a9ce444c81d2ee3a4898047b12a1713cddb3` corrects the physical-device network-flap and Doze test scripts' hidden `adb devices` failures (process substitution) and stale explicit serial acceptance. Its [offline radio-harness run 41277625891](https://github.com/gamesbyian/Chunks/actions/runs/41277625891) is SUCCESS, and independent source review found no blocker within this non-shipping harness change; this is **not** actual phone/radio/Doze acceptance. [#934](https://github.com/gamesbyian/Chunks/pull/934) head `9095c4beb04822b8addd9003074162afafae9bf0` adds an actual Android two-connection stale-writer regression after Remove/re-Add, including the API29 11-case executed-test gate. Independent source review was conditional and **does not claim** exact-head API29/API35 pass, cross-process power-loss proof, or physical flash durability. Production SQLite, user file writes and remote mutations were not modified by either QA review.
+
+## 2026-11-01 public-peer native positive receipt verification (0B #5/#569; 0F #9)
+
+[PR #935](https://github.com/gamesbyian/Chunks/pull/935) merged as
+`415b12555d7388075c5aad479f18996fd059c84e`, after the exact
+candidate head `c3b014d0a67d0b5f82e33dab4937f666d4250f2e` passed
+[radio-harness safety run 41277491099](https://github.com/gamesbyian/Chunks/actions/runs/41277491099).
+This is an **offline fake-adb/harness** success, not an installed real Internet
+peer transfer. The manual public-swarm runner now accepts only one fully
+executed `OK (1 test)`, a successful app logcat read with one complete
+`CHUNKS_ANDROID_SWARM: VERIFIED` receipt containing the exact v1 torrent
+hash and numeric verified/target byte counts, no contradictory
+`INCONCLUSIVE`, and positive verified bytes meeting the bounded requested
+budget. Previously a prefix `OK` and ignored negative status could pass
+without any native receipt. Negative controls reject missing/duplicate/short
+native receipts, failed logcat, skipped/failing/duplicate/prefix-only tests
+and ambiguous target/installation. No shipping engine or test fixture peer
+transport was changed. Explicit manual public-swarm dispatch and physical
+handset/Doze/VPN evidence are still open, never inferred from a green mock.
+
+## 2026-11-01 Android SQLite cross-writer retirement regression integrated (0A #865)
+
+[PR #934](https://github.com/gamesbyian/Chunks/pull/934) merged
+`0091b278015ee3bd77e2b1cea8b92db9ceccceac` from exact candidate
+`9095c4beb04822b8addd9003074162afafae9bf0`.
+[API29 installed 41277678727](https://github.com/gamesbyian/Chunks/actions/runs/41277678727)
+**SUCCESS**, raw job `124763054650`: the new concurrency test actually
+executed and completed with a positive JUnit status, and the real shell
+requires **11** resume tests after the new method (mock receipt updated).
+[API35 native Add 41277678745](https://github.com/gamesbyian/Chunks/actions/runs/41277678745)
+**SUCCESS**, raw job `124763071849`: full connected Android instrumentation
+ran **314 tests, 295 executed, 19 deliberately skipped, zero failed**. Its
+normal `connectedDebugAndroidTest` class selection includes the added
+non-opt-in SQLite test. Both are disposable emulators, never a physical
+device.
+
+The existing *production* `LocalResumeStore.open` is used with two
+simultaneously open SQLite connections. A saves one snapshot; B checks it,
+commits `REMOVE_INTENT` and `REMOVED`, then explicitly saves a distinct
+same-infohash re-Add generation. A late, even byte-identical callback
+to A must fail, invalidate A's cached state, and a fresh C connection must
+restore only B's replacement. Both production opens affirm the Android
+SQLite `PRAGMA synchronous=EXTRA` policy. No shipping SQLite or JNI code
+was changed; the test extends the already merged #889 integrity contract.
+Real sudden power loss, physical/OEM flash durability and unsupported storage
+providers remain separate open #865/#5 requirements.
+
+## 2026-11-01 local native restored-payload grant refusal integrated (0B #5/#569)
+
+[PR #914](https://github.com/gamesbyian/Chunks/pull/914) **merged** as
+`788ecd18f26ccf38a1ca94b57a8a0ea57b530d6a`. Exact source head
+`bd41fe28c0ce55b72b1904084a13a953ebd079da` passed seven workflows:
+[API29 installed 41277282694](https://github.com/gamesbyian/Chunks/actions/runs/41277282694),
+[Android foundation 41277282836](https://github.com/gamesbyian/Chunks/actions/runs/41277282836),
+[API35 native Add 41277282612](https://github.com/gamesbyian/Chunks/actions/runs/41277282612),
+[API35 lifecycle 41277282685](https://github.com/gamesbyian/Chunks/actions/runs/41277282685),
+[R8 41277282595](https://github.com/gamesbyian/Chunks/actions/runs/41277282595),
+[disposable rTorrent 41277282535](https://github.com/gamesbyian/Chunks/actions/runs/41277282535)
+and [docs 41277282544](https://github.com/gamesbyian/Chunks/actions/runs/41277282544).
+Independent source review checked the prior base against newer main for overlap:
+none of PR #914's five changed files conflicted with intervening source.
+
+The earlier actual API29 result showed that after revoking READ/WRITE external
+storage, a selected restored public Downloads payload was **unreadable** while
+native Start still returned `VERIFIED` from the paused flag alone. The merged
+fix checks up to 20 already-existing surveyed payloads with read-only
+`O_NONBLOCK|O_NOFOLLOW` descriptor opens, `fstat` regular-file validation
+and one-byte read before restored/checked Start. Actual denial refuses
+without changing files; still-readable owned public Downloads can recheck and
+seed. The three **different emulator processes** verify original stopped
+seeding, grant revoke and denied FD → `REFUSED` with the job still stopped,
+FIFO/leaf-/parent-symlink negatives, grant re-enable, genuine native SEEDING
+and session-only Remove preserving payload SHA. Raw API29 job log
+`124761919928` includes the three phase markers and final accepted receipt.
+
+These are exact-head **disposable-emulator** results, not physical/OEM,
+removable SD/SAF, low-space/ENOSPC, arbitrary uninspected files, genuine
+power-cut, VPN/network switch or long-running Doze. The point-in-time FD
+preflight is not a race-free universal path permission proof. Issues #5 and
+#569 remain open for those concrete tiers; superseded #568 remains closed.
+
 ## 2026-11-01 public-peer native positive receipt verification (0B #5/#569; 0F #9)
 
 [PR #935](https://github.com/gamesbyian/Chunks/pull/935) merged as
@@ -25,7 +172,7 @@ handset/Doze/VPN evidence are still open, never inferred from a green mock.
 
 - [#895 MediaStore run 41271895036](https://github.com/gamesbyian/Chunks/actions/runs/41271895036), exact source `b5e39247ea22760c1ddedef49f41142f978d2a4a`: API29 job `124746187670` and API35 job `124746187539` each printed `OK (10 tests)`, `INSTRUMENTATION_CODE: -1`, and `CHUNKS_OWNED_MEDIASTORE_DOCUMENTS=PASS`. Its six relevant source-head workflow groups succeeded. The explicitly selected flat ZIP or completed single-file native source creates a separately verified NEW primary Downloads/Chunks Exports row via exact owner/ID, new pending row, fsynced write and SHA readback; the original ZIP and native seeding bytes remain unchanged. No general SAF or Replace.
 - [#922 MediaStore run 41274670993](https://github.com/gamesbyian/Chunks/actions/runs/41274670993), exact source `7b8bebba12574694e65381d0b3ae67e25272feee`: API29/35 jobs `124754315051` and `124754315147` each printed `OK (15 tests)` and PASS. Its journal establishes durable batch intent, individual receipt/partial-state descriptions and preserved uncertain rows, not an atomic multi-file publish.
-- [#923 MediaStore and cold recovery run 41275222329](https://github.com/gamesbyian/Chunks/actions/runs/41275222329), exact source `165e672b48cd86d71b520d8a15b3bc2a942d1e28`: API29 job `124755990561` and API35 job `124755990718` each printed `OK (15 tests)`, individual platform PASS, separate positive phase-A and phase-B receipts after `adb shell am force-stop`, and final `CHUNKS_BATCH_COLD=PASS`. Confirmed exactly one completed row, original ZIP intact, no hidden extra pending row, and actual Compose interrupted-batch warning. [API35 native Add run 41275222303](https://github.com/gamesbyian/Chunks/actions/runs/41275222303) also succeeded.
+- [#923 MediaStore and cold recovery run 41275222329](https://github.com/gamesbyian/Chunks/actions/runs/41275222329), exact source `165e672b48cd86d71b520d8a15b3bc2a942d1e28`: API29 job `124755990561` and API35 job `124755990718` each printed `OK (15 tests)`, individual platform PASS, separate positive phase-A and phase-B receipts after `adb shell am force-stop`, and final `CHUNKS_BATCH_COLD=PASS`. Confirmed the first member's exact completed row and unchanged source ZIP, plus an actual Compose interrupted-batch warning. **Evidence correction:** this older test only queried the first member's filename prefix, so it did **not** independently rule out a hidden pending or published second-member row; the added second-prefix assertion is a newer, separately accepted API29/API35 candidate, not the historical run. [API35 native Add run 41275222303](https://github.com/gamesbyian/Chunks/actions/runs/41275222303) also succeeded.
 
 **Limits and merge disposition:** this is an intentionally stopped batch followed by a cold new process, **not an abrupt kill during provider write or physical power loss**. All four storage PRs remain draft/stacked; #895 is behind intervening main changes. Source-head green runs do not certify an updated integrated head, physical handset, removable SD, arbitrary DocumentsProvider, reviewed exact-target Replace or generic nested ZIP/library operations. Existing unsafe executors remain refuse-before-write disabled. Independent source review is conditional, not a same-account formal approval. Reconcile one predecessor at a time, rerun the affected exact integrated-head suites, obtain separate executor review and preserve recovery/foreign-canary negatives. #809 remains open.
 

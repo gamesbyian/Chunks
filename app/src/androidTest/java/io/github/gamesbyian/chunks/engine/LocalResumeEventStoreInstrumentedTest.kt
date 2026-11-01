@@ -277,6 +277,28 @@ class LocalResumeEventStoreInstrumentedTest {
             fail("Missing committed state must refuse legacy fallback")
         } catch (_: Exception) { }
         assertFalse(database.exists())
+
+        // Actual Android SQLite, after a committed authority marker, must not
+        // initialize or alter a zero-length replacement or sidecars merely by
+        // attempting to open and refusing this corrupted authoritative state.
+        database.writeBytes(ByteArray(0))
+        val namespace = requireNotNull(database.parentFile)
+        val before = requireNotNull(namespace.listFiles()).associate {
+            it.name to it.readBytes()
+        }
+        try {
+            LocalResumeStore.open(dir, LocalResumeDirectoryInventory.prepare(dir)).close()
+            fail("Zeroed committed database must refuse without legacy fallback")
+        } catch (_: Exception) { }
+        assertEquals("Authoritative state was initialized after corrupt refusal",
+            0L, database.length())
+        assertEquals("Refused SQLite open must not leave unexpected sidecars",
+            before.keys, requireNotNull(namespace.listFiles()).map { it.name }.toSet())
+        for ((name, bytes) in before) {
+            assertArrayEquals("Refusing authoritative zeroed DB changed $name",
+                bytes, File(namespace, name).readBytes())
+        }
+        assertEquals("obsolete snapshot", legacy.readText())
     }
 
     @Test fun androidLargeResumeExceedingDefaultCursorWindowRestoresExactly() {
@@ -285,6 +307,42 @@ class LocalResumeEventStoreInstrumentedTest {
         LocalResumeStore.open(dir, LocalResumeDirectoryInventory.prepare(dir)).use { it.save(hash, payload) }
         LocalResumeStore.open(dir, LocalResumeDirectoryInventory.prepare(dir)).use {
             assertArrayEquals(payload, it.current(hash))
+        }
+    }
+
+    @Test fun androidTwoProductionSQLiteConnectionsRefuseStaleSaveAfterRemoveAndReAdd() {
+        val dir = root().toFile()
+        val original = "old native resume snapshot".toByteArray()
+        val replacement = "explicit new Add generation".toByteArray()
+        fun fresh() = LocalResumeStore.open(dir, LocalResumeDirectoryInventory.prepare(dir))
+        // Both connections use real Android SQLite, unlike the host-only
+        // stale-writer regression. Keep A open while B retires and re-adds.
+        fresh().use { stale ->
+            assertProductionExtraSync(stale)
+            stale.save(hash, original)
+            fresh().use { newer ->
+                assertProductionExtraSync(newer)
+                assertArrayEquals(original, newer.current(hash))
+                newer.removeIntent(hash)
+                newer.removeCommit(hash)
+                assertTrue(newer.canRegister(hash))
+                newer.save(hash, replacement)
+            }
+            // Even an *identical* stale native callback must not be accepted:
+            // its in-memory equality cache predates the Remove generation.
+            val error = runCatching { stale.save(hash, original) }.exceptionOrNull()
+            assertTrue("Stale Android SQLite writer must reject even unchanged bytes: $error",
+                error is IOException)
+            val cached = runCatching { stale.current(hash) }.exceptionOrNull()
+            assertTrue("A failed stale write must force read-only reconciliation: $cached",
+                cached is IOException)
+        }
+        fresh().use { recovered ->
+            assertProductionExtraSync(recovered)
+            assertArrayEquals("Retired job was resurrected or new Add overwritten",
+                replacement, recovered.current(hash))
+            assertEquals(listOf(hash), recovered.restorable().map { it.first })
+            assertTrue(recovered.problems().isEmpty())
         }
     }
 
