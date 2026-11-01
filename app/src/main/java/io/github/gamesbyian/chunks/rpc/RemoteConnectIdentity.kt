@@ -24,3 +24,26 @@ internal fun requireRemoteConnectIdentityEvidence(
         throw RemoteIdentityUnverified()
     }
 }
+
+
+/**
+ * A saved account is not automatically signed in again after process death,
+ * logout, password rotation or proxy reconfiguration. Reauthenticate its
+ * exact endpoint on a fresh transport before showing the inventory under the
+ * stored account identity in the combined transfer view.
+ *
+ * The returned list is one complete read-only main view; failure leaves the
+ * combined UI's previous observations stale. Never run mutations here.
+ */
+internal suspend fun verifiedSavedProfileMainInventory(
+    credentials: RemoteCredentials
+): List<RemoteTransfer> {
+    val connection = RTorrentRemote(credentials)
+    val version = connection.version()
+    check(version.isNotBlank() && version.length <= 120) {
+        "Invalid rTorrent version response"
+    }
+    val transfers = connection.listTransfers("main")
+    requireRemoteConnectIdentityEvidence(credentials, connection)
+    return transfers
+}
