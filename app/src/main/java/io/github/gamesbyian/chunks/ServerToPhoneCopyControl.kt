@@ -43,10 +43,13 @@ internal fun ServerToPhoneCopyControl(
 ) {
     if (transfer.sizeBytes <= 0 || transfer.completedBytes != transfer.sizeBytes) return
     val scope = rememberCoroutineScope()
-    var checking by remember(transfer.hash) { mutableStateOf(false) }
-    var plan by remember(transfer.hash) { mutableStateOf<ServerToPhoneCopy.Plan?>(null) }
-    var addressDraft by remember(transfer.hash) { mutableStateOf("") }
-    var editingAddress by remember(transfer.hash) { mutableStateOf(false) }
+    // A shared infohash can exist on different authenticated profiles. A saved
+    // peer-copy draft is authority for this exact remote session and source,
+    // never for whichever server happens to display the same torrent next.
+    var checking by remember(remote, transfer.hash, transfer.name, transfer.sizeBytes, transfer.directory) { mutableStateOf(false) }
+    var plan by remember(remote, transfer.hash, transfer.name, transfer.sizeBytes, transfer.directory) { mutableStateOf<ServerToPhoneCopy.Plan?>(null) }
+    var addressDraft by remember(remote, transfer.hash, transfer.name, transfer.sizeBytes, transfer.directory) { mutableStateOf("") }
+    var editingAddress by remember(remote, transfer.hash, transfer.name, transfer.sizeBytes, transfer.directory) { mutableStateOf(false) }
 
     fun check(addressOverride: String?) {
         checking = true
