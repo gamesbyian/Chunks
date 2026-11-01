@@ -91,6 +91,10 @@ fun VerifiedAddScreen(
     var uncertain by remember { mutableStateOf(false) }
     var alreadyAttempted by remember { mutableStateOf(false) }
     var startAfterAdd by remember { mutableStateOf(true) }
+    // Explicit owner diagnostic only; never automatically route a failed RPC
+    // Add through a second write transport.
+    var useRuTorrentForm by remember(remote) { mutableStateOf(false) }
+    val offersRuTorrentForm = remember(remote) { remote.ruTorrentUploadAddress() != null }
     val finishInOrderStore = remember(finishInOrderScope) { finishInOrderScope?.let { FinishInOrderStore(context, it) } }
     var finishInOrderDefault by remember(finishInOrderScope) { mutableStateOf(finishInOrderStore?.defaultForNewAdds() == true) }
     var finishInOrderAfterAdd by remember(selectedTorrent?.infoHashV1) { mutableStateOf(finishInOrderDefault) }
@@ -349,6 +353,24 @@ fun VerifiedAddScreen(
                         modifier = Modifier.padding(start = 8.dp))
                 }
             }
+            if (offersRuTorrentForm && startAfterAdd) item {
+                Row(
+                    Modifier.fillMaxWidth().toggleable(
+                        value = useRuTorrentForm, enabled = !submitting,
+                        role = Role.Checkbox,
+                        onValueChange = { useRuTorrentForm = it; awaitingConfirmation = false }
+                    ).padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(checked = useRuTorrentForm, onCheckedChange = null)
+                    Text("Try ruTorrent's own Add handler",
+                        modifier = Modifier.padding(start = 8.dp))
+                }
+                Text("Alternative for a server where XML-RPC Adds remain paused. " +
+                    "Uses this same signed-in ruTorrent instance and your reviewed folder. " +
+                    "Sends one Add only; it will never retry an uncertain transfer automatically.",
+                    style = MaterialTheme.typography.bodySmall)
+            }
             // Only a .torrent shows its file list before Add; magnets are excluded.
             val fioStore = finishInOrderStore
             if (fioStore != null && useFile && (selectedTorrent?.fileCount ?: 0) >= 2) item {
@@ -382,7 +404,11 @@ fun VerifiedAddScreen(
                             Text("Infohash: " + plan.expectedInfoHash)
                             Text("Destination: " + plan.destination + if (plan.useServerDefault)
                                 " (server default; no directory override)" else " (custom parent folder)")
-                            Text(if (startAfterAdd && !(useFile && finishInOrderAfterAdd &&
+                            Text(if (startAfterAdd && useRuTorrentForm &&
+                                    !(useFile && finishInOrderAfterAdd &&
+                                      (selectedTorrent?.fileCount ?: 0) >= 2 && finishInOrderScope != null))
+                                "Use this account's ruTorrent browser Add handler once, with your selected folder and automatic Start. Read back the exact torrent and active state. There is no automatic retry."
+                            else if (startAfterAdd && !(useFile && finishInOrderAfterAdd &&
                                     (selectedTorrent?.fileCount ?: 0) >= 2 && finishInOrderScope != null))
                                 "Use rTorrent's native add-and-start command once, then verify the exact torrent identity, destination and active engine state. An uncertain response is never retried automatically."
                             else if (startAfterAdd)
@@ -415,7 +441,9 @@ fun VerifiedAddScreen(
                                     // Start-after-Add, retaining stopped-first for
                                     // reviewed Finish in Order priorities.
                                     val result = if (startAfterAdd && orderScope == null) {
-                                        if (bytes != null) remote.loadStartedTorrentBytes(
+                                        if (useRuTorrentForm) {
+                                            remote.loadStartedViaRuTorrentForm(plan, bytes)
+                                        } else if (bytes != null) remote.loadStartedTorrentBytes(
                                             bytes, plan.destination, plan.useServerDefault)
                                         else remote.loadStarted(plan)
                                     } else RemoteAddStarter.run(
