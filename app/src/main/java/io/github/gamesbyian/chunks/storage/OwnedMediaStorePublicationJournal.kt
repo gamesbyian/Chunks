@@ -22,8 +22,9 @@ import java.util.UUID
 
 /**
  * An app-private, exclusive and fsynced forensic journal for a single owned
- * platform MediaStore Downloads publication. This is a NON-ACTIVATED storage
- * primitive until the positive Save UX and physical acceptance are approved.
+ * platform MediaStore Downloads publication. The narrowly bounded single-file
+ * ZIP/library Save actions are connected; broad SAF/Replace and OEM acceptance
+ * remain unqualified and disabled.
  *
  * A record cannot grant authority to open a provider URI for writing or to
  * delete any document. Recovery is intentionally read-only; unknown/torn
