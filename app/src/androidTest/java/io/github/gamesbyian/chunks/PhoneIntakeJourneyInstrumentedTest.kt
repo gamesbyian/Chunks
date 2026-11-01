@@ -250,6 +250,13 @@ class PhoneIntakeJourneyInstrumentedTest {
         val target = File(publicRoot, name)
         assertEquals(publicRoot.canonicalPath, target.canonicalFile.parentFile?.canonicalPath)
         assertEquals(digest, sha(target.readBytes()))
+        // The originating fixture seed died with phase A. Erase ONLY its
+        // disposable test-private source before creating a second peer.
+        // Otherwise a shared-user/relative-path alias to that complete file
+        // could turn an apparent fresh download into local file reuse.
+        val retiredFixtureSeed = File(work, "source/$name")
+        assertTrue("Original fixture seeder data must be retired", retiredFixtureSeed.delete())
+        assertFalse("No alternative original payload may survive", retiredFixtureSeed.exists())
         assertTrue("A killed stopped process cannot leave a running notification",
             notifications.activeNotifications.none { it.id == LocalEngineService.NOTIFICATION_ID })
 
@@ -302,6 +309,8 @@ class PhoneIntakeJourneyInstrumentedTest {
                 }) { receiver.status(hash)?.progressPpm == 1_000_000 }
                 assertTrue(receiver.flushCompletedForLibraryRead(hash, 30_000))
                 assertArrayEquals(expected, receiveTarget.readBytes())
+                assertFalse("Original fixture seed must not be recreated by receiver",
+                    retiredFixtureSeed.exists())
                 fun counterDetails() = "before=$uploadedBefore port=$seedPort initial=$initial " +
                     "phone=${phone.status(hash)} receiver=${receiver.status(hash)}"
                 await("fresh peer's native payload counters prove transfer",
