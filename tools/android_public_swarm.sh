@@ -68,8 +68,8 @@ set -e
 native_log="$(adb logcat -d -s ChunksSwarm:I)" || {
   echo "::error::Cannot read app-side public swarm evidence" >&2; exit 1;
 }
-# Real adb logcat prefixes each application message with timestamp/tag.
-# Inspect the app-owned marker, not the full logcat prefix.
+# adb logcat prefixes app messages with timestamp/tag: inspect only the
+# app-owned marker, not a raw full-line match against logcat's prefix.
 native_receipts="$(grep -o 'CHUNKS_ANDROID_SWARM: .*' <<< "$native_log" || true)"
 printf '%s\n' "$native_receipts" |
   tee -a "${GITHUB_STEP_SUMMARY:-/dev/null}"
@@ -81,20 +81,7 @@ if [[ "$status" -ne 0 ]] ||
   echo "::error::Android swarm execution failed, was skipped or had an inconclusive peer result" >&2
   exit 1
 fi
-positive="$(grep -E '^CHUNKS_ANDROID_SWARM: VERIFIED hash=[0-9a-f]{40} verified=[0-9]+ target=[0-9]+ maxPeers=[0-9]+ trackers=.* seconds=[0-9]+
-if [[ "$(grep -c '^CHUNKS_ANDROID_SWARM: VERIFIED ' <<< "$native_receipts" || true)" != 1 ]] ||
-   [[ "$(grep -c '^CHUNKS_ANDROID_SWARM: VERIFIED ' <<< "$positive" || true)" != 1 ]] ||
-   [[ ! "$positive" =~ ^CHUNKS_ANDROID_SWARM:\ VERIFIED\ hash=[0-9a-f]{40}\ verified=([0-9]+)\ target=([0-9]+)\ maxPeers=[0-9]+\ trackers=.*\ seconds=[0-9]+$ ]]; then
-  echo "::error::Missing or ambiguous complete native peer-byte receipt" >&2
-  exit 1
-fi
-observed="${BASH_REMATCH[1]}"
-required="${BASH_REMATCH[2]}"
-if (( required < 1 || required > CHUNKS_PUBLIC_SWARM_BUDGET_BYTES || observed < required )); then
-  echo "::error::Native public-peer verified bytes did not satisfy the requested positive budget" >&2
-  exit 1
-fi
- <<< "$native_receipts" || true)"
+positive="$(grep -E '^CHUNKS_ANDROID_SWARM: VERIFIED hash=[0-9a-f]{40} verified=[0-9]+ target=[0-9]+ maxPeers=[0-9]+ trackers=.* seconds=[0-9]+$' <<< "$native_receipts" || true)"
 if [[ "$(grep -c '^CHUNKS_ANDROID_SWARM: VERIFIED ' <<< "$native_receipts" || true)" != 1 ]] ||
    [[ "$(grep -c '^CHUNKS_ANDROID_SWARM: VERIFIED ' <<< "$positive" || true)" != 1 ]] ||
    [[ ! "$positive" =~ ^CHUNKS_ANDROID_SWARM:\ VERIFIED\ hash=[0-9a-f]{40}\ verified=([0-9]+)\ target=([0-9]+)\ maxPeers=[0-9]+\ trackers=.*\ seconds=[0-9]+$ ]]; then
