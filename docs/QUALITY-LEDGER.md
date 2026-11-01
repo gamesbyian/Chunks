@@ -1,5 +1,39 @@
 # Chunks evidence and release gate ledger
 
+## 2026-11-01 local native restored-payload grant refusal integrated (0B #5/#569)
+
+[PR #914](https://github.com/gamesbyian/Chunks/pull/914) **merged** as
+`788ecd18f26ccf38a1ca94b57a8a0ea57b530d6a`. Exact source head
+`bd41fe28c0ce55b72b1904084a13a953ebd079da` passed seven workflows:
+[API29 installed 41277282694](https://github.com/gamesbyian/Chunks/actions/runs/41277282694),
+[Android foundation 41277282836](https://github.com/gamesbyian/Chunks/actions/runs/41277282836),
+[API35 native Add 41277282612](https://github.com/gamesbyian/Chunks/actions/runs/41277282612),
+[API35 lifecycle 41277282685](https://github.com/gamesbyian/Chunks/actions/runs/41277282685),
+[R8 41277282595](https://github.com/gamesbyian/Chunks/actions/runs/41277282595),
+[disposable rTorrent 41277282535](https://github.com/gamesbyian/Chunks/actions/runs/41277282535)
+and [docs 41277282544](https://github.com/gamesbyian/Chunks/actions/runs/41277282544).
+Independent source review checked the prior base against newer main for overlap:
+none of PR #914's five changed files conflicted with intervening source.
+
+The earlier actual API29 result showed that after revoking READ/WRITE external
+storage, a selected restored public Downloads payload was **unreadable** while
+native Start still returned `VERIFIED` from the paused flag alone. The merged
+fix checks up to 20 already-existing surveyed payloads with read-only
+`O_NONBLOCK|O_NOFOLLOW` descriptor opens, `fstat` regular-file validation
+and one-byte read before restored/checked Start. Actual denial refuses
+without changing files; still-readable owned public Downloads can recheck and
+seed. The three **different emulator processes** verify original stopped
+seeding, grant revoke and denied FD → `REFUSED` with the job still stopped,
+FIFO/leaf-/parent-symlink negatives, grant re-enable, genuine native SEEDING
+and session-only Remove preserving payload SHA. Raw API29 job log
+`124761919928` includes the three phase markers and final accepted receipt.
+
+These are exact-head **disposable-emulator** results, not physical/OEM,
+removable SD/SAF, low-space/ENOSPC, arbitrary uninspected files, genuine
+power-cut, VPN/network switch or long-running Doze. The point-in-time FD
+preflight is not a race-free universal path permission proof. Issues #5 and
+#569 remain open for those concrete tiers; superseded #568 remains closed.
+
 ## 2026-11-01 public-peer native positive receipt verification (0B #5/#569; 0F #9)
 
 [PR #935](https://github.com/gamesbyian/Chunks/pull/935) merged as
