@@ -235,6 +235,33 @@ class Android10DownloadsRevocationInstrumentedTest {
         }
         assertEquals("Denied read/Start must not mutate payload", deniedExpected,
             digest(deniedTarget))
+
+        // Two adversarial opened-path negatives for the *same production probe*.
+        // A FIFO cannot be permitted to hang Start; a leaf or parent symlink
+        // must never cause this preflight to read an unrelated file.
+        val attacks = File(work, "read-probe-adversarial").apply {
+            assertTrue("Fresh adversarial fixture required", mkdir())
+        }
+        val fifo = File(attacks, "blocked.fifo")
+        Os.mkfifo(fifo.absolutePath, 384) // disposable 0600
+        val beforeFifo = System.nanoTime()
+        assertFalse("Read preflight accepted a FIFO",
+            restored.canReadExistingPayload(attacks, fifo.name))
+        assertTrue("FIFO read preflight blocked beyond 5 s",
+            (System.nanoTime() - beforeFifo) < 5_000_000_000L)
+        val unrelated = File(work, "private-source.bin")
+        val unrelatedBefore = digest(unrelated)
+        Os.symlink(unrelated.absolutePath, File(attacks, "outside.link").absolutePath)
+        assertFalse("Read preflight followed a leaf symlink",
+            restored.canReadExistingPayload(attacks, "outside.link"))
+        Os.symlink(work.absolutePath, File(attacks, "parent.link").absolutePath)
+        assertFalse("Read preflight followed a parent symlink",
+            restored.canReadExistingPayload(attacks, "parent.link/private-source.bin"))
+        assertEquals("Adversarial checks touched the unrelated file", unrelatedBefore,
+            digest(unrelated))
+        android.util.Log.i("ChunksGrant",
+            "CHUNKS_GRANT_ADVERSARIAL fifo=refused leaf_link=refused parent_link=refused")
+
         android.util.Log.i("ChunksGrant",
             "CHUNKS_GRANT phase=b permission_revoked=true stopped_restored=true path_checked=true")
     }
