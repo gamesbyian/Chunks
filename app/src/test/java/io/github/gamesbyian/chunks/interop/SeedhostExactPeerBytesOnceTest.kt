@@ -95,7 +95,9 @@ class SeedhostExactPeerBytesOnceTest {
 
         // Reuse the already accepted, read-only multi-observation destination
         // preflight. Do not turn a guessed directory into write authority.
-        val observations = beforeInventory.asSequence()
+        // Eager List.map is inline: the read-only RPCs must run inside this
+        // suspending test, rather than a deferred non-suspending Sequence map.
+        val observations = beforeInventory
             .filter { it.sizeBytes > 0 && it.completedBytes == it.sizeBytes }
             .take(48).map { transfer ->
                 val multifile = runCatching {
