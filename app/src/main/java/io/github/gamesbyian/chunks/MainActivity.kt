@@ -229,6 +229,14 @@ private fun ChunksApp(
     // Navigation only: no session, command, draft or selected transfer survives restore.
     // A restored remote route safely falls back to the phone when no server exists.
     var combinedFromPhone by rememberSaveable { mutableStateOf(false) }
+    // One safe navigation return edge only, never an Add draft or authority.
+    // When entering phone from Combined, the phone's own Back returns there.
+    var localFromCombined by rememberSaveable { mutableStateOf(false) }
+    fun leavePhone() {
+        val returnToCombined = localFromCombined
+        localFromCombined = false
+        section = if (returnToCombined) Section.COMBINED else Section.TRANSFERS
+    }
     var query by remember { mutableStateOf("") }
     var filter by remember { mutableStateOf(TransferFilter.ALL) }
     var order by remember { mutableStateOf(TransferOrder.NAME) }
@@ -309,7 +317,7 @@ private fun ChunksApp(
     // Content-only external .torrent links go to the phone's existing Add
     // review without starting an engine, creating a file or contacting peers.
     LaunchedEffect(incomingTorrent) {
-        if (incomingTorrent != null) section = Section.LOCAL
+        if (incomingTorrent != null) { localFromCombined = false; section = Section.LOCAL }
     }
     // A file shared to "Create torrent" opens the Create review; nothing is read yet.
     val seedingEnvironments = remember(savedProfiles, aliasScope, server) {
@@ -338,6 +346,7 @@ private fun ChunksApp(
         if (sharedMagnet != null) {
             if (server == null) {
                 phoneHandoffMagnet = sharedMagnet
+                localFromCombined = false
                 section = Section.LOCAL
             } else {
                 magnet = sharedMagnet
@@ -448,7 +457,7 @@ private fun ChunksApp(
                         // Read-only "main" list with this profile's own saved credentials (HTTPS enforced).
                         listOnly = { verifiedSavedProfileMainInventory(profile.credentials) })
                 },
-                onOpenPhone = { section = Section.LOCAL },
+                onOpenPhone = { localFromCombined = true; section = Section.LOCAL },
                 onOpenServer = if (server != null) ({ section = Section.TRANSFERS }) else null,
                 onAddToServer = if (server != null) ({ section = Section.ADD }) else null,
                 onOpenTransfer = { key ->
@@ -461,6 +470,7 @@ private fun ChunksApp(
                     when (ExactOwningListNavigation.route(key, authenticatedId)) {
                         ExactOwningListNavigation.Route.PHONE -> {
                             phoneSearchPrefill = key.infoHash
+                            localFromCombined = true
                             section = Section.LOCAL
                         }
                         ExactOwningListNavigation.Route.AUTHENTICATED_SERVER -> {
@@ -483,8 +493,9 @@ private fun ChunksApp(
                 onBack = {
                     // Respect the launching surface, even if the server disconnected
                     // while browsing. Never infer any mutation authority from this origin.
-                    section = if (combinedFromPhone || server == null)
-                        Section.LOCAL else Section.TRANSFERS
+                    val returnToPhone = combinedFromPhone || server == null
+                    localFromCombined = false
+                    section = if (returnToPhone) Section.LOCAL else Section.TRANSFERS
                 }
             )
         } else if (section == Section.SEEDING) {
@@ -495,12 +506,12 @@ private fun ChunksApp(
         } else if (section == Section.LOCAL && server == null) {
             LocalTransferPrivacyGate(
                 scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
-                onBack = { section = Section.TRANSFERS }
+                onBack = { leavePhone() }
             ) {
                 LocalEngineScreen(
-                    onBack = { section = Section.TRANSFERS },
+                    onBack = { leavePhone() },
                     onSeedingRules = { section = Section.SEEDING },
-                    onCombined = { combinedFromPhone = true; section = Section.COMBINED },
+                    onCombined = { localFromCombined = false; combinedFromPhone = true; section = Section.COMBINED },
                     initialMagnet = phoneHandoffMagnet,
                     initialSearch = phoneSearchPrefill,
                     onSearchConsumed = { phoneSearchPrefill = null },
@@ -630,7 +641,7 @@ private fun ChunksApp(
                 },
                 onLocalZipReview = { section = Section.ARCHIVES },
                 onInspectSnapshot = { section = Section.SNAPSHOT_INSPECT },
-                onLocalEngine = { section = Section.LOCAL },
+                onLocalEngine = { localFromCombined = false; section = Section.LOCAL },
                 onCreateTorrent = { section = Section.CREATE },
                 onEndpoint = { endpoint = it }, onUsername = { username = it },
                 onPassword = { password = it },
@@ -791,12 +802,12 @@ private fun ChunksApp(
                 // profile can still navigate to the separately gated phone.
                 LocalTransferPrivacyGate(
                     scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
-                    onBack = { section = Section.TRANSFERS }
+                    onBack = { leavePhone() }
                 ) {
                     LocalEngineScreen(
-                        onBack = { section = Section.TRANSFERS },
+                        onBack = { leavePhone() },
                         onSeedingRules = { section = Section.SEEDING },
-                        onCombined = { combinedFromPhone = true; section = Section.COMBINED },
+                        onCombined = { localFromCombined = false; combinedFromPhone = true; section = Section.COMBINED },
                         initialMagnet = phoneHandoffMagnet,
                         initialSearch = phoneSearchPrefill,
                         onSearchConsumed = { phoneSearchPrefill = null },
@@ -834,14 +845,14 @@ private fun ChunksApp(
                 Text("Cannot verify which rTorrent profile owns these transfers. " +
                     "Go to the phone client or reconnect securely.",
                     color = MaterialTheme.colorScheme.error)
-                OutlinedButton(onClick = { section = Section.LOCAL },
+                OutlinedButton(onClick = { localFromCombined = false; section = Section.LOCAL },
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                     Text("On this phone")
                 }
             } else {
                 RemoteTransferPrivacyGate(
                     scope = remotePrivacyScope,
-                    onBack = { section = Section.LOCAL }
+                    onBack = { localFromCombined = false; section = Section.LOCAL }
                 ) {
             val beginRemoteMutation: () -> Boolean = {
                 if (server === connectedRemote && !loading && !stale && mutationGate.tryStart()) {
@@ -889,7 +900,7 @@ private fun ChunksApp(
                     it != Section.SNAPSHOT_INSPECT && it != Section.COMBINED }) {
                     FilterChip(
                         selected = section == tab,
-                        onClick = { section = tab },
+                        onClick = { if (tab == Section.LOCAL) localFromCombined = false; section = tab },
                         label = { Text(tab.label) },
                         // A hard 48dp height clips enlarged Compose labels when
                         // Android system font scale reaches 200%. Keep the
@@ -947,12 +958,14 @@ private fun ChunksApp(
                             } catch (_: Exception) { emptyList() }
                             if (server === connectedRemote) {
                                 phoneHandoffMagnet = PublicTrackerHandoff.withTrackers(prepared, trackers)
+                                localFromCombined = false
                                 section = Section.LOCAL
                             }
                         }
                     },
                     onCopyToPhone = { magnet ->
                         phoneHandoffMagnet = magnet
+                        localFromCombined = false
                         section = Section.LOCAL
                     },
                     selectedHash = expandedHash, files = files, filesError = filesError,

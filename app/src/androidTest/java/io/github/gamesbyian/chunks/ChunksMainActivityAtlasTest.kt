@@ -335,7 +335,14 @@ class ChunksMainActivityAtlasTest {
         rule.onNode(phoneAdd).performClick()
         rule.onNodeWithText("On this phone (experimental)").assertExists()
         rule.onNodeWithText("Add a download on this phone").assertExists()
-        // Return through the existing local route without submitting any torrent.
+        // Local Back, distinct from the Combined header Back, returns to the
+        // review's originating Combined list while the server remains signed in.
+        rule.onNodeWithText("Back").performScrollTo().performClick()
+        rule.onNodeWithText("All environments").assertExists()
+        // Re-enter phone from Combined without submitting any torrent.
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(phoneAdd)
+        rule.onNode(phoneAdd).performClick()
+        rule.onNodeWithText("Add a download on this phone").assertExists()
         rule.onNodeWithText("All environments…").performScrollTo().performClick()
         // This second entry came from the phone while server is still connected.
         rule.onNodeWithText("Back").performClick()
