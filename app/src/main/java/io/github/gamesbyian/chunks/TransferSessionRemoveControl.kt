@@ -3,7 +3,7 @@ package io.github.gamesbyian.chunks
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -135,12 +135,12 @@ fun TransferSessionRemoveControl(
                             enabled = !pending && mainView && !snapshotStale,
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.error),
-                            modifier = Modifier.fillMaxWidth().height(52.dp)
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
                         ) { Text("Confirm remove") }
                         OutlinedButton(
                             onClick = { confirming = false },
                             enabled = !pending,
-                            modifier = Modifier.fillMaxWidth().height(48.dp)
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                         ) { Text("Cancel") }
                     }
                 }
