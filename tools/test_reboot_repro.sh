@@ -10,6 +10,15 @@ cat > "$temp/bin/adb" <<'MOCK_ADB'
 #!/usr/bin/env bash
 set -euo pipefail
 case "${1:-}" in
+  devices)
+    printf 'List of devices attached\nMOCK_USB\tdevice\n'
+    [[ "${MOCK_SECOND_DEVICE:-0}" != 1 ]] || printf 'SECOND\tdevice\n'
+    [[ "${MOCK_DEVICES_FAILED:-0}" != 1 ]] || exit 31
+    ;;
+  get-state)
+    printf 'device\n'
+    [[ "${MOCK_STATE_FAILED:-0}" != 1 ]] || exit 32
+    ;;
   logcat)
     if [[ "${2:-}" == "-d" ]]; then
       printf 'CHUNKS_REBOOT armed\n'
@@ -33,8 +42,20 @@ case "${1:-}" in
         fi
         ;;
       getprop)
-        [[ "${2:-}" == "sys.boot_completed" ]] || exit 1
-        printf '1\n'
+        case "${2:-}" in
+          ro.kernel.qemu)
+            if [[ "${MOCK_QEMU_UNKNOWN:-0}" == 1 ]]; then echo unknown
+            elif [[ "${MOCK_PHYSICAL:-0}" == 1 ]]; then echo 0
+            else echo 1; fi
+            [[ "${MOCK_QEMU_FAILED:-0}" != 1 ]] || exit 33
+            ;;
+          ro.build.version.sdk)
+            echo "${MOCK_SDK:-35}"
+            [[ "${MOCK_SDK_FAILED:-0}" != 1 ]] || exit 34
+            ;;
+          sys.boot_completed) printf '1\n' ;;
+          *) exit 1 ;;
+        esac
         ;;
       pidof) exit 1 ;;
       am)
@@ -73,6 +94,38 @@ export PATH="$temp/bin:$PATH" MOCK_REBOOT_FLAG="$temp/rebooted" MOCK_PHASE_B_FLA
 
 bash -n "$repo/tools/reboot_repro.sh"
 bash -n "$repo/tools/test_reboot_repro.sh"
+
+# Reboot is device-wide. Reject unreliable target identity BEFORE phase A.
+for negative in MOCK_DEVICES_FAILED MOCK_SECOND_DEVICE MOCK_STATE_FAILED \
+  MOCK_QEMU_FAILED MOCK_QEMU_UNKNOWN MOCK_SDK_FAILED MOCK_PHYSICAL; do
+  rm -f "$MOCK_REBOOT_FLAG" "$MOCK_PHASE_B_FLAG"
+  if env -u ADB_SERIAL -u ANDROID_SERIAL "$negative=1" \
+      bash "$repo/tools/reboot_repro.sh" > "$temp/$negative.log" 2>&1; then
+    echo "Unsafe Android reboot target accepted: $negative" >&2; exit 1
+  fi
+  [[ ! -e "$MOCK_REBOOT_FLAG" && ! -e "$MOCK_PHASE_B_FLAG" ]] || {
+    echo "Reboot or recovery instrumentation ran before $negative preflight" >&2; exit 1
+  }
+done
+rm -f "$MOCK_REBOOT_FLAG" "$MOCK_PHASE_B_FLAG"
+if env -u ADB_SERIAL -u ANDROID_SERIAL MOCK_SDK=28 \
+    bash "$repo/tools/reboot_repro.sh" > "$temp/old-api.log" 2>&1; then
+  echo 'Unsupported Android API reboot was accepted' >&2; exit 1
+fi
+[[ ! -e "$MOCK_REBOOT_FLAG" ]]
+if ANDROID_SERIAL=UNLISTED bash "$repo/tools/reboot_repro.sh" > "$temp/bad-serial.log" 2>&1; then
+  echo 'Unlisted explicit ADB target was accepted' >&2; exit 1
+fi
+[[ ! -e "$MOCK_REBOOT_FLAG" ]]
+if ADB_SERIAL=OTHER ANDROID_SERIAL=MOCK_USB \
+    bash "$repo/tools/reboot_repro.sh" > "$temp/conflict.log" 2>&1; then
+  echo 'Conflicting explicit ADB selectors were accepted' >&2; exit 1
+fi
+[[ ! -e "$MOCK_REBOOT_FLAG" ]]
+ANDROID_SERIAL=MOCK_USB CHUNKS_ALLOW_PHYSICAL_REBOOT_TEST=1 MOCK_PHYSICAL=1 \
+    bash "$repo/tools/reboot_repro.sh" > "$temp/physical-opt-in.log"
+[[ -e "$MOCK_REBOOT_FLAG" && -e "$MOCK_PHASE_B_FLAG" ]]
+rm -f "$MOCK_REBOOT_FLAG" "$MOCK_PHASE_B_FLAG"
 
 out="$(bash "$repo/tools/reboot_repro.sh")"
 [[ "$out" == *"kernel_boot_id_changed=true"* ]]
@@ -115,4 +168,4 @@ for phase in a b; do
   done
 done
 
-echo "CHUNKS_REBOOT_WITNESS_TEST: authentic reboot, no-reboot/invalid-ID, and ten false instrumentation receipts correctly rejected"
+echo "CHUNKS_REBOOT_WITNESS_TEST: fail-closed exact device selection, physical opt-in, authentic reboot, no-reboot/invalid-ID, and ten false instrumentation receipts correctly rejected"
