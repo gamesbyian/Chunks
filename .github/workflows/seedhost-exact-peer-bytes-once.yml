@@ -1,0 +1,112 @@
+name: Manual owner-approved Seedhost exact-hash received-byte proof
+
+# Only explicitly dispatched against trusted main. Never on PR/push/schedule.
+# The single-use runner identity prevents re-running an ambiguous mutation.
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: "I authorize one unique 512 KiB synthetic Add, Start, peer transfer, Stop and session-only Remove on the designated development Seedhost"
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  # Share a repository-wide mutation lease with the other protected Android
+  # scoped-host acceptance workflows; never mutate the same host in parallel.
+  group: chunks-android-seedhost-scope-mutation
+  cancel-in-progress: false
+
+jobs:
+  approved-host-received-bytes:
+    if: ${{ github.ref == 'refs/heads/main' && inputs.apply && github.run_attempt == 1 }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CHUNKS_HOST_PEER_PROOF: authorized
+      CHUNKS_LIVE_RUTORRENT_URL: "https://ianseeds.wood.seedhost.eu/rutorrent/"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+      - name: Validate the one-time protected-host boundary
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/main"
+          test "$GITHUB_RUN_ATTEMPT" = "1"
+          [[ "$GITHUB_RUN_ID" =~ ^[0-9]{5,20}$ ]]
+          test "$CHUNKS_HOST_PEER_PROOF" = "authorized"
+          test "$CHUNKS_LIVE_RUTORRENT_URL" = "https://ianseeds.wood.seedhost.eu/rutorrent/"
+          # Authentication secrets are checked only in the test step.
+      - name: Install pinned Android compile SDK
+        run: |
+          printf "y\n" | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
+          if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          fi
+      - name: Execute exact synthetic peer transfer with all raw logs withheld
+        env:
+          # Only this step, not checkout/setup or SDK installation, receives secrets.
+          CHUNKS_LIVE_RTORRENT_USER: ${{ secrets.rtorrent_user }}
+          CHUNKS_LIVE_RTORRENT_PASS: ${{ secrets.rtorrent_pass }}
+        run: |
+          set -euo pipefail
+          test -n "$CHUNKS_LIVE_RTORRENT_USER"
+          test -n "$CHUNKS_LIVE_RTORRENT_PASS"
+          private_log=$(mktemp)
+          trap 'rm -f "$private_log"' EXIT
+          set +e
+          gradle --no-daemon --console=plain :app:testDebugUnitTest \
+            --tests 'io.github.gamesbyian.chunks.interop.SeedhostExactPeerBytesOnceTest' > "$private_log" 2>&1
+          gradle_status=$?
+          set -e
+          python3 - "$gradle_status" <<'PY'
+          import pathlib, re, sys, xml.etree.ElementTree as ET
+          report = pathlib.Path("app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.interop.SeedhostExactPeerBytesOnceTest.xml")
+          if not report.is_file():
+              print("CHUNKS_HOST_BYTES: failure=missing-test-receipt; raw logs withheld")
+              sys.exit(1)
+          try:
+              root = ET.parse(report).getroot()
+              lines = (root.findtext("system-out") or "").splitlines()
+          except (OSError, ET.ParseError):
+              print("CHUNKS_HOST_BYTES: failure=invalid-test-receipt; raw logs withheld")
+              sys.exit(1)
+          allowed = {"preflight", "destination", "peer", "seed-ready", "added-stopped",
+                     "started", "bytes-verified", "stopped", "removed",
+                     "inventory-restored", "manual-reconciliation-required"}
+          stages = []
+          identity = None
+          for line in lines:
+              if line.startswith("CHUNKS_HOST_BYTES_STAGE: "):
+                  value = line.partition(": ")[2]
+                  if value in allowed:
+                      stages.append(value)
+              if line.startswith("CHUNKS_HOST_BYTES_HASH: "):
+                  value = line.partition(": ")[2]
+                  if re.fullmatch(r"[a-f0-9]{40}", value):
+                      identity = value
+          if identity is not None:
+              print("CHUNKS_HOST_BYTES: synthetic_exact_hash=" + identity)
+          print("CHUNKS_HOST_BYTES: last_stage=" + (stages[-1] if stages else "unavailable"))
+          passed = (int(sys.argv[1]) == 0 and root.attrib.get("tests") == "3" and
+                    all(root.attrib.get(x) == "0" for x in ("failures", "errors", "skipped")) and
+                    "bytes-verified" in stages and stages[-1:] == ["inventory-restored"])
+          if not passed:
+              print("CHUNKS_HOST_BYTES: incomplete_or_uncertain=true; no automatic mutation retries; reconcile synthetic exact hash manually")
+              sys.exit(1)
+          print("CHUNKS_HOST_BYTES: hosted_exact_hash_received_and_piece_verified_growth=true; session_removed=true; unrelated_inventory_restored=true")
+          PY
+      - name: Summarize accepted evidence scope
+        if: success()
+        run: |
+          echo "Exact approved-host synthetic peer-wire transfer passed on this reviewed main SHA." >> "$GITHUB_STEP_SUMMARY"
+          echo "This is JVM-runner-to-rTorrent hosted per-infohash byte acceptance, not Android UI/phone/OEM acceptance." >> "$GITHUB_STEP_SUMMARY"
