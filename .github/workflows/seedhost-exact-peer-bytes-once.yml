@@ -1,8 +1,13 @@
 name: Manual owner-approved Seedhost exact-hash received-byte proof
 
-# Only explicitly dispatched against trusted main. Never on PR/push/schedule.
-# The single-use runner identity prevents re-running an ambiguous mutation.
+# Owner authorizes live development Seedhost test torrents. A narrowly
+# named trusted-main merge also runs this one-time native Add peer-byte proof.
+# PRs, schedules, ordinary pushes and reruns remain unable to mutate.
 on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/seedhost-exact-peer-bytes-once.yml"
   workflow_dispatch:
     inputs:
       apply:
@@ -22,11 +27,18 @@ concurrency:
 
 jobs:
   approved-host-received-bytes:
-    if: ${{ github.ref == 'refs/heads/main' && inputs.apply && github.run_attempt == 1 }}
+    if: >-
+      ${{ github.ref == 'refs/heads/main' && github.run_attempt == 1 &&
+          ((github.event_name == 'workflow_dispatch' && inputs.apply) ||
+           (github.event_name == 'push' &&
+            contains(github.event.head_commit.message, 'one-time Seedhost native peer byte acceptance'))) }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
       CHUNKS_HOST_PEER_PROOF: authorized
+      # A trusted, specifically titled main push uses the corrected native
+      # start-on-load path. Manual dispatch retains the legacy comparison.
+      CHUNKS_HOST_PEER_PROOF_NATIVE_START: ${{ github.event_name == 'push' && 'authorized' || 'disabled' }}
       CHUNKS_LIVE_RUTORRENT_URL: "https://ianseeds.wood.seedhost.eu/rutorrent/"
     steps:
       - uses: actions/checkout@v4
@@ -81,7 +93,7 @@ jobs:
               print("CHUNKS_HOST_BYTES: failure=invalid-test-receipt; raw logs withheld")
               sys.exit(1)
           allowed = {"preflight", "destination", "peer", "seed-ready", "added-stopped",
-                     "started", "bytes-verified", "stopped", "removed",
+                     "added-started", "started", "bytes-verified", "stopped", "removed",
                      "inventory-restored", "manual-reconciliation-required"}
           stages = []
           identity = None
