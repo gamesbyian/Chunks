@@ -1,5 +1,37 @@
 # Chunks evidence and release gate ledger
 
+## 2026-11-01 P0 UI red-check diagnosis: local positive and negative controls
+
+Main `e5bcd0fc` was merged into both existing UI candidates before local tests.
+JDK 17.0.21 / Gradle 9.3.1 / Robolectric API35 (host JVM, **not installed Android**):
+
+- **#940:** baseline `713d8344` reproduced the exact Review-click timeout. Its
+  `Surface` fixture stacked sibling controls; adding the production `Column`
+  passed the unchanged same-hash two-session regression. At `f130bc85`,
+  `:app:testDebugUnitTest --tests '*ServerToPhoneSessionPlanTest' --tests '*ServerToPhoneCopyTest' --tests '*RemotePeerSourceIntegrityTest'`
+  executed **14, zero failures/skips**. Temporarily restoring all four old
+  hash-only remember keys made the corrected fixture fail at the old review's
+  `assertDoesNotExist`; the committed session keys were restored and all 14
+  passed again. Fresh [foundation](https://github.com/gamesbyian/Chunks/actions/runs/41290813842),
+  [native Add](https://github.com/gamesbyian/Chunks/actions/runs/41290813958) and
+  [R8](https://github.com/gamesbyian/Chunks/actions/runs/41290813740) are pending.
+- **#927:** baseline `6cce47c0` reproduced the saved-direction timeout. The
+  persisted query was SIZE/DESCENDING; the Reverse button was composed at
+  y=2742–2886 outside a 2673-pixel viewport. The test never scrolled to it.
+  At local `909a9323`, scrolling that exact pointer target into view and
+  uniquely checking the compact summary passed **20, zero failures/skips**:
+  `:app:testDebugUnitTest --tests '*CombinedTransfersScreenTest' --tests '*CombinedTransfersLargeTextTest' --tests '*CombinedAddAndFreshnessTest'`.
+  All direction, scope, grouping and readback assertions remain intact.
+  Current-main integration CI is still required; no new CI was dispatched for
+  the diagnostic revisions.
+
+These synthetic session/Compose receipts do not prove live authenticated-host
+identity, payload copy, installed app behavior, TalkBack or physical handset.
+The Android evidence-first skill changed the fixture and hit-target diagnosis
+using [official layout guidance](https://developer.android.com/develop/ui/compose/layouts/basics),
+without treating that guidance as runtime proof. #567/#8/#9 remain open.
+
+
 > **2026-11-01 reconciliation follow-up:** #948 real allocated low-space native peer recovery **merged** `9fddd8b` after [isolated API35](https://github.com/gamesbyian/Chunks/actions/runs/41280382837) and [native Add](https://github.com/gamesbyian/Chunks/actions/runs/41280382812) successes. #946 fail-closed remote inventory/peer-source RPC faults **merged** `8b185631`, preserving parent ancestry; dependent #952 capability/default Place operational fault correction **merged** `1982bac` after four exact-head passing workflows. #931 200%-text remote Add controls **merged** `f5299bcd` after foundation/native/R8 successes. #917's initially failed unrelated account-isolation foundation was redispatched and subsequently **green** on the same head (run 41281065428), but source integration after #958 remains unqualified; #922/#923 remain stacked. #927's Android foundation [41281020353](https://github.com/gamesbyian/Chunks/actions/runs/41281020353) has a real `CombinedTransfersScreenTest.sortDirectionScopeAndGroupingPersistAcrossReopen` assertion failure, still open. #940's previous [foundation 41281047564](https://github.com/gamesbyian/Chunks/actions/runs/41281047564) failed Compose handoff consumption; branch test synchronization change `f864f203` awaiting exact-head validation. #953 strict-boolean test fixture correction `21e0fe3` awaits source-head rerun. #957 API35 boot-only rerun remains pending. #961 reapplication of #950 remote filter wrapping awaits its full green candidate-head set; original #950 stays open until its replacement integrates. These are evidence-tier, not unattended completion claims.
 
 
