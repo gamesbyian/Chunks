@@ -326,4 +326,79 @@ class RemoteStoppedAddTest {
         } finally { server.stop(0) }
     }
 
+    @Test fun stoppedAddOutsideMainViewUsesOnlyExactReadbackAndChecksInactiveState() = runBlocking {
+        for (active in listOf(0L, 1L)) {
+            val methods = mutableListOf<String>()
+            val server = HttpServer.create(
+                InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0)
+            server.createContext("/RPC2") { exchange ->
+                val request = exchange.requestBody.bufferedReader().use { it.readText() }
+                val method = Regex("<methodName>([^<]+)</methodName>")
+                    .find(request)?.groupValues?.get(1).orEmpty()
+                methods.add(method)
+                val body = when (method) {
+                    "d.multicall2" -> "<value><array><data/></array></value>"
+                    "d.name" -> value("Open test")
+                    "d.hash" -> value(hash)
+                    "d.directory" -> value(dir)
+                    "d.is_multi_file", "d.state" -> num(0)
+                    "d.is_active" -> num(active)
+                    else -> throw AssertionError("Readback may not issue $method")
+                }
+                val response = ("<methodResponse><params><param>$body</param>" +
+                    "</params></methodResponse>").toByteArray(Charsets.UTF_8)
+                exchange.sendResponseHeaders(200, response.size.toLong())
+                exchange.responseBody.use { it.write(response) }
+            }
+            server.start()
+            try {
+                val remote = RTorrentRemote(RemoteCredentials(
+                    "http://127.0.0.1:${server.address.port}/RPC2", "", ""))
+                val plan = StoppedRemoteAddPlan.fromMagnet(magnet, dir)
+                val outcome = remote.reconcileStoppedAdd(plan)
+                if (active == 0L) assertEquals(RemoteAddOutcome.VerifiedStopped(hash, dir), outcome)
+                else assertEquals(RemoteAddOutcome.PendingVerification(hash), outcome)
+                assertEquals(listOf("d.multicall2", "d.name", "d.hash", "d.directory",
+                    "d.is_multi_file", "d.state", "d.is_active", "d.hash"), methods)
+            } finally { server.stop(0) }
+        }
+    }
+
+    @Test fun hiddenViewExactHashChangingAcrossReadbackIsNeverVerified() = runBlocking {
+        var hashReads = 0
+        val methods = mutableListOf<String>()
+        val server = HttpServer.create(
+            InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0)
+        server.createContext("/RPC2") { exchange ->
+            val request = exchange.requestBody.bufferedReader().use { it.readText() }
+            val method = Regex("<methodName>([^<]+)</methodName>")
+                .find(request)?.groupValues?.get(1).orEmpty()
+            methods.add(method)
+            val body = when (method) {
+                "d.multicall2" -> "<value><array><data/></array></value>"
+                "d.name" -> value("Open test")
+                "d.hash" -> {
+                    hashReads++
+                    value(if (hashReads == 1) hash else "cd".repeat(20))
+                }
+                "d.directory" -> value(dir)
+                "d.is_multi_file", "d.state", "d.is_active" -> num(0)
+                else -> throw AssertionError("Unexpected mutation $method")
+            }
+            val response = ("<methodResponse><params><param>$body</param>" +
+                "</params></methodResponse>").toByteArray(Charsets.UTF_8)
+            exchange.sendResponseHeaders(200, response.size.toLong())
+            exchange.responseBody.use { it.write(response) }
+        }
+        server.start()
+        try {
+            val remote = RTorrentRemote(RemoteCredentials(
+                "http://127.0.0.1:${server.address.port}/RPC2", "", ""))
+            assertEquals(RemoteAddOutcome.Uncertain(hash),
+                remote.reconcileStoppedAdd(StoppedRemoteAddPlan.fromMagnet(magnet, dir)))
+            assertEquals(2, hashReads)
+            assertFalse(methods.any { it.startsWith("load.") || it == "d.start" })
+        } finally { server.stop(0) }
+    }
+
 }

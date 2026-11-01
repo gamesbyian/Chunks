@@ -137,4 +137,94 @@ class RemoteReadAuthEvidenceTest {
                 remote.readAuthenticationEvidence())
         }
     }
+    @Test fun productionConnectRefusesSuppliedCredentialsOnPublicVersionAndInventory() = runBlocking {
+        Gateway(challengeRead = false).use { server ->
+            try {
+                RemoteSmartConnect.connect(server.address, "invented-user", "wrong-secret") { credentials ->
+                    val remote = RTorrentRemote(credentials)
+                    remote.version()
+                    remote.listTransfers("main")
+                    requireRemoteConnectIdentityEvidence(credentials, remote)
+                    remote
+                }
+                fail("Connect must not remember or label invented credentials as authenticated")
+            } catch (expected: RemoteSmartConnect.ConnectionFailed) {
+                assertEquals(RemoteSmartConnect.Category.IDENTITY, expected.category)
+                assertEquals(1, expected.tested)
+                assertTrue(expected.message.orEmpty().contains("public reads"))
+            }
+            assertTrue(server.requests.all { it.second == null })
+            assertEquals(setOf("system.client_version", "d.multicall2"),
+                server.requests.map { it.first }.toSet())
+        }
+    }
+
+    @Test fun publicReadOnFirstHostnameCandidateCannotProbeAnotherAccountMount() = runBlocking {
+        Gateway(challengeRead = false).use { server ->
+            val origin = server.address.removeSuffix("/RPC2")
+            val planned = RemoteSmartConnect.candidates(origin, "alice")
+            val actualEndpointIndex = planned.indexOfFirst { it.endpoint == server.address }
+            assertTrue("The public endpoint must be followed by another candidate to test the stop fence",
+                actualEndpointIndex >= 0 && actualEndpointIndex < planned.lastIndex)
+            try {
+                RemoteSmartConnect.connect(origin, "alice", "secret") { credentials ->
+                    val remote = RTorrentRemote(credentials)
+                    remote.version()
+                    remote.listTransfers("main")
+                    requireRemoteConnectIdentityEvidence(credentials, remote)
+                    remote
+                }
+                fail("An ambiguous public read must stop discovery, not test another mount")
+            } catch (expected: RemoteSmartConnect.ConnectionFailed) {
+                assertEquals(RemoteSmartConnect.Category.IDENTITY, expected.category)
+                // The generic planner may first try another safely missing
+                // path (HTTP 404). Once this endpoint gives public valid RPC,
+                // no later guessed account mount may receive a login probe.
+                assertEquals(actualEndpointIndex + 1, expected.tested)
+            }
+            assertEquals(setOf("system.client_version", "d.multicall2"),
+                server.requests.map { it.first }.toSet())
+        }
+    }
+
+    @Test fun productionConnectAllowsOnlyChallengedSuppliedLoginOrExplicitAnonymous() = runBlocking {
+        Gateway(challengeRead = true).use { server ->
+            val accepted = RemoteSmartConnect.connect(server.address, "alice", "secret") { credentials ->
+                val remote = RTorrentRemote(credentials)
+                remote.version()
+                remote.listTransfers("main")
+                requireRemoteConnectIdentityEvidence(credentials, remote)
+                remote
+            }
+            assertEquals(RemoteReadAuthEvidence.READ_CHALLENGE_ACCEPTED,
+                accepted.response.readAuthenticationEvidence())
+            assertEquals(1, accepted.attempts)
+            assertTrue(server.requests.any { it.second.orEmpty().startsWith("Basic ") })
+        }
+        Gateway(challengeRead = false).use { server ->
+            val anonymous = RemoteSmartConnect.connect(server.address, "", "") { credentials ->
+                val remote = RTorrentRemote(credentials)
+                remote.version()
+                remote.listTransfers("main")
+                requireRemoteConnectIdentityEvidence(credentials, remote)
+                remote
+            }
+            assertEquals(RemoteReadAuthEvidence.NO_READ_CHALLENGE,
+                anonymous.response.readAuthenticationEvidence())
+            assertTrue(server.requests.all { it.second == null })
+        }
+    }
+
+    @Test fun partialCredentialsOnPublicReadsRemainUnverified() = runBlocking {
+        Gateway(challengeRead = false).use { server ->
+            val remote = RTorrentRemote(RemoteCredentials(server.address, "", "supplied-password"))
+            remote.version()
+            remote.listTransfers("main")
+            try {
+                requireRemoteConnectIdentityEvidence(RemoteCredentials(server.address, "", "supplied-password"), remote)
+                fail("A password without an accepted challenge is not authenticated")
+            } catch (_: RemoteIdentityUnverified) { }
+        }
+    }
+
 }

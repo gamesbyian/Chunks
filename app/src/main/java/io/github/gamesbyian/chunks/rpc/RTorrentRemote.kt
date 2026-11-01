@@ -276,7 +276,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         val fields = getters(if (rich) extended else minimum)
         val transfers = ArrayList<RemoteTransfer>(hashes.size)
         for (page in hashes.chunked(PAGE_SIZE)) {
-            val rows = pagedRows(page, fields)
+            val rows = pagedRowsWithinLimit(page, fields)
             for ((index, row) in rows.withIndex()) {
                 val transfer = transferFromRow(row, rich)
                 require(transfer.hash.equals(page[index], ignoreCase = true)) {
@@ -325,6 +325,25 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                 single[0]
             }
         }
+    }
+
+    /**
+     * Only a *size-limited* read-only page may be retried as two smaller pages.
+     * Server faults, timeouts, bad XML, identity mismatches and cancellations
+     * still fail the entire snapshot. A single oversized row is irreducible.
+     *
+     * All pages retain their original order. The caller validates each
+     * requested hash and re-reads view membership before publishing anything.
+     */
+    private suspend fun pagedRowsWithinLimit(
+        hashes: List<String>, getters: List<String>
+    ): List<List<Any?>> = try {
+        pagedRows(hashes, getters)
+    } catch (tooLarge: RpcReplyTooLarge) {
+        if (hashes.size <= 1) throw tooLarge
+        val middle = hashes.size / 2
+        pagedRowsWithinLimit(hashes.subList(0, middle), getters) +
+            pagedRowsWithinLimit(hashes.subList(middle, hashes.size), getters)
     }
 
     private fun transferFromRow(row: List<*>, rich: Boolean): RemoteTransfer {
@@ -569,7 +588,12 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             val matches = listTransfers("main").filter {
                 it.hash.equals(plan.expectedInfoHash, ignoreCase = true)
             }
-            if (matches.size != 1) {
+            if (matches.isEmpty()) {
+                // A host may not publish newly loaded jobs in the main view.
+                // An exact session lookup can still positively verify the
+                // stopped destination without a second non-idempotent Add.
+                reconcileStoppedAddOutsideMain(plan)
+            } else if (matches.size != 1) {
                 RemoteAddOutcome.PendingVerification(plan.expectedInfoHash)
             } else {
                 val item = matches.single()
@@ -591,6 +615,33 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             // not a failure that invites a duplicate load.
             RemoteAddOutcome.Uncertain(plan.expectedInfoHash)
         }
+    }
+
+    /**
+     * No main-view row does not mean the load failed: a session can hold jobs
+     * outside that view. Verify the exact infohash independently with bounded
+     * read-only getters, both before and after checking its destination and
+     * stopped/inactive state. Never issue load/start or infer absence from
+     * view membership. All exceptions remain pending/uncertain in the caller.
+     */
+    private suspend fun reconcileStoppedAddOutsideMain(
+        plan: StoppedRemoteAddPlan
+    ): RemoteAddOutcome {
+        val hash = plan.expectedInfoHash
+        val name = lookupName(hash) ?: return RemoteAddOutcome.PendingVerification(hash)
+        suspend fun guardHash() {
+            check((call("d.hash", listOf(hash)) as? String)?.equals(hash, ignoreCase = true) == true) {
+                "rTorrent returned another infohash during exact Add readback"
+            }
+        }
+        guardHash()
+        val directory = readVerifiedAddDirectory(hash, plan.destination, name)
+        val state = number(call("d.state", listOf(hash)))
+        val active = number(call("d.is_active", listOf(hash)))
+        guardHash()
+        return if (directory != null && state == 0L && active == 0L)
+            RemoteAddOutcome.VerifiedStopped(hash, directory)
+        else RemoteAddOutcome.PendingVerification(hash)
     }
 
     /**

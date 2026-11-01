@@ -22,6 +22,6 @@ internal object LocalRestoreDiscovery {
         // Immutable resume events also represent restorable jobs or durable
         // retirement intents; both require strict engine reconciliation.
         return entries.any { it.name.endsWith(".resume") ||
-            it.name.contains(".resume-event.") }
+            it.name.contains(".resume-event.") || it.name == LocalResumeDatabase.DIRECTORY }
     }
 }
