@@ -1,0 +1,30 @@
+{
+  "schema": "chunks.live-metainfo-smoke.v1",
+  "observed_utc": "2026-11-01T23:10:04Z",
+  "github_actions_run": "https://github.com/gamesbyian/Chunks/actions/runs/41360738223",
+  "verified_count": 2,
+  "items": [
+    {
+      "name": "kali-nethunter-2026.3-ticwatchpro3-wearos-nano-zip",
+      "infohash_v1": "6ab547ee88571930f92452d965d1dde36ad5a0a1",
+      "total_bytes": 273442547,
+      "magnet": "magnet:?xt=urn:btih:6ab547ee88571930f92452d965d1dde36ad5a0a1&dn=kali-nethunter-2026.3-ticwatchpro3-wearos-nano-zip&tr=http%3A%2F%2Fbittorrent.kali.org%2Fannounce",
+      "source_url": "https://linuxtracker.org/torrents/6ab547ee88571930f92452d965d1dde36ad5a0a1/",
+      "source_type": "linuxtracker.org",
+      "verification": "actual published .torrent parsed; exact raw info dictionary SHA-1 matches source hash where published",
+      "peer_metadata_resolved": false,
+      "peer_bytes_verified": false
+    },
+    {
+      "name": "BigBuckBunny_124",
+      "infohash_v1": "b63eaa9720ee797667ef58ea35ef7d81ab5d1c16",
+      "total_bytes": 441396871,
+      "magnet": "magnet:?xt=urn:btih:b63eaa9720ee797667ef58ea35ef7d81ab5d1c16&dn=BigBuckBunny_124",
+      "source_url": "https://archive.org/details/BigBuckBunny_124",
+      "source_type": "archive.org",
+      "verification": "actual published .torrent parsed; exact raw info dictionary SHA-1 matches source hash where published",
+      "peer_metadata_resolved": false,
+      "peer_bytes_verified": false
+    }
+  ]
+}
