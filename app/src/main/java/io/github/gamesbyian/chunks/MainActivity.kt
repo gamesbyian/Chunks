@@ -1149,33 +1149,18 @@ private fun ConnectionScreen(
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         item {
-            ColoredPanel("Hello, server.", "Paste your seedbox hostname or ruTorrent web address. Chunks checks known secure rTorrent endpoints automatically. Torrent changes require separate confirmation.", Lilac)
+            ColoredPanel("Your downloads",
+                "Use this phone without a server account, or connect to an rTorrent server below. " +
+                    "Opening either option never moves existing downloads.", Lilac)
         }
+        item { PhoneFirstEntry(onOpenPhone = onLocalEngine) }
         item {
-            // Things that work without a server: the phone engine and two offline inspectors.
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                ActionTile("Download on this phone (experimental)", ChunksColors.Cyan,
-                    onClick = onLocalEngine, modifier = Modifier.fillMaxWidth(),
-                    icon = R.drawable.chunks_ic_phone, stacked = false)
-                // Half-width tiles split long words at 200% text; stack them instead.
-                val wideText = LocalDensity.current.fontScale >= 1.5f
-                val offline: @Composable (Modifier) -> Unit = { each ->
-                    ActionTile("Inspect a local ZIP without connecting", ChunksColors.Yellow,
-                        onClick = onLocalZipReview, modifier = each,
-                        icon = R.drawable.chunks_ic_archive, stacked = !wideText)
-                    ActionTile("Inspect .chunksnap backup (offline)", ChunksColors.Pink,
-                        onClick = onInspectSnapshot, modifier = each,
-                        icon = R.drawable.chunks_ic_document, stacked = !wideText)
-                }
-                if (wideText) offline(Modifier.fillMaxWidth())
-                else Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
-                    offline(Modifier.weight(1f).fillMaxHeight())
-                }
-                ActionTile("Create a torrent from phone files", ChunksColors.Green,
-                    onClick = onCreateTorrent, modifier = Modifier.fillMaxWidth(),
-                    icon = R.drawable.chunks_ic_add_torrent, stacked = false)
-            }
+            Text("Connect to another computer or server (optional)",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.semantics { heading() })
+            Text("Manage a seedbox here. Connecting checks a secure endpoint without changing " +
+                "its downloads; each transfer action is reviewed separately.",
+                style = MaterialTheme.typography.bodySmall)
         }
         if (rememberLogin && savedProfiles.isNotEmpty()) {
             item {
@@ -1304,6 +1289,21 @@ private fun ConnectionScreen(
         item {
             Text("Protected HTTPS is required for remote servers. Login is encrypted and stored only on this device unless you opt out. No torrents or files are changed by connecting.",
                 style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary)
+        }
+        item {
+            Text("Other tools", style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.semantics { heading() })
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                ActionTile("Inspect a local ZIP without connecting", ChunksColors.Yellow,
+                    onClick = onLocalZipReview, modifier = Modifier.fillMaxWidth(),
+                    icon = R.drawable.chunks_ic_archive, stacked = false)
+                ActionTile("Inspect .chunksnap backup (offline)", ChunksColors.Pink,
+                    onClick = onInspectSnapshot, modifier = Modifier.fillMaxWidth(),
+                    icon = R.drawable.chunks_ic_document, stacked = false)
+                ActionTile("Create a torrent from phone files", ChunksColors.Green,
+                    onClick = onCreateTorrent, modifier = Modifier.fillMaxWidth(),
+                    icon = R.drawable.chunks_ic_add_torrent, stacked = false)
+            }
         }
     }
 }
