@@ -267,21 +267,40 @@ class PhoneIntakeJourneyInstrumentedTest {
             click("Start")
             await("restored verified seeding") { phone.status(hash)?.state == LocalTransferState.SEEDING }
             assertEquals(digest, sha(target.readBytes()))
-            val receiverRoot = File(work, "fresh-receiver").apply { mkdir() }
+            val receiverRoot = File(work, "fresh-receiver")
+            assertTrue("Fresh receiver directory must be newly created", receiverRoot.mkdir())
+            assertTrue("Fresh receiver must contain no cached/previous torrent bytes",
+                receiverRoot.listFiles()?.isEmpty() == true)
+            val receiveTarget = File(receiverRoot, name)
+            assertFalse("Receiver cannot already own a completed payload", receiveTarget.exists())
+            await("restored phone has a listening port", 20) { phone.listenPort() in 1..65535 }
+            val seedPort = phone.listenPort()
             LocalTorrentEngine(LocalEngineConfig(listenInterfaces = "127.0.0.1:0",
                 allowMultipleConnectionsPerIp = true)).use { receiver ->
                 receiver.start()
-                assertTrue(receiver.addStopped(File(work, "fixture.torrent").readBytes(), receiverRoot,
-                    listOf(InetSocketAddress("127.0.0.1", phone.listenPort()))) is LocalAddResult.AddedStopped)
+                val addedReceiver = receiver.addStopped(File(work, "fixture.torrent").readBytes(), receiverRoot,
+                    listOf(InetSocketAddress("127.0.0.1", seedPort)))
+                assertTrue("Actual native receiver Add: $addedReceiver",
+                    addedReceiver is LocalAddResult.AddedStopped)
+                val initial = requireNotNull(receiver.status(hash))
+                android.util.Log.i("ChunksIntake", "CHUNKS_INTAKE_FRESH kind=$kind " +
+                    "initial=$initial port=$seedPort before_present=${receiveTarget.exists()} " +
+                    "receiver_root=${receiverRoot.canonicalPath}")
+                assertEquals("A new receiver cannot start with verified torrent pieces",
+                    0L, initial.doneBytes)
+                assertFalse("A newly admitted receiver must not already have complete bytes",
+                    receiveTarget.exists())
                 assertEquals(LocalCommandOutcome.VERIFIED, receiver.resume(hash).outcome)
-                await("fresh peer gets complete payload") { receiver.status(hash)?.progressPpm == 1_000_000 }
-                assertTrue(receiver.flushCompletedForLibraryRead(hash, 30_000))
-                assertArrayEquals(expected, File(receiverRoot, name).readBytes())
-                fun counterDetails() = "before=$uploadedBefore phone=${phone.status(hash)} receiver=${receiver.status(hash)}"
-                await("restored transfer actually uploads", failure = { counterDetails() }) {
+                fun counterDetails() = "before=$uploadedBefore port=$seedPort initial=$initial " +
+                    "phone=${phone.status(hash)} receiver=${receiver.status(hash)}"
+                await("fresh peer obtains new verified bytes from restored phone",
+                    failure = { counterDetails() }) {
                     (phone.status(hash)?.payloadUploadedBytes ?: 0) - uploadedBefore >= expected.size &&
-                        (receiver.status(hash)?.payloadDownloadedBytes ?: 0) >= expected.size
+                        (receiver.status(hash)?.payloadDownloadedBytes ?: 0) >= expected.size &&
+                        receiver.status(hash)?.progressPpm == 1_000_000
                 }
+                assertTrue(receiver.flushCompletedForLibraryRead(hash, 30_000))
+                assertArrayEquals(expected, receiveTarget.readBytes())
                 android.util.Log.i("ChunksIntake", "CHUNKS_INTAKE_COUNTERS kind=$kind ${counterDetails()}")
             }
             click("Stop")
