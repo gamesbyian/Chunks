@@ -162,7 +162,10 @@ class RemoteReadAuthEvidenceTest {
     @Test fun publicReadOnFirstHostnameCandidateCannotProbeAnotherAccountMount() = runBlocking {
         Gateway(challengeRead = false).use { server ->
             val origin = server.address.removeSuffix("/RPC2")
-            assertTrue(RemoteSmartConnect.candidates(origin, "alice").size > 1)
+            val planned = RemoteSmartConnect.candidates(origin, "alice")
+            val actualEndpointIndex = planned.indexOfFirst { it.endpoint == server.address }
+            assertTrue("The public endpoint must be followed by another candidate to test the stop fence",
+                actualEndpointIndex >= 0 && actualEndpointIndex < planned.lastIndex)
             try {
                 RemoteSmartConnect.connect(origin, "alice", "secret") { credentials ->
                     val remote = RTorrentRemote(credentials)
@@ -174,7 +177,10 @@ class RemoteReadAuthEvidenceTest {
                 fail("An ambiguous public read must stop discovery, not test another mount")
             } catch (expected: RemoteSmartConnect.ConnectionFailed) {
                 assertEquals(RemoteSmartConnect.Category.IDENTITY, expected.category)
-                assertEquals(1, expected.tested)
+                // The generic planner may first try another safely missing
+                // path (HTTP 404). Once this endpoint gives public valid RPC,
+                // no later guessed account mount may receive a login probe.
+                assertEquals(actualEndpointIndex + 1, expected.tested)
             }
             assertEquals(setOf("system.client_version", "d.multicall2"),
                 server.requests.map { it.first }.toSet())
