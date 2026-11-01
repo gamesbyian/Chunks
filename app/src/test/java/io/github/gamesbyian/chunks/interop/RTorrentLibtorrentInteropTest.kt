@@ -189,6 +189,15 @@ class RTorrentLibtorrentInteropTest {
             val handoff = requireNotNull(phone.exportTorrentFile(seed.infoHash))
             val hash = addAndStart(rig.remote, handoff, leechParent)
             assertEquals(seed.infoHash.lowercase(), hash.lowercase())
+            // This real-engine wire test must exercise the SAME per-hash byte
+            // inspector used for hosted diagnostics. Server-global traffic or
+            // a successful load/start acknowledgement is not download proof.
+            val before = rig.remote.readTrafficSample(hash)
+            assertEquals(hash.lowercase(), before.hash.lowercase())
+            assertTrue("Exact-hash received counter unavailable before download",
+                before.receivedBytes != null && before.receivedBytes >= 0L)
+            assertTrue("Exact-hash completed counter unavailable before download",
+                before.verifiedBytes != null && before.verifiedBytes >= 0L)
             // rTorrent learns the phone seeder only from its tracker announce
             // and dials it itself: no DHT, PEX or manual peer injection.
             waitFor("rTorrent to download from the phone engine") {
@@ -197,8 +206,18 @@ class RTorrentLibtorrentInteropTest {
                 } == true
             }
             val total = files.values.sumOf { it.size.toLong() }
-            assertTrue("rTorrent must receive the payload over the wire",
-                counter(rig.remote, "d.down.total", hash) >= total)
+            val after = rig.remote.readTrafficSample(hash)
+            assertEquals(hash.lowercase(), after.hash.lowercase())
+            assertTrue("Exact-hash readback timestamp did not advance",
+                after.monotonicNanos > before.monotonicNanos)
+            assertEquals("Exact-hash advertised byte size", total, after.expectedBytes)
+            assertEquals("Exact-hash verified piece bytes", total, after.verifiedBytes)
+            assertTrue("Only exact-hash received bytes count, not server-global traffic",
+                after.receivedBytes != null && after.receivedBytes >= total)
+            assertTrue("Exact-hash download counter cannot regress across this fixture",
+                after.receivedBytes!! >= before.receivedBytes!!)
+            assertTrue("Exact-hash verified counter cannot regress",
+                after.verifiedBytes!! >= before.verifiedBytes!!)
             files.forEach { (path, bytes) ->
                 assertArrayEquals("Exact bytes rTorrent wrote for $path",
                     bytes, File(leechParent, "Interop from phone/$path").readBytes())
