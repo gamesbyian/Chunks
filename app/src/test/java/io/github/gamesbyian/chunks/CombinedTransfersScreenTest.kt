@@ -142,8 +142,12 @@ class CombinedTransfersScreenTest {
         // The persisted sort choice is the source of truth, including after
         // lazy row recycling. The compact summary must disclose the new order.
         assertEquals(UnifiedSortDirection.ASCENDING, CombinedViewPreferences(context).load().direction)
-        revealText("Smallest first")
-        rule.onNodeWithText("Smallest first", substring = true).assertExists()
+        // Both the direction control and the compact summary include "Smallest first".
+        // Require the exact visible summary to avoid an ambiguous multiple-node selector,
+        // while preserving independent persisted ASCENDING readback above.
+        val directionSummary = "Hide sort & grouping · Size · Smallest first · Together"
+        revealText(directionSummary)
+        rule.onNodeWithText(directionSummary).assertExists()
         // Only the connected server: phone and the offline profile drop out of the status lines.
         revealText(serverEnvironmentLabel(aliasScope))
         rule.onAllNodesWithText(serverEnvironmentLabel(aliasScope))[0].performClick()
