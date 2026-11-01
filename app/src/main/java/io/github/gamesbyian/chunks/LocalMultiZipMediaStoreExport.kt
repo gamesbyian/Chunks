@@ -52,7 +52,7 @@ internal object LocalMultiZipMediaStoreExport {
             inventory.names.size == inventory.fileCount &&
             inventory.names.all { safeName.matches(it) } &&
             checked.verifiedFiles == inventory.fileCount &&
-            checked.actualOutputBytes in 1L..MAX_TOTAL_BYTES.toLong()
+            (checked.actualOutputBytes ?: -1L) in 1L..MAX_TOTAL_BYTES.toLong()
     }
 
     fun extractNew(
@@ -67,7 +67,8 @@ internal object LocalMultiZipMediaStoreExport {
             val file = owned.file ?: return@use Result(State.BLOCKED,
                 owned.failure ?: "The ZIP cannot be reopened safely.")
             val inventory = ZipArchiveInventory.inspect(file)
-            val verified = ZipPayloadVerifier.verify(file)
+            val verified = ZipPayloadVerifier.verify(file,
+                maxExpandedBytes = MAX_TOTAL_BYTES.toLong())
             val names = inventory.names
             if (inventory.status == ZipPreflightStatus.BLOCKED ||
                 inventory.fileCount !in 2..MAX_FILES ||
@@ -75,7 +76,7 @@ internal object LocalMultiZipMediaStoreExport {
                 names.any { !safeName.matches(it) } ||
                 verified.status != ZipPayloadStatus.VERIFIED_READ_ONLY ||
                 verified.verifiedFiles != inventory.fileCount ||
-                verified.actualOutputBytes !in 1L..MAX_TOTAL_BYTES.toLong())
+                (verified.actualOutputBytes ?: -1L) !in 1L..MAX_TOTAL_BYTES.toLong())
                 return@use Result(State.BLOCKED,
                     "Only 2–8 verified flat files up to 8 MiB each and 16 MiB total are supported. No destination was created.")
 
