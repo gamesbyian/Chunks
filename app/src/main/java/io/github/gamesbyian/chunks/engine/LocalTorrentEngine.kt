@@ -1,7 +1,10 @@
 package io.github.gamesbyian.chunks.engine
 
 import java.io.File
-import java.io.FileInputStream
+import android.system.Os
+import android.system.OsConstants
+import java.nio.file.Files
+import java.nio.file.LinkOption
 import java.net.InetSocketAddress
 import java.util.Collections
 import java.util.Locale
@@ -283,22 +286,56 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
      * atomic filesystem ownership or cross-process race guarantee.
      */
     /**
-     * A successful stat/path survey is not proof that this process may open
-     * the selected existing payload: Android 10 can revoke broad storage grants
-     * while leaving package-private resume state intact. Probe only the
-     * collision survey's bounded existing-file examples (up to 20) with an
-     * ordinary read-only open. This changes no data, creates no probes and
-     * makes no claim about future access or uninspected files.
+     * A survey is a point-in-time pathname observation, not an access grant.
+     * Recheck the surveyed existing regular-file sample before native Start.
+     *
+     * O_NOFOLLOW blocks a swapped leaf symlink; O_NONBLOCK prevents a swapped
+     * FIFO from hanging the command; fstat validates the *opened descriptor*.
+     * Check parents again without following symlinks as best-effort containment.
+     * As with the survey, this is not an atomic guarantee against external
+     * replacement of a parent or loss of access after the check.
+     *
+     * Internal visibility permits an installed Android negative regression to
+     * exercise the exact production probe against disposable FIFO/link paths.
      */
+    internal fun canReadExistingPayload(root: File, relative: String): Boolean {
+        if (relative.isBlank() || relative.startsWith('/') || relative.contains('\\\\')) return false
+        val parts = relative.split('/')
+        if (parts.any { it.isEmpty() || it == "." || it == ".." }) return false
+        return try {
+            val base = root.toPath().toAbsolutePath().normalize()
+            if (!Files.isDirectory(base, LinkOption.NOFOLLOW_LINKS) ||
+                Files.isSymbolicLink(base)) return false
+            var path = base
+            parts.forEachIndexed { index, segment ->
+                path = path.resolve(segment)
+                if (!path.startsWith(base)) return false
+                if (index < parts.lastIndex &&
+                    (!Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS) ||
+                     Files.isSymbolicLink(path))) return false
+            }
+            val flags = OsConstants.O_RDONLY or OsConstants.O_CLOEXEC or
+                OsConstants.O_NONBLOCK or OsConstants.O_NOFOLLOW
+            val descriptor = Os.open(path.toString(), flags, 0)
+            try {
+                if (!OsConstants.S_ISREG(Os.fstat(descriptor).st_mode)) return false
+                Os.read(descriptor, ByteArray(1), 0, 1)
+                true
+            } finally {
+                Os.close(descriptor)
+            }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
     private fun unreadableExistingPayload(
         root: File, survey: LocalPayloadCollisionSurvey.Result
     ): String? {
         val observed = (survey as? LocalPayloadCollisionSurvey.Result.ExistingPaths)?.paths
             ?: return null
         for (relative in observed) {
-            try {
-                FileInputStream(File(root, relative)).use { it.read() }
-            } catch (_: Exception) {
+            if (!canReadExistingPayload(root, relative)) {
                 return "Existing payload cannot be opened for reading. " +
                     "Check access to its download folder before starting again"
             }
