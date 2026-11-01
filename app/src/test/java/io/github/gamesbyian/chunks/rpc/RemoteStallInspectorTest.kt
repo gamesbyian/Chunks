@@ -27,7 +27,8 @@ class RemoteStallInspectorTest {
         private val authRequired: Boolean = false,
         private val missingOptional: Boolean = false,
         private val busyOptional: Boolean = false,
-        private val substituteFinalHash: Boolean = false
+        private val substituteFinalHash: Boolean = false,
+        private val nonIntegralActivity: Boolean = false
     ) : AutoCloseable {
         private val server = HttpServer.create(
             InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0)
@@ -62,7 +63,8 @@ class RemoteStallInspectorTest {
                             string(if (substituteFinalHash && hashReads == 2) other else hash)
                         }
                         method == "d.state" -> number(1)
-                        method == "d.is_active" -> number(0)
+                        method == "d.is_active" -> if (nonIntegralActivity)
+                            value("<double>1.9</double>") else number(0)
                         method == "d.is_open" -> number(0)
                         method == "d.hashing" -> number(0)
                         method == "d.hashing_failed" -> number(0)
@@ -137,6 +139,18 @@ class RemoteStallInspectorTest {
             assertEquals(listOf("d.hash", "d.state", "d.is_active", "d.is_open",
                 "d.hashing"), gateway.methods)
             assertEquals(1, gateway.hashReads)
+        }
+    }
+
+    @Test fun fractionalActivityFlagIsRejectedBeforeOptionalProbes() = runBlocking {
+        Fixture(nonIntegralActivity = true).use { gateway ->
+            assertThrows(IllegalArgumentException::class.java) {
+                runBlocking {
+                    RemoteStallInspector.inspect(
+                        RTorrentRemote(RemoteCredentials(gateway.address, "", "")), hash)
+                }
+            }
+            assertEquals(listOf("d.hash", "d.state", "d.is_active"), gateway.methods)
         }
     }
 
