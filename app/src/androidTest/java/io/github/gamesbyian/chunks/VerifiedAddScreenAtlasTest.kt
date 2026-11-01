@@ -26,6 +26,8 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.onAllNodes
+import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.captureToImage
@@ -92,20 +94,20 @@ class VerifiedAddScreenAtlasTest {
                 }
             }
         }
-        rule.onNode(hasScrollAction()).performScrollToNode(
+        rule.onAllNodes(hasScrollAction()).onLast().performScrollToNode(
             hasText("Choose a .torrent from Android Files"))
         val chooser = rule.onNodeWithText("Choose a .torrent from Android Files")
         assertTrue("Open-document control must retain at least 54dp", 
             (chooser.getUnclippedBoundsInRoot().bottom - chooser.getUnclippedBoundsInRoot().top) >= 54.dp)
-        rule.onNode(hasScrollAction()).performScrollToNode(hasText("Review Add"))
+        rule.onAllNodes(hasScrollAction()).onLast().performScrollToNode(hasText("Review Add"))
         rule.onNodeWithText("Review Add").performClick()
-        rule.onNode(hasScrollAction()).performScrollToNode(
+        rule.onAllNodes(hasScrollAction()).onLast().performScrollToNode(
             hasText("Confirm: add then start"))
         assertTrue("Confirm control must retain at least 56dp",
             (rule.onNodeWithText("Confirm: add then start")
                 .getUnclippedBoundsInRoot().bottom - rule.onNodeWithText("Confirm: add then start")
                 .getUnclippedBoundsInRoot().top) >= 56.dp)
-        rule.onNode(hasScrollAction()).performScrollToNode(
+        rule.onAllNodes(hasScrollAction()).onLast().performScrollToNode(
             hasText("Cancel, don't add"))
         rule.onNodeWithText("Cancel, don't add").performClick()
         rule.onNodeWithText("Confirm: add then start").assertDoesNotExist()
