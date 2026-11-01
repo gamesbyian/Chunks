@@ -4,11 +4,28 @@
 
 **Single executable priority authority; reviewed 2026-10-31.** Fetch current `main`, open PRs, issues, branch ownership and CI **before** picking a task. The [engineering delivery protocol](ENGINEERING-DELIVERY-PROTOCOL.md) governs how to complete it; [AGENTS](../AGENTS.md) governs agent behavior. Product requirements live in [PRODUCT](PRODUCT.md), [UX](UX.md), [ARCHITECTURE](ARCHITECTURE.md), [SECURITY](SECURITY.md), [DECISIONS](DECISIONS.md) and scoped contracts. Implementation truth belongs in [SPEC-COVERAGE](SPEC-COVERAGE.md), test evidence in [QUALITY-LEDGER](QUALITY-LEDGER.md). This queue is **not** a substitute for any of them.
 
-**Active 0C acceptance slice:** `test/remote-read-auth-proof-20261101` repairs
-the protected read-only probe's anonymous-read false positive using the existing
-HTTP challenge evidence. Six focused loopback tests passed; live smoke is skipped
-without secrets. Integrate qualified test-only work, then run the single existing
-trusted-main primary profile. No production transport or mutations are changed.
+**Active 0C checkpoint (2026-11-01, source/CI-bound):** #891's corrected
+read-auth challenge probe is merged, and the exact-primary protected version/main
+view [41266094878](https://github.com/gamesbyian/Chunks/actions/runs/41266094878)
+passed. #898's **shipping Android Connect** gate is merged at `22ac3afe`
+after all five checks, refusing invented credentials even when anonymous
+version/inventory reads work. #892's bounded read-only paging and #906's
+exact-session hidden-view stopped-Add reconciliation are also merged.
+The existing historical protected installed **Android app UI** synthetic Add →
+Start → Stop → session Erase passed [40652034320](https://github.com/gamesbyian/Chunks/actions/runs/40652034320)
+on 2026-10-28, and installed adapter mutation passed
+[40581190487](https://github.com/gamesbyian/Chunks/actions/runs/40581190487)
+on 2026-10-27; both are historic code SHA evidence without peer-byte growth.
+A trusted-main production-Connect **read-only** Android rerun
+[41270975610](https://github.com/gamesbyian/Chunks/actions/runs/41270975610)
+was dispatched via comment-only #909; its result must be inspected before
+acceptance. [#908](https://github.com/gamesbyian/Chunks/pull/908)
+is testing fresh saved-profile reauthentication in combined browsing, and
+[#903](https://github.com/gamesbyian/Chunks/pull/903) tests real disposable
+per-infohash received+hash-verified peer bytes. **Still open:** current-head
+reconnect/401 uncertainty, separate approved protected-host per-transfer
+peer-byte growth, installed file-priority controls and real physical device.
+No global transfer-rate, anonymous-read or RPC ACK substitutes for these gates.
 
 ## Verified checkpoint and current boundaries
 
