@@ -662,7 +662,8 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         }
         requireCurrentServerDefault(plan)
         try {
-            postRuTorrentUpload(upload, plan.destination, torrentBytes,
+            postRuTorrentUpload(upload,
+                if (plan.useServerDefault) "" else plan.destination, torrentBytes,
                 magnet = if (torrentBytes == null) plan.source else null,
                 startStopped = false)
         } catch (cancel: kotlinx.coroutines.CancellationException) {
@@ -687,7 +688,9 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                 check((torrentBytes == null) != (magnet == null)) {
                     "Choose exactly one ruTorrent upload source"
                 }
-                field("dir_edit", destination)
+                // When the user reviewed this server's verified default,
+                // omit dir_edit entirely: ruTorrent resolves its own default.
+                if (destination.isNotBlank()) field("dir_edit", destination)
                 if (startStopped) field("torrents_start_stopped", "1")
                 if (magnet != null) {
                     field("url", magnet)
