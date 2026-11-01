@@ -143,6 +143,16 @@ internal fun UnifiedTransferDetailPanel(
                         "hash-check failure: ${report.hashCheckFailed?.toString() ?: "unknown"}; " +
                         "hashing phase: ${report.hashingPhase?.toString() ?: "unknown"}.",
                         style = MaterialTheme.typography.bodySmall)
+                    Text("Control mode: " + when (report.controlMode) {
+                        0 -> "off"
+                        1 -> "scheduler controlled"
+                        2 -> "forced on"
+                        3 -> "forced off"
+                        else -> "unknown"
+                    } + "; ignores conditional try-commands: " +
+                        (report.ignoresConditionalCommands?.toString() ?: "unknown") +
+                        ". This flag does not by itself block explicit Start.",
+                        style = MaterialTheme.typography.bodySmall)
                     Text("Server message classification: " + report.messageClass.name +
                         ". Raw messages and tracker details are withheld.",
                         style = MaterialTheme.typography.bodySmall)
