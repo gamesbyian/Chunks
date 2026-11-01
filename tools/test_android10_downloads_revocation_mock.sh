@@ -58,11 +58,11 @@ case "$1" in
           if [[ "${MOCK_DUPLICATE_PASS:-}" == "$phase" ]]; then
             echo 'OK (1 test)'
           fi
-          case "${MOCK_BAD_TERMINAL:-}:$phase" in
-            missing:*) ;;
-            failed:*) echo 'INSTRUMENTATION_CODE: 0' ;;
-            duplicate:*) echo 'INSTRUMENTATION_CODE: -1'; echo 'INSTRUMENTATION_CODE: -1' ;;
-            mixed:*) echo 'INSTRUMENTATION_CODE: -1'; echo 'INSTRUMENTATION_CODE: 0' ;;
+          case "${MOCK_BAD_TERMINAL:-}" in
+            "missing:$phase") ;;
+            "failed:$phase") echo 'INSTRUMENTATION_CODE: 0' ;;
+            "duplicate:$phase") echo 'INSTRUMENTATION_CODE: -1'; echo 'INSTRUMENTATION_CODE: -1' ;;
+            "mixed:$phase") echo 'INSTRUMENTATION_CODE: -1'; echo 'INSTRUMENTATION_CODE: 0' ;;
             *) echo 'INSTRUMENTATION_CODE: -1' ;;
           esac
         else exit 33; fi
