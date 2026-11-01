@@ -130,7 +130,18 @@ class PhoneIntakeJourneyInstrumentedTest {
     }
 
     private fun click(text: String) {
-        waitForText(text)
+        // The JNI Stop/Start postcondition can become visible before Compose
+        // finishes the outstanding mutation and re-enables its action tiles.
+        // Verify the *user-actionable* UI state, not merely the native state,
+        // rather than racing a disabled Remove/Stop control.
+        rule.waitUntil(30_000) {
+            try {
+                rule.onNodeWithText(text).assertIsEnabled()
+                true
+            } catch (_: AssertionError) {
+                false
+            }
+        }
         rule.onNodeWithText(text).performScrollTo().assertIsEnabled().performClick()
     }
 
