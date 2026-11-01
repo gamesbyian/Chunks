@@ -1,5 +1,23 @@
 # Chunks evidence and release gate ledger
 
+## 2026-11-01 remote read-only acceptance authentication correction
+
+The test-only `test/remote-read-auth-proof-20261101` candidate closes a false
+positive in the protected probe: valid anonymous version/inventory replies
+previously produced an "authenticated" marker with no accepted challenge.
+The actual live test now shares an acceptance gate with real loopback HTTP
+counterexamples and reports a missing live environment as skipped. Six focused
+`RemoteReadAuthEvidenceTest` cases passed locally; the live smoke was explicitly
+skipped (one case). Only version and main-view RPC methods are permitted by the
+new positive/negative fixtures. No production transport, credential routing or
+remote mutation changes; no protected host was contacted for this receipt.
+
+Historical read-only success markers below prove validated replies, but do not
+alone prove supplied-credential authentication. A reviewed-main protected
+primary-profile run remains required after integration; accepted HTTP challenge
+evidence still does not grant human-account or mutation authority. See the
+[corrected protocol](SEEDHOST-REMOTE-TESTING.md#read-only-authentication-evidence-correction-2026-11-01).
+
 
 > **Current-status reconciliation (2026-10-31):** Issue [#568](https://github.com/gamesbyian/Chunks/issues/568) is **closed, superseded** for ordinary user-authorized same-path regular torrent payload overwrite. All older entries below saying '#568 RED/open' are truthful *historical classifications*, not current release policy; they must not revive the proprietary native writer as a compulsory gate. Live outstanding safety: [#865](https://github.com/gamesbyian/Chunks/issues/865) app-private resume/admission metadata, [#809](https://github.com/gamesbyian/Chunks/issues/809) ZIP/library wrong-target operations and [#5](https://github.com/gamesbyian/Chunks/issues/5) real Android behavior. **#869's stacked native head failed an actual API35 native Add review** in [run 41246130576](https://github.com/gamesbyian/Chunks/actions/runs/41246130576): completed magnet resume persistence assertion; other green runs are not integrated-head proof. Evidence below is preserved as originally observed. [Dated audit](REPOSITORY-DOCS-AND-TRACKING-AUDIT-2026-10-31.md).
 

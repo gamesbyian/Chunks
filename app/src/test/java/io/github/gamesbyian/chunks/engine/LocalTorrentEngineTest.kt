@@ -884,8 +884,13 @@ class LocalTorrentEngineTest {
             siblingBytes, unrelated.readBytes())
         assertArrayEquals(fixture.files.getValue("extras/notes.txt"),
             File(destination, "Chunks public fixture/extras/notes.txt").readBytes())
-        assertTrue("Completed magnet must persist a restorable native state",
-            leecher.saveResumeData() >= 1)
+        // Metadata may already have persisted this handle; libtorrent can
+        // decline a redundant callback. Require independently parsed durable
+        // state, then retain the real restart/seeding/byte checks below.
+        waitFor(15_000L) {
+            leecher.saveResumeData(timeoutMs = 3_000L)
+            verifiedSavedResumeEvent(state, seed.infoHash)
+        }
         leecher.close()
 
         val restarted = persistentEngine(state)
