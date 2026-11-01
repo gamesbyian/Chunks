@@ -46,6 +46,32 @@ import org.libtorrent4j.TorrentBuilder
 class SeedhostExactPeerBytesOnceTest {
     @get:Rule val temp = TemporaryFolder()
 
+    /** No alternative HTTPS port, origin, account mount or embedded login. */
+    private fun approvedPrimaryEndpoint(raw: String): Boolean = runCatching {
+        val uri = URI(raw)
+        uri.scheme == "https" &&
+            uri.host == "ianseeds.wood.seedhost.eu" &&
+            uri.port == -1 &&
+            uri.path == "/rutorrent/" &&
+            uri.userInfo == null && uri.query == null && uri.fragment == null
+    }.getOrDefault(false)
+
+    @Test fun onlyApprovedExactPrimaryEndpointPassesBeforeAnyNetwork() {
+        val valid = "https://ianseeds.wood.seedhost.eu/rutorrent/"
+        assertTrue(approvedPrimaryEndpoint(valid))
+        listOf(
+            "https://ianseeds.wood.seedhost.eu:443/rutorrent/",
+            "https://ianseeds.wood.seedhost.eu:8443/rutorrent/",
+            "https://ianseeds.wood.seedhost.eu/rutorrent2/",
+            "https://ianseeds.wood.seedhost.eu/rutorrent",
+            "https://ianseeds.wood.seedhost.eu/rutorrent/?token=sample",
+            "https://ianseeds.wood.seedhost.eu/rutorrent/#fragment",
+            "http://ianseeds.wood.seedhost.eu/rutorrent/",
+            "https://someone:secret@ianseeds.wood.seedhost.eu/rutorrent/",
+            "https://ianseeds.wood.seedhost.eu.attacker.invalid/rutorrent/"
+        ).forEach { assertFalse("Disallowed alternate origin or instance", approvedPrimaryEndpoint(it)) }
+    }
+
     private fun stage(value: String) {
         require(value in setOf("preflight", "destination", "peer", "seed-ready",
             "added-stopped", "started", "bytes-verified", "stopped", "removed",
@@ -70,10 +96,9 @@ class SeedhostExactPeerBytesOnceTest {
             "A unique non-replayed trusted-main GitHub run is required"
         }
         val urlText = System.getenv("CHUNKS_LIVE_RUTORRENT_URL").orEmpty()
-        val uri = URI(urlText)
-        require(uri.scheme == "https" && uri.host == "ianseeds.wood.seedhost.eu" &&
-            uri.path == "/rutorrent/" && uri.userInfo == null && uri.query == null &&
-            uri.fragment == null) { "Only the owner-approved development RPC origin is allowed" }
+        require(approvedPrimaryEndpoint(urlText)) {
+            "Only the exact owner-approved development RPC URL is allowed"
+        }
         val user = System.getenv("CHUNKS_LIVE_RTORRENT_USER").orEmpty()
         val pass = System.getenv("CHUNKS_LIVE_RTORRENT_PASS").orEmpty()
         require(user.isNotEmpty() && pass.isNotEmpty()) { "Protected login unavailable" }
