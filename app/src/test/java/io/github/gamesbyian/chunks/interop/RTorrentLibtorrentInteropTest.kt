@@ -187,17 +187,27 @@ class RTorrentLibtorrentInteropTest {
             // "Prepare on rTorrent", not the original file: identity and
             // trackers must survive that handoff for rTorrent to find peers.
             val handoff = requireNotNull(phone.exportTorrentFile(seed.infoHash))
-            val hash = addAndStart(rig.remote, handoff, leechParent)
+            val hash = TorrentMetainfoReader.preview(handoff).infoHashV1
             assertEquals(seed.infoHash.lowercase(), hash.lowercase())
-            // This real-engine wire test must exercise the SAME per-hash byte
-            // inspector used for hosted diagnostics. Server-global traffic or
-            // a successful load/start acknowledgement is not download proof.
+            val added = rig.remote.loadStoppedTorrentBytes(handoff, leechParent.absolutePath)
+            assertTrue("Real rTorrent stopped Add was not verified: $added",
+                added is RemoteAddOutcome.VerifiedStopped || added is RemoteAddOutcome.PendingVerification)
+            waitFor("rTorrent to list the new stopped download", 30) {
+                runBlocking { remoteRow(rig.remote, hash) }?.started == false
+            }
+            // Take an exact-hash baseline BEFORE starting the new real-engine
+            // download: a fast loopback transfer could otherwise finish before
+            // the first sample and falsely satisfy nondecreasing-only checks.
             val before = rig.remote.readTrafficSample(hash)
             assertEquals(hash.lowercase(), before.hash.lowercase())
-            assertTrue("Exact-hash received counter unavailable before download",
-                before.receivedBytes != null && before.receivedBytes >= 0L)
-            assertTrue("Exact-hash completed counter unavailable before download",
-                before.verifiedBytes != null && before.verifiedBytes >= 0L)
+            assertEquals("New stopped download received no peer bytes", 0L, before.receivedBytes)
+            assertEquals("New stopped download has no verified pieces", 0L, before.verifiedBytes)
+            val started = rig.remote.setStarted(hash, true)
+            assertTrue("Real rTorrent Start was not acknowledged: $started",
+                started is LifecycleOutcome.Verified || started is LifecycleOutcome.Pending)
+            waitFor("rTorrent started after exact baseline", 30) {
+                runBlocking { remoteRow(rig.remote, hash) }?.started == true
+            }
             // rTorrent learns the phone seeder only from its tracker announce
             // and dials it itself: no DHT, PEX or manual peer injection.
             waitFor("rTorrent to download from the phone engine") {
@@ -214,10 +224,10 @@ class RTorrentLibtorrentInteropTest {
             assertEquals("Exact-hash verified piece bytes", total, after.verifiedBytes)
             assertTrue("Only exact-hash received bytes count, not server-global traffic",
                 after.receivedBytes != null && after.receivedBytes >= total)
-            assertTrue("Exact-hash download counter cannot regress across this fixture",
-                after.receivedBytes!! >= before.receivedBytes!!)
-            assertTrue("Exact-hash verified counter cannot regress",
-                after.verifiedBytes!! >= before.verifiedBytes!!)
+            assertTrue("Exact-hash received bytes must grow after Start",
+                after.receivedBytes!! > before.receivedBytes!!)
+            assertTrue("Exact-hash piece-verified bytes must grow after Start",
+                after.verifiedBytes!! > before.verifiedBytes!!)
             files.forEach { (path, bytes) ->
                 assertArrayEquals("Exact bytes rTorrent wrote for $path",
                     bytes, File(leechParent, "Interop from phone/$path").readBytes())
