@@ -147,7 +147,7 @@ class RTorrentRemoteFixtureTest {
         Fixture { request, _ ->
             if (request.contains("d.down.rate=")) {
                 triedExtended = true
-                Reply(200, fault(-32601, "d.down.rate missing"))
+                Reply(200, fault(-32601, "Method d.down.rate not defined"))
             } else Reply(200, result("""<array><data><value><array><data>
                 <value><string>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA</string></value>
                 <value><string>Old server sample</string></value>
@@ -162,6 +162,24 @@ class RTorrentRemoteFixtureTest {
             assertEquals(1, items.size)
             assertNull(items.single().downBytesPerSecond)
             assertEquals("Old server sample", items.single().name)
+        }
+    }
+
+    @Test fun serverBusyAndPermissionFaultsDoNotTriggerSecondInventoryRequest() = runBlocking {
+        for ((code, message) in listOf(-503 to "Server busy", -403 to "Permission denied")) {
+            Fixture { request, _ ->
+                assertTrue(request.contains("<methodName>d.multicall2</methodName>"))
+                Reply(200, fault(code, message))
+            }.use { fixture ->
+                val observed = assertThrows(RpcFault::class.java) {
+                    runBlocking {
+                        RTorrentRemote(RemoteCredentials(fixture.endpoint, "", "")).listTransfers()
+                    }
+                }
+                assertEquals(code.toString(), observed.code)
+                assertEquals("Do not retry inventory after an operational RPC fault",
+                    1, fixture.methods.size)
+            }
         }
     }
 
