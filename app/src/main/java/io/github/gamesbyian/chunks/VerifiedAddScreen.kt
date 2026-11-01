@@ -355,8 +355,11 @@ fun VerifiedAddScreen(
                             Text("Infohash: " + plan.expectedInfoHash)
                             Text("Destination: " + plan.destination + if (plan.useServerDefault)
                                 " (server default; no directory override)" else " (custom parent folder)")
-                            Text(if (startAfterAdd)
-                                "Step 1: Add stopped and verify exact hash and destination. Step 2: request Start once, and verify the server's running state. No retry if either result is uncertain."
+                            Text(if (startAfterAdd && !(useFile && finishInOrderAfterAdd &&
+                                    (selectedTorrent?.fileCount ?: 0) >= 2 && finishInOrderScope != null))
+                                "Use rTorrent's native add-and-start command once, then verify the exact torrent identity, destination and active engine state. An uncertain response is never retried automatically."
+                            else if (startAfterAdd)
+                                "Add stopped, apply reviewed file priorities, then Start once. Verify each outcome; never retry an uncertain command automatically."
                             else "Add stopped only; use Start later from Transfers. No file move or download is implied.")
                             val trackers = if (useFile) selectedTorrent?.trackerCount ?: 0
                                 else TorrentMetainfoReader.magnetTrackerCount(magnet)
@@ -380,7 +383,15 @@ fun VerifiedAddScreen(
                             var orderNote: String? = null
                             scope.launch {
                                 try {
-                                    val result = RemoteAddStarter.run(
+                                    // ruTorrent's ordinary Add starts inside load.start or
+                                    // load.raw_start. Use this native path for default
+                                    // Start-after-Add, retaining stopped-first for
+                                    // reviewed Finish in Order priorities.
+                                    val result = if (startAfterAdd && orderScope == null) {
+                                        if (bytes != null) remote.loadStartedTorrentBytes(
+                                            bytes, plan.destination, plan.useServerDefault)
+                                        else remote.loadStarted(plan)
+                                    } else RemoteAddStarter.run(
                                         startAfterVerifiedAdd = startAfterAdd,
                                         add = {
                                             val added = if (bytes != null) remote.loadStoppedTorrentBytes(
@@ -401,7 +412,7 @@ fun VerifiedAddScreen(
                                         is RemoteAddAndStart.Started ->
                                             "Verified: added and started on rTorrent. Peer availability and payload bytes still need observation in Transfers."
                                         is RemoteAddAndStart.StartNotVerified ->
-                                            "Added and verified stopped. Start was requested but not verified; check server state before another Start. No automatic retry."
+                                            "Start after Add was not verified. The torrent may already be registered or started; refresh its exact server state before another action. No automatic retry."
                                         is RemoteAddAndStart.AddedStopped -> when (result.result) {
                                             is RemoteAddOutcome.VerifiedStopped ->
                                                 "Verified: added stopped at " + result.result.destination +
