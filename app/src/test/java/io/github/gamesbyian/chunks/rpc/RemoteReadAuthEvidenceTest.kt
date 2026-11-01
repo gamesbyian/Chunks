@@ -227,4 +227,100 @@ class RemoteReadAuthEvidenceTest {
         }
     }
 
+    @Test fun savedCombinedProfileRefusesPublicInventoryWithInventedCredentials() = runBlocking {
+        Gateway(challengeRead = false).use { server ->
+            try {
+                verifiedSavedProfileMainInventory(
+                    RemoteCredentials(server.address, "invented-user", "wrong-secret"))
+                fail("The saved account has not reauthenticated after restart")
+            } catch (_: RemoteIdentityUnverified) { }
+            assertEquals(listOf("system.client_version", "d.multicall2"),
+                server.requests.map { it.first })
+            assertTrue(server.requests.all { it.second == null })
+        }
+    }
+
+    @Test fun savedCombinedProfileAcceptsFreshChallengedCredentialsWithoutMutations() = runBlocking {
+        Gateway(challengeRead = true).use { server ->
+            val rows = verifiedSavedProfileMainInventory(
+                RemoteCredentials(server.address, "alice", "secret"))
+            assertTrue(rows.isEmpty())
+            assertTrue(server.requests.any { it.second.orEmpty().startsWith("Basic ") })
+            assertTrue(server.requests.all {
+                it.first == "system.client_version" || it.first == "d.multicall2"
+            })
+        }
+    }
+
+    @Test fun savedCombinedProfileRejectsExpiredPasswordBeforeShowingRows() = runBlocking {
+        Gateway(challengeRead = true).use { server ->
+            try {
+                verifiedSavedProfileMainInventory(
+                    RemoteCredentials(server.address, "alice", "expired-password"))
+                fail("Rejected saved credentials may not display a live account")
+            } catch (_: java.io.IOException) { }
+            assertEquals(listOf("system.client_version", "system.client_version"),
+                server.requests.map { it.first })
+        }
+    }
+
+    @Test fun savedCombinedProfilePermitsDeliberateAnonymousReadOnlyAccess() = runBlocking {
+        Gateway(challengeRead = false).use { server ->
+            val rows = verifiedSavedProfileMainInventory(RemoteCredentials(server.address, "", ""))
+            assertTrue(rows.isEmpty())
+            assertTrue(server.requests.all { it.second == null })
+        }
+    }
+
+    @Test fun savedNumberedInstanceReauthenticationNeverFallsBackToPrimaryMount() = runBlocking {
+        val server = HttpServer.create(
+            InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0)
+        val calls = java.util.Collections.synchronizedList(mutableListOf<String>())
+        val expectedAuth = "Basic " + java.util.Base64.getEncoder()
+            .encodeToString("bob:second-secret".toByteArray(Charsets.UTF_8))
+        server.createContext("/rutorrent/plugins/httprpc/action.php") { exchange ->
+            calls.add("primary")
+            exchange.sendResponseHeaders(500, -1)
+            exchange.close()
+        }
+        server.createContext("/rutorrent2/plugins/httprpc/action.php") { exchange ->
+            val body = exchange.requestBody.bufferedReader().use { it.readText() }
+            val method = Regex("<methodName>([^<]+)</methodName>")
+                .find(body)?.groupValues?.get(1).orEmpty()
+            calls.add("numbered:$method")
+            if (exchange.requestHeaders.getFirst("Authorization") != expectedAuth) {
+                exchange.responseHeaders.add("WWW-Authenticate", "Basic realm=\"numbered\"")
+                exchange.sendResponseHeaders(401, -1)
+                exchange.close()
+            } else {
+                val reply = when (method) {
+                    "system.client_version" -> version
+                    "d.multicall2" -> emptyList
+                    else -> error("Unexpected read method")
+                }.toByteArray(Charsets.UTF_8)
+                exchange.sendResponseHeaders(200, reply.size.toLong())
+                exchange.responseBody.use { it.write(reply) }
+            }
+        }
+        server.start()
+        try {
+            val exact = "http://127.0.0.1:${server.address.port}/rutorrent2/"
+            assertTrue(verifiedSavedProfileMainInventory(
+                RemoteCredentials(exact, "bob", "second-secret")).isEmpty())
+            assertFalse(calls.contains("primary"))
+            assertTrue(calls.any { it == "numbered:d.multicall2" })
+            val count = calls.size
+            try {
+                verifiedSavedProfileMainInventory(
+                    RemoteCredentials(exact, "bob", "expired"))
+                fail("Old numbered-instance credentials cannot reuse another tenant")
+            } catch (_: java.io.IOException) { }
+            assertFalse(calls.contains("primary"))
+            assertEquals(2, calls.size - count)
+            assertEquals("numbered:system.client_version", calls.last())
+        } finally {
+            server.stop(0)
+        }
+    }
+
 }
