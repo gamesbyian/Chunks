@@ -291,16 +291,24 @@ class PhoneIntakeJourneyInstrumentedTest {
                 assertFalse("A newly admitted receiver must not already have complete bytes",
                     receiveTarget.exists())
                 assertEquals(LocalCommandOutcome.VERIFIED, receiver.resume(hash).outcome)
-                fun counterDetails() = "before=$uploadedBefore port=$seedPort initial=$initial " +
-                    "phone=${phone.status(hash)} receiver=${receiver.status(hash)}"
-                await("fresh peer obtains new verified bytes from restored phone",
-                    failure = { counterDetails() }) {
-                    (phone.status(hash)?.payloadUploadedBytes ?: 0) - uploadedBefore >= expected.size &&
-                        (receiver.status(hash)?.payloadDownloadedBytes ?: 0) >= expected.size &&
-                        receiver.status(hash)?.progressPpm == 1_000_000
-                }
+                // A successful native flush and independent file readback must
+                // precede the payload-statistics witness, just as in the
+                // original production-connected journey. Polling all-time
+                // counters while disk hash/write completion is still pending
+                // turned a previous working Share path into a false failure.
+                await("fresh peer gets complete verified payload", failure = {
+                    "port=$seedPort initial=$initial phone=${phone.status(hash)} " +
+                        "receiver=${receiver.status(hash)}"
+                }) { receiver.status(hash)?.progressPpm == 1_000_000 }
                 assertTrue(receiver.flushCompletedForLibraryRead(hash, 30_000))
                 assertArrayEquals(expected, receiveTarget.readBytes())
+                fun counterDetails() = "before=$uploadedBefore port=$seedPort initial=$initial " +
+                    "phone=${phone.status(hash)} receiver=${receiver.status(hash)}"
+                await("fresh peer's native payload counters prove transfer",
+                    failure = { counterDetails() }) {
+                    (phone.status(hash)?.payloadUploadedBytes ?: 0) - uploadedBefore >= expected.size &&
+                        (receiver.status(hash)?.payloadDownloadedBytes ?: 0) >= expected.size
+                }
                 android.util.Log.i("ChunksIntake", "CHUNKS_INTAKE_COUNTERS kind=$kind ${counterDetails()}")
             }
             click("Stop")
