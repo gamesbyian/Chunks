@@ -185,7 +185,7 @@ internal fun LocalZipReviewScreen(onBack: (() -> Unit)? = null) {
         }
         Text("Local ZIP review", style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold)
-        Text("Choose a ZIP saved on this phone. Chunks checks archive paths, member types and actual decompressed bytes before offering to extract it into a new folder you choose. Your selected ZIP is never changed or deleted.")
+        Text("Choose a ZIP saved on this phone. Chunks checks archive paths, member types and actual decompressed bytes before offering a bounded, single-file new-Downloads extraction when supported. General ZIP folder extraction and selected destinations remain unavailable. Your selected ZIP is never changed or deleted.")
         LocalZipInterruptedExtractions()
         // Android document providers disagree on ZIP MIME types. Show all
         // openable documents, then trust ONLY our actual ZIP validation.

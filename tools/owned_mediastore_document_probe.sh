@@ -6,6 +6,32 @@ expected="${1:?expected Android API 29 or 35}"
   echo 'CHUNKS_OWNED_DOCS: unsupported API request' >&2
   exit 1
 }
+# Never install or mutate test-owned Downloads on an unverified ADB target.
+# ANDROID_SERIAL may select one device; without it, require exactly one attached
+# authorized device, not just the first response from an ambiguous ADB server.
+devices="$(adb devices)" || {
+  echo 'CHUNKS_OWNED_DOCS: cannot enumerate ADB devices' >&2
+  exit 1
+}
+if [[ -n "${ANDROID_SERIAL:-}" ]]; then
+  awk -v selected="$ANDROID_SERIAL" 'NR > 1 && $1 == selected && $2 == "device" { n++ } END { exit(n == 1 ? 0 : 1) }' <<<"$devices" || {
+    echo 'CHUNKS_OWNED_DOCS: selected ADB device is unavailable' >&2
+    exit 1
+  }
+else
+  awk 'NR > 1 && NF > 0 && $1 != "*" { n++; if ($2 != "device") bad=1 } END { exit(n == 1 && !bad ? 0 : 1) }' <<<"$devices" || {
+    echo 'CHUNKS_OWNED_DOCS: require one authorized ADB device' >&2
+    exit 1
+  }
+fi
+emulator="$(adb shell getprop ro.kernel.qemu | tr -d '\r\n')" || {
+  echo 'CHUNKS_OWNED_DOCS: emulator identity cannot be read' >&2
+  exit 1
+}
+[[ "$emulator" == 1 ]] || {
+  echo 'CHUNKS_OWNED_DOCS: physical device refused' >&2
+  exit 1
+}
 observed="$(adb shell getprop ro.build.version.sdk | tr -d '\r\n')" || exit 1
 [[ "$observed" == "$expected" ]] || {
   echo "CHUNKS_OWNED_DOCS: API $observed != $expected" >&2
@@ -28,7 +54,7 @@ out="$(mktemp)"
 trap 'rm -f "$out"' EXIT
 set +e
 adb shell am instrument -w -r \
-  -e class io.github.gamesbyian.chunks.storage.OwnedMediaStoreDocumentPublicationInstrumentedTest \
+  -e class io.github.gamesbyian.chunks.storage.OwnedMediaStoreDocumentPublicationInstrumentedTest,io.github.gamesbyian.chunks.LocalSingleZipMediaStoreExportInstrumentedTest,io.github.gamesbyian.chunks.LocalSingleLibraryMediaStoreCopyInstrumentedTest,io.github.gamesbyian.chunks.LocalMultiZipMediaStoreExportInstrumentedTest \
   io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner >"$out" 2>&1
 status=$?
 set -e
@@ -37,11 +63,12 @@ cat "$out"
   echo 'CHUNKS_OWNED_DOCS: instrumentation process failed' >&2
   exit 1
 }
-grep -qx 'OK (6 tests)' "$out" || {
-  echo 'CHUNKS_OWNED_DOCS: exact six tests not confirmed' >&2
+[[ "$(grep -Fxc 'OK (14 tests)' "$out" || true)" == 1 ]] || {
+  echo 'CHUNKS_OWNED_DOCS: exact fourteen tests not confirmed' >&2
   exit 1
 }
-if grep -qE '^INSTRUMENTATION_STATUS_CODE: -(1|2|3|4)|^FAILURES|^Tests run: .*Failures: [1-9]' "$out"; then
+if [[ "$(grep -Fxc 'INSTRUMENTATION_CODE: -1' "$out" || true)" != 1 ]] ||
+   grep -qE '^INSTRUMENTATION_STATUS_CODE: -(1|2|3|4)|^FAILURES|^Tests run: .*Failures: [1-9]' "$out"; then
   echo 'CHUNKS_OWNED_DOCS: failing/skipped tests cannot be accepted' >&2
   exit 1
 fi
@@ -51,10 +78,20 @@ for case_name in \
   malformedOrCancelledRequestDoesNotCreateAProviderDocument \
   durableExclusiveJournalConfirmsOnlyAnUnchangedExactPublishedRow \
   cancellationAfterJournaledRowPreservesAmbiguousPendingObjectForReview \
-  independentlyVerifiedPendingRowIsNotConfusedWithPublishedAndTamperingIsRefused; do
-  grep -Fxq "INSTRUMENTATION_STATUS: test=$case_name" "$out" || {
+  independentlyVerifiedPendingRowIsNotConfusedWithPublishedAndTamperingIsRefused \
+  userApprovedSingleMemberCreatesDistinctVerifiedDownloadAndKeepsBothSources \
+  traversalNestedMultiMemberAndPreCancelledNeverPublishOrTouchCanary \
+  seedingSingleFileCopiesThroughUiWhileOriginalAndExistingCanaryStayUntouched \
+  pathnameSwapDuringPinnedLibraryReadRefusesBeforeDestinationCreation \
+  pinnedLibraryReadRefusesSwappedFifoPromptlyAndLeavesForeignBytesUntouched \
+  composeTwoFlatFilesPublishIndependentlyAndPreserveCanaryAndArchive \
+  userCancellationAfterFirstPublishedFileRetainsItsBytesAndSkipsNext \
+  nestedUnknownAndTooManyMembersFailWithoutPublishingAnything; do
+  # Android emits test=name at both start (status 1) and completion (status 0).
+  # One genuinely executed test therefore has exactly TWO named statuses.
+  [[ "$(grep -Fxc "INSTRUMENTATION_STATUS: test=$case_name" "$out" || true)" == 2 ]] || {
     echo "CHUNKS_OWNED_DOCS: missing required real Android case $case_name" >&2
     exit 1
   }
 done
-echo "CHUNKS_OWNED_MEDIASTORE_DOCUMENTS=PASS api=$expected fresh-row-fsync-journal-readonly-recovery-foreign-preservation"
+echo "CHUNKS_OWNED_MEDIASTORE_DOCUMENTS=PASS api=$expected fresh-row-fsync-zip-new-recovery-foreign-preservation"

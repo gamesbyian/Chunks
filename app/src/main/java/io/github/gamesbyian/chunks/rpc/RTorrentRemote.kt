@@ -143,8 +143,11 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             (call("system.listMethods") as? List<*>)?.map { item ->
                 item as? String ?: error("Non-string RPC method name")
             }?.toSet()
-        } catch (_: RpcFault) {
-            // Missing introspection does not imply a missing torrent-list method.
+        } catch (fault: RpcFault) {
+            // Only actual missing introspection means capabilities unknown.
+            // A busy/forbidden backend response is a connection error and
+            // must not be presented as an unsupported optional method.
+            if (!fault.isUnsupportedOptionalGetter()) throw fault
             null
         }
         return RemoteProbe(serverVersion, methods)
@@ -155,7 +158,14 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
      * to *suggest* a Place; Adds still require an explicit user-confirmed path.
      */
     suspend fun defaultDirectory(): String? {
-        val value = try { call("directory.default") } catch (_: RpcFault) { return null }
+        val value = try {
+            call("directory.default")
+        } catch (fault: RpcFault) {
+            // No usable default is a valid old-server capability, but a
+            // permission or busy error cannot silently become that state.
+            if (!fault.isUnsupportedOptionalGetter()) throw fault
+            return null
+        }
         val path = (value as? String)?.trim()?.takeIf { it.startsWith("/") && it.length <= 4096 } ?: return null
         return path.trimEnd('/').ifEmpty { "/" }
     }
@@ -193,13 +203,19 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         guardIdentity()
         val announced = try {
             (call("network.local_address") as? String)?.trim()?.takeIf { it.isNotEmpty() && it.length <= 253 }
-        } catch (_: RpcFault) { null }
+        } catch (fault: RpcFault) {
+            if (!fault.isUnsupportedOptionalGetter()) throw fault
+            null
+        }
         // Seedboxes often bind rTorrent to an address other than the web
         // host's; a wildcard bind says nothing about which one.
         val bound = try {
             (call("network.bind_address") as? String)?.trim()
                 ?.takeIf { it.isNotEmpty() && it.length <= 253 && it !in setOf("0.0.0.0", "::", "[::]") }
-        } catch (_: RpcFault) { null }
+        } catch (fault: RpcFault) {
+            if (!fault.isUnsupportedOptionalGetter()) throw fault
+            null
+        }
         val port = number(call("network.listen.port"))
         // A remote peer-copy destination must have a real TCP listen port.
         // Integer coercion, negative values and >65535 must never be silently
@@ -233,7 +249,11 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         val (rows, rich) = try {
             try {
                 extractRows(call("d.multicall2", listOf("", view) + extended)) to true
-            } catch (_: RpcFault) {
+            } catch (fault: RpcFault) {
+                // A busy/forbidden RPC fault is not evidence that optional
+                // rate fields are missing. Do not launch another full-list
+                // request unless the server actually lacks a getter.
+                if (!fault.isUnsupportedOptionalGetter()) throw fault
                 extractRows(call("d.multicall2", listOf("", view) + minimum)) to false
             }
         } catch (_: RpcReplyTooLarge) {
@@ -272,7 +292,12 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         val rich = try {
             pagedRows(hashes.take(1), getters(extended))
             true
-        } catch (_: RpcFault) { false }
+        } catch (fault: RpcFault) {
+            // Large-list paging must not turn a transient operational error
+            // into thousands of additional credentialed field reads.
+            if (!fault.isUnsupportedOptionalGetter()) throw fault
+            false
+        }
         val fields = getters(if (rich) extended else minimum)
         val transfers = ArrayList<RemoteTransfer>(hashes.size)
         for (page in hashes.chunked(PAGE_SIZE)) {
@@ -1002,16 +1027,22 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         }
         suspend fun optionalNumber(method: String): Long? = try {
             number(call(method, listOf(hash))).takeIf { it >= 0L }
-        } catch (cancel: kotlinx.coroutines.CancellationException) {
-            throw cancel
-        } catch (_: Exception) {
+        } catch (fault: RpcFault) {
+            // Optional counters can be unsupported on older rTorrent.
+            // HTTP 401/503, lost transport, invalid XML and an XML-RPC
+            // operational fault cannot become "unknown bytes" while the
+            // client silently continues with five more credentialed reads.
+            if (!fault.isUnsupportedOptionalGetter()) throw fault
             null
         }
         guardIdentity()
         val received = optionalNumber("d.down.total")
         val verified = optionalNumber("d.completed_bytes")
         val size = optionalNumber("d.size_bytes")
-        val active = optionalNumber("d.is_active")?.let { it != 0L }
+        val active = optionalNumber("d.is_active")?.let {
+            require(it in 0L..1L) { "Invalid rTorrent activity flag" }
+            it == 1L
+        }
         val peers = optionalNumber("d.peers_connected")
         val rate = optionalNumber("d.down.rate")
         guardIdentity()

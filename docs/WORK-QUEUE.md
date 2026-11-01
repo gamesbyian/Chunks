@@ -1,72 +1,38 @@
 # Chunks active engineering work queue
 
-> **0E/0F QA correction (2026-11-01, pending):** Previous #923 cold-process acceptance queried only the first ZIP member name; the claimed absence of a second pending row was not yet independently tested. Draft #923 `20712032` now checks **both** member prefixes (including pending) and proves the current batch's own warning; draft #895 `b79b021` hardens the emulator-only test harness and rejects missing/duplicate success receipts. **#923's new API29 and API35 15-case plus force-stop/cold-process phase A/B matrix is green at exact `20712032`** ([run 41277962860](https://github.com/gamesbyian/Chunks/actions/runs/41277962860)); its native Add and final predecessor/main integration remain separate. **#895's latest receipt-parser correction is `a0935403` and needs exact-new-head Android acceptance.** The descendants still require predecessor/main integration and independent storage review. Two earlier #895 reruns were red **offline harness** defects, not product writes; the chronological evidence is corrected in [QUALITY-LEDGER](QUALITY-LEDGER.md#2026-11-01-follow-up-storage-qa-negatives-and-exact-head-requalification-0e-809--0f-9). Don't merge or broaden the unsafe generic SAF executors on these preliminary results.
+**Single executable priority authority.** Inspect live main, open PRs/issues,
+ownership and current CI before taking a slice. Product requirements remain in
+[PRODUCT](PRODUCT.md), [UX](UX.md), [ARCHITECTURE](ARCHITECTURE.md),
+[SECURITY](SECURITY.md), [DECISIONS](DECISIONS.md) and their domain contracts.
+Use the [six-line execution card](ENGINEERING-DELIVERY-PROTOCOL.md#before-coding-six-line-execution-card)
+in the owning issue/PR; record proof in [QUALITY-LEDGER](QUALITY-LEDGER.md)
+and acceptance gaps in [SPEC-COVERAGE](SPEC-COVERAGE.md).
 
-> **0E/0F live evidence and governance checkpoint (2026-11-01):** #895 single ZIP/finished single-file library **NEW primary MediaStore Downloads** is production-connected in its draft and passed 10 actual API29 and 10 API35 installed tests at exact source head `b5e3924`, independently checked in raw job logs. Stacked #917 flat multi-ZIP, #922 durable batch receipts and #923 real force-stop/cold-process partial-warning acceptance have bounded passing API29/API35 evidence (15 tests each on #923) but are **still drafts**, not integrated main. Reconcile predecessor/current main, obtain independent executor review and re-run final integrated-head Android storage/JVM/R8/native gates in order; then pursue exact-target reviewed Replace and supported SAF destinations without activating old unsafe mutators. [QA receipt](QUALITY-LEDGER.md#2026-11-01-independent-zip-library-publication-and-two-process-recovery-readback-0e-809-0f-9). **0F governance:** live [ruleset Default #26293772](https://github.com/gamesbyian/Chunks/rules/26293772) is labelled active but has `ref_name.include=[]`, matching no branches; `main.protected=false` and no PR/required-check gates were observed. GitHub administrator must fix target inclusion and enforce review plus an always-present check; documented in [#10](https://github.com/gamesbyian/Chunks/issues/10). This is a dependency, not a pretext to remove distinctive storage/lifecycle verification.
+## Current dispatch checkpoint (2026-11-01)
 
+Reconciled against main `e5bcd0fc` and live app PRs/issues; checked again after #940's exact-head green results. This is an evidence checkpoint, not a guarantee that main has not subsequently advanced.
+This is a dated checkpoint: individual live PR status remains authoritative.
 
-> **CI optimization lane (cross-cutting #9/#10, 2026-10-31):** **Merged and exact-head validated:** #875 consolidated radio/Doze/interruption offline harness dispatch and added bounded JUnit diagnostics; #877 immutably pinned the manual signed-release action chain; #878 avoided duplicate full foundation builds for instrumentation-only and offline-preflight edits; #879 added the offline-tested fail-closed JUnit receipt API. **Next:** qualify #880's real Android execution-gate adoption, then measure and test scoped JVM-test fork parallelism and emulator critical paths, retaining every distinct Android API/storage/R8/security test. Branch record reports `main.protected=false`: require separate repository-admin merge protection and an always-present required check, not a skipped path-scoped context. Do not claim measured all-repo speed gains from predicted dispatch reductions. [Dated CI baseline](CI-AUDIT-2026-10-31.md); [CI policy](CI-POLICY.md). This remains part of 0F QA, not a competing queue.
+| Slice | Current disposition / next action |
+|---|---|
+| 0D #940 exact-session server-to-phone review | Integrated candidate `f130bc85` fixes the overlapping test fixture. Local 14/14 session/model/RPC tests pass; an old-key negative reproduces stale review. Exact head `f130bc85` has foundation/native Add/R8 **green**; branch is synchronized with main. Review and integrate safely after verifying scope and independent qualification; do not repeat its corrected fixture work. |
+| 0D #927 scoped Add / combined freshness | Published PR head `7717fefd` has foundation **red** at combined persisted reverse-direction wait (line 134), while atlas/native Add/R8 passed. Separate local candidate `909a9323` reports 20/20 combined/large-text tests with an actual Reverse target visibility fix; verify that candidate exists in branch history, integrate it without dropping newer main/PR changes, and require fresh exact-head CI with unchanged saved-state assertions. |
+| 0B #956 standalone reboot target guard | Lifecycle workflow executes and fails the later intake restored-seeding wait. Keep draft; diagnose that observed failure. No physical/OEM proof. |
+| 0E #922 durable ZIP batch recovery → #923 cold recovery | #917 is merged as `e5bcd0fc`. #922 is reconciled to main at `ca45176a` with a corrected **16-case** storage receipt harness retaining the prior FIFO-substitution negative (older head omitted it); it has **no reported fresh workflow runs** at this checkpoint. Obtain fresh exact-head API29/API35, foundation, native Add and R8 proof and independent storage review before integration; only then reconcile and integrate #923. Historical stacked greens do not qualify main integration. |
+| 0C #1/#4/#464 protected remote acceptance | #920 manual exact-hash peer-byte fixture is merged `35c4dab`; protected mutation was not dispatched. Current-head installed mutations, file priorities, per-transfer received+verified bytes, reconnect/401/timeout recovery and physical Android remain separate gates. Use [approved testing](SEEDHOST-REMOTE-TESTING.md). |
+| 0F #9/#10 release / repository gates | Keep actual required checks green, retain raw failures and source provenance. The previously observed ruleset did not target main; repository-admin branch protection remains unverified. Physical, signing, TalkBack and OEM evidence must not be inferred from JVM/emulator success. |
 
-**0B network QA checkpoint (2026-11-01):** [#925](https://github.com/gamesbyian/Chunks/pull/925) merged `159944a` after [exact-head radio-harness CI 41275984335](https://github.com/gamesbyian/Chunks/actions/runs/41275984335) passed offline, including ignored Wi-Fi/data-disable negatives. A `svc` acknowledgement can no longer trigger a false `net-off` marker unless both radio settings read back disabled. This does **not** establish an actual connected-device network outage, byte recovery, VPN handover or Doze. Continue #5/#569 with real observable network loss/return and piece-verified recovery; the separate [#914](https://github.com/gamesbyian/Chunks/pull/914) revoked-permission engine correction is now integrated at `788ecd18`, with its own installed API29 acceptance; the network harness is not a substitute for that device proof.
-
-**0B/0F public-peer receipt gate (2026-11-01):** [#935](https://github.com/gamesbyian/Chunks/pull/935) merged `415b125` after [exact-head offline run 41277491099](https://github.com/gamesbyian/Chunks/actions/runs/41277491099) succeeded. The opt-in public-swarm harness now requires an actual positive native per-hash verified-byte receipt alongside one fully executed instrumented test and rejects false/duplicate/inconclusive outcomes. This is **harness-only** qualification; a separately dispatched real public-Internet peer transfer with independently verified bytes, as well as physical/OEM, VPN and long Doze coverage, remain unaccepted. [Details](QUALITY-LEDGER.md#2026-11-01-public-peer-native-positive-receipt-verification-0b-5569-0f-9).
-
-**0B interrupted-peer witness (2026-11-01):** [#943](https://github.com/gamesbyian/Chunks/pull/943) merged `fd6466d` after [exact-head offline radio QA 41278807324](https://github.com/gamesbyian/Chunks/actions/runs/41278807324). The manual process-death public-swarm harness now refuses any result without unique pre-kill and post-cold-restart native verified-byte receipts, confirmed fresh growth over the recheck baseline, exact executed JUnit and no contradictory/missing markers. **No actual public-Internet swarm was run by this offline acceptance.** The controlled real-peer/manual network, physical/OEM, low-space and long Doze gates remain distinct. [QA record](QUALITY-LEDGER.md#2026-11-01-interrupted-real-peer-acceptance-receipt-guard-0b-5569-0f-9).
-
-**Single executable priority authority; reviewed 2026-10-31.** Fetch current `main`, open PRs, issues, branch ownership and CI **before** picking a task. The [engineering delivery protocol](ENGINEERING-DELIVERY-PROTOCOL.md) governs how to complete it; [AGENTS](../AGENTS.md) governs agent behavior. Product requirements live in [PRODUCT](PRODUCT.md), [UX](UX.md), [ARCHITECTURE](ARCHITECTURE.md), [SECURITY](SECURITY.md), [DECISIONS](DECISIONS.md) and scoped contracts. Implementation truth belongs in [SPEC-COVERAGE](SPEC-COVERAGE.md), test evidence in [QUALITY-LEDGER](QUALITY-LEDGER.md). This queue is **not** a substitute for any of them.
-
-**Active 0C checkpoint (2026-11-01, accepted by exact evidence tier):**
-[#891](https://github.com/gamesbyian/Chunks/pull/891)'s accepted-challenge
-read-only probe passed on the authorized primary HTTPS instance
-[41266094878](https://github.com/gamesbyian/Chunks/actions/runs/41266094878).
-[#898](https://github.com/gamesbyian/Chunks/pull/898) merged the same
-authentication evidence gate into **shipping Android Connect**, and
-[#916](https://github.com/gamesbyian/Chunks/pull/916), squash `42597a9`,
-merged exact-profile **saved-server reconnect authentication** after
-five green candidate-head workflows (1,211 executed JVM tests, zero failed,
-R8, API35 native Add, atlas and docs). It refuses public-readable anonymous
-inventory with supplied credentials, without switching numbered tenants.
-[#892](https://github.com/gamesbyian/Chunks/pull/892) merged bounded
-read-only oversize paging and [#906](https://github.com/gamesbyian/Chunks/pull/906)
-merged exact-session hidden-view stopped-Add reconciliation.
-
-**Positive peer-wire byte evidence:** [#903](https://github.com/gamesbyian/Chunks/pull/903),
-squash `1b22a8d`, actually proved **strictly positive per-infohash**
-received and piece-verified bytes at rTorrent 0.9.8 on a disposable
-runner (real libtorrent peer, exact stopped zero baseline, server completion,
-independently equal payload files). The modern rTorrent 0.16.x CI job
-proved distinct RPC compatibility, not a modern-version peer-wire test.
-Neither is protected-host Internet swarm evidence.
-
-**Current hosted Android read-only checkpoint:** after a transient earlier
-Connect failure [41270975610](https://github.com/gamesbyian/Chunks/actions/runs/41270975610),
-the merged #913 safe diagnostic ran the real installed API35 app on trusted
-main `674017a` and **PASSED**
-[41273818693](https://github.com/gamesbyian/Chunks/actions/runs/41273818693):
-credentialed primary HTTPS Connect, nonempty development queue, Refresh,
-read-only Add Place preview, return to Transfers, three 1080×2400 captures.
-This does not prove a physical handset or any new hosted mutation.
-Historical approved installed Android synthetic Add → Start → Stop → session
-Erase [40652034320](https://github.com/gamesbyian/Chunks/actions/runs/40652034320)
-and adapter mutation [40581190487](https://github.com/gamesbyian/Chunks/actions/runs/40581190487)
-remain genuine **older-source** proof, with no protected peer-byte growth.
-[#920](https://github.com/gamesbyian/Chunks/pull/920) is a separately
-review-gated **manual-only candidate** for a unique 512 KiB synthetic
-hosted received+piece-verified peer-byte witness; **no protected mutation
-has been executed by that PR**.
-
-**Still open #1/#4/#464:** protected-host *per-transfer* received+verified
-peer-byte growth, current-head hosted installed mutation and file priorities,
-authenticated reconnect/401/timeout reconciliation and physical Android/OEM.
-Neither a global server rate, public read, RPC acknowledgement nor an
-old-SHA emulator success closes those gates.
+Merged prerequisite receipts and older checkpoint narratives are retained in
+[the pre-qualification snapshot](archive/WORK-QUEUE-2026-11-01-pre-p0-qualification.txt)
+and the [quality ledger](QUALITY-LEDGER.md). They are historical evidence,
+not additional active dispatch lists. The G0–G2 ranking below still governs.
 
 ## Verified checkpoint and current boundaries
 
 - [#568](https://github.com/gamesbyian/Chunks/issues/568) is **closed, superseded**: chosen-root conventional libtorrent piece-check/reuse/replace of regular files at exact declared torrent paths is authorized. No required custom descriptor-owned JNI writer. Preserve real root escape, symlink/special-target, overlapping-writer and metadata hazards under [the collision policy](LOCAL-TORRENT-COLLISION-POLICY.md).
 - [#868](https://github.com/gamesbyian/Chunks/pull/868) + [#869](https://github.com/gamesbyian/Chunks/pull/869) are **merged** at `b402549a8355b0cc248b85cd74f67f0cb2c9bf0a`, with all eight integrated-head workflows green, including [API35 native Add](https://github.com/gamesbyian/Chunks/actions/runs/41249697402). The previous #869 failed run belongs to an earlier head; [#865](https://github.com/gamesbyian/Chunks/issues/865) stays open for bounded retention, sustained recovery and separately identified remaining risks.
 - [#809](https://github.com/gamesbyian/Chunks/issues/809) remains **real and unfinished**: ZIP/library wrong-target deletion/truncation. Unsafe generic executors remain **refuse-before-write disabled**. Restore per verified adapter under [user-directed file operations](USER-DIRECTED-FILE-OPERATIONS.md); do not treat disabled optional actions as an automatic veto on otherwise independently accepted core transfers.
-- At the preceding live audit there were **26 open issues and zero open PRs**; this is a dated snapshot, **not a live roster**. [#810](https://github.com/gamesbyian/Chunks/issues/810) is closed; its account-isolation regressions must remain covered. Historic branches #812/#856 and bespoke native writer experiments are closed/research-only.
+- [#810](https://github.com/gamesbyian/Chunks/issues/810) is closed; its account-isolation regressions must remain covered. Historic branches #812/#856 and bespoke native writer experiments are closed/research-only.
 - **Remaining proof:** physical handset/OEM/SD/permissions and Android FGS limitations (#5/#569), actual per-transfer remote-host outcomes (#1/#4), unified interaction/accessibility (#567/#8), exact integrated-source QA and release provenance (#9/#10). Green emulators or component tests do not silently confer other tiers.
 
 ## One ranked dispatch table
@@ -106,4 +72,4 @@ old-SHA emulator success closes those gates.
 
 ## Historical preservation (non-executable)
 
-Previous work-queue text is preserved **verbatim** in [the 2026-10-31 superseded snapshot](archive/WORK-QUEUE-2026-10-31-pre-history-reset.txt). It includes old red #568 instructions, closed-draft references, dated CI failures and experimental research proposals. They are evidence only and have **no current priority authority**. Earlier historical snapshots remain at [2026-10-29 dependency reset](archive/WORK-QUEUE-2026-10-29-pre-dependency-reset.txt) and [preconsolidation](archive/WORK-QUEUE-2026-10-29-preconsolidation.md); deep source/test receipts remain in [QUALITY-LEDGER](QUALITY-LEDGER.md). All owner-approved feature requirements persist in their canonical contracts.
+Previous work-queue text is preserved **verbatim** in [the 2026-10-31 superseded snapshot](archive/WORK-QUEUE-2026-10-31-pre-history-reset.txt). It includes old red #568 instructions, closed-draft references, dated CI failures and experimental research proposals. They are evidence only and have **no current priority authority**. Earlier historical snapshots remain at [2026-10-29 dependency reset](archive/WORK-QUEUE-2026-10-29-pre-dependency-reset.txt) and [preconsolidation](archive/WORK-QUEUE-2026-10-29-preconsolidation.md); deep source/test receipts remain in [QUALITY-LEDGER](QUALITY-LEDGER.md). The [2026-11-01 pre-qualification snapshot](archive/WORK-QUEUE-2026-11-01-pre-p0-qualification.txt) preserves the later accumulated checkpoints verbatim. All owner-approved feature requirements persist in their canonical contracts.
