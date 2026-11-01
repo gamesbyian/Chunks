@@ -31,7 +31,7 @@ jobs:
       ${{ github.ref == 'refs/heads/main' && github.run_attempt == 1 &&
           ((github.event_name == 'workflow_dispatch' && inputs.apply) ||
            (github.event_name == 'push' &&
-            contains(github.event.head_commit.message, 'one-time corrected real Android Seedhost Add qualification (#1002)'))) }}
+            contains(github.event.head_commit.message, 'one-time corrected real Android Seedhost Add qualification (#1003)'))) }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
