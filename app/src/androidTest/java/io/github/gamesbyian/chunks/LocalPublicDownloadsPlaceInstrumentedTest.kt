@@ -8,7 +8,7 @@ import io.github.gamesbyian.chunks.engine.LocalAddResult
 import io.github.gamesbyian.chunks.engine.LocalCommandOutcome
 import io.github.gamesbyian.chunks.engine.LocalEngineConfig
 import io.github.gamesbyian.chunks.engine.LocalResumeDirectoryInventory
-import io.github.gamesbyian.chunks.engine.LocalResumeEventStore
+import io.github.gamesbyian.chunks.engine.LocalResumeStore
 import io.github.gamesbyian.chunks.engine.LocalTorrentEngine
 import io.github.gamesbyian.chunks.engine.LocalTransferState
 import java.io.File
@@ -303,15 +303,15 @@ class LocalPublicDownloadsPlaceInstrumentedTest {
         // saveResumeData() reports *newly confirmed callbacks*. Metadata-ready
         // magnets may already have written their durable snapshot earlier, and
         // libtorrent may decline a redundant save. Neither case is a failure
-        // if the actual immutable journal has a verified restorable record.
+        // if the actual resume store has a verified restorable record.
         // Conversely, a successful native callback is insufficient without
-        // the fsynced event being independently parseable from disk.
+        // the durable record being independently parseable from disk.
         waitFor("completed magnet durable resume journal", timeoutMs = 30_000) {
             leecher.saveResumeData(timeoutMs = 3_000)
             try {
                 val inventory = LocalResumeDirectoryInventory.prepare(state)
-                LocalResumeEventStore.open(state, inventory)
-                    .current(seed.infoHash)?.isNotEmpty() == true
+                LocalResumeStore.open(state, inventory).use { it.current(seed.infoHash) }
+                    ?.isNotEmpty() == true
             } catch (_: Exception) { false }
         }
         leecher.close()

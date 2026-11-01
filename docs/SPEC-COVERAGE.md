@@ -1,5 +1,8 @@
 # Chunks specification coverage and acceptance map
 
+**#865 retention candidate (2026-11-01; unmerged):** Android resume persistence now has a production-connected SQLite candidate with bounded repeated-save storage, atomic legacy import, durable retirement, revision checks against stale callbacks, large-resume readback and refusal of missing/corrupt committed state. Desktop JNI fixtures retain the immutable event backend. Host SQLite tests use an explicit host filesystem bridge; they are not Android Os, emulator or handset evidence. Existing migration files remain untouched and consume their prior fixed disk space; small retirement rows grow with distinct transfer identities. The previous head passed API29/API35, but the corrected EXTRA-synchronous head requires new exact-head checks; independent review remains pending. [Contract](NATIVE-ADMISSION-RESUME-RECONCILIATION.md#transactional-retention-follow-through).
+
+
 **Remote acceptance candidate (2026-11-01; unmerged):** the protected read-only
 smoke now requires accepted HTTP challenge evidence as well as valid version and
 main-view data. The same gate refuses a real anonymous localhost RPC endpoint
