@@ -12,7 +12,8 @@ set -euo pipefail
 case "$*" in
   devices)
     printf 'List of devices attached\nMOCK_USB\tdevice\n'
-    if [[ "${MOCK_SECOND_DEVICE:-0}" == 1 ]]; then printf 'SECOND\tdevice\n'; fi ;;
+    if [[ "${MOCK_SECOND_DEVICE:-0}" == 1 ]]; then printf 'SECOND\tdevice\n'; fi
+    [[ "${MOCK_ADB_DEVICES_PARTIAL_FAIL:-0}" != 1 ]] || exit 88 ;;
   get-state)
     printf 'device\n'
     [[ "${MOCK_GET_STATE_FAILURE:-0}" != 1 ]] || exit 1 ;;
@@ -103,6 +104,21 @@ if MOCK_SECOND_DEVICE=1 bash "$repo/android_public_swarm_netflap.sh" > "$temp/fa
   echo 'Multiple adb devices were accepted' >&2; exit 1
 fi
 [[ ! -s "$MOCK_DIR/commands" ]]
+# ADB may print a plausible, unique USB device and still exit nonzero.
+# No installation, service or radio operation may follow that failure.
+: > "$MOCK_DIR/commands"
+if env -u ADB_SERIAL -u ANDROID_SERIAL MOCK_ADB_DEVICES_PARTIAL_FAIL=1 \
+    bash "$repo/android_public_swarm_netflap.sh" > "$temp/devices-failed.log" 2>&1; then
+  echo 'Failed adb enumeration with plausible output was accepted' >&2; exit 1
+fi
+grep -q 'Could not enumerate ADB devices' "$temp/devices-failed.log"
+[[ ! -s "$MOCK_DIR/commands" ]]
+: > "$MOCK_DIR/commands"
+if ADB_SERIAL=NOT_CONNECTED bash "$repo/android_public_swarm_netflap.sh" > "$temp/stale-selector.log" 2>&1; then
+  echo 'Unlisted explicit ADB serial was accepted' >&2; exit 1
+fi
+grep -q 'Selected ADB_SERIAL is absent' "$temp/stale-selector.log"
+[[ ! -s "$MOCK_DIR/commands" ]]
 if ADB_SERIAL=192.0.2.10:5555 bash "$repo/android_public_swarm_netflap.sh" > "$temp/fail" 2>&1; then
   echo 'Wireless adb was accepted' >&2; exit 1
 fi
@@ -115,4 +131,4 @@ fi
 grep -q 'Selected adb device unavailable' "$temp/state-failed.log"
 [[ ! -s "$MOCK_DIR/commands" && ! -e "$MOCK_DIR/net-off" && ! -e "$MOCK_DIR/net-on" ]]
 [[ "$(cat "$MOCK_DIR/wifi")" == 1 && "$(cat "$MOCK_DIR/data")" == 0 ]]
-echo 'CHUNKS_NETFLAP_MOCK: baseline preservation, outage signaling, failed state query, unknown state, no-op radio commands, ambiguous/wireless adb, zero-exit install failures and nonzero instrumentation all passed'
+echo 'CHUNKS_NETFLAP_MOCK: baseline preservation, outage signaling, failed state query, unknown state, no-op radio commands, ambiguous/unlisted/wireless adb, partial-output device enumeration, zero-exit install failures and nonzero instrumentation all passed'
