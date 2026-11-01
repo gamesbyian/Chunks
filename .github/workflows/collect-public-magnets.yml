@@ -41,7 +41,7 @@ jobs:
       - name: Compile collector and run existing offline fixture tests
         shell: bash
         run: |
-          python3 -m py_compile tools/collect_public_magnet_catalog.py tools/collect_linuxtracker_magnets.py
+          python3 -m py_compile tools/collect_public_magnet_catalog.py tools/collect_linuxtracker_magnets.py tools/validate_public_magnet_catalog.py
           python3 -m unittest discover -s tools -p test_public_fixture_collector.py
       - name: Harvest licensed original .torrent metainfo (no payloads)
         id: collect
@@ -55,6 +55,9 @@ jobs:
             --count "$COUNT" --pages "$PAGES" --max-bytes 555000000
           status=$?
           echo "exit_code=$status" >> "$GITHUB_OUTPUT"
+          if test -f test-resources/public-magnets/catalog.json; then
+            python3 tools/validate_public_magnet_catalog.py --allow-partial
+          fi
           exit 0
       - name: Publish generated catalog for review (including partial result)
         uses: actions/upload-artifact@v4
