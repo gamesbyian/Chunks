@@ -28,7 +28,7 @@ case "$1" in
           phase=unknown
           case "$*" in
             *phaseA_completeNativeSeedInSharedDownloadsThenStop*) phase=a ;;
-            *phaseB_storageRevokedRefusesStartWithoutResumingJob*) phase=b ;;
+            *phaseB_storageRevokedRechecksOwnedFileOrSafelyRefuses*) phase=b ;;
             *phaseC_grantRestoredRechecksSeedsAndRemovesWithoutDeletingFiles*) phase=c ;;
           esac
           [[ "$phase" != unknown ]] || exit 32
@@ -74,7 +74,7 @@ case "$1" in
           [[ "${MOCK_BAD_HASH:-0}" != 1 ]] || hash=gggggggggggggggggggggggggggggggggggggggg
           echo "CHUNKS_GRANT phase=a persisted=true stopped=true bytes=262144 hash=$hash sha256=$sha"
           ;;
-        b) echo 'CHUNKS_GRANT phase=b refused=true stopped=true permission_revoked=true' ;;
+        b) echo 'CHUNKS_GRANT phase=b permission_revoked=true stopped_restored=true path_checked=true' ;;
         c) echo "CHUNKS_GRANT phase=c restored=true seeded=true removed_keep_files=true sha256=$sha" ;;
         *) exit 37 ;;
       esac
