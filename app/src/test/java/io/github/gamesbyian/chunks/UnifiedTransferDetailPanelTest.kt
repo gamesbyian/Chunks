@@ -143,4 +143,20 @@ class UnifiedTransferDetailPanelTest {
         rule.onNodeWithText("Environment: Locked server").assertExists()
         rule.onRoot().captureRoboImage("build/chunks-visual/details-locked-320x700.png")
     }
+
+    @Test fun completedStoppedDownloadRemainsIdentifiableWithoutClaimingPeerProof() {
+        val completed = UnifiedTransferObservation(
+            key = key, displayName = "Finished archive", originalName = "Finished archive",
+            sizeBytes = 1024, progressPpm = 1_000_000, started = false,
+            downloadBytesPerSecond = 0, uploadBytesPerSecond = 0, peers = null
+        )
+        assertEquals("Download complete; stopped in the last report.", transferAtAGlance(completed))
+        assertEquals("Stopped in the last report.",
+            transferAtAGlance(completed.copy(progressPpm = 900_000)))
+        assertEquals("Needs attention: an error was reported.",
+            transferAtAGlance(completed.copy(hasError = true)))
+        assertEquals("Download complete; sharing activity not confirmed.",
+            transferAtAGlance(completed.copy(started = true)))
+    }
+
 }

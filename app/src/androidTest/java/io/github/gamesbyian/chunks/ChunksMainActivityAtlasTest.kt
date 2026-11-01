@@ -221,12 +221,24 @@ class ChunksMainActivityAtlasTest {
         while (detached < 3) {
             rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Change list name"))
             rule.waitForIdle()
+            // Scrolling can compose a transient lazy row which is recycled
+            // before the click is dispatched. A missing semantics node is a
+            // pre-dispatch race, not a completed Add/Remove/rename operation.
+            if (rule.onAllNodesWithText("Change list name").fetchSemanticsNodes().isEmpty()) {
+                detached++
+                rule.waitForIdle()
+                continue
+            }
             try {
                 rule.onAllNodesWithText("Change list name").onFirst()
                     .performSemanticsAction(SemanticsActions.OnClick)
                 return
             } catch (ex: IllegalStateException) {
                 if (ex.message?.contains("Modifier node is not currently attached") != true) throw ex
+                detached++
+                rule.waitForIdle()
+            } catch (ex: AssertionError) {
+                if (ex.message?.contains("There are no existing nodes for that selector") != true) throw ex
                 detached++
                 rule.waitForIdle()
             }

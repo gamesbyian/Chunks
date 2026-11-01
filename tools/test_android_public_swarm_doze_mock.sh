@@ -36,7 +36,26 @@ case "${1:-}" in
     ;;
   logcat)
     if [[ "${2:-}" == "-d" && "${MOCK_READY:-1}" == 1 ]]; then
-      printf 'CHUNKS_SWARM_DOZE: ready verified=4194304\n'
+      printf '10-31 12:00:00 I/ChunksSwarm: CHUNKS_SWARM_DOZE: ready verified=4194304\n'
+      if [[ -s "$MOCK_DIR/actions" ]] &&
+         grep -Fq 'flag' "$MOCK_DIR/actions"; then
+        if [[ "${MOCK_MISSING_WINDOW:-0}" != 1 ]]; then
+          before=5242880; after=5242880; grew=0; outcome=STALLED
+          [[ "${MOCK_GROWTH:-0}" != 1 ]] ||
+            { after=6291456; grew=1048576; outcome=GROWTH; }
+          [[ "${MOCK_WRONG_DELTA:-0}" != 1 ]] || grew=1
+          [[ "${MOCK_BAD_SAMPLES:-0}" != 1 ]] || samples=18
+          samples="${samples:-19}"
+          [[ "${MOCK_BAD_LABEL:-0}" != 1 ]] || outcome=GROWTH
+          line="CHUNKS_SWARM_DOZE: $outcome idle_mode=true idle_samples=$samples window_ms=90000 verified_before=$before verified_after=$after grew=$grew peers=3"
+          printf '10-31 12:00:00 I/ChunksSwarm: %s\n' "$line"
+          [[ "${MOCK_DUPLICATE_WINDOW:-0}" != 1 ]] ||
+            printf '10-31 12:00:00 I/ChunksSwarm: %s\n' "$line"
+        fi
+        [[ "${MOCK_DOZE_INCONCLUSIVE:-0}" != 1 ]] ||
+          echo 'CHUNKS_SWARM_DOZE: INCONCLUSIVE idle_not_sustained samples=3'
+        [[ "${MOCK_FINAL_LOGCAT_FAILURE:-0}" != 1 ]] || exit 29
+      fi
       if [[ "${MOCK_LARGE_LOGCAT:-0}" == 1 ]]; then
         sleep 0.02
         for ((i=0; i<20000; i++)); do printf 'irrelevant log line %d\n' "$i"; done
@@ -101,6 +120,28 @@ env -u ADB_SERIAL -u ANDROID_SERIAL MOCK_LARGE_LOGCAT=1 bash "$repo/android_publ
 [[ "$(cat "$MOCK_DIR/battery")" == normal && "$(cat "$MOCK_DIR/deep")" == ACTIVE ]]
 [[ "$(cat "$MOCK_DIR/actions")" == $'unplug\nforce-idle\nflag\nunforce\nreset' ]]
 grep -q 'deep_state=IDLE' "$temp/large.log"
+
+# A real forced-idle command, final flag, and JUnit OK do not alone
+# certify sustained isDeviceIdleMode or a consistent native byte observation.
+# Positive both genuine no-growth STALLED and byte-growth GROWTH outcomes.
+reset
+env -u ADB_SERIAL -u ANDROID_SERIAL MOCK_GROWTH=1 \
+    bash "$repo/android_public_swarm_doze.sh" > "$temp/grew.log"
+grep -q 'outcome=GROWTH' "$temp/grew.log"
+[[ "$(cat "$MOCK_DIR/battery")" == normal && "$(cat "$MOCK_DIR/deep")" == ACTIVE ]]
+for negative in MOCK_MISSING_WINDOW MOCK_DUPLICATE_WINDOW MOCK_BAD_SAMPLES \
+                MOCK_WRONG_DELTA MOCK_BAD_LABEL MOCK_DOZE_INCONCLUSIVE \
+                MOCK_FINAL_LOGCAT_FAILURE; do
+  reset
+  if env -u ADB_SERIAL -u ANDROID_SERIAL "$negative=1" \
+      bash "$repo/android_public_swarm_doze.sh" > "$temp/$negative.log" 2>&1; then
+    echo "False-positive Doze native idle evidence accepted: $negative" >&2; exit 1
+  fi
+  [[ "$(cat "$MOCK_DIR/actions")" == $'unplug\nforce-idle\nflag\nunforce\nreset' ]] || {
+    echo "Negative never reached real forced-idle acceptance boundary: $negative" >&2; exit 1
+  }
+  [[ "$(cat "$MOCK_DIR/battery")" == normal && "$(cat "$MOCK_DIR/deep")" == ACTIVE ]]
+done
 
 # An adb install may print Failure on a successful command exit; refuse
 # before altering battery or idle state.
@@ -181,4 +222,4 @@ grep -q 'selected adb device unavailable' "$temp/state-failed.log"
 [[ ! -s "$MOCK_DIR/commands" && ! -s "$MOCK_DIR/actions" ]]
 [[ "$(cat "$MOCK_DIR/battery")" == normal && "$(cat "$MOCK_DIR/deep")" == ACTIVE ]]
 
-echo 'CHUNKS_DOZE_HARNESS_TEST: selected target, success, no ready, failed state query, failed device enumeration, unlisted serial, failed idle, failed restore, multi-device, install and failed-instrumentation negative controls passed'
+echo 'CHUNKS_DOZE_HARNESS_TEST: selected target, success, no ready, failed state query, failed device enumeration, unlisted serial, failed idle, failed restore, multi-device, install, forced-idle native witness, restored state and failed-instrumentation negatives passed'
