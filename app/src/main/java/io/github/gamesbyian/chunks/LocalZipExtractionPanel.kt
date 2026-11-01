@@ -55,7 +55,8 @@ internal data class LocalZipExtractionPlan(
 internal fun LocalZipExtractionPanel(
     sourceUri: Uri,
     review: LocalZipReview,
-    onResult: ((LocalSingleZipMediaStoreExport.Result) -> Unit)? = null
+    onResult: ((LocalSingleZipMediaStoreExport.Result) -> Unit)? = null,
+    onMultiResult: ((LocalMultiZipMediaStoreExport.Result) -> Unit)? = null
 ) {
     if (review.verification == null) return
     val context = LocalContext.current
@@ -90,6 +91,7 @@ internal fun LocalZipExtractionPanel(
                                 }
                             }
                             multiOutcome = result
+                            onMultiResult?.invoke(result)
                             running = false
                         }
                     },
