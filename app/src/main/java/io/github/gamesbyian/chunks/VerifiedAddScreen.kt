@@ -94,6 +94,7 @@ fun VerifiedAddScreen(
     // Explicit owner diagnostic only; never automatically route a failed RPC
     // Add through a second write transport.
     var useRuTorrentForm by remember(remote) { mutableStateOf(false) }
+    var useTransdroidCompatibleAdd by remember(remote) { mutableStateOf(false) }
     val offersRuTorrentForm = remember(remote) { remote.ruTorrentUploadAddress() != null }
     val finishInOrderStore = remember(finishInOrderScope) { finishInOrderScope?.let { FinishInOrderStore(context, it) } }
     var finishInOrderDefault by remember(finishInOrderScope) { mutableStateOf(finishInOrderStore?.defaultForNewAdds() == true) }
@@ -362,7 +363,11 @@ fun VerifiedAddScreen(
                     Modifier.fillMaxWidth().toggleable(
                         value = useRuTorrentForm, enabled = !submitting,
                         role = Role.Checkbox,
-                        onValueChange = { useRuTorrentForm = it; awaitingConfirmation = false }
+                        onValueChange = {
+                            useRuTorrentForm = it
+                            if (it) useTransdroidCompatibleAdd = false
+                            awaitingConfirmation = false
+                        }
                     ).padding(vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -374,6 +379,33 @@ fun VerifiedAddScreen(
                     "Uses this same signed-in ruTorrent instance and your reviewed folder. " +
                     "Sends one Add only; it will never retry an uncertain transfer automatically.",
                     style = MaterialTheme.typography.bodySmall)
+            }
+            // This diagnostic exactly matches Transdroid's two-parameter
+            // load.start/load.raw_start, using rTorrent's implicit location.
+            // A reviewed expected folder is still checked after registration.
+            if (startAfterAdd && !useServerDefault &&
+                !(useFile && finishInOrderAfterAdd &&
+                    (selectedTorrent?.fileCount ?: 0) >= 2 && finishInOrderScope != null)) item {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(Modifier.fillMaxWidth().toggleable(
+                        value = useTransdroidCompatibleAdd, enabled = !submitting,
+                        role = Role.Checkbox,
+                        onValueChange = {
+                            useTransdroidCompatibleAdd = it
+                            if (it) useRuTorrentForm = false
+                            awaitingConfirmation = false
+                        }
+                    ).padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = useTransdroidCompatibleAdd, onCheckedChange = null)
+                        Text("Compare Transdroid-style Add (no folder command)",
+                            modifier = Modifier.padding(start = 8.dp))
+                    }
+                    Text("Uses the server's own placement rules, without the extra directory " +
+                        "argument that Chunks normally sends. Your selected folder is " +
+                        "checked afterward, but cannot be guaranteed before Add. " +
+                        "Never retries an uncertain result.",
+                        style = MaterialTheme.typography.bodySmall)
+                }
             }
             // Only a .torrent shows its file list before Add; magnets are excluded.
             val fioStore = finishInOrderStore
@@ -408,7 +440,11 @@ fun VerifiedAddScreen(
                             Text("Infohash: " + plan.expectedInfoHash)
                             Text("Destination: " + plan.destination + if (plan.useServerDefault)
                                 " (server default; no directory override)" else " (custom parent folder)")
-                            Text(if (startAfterAdd && useRuTorrentForm &&
+                            Text(if (startAfterAdd && useTransdroidCompatibleAdd &&
+                                    !(useFile && finishInOrderAfterAdd &&
+                                      (selectedTorrent?.fileCount ?: 0) >= 2 && finishInOrderScope != null))
+                                "Send Transdroid's exact two-argument native Add once. The server chooses its destination; Chunks checks the selected folder afterward and will not silently move files or retry."
+                            else if (startAfterAdd && useRuTorrentForm &&
                                     !(useFile && finishInOrderAfterAdd &&
                                       (selectedTorrent?.fileCount ?: 0) >= 2 && finishInOrderScope != null))
                                 "Use this account's ruTorrent browser Add handler once, with your selected folder and automatic Start. Read back the exact torrent and active state. There is no automatic retry."
@@ -445,7 +481,9 @@ fun VerifiedAddScreen(
                                     // Start-after-Add, retaining stopped-first for
                                     // reviewed Finish in Order priorities.
                                     val result = if (startAfterAdd && orderScope == null) {
-                                        if (useRuTorrentForm) {
+                                        if (useTransdroidCompatibleAdd && !plan.useServerDefault) {
+                                            remote.loadStartedWithoutDirectoryCommand(plan, bytes)
+                                        } else if (useRuTorrentForm) {
                                             remote.loadStartedViaRuTorrentForm(plan, bytes)
                                         } else if (bytes != null) remote.loadStartedTorrentBytes(
                                             bytes, plan.destination, plan.useServerDefault)
