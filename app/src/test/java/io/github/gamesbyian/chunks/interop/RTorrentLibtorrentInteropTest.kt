@@ -10,6 +10,8 @@ import io.github.gamesbyian.chunks.engine.LoopbackTracker
 import io.github.gamesbyian.chunks.rpc.LifecycleOutcome
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteAddOutcome
+import io.github.gamesbyian.chunks.rpc.RemoteAddAndStart
+import io.github.gamesbyian.chunks.rpc.StoppedRemoteAddPlan
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader
@@ -297,6 +299,89 @@ class RTorrentLibtorrentInteropTest {
             }
         } finally {
             leechRoot.deleteRecursively()
+        }
+    }
+
+    /**
+     * Positive magnet acceptance for CHUNKS' ordinary native rTorrent
+     * start-on-load path. Unlike a fabricated infohash/unreachable tracker,
+     * a real libtorrent seeder serves metadata and every payload piece.
+     * The metainfo is real v1 bencode, the announce is a live HTTP tracker,
+     * and rTorrent must retrieve the name/file layout before transferring.
+     *
+     * This is disposable real-engine/peer proof, not the installed Android UI
+     * or an owner-host/public-swarm acceptance receipt.
+     */
+    @Test fun realRTorrentNativeMagnetAddResolvesMetadataAndDownloadsVerifiedBytes() = runBlocking {
+        val rig = rig()
+        val seedParent = kotlin.io.path.createTempDirectory("chunks-magnet-seed").toFile()
+        try {
+            val (root, files) = fixture(seedParent, "Interop via magnet", System.nanoTime())
+            val torrent = torrentFor(root)
+            val hash = TorrentMetainfoReader.preview(torrent).infoHashV1
+            val total = files.values.sumOf { it.size.toLong() }
+
+            val phone = engine()
+            val seeded = (phone.addStopped(torrent, seedParent) as LocalAddResult.AddedStopped).status
+            assertEquals(hash.lowercase(), seeded.infoHash.lowercase())
+            assertEquals(LocalCommandOutcome.VERIFIED, phone.resume(hash).outcome)
+            waitFor("real magnet seeder to hash-check the source") {
+                phone.status(hash)?.state == LocalTransferState.SEEDING
+            }
+
+            // A new, empty parent under the disposable rTorrent destination:
+            // no already-present job and no pre-populated download file.
+            val leechParent = File(rig.dataRoot, "interop-magnet-" + System.nanoTime())
+                .apply { mkdirs() }
+            assertTrue(rig.remote.listTransfers("main").none { it.hash.equals(hash, true) })
+            assertTrue(File(leechParent, "Interop via magnet").listFiles().isNullOrEmpty())
+
+            val trackerUrl = java.net.URLEncoder.encode(tracker.announceUrl, "UTF-8")
+            val magnet = "magnet:?xt=urn:btih:$hash&tr=$trackerUrl"
+            val started = rig.remote.loadStarted(
+                StoppedRemoteAddPlan.fromMagnet(magnet, leechParent.absolutePath)
+            )
+            assertTrue("Actual magnet native load refused: $started",
+                started is RemoteAddAndStart.Started ||
+                    started is RemoteAddAndStart.StartNotVerified)
+
+            // Metadata, rather than active-state or fake-hash insertion, is
+            // the first acceptance milestone. A newly inserted 0-byte magnet
+            // with no real peers can never pass this gate.
+            waitFor("rTorrent to retrieve genuine metadata from the seeder", 90) {
+                runBlocking {
+                    remoteRow(rig.remote, hash)?.let {
+                        it.name == root.name && it.sizeBytes == total && it.started
+                    } == true
+                }
+            }
+
+            waitFor("rTorrent to download all peer pieces from magnet", 150) {
+                runBlocking {
+                    val row = remoteRow(rig.remote, hash)
+                    val sample = rig.remote.readTrafficSample(hash)
+                    row?.completedBytes == total &&
+                        sample.hash.equals(hash, true) &&
+                        sample.expectedBytes == total &&
+                        sample.verifiedBytes == total &&
+                        (sample.receivedBytes ?: 0L) >= total
+                }
+            }
+            val finished = rig.remote.readTrafficSample(hash)
+            assertEquals(hash.lowercase(), finished.hash.lowercase())
+            assertEquals(total, finished.expectedBytes)
+            assertEquals(total, finished.verifiedBytes)
+            assertTrue("Received bytes must come from the real peer", (finished.receivedBytes ?: 0L) >= total)
+
+            files.forEach { (relative, expected) ->
+                assertArrayEquals("Remote magnet payload $relative", expected,
+                    File(leechParent, "Interop via magnet/$relative").readBytes())
+            }
+            waitFor("independent seeder uploaded full magnet payload", 30) {
+                (phone.status(hash)?.payloadUploadedBytes ?: 0L) >= total
+            }
+        } finally {
+            seedParent.deleteRecursively()
         }
     }
 }
