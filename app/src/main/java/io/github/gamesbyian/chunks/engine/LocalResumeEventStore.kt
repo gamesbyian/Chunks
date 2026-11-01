@@ -22,6 +22,8 @@ import java.security.MessageDigest
  * same-hash generation. Interrupted/torn records block restoration, never
  * authorize rollback to an earlier snapshot. This store does NOT confer native
  * payload-file ownership. Full-disk failure refuses a mutation.
+ * Android uses this as a read-only migration source; current Android writes
+ * go through LocalResumeDatabase. Desktop JNI fixtures retain this writer.
  *
  * Historical event files are deliberately retained. Safe bounded compaction
  * requires its own inode-identity and crash-recovery protocol, not a pathname
@@ -31,7 +33,7 @@ internal class LocalResumeEventStore private constructor(
     private val directory: File,
     private val states: MutableMap<String, State>,
     private val failures: MutableList<String>
-) {
+) : LocalResumeStore {
     private enum class Phase { EMPTY, SAVED, REMOVE_INTENT, REMOVED, CORRUPT }
     private data class State(
         val phase: Phase,
@@ -179,24 +181,30 @@ internal class LocalResumeEventStore private constructor(
         }
     }
 
-    @Synchronized fun canRegister(key: String): Boolean {
+    @Synchronized override fun canRegister(key: String): Boolean {
         require(HASH.matches(key))
         return states[key]?.phase in setOf(null, Phase.EMPTY, Phase.REMOVED)
     }
 
-    @Synchronized fun restorable(): List<Pair<String, ByteArray>> =
+    @Synchronized override fun restorable(): List<Pair<String, ByteArray>> =
         states.entries.mapNotNull { (key, state) ->
             if (state.phase == Phase.SAVED) state.payload?.let { key to it } else null
         }
 
-    @Synchronized fun problems(): List<String> = failures.toList()
+    @Synchronized override fun problems(): List<String> = failures.toList()
 
-    @Synchronized fun current(key: String): ByteArray? =
+    @Synchronized override fun current(key: String): ByteArray? =
         states[key]?.takeIf { it.phase == Phase.SAVED }?.payload?.copyOf()
 
     /** Diagnostics must identify legacy snapshots correctly during migration. */
-    @Synchronized fun savedSourceName(key: String): String =
+    @Synchronized override fun savedSourceName(key: String): String =
         if (states[key]?.sequence == 0L) "$key.resume" else "$key.resume-event"
+
+    /** Read-only migration, including tombstones and corrupt-history refusals. */
+    @Synchronized fun snapshots(): List<LocalResumeSnapshot> = states.map { (key, state) ->
+        LocalResumeSnapshot(key, state.phase.name, state.payload?.copyOf(), savedSourceName(key),
+            failures.firstOrNull { it.startsWith("$key.resume") }, state.sequence)
+    }
 
     @Synchronized private fun append(key: String, kind: String, payload: ByteArray) {
         require(HASH.matches(key))
@@ -231,7 +239,7 @@ internal class LocalResumeEventStore private constructor(
         states[key] = State(nextPhase, seq, digest(raw), payload.takeIf { nextPhase == Phase.SAVED })
     }
 
-    @Synchronized fun save(key: String, bytes: ByteArray) {
+    @Synchronized override fun save(key: String, bytes: ByteArray) {
         // A repeated successful resume callback with identical bytes does not
         // need another on-disk generation. Retain the last fsynced receipt.
         val previous = states[key]
@@ -239,6 +247,6 @@ internal class LocalResumeEventStore private constructor(
             return
         append(key, "SAVE", bytes)
     }
-    @Synchronized fun removeIntent(key: String) = append(key, "REMOVE_INTENT", ByteArray(0))
-    @Synchronized fun removeCommit(key: String) = append(key, "REMOVED", ByteArray(0))
+    @Synchronized override fun removeIntent(key: String) = append(key, "REMOVE_INTENT", ByteArray(0))
+    @Synchronized override fun removeCommit(key: String) = append(key, "REMOVED", ByteArray(0))
 }

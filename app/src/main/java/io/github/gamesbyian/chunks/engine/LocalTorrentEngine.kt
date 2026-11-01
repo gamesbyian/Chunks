@@ -137,7 +137,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     // Keep timed-out requests pending until their real alert arrives: a late
     // alert must not confirm a different save generation.
     private val pendingSaves = LocalResumeSaveRequests<TorrentHandle>()
-    @Volatile private var resumeEvents: LocalResumeEventStore? = null
+    @Volatile private var resumeEvents: LocalResumeStore? = null
 
     // Cache flushes need the same handle-bound completion semantics as resume
     // saves. In particular, a late alert for a removed torrent must never
@@ -199,14 +199,14 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                     val bytes = AddTorrentParams.writeResumeDataBuf(alert.params())
                     // The handle may have been removed while the alert was being decoded.
                     // Lock across both identity recheck and disk commit; Remove uses this
-                    // same fence before recording an immutable retirement event.
+                    // same fence before recording durable retirement state.
                     LocalResumeWriteFence.writeIfCurrent(handles, key, handle) {
                         writeResume(key, bytes)
                         persisted = true
                     }
                 }
             } catch (_: Exception) {
-                // Corrupt native data or a failed fsync/atomic rename is not a
+                // Corrupt native data or a failed durable transaction is not a
                 // confirmed save. Do not let an exception escape the alert
                 // dispatcher or overwrite the previous verified resume file.
             } finally {
@@ -330,7 +330,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         // Verify the complete app-private resume inventory before starting JNI.
         // A failed File.listFiles() must never masquerade as zero saved jobs.
         val resumeFiles = config.stateDirectory?.let(LocalResumeDirectoryInventory::prepare)
-        val store = if (resumeFiles != null) LocalResumeEventStore.open(
+        val store = if (resumeFiles != null) LocalResumeStore.open(
             requireNotNull(config.stateDirectory), resumeFiles) else null
         resumeEvents = store
         val pack = SettingsPack().listenInterfaces(config.listenInterfaces)
@@ -1399,6 +1399,8 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         restoredNativeJobs.clear()
         checkedStartProblems.clear()
         session.stop()
+        resumeEvents?.close()
+        resumeEvents = null
         retiredThisSession.clear()
         // The native session has stopped before its in-process path claims
         // are discarded. This does not grant ownership to any restored job.
@@ -1406,8 +1408,8 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         started = false
     }
 
-    /** Restore verified immutable SAVE generations (or pre-upgrade legacy snapshots). */
-    private fun restore(store: LocalResumeEventStore) {
+    /** Restore verified current snapshots, including migrated pre-upgrade state. */
+    private fun restore(store: LocalResumeStore) {
         val problems = ArrayList<String>(store.problems())
         for ((key, bytes) in store.restorable()) {
             val params = try {
