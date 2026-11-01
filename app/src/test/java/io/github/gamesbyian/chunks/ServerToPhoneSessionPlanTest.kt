@@ -124,8 +124,12 @@ class ServerToPhoneSessionPlanTest {
         // exactly one B peer hint must reach the existing phone Add flow.
         rule.onNodeWithText("Review phone Add").assertExists()
         rule.onNodeWithText("Review phone Add").performClick()
+        // The click must consume its review as well as dispatch exactly one
+        // magnet: distinguish a missed Compose click from a lost callback.
+        rule.onNodeWithText("Review phone Add").assertDoesNotExist()
         rule.runOnIdle {
-            assertTrue("Only one current-server Review callback may be delivered",
+            assertTrue("Expected one B callback; observed " + handedOff.size +
+                ": " + handedOff.joinToString(),
                 handedOff.size == 1)
             assertTrue("No old-server peer address may survive the switch",
                 handedOff.single().contains("x.pe=127.0.0.1:6891"))
