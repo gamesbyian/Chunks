@@ -1,5 +1,22 @@
 # Chunks evidence and release gate ledger
 
+## 2026-11-01 saved combined-server reauthentication: source-only candidate
+
+In the existing `MainActivity` combined-saved-server callback, a newly
+constructed `RTorrentRemote(profile.credentials)` directly read the
+`main` view without requiring the challenge-accepted credential proof
+added to normal Connect in PR #898. Saved credentials could have expired,
+been reassigned or point to a public-read endpoint without the UI knowing.
+The staged `fix/remote-saved-profile-challenge-revalidation-20261101`
+candidate calls `verifiedSavedProfileMainInventory` from that production
+callback and requires fresh read-only version/main-view+HTTP challenge
+evidence for supplied credentials. Test cases cover public invented
+credentials, accepted Basic, expired Basic, intentional anonymous access and
+numbered-instance separation without fallback to the primary mount.
+It does not add mutation or login persistence. **No test or host acceptance
+yet**: branch work must follow PR #898's integration before independent
+qualification. Existing archived profile rows remain stale if reauth fails.
+
 ## 2026-11-01 accepted protected read-only profile and installed Android UI
 
 Merged main `2162b8e99996f3e08b2b78a9f430503123aa3a6d` includes
