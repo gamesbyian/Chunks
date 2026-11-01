@@ -105,6 +105,27 @@ class RTorrentRemoteFixtureTest {
         }
     }
 
+    @Test fun introspectionBusyOrPermissionFaultIsNotMissingCapability() = runBlocking {
+        for ((code, message) in listOf(-503 to "Server busy", -403 to "Permission denied")) {
+            Fixture { request, _ ->
+                when {
+                    request.contains("system.client_version") ->
+                        Reply(200, result("<string>0.16</string>"))
+                    request.contains("system.listMethods") -> Reply(200, fault(code, message))
+                    else -> error("No further RPC after failed introspection")
+                }
+            }.use { fixture ->
+                val error = assertThrows(RpcFault::class.java) {
+                    runBlocking {
+                        RTorrentRemote(RemoteCredentials(fixture.endpoint, "", "")).probe()
+                    }
+                }
+                assertEquals(code.toString(), error.code)
+                assertEquals(2, fixture.methods.size)
+            }
+        }
+    }
+
     @Test fun methodProbeReturnsReportedCapabilities() = runBlocking {
         Fixture { request, _ ->
             when {
@@ -444,6 +465,23 @@ class RTorrentRemoteFixtureTest {
         val deep = result("<array><data>".repeat(30) + "<value><i8>1</i8></value>" + "</data></array>".repeat(30))
         val failure = assertThrows(IllegalArgumentException::class.java) { XmlRpcCodec.response(deep) }
         assertFalse(failure is XmlRpcSizeLimitExceeded)
+    }
+
+    @Test fun defaultPlaceBackendFaultDoesNotLookLikeMissingServerDefault() = runBlocking {
+        for ((code, reason) in listOf(-503 to "Server busy", -403 to "Permission denied")) {
+            Fixture { request, _ ->
+                assertTrue(request.contains("<methodName>directory.default</methodName>"))
+                Reply(200, fault(code, reason))
+            }.use { fixture ->
+                val observed = assertThrows(RpcFault::class.java) {
+                    runBlocking {
+                        RTorrentRemote(RemoteCredentials(fixture.endpoint, "", "")).defaultDirectory()
+                    }
+                }
+                assertEquals(code.toString(), observed.code)
+                assertEquals(1, fixture.methods.size)
+            }
+        }
     }
 
     @Test fun defaultDirectoryIsReadOnlyAndValidated() = runBlocking {
