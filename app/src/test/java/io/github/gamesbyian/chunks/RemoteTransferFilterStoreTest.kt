@@ -48,7 +48,7 @@ class RemoteTransferFilterStoreTest {
     @Test fun lastLoadedListCannotBeConflatedWithSearchResultOrLiveServerState() {
         assertEquals("No transfers match this search or filter.",
             RemoteEmptyTransfers.explanation(10, false, false, "main", true, false))
-        assertEquals("No transfers in the last complete server list.",
+        assertEquals("No transfers reported in the last main-view observation.",
             RemoteEmptyTransfers.explanation(0, false, false, "main", false, false))
         assertTrue(RemoteEmptyTransfers.explanation(0, false, false, "started", false, false)
             .contains("Other server views"))
