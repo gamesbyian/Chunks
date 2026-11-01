@@ -36,7 +36,12 @@ class RemoteActivityTransportFailureTest {
                 } else {
                     val xml = """<methodResponse><fault><value><struct>
                         <member><name>faultCode</name><value><int>${replyFault ?: -32601}</int></value></member>
-                        <member><name>faultString</name><value><string>${if (replyFault == -501) "Could not find info-hash." else "Method not found"}</string></value></member>
+                        <member><name>faultString</name><value><string>${when (replyFault) {
+                            -501 -> "Could not find info-hash."
+                            -503 -> "Server busy"
+                            -403 -> "Permission denied"
+                            else -> "Method not found"
+                        }}</string></value></member>
                         </struct></value></fault></methodResponse>"""
                     val bytes = xml.toByteArray(Charsets.UTF_8)
                     exchange.sendResponseHeaders(200, bytes.size.toLong())
@@ -82,6 +87,20 @@ class RemoteActivityTransportFailureTest {
             assertNull(result.downloadBytesPerSecond)
             assertEquals(listOf("d.is_active", "d.is_open", "d.peers_connected", "d.down.rate"),
                 gateway.methods)
+        }
+    }
+
+    @Test fun operationalRpcFaultMustNotPretendAnOptionalMethodIsMissing() = runBlocking {
+        for (faultCode in listOf(-503, -403)) {
+            Gateway(null, faultCode).use { gateway ->
+                val thrown = assertThrows(RpcFault::class.java) {
+                    runBlocking {
+                        RTorrentRemote(RemoteCredentials(gateway.endpoint, "", "")).readActivity(hash)
+                    }
+                }
+                assertEquals(faultCode.toString(), thrown.code)
+                assertEquals(listOf("d.is_active"), gateway.methods)
+            }
         }
     }
 
