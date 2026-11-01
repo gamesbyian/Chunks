@@ -485,6 +485,97 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
     }
 
     /**
+     * Add-and-Start uses rTorrent's native start-on-load commands, the same
+     * lifecycle entry point that ruTorrent uses for its ordinary Start option.
+     * Stopped-only and priority-before-start adds retain the existing two-step
+     * flow. The single non-idempotent load is preflighted and NEVER replayed.
+     *
+     * An ACK is insufficient: only this exact hash, expected parent directory,
+     * and both started AND active flags can produce Started. This is engine
+     * activity, not evidence of peers or downloaded bytes.
+     */
+    internal suspend fun loadStarted(plan: StoppedRemoteAddPlan): RemoteAddAndStart {
+        val hash = plan.expectedInfoHash
+        if (listTransfers("main").any { it.hash.equals(hash, ignoreCase = true) } ||
+            lookupName(hash) != null) {
+            return RemoteAddAndStart.AddedStopped(RemoteAddOutcome.AlreadyPresent(hash))
+        }
+        requireCurrentServerDefault(plan)
+        try {
+            val params: List<Any> = if (plan.useServerDefault) listOf("", plan.source)
+                else listOf("", plan.source, "d.directory.set=" + plan.destination)
+            call("load.start", params)
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            // A failed acknowledgement can follow a successful load. No retry.
+            return RemoteAddAndStart.StartNotVerified(hash, null)
+        }
+        return awaitNativeStartedReadback(plan)
+    }
+
+    internal suspend fun loadStartedTorrentBytes(
+        torrentBytes: ByteArray, destination: String, useServerDefault: Boolean = false
+    ): RemoteAddAndStart {
+        val hash = TorrentMetainfoReader.preview(torrentBytes).infoHashV1
+        val link = "magnet:?xt=urn:btih:" + hash
+        val plan = if (useServerDefault) StoppedRemoteAddPlan.fromMagnetAtServerDefault(link, destination)
+            else StoppedRemoteAddPlan.fromMagnet(link, destination)
+        if (listTransfers("main").any { it.hash.equals(hash, ignoreCase = true) } ||
+            lookupName(hash) != null) {
+            return RemoteAddAndStart.AddedStopped(RemoteAddOutcome.AlreadyPresent(hash))
+        }
+        requireCurrentServerDefault(plan)
+        try {
+            val params: List<Any> = if (plan.useServerDefault) listOf("", torrentBytes)
+                else listOf("", torrentBytes, "d.directory.set=" + plan.destination)
+            call("load.raw_start", params)
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            return RemoteAddAndStart.StartNotVerified(hash, null)
+        }
+        return awaitNativeStartedReadback(plan)
+    }
+
+    /**
+     * Bounded READ-ONLY post-load polling, never a second load or lifecycle
+     * command. In-flight hashing or a server policy can delay activation.
+     * Unknown readback must remain non-verified, with explicit user refresh.
+     */
+    private suspend fun awaitNativeStartedReadback(
+        plan: StoppedRemoteAddPlan
+    ): RemoteAddAndStart {
+        val hash = plan.expectedInfoHash
+        var observedState: Boolean? = null
+        for (attempt in 0 until 8) {
+            try {
+                val name = lookupName(hash)
+                if (name != null) {
+                    suspend fun exactHash(): Boolean =
+                        (call("d.hash", listOf(hash)) as? String)?.equals(hash, ignoreCase = true) == true
+                    if (!exactHash()) return RemoteAddAndStart.StartNotVerified(hash, null)
+                    val destination = readVerifiedAddDirectory(hash, plan.destination, name)
+                    val state = number(call("d.state", listOf(hash)))
+                    val active = number(call("d.is_active", listOf(hash)))
+                    if (!exactHash() || state !in 0L..1L || active !in 0L..1L)
+                        return RemoteAddAndStart.StartNotVerified(hash, null)
+                    observedState = state == 1L
+                    if (destination == null) return RemoteAddAndStart.StartNotVerified(hash, null)
+                    if (state == 1L && active == 1L) return RemoteAddAndStart.Started(hash)
+                }
+            } catch (cancel: kotlinx.coroutines.CancellationException) {
+                throw cancel
+            } catch (_: Exception) {
+                return RemoteAddAndStart.StartNotVerified(hash, null)
+            }
+            if (attempt < 7) kotlinx.coroutines.delay(400L)
+        }
+        return RemoteAddAndStart.StartNotVerified(hash,
+            observedState?.let { LifecycleOutcome.Pending(true, it) })
+    }
+
+    /**
      * READ ONLY: reconcile a previous stopped Add after an uncertain RPC reply.
      * Uses only server inventory + exact-hash directory/type/state getters.
      * Never invokes load, starts a torrent, changes a directory or retries.
