@@ -159,6 +159,28 @@ class RemoteReadAuthEvidenceTest {
         }
     }
 
+    @Test fun publicReadOnFirstHostnameCandidateCannotProbeAnotherAccountMount() = runBlocking {
+        Gateway(challengeRead = false).use { server ->
+            val origin = server.address.removeSuffix("/RPC2")
+            assertTrue(RemoteSmartConnect.candidates(origin, "alice").size > 1)
+            try {
+                RemoteSmartConnect.connect(origin, "alice", "secret") { credentials ->
+                    val remote = RTorrentRemote(credentials)
+                    remote.version()
+                    remote.listTransfers("main")
+                    requireRemoteConnectIdentityEvidence(credentials, remote)
+                    remote
+                }
+                fail("An ambiguous public read must stop discovery, not test another mount")
+            } catch (expected: RemoteSmartConnect.ConnectionFailed) {
+                assertEquals(RemoteSmartConnect.Category.IDENTITY, expected.category)
+                assertEquals(1, expected.tested)
+            }
+            assertEquals(setOf("system.client_version", "d.multicall2"),
+                server.requests.map { it.first }.toSet())
+        }
+    }
+
     @Test fun productionConnectAllowsOnlyChallengedSuppliedLoginOrExplicitAnonymous() = runBlocking {
         Gateway(challengeRead = true).use { server ->
             val accepted = RemoteSmartConnect.connect(server.address, "alice", "secret") { credentials ->
