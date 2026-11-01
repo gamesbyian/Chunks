@@ -13,6 +13,7 @@ The [documentation architecture and authoring standard](DOCUMENTATION-STANDARD.m
 
 - [AGENTS](../AGENTS.md): required operating instructions and safety rules.
 - [WORK-QUEUE](WORK-QUEUE.md): concise active priority/order authority; reconcile with live PRs/issues.
+- [Real-transfer-first acceptance](REAL-TRANSFER-ACCEPTANCE.md): owner-mandated real .torrent/magnet/server/peer evidence tiers, positive user journeys, reference-client comparisons and limited role of mocks; required before claiming a BitTorrent feature works.
 - [Engineering delivery protocol](ENGINEERING-DELIVERY-PROTOCOL.md): practical lessons from merged/unmerged PRs: prove normal flows, contain only affected unsafe capabilities, avoid research-stack explosion, triage CI failures by actual phase and integrate exact source. Governs execution method; not a second work queue.\n- [Repository-wide documentation and tracker reconciliation, 2026-10-31](REPOSITORY-DOCS-AND-TRACKING-AUDIT-2026-10-31.md): 107 text-document inventory, all open issue/PR status reconciliation, exact-head native stack red evidence and remaining verification limits; dated audit, not a second work queue.
 - [Requirements rationality audit, 2026-10-31](REQUIREMENTS-RATIONALITY-AUDIT-2026-10-31.md): review new release blockers against concrete harm, platform/library practice and independent evidence tiers.
 - [User-directed file operations](USER-DIRECTED-FILE-OPERATIONS.md): canonical conflict/Replace/Keep both/Skip rules and precise Android provider API distinctions; #809 implementation remains gated.
