@@ -73,8 +73,8 @@ adb shell am force-stop "$pkg"
 adb shell pm revoke "$pkg" android.permission.WRITE_EXTERNAL_STORAGE
 adb shell pm revoke "$pkg" android.permission.READ_EXTERNAL_STORAGE
 
-positive B_storageRevokedRefusesStartWithoutResumingJob \
-  'CHUNKS_GRANT phase=b refused=true stopped=true permission_revoked=true'
+positive B_storageRevokedRechecksOwnedFileOrSafelyRefuses \
+  'CHUNKS_GRANT phase=b permission_revoked=true stopped_restored=true path_checked=true'
 
 restore_grants
 adb shell am force-stop "$pkg"
