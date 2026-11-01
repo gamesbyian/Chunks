@@ -122,8 +122,12 @@ class ServerToPhoneSessionPlanTest {
                 .fetchSemanticsNodes().isNotEmpty()
         }
         rule.onNodeWithText("Review phone Add").performClick()
-        assertEquals(1, handedOff.size)
-        assertTrue(handedOff.single().contains("x.pe=127.0.0.1:6891"))
+        // Observe the callback through Compose's UI-thread idle boundary.
+        rule.runOnIdle {
+            assertEquals("Only the current server may hand off one phone Add", 1, handedOff.size)
+            assertTrue("The proposed peer must belong to server B",
+                handedOff.single().contains("x.pe=127.0.0.1:6891"))
+        }
         assertTrue("Only read-only RPCs may be sent", invoked.isNotEmpty() &&
             invoked.all { it in setOf("d.hash", "network.local_address",
                 "network.bind_address", "network.listen.port", "d.is_private", "d.is_active") })
