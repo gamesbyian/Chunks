@@ -131,6 +131,34 @@ class LocalSingleLibraryMediaStoreCopyInstrumentedTest {
             assertEquals(1, wanted.files.size)
             assertEquals(sourceFile.canonicalPath, wanted.files.single().source.canonicalPath)
 
+            // Include pending rows: a writer that inserted but never published
+            // must still be detected, not hidden by MediaStore's ordinary query.
+            fun candidateRows(): Int {
+                val uri = MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+                val cols = arrayOf(MediaStore.MediaColumns.DISPLAY_NAME,
+                    MediaStore.MediaColumns.RELATIVE_PATH,
+                    MediaStore.MediaColumns.OWNER_PACKAGE_NAME)
+                val cursor = if (android.os.Build.VERSION.SDK_INT == 29) {
+                    resolver.query(MediaStore.setIncludePending(uri), cols, null, null, null)
+                } else {
+                    val args = android.os.Bundle().apply {
+                        putInt(MediaStore.QUERY_ARG_MATCH_PENDING, MediaStore.MATCH_INCLUDE)
+                    }
+                    resolver.query(uri, cols, args, null)
+                }
+                return requireNotNull(cursor).use { rows ->
+                    var found = 0
+                    while (rows.moveToNext()) {
+                        if (rows.getString(0)?.startsWith("replace-race") == true &&
+                            rows.getString(1)?.trimEnd('/') ==
+                                (Environment.DIRECTORY_DOWNLOADS + "/Chunks Exports").trimEnd('/') &&
+                            rows.getString(2) == context.packageName) found++
+                    }
+                    found
+                }
+            }
+            val rowsBefore = candidateRows()
+
             var callbacks = 0
             val result = LocalSingleLibraryMediaStoreCopy.copyNew(context, local, added.infoHash) {
                 callbacks++
@@ -149,6 +177,8 @@ class LocalSingleLibraryMediaStoreCopyInstrumentedTest {
                 LocalSingleLibraryMediaStoreCopy.State.BLOCKED, result.state)
             assertNull("No destination row may be returned for a rejected source",
                 result.publishedUri)
+            assertEquals("No published OR pending Downloads row may be inserted on source swap",
+                rowsBefore, candidateRows())
             assertArrayEquals("Original native seeding bytes must remain untouched",
                 original, retired.readBytes())
             assertArrayEquals("The planted replacement must not be cleaned up or overwritten",
