@@ -45,6 +45,9 @@ class LocalPhoneFirstfoldEntryTest {
         torrent.assertExists()
         magnet.assertExists()
         warning.assertExists()
+        // A .torrent can be imported without any magnet text; its start policy
+        // must remain independently selectable before the picker is used.
+        rule.onNodeWithText("Start downloading after Add (recommended)").assertExists()
         assertTrue("The primary .torrent action must precede the engine explanation",
             torrent.getUnclippedBoundsInRoot().top < warning.getUnclippedBoundsInRoot().top)
         assertTrue("Magnet input must be reachable before the long engine explanation",
