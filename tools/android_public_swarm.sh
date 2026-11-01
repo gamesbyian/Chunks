@@ -5,6 +5,17 @@
 set -euo pipefail
 : "${CHUNKS_PUBLIC_SWARM_TORRENT:?}" "${CHUNKS_PUBLIC_SWARM_BUDGET_BYTES:?}" "${CHUNKS_PUBLIC_SWARM_SECONDS:?}"
 pkg=io.github.gamesbyian.chunks
+# Bound direct/manual invocations too, not only workflow_dispatch inputs.
+[[ "$CHUNKS_PUBLIC_SWARM_BUDGET_BYTES" =~ ^[0-9]+$ &&
+   "$CHUNKS_PUBLIC_SWARM_BUDGET_BYTES" -ge 1 &&
+   "$CHUNKS_PUBLIC_SWARM_BUDGET_BYTES" -le 268435456 ]] || {
+  echo 'CHUNKS_ANDROID_SWARM: budget must be 1..268435456 verified bytes' >&2; exit 2;
+}
+[[ "$CHUNKS_PUBLIC_SWARM_SECONDS" =~ ^[0-9]+$ &&
+   "$CHUNKS_PUBLIC_SWARM_SECONDS" -ge 30 &&
+   "$CHUNKS_PUBLIC_SWARM_SECONDS" -le 1800 ]] || {
+  echo 'CHUNKS_ANDROID_SWARM: duration must be 30..1800 seconds' >&2; exit 2;
+}
 # Resolve and pin a single authorized adb target before any installation.
 # Process substitution must not hide a failed device-list command.
 serial="${ADB_SERIAL:-${ANDROID_SERIAL:-}}"
@@ -51,10 +62,31 @@ adb shell am instrument -w -r \
  "$pkg.test/androidx.test.runner.AndroidJUnitRunner" >"$log" 2>&1
 status=$?
 set -e
-adb logcat -d -s ChunksSwarm:I | grep -o 'CHUNKS_ANDROID_SWARM: .*' | tee -a "${GITHUB_STEP_SUMMARY:-/dev/null}" || true
-if [ "$status" -ne 0 ] || ! grep -q '^OK (1 test)' "$log" ||
-   grep -qE '^INSTRUMENTATION_STATUS_CODE: -(1|2|3|4)' "$log"; then
- grep -A12 '^INSTRUMENTATION_STATUS: stack=' "$log" | head -40 || true
- echo "::error::Android swarm test failed or was skipped (INCONCLUSIVE means peer availability, not engine acceptance)"
- exit 1
+# An adb success and an 'OK (1 test)' substring do not prove an executed
+# positive peer-byte witness. Require one complete test result and exactly
+# one matching native receipt from this freshly cleared logcat buffer.
+native_log="$(adb logcat -d -s ChunksSwarm:I)" || {
+  echo "::error::Cannot read app-side public swarm evidence" >&2; exit 1;
+}
+grep -o 'CHUNKS_ANDROID_SWARM: .*' <<< "$native_log" |
+  tee -a "${GITHUB_STEP_SUMMARY:-/dev/null}" || true
+if [[ "$status" -ne 0 ]] ||
+   [[ "$(grep -Fxc 'OK (1 test)' "$log" || true)" != 1 ]] ||
+   grep -Eq '^INSTRUMENTATION_STATUS_CODE: -[1-9]|^FAILURES|AssumptionViolatedException' "$log" ||
+   grep -Fq 'CHUNKS_ANDROID_SWARM: INCONCLUSIVE' <<< "$native_log"; then
+  grep -A12 '^INSTRUMENTATION_STATUS: stack=' "$log" | head -40 || true
+  echo "::error::Android swarm execution failed, was skipped or had an inconclusive peer result" >&2
+  exit 1
+fi
+positive="$(grep -E '^CHUNKS_ANDROID_SWARM: VERIFIED hash=[0-9a-f]{40} verified=[0-9]+ target=[0-9]+ maxPeers=[0-9]+ trackers=.* seconds=[0-9]+ <<< "$native_log" || true)"
+if [[ "$(grep -c '^CHUNKS_ANDROID_SWARM: VERIFIED ' <<< "$positive" || true)" != 1 ]] ||
+   [[ ! "$positive" =~ ^CHUNKS_ANDROID_SWARM:\ VERIFIED\ hash=[0-9a-f]{40}\ verified=([0-9]+)\ target=([0-9]+)\ maxPeers=[0-9]+\ trackers=.*\ seconds=[0-9]+$ ]]; then
+  echo "::error::Missing or ambiguous complete native peer-byte receipt" >&2
+  exit 1
+fi
+observed="${BASH_REMATCH[1]}"
+required="${BASH_REMATCH[2]}"
+if (( required < 1 || required > CHUNKS_PUBLIC_SWARM_BUDGET_BYTES || observed < required )); then
+  echo "::error::Native public-peer verified bytes did not satisfy the requested positive budget" >&2
+  exit 1
 fi
