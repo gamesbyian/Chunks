@@ -7,6 +7,8 @@ on:
   pull_request:
     paths:
       - ".github/workflows/p0-remote-start-preview.yml"
+      - "app/src/main/java/io/github/gamesbyian/chunks/rpc/RTorrentRemote.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/VerifiedAddScreen.kt"
   workflow_dispatch:
 
 permissions:
@@ -18,6 +20,9 @@ concurrency:
 
 jobs:
   side-by-side-preview:
+    # Keep this expensive extra build specific to the owner's pending
+    # P0 server-handler comparison, not all future PRs touching RPC.
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.pull_request.number == 996 }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:
