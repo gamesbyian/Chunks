@@ -22,7 +22,7 @@ class RuTorrentStartedFormAddTest {
         <member><name>faultString</name><value><string>Could not find info-hash.</string></value></member>
         </struct></value></fault></methodResponse>"""
 
-    private class Host(val status: Int = 200, val activate: Boolean = true) : AutoCloseable {
+    private inner class Host(val status: Int = 200, val activate: Boolean = true) : AutoCloseable {
         val server = HttpServer.create(
             InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0)
         val posts: MutableList<String> = Collections.synchronizedList(mutableListOf())
