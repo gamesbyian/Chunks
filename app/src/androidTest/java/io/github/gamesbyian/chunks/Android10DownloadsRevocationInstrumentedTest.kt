@@ -3,6 +3,8 @@ package io.github.gamesbyian.chunks
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Environment
+import android.system.Os
+import java.io.FileInputStream
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.gamesbyian.chunks.engine.LocalAddResult
@@ -104,12 +106,45 @@ class Android10DownloadsRevocationInstrumentedTest {
         assertEquals(digest(original), digest(target))
         assertEquals(LocalCommandOutcome.VERIFIED, engine.pause(hash).outcome)
         assertTrue("Stop was not read back", requireNotNull(engine.status(hash)).stopped)
+
+        // Independent deterministic denial fixture in app-private storage.
+        // Android 10 may legitimately allow reads of its own shared Downloads
+        // files after revocation; chmod on this *owned* disposable file instead
+        // provides a real kernel-denied FD while preserving a restored job.
+        val privateFolder = File(work, "private-denial").apply {
+            assertTrue("Fresh owned negative fixture missing", mkdir())
+        }
+        val privateName = "chmod-denied.bin"
+        val privateSource = File(work, "private-source.bin").apply {
+            writeBytes(ByteArray(131_072).also { Random(10570).nextBytes(it) })
+        }
+        val privateTorrent = TorrentBuilder().path(privateSource).pieceSize(16 * 1024)
+            .flags(TorrentBuilder.V1_ONLY).generate().entry().bencode()
+        val privateTarget = File(privateFolder, privateSource.name).apply {
+            writeBytes(privateSource.readBytes())
+        }
+        val privateAdded = engine.addStopped(privateTorrent, privateFolder)
+        assertTrue("Private denial fixture requires real stopped native Add: $privateAdded",
+            privateAdded is LocalAddResult.AddedStopped)
+        val deniedHash = (privateAdded as LocalAddResult.AddedStopped).status.infoHash
+        assertTrue("Distinct real torrent hashes required", deniedHash != hash)
+        assertEquals(LocalCommandOutcome.VERIFIED, engine.resume(deniedHash).outcome)
+        await("native seeding of private denial fixture") {
+            engine.status(deniedHash)?.state == LocalTransferState.SEEDING
+        }
+        assertEquals(digest(privateSource), digest(privateTarget))
+        assertEquals(LocalCommandOutcome.VERIFIED, engine.pause(deniedHash).outcome)
+        assertTrue("Private denial fixture failed to Stop",
+            requireNotNull(engine.status(deniedHash)).stopped)
         assertTrue("Synthetic fixture receipt directory missing", work.isDirectory)
         Properties().apply {
             setProperty("hash", hash)
             setProperty("name", name)
             setProperty("folder", folder.absolutePath)
             setProperty("sha256", digest(target))
+            setProperty("deniedHash", deniedHash)
+            setProperty("deniedPath", privateTarget.absolutePath)
+            setProperty("deniedSha256", digest(privateTarget))
         }.also { data ->
             FileOutputStream(receipt).use { output ->
                 data.store(output, "Disposable API29 permission-revocation fixture only")
@@ -141,7 +176,12 @@ class Android10DownloadsRevocationInstrumentedTest {
         val restored = requireNotNull(LocalEngineHolder.restoreIfSaved(context))
         assertTrue("Native metadata restoration failed: ${restored.restoreProblems}",
             restored.restoreProblems.isEmpty())
-        assertEquals(listOf(hash), restored.completeIdentityInventory())
+        val deniedHash = requireNotNull(data.getProperty("deniedHash"))
+        val deniedTarget = File(requireNotNull(data.getProperty("deniedPath")))
+        val deniedExpected = requireNotNull(data.getProperty("deniedSha256"))
+        assertEquals(setOf(hash, deniedHash), restored.completeIdentityInventory().toSet())
+        assertTrue("Private denial fixture auto-started",
+            requireNotNull(restored.status(deniedHash)).stopped)
         assertTrue("Revoked-grant restored job auto-started",
             requireNotNull(restored.status(hash)).stopped)
         // Android 10 may legitimately retain access to media this same
@@ -172,6 +212,29 @@ class Android10DownloadsRevocationInstrumentedTest {
                 requireNotNull(restored.status(hash)).stopped)
             android.util.Log.i("ChunksGrant", "CHUNKS_GRANT_OBSERVED access=denied")
         }
+        // Exercise the shipping preflight against an ACTUAL kernel denied
+        // descriptor on the same exact restored/native selected payload.
+        // This is a separate app-private negative; it does not mislabel
+        // Android's lawful owned-Downloads behavior as revoked access.
+        assertEquals(deniedExpected, digest(deniedTarget))
+        Os.chmod(deniedTarget.absolutePath, 0)
+        try {
+            val actualRead = runCatching {
+                FileInputStream(deniedTarget).use { it.read() }
+            }
+            assertTrue("Kernel failed to deny owned chmod-000 payload; negative is unverified",
+                actualRead.isFailure)
+            assertEquals("Real unreadable restored payload must refuse Start",
+                LocalCommandOutcome.REFUSED, restored.resume(deniedHash).outcome)
+            assertTrue("Denied native Start must leave transfer stopped",
+                requireNotNull(restored.status(deniedHash)).stopped)
+            android.util.Log.i("ChunksGrant",
+                "CHUNKS_GRANT_DENIAL restored=true os_open=denied start=refused stopped=true")
+        } finally {
+            Os.chmod(deniedTarget.absolutePath, 384) // 0600, exact owned fixture
+        }
+        assertEquals("Denied read/Start must not mutate payload", deniedExpected,
+            digest(deniedTarget))
         android.util.Log.i("ChunksGrant",
             "CHUNKS_GRANT phase=b permission_revoked=true stopped_restored=true path_checked=true")
     }
@@ -190,7 +253,11 @@ class Android10DownloadsRevocationInstrumentedTest {
         val restored = requireNotNull(LocalEngineHolder.restoreIfSaved(context))
         assertTrue("Cold restore errors: ${restored.restoreProblems}",
             restored.restoreProblems.isEmpty())
-        assertEquals(listOf(hash), restored.completeIdentityInventory())
+        val deniedHash = requireNotNull(data.getProperty("deniedHash"))
+        val deniedTarget = File(requireNotNull(data.getProperty("deniedPath")))
+        val deniedExpected = requireNotNull(data.getProperty("deniedSha256"))
+        assertEquals(deniedExpected, digest(deniedTarget))
+        assertEquals(setOf(hash, deniedHash), restored.completeIdentityInventory().toSet())
         assertTrue("Grant restoration may not auto-start", requireNotNull(restored.status(hash)).stopped)
         assertEquals("Manual Start after grant must be accepted",
             LocalCommandOutcome.VERIFIED, restored.resume(hash).outcome)
@@ -199,6 +266,17 @@ class Android10DownloadsRevocationInstrumentedTest {
         }
         assertEquals(expected, digest(target))
         assertEquals(LocalCommandOutcome.VERIFIED, restored.pause(hash).outcome)
+        assertTrue("Formerly denied owned payload must recheck/seed after permission restored",
+            requireNotNull(restored.status(deniedHash)).stopped)
+        assertEquals(LocalCommandOutcome.VERIFIED, restored.resume(deniedHash).outcome)
+        await("native seeding of formerly denied restored private payload") {
+            restored.status(deniedHash)?.state == LocalTransferState.SEEDING
+        }
+        assertEquals(deniedExpected, digest(deniedTarget))
+        assertEquals(LocalCommandOutcome.VERIFIED, restored.pause(deniedHash).outcome)
+        assertTrue("Denied fixture Remove must keep data", restored.removeKeepingData(deniedHash))
+        assertNull(restored.status(deniedHash))
+        assertEquals(deniedExpected, digest(deniedTarget))
         assertTrue("Session-only Remove must be confirmed", restored.removeKeepingData(hash))
         assertNull("Removed identity remains in local engine", restored.status(hash))
         assertEquals("Remove must preserve original public bytes", expected, digest(target))
