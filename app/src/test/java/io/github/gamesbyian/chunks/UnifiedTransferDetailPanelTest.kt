@@ -20,6 +20,7 @@ import io.github.gamesbyian.chunks.model.TransferDetailReadState
 import io.github.gamesbyian.chunks.model.UnifiedTransferDetails
 import io.github.gamesbyian.chunks.model.UnifiedTransferKey
 import io.github.gamesbyian.chunks.model.UnifiedTransferObservation
+import io.github.gamesbyian.chunks.rpc.RemoteStallEvidence
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -142,6 +143,47 @@ class UnifiedTransferDetailPanelTest {
         rule.onNodeWithText("Capabilities in this environment").assertDoesNotExist()
         rule.onNodeWithText("Environment: Locked server").assertExists()
         rule.onRoot().captureRoboImage("build/chunks-visual/details-locked-320x700.png")
+    }
+
+    @Test fun exactStallInspectionIsReachableAt320And200PercentWithoutLeakingServerMessages() {
+        var inspected = 0
+        val observation = RemoteStallEvidence(
+            key.infoHash, started = true, active = false, open = false,
+            hashingPhase = 0, hashCheckFailed = false, hashChecking = false,
+            awaitingMetadata = true,
+            messageClass = RemoteStallEvidence.MessageClass.TRACKER_OR_NETWORK
+        )
+        rule.setContent {
+            val original = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(original.density, 2f)) {
+                ChunksTheme {
+                    Surface {
+                        UnifiedTransferDetailPanel(detail(), "Server two / rutorrent2",
+                            onBack = {}, onInspectStall = { inspected++ },
+                            stallReport = observation)
+                    }
+                }
+            }
+        }
+        rule.onNodeWithText("Inspect transfer state").performScrollTo().performClick()
+        assertEquals(1, inspected)
+        rule.onNodeWithText("Server requested Start:", substring = true).performScrollTo().assertExists()
+        rule.onNodeWithText("Raw messages and tracker details are withheld.", substring = true)
+            .performScrollTo().assertExists()
+        rule.onNodeWithText("passkey", substring = true).assertDoesNotExist()
+    }
+
+    @Test fun lockedSourceCannotOfferReadOnlyStallProbeEvenIfCallbackExists() {
+        rule.setContent {
+            ChunksTheme {
+                Surface {
+                    UnifiedTransferDetailPanel(detail(EnvironmentAvailability.LOCKED),
+                        "Locked server", onBack = {}, onInspectStall = {})
+                }
+            }
+        }
+        rule.onNodeWithText("Inspect transfer state").assertDoesNotExist()
+        rule.onNodeWithText("Why is this transfer inactive?").assertDoesNotExist()
     }
 
     @Test fun completedStoppedDownloadRemainsIdentifiableWithoutClaimingPeerProof() {

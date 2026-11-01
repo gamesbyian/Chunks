@@ -70,6 +70,7 @@ import io.github.gamesbyian.chunks.privacy.TransferPrivacyRuntime
 import io.github.gamesbyian.chunks.privacy.TransferDeviceAuthenticator
 import io.github.gamesbyian.chunks.privacy.TransferPrivacyPolicyStore
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
+import io.github.gamesbyian.chunks.rpc.RemoteStallEvidence
 import io.github.gamesbyian.chunks.model.LifecycleReply
 import io.github.gamesbyian.chunks.model.UnifiedBatchLifecycle
 import io.github.gamesbyian.chunks.model.UnifiedTransferKey
@@ -136,7 +137,9 @@ internal class CombinedServerLifecycle(
     val settled: () -> Unit,
     val setStarted: suspend (String, Boolean) -> LifecycleOutcome,
     /** Read-only method-list probe of the same signed-in server; null skips the pre-check. */
-    val probe: (suspend () -> io.github.gamesbyian.chunks.rpc.RemoteProbe)? = null
+    val probe: (suspend () -> io.github.gamesbyian.chunks.rpc.RemoteProbe)? = null,
+    /** Exact-identity, read-only diagnosis on the same live authenticated server. */
+    val inspectStall: (suspend (String) -> RemoteStallEvidence)? = null
 )
 
 /** A saved profile that is not signed in during this session. */
@@ -572,9 +575,27 @@ internal fun CombinedTransfersScreen(
     // The session witness comes from its live RTorrentRemote object, not this
     // replaceable data wrapper or the persisted profile's endpoint string.
     capabilityGate.bind(server?.authenticatedSession, serverId, signedInFocus)
+    val stallGate = remember { RemoteCapabilityProbeSessionGate() }
+    stallGate.bind(server?.authenticatedSession, serverId, signedInFocus)
     val latestServer = rememberUpdatedState(server)
     val latestServerId = rememberUpdatedState(serverId)
     val latestFocus = rememberUpdatedState(signedInFocus)
+    val latestStallAllowed = rememberUpdatedState(server?.stale == false &&
+        serverPrivacy?.mayShow == true && server?.authenticatedSession != null)
+    var pendingStall by remember {
+        mutableStateOf<RemoteCapabilityProbeSessionGate.Ticket?>(null)
+    }
+    var stallEvidence by remember {
+        mutableStateOf<Pair<RemoteCapabilityProbeSessionGate.Ticket, RemoteStallEvidence>?>(null)
+    }
+    var stallFailure by remember {
+        mutableStateOf<Pair<RemoteCapabilityProbeSessionGate.Ticket, String>?>(null)
+    }
+    fun stillStall(ticket: RemoteCapabilityProbeSessionGate.Ticket?) =
+        ticket != null && latestStallAllowed.value && stallGate.current(
+            ticket, latestServer.value?.authenticatedSession,
+            latestServerId.value, latestFocus.value
+        )
     var pendingCapability by remember {
         mutableStateOf<RemoteCapabilityProbeSessionGate.Ticket?>(null)
     }
@@ -605,6 +626,12 @@ internal fun CombinedTransfersScreen(
             focusedKey.environment == serverId &&
                 server?.authenticatedSession != null &&
                 serverPrivacy?.mayShow == true &&
+                details.readState == TransferDetailReadState.CURRENT
+        }
+        val stallProbe = server?.lifecycle?.inspectStall?.takeIf {
+            focusedKey.environment == serverId &&
+                server?.authenticatedSession != null &&
+                serverPrivacy?.mayShow == true && !server.stale &&
                 details.readState == TransferDetailReadState.CURRENT
         }
         UnifiedTransferDetailPanel(
@@ -647,7 +674,42 @@ internal fun CombinedTransfersScreen(
                 }
             },
             capabilityCheckInProgress = stillCurrent(pendingCapability),
-            capabilityCheckError = capabilityFailure?.takeIf { stillCurrent(it.first) }?.second
+            capabilityCheckError = capabilityFailure?.takeIf { stillCurrent(it.first) }?.second,
+            onInspectStall = stallProbe?.let { inspect ->
+                {
+                    val ticket = stallGate.begin()
+                    if (stillStall(ticket)) {
+                        pendingStall = ticket
+                        stallEvidence = null
+                        stallFailure = null
+                        batchScope.launch {
+                            try {
+                                val observed = withContext(Dispatchers.IO) {
+                                    withTimeout(15_000L) {
+                                        inspect(ticket!!.focus.infoHash)
+                                    }
+                                }
+                                if (stillStall(ticket)) stallEvidence = ticket!! to observed
+                            } catch (cancel: kotlinx.coroutines.CancellationException) {
+                                if (cancel !is kotlinx.coroutines.TimeoutCancellationException)
+                                    throw cancel
+                                if (stillStall(ticket)) stallFailure = ticket!! to
+                                    "The exact transfer check timed out. Its current state is unknown."
+                            } catch (_: Exception) {
+                                // Never display RPC fault bodies, d.message,
+                                // tracker URLs, path names or credentials.
+                                if (stillStall(ticket)) stallFailure = ticket!! to
+                                    "The signed-in server could not finish the exact transfer check."
+                            } finally {
+                                if (pendingStall === ticket) pendingStall = null
+                            }
+                        }
+                    }
+                }
+            },
+            stallCheckInProgress = stillStall(pendingStall),
+            stallReport = stallEvidence?.takeIf { stillStall(it.first) }?.second,
+            stallCheckError = stallFailure?.takeIf { stillStall(it.first) }?.second
         )
     } else {
     Box(Modifier.fillMaxSize()) {
