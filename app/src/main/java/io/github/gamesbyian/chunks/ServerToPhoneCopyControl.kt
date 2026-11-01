@@ -85,7 +85,12 @@ internal fun ServerToPhoneCopyControl(
                 "network data, and other public peers may also contribute pieces.",
                 style = MaterialTheme.typography.bodySmall)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { plan = null; onReviewPhoneAdd(current.magnet) }, enabled = !stale,
+                Button(onClick = {
+                    // Complete the requested handoff before clearing the local review:
+                    // an account switch or navigation can invalidate this composition.
+                    onReviewPhoneAdd(current.magnet)
+                    plan = null
+                }, enabled = !stale,
                     modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Review phone Add") }
                 OutlinedButton(onClick = { plan = null },
                     modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Cancel") }
