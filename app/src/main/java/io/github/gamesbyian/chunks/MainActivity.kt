@@ -1127,8 +1127,16 @@ private fun ChunksApp(
                         if (aliasScope.isBlank()) emptyList()
                         else recentPlaceStore.places(aliasScope)
                     }
+                    // Only this freshly authenticated server's inventory may
+                    // suggest folders. A stale/other-account snapshot must not
+                    // become an Add destination shortcut.
+                    val observedPlaces = remember(aliasScope, transfers, stale) {
+                        if (aliasScope.isBlank() || stale) emptyList()
+                        else RemoteObservedAddPlaces.from(transfers)
+                    }
                     VerifiedAddScreen(
                         remote = connectedRemote, magnet = magnet, destination = draftPath,
+                        observedPlaces = observedPlaces,
                         initialTorrent = serverHandoffTorrent,
                         onInitialTorrentConsumed = { serverHandoffTorrent = null },
                         finishInOrderScope = aliasScope.takeIf { it.isNotBlank() },
