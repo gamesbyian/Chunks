@@ -11,14 +11,14 @@ Earlier green read-only workflows validated RPC replies but did not require
 the server checked the supplied credentials. Preserve their version/inventory
 decoder evidence; qualify historical authentication claims accordingly.
 
-The current acceptance candidate makes the actual `SeedhostAdapterSmokeTest`
+Merged #891 makes the actual `SeedhostAdapterSmokeTest`
 use the same gate as localhost public-read, accepted-challenge and rejected-login
 counterexamples. It requires valid version/main-view data **and** an accepted
 HTTP authentication challenge at the exact endpoint before printing its success
 marker. An anonymous readable endpoint remains unverified. This is bounded HTTP
 credential evidence, not human account ownership or write permission.
 
-After this candidate is merged and reviewed on `main`, use the existing
+From reviewed `main` containing #891, use the existing
 `seedhost-endpoint-compatibility.yml` with exactly `primary-rutorrent-https`.
 No new secret, arbitrary URL, numbered-instance fallback or mutation is needed.
 Record its exact SHA/run/result; ordinary fixture success or a missing-environment

@@ -513,6 +513,10 @@ class RTorrentRemoteFixtureTest {
                 request.contains("<methodName>d.multicall2</methodName>") ->
                     Reply(200, result("<array><data>" +
                         eraseFixtureRow(hash, "Example", "/data") + "</data></array>"))
+                request.contains("<methodName>d.name</methodName>") ->
+                    Reply(200, result("<string>Example</string>"))
+                request.contains("<methodName>d.directory</methodName>") ->
+                    Reply(200, result("<string>/data</string>"))
                 request.contains("<methodName>d.hash</methodName>") ->
                     Reply(200, result("<string>$hash</string>"))
                 request.contains("<methodName>d.erase</methodName>") -> {
@@ -527,7 +531,7 @@ class RTorrentRemoteFixtureTest {
             assertTrue(erased)
             assertTrue(result is SessionEraseOutcome.PendingRemoval)
             assertEquals(1, fixture.methods.count { it.contains("<methodName>d.erase</methodName>") })
-            assertEquals(2, fixture.methods.count { it.contains("<methodName>d.hash</methodName>") })
+            assertEquals(3, fixture.methods.count { it.contains("<methodName>d.hash</methodName>") })
         }
     }
 
@@ -539,6 +543,10 @@ class RTorrentRemoteFixtureTest {
                 request.contains("<methodName>d.multicall2</methodName>") ->
                     Reply(200, result("<array><data>" +
                         eraseFixtureRow(hash, "Example", "/data") + "</data></array>"))
+                request.contains("<methodName>d.name</methodName>") ->
+                    Reply(200, result("<string>Example</string>"))
+                request.contains("<methodName>d.directory</methodName>") ->
+                    Reply(200, result("<string>/data</string>"))
                 request.contains("<methodName>d.hash</methodName>") ->
                     if (erased) Reply(200, fault(-501, "Could not find info-hash."))
                     else Reply(200, result("<string>$hash</string>"))
@@ -565,6 +573,10 @@ class RTorrentRemoteFixtureTest {
                 request.contains("<methodName>d.multicall2</methodName>") ->
                     Reply(200, result("<array><data>" +
                         eraseFixtureRow(hash, "Example", "/data") + "</data></array>"))
+                request.contains("<methodName>d.name</methodName>") ->
+                    Reply(200, result("<string>Example</string>"))
+                request.contains("<methodName>d.directory</methodName>") ->
+                    Reply(200, result("<string>/data</string>"))
                 request.contains("<methodName>d.hash</methodName>") ->
                     if (erased) Reply(200, fault(-503, "Server busy"))
                     else Reply(200, result("<string>$hash</string>"))

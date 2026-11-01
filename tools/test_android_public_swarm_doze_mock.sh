@@ -14,6 +14,7 @@ case "${1:-}" in
   devices)
     printf 'List of devices attached\nMOCK_USB\tdevice\n'
     [[ "${MOCK_SECOND_DEVICE:-0}" != 1 ]] || printf 'SECOND\tdevice\n'
+    [[ "${MOCK_ADB_DEVICES_PARTIAL_FAIL:-0}" != 1 ]] || exit 88
     ;;
   get-state)
     [[ "${ANDROID_SERIAL:-}" == "MOCK_USB" ]] || exit 1
@@ -154,6 +155,22 @@ if ADB_SERIAL=UNREACHABLE bash "$repo/android_public_swarm_doze.sh" > "$temp/wro
 fi
 [[ ! -s "$MOCK_DIR/actions" ]]
 
+# ADB device enumeration can emit one plausible target and then fail;
+# never install or alter actual battery/idle state based on that partial output.
+reset
+if env -u ADB_SERIAL -u ANDROID_SERIAL MOCK_ADB_DEVICES_PARTIAL_FAIL=1 \
+    bash "$repo/android_public_swarm_doze.sh" > "$temp/devices-failed.log" 2>&1; then
+  echo 'Failed adb device enumeration with plausible output was accepted' >&2; exit 1
+fi
+grep -q 'ADB enumeration failed' "$temp/devices-failed.log"
+[[ ! -s "$MOCK_DIR/commands" && ! -s "$MOCK_DIR/actions" ]]
+reset
+if ADB_SERIAL=UNLISTED bash "$repo/android_public_swarm_doze.sh" > "$temp/unlisted.log" 2>&1; then
+  echo 'Unlisted explicit adb serial was accepted' >&2; exit 1
+fi
+grep -q 'selected serial absent or not connected' "$temp/unlisted.log"
+[[ ! -s "$MOCK_DIR/commands" && ! -s "$MOCK_DIR/actions" ]]
+
 # A failed query may still print the expected state. Refuse before installation,
 # instrumentation or battery/idle changes, even with that plausible output.
 reset
@@ -164,4 +181,4 @@ grep -q 'selected adb device unavailable' "$temp/state-failed.log"
 [[ ! -s "$MOCK_DIR/commands" && ! -s "$MOCK_DIR/actions" ]]
 [[ "$(cat "$MOCK_DIR/battery")" == normal && "$(cat "$MOCK_DIR/deep")" == ACTIVE ]]
 
-echo 'CHUNKS_DOZE_HARNESS_TEST: selected target, success, no ready, failed state query, failed idle, failed restore, multi-device, install and failed-instrumentation negative controls passed'
+echo 'CHUNKS_DOZE_HARNESS_TEST: selected target, success, no ready, failed state query, failed device enumeration, unlisted serial, failed idle, failed restore, multi-device, install and failed-instrumentation negative controls passed'

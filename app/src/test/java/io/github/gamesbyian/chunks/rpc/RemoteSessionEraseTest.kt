@@ -30,9 +30,13 @@ class RemoteSessionEraseTest {
     private suspend fun withServer(
         initialName: String = name,
         applyErase: Boolean = true,
+        prewriteName: String? = null,
+        prewriteDirectory: String? = null,
         action: suspend (RTorrentRemote, MutableList<String>) -> Unit
     ) {
         var present = true
+        var currentName = initialName
+        var currentDirectory = directory
         val methods = mutableListOf<String>()
         val server = HttpServer.create(InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0)
         server.createContext("/RPC2") { exchange ->
@@ -41,9 +45,17 @@ class RemoteSessionEraseTest {
                 .find(payload)?.groupValues?.get(1).orEmpty()
             methods.add(method)
             if (method == "d.erase" && applyErase) present = false
+            // Simulate another client editing the session after the first
+            // main-view snapshot, but before the pre-erase exact-hash checks.
+            if (method == "d.hash" && present) {
+                if (prewriteName != null) currentName = prewriteName
+                if (prewriteDirectory != null) currentDirectory = prewriteDirectory
+            }
             val xmlBody = when (method) {
                 "d.multicall2" -> rows(present, initialName)
                 "d.hash" -> value(hash)
+                "d.name" -> value(currentName)
+                "d.directory" -> value(currentDirectory)
                 "d.erase" -> number(0)
                 else -> number(0)
             }
@@ -66,7 +78,7 @@ class RemoteSessionEraseTest {
         withServer { remote, methods ->
             assertEquals(SessionEraseOutcome.VerifiedRemoved(hash),
                 remote.eraseFromSession(hash, name, directory))
-            assertEquals(listOf("d.multicall2", "d.hash", "d.erase", "d.hash"), methods)
+            assertEquals(listOf("d.multicall2", "d.hash", "d.name", "d.directory", "d.hash", "d.erase", "d.hash"), methods)
             assertEquals(SessionEraseOutcome.AlreadyAbsent(hash),
                 remote.eraseFromSession(hash, name, directory))
             assertEquals(1, methods.count { it == "d.erase" })
@@ -83,11 +95,33 @@ class RemoteSessionEraseTest {
         }
     }
 
+    @Test fun renameAfterViewSnapshotRefusesSessionErase() = runBlocking {
+        withServer(prewriteName = "renamed-by-another-client") { remote, methods ->
+            try {
+                remote.eraseFromSession(hash, name, directory)
+                fail("A stale name must not authorize session removal")
+            } catch (_: IllegalStateException) { }
+            assertEquals(listOf("d.multicall2", "d.hash", "d.name", "d.directory"), methods)
+            assertFalse(methods.contains("d.erase"))
+        }
+    }
+
+    @Test fun relocationAfterViewSnapshotRefusesSessionErase() = runBlocking {
+        withServer(prewriteDirectory = "/home/dev/moved-by-another-client") { remote, methods ->
+            try {
+                remote.eraseFromSession(hash, name, directory)
+                fail("A stale directory must not authorize session removal")
+            } catch (_: IllegalStateException) { }
+            assertEquals(listOf("d.multicall2", "d.hash", "d.name", "d.directory"), methods)
+            assertFalse(methods.contains("d.erase"))
+        }
+    }
+
     @Test fun acknowledgedEraseWithoutGoneReadbackIsPendingNotVerified() = runBlocking {
         withServer(applyErase = false) { remote, methods ->
             assertEquals(SessionEraseOutcome.PendingRemoval(hash),
                 remote.eraseFromSession(hash, name, directory))
-            assertEquals(listOf("d.multicall2", "d.hash", "d.erase", "d.hash"), methods)
+            assertEquals(listOf("d.multicall2", "d.hash", "d.name", "d.directory", "d.hash", "d.erase", "d.hash"), methods)
         }
     }
 
@@ -112,7 +146,12 @@ class RemoteSessionEraseTest {
             } else {
                 val reply = if (method == "d.hash" && !present) unknownHashFault()
                     else "<methodResponse><params><param>" +
-                        (if (method == "d.hash") value(hash) else rows(present, name)) +
+                        (when (method) {
+                            "d.hash" -> value(hash)
+                            "d.name" -> value(name)
+                            "d.directory" -> value(directory)
+                            else -> rows(present, name)
+                        }) +
                         "</param></params></methodResponse>"
                 val encoded = reply.toByteArray(Charsets.UTF_8)
                 exchange.sendResponseHeaders(200, encoded.size.toLong())
@@ -126,12 +165,12 @@ class RemoteSessionEraseTest {
             assertEquals(SessionEraseOutcome.Uncertain(hash),
                 client.eraseFromSession(hash, name, directory))
             assertEquals(1, eraseCalls)
-            assertEquals(listOf("d.multicall2", "d.hash", "d.erase"), methods)
+            assertEquals(listOf("d.multicall2", "d.hash", "d.name", "d.directory", "d.hash", "d.erase"), methods)
             // Only a separately initiated read-only reconciliation is safe.
             assertEquals(SessionEraseOutcome.AlreadyAbsent(hash),
                 client.eraseFromSession(hash, name, directory))
             assertEquals(1, eraseCalls)
-            assertEquals(listOf("d.multicall2", "d.hash", "d.erase", "d.multicall2", "d.hash"), methods)
+            assertEquals(listOf("d.multicall2", "d.hash", "d.name", "d.directory", "d.hash", "d.erase", "d.multicall2", "d.hash"), methods)
         } finally { server.stop(0) }
     }
 
