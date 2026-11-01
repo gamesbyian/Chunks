@@ -42,7 +42,7 @@ internal object RemoteEmptyTransfers {
         stale -> "The last server list may be out of date. Refresh before relying on these results."
         totalInLoadedView == 0 && view != "main" ->
             "No transfers in the '$view' server view. Other server views may contain downloads."
-        totalInLoadedView == 0 -> "No transfers in the last complete server list."
+        totalInLoadedView == 0 -> "No transfers reported in the last main-view observation."
         searching || filtered -> "No transfers match this search or filter."
         else -> "No transfers are visible in the current server view."
     }
