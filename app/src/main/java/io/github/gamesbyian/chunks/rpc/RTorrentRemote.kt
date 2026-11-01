@@ -494,7 +494,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
      * and both started AND active flags can produce Started. This is engine
      * activity, not evidence of peers or downloaded bytes.
      */
-    suspend fun loadStarted(plan: StoppedRemoteAddPlan): RemoteAddAndStart {
+    internal suspend fun loadStarted(plan: StoppedRemoteAddPlan): RemoteAddAndStart {
         val hash = plan.expectedInfoHash
         if (listTransfers("main").any { it.hash.equals(hash, ignoreCase = true) } ||
             lookupName(hash) != null) {
@@ -514,7 +514,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         return awaitNativeStartedReadback(plan)
     }
 
-    suspend fun loadStartedTorrentBytes(
+    internal suspend fun loadStartedTorrentBytes(
         torrentBytes: ByteArray, destination: String, useServerDefault: Boolean = false
     ): RemoteAddAndStart {
         val hash = TorrentMetainfoReader.preview(torrentBytes).infoHashV1
