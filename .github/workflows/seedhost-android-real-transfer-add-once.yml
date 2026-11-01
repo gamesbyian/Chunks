@@ -1,0 +1,88 @@
+name: P0 installed Android real Seedhost transfer and qualified APK
+
+# Protected host mutations only on armed trusted main (manual or exactly one
+# owner-authorized merge marker). The APK
+# artifact is published ONLY after the identical installed binary actually
+# sends BOTH real upstream .torrent and magnet and verifies exact-hash peer
+# bytes/pieces. No PR, scheduler or repeat-triggered mutation.
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/seedhost-android-real-transfer-add-once.yml"
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: "I authorize one .torrent and one magnet real public-source Add/Stop/session Remove on the development Seedhost"
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chunks-android-seedhost-scope-mutation
+  cancel-in-progress: false
+
+jobs:
+  real-installed-android-add:
+    if: >-
+      ${{ github.ref == 'refs/heads/main' && github.run_attempt == 1 &&
+          ((github.event_name == 'workflow_dispatch' && inputs.apply) ||
+           (github.event_name == 'push' &&
+            contains(github.event.head_commit.message, 'one-time real Android Seedhost Add qualification (#1001)'))) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CHUNKS_LIVE_RUTORRENT_URL: https://ianseeds.wood.seedhost.eu/rutorrent/
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+      - name: Install pinned Android compile toolchain
+        run: |
+          printf 'y\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
+          if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          fi
+      - name: Assemble the exact candidate binary and instrumentation package
+        run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
+      - name: Reclaim unrelated runner toolchains for the emulator
+        run: |
+          # API35 Google-APIs Pixel 6 userdata needs several GB beyond APKs.
+          # Exact runner failure 41355079713: 7098MB available, 7373MB needed.
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/powershell
+          df -h "$RUNNER_TEMP"
+      - name: Enable hardware acceleration
+        run: |
+          test -c /dev/kvm
+          sudo chmod 0666 /dev/kvm
+      - name: Real installed .torrent and magnet peer-byte acceptance
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          CHUNKS_LIVE_RTORRENT_USER: ${{ secrets.rtorrent_user }}
+          CHUNKS_LIVE_RTORRENT_PASS: ${{ secrets.rtorrent_pass }}
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disk-size: 2048M
+          emulator-boot-timeout: 600
+          disable-animations: true
+          script: bash tools/seedhost_android_real_transfer_add_once.sh
+      - name: Attach qualified exact binary and cryptographic evidence only on success
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-android-seedhost-real-transfer-qualified-apk
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            ${{ runner.temp }}/chunks-real-android-add/ACCEPTANCE.txt
+          retention-days: 14
+          if-no-files-found: error

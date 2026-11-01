@@ -46,6 +46,11 @@ jobs:
           fi
       - name: Compile app and instrumented native UI tests
         run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
+      - name: Free unrelated runner toolchains before emulator startup
+        run: |
+          # November 1 runner: API35 Pixel 6 required 7373 MB with only 7098 MB free.
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/powershell
+          df -h "$RUNNER_TEMP"
       - name: Enable Android emulator KVM
         run: |
           if [ ! -c /dev/kvm ]; then
@@ -61,10 +66,10 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_6
-          # Explicitly cap userdata: default Pixel 6 data partition exceeded
-          # free runner space (run 41125095089, emulator FATAL 7372.80 MB needed).
+          # Cap userdata + recover unrelated host disk: even 4096M exceeded
+          # free runner space (run 41355079713, FATAL 7372.80 MB needed).
           # Keep enough space for debug/instrumentation APKs and shared-storage fixtures.
-          disk-size: 4096M
+          disk-size: 2048M
           emulator-boot-timeout: 600
           disable-animations: true
           script: bash tools/native_add_review.sh
