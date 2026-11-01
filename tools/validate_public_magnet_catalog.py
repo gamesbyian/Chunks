@@ -57,7 +57,7 @@ def validate(path, magnets_path, allow_partial=False):
         sources[source.hostname] += 1
         for tr in params.get("tr", []):
             p = urllib.parse.urlsplit(tr)
-            if p.scheme not in ("http", "https", "udp") or not p.hostname or p.username or p.password or p.query or p.fragment:
+            if p.scheme not in ("http", "https", "udp") or not p.hostname or p.username or p.password or p.query or p.fragment or p.path != "/announce":
                 raise ValueError(f"Unsafe tracker at {i}")
             trackers.add(p.hostname)
     print(json.dumps({"count": len(fixtures), "sources": sources,
