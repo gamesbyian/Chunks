@@ -28,6 +28,27 @@ if ! device_state="$(adb get-state | tr -d '\r\n')" || [[ "$device_state" != dev
 fi
 
 CHUNKS_WIFI_BASELINE= CHUNKS_DATA_BASELINE=
+# svc returns an acknowledgement, not proof that a requested radio state
+# changed. The app's separate ConnectivityManager witness must ALSO observe
+# loss/return of validated Internet; neither observation replaces the other.
+verify_radios_disabled() {
+  local wifi data
+  for _ in 1 2 3; do
+    if ! wifi="$(adb shell settings get global wifi_on | tr -d '\\r\\n')" ||
+       ! data="$(adb shell settings get global mobile_data | tr -d '\\r\\n')"; then
+      echo "CHUNKS_SWARM_NETFLAP: radio readback failed" >&2
+      return 1
+    fi
+    if [[ ! "$wifi" =~ ^[01]$ || ! "$data" =~ ^[01]$ ]]; then
+      echo "CHUNKS_SWARM_NETFLAP: ambiguous radio readback" >&2
+      return 1
+    fi
+    if [[ "$wifi" == 0 && "$data" == 0 ]]; then return 0; fi
+    sleep 1
+  done
+  echo "CHUNKS_SWARM_NETFLAP: radios did not both turn off (wifi=$wifi data=$data)" >&2
+  return 1
+}
 # Reject unsupported OEM settings *before* installing APKs or launching
 # instrumentation; refresh the baseline again immediately before toggling.
 chunks_read_radio_baseline || { echo "Radio baseline unavailable: no test started" >&2; exit 1; }
@@ -79,6 +100,9 @@ if [[ "$ready" -eq 1 ]]; then
   radio_changed=1
   adb shell svc wifi disable
   adb shell svc data disable
+  # Never signal a network outage to the instrumented app on svc ACK alone.
+  # The exit trap reverts even a partially executed radio command.
+  verify_radios_disabled || exit 1
   adb exec-out run-as "$pkg" touch files/net-off
   echo "CHUNKS_SWARM_NETFLAP network off for ${outage}s"
   sleep "$outage"
