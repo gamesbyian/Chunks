@@ -131,6 +131,7 @@ class AndroidNativeLowStorageRecoveryInstrumentedTest {
                 listOf(InetSocketAddress("127.0.0.1", seeder.listenPort())))
                 as LocalAddResult.AddedStopped
             assertTrue(added.status.stopped)
+            assertFalse("Native .torrent cannot begin in upload-only mode", added.status.uploadOnly)
             assertFalse("No files downloaded before explicit Start",
                 File(target, seedFile.name).exists())
 
@@ -144,17 +145,20 @@ class AndroidNativeLowStorageRecoveryInstrumentedTest {
             if (startAccepted) {
                 waitFor("actual native low-space error/stopped state", 50) {
                     val now = leecher.status(added.status.infoHash)
-                    now?.stopped == true || !now?.error.isNullOrBlank()
+                    now?.stopped == true || now?.uploadOnly == true ||
+                        !now?.error.isNullOrBlank()
                 }
             }
             val pressureState = requireNotNull(leecher.status(added.status.infoHash))
             assertTrue("Cannot claim 100% complete with only $pressuredFree physical free bytes",
                 pressureState.progressPpm < 1_000_000)
-            assertTrue("Must expose disk error or stopped/refused transfer",
-                pressureState.stopped || !pressureState.error.isNullOrBlank() || !startAccepted)
+            assertTrue("Must expose disk error, native upload-only or stopped/refused transfer",
+                pressureState.stopped || pressureState.uploadOnly ||
+                    !pressureState.error.isNullOrBlank() || !startAccepted)
             Log.i("ChunksLowSpace", "CHUNKS_LOW_SPACE_BLOCKED free=$pressuredFree " +
                 "state=${pressureState.state} stopped=${pressureState.stopped} " +
-                "error_present=${!pressureState.error.isNullOrBlank()} progress_ppm=${pressureState.progressPpm}")
+                "upload_only=${pressureState.uploadOnly} error_present=${!pressureState.error.isNullOrBlank()} " +
+                "progress_ppm=${pressureState.progressPpm}")
 
             // Free only the test-owned ballast. No OS-wide cache cleanup and
             // no automatic torrent payload removal. Explicit Stop/Start is a
