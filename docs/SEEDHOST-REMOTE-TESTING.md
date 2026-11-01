@@ -4,6 +4,26 @@ The Chunks Android client derives a candidate XML-RPC plugin endpoint from an HT
 
 **Owner-confirmed development URL:** `https://ianseeds.wood.seedhost.eu/rutorrent/` (credential-free web address). This is the default workflow-dispatch input for `seedhost-kotlin-adapter-smoke.yml`, `seedhost-readonly-probe.yml` and the protected `seedhost-android-readonly.yml` API35 installed-app journey; manual overrides remain available. Its corresponding candidate HTTP-RPC plugin path is `/rutorrent/plugins/httprpc/action.php`. Credentials must remain in GitHub Secrets `rtorrent_user` and `rtorrent_pass`, never appended to this URL. The previously successful authenticated version-only probe was [run 40063547095](https://github.com/gamesbyian/Chunks/actions/runs/40063547095); do not infer that the full Kotlin adapter smoke has passed.
 
+## Read-only authentication evidence correction (2026-11-01)
+
+Earlier green read-only workflows validated RPC replies but did not require
+`READ_CHALLENGE_ACCEPTED`. Their success markers alone cannot establish that
+the server checked the supplied credentials. Preserve their version/inventory
+decoder evidence; qualify historical authentication claims accordingly.
+
+The current acceptance candidate makes the actual `SeedhostAdapterSmokeTest`
+use the same gate as localhost public-read, accepted-challenge and rejected-login
+counterexamples. It requires valid version/main-view data **and** an accepted
+HTTP authentication challenge at the exact endpoint before printing its success
+marker. An anonymous readable endpoint remains unverified. This is bounded HTTP
+credential evidence, not human account ownership or write permission.
+
+After this candidate is merged and reviewed on `main`, use the existing
+`seedhost-endpoint-compatibility.yml` with exactly `primary-rutorrent-https`.
+No new secret, arbitrary URL, numbered-instance fallback or mutation is needed.
+Record its exact SHA/run/result; ordinary fixture success or a missing-environment
+skip is not live-host acceptance.
+
 ## Exact credential contract
 
 The owner confirmed these repository-secret names (case-sensitive):

@@ -1,5 +1,23 @@
 # Chunks evidence and release gate ledger
 
+## 2026-11-01 remote read-only acceptance authentication correction
+
+The test-only `test/remote-read-auth-proof-20261101` candidate closes a false
+positive in the protected probe: valid anonymous version/inventory replies
+previously produced an "authenticated" marker with no accepted challenge.
+The actual live test now shares an acceptance gate with real loopback HTTP
+counterexamples and reports a missing live environment as skipped. Six focused
+`RemoteReadAuthEvidenceTest` cases passed locally; the live smoke was explicitly
+skipped (one case). Only version and main-view RPC methods are permitted by the
+new positive/negative fixtures. No production transport, credential routing or
+remote mutation changes; no protected host was contacted for this receipt.
+
+Historical read-only success markers below prove validated replies, but do not
+alone prove supplied-credential authentication. A reviewed-main protected
+primary-profile run remains required after integration; accepted HTTP challenge
+evidence still does not grant human-account or mutation authority. See the
+[corrected protocol](SEEDHOST-REMOTE-TESTING.md#read-only-authentication-evidence-correction-2026-11-01).
+
 
 > **Current-status reconciliation (2026-11-01):** #568 is closed and superseded for ordinary authorized same-path regular torrent payload replacement. #868/#869 merged at `b402549a8355b0cc248b85cd74f67f0cb2c9bf0a` with all eight integrated-head workflows successful, including [API35 native Add 41249697402](https://github.com/gamesbyian/Chunks/actions/runs/41249697402). The older red #869 run and all older #568 RED declarations below are historical evidence, not current policy. #865 remains open for sustainable metadata retention/recovery, #809 for the contained optional ZIP/library paths, and #5/#569 for Android runtime/device acceptance. [Active dispatch](WORK-QUEUE.md).
 
@@ -17,6 +35,9 @@
 **Foundation assertion correction:** [first-head foundation 41259381483](https://github.com/gamesbyian/Chunks/actions/runs/41259381483) ran the suite and failed only `metadataReadyMagnetRechecksExistingRegularPayloadAndRestoresVerifiedSeeding` at the obsolete fresh-callback-count assertion. It now waits for independently parsed durable state, retaining all actual restart/seeding, payload and unrelated-sibling checks. Local focused validation passed **23 executed / zero skipped**, including that real JNI case and all 22 SQLite cases. All production Android and instrumented-test source is unchanged by this JVM-only correction; the new final-head CI still must complete.
 
 **Still open:** final-head CI and independent storage review; physical/OEM and true power-loss/long-duration tiers remain separately unverified. Original migration files remain untouched at their pre-upgrade fixed disk use; retirement rows grow with distinct identities. #865 is not closed by host fixtures. [Transactional contract](NATIVE-ADMISSION-RESUME-RECONCILIATION.md#transactional-retention-follow-through); [one active dispatch](WORK-QUEUE.md).
+
+
+**Post-review correction (2026-11-01, head `aa041c5`):** SQLite DELETE-journal `synchronous=FULL` was insufficient to guarantee the most recent acknowledged retirement survives sudden power loss on every supported filesystem. Per [SQLite PRAGMA synchronous](https://www.sqlite.org/pragma.html), changed to `EXTRA` and verify mode 3 before serving jobs. This is a source-level durability correction; earlier green `c377bf1` evidence does not qualify the new head. Actual power-off handset testing and independent storage approval remain open.
 
 ## 2026-10-31 owner correction: historical native collision witness reclassified
 

@@ -13,6 +13,12 @@ on:
 permissions:
   contents: read
 
+# Only a newer revision of the same PR may supersede research. Every manual
+# dispatch has its own run-id group and is never automatically cancelled.
+concurrency:
+  group: chunks-native-owned-writer-experiment-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   pinned-file-ownership-proof:
     runs-on: ubuntu-latest
