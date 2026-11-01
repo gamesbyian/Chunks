@@ -99,14 +99,22 @@ internal object RemoteStallInspector {
     internal fun classify(raw: String): RemoteStallEvidence.MessageClass {
         if (raw.isBlank()) return RemoteStallEvidence.MessageClass.NONE
         val s = raw.take(4096).lowercase(Locale.ROOT)
+        val trackerContext = listOf("tracker", "announce", "http://", "https://")
+            .any { it in s }
+        val storageContext = listOf("file", "directory", "disk", "storage", "filesystem")
+            .any { it in s }
         return when {
-            listOf("permission denied", "access denied", "no space left", "disk full",
-                "read-only file system", "read only file system", "could not create",
-                "failed to open file", "file open failed", "storage error").any { it in s } ->
+            // A tracker can itself reply "permission denied". That must not
+            // falsely indict the owner's download directory or file rights.
+            trackerContext -> RemoteStallEvidence.MessageClass.TRACKER_OR_NETWORK
+            listOf("no space left", "disk full", "read-only file system",
+                "read only file system", "could not create", "failed to open file",
+                "file open failed", "storage error").any { it in s } ||
+                (storageContext && listOf("permission denied", "access denied").any { it in s }) ->
                 RemoteStallEvidence.MessageClass.STORAGE
             listOf("hash check", "hashing failed", "hash check failed", "piece hash").any { it in s } ->
                 RemoteStallEvidence.MessageClass.HASH_CHECK
-            listOf("tracker", "announce", "connection refused", "timed out", "timeout",
+            listOf("connection refused", "timed out", "timeout",
                 "host not found", "could not resolve").any { it in s } ->
                 RemoteStallEvidence.MessageClass.TRACKER_OR_NETWORK
             else -> RemoteStallEvidence.MessageClass.OTHER
