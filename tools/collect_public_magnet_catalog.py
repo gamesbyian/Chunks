@@ -11,13 +11,13 @@ import sys
 import time
 import urllib.parse
 
-from public_fixture_collector import fetch, archive_fixture, MAX_META
+from public_fixture_collector import fetch, archive_fixture, parse_bencode, MAX_META
 
 API = "https://archive.org/advancedsearch.php"
 KINDS = ("audio", "movies", "texts", "software", "image", "data")
 
 def discover(kind, page, rows):
-    query = 'mediatype:' + kind + ' AND licenseurl:creativecommons.org*'
+    query = 'mediatype:' + kind + ' AND format:"Archive BitTorrent" AND licenseurl:http*'
     params = urllib.parse.urlencode({
         "q": query, "fl[]": "identifier", "rows": str(rows),
         "page": str(page), "output": "json", "sort[]": "downloads desc"
@@ -44,14 +44,19 @@ def collect(limit, max_bytes, pages, delay, rows, output):
                 if index >= len(ids):
                     continue
                 try:
-                    manifest, _ = archive_fixture(ids[index], max_bytes)
+                    manifest, sanitized_torrent = archive_fixture(ids[index], max_bytes)
+                    root, _raw_info = parse_bencode(sanitized_torrent)
+                    announce = root.get(b"announce")
+                    magnet = manifest["torrent"]["magnet"]
+                    if isinstance(announce, bytes):
+                        magnet += "&tr=" + urllib.parse.quote(announce.decode("utf-8"), safe="")
                     info = manifest["torrent"]
                     h = info.get("infohash_v1") or ("v2:" + str(info.get("infohash_v2")))
                     if h in hashes:
                         continue
                     hashes.add(h)
                     found.append({
-                        "magnet": info["magnet"],
+                        "magnet": magnet,
                         "infohash_v1": info.get("infohash_v1"),
                         "infohash_v2": info.get("infohash_v2"),
                         "name": info["name"],
