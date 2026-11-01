@@ -439,14 +439,32 @@ private fun ChunksApp(
                 onOpenPhone = { section = Section.LOCAL },
                 onOpenServer = if (server != null) ({ section = Section.TRANSFERS }) else null,
                 onOpenTransfer = { key ->
-                    if (key.environment == io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE) {
-                        phoneSearchPrefill = key.infoHash
-                        section = Section.LOCAL
-                    } else {
-                        // Exact hash search on the signed-in server's own list.
-                        query = key.infoHash
-                        filter = TransferFilter.ALL
-                        section = Section.TRANSFERS
+                    // Resolve an exact owner. A saved-only server, a disconnected
+                    // profile or the same hash on a different server must never
+                    // inherit the currently authenticated server's controls.
+                    val authenticatedId = if (server != null)
+                        io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverIdOfAliasScope(aliasScope)
+                        else null
+                    when (ExactOwningListNavigation.route(key, authenticatedId)) {
+                        ExactOwningListNavigation.Route.PHONE -> {
+                            phoneSearchPrefill = key.infoHash
+                            section = Section.LOCAL
+                        }
+                        ExactOwningListNavigation.Route.AUTHENTICATED_SERVER -> {
+                            query = key.infoHash
+                            filter = TransferFilter.ALL
+                            // Combined may show a full "main" inventory while
+                            // the signed-in screen is still on a filtered view.
+                            // The safe read-only refresh is queued if a read is
+                            // already active; no mutation or implicit retry.
+                            if (ExactOwningListNavigation.needsMainViewRefresh(
+                                    currentView, requestedView)) {
+                                requestedView = "main"
+                                refresh()
+                            }
+                            section = Section.TRANSFERS
+                        }
+                        ExactOwningListNavigation.Route.UNAVAILABLE -> Unit
                     }
                 },
                 onBack = { section = Section.TRANSFERS }
