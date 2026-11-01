@@ -5,7 +5,6 @@ Independent public tracker listings are hints; only actual metainfo authenticate
 the infohash and exact total size. Seed counts are source-reported observations.
 """
 from html.parser import HTMLParser
-import ipaddress
 import re
 import time
 import urllib.parse
@@ -88,7 +87,7 @@ def parse_rows(data):
             continue
         # Displayed MB can mean MiB; use 500 as a cautious prefilter.
         size_text = cells[3].strip()
-        size_match = re.fullmatch(r"([0-9]+(?:\\.[0-9]+)?)\\s*(MB|MiB|GB|GiB|KB|KiB)", size_text, re.I)
+        size_match = re.fullmatch(r"([0-9]+(?:\.[0-9]+)?)\s*(MB|MiB|GB|GiB|KB|KiB)", size_text, re.I)
         if not size_match:
             continue
         size, unit = float(size_match.group(1)), size_match.group(2).lower()
@@ -96,7 +95,7 @@ def parse_rows(data):
                               else 1024 ** 2 if unit in ("mb", "mib") else 1024)
         if worst_bytes > 500 * 1024 * 1024:
             continue
-        seed_match = re.match(r"^(\\d+)", cells[4].strip())
+        seed_match = re.match(r"^(\d+)", cells[4].strip())
         seeds = int(seed_match.group(1)) if seed_match else 0
         if seeds < 1:
             continue
