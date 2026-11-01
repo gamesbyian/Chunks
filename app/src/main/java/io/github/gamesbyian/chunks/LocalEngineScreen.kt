@@ -629,6 +629,72 @@ internal fun LocalEngineScreen(
         OutlinedTextField(value = magnet, onValueChange = { magnet = it.trim() },
             label = { Text("Or paste a magnet link") }, singleLine = true,
             modifier = Modifier.fillMaxWidth())
+        var finishInOrderDefault by remember { mutableStateOf(finishInOrderStore.defaultForNewAdds()) }
+        var magnetFinishInOrder by remember(magnet) { mutableStateOf(finishInOrderDefault) }
+        if (magnet.isNotEmpty()) {
+        Text("On this phone · Place: " + (proposedAddDestination?.absolutePath ?: "Choose a download location below"),
+            style = MaterialTheme.typography.bodySmall)
+        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
+            .toggleable(value = startAfterAdd, enabled = !busy && !inventoryStale,
+                role = Role.Checkbox, onValueChange = { startAfterAdd = it }),
+            verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(checked = startAfterAdd, enabled = !busy && !inventoryStale, onCheckedChange = null)
+            Text("Start downloading after Add (recommended)", modifier = Modifier.padding(start = 8.dp))
+        }
+            LocalMagnetDiscoveryPrompt(
+                magnet = magnet,
+                dhtEnabled = dht,
+                applying = dhtSaving,
+                blocked = busy || inventoryStale,
+                onEnable = { requestDhtSetting(true) }
+            )
+            ActionTile(if (startAfterAdd) "Add magnet and start" else "Add magnet (metadata only)",
+                ChunksColors.Purple, icon = R.drawable.chunks_ic_magnet, stacked = false, onClick = {
+                val selectedDraft = addFolderDraft
+                val selectedPlace = place
+                val selectedMagnet = magnet
+                val autoStart = startAfterAdd
+                val orderLater = magnetFinishInOrder
+                performLocalMutation {
+                    try {
+                        val result = withContext(Dispatchers.IO) {
+                            val chosen = LocalOwnedAddFolder.prepare(
+                                selectedPlace?.let(LocalDownloadPlaces::materialize), selectedDraft)
+                            if (chosen == null) LocalAddResult.Refused(
+                                "The download location or subfolder is unavailable, nonempty or unsafe. Nothing was added.")
+                            else LocalEngineHolder.get(context).addMagnet(
+                                selectedMagnet, chosen, autoStartAfterMetadata = autoStart)
+                        }
+                        if (orderLater && result is LocalAddResult.FetchingMetadata) withContext(Dispatchers.IO) {
+                            finishInOrderStore.requestAfterMetadata(result.status.infoHash)
+                        }
+                        message = when (result) {
+                            is LocalAddResult.Refused -> result.reason
+                            is LocalAddResult.FetchingMetadata ->
+                                if (startAfterAdd) "Magnet added. Discovering metadata; download begins automatically when metadata arrives and peers are available."
+                                else "Magnet added in metadata-only mode. Use Start after the metadata is ready."
+                            is LocalAddResult.AddedStopped -> null
+                        }
+                        if (result !is LocalAddResult.Refused) {
+                            if (startAfterAdd) {
+                                try { LocalEngineService.start(context) } catch (_: Exception) {
+                                    message = "Magnet added, but Android did not start the background service. Keep Chunks open."
+                                }
+                            }
+                            magnet = ""
+                            addFolderDraft = ""
+                        }
+                    } catch (cancel: kotlinx.coroutines.CancellationException) {
+                        throw cancel
+                    } catch (_: Exception) {
+                        inventoryFrame = inventoryFrame.copy(stale = true)
+                        message = "Magnet Add was not confirmed. Wait for a fresh transfer list and check for the magnet before retrying."
+                    }
+                }
+            }, enabled = !busy && !inventoryStale && !dhtSaving &&
+                proposedAddDestination != null,
+                modifier = Modifier.fillMaxWidth())
+        }
         // Keep both intake methods discoverable before optional storage, seeding
         // and engine explanations. Existing Place and safety gates remain authoritative.
         Text("Downloads and seeds with Chunks' own engine. While a transfer runs, an ongoing notification keeps it going in the background, with Stop all; Android may still stop it, and from Android 15 limits this kind of background transfer to about 6 hours a day, after which Chunks pauses everything. Nothing connects to the network until you add a torrent. Transfers are remembered and come back stopped after Chunks restarts. Peers and trackers can see this phone's IP address.")
@@ -687,15 +753,6 @@ internal fun LocalEngineScreen(
             }
             Switch(checked = dht, enabled = !dhtSaving, onCheckedChange = null)
         }
-        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
-            .toggleable(value = startAfterAdd, enabled = !busy && !inventoryStale,
-                role = Role.Checkbox, onValueChange = { startAfterAdd = it }),
-            verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(checked = startAfterAdd, enabled = !busy && !inventoryStale, onCheckedChange = null)
-            Text("Start downloading after Add (recommended)", modifier = Modifier.padding(start = 8.dp))
-        }
-        var finishInOrderDefault by remember { mutableStateOf(finishInOrderStore.defaultForNewAdds()) }
-        var magnetFinishInOrder by remember(magnet) { mutableStateOf(finishInOrderDefault) }
         if (magnet.isNotEmpty() && destination != null) {
             FinishInOrderAddChoice(
                 "Finish in Order once the file list arrives (episodes or numbered files)",
@@ -706,59 +763,6 @@ internal fun LocalEngineScreen(
             )
             Text("Saves into the download location shown above. Magnets first discover metadata via peers/trackers; if Start after Add is selected, payload downloading begins after metadata arrives. Without peers, downloading cannot begin.",
                 style = MaterialTheme.typography.bodySmall)
-            LocalMagnetDiscoveryPrompt(
-                magnet = magnet,
-                dhtEnabled = dht,
-                applying = dhtSaving,
-                blocked = busy || inventoryStale,
-                onEnable = { requestDhtSetting(true) }
-            )
-            ActionTile(if (startAfterAdd) "Add magnet and start" else "Add magnet (metadata only)",
-                ChunksColors.Purple, icon = R.drawable.chunks_ic_magnet, stacked = false, onClick = {
-                val selectedDraft = addFolderDraft
-                val selectedPlace = place
-                val selectedMagnet = magnet
-                val autoStart = startAfterAdd
-                val orderLater = magnetFinishInOrder
-                performLocalMutation {
-                    try {
-                        val result = withContext(Dispatchers.IO) {
-                            val chosen = LocalOwnedAddFolder.prepare(
-                                selectedPlace?.let(LocalDownloadPlaces::materialize), selectedDraft)
-                            if (chosen == null) LocalAddResult.Refused(
-                                "The download location or subfolder is unavailable, nonempty or unsafe. Nothing was added.")
-                            else LocalEngineHolder.get(context).addMagnet(
-                                selectedMagnet, chosen, autoStartAfterMetadata = autoStart)
-                        }
-                        if (orderLater && result is LocalAddResult.FetchingMetadata) withContext(Dispatchers.IO) {
-                            finishInOrderStore.requestAfterMetadata(result.status.infoHash)
-                        }
-                        message = when (result) {
-                            is LocalAddResult.Refused -> result.reason
-                            is LocalAddResult.FetchingMetadata ->
-                                if (startAfterAdd) "Magnet added. Discovering metadata; download begins automatically when metadata arrives and peers are available."
-                                else "Magnet added in metadata-only mode. Use Start after the metadata is ready."
-                            is LocalAddResult.AddedStopped -> null
-                        }
-                        if (result !is LocalAddResult.Refused) {
-                            if (startAfterAdd) {
-                                try { LocalEngineService.start(context) } catch (_: Exception) {
-                                    message = "Magnet added, but Android did not start the background service. Keep Chunks open."
-                                }
-                            }
-                            magnet = ""
-                            addFolderDraft = ""
-                        }
-                    } catch (cancel: kotlinx.coroutines.CancellationException) {
-                        throw cancel
-                    } catch (_: Exception) {
-                        inventoryFrame = inventoryFrame.copy(stale = true)
-                        message = "Magnet Add was not confirmed. Wait for a fresh transfer list and check for the magnet before retrying."
-                    }
-                }
-            }, enabled = !busy && !inventoryStale && !dhtSaving &&
-                proposedAddDestination != null,
-                modifier = Modifier.fillMaxWidth())
         }
         repairReview?.let { prepared ->
             val (hash, source) = prepared
