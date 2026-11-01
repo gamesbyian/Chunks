@@ -1,6 +1,7 @@
 package io.github.gamesbyian.chunks.engine
 
 import java.io.File
+import java.io.FileInputStream
 import java.net.InetSocketAddress
 import java.util.Collections
 import java.util.Locale
@@ -281,6 +282,30 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
      * A returned reservation is only a session-local conflict exclusion, not an
      * atomic filesystem ownership or cross-process race guarantee.
      */
+    /**
+     * A successful stat/path survey is not proof that this process may open
+     * the selected existing payload: Android 10 can revoke broad storage grants
+     * while leaving package-private resume state intact. Probe only the
+     * collision survey's bounded existing-file examples (up to 20) with an
+     * ordinary read-only open. This changes no data, creates no probes and
+     * makes no claim about future access or uninspected files.
+     */
+    private fun unreadableExistingPayload(
+        root: File, survey: LocalPayloadCollisionSurvey.Result
+    ): String? {
+        val observed = (survey as? LocalPayloadCollisionSurvey.Result.ExistingPaths)?.paths
+            ?: return null
+        for (relative in observed) {
+            try {
+                FileInputStream(File(root, relative)).use { it.read() }
+            } catch (_: Exception) {
+                return "Existing payload cannot be opened for reading. " +
+                    "Check access to its download folder before starting again"
+            }
+        }
+        return null
+    }
+
     private fun reserveRestoredJobPaths(key: String, handle: TorrentHandle): String? {
         val paths = try {
             val info = handle.torrentFile() ?: return "Restored torrent metadata is unavailable"
@@ -298,7 +323,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         when (val survey = LocalPayloadCollisionSurvey.inspect(root, paths)) {
             is LocalPayloadCollisionSurvey.Result.Unknown ->
                 return "Restored download paths are unsafe: " + survey.problem
-            else -> Unit
+            else -> unreadableExistingPayload(root, survey)?.let { return it }
         }
         return when (val reserved = checkedPayloadReservations.reserve(
             key, root, paths, allowExistingOwner = true
@@ -624,7 +649,8 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                     pending.saveDirectory, pending.paths
                 )) {
                     is LocalPayloadCollisionSurvey.Result.ClearAtObservation -> null
-                    is LocalPayloadCollisionSurvey.Result.ExistingPaths -> null
+                    is LocalPayloadCollisionSurvey.Result.ExistingPaths ->
+                        unreadableExistingPayload(pending.saveDirectory, survey)
                     is LocalPayloadCollisionSurvey.Result.Unknown ->
                         "Cannot verify file paths before Start: " + survey.problem
                 }
