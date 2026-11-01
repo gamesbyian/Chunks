@@ -47,7 +47,7 @@ class LocalZipBatchColdRestoreInstrumentedTest {
 
     private fun phase(value: String) {
         assumeTrue("Only guarded batch-cold process harness may run",
-            instrumentation.arguments.getString("chunksBatchPhase") == value &&
+            InstrumentationRegistry.getArguments().getString("chunksBatchPhase") == value &&
                 Build.VERSION.SDK_INT in setOf(29, 35))
         assertTrue("No physical device may be targeted by this test",
             Build.HARDWARE in setOf("ranchu", "goldfish") ||
