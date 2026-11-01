@@ -11,6 +11,12 @@ on:
         description: "Search pages per category (bounded)"
         required: true
         default: "12"
+  pull_request:
+    paths:
+      - tools/collect_public_magnet_catalog.py
+      - tools/collect_linuxtracker_magnets.py
+      - tools/validate_public_magnet_catalog.py
+      - .github/workflows/collect-public-magnets.yml
   push:
     branches:
       - test/public-magnet-catalog-harvester-20261101
@@ -27,6 +33,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  syntax-and-unit:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: |
+          python3 -m py_compile tools/collect_public_magnet_catalog.py tools/collect_linuxtracker_magnets.py tools/validate_public_magnet_catalog.py
+          python3 -m unittest discover -s tools -p test_public_fixture_collector.py
   collect:
     if: github.ref == 'refs/heads/test/public-magnet-catalog-harvester-20261101' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
