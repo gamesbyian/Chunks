@@ -15,11 +15,24 @@ outage=${CHUNKS_NET_OUTAGE_SECONDS:-30}
 # A wireless adb connection would disappear when the script disables radios.
 # Pin an explicit serial before *any* install or radio operation.
 serial="${ADB_SERIAL:-${ANDROID_SERIAL:-}}"
+# Process substitution hides the ADB exit status. A failed adb devices that
+# prints one plausible serial must never authorize physical radio mutations.
+devices="$(adb devices)" || {
+  echo "Could not enumerate ADB devices: no install or radio operations" >&2; exit 2;
+}
 if [[ -z "$serial" ]]; then
-  mapfile -t serials < <(adb devices | awk 'NR > 1 && $2 == "device" {print $1}')
-  [[ "${#serials[@]}" -eq 1 ]] || { echo "Select exactly one authorized device (ADB_SERIAL)" >&2; exit 2; }
+  mapfile -t serials < <(awk 'NR > 1 && $2 == "device" { print $1 }' <<< "$devices")
+  [[ "${#serials[@]}" -eq 1 ]] || {
+    echo "Select exactly one authorized device (ADB_SERIAL)" >&2; exit 2;
+  }
   serial="${serials[0]}"
 fi
+# Even an explicitly selected serial must be connected and uniquely listed;
+# adb get-state alone is insufficient when a selector is stale/misconfigured.
+[[ "$(awk -v selected="$serial" '$1 == selected && $2 == "device" { n++ } END { print n+0 }' <<< "$devices")" == 1 ]] || {
+  echo "Selected ADB_SERIAL is absent or not uniquely connected" >&2; exit 2;
+}
+export ANDROID_SERIAL="$serial"
 [[ "$serial" != *:* ]] || { echo "Network-flap acceptance requires USB adb, not wireless adb" >&2; exit 2; }
 export ANDROID_SERIAL="$serial"
 # Failed ADB queries can leave plausible output; neither alone verifies a target.

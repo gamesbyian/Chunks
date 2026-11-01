@@ -8,11 +8,22 @@ pkg=io.github.gamesbyian.chunks
 # Freeze one adb target before any installation, radio/battery mutation or
 # cleanup. More than one connected device is ambiguous without an explicit ID.
 serial="${ADB_SERIAL:-${ANDROID_SERIAL:-}}"
+# ADB may print a credible single connected serial and still exit unsuccessfully.
+# Process substitution masks that exit status. Refuse without *any* install
+# or physical battery/idle state changes on incomplete enumeration.
+devices="$(adb devices)" || {
+  echo "CHUNKS_SWARM_DOZE: ADB enumeration failed" >&2; exit 2;
+}
 if [[ -z "$serial" ]]; then
-  mapfile -t serials < <(adb devices | awk 'NR > 1 && $2 == "device" { print $1 }')
-  [[ "${#serials[@]}" -eq 1 ]] || { echo "CHUNKS_SWARM_DOZE: exactly one authorized adb device required" >&2; exit 2; }
+  mapfile -t serials < <(awk 'NR > 1 && $2 == "device" { print $1 }' <<< "$devices")
+  [[ "${#serials[@]}" -eq 1 ]] || {
+    echo "CHUNKS_SWARM_DOZE: exactly one authorized adb device required" >&2; exit 2;
+  }
   serial="${serials[0]}"
 fi
+[[ "$(awk -v selected="$serial" '$1 == selected && $2 == "device" { n++ } END { print n+0 }' <<< "$devices")" == 1 ]] || {
+  echo "CHUNKS_SWARM_DOZE: selected serial absent or not connected" >&2; exit 2;
+}
 export ANDROID_SERIAL="$serial"
 # Plausible stdout from a failed ADB request is not a verified device state.
 if ! device_state="$(adb get-state | tr -d '\r\n')" || [[ "$device_state" != device ]]; then
