@@ -125,7 +125,11 @@ class ServerToPhoneSessionPlanTest {
         // exactly one B peer hint must reach the existing phone Add flow.
         rule.onNodeWithText("Review phone Add").assertExists()
         rule.onNodeWithText("Review phone Add").performClick()
-        rule.waitForIdle()
+        // Robolectric may deliver a click before the next Compose frame. The
+        // review must actually disappear, not merely have an idle scheduler.
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithText("Review phone Add").fetchSemanticsNodes().isEmpty()
+        }
         // The click must consume its review as well as dispatch exactly one
         // magnet: distinguish a missed Compose click from a lost callback.
         rule.onNodeWithText("Review phone Add").assertDoesNotExist()
