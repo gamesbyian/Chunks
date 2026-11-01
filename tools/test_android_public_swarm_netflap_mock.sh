@@ -21,9 +21,13 @@ case "$*" in
     if [[ "${MOCK_UNREADABLE_DATA:-0}" == 1 ]]; then printf 'null\n'
     else cat "$MOCK_DIR/data"; fi ;;
   'shell svc wifi enable') printf '1\n' > "$MOCK_DIR/wifi"; printf 'wifi-on\n' >> "$MOCK_DIR/commands" ;;
-  'shell svc wifi disable') printf '0\n' > "$MOCK_DIR/wifi"; printf 'wifi-off\n' >> "$MOCK_DIR/commands" ;;
+  'shell svc wifi disable')
+    if [[ "${MOCK_WIFI_DISABLE_NOOP:-0}" != 1 ]]; then printf '0\n' > "$MOCK_DIR/wifi"; fi
+    printf 'wifi-off\n' >> "$MOCK_DIR/commands" ;;
   'shell svc data enable') printf '1\n' > "$MOCK_DIR/data"; printf 'data-on\n' >> "$MOCK_DIR/commands" ;;
-  'shell svc data disable') printf '0\n' > "$MOCK_DIR/data"; printf 'data-off\n' >> "$MOCK_DIR/commands" ;;
+  'shell svc data disable')
+    if [[ "${MOCK_DATA_DISABLE_NOOP:-0}" != 1 ]]; then printf '0\n' > "$MOCK_DIR/data"; fi
+    printf 'data-off\n' >> "$MOCK_DIR/commands" ;;
   'logcat -c') : ;;
   'logcat -d -s ChunksSwarm:I') printf 'CHUNKS_SWARM_NETFLAP: ready verified=4194304\n' ;;
   install\ *)
@@ -73,6 +77,21 @@ for negative in MOCK_INSTRUMENT_FAILURE MOCK_INSTALL_FAILURE; do
     echo "Network settings not restored after failed netflap: $negative" >&2; exit 1
   }
 done
+# A zero-exit svc acknowledgement may be a no-op on this device.
+# Do not signal a network outage until both radio settings read back off.
+for negative in MOCK_WIFI_DISABLE_NOOP MOCK_DATA_DISABLE_NOOP; do
+  printf '1\n' > "$MOCK_DIR/wifi"; printf '1\n' > "$MOCK_DIR/data"
+  : > "$MOCK_DIR/commands"
+  rm -f "$MOCK_DIR/net-off" "$MOCK_DIR/net-on"
+  if env -u ADB_SERIAL -u ANDROID_SERIAL "$negative=1" bash "$repo/android_public_swarm_netflap.sh" > "$temp/$negative.log" 2>&1; then
+    echo "No-op radio command accepted: $negative" >&2; exit 1
+  fi
+  grep -q 'radios did not both turn off' "$temp/$negative.log"
+  [[ ! -e "$MOCK_DIR/net-off" && ! -e "$MOCK_DIR/net-on" ]]
+  [[ "$(cat "$MOCK_DIR/wifi")" == 1 && "$(cat "$MOCK_DIR/data")" == 1 ]] || {
+    echo "Radio baseline not restored after $negative" >&2; exit 1
+  }
+done
 printf '1\n' > "$MOCK_DIR/wifi"; printf '0\n' > "$MOCK_DIR/data"; : > "$MOCK_DIR/commands"
 if MOCK_UNREADABLE_DATA=1 bash "$repo/android_public_swarm_netflap.sh" > "$temp/fail" 2>&1; then
   echo 'Unknown baseline was accepted' >&2; exit 1
@@ -96,4 +115,4 @@ fi
 grep -q 'Selected adb device unavailable' "$temp/state-failed.log"
 [[ ! -s "$MOCK_DIR/commands" && ! -e "$MOCK_DIR/net-off" && ! -e "$MOCK_DIR/net-on" ]]
 [[ "$(cat "$MOCK_DIR/wifi")" == 1 && "$(cat "$MOCK_DIR/data")" == 0 ]]
-echo 'CHUNKS_NETFLAP_MOCK: baseline preservation, outage signaling, failed state query, unknown state, ambiguous/wireless adb, zero-exit install failures and nonzero instrumentation all passed'
+echo 'CHUNKS_NETFLAP_MOCK: baseline preservation, outage signaling, failed state query, unknown state, no-op radio commands, ambiguous/wireless adb, zero-exit install failures and nonzero instrumentation all passed'
