@@ -12,6 +12,7 @@ import time
 import urllib.parse
 
 from public_fixture_collector import fetch, archive_fixture, parse_bencode, MAX_META
+from collect_linuxtracker_magnets import harvest
 
 API = "https://archive.org/advancedsearch.php"
 KINDS = ("audio", "movies", "texts", "software", "image", "data")
@@ -28,6 +29,13 @@ def discover(kind, page, rows):
 
 def collect(limit, max_bytes, pages, delay, rows, output):
     found, hashes, failures = [], set(), {}
+    # Prioritize genuine public multi-tracker distributions likely to have peers.
+    for candidate in harvest(min(limit, 30), max_bytes, pages=5, delay=delay):
+        h = candidate["infohash_v1"]
+        if h not in hashes:
+            found.append(candidate)
+            hashes.add(h)
+            print(f'{len(found)}/{limit} LinuxTracker {candidate["total_bytes"]} {candidate["name"][:50]}', flush=True)
     # Interleave media types instead of taking the first 100 from one category.
     for page in range(1, pages + 1):
         pools = {}
@@ -40,6 +48,8 @@ def collect(limit, max_bytes, pages, delay, rows, output):
             time.sleep(delay)
         for index in range(rows):
             for kind in KINDS:
+                if len(found) >= limit:
+                    break
                 ids = pools[kind]
                 if index >= len(ids):
                     continue
