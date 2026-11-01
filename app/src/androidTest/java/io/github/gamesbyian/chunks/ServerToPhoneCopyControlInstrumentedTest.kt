@@ -132,9 +132,18 @@ class ServerToPhoneCopyControlInstrumentedTest {
         val reviewed = ArrayList<String>()
         show(complete()) { reviewed += it }
         rule.onNodeWithText("Copy files to this phone").performClick()
+        // A Refused plan is published before the coroutine's finally resets
+        // checking=false. Observe BOTH completion states before teardown;
+        // otherwise Compose can still apply the pending tile modifier update
+        // while the rule disposes its Activity on another test-clock thread.
         rule.waitUntil(10_000) {
-            rule.onAllNodesWithText("This is a private torrent", substring = true).fetchSemanticsNodes().isNotEmpty()
+            rule.onAllNodesWithText("This is a private torrent", substring = true)
+                .fetchSemanticsNodes().isNotEmpty() &&
+                rule.onAllNodesWithText("Copy files to this phone")
+                    .fetchSemanticsNodes().isNotEmpty()
         }
+        rule.waitForIdle()
+        rule.onNodeWithText("This is a private torrent", substring = true).assertExists()
         rule.onNodeWithText("Review phone Add").assertDoesNotExist()
         assertTrue(reviewed.isEmpty())
     }
