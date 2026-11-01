@@ -6,6 +6,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.Density
 import io.github.gamesbyian.chunks.model.EnvironmentAvailability
@@ -34,14 +35,16 @@ class CombinedAddAndFreshnessTest {
     private fun show(
         serverLabel: String?,
         onPhone: () -> Unit,
-        onServer: (() -> Unit)?
+        onServer: (() -> Unit)?,
+        otherSavedServers: Boolean = false
     ) {
         rule.setContent {
             val density = LocalDensity.current
             CompositionLocalProvider(LocalDensity provides Density(density.density, 2f)) {
                 ChunksTheme {
                     Surface {
-                        CombinedAddActions(serverLabel, onPhone, onServer)
+                        CombinedAddActions(serverLabel, onPhone, onServer,
+                            hasOtherSavedServers = otherSavedServers)
                     }
                 }
             }
@@ -75,6 +78,34 @@ class CombinedAddAndFreshnessTest {
         rule.onNodeWithContentDescription("Add download on this phone").assertIsDisplayed()
             .performClick()
         assertEquals(1, phone.get())
+    }
+
+    @Test fun phoneOnlyDoesNotDescribeUnconfiguredSavedServersAt320And200Percent() {
+        show(null, {}, null)
+        rule.onNodeWithText("Add on this phone").assertIsDisplayed()
+        rule.onNodeWithText("Other saved servers need their own connection before adding.")
+            .assertDoesNotExist()
+        rule.onNodeWithText("Choosing which downloads to view never changes the Add destination.")
+            .assertDoesNotExist()
+    }
+
+    @Test fun savedOfflineServerIsNamedOnlyAsUnavailableAddAuthority() {
+        show(null, {}, null, otherSavedServers = true)
+        rule.onNodeWithText("Other saved servers need their own connection before adding.")
+            .assertExists()
+        rule.onNodeWithText("Choosing which downloads to view never changes the Add destination.")
+            .assertExists()
+        rule.onNodeWithText("Add on this phone").assertIsDisplayed()
+        rule.onNodeWithText("Add on Server", substring = true).assertDoesNotExist()
+    }
+
+    @Test fun signedInOnlyServerDoesNotClaimAnyOtherSavedAccounts() {
+        show("Server · exact session", {}, {})
+        rule.onNodeWithText("Add on Server · exact session").assertExists()
+        rule.onNodeWithText("Other saved servers need their own connection before adding.")
+            .assertDoesNotExist()
+        rule.onNodeWithText("Choosing which downloads to view never changes the Add destination.")
+            .assertExists()
     }
 
     private fun source(state: EnvironmentAvailability, complete: Boolean, at: Long?) =
