@@ -62,6 +62,7 @@ class LocalSingleZipMediaStoreExportInstrumentedTest {
     private fun read(uri: Uri) = requireNotNull(resolver.openInputStream(uri)).use { it.readBytes() }
 
     @Test fun userApprovedSingleMemberCreatesDistinctVerifiedDownloadAndKeepsBothSources() {
+        val pendingBefore = LocalSingleZipMediaStoreExport.unfinishedPublications(context)
         val canary = "Keep this prior file byte for byte".toByteArray()
         document("notes.txt", "text/plain", canary) { previous ->
             val zipBytes = archive("notes.txt")
@@ -86,9 +87,14 @@ class LocalSingleZipMediaStoreExportInstrumentedTest {
                     assertArrayEquals("zip payload: notes.txt".toByteArray(), read(newUri))
                     assertArrayEquals(canary, read(previous))
                     assertArrayEquals(zipBytes, read(source))
+                    assertEquals("Completed Save must not be an interrupted operation",
+                        pendingBefore, LocalSingleZipMediaStoreExport.unfinishedPublications(context))
                 } finally {
                     // Only delete the test's exact newly published row.
                     assertEquals(1, resolver.delete(newUri, null, null))
+                    // The user may later remove a successfully published file.
+                    // It must not resurrect an "interrupted extraction" alert.
+                    assertEquals(pendingBefore, LocalSingleZipMediaStoreExport.unfinishedPublications(context))
                 }
             }
         }
