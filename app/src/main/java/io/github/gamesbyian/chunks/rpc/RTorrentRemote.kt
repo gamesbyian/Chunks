@@ -193,13 +193,19 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         guardIdentity()
         val announced = try {
             (call("network.local_address") as? String)?.trim()?.takeIf { it.isNotEmpty() && it.length <= 253 }
-        } catch (_: RpcFault) { null }
+        } catch (fault: RpcFault) {
+            if (!fault.isUnsupportedOptionalGetter()) throw fault
+            null
+        }
         // Seedboxes often bind rTorrent to an address other than the web
         // host's; a wildcard bind says nothing about which one.
         val bound = try {
             (call("network.bind_address") as? String)?.trim()
                 ?.takeIf { it.isNotEmpty() && it.length <= 253 && it !in setOf("0.0.0.0", "::", "[::]") }
-        } catch (_: RpcFault) { null }
+        } catch (fault: RpcFault) {
+            if (!fault.isUnsupportedOptionalGetter()) throw fault
+            null
+        }
         val port = number(call("network.listen.port"))
         // A remote peer-copy destination must have a real TCP listen port.
         // Integer coercion, negative values and >65535 must never be silently
@@ -233,7 +239,11 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         val (rows, rich) = try {
             try {
                 extractRows(call("d.multicall2", listOf("", view) + extended)) to true
-            } catch (_: RpcFault) {
+            } catch (fault: RpcFault) {
+                // A busy/forbidden RPC fault is not evidence that optional
+                // rate fields are missing. Do not launch another full-list
+                // request unless the server actually lacks a getter.
+                if (!fault.isUnsupportedOptionalGetter()) throw fault
                 extractRows(call("d.multicall2", listOf("", view) + minimum)) to false
             }
         } catch (_: RpcReplyTooLarge) {
@@ -272,7 +282,12 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         val rich = try {
             pagedRows(hashes.take(1), getters(extended))
             true
-        } catch (_: RpcFault) { false }
+        } catch (fault: RpcFault) {
+            // Large-list paging must not turn a transient operational error
+            // into thousands of additional credentialed field reads.
+            if (!fault.isUnsupportedOptionalGetter()) throw fault
+            false
+        }
         val fields = getters(if (rich) extended else minimum)
         val transfers = ArrayList<RemoteTransfer>(hashes.size)
         for (page in hashes.chunked(PAGE_SIZE)) {
