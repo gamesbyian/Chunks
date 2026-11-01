@@ -149,6 +149,29 @@ class LocalMultiZipMediaStoreExportInstrumentedTest {
         }
     }
 
+    /** Existing-name and hidden-pending inventory for a unique test marker. */
+    private fun allOwnRowsWithMarker(marker: String): Set<Uri> {
+        val cols = arrayOf(MediaStore.MediaColumns._ID, MediaStore.MediaColumns.DISPLAY_NAME,
+            MediaStore.MediaColumns.OWNER_PACKAGE_NAME)
+        val cursor = if (android.os.Build.VERSION.SDK_INT == 29) {
+            resolver.query(MediaStore.setIncludePending(downloads), cols, null, null, null)
+        } else {
+            val args = android.os.Bundle().apply {
+                putInt(MediaStore.QUERY_ARG_MATCH_PENDING, MediaStore.MATCH_INCLUDE)
+            }
+            resolver.query(downloads, cols, args, null)
+        }
+        return requireNotNull(cursor).use { rows ->
+            buildSet {
+                while (rows.moveToNext()) {
+                    if (rows.getString(1)?.contains(marker) == true &&
+                        rows.getString(2) == context.packageName)
+                        add(ContentUris.withAppendedId(downloads, rows.getLong(0)))
+                }
+            }
+        }
+    }
+
     @Test fun nestedUnknownAndTooManyMembersFailWithoutPublishingAnything() {
         val base = freshBase()
         val cases = listOf(
@@ -159,9 +182,12 @@ class LocalMultiZipMediaStoreExportInstrumentedTest {
         )
         for ((index, original) in cases.withIndex()) {
             createOwned("invalid-batch-" + index + base + ".zip", original) { source ->
+                val before = allOwnRowsWithMarker(base)
                 val result = LocalMultiZipMediaStoreExport.extractNew(context, source)
                 assertEquals(result.message, LocalMultiZipMediaStoreExport.State.BLOCKED, result.state)
                 assertTrue(result.published.isEmpty())
+                assertEquals("No new or pending provider row may appear on refused input",
+                    before, allOwnRowsWithMarker(base))
                 assertArrayEquals(original, bytes(source))
             }
         }
