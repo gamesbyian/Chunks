@@ -631,9 +631,6 @@ internal fun LocalEngineScreen(
             modifier = Modifier.fillMaxWidth())
         var finishInOrderDefault by remember { mutableStateOf(finishInOrderStore.defaultForNewAdds()) }
         var magnetFinishInOrder by remember(magnet) { mutableStateOf(finishInOrderDefault) }
-        if (magnet.isNotEmpty()) {
-        Text("On this phone · Place: " + (proposedAddDestination?.absolutePath ?: "Choose a download location below"),
-            style = MaterialTheme.typography.bodySmall)
         Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
             .toggleable(value = startAfterAdd, enabled = !busy && !inventoryStale,
                 role = Role.Checkbox, onValueChange = { startAfterAdd = it }),
@@ -641,6 +638,9 @@ internal fun LocalEngineScreen(
             Checkbox(checked = startAfterAdd, enabled = !busy && !inventoryStale, onCheckedChange = null)
             Text("Start downloading after Add (recommended)", modifier = Modifier.padding(start = 8.dp))
         }
+        if (magnet.isNotEmpty()) {
+        Text("On this phone · Place: " + (proposedAddDestination?.absolutePath ?: "Choose a download location below"),
+            style = MaterialTheme.typography.bodySmall)
             LocalMagnetDiscoveryPrompt(
                 magnet = magnet,
                 dhtEnabled = dht,
