@@ -48,7 +48,7 @@ class CombinedTransfersScreenTest {
     // Wrapped scope/filter/sort groups can push rows below the first lazy viewport.
     // Reveal actual list items before tapping; never depend on initial composition.
     private fun revealText(text: String) {
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(text))
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(text, substring = true))
     }
     private fun revealDescription(description: String) {
         rule.onNode(hasScrollToIndexAction())
