@@ -56,6 +56,9 @@ case "${1:-}" in
         echo 'CHUNKS_LOW_SPACE_RECOVERED bytes=50331648 sha_equal=true stopped=true removed_keep_files=true'
       [[ "${MOCK_DUPLICATE_RECOVERED:-0}" == 1 ]] &&
         echo 'CHUNKS_LOW_SPACE_RECOVERED bytes=50331648 sha_equal=true stopped=true removed_keep_files=true'
+      # A false final conditional must not turn a successful fake logcat
+      # command into an ADB failure and skip the actual receipt parser.
+      :
     fi
     ;;
   *) exit 70 ;;
