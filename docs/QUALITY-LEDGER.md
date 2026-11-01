@@ -1,5 +1,36 @@
 # Chunks evidence and release gate ledger
 
+## 2026-11-01 accepted protected read-only profile and installed Android UI
+
+Merged main `2162b8e99996f3e08b2b78a9f430503123aa3a6d` includes
+[#891](https://github.com/gamesbyian/Chunks/pull/891)'s test-only
+challenge-accepted gate. The exact-main protected
+[primary endpoint probe 41266094878](https://github.com/gamesbyian/Chunks/actions/runs/41266094878)
+(job `124729100920`) passed Kotlin version/main-view reads **and**
+accepted HTTP read challenge evidence on the selected existing primary
+HTTPS profile. It sent no mutations. This establishes a challenged read
+at the endpoint, not human identity or write authorization.
+
+The independent protected
+[installed Android read-only run 41266326823](https://github.com/gamesbyian/Chunks/actions/runs/41266326823)
+(job `124729782844`) succeeded on the same main SHA: connected over
+HTTPS, rendered/refreshed a **nonempty** development queue, entered Add
+to inspect a default-Place preview, then returned to Transfers **without
+submitting any mutation**. Three 1080×2400 connected-screen screenshots
+were collected. Emulator/CI is not physical handset acceptance.
+
+**Production Connect source audit:** after the above receipts,
+`MainActivity` still called version/main-view and persisted a purportedly
+verified supplied login without inspecting `READ_CHALLENGE_ACCEPTED`.
+An anonymously readable endpoint could therefore wrongly be called
+authenticated even with invented credentials. The isolated
+`fix/remote-connect-credential-evidence-20261101` candidate adds a
+pre-persistence transport-evidence guard, distinct identity-unverified
+diagnosis and localhost Basic/public/anonymous tests. Candidate evidence
+is **not accepted or merged until exact-head CI/review**; independent
+physical, instance identity, per-hash mutation and peer byte acceptance
+remain open #1/#4/#464.
+
 ## 2026-11-01 remote read-only acceptance authentication correction
 
 The test-only `test/remote-read-auth-proof-20261101` candidate closes a false

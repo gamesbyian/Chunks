@@ -87,6 +87,7 @@ import io.github.gamesbyian.chunks.organize.Classifier
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
 import io.github.gamesbyian.chunks.rpc.RemoteSmartConnect
+import io.github.gamesbyian.chunks.rpc.requireRemoteConnectIdentityEvidence
 import io.github.gamesbyian.chunks.rpc.RemoteProviderCatalog
 import io.github.gamesbyian.chunks.rpc.RemoteFile
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
@@ -640,6 +641,10 @@ private fun ChunksApp(
                                     val connection = RTorrentRemote(credentials)
                                     val verifiedVersion = connection.version()
                                     val verifiedList = connection.listTransfers(ticket.view)
+                                    // Public version/inventory must not verify a typed login or
+                                    // authorize remembering it. Anonymous connections remain opt-in
+                                    // by leaving both credential fields empty.
+                                    requireRemoteConnectIdentityEvidence(credentials, connection)
                                     Triple(connection, verifiedVersion, verifiedList)
                                 }
                                 val (candidate, v, list) = discovered.response
