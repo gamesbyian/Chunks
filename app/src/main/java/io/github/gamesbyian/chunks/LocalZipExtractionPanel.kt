@@ -208,17 +208,24 @@ internal fun LocalZipExtractionOutcome(result: ZipExtractionResult, archiveLabel
 internal fun LocalZipInterruptedExtractions() {
     val context = LocalContext.current
     var results by remember { mutableStateOf<List<LocalZipExtraction.Reconciled>>(emptyList()) }
+    var downloads by remember { mutableStateOf<List<String>>(emptyList()) }
     LaunchedEffect(Unit) {
-        results = withContext(Dispatchers.IO) {
-            try { LocalZipExtraction.reconcilePending(context) } catch (_: Exception) { emptyList() }
+        val state = withContext(Dispatchers.IO) {
+            val legacy = try { LocalZipExtraction.reconcilePending(context) } catch (_: Exception) { emptyList() }
+            val pending = try { LocalSingleZipMediaStoreExport.unfinishedPublications(context) }
+                catch (_: Exception) { listOf("An earlier Downloads export could not be checked safely.") }
+            legacy to pending
         }
+        results = state.first
+        downloads = state.second
     }
-    if (results.isEmpty()) return
+    if (results.isEmpty() && downloads.isEmpty()) return
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("An earlier extraction or copy was interrupted", style = MaterialTheme.typography.titleMedium,
+            Text("Earlier file operations need review", style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
             results.forEach { Text(extractionMessage(it.result, it.copy)) }
+            downloads.distinct().forEach { Text(it) }
         }
     }
 }
