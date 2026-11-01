@@ -7,6 +7,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.DocumentsContract
+import android.provider.MediaStore
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -63,10 +64,10 @@ class PhoneIntakeJourneyInstrumentedTest {
         assertTrue(kind in setOf("share", "magnet"))
     }
 
-    private fun await(what: String, seconds: Long = 90, condition: () -> Boolean) {
+    private fun await(what: String, seconds: Long = 90, failure: () -> String = { "" }, condition: () -> Boolean) {
         val deadline = System.nanoTime() + seconds * 1_000_000_000L
         while (!condition()) {
-            assertTrue("Timed out waiting for $what", System.nanoTime() < deadline)
+            if (System.nanoTime() >= deadline) fail("Timed out waiting for $what; ${failure()}")
             Thread.sleep(100)
         }
     }
@@ -80,7 +81,7 @@ class PhoneIntakeJourneyInstrumentedTest {
         do {
             val actual = try { target.readBytes() } catch (e: java.io.IOException) {
                 failure = e.toString()
-                if (System.nanoTime() >= deadline) fail("$phase: $failure; rootReadable=${publicRoot.canRead()}")
+                if (System.nanoTime() >= deadline) fail("$phase: $failure; ${accessDetails(target)}")
                 Thread.sleep(150)
                 continue
             }
@@ -89,6 +90,22 @@ class PhoneIntakeJourneyInstrumentedTest {
             if (System.nanoTime() >= deadline) fail("$phase: $failure")
             Thread.sleep(150)
         } while (true)
+    }
+
+    private fun accessDetails(target: File): String {
+        val rows = try {
+            val columns = arrayOf(MediaStore.MediaColumns._ID, MediaStore.MediaColumns.OWNER_PACKAGE_NAME,
+                MediaStore.MediaColumns.SIZE, MediaStore.MediaColumns.IS_PENDING)
+            context.contentResolver.query(MediaStore.Files.getContentUri("external"), columns,
+                "${MediaStore.MediaColumns.DISPLAY_NAME}=? AND ${MediaStore.MediaColumns.RELATIVE_PATH}=?",
+                arrayOf(target.name, "${Environment.DIRECTORY_DOWNLOADS}/Chunks Downloads/"), null).use { cursor ->
+                buildList {
+                    while (cursor?.moveToNext() == true) add(columns.indices.joinToString { cursor.getString(it).orEmpty() })
+                }.toString()
+            }
+        } catch (e: Exception) { e.javaClass.simpleName }
+        return "uid=${android.os.Process.myUid()} rootReadable=${publicRoot.canRead()} " +
+            "fileReadable=${target.canRead()} size=${target.length()} mediaRows=$rows"
     }
 
     private fun configurePermissions() {
@@ -112,13 +129,16 @@ class PhoneIntakeJourneyInstrumentedTest {
         }
     }
 
-    private fun click(text: String) = rule.onNodeWithText(text).performScrollTo().assertIsEnabled().performClick()
+    private fun click(text: String) {
+        waitForText(text)
+        rule.onNodeWithText(text).performScrollTo().assertIsEnabled().performClick()
+    }
 
     @Test fun phaseA_externalReviewDownloadsThroughUiStopsThenProcessDies() {
         requirePhase("a")
         configurePermissions()
         assertNull("Harness must begin in a fresh process", LocalEngineHolder.current())
-        assertTrue("Use a fresh disposable install", work.mkdir())
+        assertTrue("A previous intake fixture was not cleaned up", work.mkdir())
         val name = "chunks-intake-$kind-${System.nanoTime().toString(16)}.bin"
         val source = File(work, "source").apply { mkdir() }
         val payload = ByteArray(512 * 1024).also { Random(5569).nextBytes(it) }
@@ -159,7 +179,11 @@ class PhoneIntakeJourneyInstrumentedTest {
                 waitForText("Saves to: Downloads/Chunks Downloads")
                 val target = File(publicRoot, name)
                 assertFalse("Review cannot create payload", target.exists())
-                assertNull("An external review must not create a native job", LocalEngineHolder.current())
+                val reviewedEngine = LocalEngineHolder.current()
+                assertTrue("External review cannot create jobs or inherit unrelated jobs",
+                    reviewedEngine == null || reviewedEngine.completeIdentityInventory() == emptyList<String>())
+                assertTrue("Saved-state discovery cannot hide failures",
+                    reviewedEngine == null || reviewedEngine.restoreProblems.isEmpty())
                 click(if (kind == "share") "Add and start downloading" else "Add magnet and start")
                 await("real UI Add and peer download") {
                     LocalEngineHolder.current()?.status(hash)?.let {
@@ -242,12 +266,12 @@ class PhoneIntakeJourneyInstrumentedTest {
                 await("fresh peer gets complete payload") { receiver.status(hash)?.progressPpm == 1_000_000 }
                 assertTrue(receiver.flushCompletedForLibraryRead(hash, 30_000))
                 assertArrayEquals(expected, File(receiverRoot, name).readBytes())
-                android.util.Log.i("ChunksIntake", "CHUNKS_INTAKE_COUNTERS kind=$kind " +
-                    "before=$uploadedBefore phone=${phone.status(hash)} receiver=${receiver.status(hash)}")
-                await("restored transfer actually uploads") {
+                fun counterDetails() = "before=$uploadedBefore phone=${phone.status(hash)} receiver=${receiver.status(hash)}"
+                await("restored transfer actually uploads", failure = { counterDetails() }) {
                     (phone.status(hash)?.payloadUploadedBytes ?: 0) - uploadedBefore >= expected.size &&
                         (receiver.status(hash)?.payloadDownloadedBytes ?: 0) >= expected.size
                 }
+                android.util.Log.i("ChunksIntake", "CHUNKS_INTAKE_COUNTERS kind=$kind ${counterDetails()}")
             }
             click("Stop")
             await("second UI Stop") { phone.status(hash)?.stopped == true }

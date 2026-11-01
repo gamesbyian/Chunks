@@ -4,11 +4,14 @@
 
 **Single executable priority authority; reviewed 2026-10-31.** Fetch current `main`, open PRs, issues, branch ownership and CI **before** picking a task. The [engineering delivery protocol](ENGINEERING-DELIVERY-PROTOCOL.md) governs how to complete it; [AGENTS](../AGENTS.md) governs agent behavior. Product requirements live in [PRODUCT](PRODUCT.md), [UX](UX.md), [ARCHITECTURE](ARCHITECTURE.md), [SECURITY](SECURITY.md), [DECISIONS](DECISIONS.md) and scoped contracts. Implementation truth belongs in [SPEC-COVERAGE](SPEC-COVERAGE.md), test evidence in [QUALITY-LEDGER](QUALITY-LEDGER.md). This queue is **not** a substitute for any of them.
 
-**Active 0C acceptance slice:** `test/remote-read-auth-proof-20261101` repairs
-the protected read-only probe's anonymous-read false positive using the existing
-HTTP challenge evidence. Six focused loopback tests passed; live smoke is skipped
-without secrets. Integrate qualified test-only work, then run the single existing
-trusted-main primary profile. No production transport or mutations are changed.
+**Active 0C acceptance follow-through:** [#891](https://github.com/gamesbyian/Chunks/pull/891)
+is merged at `2162b8e`; local and exact-head foundation executed 1,168 tests with
+zero failures (30 skips). The protected read-only probe now requires accepted
+HTTP read challenge evidence. The existing trusted-main primary profile
+[41266094878](https://github.com/gamesbyian/Chunks/actions/runs/41266094878)
+passed at `2162b8e`, verifying valid RPC reads plus accepted challenge evidence.
+The existing installed Android read-only UI journey is the next tier; no
+production transport/mutation change or physical acceptance is implied.
 
 ## Verified checkpoint and current boundaries
 

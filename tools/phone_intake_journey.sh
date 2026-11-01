@@ -1,16 +1,17 @@
 #!/usr/bin/env bash
 # Real MainActivity -> Add -> peer bytes -> UI Stop -> death -> UI restore/seed.
-# Destructively resets ONLY a disposable emulator's Chunks test installation.
+# Disposable emulator only. Preserve package data and scoped-storage ownership.
 set -euo pipefail
 pkg=io.github.gamesbyian.chunks
 runner="$pkg.test/androidx.test.runner.AndroidJUnitRunner"
 cls=io.github.gamesbyian.chunks.PhoneIntakeJourneyInstrumentedTest
 emulator="$(adb shell getprop ro.kernel.qemu | tr -d '\r')"
-[[ "$emulator" == 1 ]] || { echo 'CHUNKS_INTAKE: disposable emulator required; no app data cleared'; exit 1; }
+[[ "$emulator" == 1 ]] || { echo 'CHUNKS_INTAKE: disposable emulator required; app untouched'; exit 1; }
 
 for kind in share magnet; do
-  cleared="$(adb shell pm clear "$pkg" | tr -d '\r')"
-  [[ "$cleared" == Success ]] || { echo 'CHUNKS_INTAKE: fresh app state was not verified'; exit 1; }
+  # A cold process is the ordinary journey. pm clear orphans MediaStore ownership
+  # and belongs to a separate reinstall/data-clear acceptance scenario.
+  adb shell am force-stop "$pkg"
   adb logcat -c
   set +e
   out_a="$(adb shell am instrument -w -r -e class "$cls#phaseA_externalReviewDownloadsThroughUiStopsThenProcessDies" \

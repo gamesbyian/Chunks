@@ -13,12 +13,11 @@ case "${1:-}" in
     shift
     case "$*" in
       'getprop ro.kernel.qemu') [[ "${BAD:-}" == physical ]] && echo 0 || echo 1 ;;
-      'pm clear '* )
-        echo clear >> "$MOCK_STATE/clears"
-        [[ "${BAD:-}" == clear ]] && echo Failed || echo Success
-        ;;
       'if pidof '* ) [[ "${BAD:-}" == alive ]] && echo running || echo stopped ;;
-      'am force-stop '* ) ;;
+      'am force-stop '* )
+        echo stop >> "$MOCK_STATE/stops"
+        [[ "${BAD:-}" != stop_failure ]] || exit 24
+        ;;
       'am instrument '* )
         kind=share
         [[ "$*" != *'chunksIntakeKind magnet'* ]] || kind=magnet
@@ -69,14 +68,14 @@ bash -n "$root/phone_intake_journey.sh"
 bash -n "$root/test_phone_intake_journey.sh"
 bash "$root/phone_intake_journey.sh" > "$tmp/positive.log"
 [[ "$(wc -l < "$MOCK_STATE/instruments")" == 4 ]]
-for bad in physical clear alive no_death no_arm duplicate_arm log_failure wrong_kind \
+for bad in physical stop_failure alive no_death no_arm duplicate_arm log_failure wrong_kind \
            false_ok skip fail duplicate_ok command_fail no_recovery changed_bytes no_seed duplicate_recovery; do
-  rm -f "$MOCK_STATE/clears" "$MOCK_STATE/instruments"
+  rm -f "$MOCK_STATE/stops" "$MOCK_STATE/instruments"
   if BAD="$bad" bash "$root/phone_intake_journey.sh" > "$tmp/$bad.log" 2>&1; then
     echo "CHUNKS_INTAKE_MOCK: falsely accepted $bad" >&2; exit 1
   fi
-  if [[ "$bad" == physical && -e "$MOCK_STATE/clears" ]]; then
-    echo 'CHUNKS_INTAKE_MOCK: attempted to clear physical app data' >&2; exit 1
+  if [[ "$bad" == physical && -e "$MOCK_STATE/stops" ]]; then
+    echo 'CHUNKS_INTAKE_MOCK: attempted to stop a physical app' >&2; exit 1
   fi
 done
 echo 'CHUNKS_INTAKE_MOCK: both entry kinds accepted; 17 false receipts/unsafe targets refused (offline only)'

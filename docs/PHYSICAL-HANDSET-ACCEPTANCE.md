@@ -22,7 +22,7 @@ Enable USB debugging, connect one handset (`adb devices` lists exactly it), and 
 gradle :app:assembleDebug :app:assembleDebugAndroidTest
 ```
 
-**Emulator-only exception:** `tools/phone_intake_journey.sh` is the installed Share/magnet → real bytes → process death → restore/seeding acceptance harness. It intentionally clears the disposable test app between flows and refuses physical devices before clearing data. Its CI success is never a handset receipt.
+**Emulator-only exception:** `tools/phone_intake_journey.sh` is the installed Share/magnet → real bytes → process death → restore/seeding acceptance harness. It starts a cold process for each flow, preserves package data/MediaStore ownership, refuses a nonempty pre-consent job inventory, and refuses physical devices before stopping the app. Data-clear/reinstall ownership is a separate scenario. Its CI success is never a handset receipt.
 
 ## Automated checks that run unchanged on a handset
 

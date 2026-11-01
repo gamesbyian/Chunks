@@ -2,19 +2,19 @@
 
 ## 2026-11-01 remote read-only acceptance authentication correction
 
-The test-only `test/remote-read-auth-proof-20261101` candidate closes a false
+Merged [#891](https://github.com/gamesbyian/Chunks/pull/891) (`2162b8e99996f3e08b2b78a9f430503123aa3a6d`) closes a false
 positive in the protected probe: valid anonymous version/inventory replies
 previously produced an "authenticated" marker with no accepted challenge.
 The actual live test now shares an acceptance gate with real loopback HTTP
-counterexamples and reports a missing live environment as skipped. Six focused
+counterexamples and reports a missing live environment as skipped. Full local and CI foundation suites at `78732fa7e220430b068038619dcd17533c98ace3` passed: 1,168 executed, 30 skipped, zero failures across 254 reports; CI [41265536463](https://github.com/gamesbyian/Chunks/actions/runs/41265536463), docs [41265536514](https://github.com/gamesbyian/Chunks/actions/runs/41265536514). Six focused
 `RemoteReadAuthEvidenceTest` cases passed locally; the live smoke was explicitly
 skipped (one case). Only version and main-view RPC methods are permitted by the
 new positive/negative fixtures. No production transport, credential routing or
 remote mutation changes; no protected host was contacted for this receipt.
 
 Historical read-only success markers below prove validated replies, but do not
-alone prove supplied-credential authentication. A reviewed-main protected
-primary-profile run remains required after integration; accepted HTTP challenge
+alone prove supplied-credential authentication. The single reviewed-main protected
+primary-profile run [41266094878](https://github.com/gamesbyian/Chunks/actions/runs/41266094878) **passed** at `2162b8e99996f3e08b2b78a9f430503123aa3a6d` (job `124729100920`). Its success marker now requires valid version/main inventory, an accepted exact-endpoint HTTP challenge, and zero failed/error/skipped tests. No mutations were dispatched; accepted HTTP challenge
 evidence still does not grant human-account or mutation authority. See the
 [corrected protocol](SEEDHOST-REMOTE-TESTING.md#read-only-authentication-evidence-correction-2026-11-01).
 
@@ -25,7 +25,7 @@ evidence still does not grant human-account or mutation authority. See the
 
 **Merged #885:** inspected all six changed files independently at `854b21ac693875fc376076221017b81a0d523386`, ran 15 local concurrency/inventory/docs tests and the documentation checker (zero errors; one inherited stale queue-anchor warning), and verified all six exact-head CI checks successful. Guarded squash merge is `5061cd8171bd12f68179db58606d8746d9734485`. Changes isolate superseded research runs by workflow/PR while preserving manual runs, both NDK ABIs, safety probes and read-only permissions. No app/native shipping source changed; no measured saved-runner-minute claim is made.
 
-**0B candidate:** `app/phone-intake-journey-20261101` builds on that main. The existing cold-intent test opens an Add draft only; the new opt-in two-process fixture uses actual MainActivity Add/Stop/Start/Remove controls and independent real peer/digest witnesses for both Share and magnet. It is wired into the two existing API29/API35 emulators. The offline harness accepted both kinds and rejected 17 forged/unsafe cases, including physical-device clearing, skipped/failed/duplicate receipts, surviving processes, missing seeding and changed digests. These negatives do not execute Android. Installed-runtime acceptance is still pending. The earlier independently verified JVM callback-count correction from #889 is included without its storage implementation; it preserves real restart/seeding/byte/sibling checks.
+**0B candidate:** `app/phone-intake-journey-20261101` builds on that main. The existing cold-intent test opens an Add draft only; the new opt-in two-process fixture uses actual MainActivity Add/Stop/Start/Remove controls and independent real peer/digest witnesses for both Share and magnet. It is wired into the two existing API29/API35 emulators. The offline harness accepted both kinds and rejected 17 forged/unsafe cases, including physical-device control, skipped/failed/duplicate receipts, surviving processes, missing seeding and changed digests. These negatives do not execute Android. Installed-runtime acceptance is still pending. The earlier independently verified JVM callback-count correction from #889 is included without its storage implementation; it preserves real restart/seeding/byte/sibling checks.
 
 **Initial runtime failures at `e1c7bf2`:** foundation, ordinary API35 and docs
 passed. The new API29 journey [41264571180](https://github.com/gamesbyian/Chunks/actions/runs/41264571180)
@@ -36,6 +36,20 @@ completed the existing lifecycle checks, then the new Share journey encountered
 accepted. The follow-up keeps all peer/digest/counter assertions, adds diagnostic
 counter snapshots, and uses the existing public-Place fixture's bounded exact
 readback pattern to distinguish transient visibility from persistent denial.
+
+**Second runtime receipt at `dc82988`:** foundation, ordinary API35 and docs
+passed. API29 [41265477077](https://github.com/gamesbyian/Chunks/actions/runs/41265477077)
+passed the same counter conjunction and then tried Stop before its UI label was
+observed. API35 [41265477022](https://github.com/gamesbyian/Chunks/actions/runs/41265477022)
+still denied exact public-file reads for the full 30-second window. This is
+persistent observed denial; no Android15 public-read acceptance is claimed.
+The next correction waits for each asynchronous action label and removes
+`pm clear` from the ordinary journey: Android's MediaProvider orphans package
+ownership on data clear, a distinct reinstall/data-clear scenario. It preserves
+all native/counter/byte assertions, requires a verified empty job inventory
+before consent, and adds app-side read-only MediaStore ownership diagnostics if
+denial persists. Neither timing nor data clear is declared the resolved root
+cause before the next runtime receipt.
 
 ## 2026-10-31 owner correction: historical native collision witness reclassified
 
