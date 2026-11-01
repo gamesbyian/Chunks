@@ -10,6 +10,8 @@ on:
       - 'AGENTS.md'
       - 'assets/fonts/README.md'
       - 'tools/check_docs.py'
+      - 'tools/ci_workflow_inventory.py'
+      - 'tests/test_ci_workflow_inventory.py'
       - 'tools/ci_jvm_two_forks.init.gradle'
       - 'tests/test_ci_jvm_parallelism.py'
       - 'tools/physical_android_preflight.sh'
@@ -58,6 +60,8 @@ on:
       - 'AGENTS.md'
       - 'assets/fonts/README.md'
       - 'tools/check_docs.py'
+      - 'tools/ci_workflow_inventory.py'
+      - 'tests/test_ci_workflow_inventory.py'
       - 'tools/ci_jvm_two_forks.init.gradle'
       - 'tests/test_ci_jvm_parallelism.py'
       - 'tools/physical_android_preflight.sh'
@@ -120,6 +124,18 @@ jobs:
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_trigger_contract.py
       - name: Verify CI JVM fork experiment remains scoped and covered
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_jvm_parallelism.py
+      - name: Audit all workflow definitions and their dispatch metadata
+        run: |
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_workflow_inventory.py
+          python3 tools/ci_workflow_inventory.py --output "$RUNNER_TEMP/chunks-workflow-inventory.json" --summary
+      - name: Retain machine-readable all-workflow inventory
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-workflow-inventory
+          path: ${{ runner.temp }}/chunks-workflow-inventory.json
+          retention-days: 7
+          if-no-files-found: warn
       - name: Validate native atlas names offline (no Android)
         run: |
           python3 tools/check_native_atlas_contract.py
