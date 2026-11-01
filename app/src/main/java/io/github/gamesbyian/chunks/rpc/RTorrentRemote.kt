@@ -624,8 +624,13 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                 val item = matches.single()
                 val directory = readVerifiedAddDirectory(
                     plan.expectedInfoHash, plan.destination, item.name)
-                val started = number(call("d.state", listOf(plan.expectedInfoHash))) != 0L
-                if (!item.started && !started && directory != null) {
+                // d.state=0 can coexist transiently with an active engine.
+                // The hidden-view readback already requires inactivity; the
+                // visible main-view path must uphold the same stopped promise
+                // before Add-and-Start can dispatch a second mutation.
+                val state = number(call("d.state", listOf(plan.expectedInfoHash)))
+                val active = number(call("d.is_active", listOf(plan.expectedInfoHash)))
+                if (!item.started && state == 0L && active == 0L && directory != null) {
                     RemoteAddOutcome.VerifiedStopped(plan.expectedInfoHash, directory)
                 } else {
                     RemoteAddOutcome.PendingVerification(plan.expectedInfoHash)
