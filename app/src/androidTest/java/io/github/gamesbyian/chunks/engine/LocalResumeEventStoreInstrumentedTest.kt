@@ -277,6 +277,28 @@ class LocalResumeEventStoreInstrumentedTest {
             fail("Missing committed state must refuse legacy fallback")
         } catch (_: Exception) { }
         assertFalse(database.exists())
+
+        // Actual Android SQLite, after a committed authority marker, must not
+        // initialize or alter a zero-length replacement or sidecars merely by
+        // attempting to open and refusing this corrupted authoritative state.
+        database.writeBytes(ByteArray(0))
+        val namespace = requireNotNull(database.parentFile)
+        val before = requireNotNull(namespace.listFiles()).associate {
+            it.name to it.readBytes()
+        }
+        try {
+            LocalResumeStore.open(dir, LocalResumeDirectoryInventory.prepare(dir)).close()
+            fail("Zeroed committed database must refuse without legacy fallback")
+        } catch (_: Exception) { }
+        assertEquals("Authoritative state was initialized after corrupt refusal",
+            0L, database.length())
+        assertEquals("Refused SQLite open must not leave unexpected sidecars",
+            before.keys, requireNotNull(namespace.listFiles()).map { it.name }.toSet())
+        for ((name, bytes) in before) {
+            assertArrayEquals("Refusing authoritative zeroed DB changed $name",
+                bytes, File(namespace, name).readBytes())
+        }
+        assertEquals("obsolete snapshot", legacy.readText())
     }
 
     @Test fun androidLargeResumeExceedingDefaultCursorWindowRestoresExactly() {
