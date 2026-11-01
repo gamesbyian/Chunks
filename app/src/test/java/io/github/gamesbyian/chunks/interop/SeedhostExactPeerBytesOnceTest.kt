@@ -102,6 +102,21 @@ class SeedhostExactPeerBytesOnceTest {
             !address.isSiteLocalAddress && !reservedV4 && !reservedV6
     }
 
+    /** Last independently observed bound rTorrent peer address for this exact
+     * development instance (see RTORRENT-COMPATIBILITY-MATRIX.md). This
+     * one-shot workflow must be re-reviewed if the provider reassigns it. */
+    private fun approvedPeerDestination(address: InetAddress): Boolean =
+        publicPeerAddress(address) && address.hostAddress == "5.79.112.219"
+
+    @Test fun onlyPreviouslyApprovedPeerIpMayReceiveRunnerConnection() {
+        assertTrue(approvedPeerDestination(InetAddress.getByName("5.79.112.219")))
+        listOf("8.8.8.8", "1.1.1.1", "5.79.112.210", "100.64.0.5",
+            "2001:4860:4860::8888").forEach {
+            assertFalse("Public address alone does not authorize a different peer", 
+                approvedPeerDestination(InetAddress.getByName(it)))
+        }
+    }
+
     @Test fun privateAndLoopbackPeerHintsCannotProbeTheRunnerNetwork() {
         listOf("127.0.0.1", "0.0.0.0", "10.1.2.3", "172.16.5.4",
             "192.168.8.5", "169.254.3.4", "100.64.2.1", "198.19.1.1",
@@ -193,7 +208,7 @@ class SeedhostExactPeerBytesOnceTest {
         val peer = candidates.firstNotNullOfOrNull { candidate ->
             val address = runCatching { InetAddress.getByName(candidate) }.getOrNull()
                 ?: return@firstNotNullOfOrNull null
-            if (!publicPeerAddress(address)) return@firstNotNullOfOrNull null
+            if (!approvedPeerDestination(address)) return@firstNotNullOfOrNull null
             val target = InetSocketAddress(address, source.listenPort.toInt())
             if (runCatching {
                     Socket().use { it.connect(target, 4_000) }
@@ -286,7 +301,10 @@ class SeedhostExactPeerBytesOnceTest {
                 .digest(seedFile.readBytes()).toList())
             stage("bytes-verified")
         } finally {
-            seed.close()
+            // A JNI/runner teardown exception must not prevent the exact
+            // owned session Stop/Erase reconciliation from being attempted.
+            // Never report a successful test if the local seeder failed close.
+            val seedCloseFailure = runCatching { seed.close() }.exceptionOrNull()
             // This is a single explicitly authorized synthetic lifecycle.
             // Read-only exact-hash/name/directory guards precede each cleanup.
             // A lost Stop/Erase acknowledgement never triggers a second write.
@@ -316,7 +334,7 @@ class SeedhostExactPeerBytesOnceTest {
                                 beforeInventory.map { it.hash.lowercase() }.toSet()) {
                                 stage("removed")
                                 stage("inventory-restored")
-                                exactSessionRemovedAndInventoryRestored = true
+                                exactSessionRemovedAndInventoryRestored = seedCloseFailure == null
                             }
                         }
                     }
@@ -328,6 +346,11 @@ class SeedhostExactPeerBytesOnceTest {
             // or another d.erase after a lost acknowledgement.
             if (addMayHaveApplied && !exactSessionRemovedAndInventoryRestored)
                 println("CHUNKS_HOST_BYTES_STAGE: manual-reconciliation-required")
+            if (seedCloseFailure != null) {
+                // No exception details: native diagnostics can contain paths.
+                // Remote cleanup above was still attempted exactly once.
+                error("Runner seeder did not shut down cleanly; reconcile synthetic hash")
+            }
         }
     }
 }
