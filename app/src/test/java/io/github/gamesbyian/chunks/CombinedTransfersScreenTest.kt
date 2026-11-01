@@ -120,12 +120,17 @@ class CombinedTransfersScreenTest {
         revealText("Size")
         rule.onNodeWithText("Size").performClick()
         rule.onNodeWithContentDescription("Sorted by Size, Largest first. Reverse order").performClick()
+        // Reversing the order may recompose the lazy list below; fetch the
+        // reverse button by its new semantics even when it has left the viewport.
+        revealDescription("Sorted by Size, Smallest first. Reverse order")
         rule.onNodeWithContentDescription("Sorted by Size, Smallest first. Reverse order").assertExists()
         // Only the connected server: phone and the offline profile drop out of the status lines.
+        revealText(serverEnvironmentLabel(aliasScope))
         rule.onAllNodesWithText(serverEnvironmentLabel(aliasScope))[0].performClick()
         rule.onNodeWithText("On this phone: Engine not running, open On this phone · 0 transfers").assertDoesNotExist()
+        revealText("Showing 2")
         rule.onNodeWithText("Showing 2").assertExists()
-        rule.onNodeWithText("Group by environment").performScrollTo()
+        revealText("Group by environment")
         rule.onNodeWithContentDescription("Group by environment").assertExists()
         rule.onNode(androidx.compose.ui.test.isToggleable()).performClick()
         revealText(serverEnvironmentLabel(aliasScope) + " · 2 shown")
