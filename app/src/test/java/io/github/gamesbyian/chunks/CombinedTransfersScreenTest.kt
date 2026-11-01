@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.hasContentDescription
@@ -115,14 +116,45 @@ class CombinedTransfersScreenTest {
 
     @Test fun sortDirectionScopeAndGroupingPersistAcrossReopen() {
         show()
+        revealText("Change sort & grouping")
+        rule.onNodeWithText("Change sort & grouping", substring = true).performClick()
+        revealText("Size")
         rule.onNodeWithText("Size").performClick()
-        rule.onNodeWithContentDescription("Sorted by Size, Largest first. Reverse order").performClick()
-        rule.onNodeWithContentDescription("Sorted by Size, Smallest first. Reverse order").assertExists()
+        // Isolate selection persistence from the subsequent reverse click:
+        // failing here means Size itself was not committed, while failure
+        // below isolates the reverse action or its saved readback.
+        rule.waitUntil(10_000) {
+            val saved = CombinedViewPreferences(context).load()
+            saved.sortKey == UnifiedSortKey.SIZE &&
+                saved.direction == UnifiedSortDirection.DESCENDING
+        }
+        // Expanded Add controls move Reverse below the viewport. Deliver a real visible
+        // pointer click rather than silently tapping an off-screen lazy node.
+        revealDescription("Sorted by Size, Largest first. Reverse order")
+        rule.onNodeWithContentDescription("Sorted by Size, Largest first. Reverse order")
+            .assertIsDisplayed().performClick()
+        // Click delivery and recomposition may finish in separate Robolectric
+        // frames. Observe the *actual committed preference* with a bounded
+        // deadline, rather than equating scheduler idleness with persistence.
+        rule.waitUntil(10_000) {
+            CombinedViewPreferences(context).load().direction == UnifiedSortDirection.ASCENDING
+        }
+        // The persisted sort choice is the source of truth, including after
+        // lazy row recycling. The compact summary must disclose the new order.
+        assertEquals(UnifiedSortDirection.ASCENDING, CombinedViewPreferences(context).load().direction)
+        // Both the direction control and the compact summary include "Smallest first".
+        // Require the exact visible summary to avoid an ambiguous multiple-node selector,
+        // while preserving independent persisted ASCENDING readback above.
+        val directionSummary = "Hide sort & grouping · Size · Smallest first · Together"
+        revealText(directionSummary)
+        rule.onNodeWithText(directionSummary).assertExists()
         // Only the connected server: phone and the offline profile drop out of the status lines.
+        revealText(serverEnvironmentLabel(aliasScope))
         rule.onAllNodesWithText(serverEnvironmentLabel(aliasScope))[0].performClick()
         rule.onNodeWithText("On this phone: Engine not running, open On this phone · 0 transfers").assertDoesNotExist()
+        revealText("Showing 2")
         rule.onNodeWithText("Showing 2").assertExists()
-        rule.onNodeWithText("Group by environment").performScrollTo()
+        revealText("Group by environment")
         rule.onNodeWithContentDescription("Group by environment").assertExists()
         rule.onNode(androidx.compose.ui.test.isToggleable()).performClick()
         revealText(serverEnvironmentLabel(aliasScope) + " · 2 shown")

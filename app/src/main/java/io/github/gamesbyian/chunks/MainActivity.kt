@@ -447,6 +447,7 @@ private fun ChunksApp(
                 },
                 onOpenPhone = { section = Section.LOCAL },
                 onOpenServer = if (server != null) ({ section = Section.TRANSFERS }) else null,
+                onAddToServer = if (server != null) ({ section = Section.ADD }) else null,
                 onOpenTransfer = { key ->
                     // Resolve an exact owner. A saved-only server, a disconnected
                     // profile or the same hash on a different server must never
@@ -483,7 +484,7 @@ private fun ChunksApp(
         } else if (section == Section.CREATE && server == null) {
             io.github.gamesbyian.chunks.create.CreateTorrentScreen(onBack = { section = Section.TRANSFERS },
                 shared = createRequest, onSharedConsumed = { createRequest = null })
-        } else if (section == Section.LOCAL && server == null) {
+        } else if (section == Section.LOCAL) {
             LocalTransferPrivacyGate(
                 scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
                 onBack = { section = Section.TRANSFERS }

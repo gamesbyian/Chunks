@@ -113,6 +113,7 @@ class ChunksMainActivityAtlasTest {
                 inventory(view)
             }
             "f.multicall" -> files()
+            "directory.default" -> str("/downloads") // Existing Add preview is read-only.
             else -> error("Unexpected command in read-only installed-app atlas: $method")
         }
         return ("<?xml version=\"1.0\" encoding=\"UTF-8\"?>" +
@@ -315,6 +316,31 @@ class ChunksMainActivityAtlasTest {
         rule.onNodeWithText("It's all here.").assertExists()
         save("app-transfers-populated-real-compose")
 
+        // An installed, authenticated server must route from the real shared
+        // combined list into its existing Add review. Opening that review
+        // requests only the read-only default Place, never a torrent mutation.
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("All environments…"))
+        rule.onNodeWithText("All environments…").performClick()
+        // Regression: Add on this phone must render while a remote session is
+        // authenticated. Previously Section.LOCAL was only composed with server == null,
+        // leaving a blank route. This is the installed real MainActivity and privacy gate.
+        val phoneAdd = androidx.compose.ui.test.hasContentDescription("Add download on this phone")
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(phoneAdd)
+        rule.onNode(phoneAdd).performClick()
+        rule.onNodeWithText("On this phone (experimental)").assertExists()
+        rule.onNodeWithText("Add a download on this phone").assertExists()
+        // Return through the existing local route without submitting any torrent.
+        rule.onNodeWithText("All environments…").performScrollTo().performClick()
+        val remoteAdd = androidx.compose.ui.test.hasContentDescription(
+            "Add download on Server", substring = true)
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(remoteAdd)
+        rule.onNode(remoteAdd).performClick()
+        rule.onNodeWithText("Add a download to this server").assertExists()
+        rule.onNodeWithText("Magnet link").assertExists()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Back to transfers"))
+        rule.onNodeWithText("Back to transfers").performClick()
+        rule.onNodeWithText("It's all here.").assertExists()
+
         // Identify the episodic fixture by its *original* server-reported name.
         // The queue is name-sorted, so the first unfiltered card is not this item.
         // Keeping this search after Save also proves the original remains searchable.
@@ -411,6 +437,7 @@ class ChunksMainActivityAtlasTest {
         assertTrue("Installed client must enumerate the actual transfer list", invoked.contains("d.multicall2"))
         assertTrue("Installed client must inspect the selected torrent files", invoked.contains("f.multicall"))
         assertTrue("Read-only atlas must never exercise torrent mutations",
-            invoked.all { it in setOf("system.client_version", "d.multicall2", "f.multicall") })
+            invoked.all { it in setOf("system.client_version", "d.multicall2", "f.multicall",
+                "directory.default") })
     }
 }

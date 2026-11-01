@@ -43,7 +43,7 @@ class MainActivitySafeRouteRestoreInstrumentedTest {
         rule.activityRule.scenario.recreate()
         rule.waitForIdle()
         rule.onNodeWithText("All environments").assertExists()
-        rule.onNodeWithText("Browse every environment together.", substring = true).assertExists()
+        rule.onNodeWithText("Browse downloads together.", substring = true).assertExists()
         rule.onNodeWithText("Stop selected").assertDoesNotExist()
         rule.onNodeWithText("Start selected").assertDoesNotExist()
     }
