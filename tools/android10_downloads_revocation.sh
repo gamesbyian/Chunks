@@ -9,18 +9,47 @@ pkg=io.github.gamesbyian.chunks
 runner="$pkg.test/androidx.test.runner.AndroidJUnitRunner"
 class=io.github.gamesbyian.chunks.Android10DownloadsRevocationInstrumentedTest
 
-[[ "$(adb shell getprop ro.kernel.qemu | tr -d '\r')" == 1 ]] || {
+# Refuse all mutating commands unless ADB output succeeds and identifies
+# one connected target (or an explicitly selected ANDROID_SERIAL).
+devices="$(adb devices)" || {
+  echo 'CHUNKS_GRANT: ADB enumeration failed' >&2; exit 1;
+}
+if [[ -n "${ANDROID_SERIAL:-}" ]]; then
+  [[ "$(awk -v serial="$ANDROID_SERIAL" '$1 == serial && $2 == "device" { n++ } END { print n+0 }' <<< "$devices")" == 1 ]] || {
+    echo 'CHUNKS_GRANT: selected target not uniquely connected' >&2; exit 1;
+  }
+else
+  [[ "$(awk 'NR > 1 && $2 == "device" { n++ } END { print n+0 }' <<< "$devices")" == 1 ]] || {
+    echo 'CHUNKS_GRANT: one target or explicit ANDROID_SERIAL required' >&2; exit 1;
+  }
+fi
+state="$(adb get-state)" || {
+  echo 'CHUNKS_GRANT: ADB get-state failed' >&2; exit 1;
+}
+state="$(tr -d '\\r\\n' <<< "$state")"
+[[ "$state" == device ]] || {
+  echo 'CHUNKS_GRANT: ADB target not ready' >&2; exit 1;
+}
+qemu="$(adb shell getprop ro.kernel.qemu | tr -d '\\r\\n')" || {
+  echo 'CHUNKS_GRANT: ADB emulator identity command failed' >&2; exit 1;
+}
+[[ "$qemu" == 1 ]] || {
   echo 'CHUNKS_GRANT: refusing physical-device permission mutation' >&2; exit 1;
 }
-[[ "$(adb shell getprop ro.build.version.sdk | tr -d '\r')" == 29 ]] || {
+sdk="$(adb shell getprop ro.build.version.sdk | tr -d '\\r\\n')" || {
+  echo 'CHUNKS_GRANT: ADB SDK command failed' >&2; exit 1;
+}
+[[ "$sdk" == 29 ]] || {
   echo 'CHUNKS_GRANT: API29 only; permission model differs on later Android' >&2; exit 1;
 }
 
 restore_grants() {
   # Phase A explicitly granted these to a disposable app. Always restore
   # them even if a later phase fails: a red test must not strand a grant.
-  adb shell pm grant "$pkg" android.permission.READ_EXTERNAL_STORAGE &&
-  adb shell pm grant "$pkg" android.permission.WRITE_EXTERNAL_STORAGE
+  local failure=0
+  adb shell pm grant "$pkg" android.permission.READ_EXTERNAL_STORAGE || failure=1
+  adb shell pm grant "$pkg" android.permission.WRITE_EXTERNAL_STORAGE || failure=1
+  return "$failure"
 }
 
 positive() {
@@ -42,6 +71,17 @@ positive() {
   printf '%s\n' "$log" | grep 'CHUNKS_GRANT phase=' || true
   if [[ "$(grep -Fxc "$marker" <<< "$log" || true)" != 1 ]]; then
     echo "CHUNKS_GRANT: phase $phase missing unique native positive receipt" >&2; return 1
+  fi
+  if [[ "$phase" == B_* ]]; then
+    [[ "$(grep -Ec '^CHUNKS_GRANT_OBSERVED access=(denied|owned-file)$' <<< "$log" || true)" == 1 ]] || {
+      echo 'CHUNKS_GRANT: phase B missing real public-file access observation' >&2; return 1;
+    }
+    [[ "$(grep -Fxc 'CHUNKS_GRANT_DENIAL restored=true os_open=denied start=refused stopped=true' <<< "$log" || true)" == 1 ]] || {
+      echo 'CHUNKS_GRANT: phase B missing native refused Start on real denied FD' >&2; return 1;
+    }
+    [[ "$(grep -Fxc 'CHUNKS_GRANT_ADVERSARIAL fifo=refused leaf_link=refused parent_link=refused' <<< "$log" || true)" == 1 ]] || {
+      echo 'CHUNKS_GRANT: phase B missing FIFO and symlink negatives' >&2; return 1;
+    }
   fi
 }
 
@@ -68,7 +108,16 @@ echo "$marker_a"
 
 # No permission changes until a successful phase A. The trap restores both
 # grants on any command failure, including a failed phase B.
-trap restore_grants EXIT
+finish() {
+  local previous=$?
+  trap - EXIT
+  if ! restore_grants; then
+    echo 'CHUNKS_GRANT: storage grants could not both be restored' >&2
+    exit 1
+  fi
+  exit "$previous"
+}
+trap finish EXIT
 adb shell am force-stop "$pkg"
 adb shell pm revoke "$pkg" android.permission.WRITE_EXTERNAL_STORAGE
 adb shell pm revoke "$pkg" android.permission.READ_EXTERNAL_STORAGE
