@@ -52,6 +52,12 @@ jobs:
           fi
       - name: Assemble the exact candidate binary and instrumentation package
         run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
+      - name: Reclaim unrelated runner toolchains for the emulator
+        run: |
+          # API35 Google-APIs Pixel 6 userdata needs several GB beyond APKs.
+          # Exact runner failure 41355079713: 7098MB available, 7373MB needed.
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/powershell
+          df -h "$RUNNER_TEMP"
       - name: Enable hardware acceleration
         run: |
           test -c /dev/kvm
@@ -66,6 +72,7 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_6
+          disk-size: 2048M
           emulator-boot-timeout: 600
           disable-animations: true
           script: bash tools/seedhost_android_real_transfer_add_once.sh
