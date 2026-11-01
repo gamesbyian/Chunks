@@ -125,7 +125,15 @@ internal class LocalResumeDatabase private constructor(
                     if (!cursor.moveToFirst() || !cursor.getString(0).equals("delete", true))
                         throw IOException("Resume database journal mode is unavailable")
                 }
-                database.execSQL("PRAGMA synchronous=FULL")
+                // DELETE journal commits retire their journal by unlink. SQLite
+                // documents that FULL may lose the last committed transaction
+                // on sudden power loss; EXTRA also syncs that directory entry.
+                // In particular, a lost REMOVE_INTENT could resurrect a job.
+                database.execSQL("PRAGMA synchronous=EXTRA")
+                database.rawQuery("PRAGMA synchronous", null).use { cursor ->
+                    if (!cursor.moveToFirst() || cursor.getInt(0) != 3)
+                        throw IOException("Durable resume synchronization is unavailable")
+                }
                 if (database.version == 0) {
                     val migrated = LocalResumeEventStore.open(root, inventory).snapshots()
                     database.beginTransaction()
