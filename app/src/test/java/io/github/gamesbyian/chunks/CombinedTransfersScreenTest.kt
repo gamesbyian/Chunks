@@ -120,6 +120,9 @@ class CombinedTransfersScreenTest {
         revealText("Size")
         rule.onNodeWithText("Size").performClick()
         rule.onNodeWithContentDescription("Sorted by Size, Largest first. Reverse order").performClick()
+        // A Compose semantics action schedules its click on the UI clock.
+        // Inspect storage only after the action/recomposition have settled.
+        rule.waitForIdle()
         // The persisted sort choice is the source of truth, including after
         // lazy row recycling. The compact summary must disclose the new order.
         assertEquals(UnifiedSortDirection.ASCENDING, CombinedViewPreferences(context).load().direction)
