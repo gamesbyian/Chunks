@@ -54,7 +54,7 @@ class SeedhostAndroidRealTransferAddInstrumentedTest {
         Base64.decode(requireNotNull(argument(key)), Base64.NO_WRAP), Charsets.UTF_8)
 
     private fun report(stage: String) {
-        require(stage in setOf("file-passed", "magnet-passed", "file-uncertain", "magnet-uncertain"))
+        require(stage.matches(Regex("(file|magnet)-(preflight|review|ui-verified|bytes-verified|restarted|passed|uncertain)")))
         InstrumentationRegistry.getInstrumentation().sendStatus(
             2, Bundle().apply { putString("chunks_real_add_stage", stage) })
     }
@@ -168,6 +168,7 @@ class SeedhostAndroidRealTransferAddInstrumentedTest {
             "Real upstream fixture already registered; refusing duplicate"
         }
 
+        report("$stage-preflight")
         var magnetField by mutableStateOf(magnet)
         var folderField by mutableStateOf(parent)
         var preparedFile by mutableStateOf(if (file) metainfo else null)
@@ -189,18 +190,23 @@ class SeedhostAndroidRealTransferAddInstrumentedTest {
                 }
             }
             if (file) {
-                rule.waitUntil(30_000) { visible("Infohash: $hash") }
+                rule.waitUntil(30_000) {
+                    runCatching { scroll("Infohash: $hash") }
+                    visible("Infohash: $hash")
+                }
             }
             rule.waitUntil(30_000) {\n                runCatching { scroll("Custom server folder (optional)") }\n                visible("Using custom Place.")\n            }
             scroll("Review Add")
             rule.onNodeWithText("Review Add").performClick()
             scroll("Confirm: add then start")
             assertTrue("Review must show exact public fixture hash", visible("Infohash: $hash"))
+            report("$stage-review")
             submitted = true
             rule.onNodeWithText("Confirm: add then start").performClick()
             rule.waitUntil(120_000) { visible("Operation outcome") }
             assertTrue("Installed app did not positively verify Add+Start",
                 visible("Verified: added and started on rTorrent."))
+            report("$stage-ui-verified")
 
             // Independent RPC readback, NOT a UI state echo. A magnet must
             // resolve its metadata; both sources must receive and verify pieces.
@@ -225,6 +231,39 @@ class SeedhostAndroidRealTransferAddInstrumentedTest {
             }
             assertTrue("No real metadata + exact-hash received AND verified peer-byte progress",
                 observedProgress)
+            report("$stage-bytes-verified")
+
+            // A Chunks-created transfer must also leave the stopped state and
+            // restart normally. Never retry a failed or ambiguous write.
+            val stop = runBlocking { remote.setStarted(hash, false) }
+            assertFalse("Explicit Stop was uncertain; do not replay",
+                stop is LifecycleOutcome.Uncertain)
+            val stopDeadline = SystemClock.elapsedRealtime() + 25_000L
+            var observedStopped = false
+            while (SystemClock.elapsedRealtime() < stopDeadline) {
+                observedStopped = runCatching { runBlocking {
+                    val exact = remote.listTransfers("main").singleOrNull { it.hash.equals(hash, true) }
+                    exact?.started == false && remote.readActivity(hash).active == false
+                } }.getOrDefault(false)
+                if (observedStopped) break
+                Thread.sleep(500)
+            }
+            assertTrue("Actual rTorrent job did not become stopped", observedStopped)
+            val start = runBlocking { remote.setStarted(hash, true) }
+            assertFalse("Explicit Start was uncertain; do not replay",
+                start is LifecycleOutcome.Uncertain)
+            val startDeadline = SystemClock.elapsedRealtime() + 30_000L
+            var observedRestarted = false
+            while (SystemClock.elapsedRealtime() < startDeadline) {
+                observedRestarted = runCatching { runBlocking {
+                    val exact = remote.listTransfers("main").singleOrNull { it.hash.equals(hash, true) }
+                    exact?.started == true && remote.readActivity(hash).active == true
+                } }.getOrDefault(false)
+                if (observedRestarted) break
+                Thread.sleep(500)
+            }
+            assertTrue("Actual Chunks-created rTorrent job could not restart", observedRestarted)
+            report("$stage-restarted")
             success = true
         } finally {
             // Exact new hash/name/place only; session removal preserves data.
@@ -242,11 +281,21 @@ class SeedhostAndroidRealTransferAddInstrumentedTest {
                         assertFalse("Stop uncertain: no automatic retry",
                             stopped is LifecycleOutcome.Uncertain)
                     }
-                    val stopped = runBlocking {
-                        remote.listTransfers("main").singleOrNull { it.hash.equals(hash, true) }
+                    val cleanupDeadline = SystemClock.elapsedRealtime() + 25_000L
+                    var safeToErase = false
+                    while (SystemClock.elapsedRealtime() < cleanupDeadline) {
+                        safeToErase = runCatching { runBlocking {
+                            val stopped = remote.listTransfers("main").singleOrNull {
+                                it.hash.equals(hash, true)
+                            }
+                            stopped != null && !stopped.started &&
+                                stopped.name == preview.name && stopped.directory == parent &&
+                                remote.readActivity(hash).active == false
+                        } }.getOrDefault(false)
+                        if (safeToErase) break
+                        Thread.sleep(500)
                     }
-                    check(stopped != null && !stopped.started && stopped.name == preview.name &&
-                        stopped.directory == parent) { "Exact stopped session not proven" }
+                    check(safeToErase) { "Exact stopped/inactive session not proven" }
                     val erased = runBlocking {
                         remote.eraseFromSession(hash, preview.name, parent)
                     }
