@@ -68,10 +68,14 @@ valid_boot_id "$before_boot_id" || { echo "CHUNKS_REBOOT: no valid original kern
 
 # The adb process can exit 0 while a test was skipped/failed, and a result
 # stream can echo "OK (1 test)" without reporting the actual terminal status.
-# Keep the exact completion line, prohibit negative status and skipped reports.
+# Require one completed JUnit result AND one successful terminal Android
+# instrumentation code. An echoed OK line alone never authorizes reboot
+# or a successful post-reboot recovery claim.
 instrument_passed_once() {
   local output="$1"
   [[ "$(grep -Fxc 'OK (1 test)' <<< "$output" || true)" == 1 ]] &&
+    [[ "$(grep -Fxc 'INSTRUMENTATION_CODE: -1' <<< "$output" || true)" == 1 ]] &&
+    [[ "$(grep -c '^INSTRUMENTATION_CODE:' <<< "$output" || true)" == 1 ]] &&
     ! grep -Eq '^INSTRUMENTATION_STATUS_CODE: -[1-9]|^FAILURES|AssumptionViolatedException' <<< "$output"
 }
 adb logcat -c || true
