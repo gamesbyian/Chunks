@@ -63,7 +63,7 @@ class RemoteTrafficSampleRpcTest {
             val result = if (method == "d.hash") {
                 guard++
                 str(if (guard == 1) hash else "cd".repeat(20))
-            } else num(50)
+            } else if (method == "d.is_active") num(1) else num(50)
             val response = "<methodResponse><params><param>$result</param></params></methodResponse>"
             val bytes = response.toByteArray(Charsets.UTF_8)
             exchange.sendResponseHeaders(200, bytes.size.toLong())

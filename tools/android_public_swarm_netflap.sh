@@ -128,9 +128,61 @@ set +e
 wait "$inst"
 instrument_status=$?
 set -e
-adb logcat -d -s ChunksSwarm:I | grep -o 'CHUNKS_SWARM_NETFLAP: .*' | tee -a "${GITHUB_STEP_SUMMARY:-/dev/null}" || true
-if [[ "$instrument_status" -ne 0 || "$ready" -ne 1 ]] || ! grep -Fxq 'OK (1 test)' "$log" || grep -qE '^INSTRUMENTATION_STATUS_CODE: -[1-9]|^FAILURES' "$log"; then
+# Do not infer an actual validated-network outage or post-return payload
+# recovery from an adb/JUnit OK line. Inspect a fresh app-owned positive
+# witness for every indispensable step of the real instrumented journey.
+native_log="$(adb logcat -d -s ChunksSwarm:I)" || {
+  echo "::error::Could not read native network-loss evidence" >&2; exit 1;
+}
+native_receipts="$(grep -o 'CHUNKS_SWARM_NETFLAP: .*' <<< "$native_log" || true)"
+printf '%s\n' "$native_receipts" | tee -a "${GITHUB_STEP_SUMMARY:-/dev/null}"
+
+if [[ "$instrument_status" -ne 0 || "$ready" -ne 1 ]] ||
+   [[ "$(grep -Fxc 'OK (1 test)' "$log" || true)" != 1 ]] ||
+   grep -Eq '^INSTRUMENTATION_STATUS_CODE: -[1-9]|^FAILURES|AssumptionViolatedException' "$log" ||
+   grep -Fq 'CHUNKS_SWARM_NETFLAP: INCONCLUSIVE' <<< "$native_receipts"; then
   grep -A12 '^INSTRUMENTATION_STATUS: stack=' "$log" | head -40 || true
-  echo "::error::Network flap was not independently executed and verified (peer availability may be inconclusive)"
+  echo "::error::Network flap instrumented journey was not a verified executed success" >&2
+  exit 1
+fi
+for witness in 'default_network_baseline_validated=true' \
+               'network_witness_default_internet_lost=true' \
+               'network_witness_default_internet_restored=true'; do
+  if [[ "$(grep -Fxc "CHUNKS_SWARM_NETFLAP: $witness" <<< "$native_receipts" || true)" != 1 ]]; then
+    echo "::error::Missing or duplicated native validated-Internet witness: $witness" >&2
+    exit 1
+  fi
+done
+ready_re='^CHUNKS_SWARM_NETFLAP: ready verified=([0-9]{1,16})$'
+return_re='^CHUNKS_SWARM_NETFLAP: outage verified_at_loss=([0-9]{1,16}) verified_at_return=([0-9]{1,16}) stopped=false error=(true|false)$'
+success_re='^CHUNKS_SWARM_NETFLAP: VERIFIED resumed_after_s=([0-9]{1,16}) verified=([0-9]{1,16}) peers=([0-9]{1,16})$'
+ready_line="$(grep -E "$ready_re" <<< "$native_receipts" || true)"
+return_line="$(grep -E "$return_re" <<< "$native_receipts" || true)"
+success_line="$(grep -E "$success_re" <<< "$native_receipts" || true)"
+if [[ "$(grep -c '^CHUNKS_SWARM_NETFLAP: ready ' <<< "$native_receipts" || true)" != 1 ||
+      "$(grep -c '^CHUNKS_SWARM_NETFLAP: outage ' <<< "$native_receipts" || true)" != 1 ||
+      "$(grep -c '^CHUNKS_SWARM_NETFLAP: VERIFIED ' <<< "$native_receipts" || true)" != 1 ]] ||
+   [[ ! "$ready_line" =~ $ready_re ]]; then
+  echo "::error::Missing, repeated or malformed native netflap byte receipt" >&2
+  exit 1
+fi
+ready_bytes="${BASH_REMATCH[1]}"
+if [[ ! "$return_line" =~ $return_re ]]; then
+  echo "::error::Missing native exact outage-return state receipt" >&2
+  exit 1
+fi
+at_loss="${BASH_REMATCH[1]}"
+at_return="${BASH_REMATCH[2]}"
+if [[ ! "$success_line" =~ $success_re ]]; then
+  echo "::error::Missing native post-network verified-byte receipt" >&2
+  exit 1
+fi
+continued="${BASH_REMATCH[2]}"
+# The actual Android test independently requires 4 MiB before toggles
+# and 2 MiB fresh hash-verified bytes after network return; enforce the
+# same numerical contract in external acceptance with no plausible OK-only pass.
+if (( ready_bytes < 4194304 || at_loss < ready_bytes ||
+      at_return < at_loss || continued < at_return + 2097152 )); then
+  echo "::error::Native per-hash bytes did not grow after the validated network returned" >&2
   exit 1
 fi
