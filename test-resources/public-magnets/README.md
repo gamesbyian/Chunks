@@ -1,25 +1,35 @@
 # Public magnet catalog for Chunks real-transfer testing
 
-The objective is **100 authentic BitTorrent magnets**, each with exact metainfo size ≤ **555,000,000 bytes**, plus useful tracker/source/content diversity. The checked-in candidates and any automatically collected catalog must distinguish a real source hash from live seeder proof.
+**Status (2026-11-01): 100 authentic, independently size-checked magnet identities committed for review.** The exact SHA-1/SHA-256 info dictionary hashes were derived from published source `.torrent` metainfo, not guessed hashes. This establishes provenance, hash validity and the full advertised payload size, **not** that all 100 currently have accessible conventional BitTorrent seeders.
 
-## Files and evidence
+## Use the catalog
 
-- `seeded-candidates.json`: **11 source-indexed candidates**, taken from LinuxTracker's published information hashes, displayed sizes and reported seeders. These are valid constructed magnet URIs using *published* hashes, but exact source .torrent metadata has **not yet been fetched and recomputed** by us. Reported seed counts are **site observations**, not live Chunks/seedbox measurements, and vary over time.
-- `catalog.json` and `magnets.txt` (once generated): automatically harvested from **actual source .torrent bytes**. The exact info dictionary is hashed, size totals checked and links deduplicated; the offsite data is left on this PR branch for review. These are still not necessarily verified active peer swarms.
+- [`magnets.txt`](magnets.txt): **100 real magnet URI lines**, ready for Chunks Add tests.
+- [`catalog.json`](catalog.json): the same 100 links with actual infohashes, precise total byte sizes, names, file counts, categories, source URLs, retained tracker information and explicit unverified peer fields.
+- [`first-15-source-verified.magnets.txt`](first-15-source-verified.magnets.txt) and [manifest](first-15-source-verified.json): independently harvested small smoke batch, sanitized tracker URLs; [GitHub Actions run 41360943530](https://github.com/gamesbyian/Chunks/actions/runs/41360943530).
+- [`live-metainfo-smoke.json`](live-metainfo-smoke.json): two live-source checked hashes and exact sizes; [run 41360738223](https://github.com/gamesbyian/Chunks/actions/runs/41360738223).
+- [`seeded-candidates.json`](seeded-candidates.json): 11 additional source-indexed entries for separate follow-up; **these are not a source-metainfo-verified substitute** for the curated catalog.
 
-## Collection / verification
+### Audited properties of the 100
 
-From repository root with external Internet access:
+- **100 unique infohashes and 100 matching magnet lines**, no duplicate hashes, sizes strictly above zero and **at most 555,000,000 bytes** each; actual range **11,234 to 460,947,956 bytes**.
+- Sources: **30 LinuxTracker torrents**, whose site displayed positive seed counts at collection, and **70 Internet Archive torrents**, CC/public-domain metadata checked by the existing collector.
+- Media types: software **42**, audio **6**, movies **8**, images **18**, data **18**, texts **8**.
+- **Eight distinct sanitized tracker hosts**; tracker paths are strictly `/announce` (no passkey/path tokens, URL queries or embedded credentials). Multiple tracker hosts do not imply multiple independently healthy swarms.
+- **Seeder and transferred-byte verification is still open**. LinuxTracker's reported seeder counts are hints, not direct rTorrent observations. Internet Archive relies on webseeds for some torrents; rTorrent may need actual peers. Per-release Linux distribution licences need appropriate human review before any content redistribution.
+
+## Collect / validate / refresh
+
+From the repository root with external Internet access:
 
 ```bash
+python3 tools/validate_public_magnet_catalog.py
 python3 tools/collect_public_magnet_catalog.py --count 100 --max-bytes 555000000
 python3 tools/validate_public_magnet_catalog.py
 ```
 
-The collector checks published torrent metadata from the Internet Archive (audio, video, texts, software and other media, requiring an explicit recognized CC/public-domain license) and LinuxTracker Linux distributions (exact hash match against the tracker index, publisher-reported seeder hints; per-release licence review still needed). Archive magnets retain only a sanitized official source tracker; LinuxTracker magnet tracker URLs are restricted to a curated public allowlist. The script never downloads payloads, modifies remote rTorrent sessions or accesses credentials. The manual / temporary-branch [GitHub Actions workflow](../../.github/workflows/collect-public-magnets.yml) is an alternative, with review artifact and branch-only auto-commit. An incomplete harvest exits nonzero, but keeps its partial output with an explicit count.
+The collector reads original source metadata from LinuxTracker/Internet Archive, hashes the exact bencoded info dictionary, checks **whole-torrent sizes**, deduplicates, restricts tracker URLs and outputs JSON and TXT without downloading payloads or touching remote servers. Harvested results can change as upstream torrents change. The [manual GitHub Actions workflow](../../.github/workflows/collect-public-magnets.yml) uploads an artifact for review; no automatic write to `main`, and no protected rTorrent or seedbox mutations. Incomplete harvests exit nonzero while retaining a partial list with an explicit count. Validate differences before replacing the checked-in files.
 
-## Real acceptance
+## Promotion to real-client acceptance
 
-Treat the source's displayed seeder count as an **unconfirmed hint**. To promote a fixture to an actual working test, have an authorized rTorrent/libtorrent session resolve a magnet through real peers, observe per-infohash metadata and **hash-verified piece-byte growth**, then record the exact environment, observation date, tracker/DHT topology and results. Archive webseeds do not prove ordinary rTorrent peer availability, and a single torrent with 20 tracker URLs does not create 20 independent swarms. Keep separate columns for index validity, source metadata verification, peer metadata resolution, conventional seeders, received pieces and verified completion. Do not claim 100 active torrents without 100 actual observations.
-
-See [public torrent fixture process](../../docs/PUBLIC-TORRENT-FIXTURES.md) and [real-transfer acceptance](../../docs/REAL-TRANSFER-ACCEPTANCE.md).
+To establish a working swarm, make a **real magnet Add through installed Chunks** to an authorized rTorrent/libtorrent engine, observe metadata resolution through actual peers and per-infohash piece-hash-verified byte growth, and capture server/profile, timestamp, path, Start/Stop and cleanup receipts. Do not claim peer availability from an index count or a green metadata parse. See [public torrent fixture process](../../docs/PUBLIC-TORRENT-FIXTURES.md) and [real-transfer acceptance](../../docs/REAL-TRANSFER-ACCEPTANCE.md).
