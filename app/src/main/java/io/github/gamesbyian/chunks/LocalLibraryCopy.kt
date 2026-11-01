@@ -1,6 +1,11 @@
 package io.github.gamesbyian.chunks
 
 import androidx.compose.material3.Text
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.Composable
 import io.github.gamesbyian.chunks.engine.LocalTorrentEngine
 import io.github.gamesbyian.chunks.engine.LocalTransferStatus
@@ -58,9 +63,61 @@ internal class LocalLibraryCopySource(val sourceRoot: File, val files: List<Libr
 }
 
 /**
- * Publication remains unavailable while destination ownership safety is addressed.
+ * First bounded completed-file path uses a genuinely new platform Downloads row.
+ * Do not enable legacy generic SAF library-copy or recursive folder publication.
  */
 @Composable
-internal fun LocalLibraryCopyPanel(transfer: LocalTransferStatus) {
-    Text("Copy to a folder is temporarily unavailable while destination file safety is being improved.")
+internal fun LocalLibraryCopyPanel(
+    transfer: LocalTransferStatus,
+    engineProvider: () -> LocalTorrentEngine? = { LocalEngineHolder.current() },
+    onResult: ((LocalSingleLibraryMediaStoreCopy.Result) -> Unit)? = null
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var busy by androidx.compose.runtime.remember(transfer.infoHash) {
+        androidx.compose.runtime.mutableStateOf(false)
+    }
+    var outcome by androidx.compose.runtime.remember(transfer.infoHash) {
+        androidx.compose.runtime.mutableStateOf<LocalSingleLibraryMediaStoreCopy.Result?>(null)
+    }
+    androidx.compose.material3.Card {
+        androidx.compose.foundation.layout.Column(
+            androidx.compose.ui.Modifier.padding(16.dp),
+            verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)
+        ) {
+            Text("Copy a finished file", style = androidx.compose.material3.MaterialTheme.typography.titleMedium)
+            Text("Save one completed, flat .txt, .json, .bin, .torrent or .chunksnap file (up to 8 MiB) as a NEW Downloads/Chunks Exports document. The original keeps seeding. Multi-file folders, larger files, other types, selected SAF destinations and Replace are not available yet.")
+            androidx.compose.material3.Button(
+                onClick = {
+                    busy = true
+                    scope.launch {
+                        val result = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                            val engine = engineProvider()
+                            if (engine == null) LocalSingleLibraryMediaStoreCopy.Result(
+                                LocalSingleLibraryMediaStoreCopy.State.BLOCKED,
+                                "The local transfer engine is unavailable; no copy was attempted.")
+                            else try {
+                                LocalSingleLibraryMediaStoreCopy.copyNew(context, engine, transfer.infoHash)
+                            } catch (_: Exception) {
+                                LocalSingleLibraryMediaStoreCopy.Result(
+                                    LocalSingleLibraryMediaStoreCopy.State.NEEDS_ATTENTION,
+                                    "Could not confirm the Downloads copy; no automatic deletion or retry occurred.")
+                            }
+                        }
+                        outcome = result
+                        onResult?.invoke(result)
+                        busy = false
+                    }
+                },
+                enabled = !busy && outcome == null,
+                modifier = androidx.compose.ui.Modifier.fillMaxWidth().heightIn(min = 48.dp)
+            ) { Text(if (busy) "Checking completed file…" else "Copy single file to Downloads") }
+            outcome?.let { result ->
+                Text(result.message + (result.publishedName?.let { " Name: " + it } ?: ""),
+                    color = if (result.state == LocalSingleLibraryMediaStoreCopy.State.COPIED)
+                        androidx.compose.material3.MaterialTheme.colorScheme.primary
+                    else androidx.compose.material3.MaterialTheme.colorScheme.error)
+            }
+        }
+    }
 }
