@@ -83,7 +83,9 @@ for case_name in \
   traversalNestedMultiMemberAndPreCancelledNeverPublishOrTouchCanary \
   seedingSingleFileCopiesThroughUiWhileOriginalAndExistingCanaryStayUntouched \
   pathnameSwapDuringPinnedLibraryReadRefusesBeforeDestinationCreation; do
-  [[ "$(grep -Fxc "INSTRUMENTATION_STATUS: test=$case_name" "$out" || true)" == 1 ]] || {
+  # Android emits test=name at both start (status 1) and completion (status 0).
+  # One genuinely executed test therefore has exactly TWO named statuses.
+  [[ "$(grep -Fxc "INSTRUMENTATION_STATUS: test=$case_name" "$out" || true)" == 2 ]] || {
     echo "CHUNKS_OWNED_DOCS: missing required real Android case $case_name" >&2
     exit 1
   }

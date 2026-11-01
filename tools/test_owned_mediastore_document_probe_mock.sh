@@ -44,6 +44,8 @@ case "$1" in
           seedingSingleFileCopiesThroughUiWhileOriginalAndExistingCanaryStayUntouched \
           pathnameSwapDuringPinnedLibraryReadRefusesBeforeDestinationCreation; do
           [[ "${MOCK_MISSING_CASE:-0}" != 1 || "$name" != pathnameSwapDuringPinnedLibraryReadRefusesBeforeDestinationCreation ]] || continue
+          # Mimic Android start/completion status records for ONE executed test.
+          echo "INSTRUMENTATION_STATUS: test=$name"
           echo "INSTRUMENTATION_STATUS: test=$name"
           [[ "${MOCK_DUPLICATE_CASE:-0}" != 1 || "$name" != pathnameSwapDuringPinnedLibraryReadRefusesBeforeDestinationCreation ]] || echo "INSTRUMENTATION_STATUS: test=$name"
         done
