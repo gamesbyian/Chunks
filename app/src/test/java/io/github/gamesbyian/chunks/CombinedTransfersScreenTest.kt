@@ -119,6 +119,14 @@ class CombinedTransfersScreenTest {
         rule.onNodeWithText("Change sort & grouping", substring = true).performClick()
         revealText("Size")
         rule.onNodeWithText("Size").performClick()
+        // Isolate selection persistence from the subsequent reverse click:
+        // failing here means Size itself was not committed, while failure
+        // below isolates the reverse action or its saved readback.
+        rule.waitUntil(10_000) {
+            val saved = CombinedViewPreferences(context).load()
+            saved.sortKey == UnifiedSortKey.SIZE &&
+                saved.direction == UnifiedSortDirection.DESCENDING
+        }
         rule.onNodeWithContentDescription("Sorted by Size, Largest first. Reverse order").performClick()
         // Click delivery and recomposition may finish in separate Robolectric
         // frames. Observe the *actual committed preference* with a bounded
