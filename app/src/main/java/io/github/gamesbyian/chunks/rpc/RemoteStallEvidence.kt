@@ -52,7 +52,7 @@ internal object RemoteStallInspector {
             }
         }
         fun flag(value: Any?, field: String): Boolean {
-            val n = (value as? Number)?.toLong()
+            val n = value as? Long
             require(n != null && n in 0L..1L) { "Invalid remote $field flag" }
             return n == 1L
         }
@@ -77,7 +77,7 @@ internal object RemoteStallInspector {
         val active = flag(remote.call("d.is_active", listOf(hash)), "active")
         val open = flag(remote.call("d.is_open", listOf(hash)), "open")
         val phase = optional("d.hashing")?.let {
-            val n = (it as? Number)?.toLong()
+            val n = it as? Long
             require(n != null && n in 0L..3L) { "Invalid remote hashing phase" }
             n.toInt()
         }
