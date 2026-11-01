@@ -1256,6 +1256,63 @@ class LocalTorrentEngineTest {
      * alone never contacted its trackers and could only find injected peers.
      * Here the leecher learns the seeder ONLY from the torrent's tracker.
      */
+    /**
+     * Production magnet URI discovery without explicit peer injection.
+     *
+     * The installed two-process UI fixture supplies a known localhost peer to
+     * isolate its lifecycle from tracker scheduling. This separate real-JNI
+     * test makes the opposite promise: only a magnet's tr= tracker may reveal
+     * the seed. DHT, LSD and port mapping stay disabled, and both independent
+     * payload counters must prove actual transfer rather than cached progress.
+     */
+    @Test fun magnetTrackerDiscoversSeederAndDownloadsVerifiedBytesWithoutPeerInjection() {
+        LoopbackTracker().use { tracker ->
+            val parent = temp.newFolder("magnet-tracker-seed")
+            val root = File(parent, "Magnet tracker fixture").apply { mkdirs() }
+            val payload = ByteArray(384_000).also { Random(5691).nextBytes(it) }
+            File(root, "payload.bin").writeBytes(payload)
+            val torrent = TorrentBuilder().path(root).pieceSize(32 * 1024)
+                .flags(TorrentBuilder.V1_ONLY).addTracker(tracker.announceUrl)
+                .generate().entry().bencode()
+
+            val seeder = engine()
+            val seed = added(seeder.addStopped(torrent, parent))
+            assertEquals(LocalCommandOutcome.VERIFIED, seeder.resume(seed.infoHash).outcome)
+            waitFor { seeder.status(seed.infoHash)?.state == LocalTransferState.SEEDING }
+            waitFor(20_000) { tracker.announces.get() >= 1 }
+            val beforeSeedUpload = requireNotNull(seeder.status(seed.infoHash)).payloadUploadedBytes
+
+            val destination = temp.newFolder("magnet-tracker-download")
+            val leecher = engine()
+            // Exactly one localhost tracker; no addMagnet peers, connectPeer,
+            // DHT or LSD. Only the explicit Add-and-start consent may download.
+            val magnet = "magnet:?xt=urn:btih:${seed.infoHash}&tr=" +
+                java.net.URLEncoder.encode(tracker.announceUrl, "UTF-8")
+            val first = leecher.addMagnet(magnet, destination,
+                autoStartAfterMetadata = true)
+            assertTrue("Magnet admission refused: $first",
+                first is LocalAddResult.FetchingMetadata)
+            assertEquals("Magnet may not begin with verified payload bytes", 0L,
+                requireNotNull(leecher.status(seed.infoHash)).doneBytes)
+            waitFor(90_000) {
+                leecher.status(seed.infoHash)?.let {
+                    it.metadataKnown && !it.stopped && it.progressPpm == 1_000_000
+                } == true
+            }
+            requireFlushed(leecher, seed.infoHash)
+            assertArrayEquals("Independent disk readback after real tracker-discovered peer",
+                payload, File(destination, "Magnet tracker fixture/payload.bin").readBytes())
+            waitFor(30_000) {
+                (leecher.status(seed.infoHash)?.payloadDownloadedBytes ?: 0) >= payload.size &&
+                    (seeder.status(seed.infoHash)?.payloadUploadedBytes ?: 0) - beforeSeedUpload >= payload.size
+            }
+            assertTrue("The magnet must make its own tracker announcement",
+                tracker.announces.get() >= 2)
+            assertNull("Magnet start must not retain a native error",
+                leecher.status(seed.infoHash)?.error)
+        }
+    }
+
     @Test fun torrentFileTrackersAreAnnouncedSoPeersAreFoundWithoutInjection() {
         LoopbackTracker().use { tracker ->
             val parent = temp.newFolder("tracked-seed")
