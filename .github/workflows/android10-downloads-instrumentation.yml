@@ -11,12 +11,12 @@ on:
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalPublicDownloadsPlaceInstrumentedTest.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalDownloadPlacePickerInstrumentedTest.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/Android10StoragePermissionDialogInstrumentedTest.kt"
-      - "app/src/main/java/io/github/gamesbyian/chunks/LocalEngineScreen.kt"
-      - "tools/android10_downloads_instrumentation.sh"
-      - "tools/test_android10_downloads_instrumentation_mock.sh"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/PhoneIntakeJourneyInstrumentedTest.kt"
       - "tools/phone_intake_journey.sh"
       - "tools/test_phone_intake_journey.sh"
+      - "app/src/main/java/io/github/gamesbyian/chunks/LocalEngineScreen.kt"
+      - "tools/android10_downloads_instrumentation.sh"
+      - "tools/test_android10_downloads_instrumentation_mock.sh"
       # Checked Add/Start, path reservations and native collision surveys
       # directly guard user-visible shared Downloads bytes. Exercise API29
       # when their production logic changes even if androidTest stays untouched.
@@ -26,6 +26,8 @@ on:
       # Native resume reader changes must exercise the API29 real backing,
       # restart, and fresh-peer seeding journey, not only host JVM tests.
       - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalResumeEventStore.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalResumeStore.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalResumeDatabase.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalRestoreDiscovery.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/engine/LocalResumeEventStoreInstrumentedTest.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalResumeFileReader.kt"
@@ -51,7 +53,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Reject misleading API29 install and test evidence (offline)
         run: bash tools/test_android10_downloads_instrumentation_mock.sh
-      - name: Reject forged intake/recovery receipts and physical data clearing (offline)
+      - name: Reject forged Share/magnet intake, skipped tests and non-emulator cleanup (offline)
         run: bash tools/test_phone_intake_journey.sh
       - uses: actions/setup-java@v4
         with:

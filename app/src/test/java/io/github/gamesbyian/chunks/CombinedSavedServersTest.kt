@@ -5,6 +5,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.hasScrollToIndexAction
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -29,6 +31,10 @@ class CombinedSavedServersTest {
     private fun id(scope: String) = io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverId(
         scope.substringBefore('\u0000'), scope.substringAfter('\u0000')).value
     private val calls = AtomicInteger(0)
+
+    private fun revealText(text: String) {
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(text))
+    }
 
     /**
      * Identity changes may be shown as disconnected, privacy-locked or
@@ -91,7 +97,8 @@ class CombinedSavedServersTest {
             rule.onAllNodesWithText("Server · bob @ b.example/RPC2: Could not load (connection refused) · 0 transfers")
                 .fetchSemanticsNodes().isNotEmpty()
         }
-        rule.onNodeWithText("Linux ISO").performScrollTo().assertExists()
+        revealText("Linux ISO")
+        rule.onNodeWithText("Linux ISO").assertExists()
         rule.onNodeWithText("Server · ann @ a.example/RPC2: Live · 1 transfers").assertExists()
         rule.onNodeWithText("Server · bob @ b.example/RPC2: Could not load (connection refused) · 0 transfers")
             .assertExists()
@@ -168,7 +175,8 @@ class CombinedSavedServersTest {
                 rule.onAllNodesWithText(name + ": Live · 1 transfers")
                     .fetchSemanticsNodes().isNotEmpty()
         }
-        rule.onNodeWithText("New account ISO").performScrollTo().assertExists()
+        revealText("New account ISO")
+        rule.onNodeWithText("New account ISO").assertExists()
         rule.onNodeWithText("Old account private payload").assertDoesNotExist()
         // Returning to the first identity must not resurrect an earlier reply.
         rule.runOnIdle {
@@ -224,7 +232,8 @@ class CombinedSavedServersTest {
             rule.onAllNodesWithText(label + ": Refresh failed (connection refused), showing last list · 1 transfers")
                 .fetchSemanticsNodes().isNotEmpty()
         }
-        rule.onNodeWithText("Cached Linux").performScrollTo().assertExists()
+        revealText("Cached Linux")
+        rule.onNodeWithText("Cached Linux").assertExists()
         assertEquals(2, attempts)
     }
 

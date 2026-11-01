@@ -51,6 +51,7 @@ object RemoteSmartConnect {
     ) : IOException(
         when (category) {
             Category.AUTH -> "Login rejected. Check the username/password for this rTorrent instance."
+            Category.IDENTITY -> "The RPC gateway allowed public reads without verifying the supplied login. Check the exact account endpoint or connect anonymously only if that is intentional."
             Category.PROXY -> "A network proxy requires separate authentication (HTTP 407). Chunks stopped endpoint discovery."
             Category.RATE_LIMIT -> "The server is limiting connection attempts (HTTP 429). Chunks stopped checking addresses to protect your login."
             Category.TLS -> "Secure connection failed. Check the HTTPS hostname/certificate. Chunks will not bypass TLS."
@@ -61,7 +62,7 @@ object RemoteSmartConnect {
         }
     )
 
-    enum class Category { AUTH, PROXY, RATE_LIMIT, TLS, NETWORK, SERVICE, PROTOCOL, ENDPOINT }
+    enum class Category { AUTH, IDENTITY, PROXY, RATE_LIMIT, TLS, NETWORK, SERVICE, PROTOCOL, ENDPOINT }
 
     /** Targeted next steps for a failed connection; never echoes secrets. */
     fun repairAdvice(failure: ConnectionFailed, input: String): List<String> {
@@ -75,6 +76,10 @@ object RemoteSmartConnect {
             Category.PROXY -> listOf(
                 "Check whether your network, VPN or company proxy requires separate sign-in.",
                 "A proxy login cannot be fixed by guessing rTorrent paths or changing the seedbox password.")
+            Category.IDENTITY -> listOf(
+                "The server returned version and transfers without challenging the supplied login.",
+                "Confirm the exact ruTorrent/HTTP-RPC address for this account and instance.",
+                "If the server intentionally permits anonymous access, clear both login fields before connecting.")
             Category.AUTH -> listOf(
                 "Use the same username and password that open ruTorrent in your browser.",
                 "Some providers use a separate web-UI password from the SSH/FTP one.",
@@ -254,6 +259,7 @@ object RemoteSmartConnect {
             } catch (failure: Exception) {
                 if (failure is CancellationException) throw failure
                 val category = when {
+                    failure is RemoteIdentityUnverified -> Category.IDENTITY
                     failure is SSLException -> Category.TLS
                     // Connection resets and prematurely truncated response
                     // streams do not prove the current RPC path is wrong.
@@ -292,6 +298,7 @@ object RemoteSmartConnect {
                 attempts += Attempt(candidate.description, path, when (category) {
                     Category.ENDPOINT -> describe(failure)
                     Category.AUTH -> "Login refused"
+                    Category.IDENTITY -> "Public reads did not authenticate supplied credentials"
                     Category.PROXY -> "Network proxy requires sign-in"
                     Category.RATE_LIMIT -> "Server is limiting connection attempts"
                     Category.TLS -> "Secure connection failed"

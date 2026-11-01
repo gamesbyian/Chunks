@@ -1,55 +1,90 @@
 # Chunks evidence and release gate ledger
 
+## 2026-11-01 #5 installed Share/magnet acceptance: candidate and limits
+
+**Exact API29 positive fixture at pre-integration head `fa8f5b0f701f6329edef1fe646bdc027dd185d83`:** [run 41270427846](https://github.com/gamesbyian/Chunks/actions/runs/41270427846) passed **both** MainActivity Share/.torrent and magnet external-intent journeys through consented public Downloads, 524,288 real peer download bytes, UI Stop, deliberate process death, STOPPED restored state, explicit UI Start, a fresh zero-initial-piece receiver, **524,288 actual native uploaded/downloaded peer bytes**, original SHA-256 and session-only Remove preserving public Downloads bytes. The initial API35 run [41270427845](https://github.com/gamesbyian/Chunks/actions/runs/41270427845) passed the entire Share path but timed out during **magnet phase-A fixture tracker/peer discovery**. Native manual-magnet tests already use direct localhost `connectPeer`; draft #890 follow-up `2839508` applies a single deterministic exact fixture peer *after real UI consent*, preserving all byte, death, SHA and Remove proofs. That follow-up cannot claim autonomous tracker discovery, physical/OEM or final API35 acceptance.
+
+**Integration:** draft #890 source was developed on pre-SQLite main. The latest candidate is reconciled here against merged SQLite [#889](https://github.com/gamesbyian/Chunks/pull/889), newer remote/CI changes and current P0 queue. The original run does **not** qualify the combined code; require new exact-head API29/API35 and native Compose tests before any release claim. Historical initial EACCES, disabled Remove, zero-counter and Composition crashes on earlier heads remain in PR #890's review discussion; those older reds never constitute positive receipts.
+
+## 2026-11-01 production SQLite retention integrated at automated tier
+
+**Merged** [PR #889](https://github.com/gamesbyian/Chunks/pull/889) after exact candidate head `68887d8603e8f4d8dd18a1679cb83167d9879afc` passed **seven/seven** workflow groups. [Merge commit `15f507b1e749a7072d20a2eea7d4f074a778b3c6`](https://github.com/gamesbyian/Chunks/commit/15f507b1e749a7072d20a2eea7d4f074a778b3c6) incorporates bounded row-per-hash Android production SQLite metadata, `DELETE` journal `synchronous=EXTRA` with actual connection mode-3 verification, migration authority receipt and preserved immutable legacy data, stale-writer protection, crash-cut/torn-state refusal and durable Remove intent/commit. Two independent 0F/0E source reviews recorded conditions resolved by the final-head source and CI. Newer mainline changes were checked for **zero overlapping files** before SHA-pinned guarded squash integration.
+
+**Exact candidate-head receipts:** [API29 shared Downloads/recovery 41269003984](https://github.com/gamesbyian/Chunks/actions/runs/41269003984) (including 10/10 production SQLite/retirement tests), [API35 native Add 41269004005](https://github.com/gamesbyian/Chunks/actions/runs/41269004005), [Android lifecycle 41269004002](https://github.com/gamesbyian/Chunks/actions/runs/41269004002), [foundation/JVM 41269004043](https://github.com/gamesbyian/Chunks/actions/runs/41269004043), [R8 41269003976](https://github.com/gamesbyian/Chunks/actions/runs/41269003976), [documentation 41269003992](https://github.com/gamesbyian/Chunks/actions/runs/41269003992), [disposable rTorrent 41269004050](https://github.com/gamesbyian/Chunks/actions/runs/41269004050). An earlier red API29 workflow had in fact run **all ten** resume tests successfully; its stale shell `OK (9 tests)` contract was corrected and exact ten requalified. This is a branch-source acceptance and safe integration record, **not** an unseen post-merge main run.
+
+**Still open [#865](https://github.com/gamesbyian/Chunks/issues/865):** sustained repeated real-engine retention/latency, physical power-loss and OEM/SD/permission testing. SQLite validates the app-private directory entries with `lstat` and subsequently opens a pathname; no atomic inode binding is claimed against hostile same-UID private-directory substitution. Ordinary selected-root BitTorrent payload replacement under superseded #568 remains supported.
+
+**Parallel #5/#569 evidence:** [#897](https://github.com/gamesbyian/Chunks/pull/897) has two successful *original-head* API35 workflows for real shortened timeout → force-stop → two stopped-job cold restores → explicit seed/remove/byte preservation; branch reconciliation with the merged SQLite main was created at `af016883c` and requires **new exact-head qualification**. [#890](https://github.com/gamesbyian/Chunks/pull/890) remains a **draft/red installed Share/magnet journey** until actual fresh-peer payload counters, UI Remove and API29/API35 outcomes all pass. These are disposable emulator tiers, never physical-phone acceptance.
+
+## 2026-11-01 accepted protected read-only profile and installed Android UI
+
+Merged main `2162b8e99996f3e08b2b78a9f430503123aa3a6d` includes
+[#891](https://github.com/gamesbyian/Chunks/pull/891)'s test-only
+challenge-accepted gate. The exact-main protected
+[primary endpoint probe 41266094878](https://github.com/gamesbyian/Chunks/actions/runs/41266094878)
+(job `124729100920`) passed Kotlin version/main-view reads **and**
+accepted HTTP read challenge evidence on the selected existing primary
+HTTPS profile. It sent no mutations. This establishes a challenged read
+at the endpoint, not human identity or write authorization.
+
+The independent protected
+[installed Android read-only run 41266326823](https://github.com/gamesbyian/Chunks/actions/runs/41266326823)
+(job `124729782844`) succeeded on the same main SHA: connected over
+HTTPS, rendered/refreshed a **nonempty** development queue, entered Add
+to inspect a default-Place preview, then returned to Transfers **without
+submitting any mutation**. Three 1080×2400 connected-screen screenshots
+were collected. Emulator/CI is not physical handset acceptance.
+
+**Production Connect source audit:** after the above receipts,
+`MainActivity` still called version/main-view and persisted a purportedly
+verified supplied login without inspecting `READ_CHALLENGE_ACCEPTED`.
+An anonymously readable endpoint could therefore wrongly be called
+authenticated even with invented credentials. The isolated
+`fix/remote-connect-credential-evidence-20261101` candidate adds a
+pre-persistence transport-evidence guard, distinct identity-unverified
+diagnosis and localhost Basic/public/anonymous tests. Candidate evidence
+is **not accepted or merged until exact-head CI/review**; independent
+physical, instance identity, per-hash mutation and peer byte acceptance
+remain open #1/#4/#464.
+
 ## 2026-11-01 remote read-only acceptance authentication correction
 
-Merged [#891](https://github.com/gamesbyian/Chunks/pull/891) (`2162b8e99996f3e08b2b78a9f430503123aa3a6d`) closes a false
+The test-only `test/remote-read-auth-proof-20261101` candidate closes a false
 positive in the protected probe: valid anonymous version/inventory replies
 previously produced an "authenticated" marker with no accepted challenge.
 The actual live test now shares an acceptance gate with real loopback HTTP
-counterexamples and reports a missing live environment as skipped. Full local and CI foundation suites at `78732fa7e220430b068038619dcd17533c98ace3` passed: 1,168 executed, 30 skipped, zero failures across 254 reports; CI [41265536463](https://github.com/gamesbyian/Chunks/actions/runs/41265536463), docs [41265536514](https://github.com/gamesbyian/Chunks/actions/runs/41265536514). Six focused
+counterexamples and reports a missing live environment as skipped. Six focused
 `RemoteReadAuthEvidenceTest` cases passed locally; the live smoke was explicitly
 skipped (one case). Only version and main-view RPC methods are permitted by the
 new positive/negative fixtures. No production transport, credential routing or
 remote mutation changes; no protected host was contacted for this receipt.
 
 Historical read-only success markers below prove validated replies, but do not
-alone prove supplied-credential authentication. The single reviewed-main protected
-primary-profile run [41266094878](https://github.com/gamesbyian/Chunks/actions/runs/41266094878) **passed** at `2162b8e99996f3e08b2b78a9f430503123aa3a6d` (job `124729100920`). Its success marker now requires valid version/main inventory, an accepted exact-endpoint HTTP challenge, and zero failed/error/skipped tests. No mutations were dispatched; accepted HTTP challenge
+alone prove supplied-credential authentication. A reviewed-main protected
+primary-profile run remains required after integration; accepted HTTP challenge
 evidence still does not grant human-account or mutation authority. See the
 [corrected protocol](SEEDHOST-REMOTE-TESTING.md#read-only-authentication-evidence-correction-2026-11-01).
 
 
-> **Current-status reconciliation (2026-11-01):** #568 is closed under ordinary authorized same-path regular payload semantics. #868/#869 are merged; their older red receipts below are historical. [PR #889](https://github.com/gamesbyian/Chunks/pull/889) passed all eight checks at `c377bf1` and awaits independent storage review, while main retains the earlier event backend. #809 remains contained and unfinished; #5/#569 track the actual Android journeys. Use [the live queue](WORK-QUEUE.md) and current PR heads before dispatch.
+> **Current-status reconciliation (2026-11-01):** #568 is closed and superseded for ordinary authorized same-path regular torrent payload replacement. #868/#869 merged at `b402549a8355b0cc248b85cd74f67f0cb2c9bf0a` with all eight integrated-head workflows successful, including [API35 native Add 41249697402](https://github.com/gamesbyian/Chunks/actions/runs/41249697402). The older red #869 run and all older #568 RED declarations below are historical evidence, not current policy. #865 remains open for sustainable metadata retention/recovery, #809 for the contained optional ZIP/library paths, and #5/#569 for Android runtime/device acceptance. [Active dispatch](WORK-QUEUE.md).
 
-## 2026-11-01 independent CI integration and installed phone intake follow-through
+## 2026-11-01 #865 transactional retention candidate: local integrated-source evidence
 
-**Merged #885:** inspected all six changed files independently at `854b21ac693875fc376076221017b81a0d523386`, ran 15 local concurrency/inventory/docs tests and the documentation checker (zero errors; one inherited stale queue-anchor warning), and verified all six exact-head CI checks successful. Guarded squash merge is `5061cd8171bd12f68179db58606d8746d9734485`. Changes isolate superseded research runs by workflow/PR while preserving manual runs, both NDK ABIs, safety probes and read-only permissions. No app/native shipping source changed; no measured saved-runner-minute claim is made.
+**Unmerged candidate:** `app/resume-retention-20261101`, code commit `73ff769c2a34524715b9082465ec37aaeb76f0bc`, based on main `7e1e7bd40adbd2a836307f9cc090668f47a59928`. Android production saves/restores use SQLite; desktop JNI fixtures retain the event backend. The following documentation-only commit does not change tested app/test source.
 
-**0B candidate:** `app/phone-intake-journey-20261101` builds on that main. The existing cold-intent test opens an Add draft only; the new opt-in two-process fixture uses actual MainActivity Add/Stop/Start/Remove controls and independent real peer/digest witnesses for both Share and magnet. It is wired into the two existing API29/API35 emulators. The offline harness accepted both kinds and rejected 17 forged/unsafe cases, including physical-device control, skipped/failed/duplicate receipts, surviving processes, missing seeding and changed digests. These negatives do not execute Android. Installed-runtime acceptance is still pending. The earlier independently verified JVM callback-count correction from #889 is included without its storage implementation; it preserves real restart/seeding/byte/sibling checks.
+- **Exact code command:** `gradle --no-daemon --init-script tools/ci_jvm_two_forks.init.gradle :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest` **SUCCESS**, 6m13s, local Debian 13 x86_64, Temurin 17.0.21, Gradle 9.3.1, SDK 37.0 / build tools 36.0.0. JUnit: **256 classes, 1,219 declared, 1,190 executed, 29 skipped, zero failures/errors**. Assembly is not installed Android runtime evidence.
+- **Real desktop JNI:** all 43 `LocalTorrentEngineTest` cases and the new `LocalResumeRetentionProfileTest` executed. The latter downloads and independently verifies a synthetic 4 MiB payload over loopback, then saves/Stops/restores/seeds/Removes/re-adds the same hash over three cycles. The retained event backend measured **12/24/36 events**, **140,607/281,007/421,407 bytes**, and **102/100/106 ms** engine reopen times. Upload-cap changes deliberately make each measured native save distinct; these are not day-long cadence or handset measurements.
+- **Native host SQLite / explicit host filesystem bridge:** all **22** `LocalResumeDatabaseTest` cases executed under Robolectric SDK29/35 configurations. Across **512 changed 64 KiB snapshots and eight reopen/retire/re-add cycles per configuration**, peak saved database size was **81,920 bytes**, and post-retirement size **16,384 bytes**. This is a separate fixture from the JNI profile; no like-for-like speed/size percentage is claimed. Tests cover >2 MiB resume readback, migration/torn history, transaction failure, stale writers, receipt interruption, missing/zeroed/corrupt committed databases, and foreign entry preservation. The other focused store/discovery cases also passed.
+- **Harness limits and recovery:** an initial Gradle dependency attempt failed without the environment proxy/CA configuration; an initial Robolectric run failed because its `ShadowLinux` cannot open directories and reports zero link counts. The test-only host bridge now exercises real host filesystem calls; production Android Os calls remain unchanged. Neither failure is physical/device acceptance. Offline docs links/tests, API29 dispatch checks and fake-ADB rejection controls passed; all nine required resume instrumentation cases are counted by the updated API29 harness.
 
-**Initial runtime failures at `e1c7bf2`:** foundation, ordinary API35 and docs
-passed. The new API29 journey [41264571180](https://github.com/gamesbyian/Chunks/actions/runs/41264571180)
-reached cold restore and byte-exact fresh-peer completion but timed out on its
-sender/receiver counter conjunction. API35 [41264571185](https://github.com/gamesbyian/Chunks/actions/runs/41264571185)
-completed the existing lifecycle checks, then the new Share journey encountered
-`EACCES` on its immediate independent public-file read. Neither new journey is
-accepted. The follow-up keeps all peer/digest/counter assertions, adds diagnostic
-counter snapshots, and uses the existing public-Place fixture's bounded exact
-readback pattern to distinguish transient visibility from persistent denial.
+**CI qualification at first PR head `7c6a36a4e2f94630a69640e59a90f94f27941fd6`:** [API29 41259381472](https://github.com/gamesbyian/Chunks/actions/runs/41259381472) passed all six instrumented groups, including all nine resume cases; [API35 41259381687](https://github.com/gamesbyian/Chunks/actions/runs/41259381687), [R8 41259381662](https://github.com/gamesbyian/Chunks/actions/runs/41259381662), and [timeout/process-death/reboot 41259381486](https://github.com/gamesbyian/Chunks/actions/runs/41259381486) also passed. Process-death readback reports restored-stopped, 100% recheck and unchanged bytes; reboot verifies a changed kernel boot ID, no autostart and unchanged bytes. [Disposable legacy/modern rTorrent 41259381491](https://github.com/gamesbyian/Chunks/actions/runs/41259381491) passed after one bounded failed-job retry of the legacy package-provisioning timeout; the first failure ran no protocol test.
 
-**Second runtime receipt at `dc82988`:** foundation, ordinary API35 and docs
-passed. API29 [41265477077](https://github.com/gamesbyian/Chunks/actions/runs/41265477077)
-passed the same counter conjunction and then tried Stop before its UI label was
-observed. API35 [41265477022](https://github.com/gamesbyian/Chunks/actions/runs/41265477022)
-still denied exact public-file reads for the full 30-second window. This is
-persistent observed denial; no Android15 public-read acceptance is claimed.
-The next correction waits for each asynchronous action label and removes
-`pm clear` from the ordinary journey: Android's MediaProvider orphans package
-ownership on data clear, a distinct reinstall/data-clear scenario. It preserves
-all native/counter/byte assertions, requires a verified empty job inventory
-before consent, and adds app-side read-only MediaStore ownership diagnostics if
-denial persists. Neither timing nor data clear is declared the resolved root
-cause before the next runtime receipt.
+**Foundation assertion correction:** [first-head foundation 41259381483](https://github.com/gamesbyian/Chunks/actions/runs/41259381483) ran the suite and failed only `metadataReadyMagnetRechecksExistingRegularPayloadAndRestoresVerifiedSeeding` at the obsolete fresh-callback-count assertion. It now waits for independently parsed durable state, retaining all actual restart/seeding, payload and unrelated-sibling checks. Local focused validation passed **23 executed / zero skipped**, including that real JNI case and all 22 SQLite cases. All production Android and instrumented-test source is unchanged by this JVM-only correction; the new final-head CI still must complete.
+
+**Still open:** final-head CI and independent storage review; physical/OEM and true power-loss/long-duration tiers remain separately unverified. Original migration files remain untouched at their pre-upgrade fixed disk use; retirement rows grow with distinct identities. #865 is not closed by host fixtures. [Transactional contract](NATIVE-ADMISSION-RESUME-RECONCILIATION.md#transactional-retention-follow-through); [one active dispatch](WORK-QUEUE.md).
+
+
+**Post-review correction (2026-11-01, head `aa041c5`):** SQLite DELETE-journal `synchronous=FULL` was insufficient to guarantee the most recent acknowledged retirement survives sudden power loss on every supported filesystem. Per [SQLite PRAGMA synchronous](https://www.sqlite.org/pragma.html), changed to `EXTRA` and verify mode 3 before serving jobs. This is a source-level durability correction; earlier green `c377bf1` evidence does not qualify the new head. Actual power-off handset testing and independent storage approval remain open.
 
 ## 2026-10-31 owner correction: historical native collision witness reclassified
 

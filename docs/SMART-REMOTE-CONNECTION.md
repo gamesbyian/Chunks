@@ -74,10 +74,19 @@ bounded same-origin provider-specific/generic path list, with a strict
 HTTPS requirement and no redirect or cross-host guessing. Login failures,
 bad TLS and unreachable network stop exploration. Read-only
 `RTorrentRemote.version()` plus `listTransfers("main")` must both pass.
-`MainActivity` uses this planner for Connect and persists a verified
-profile. Unit tests cover tenant boundaries, provider patterns,
-unsupported/insecure input, credential failure and fallback. This does
-**not** claim all provider families have live acceptance.
+For a **supplied** login, `MainActivity` additionally requires the transport's
+accepted HTTP read challenge evidence before labelling Connect authenticated
+or persisting credentials. A valid anonymous version/main-view response with
+invented credentials fails with a distinct **identity unverified** explanation;
+it is not misreported as a rejected password or replayed at other mounts.
+Connecting deliberately with **both** username and password empty remains
+supported as anonymous access; that session is not proof of any account's
+identity, and read challenge evidence alone is never write authorization.
+The challenge is scoped to the exact HTTP endpoint, but a reverse proxy may
+authenticate a principal other than the user intended. Unit tests cover tenant
+boundaries, public-read identity rejection, challenged Basic credentials,
+intentional anonymous access, unsupported/insecure input and fallback. This
+does **not** claim all provider families have live acceptance.
 
 **Provider catalog (2026-10-29):** hostname-only plans now come from
 `rpc/RemoteProviderCatalog.kt`, a data-only list whose entries carry the

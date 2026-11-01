@@ -39,3 +39,8 @@ Before turning a hypothetical hazard into a universal release blocker, apply the
 ## Session completion contract
 
 Report **merged versus open PRs**, tested exact head/commands/run identifiers, observed behavior at each tested tier, failure and recovery evidence, claims still unverified, changes to queue/issues/docs, and the **next executable unclaimed task**. Never assert unseen CI ran, that physical testing happened in an emulator, or that a build is release-ready without its required evidence.
+
+
+## Automatic Android skill selection
+
+For **every native Android implementation, review, test, regression, lifecycle, accessibility, storage, security, widget or performance task**, read and apply [Android evidence-first](.agents/skills/android-evidence-first/SKILL.md) without waiting for the owner to request it. During task discovery identify relevant specialist skill references in that file and, **if installed and available**, read the appropriate Google Android, Android Testing or Compose Performance skill; use official Android documentation otherwise. Apply narrow skills to the actual failure mode, not indiscriminately. The repository's normative specifications, agent ownership, security rules, CI policy and proof gates always take precedence. Record when a specialist skill materially changed the implementation or test plan; never treat a skill as proof of working behavior.
