@@ -55,7 +55,8 @@ internal data class LocalZipExtractionPlan(
 internal fun LocalZipExtractionPanel(
     sourceUri: Uri,
     review: LocalZipReview,
-    onResult: ((LocalSingleZipMediaStoreExport.Result) -> Unit)? = null
+    onResult: ((LocalSingleZipMediaStoreExport.Result) -> Unit)? = null,
+    onMultiResult: ((LocalMultiZipMediaStoreExport.Result) -> Unit)? = null
 ) {
     if (review.verification == null) return
     val context = LocalContext.current
@@ -65,12 +66,49 @@ internal fun LocalZipExtractionPanel(
         mutableStateOf<LocalSingleZipMediaStoreExport.Result?>(null)
     }
     val eligible = LocalSingleZipMediaStoreExport.eligible(review)
+    val multiEligible = LocalMultiZipMediaStoreExport.eligible(review)
+    var multiOutcome by remember(sourceUri, review) {
+        mutableStateOf<LocalMultiZipMediaStoreExport.Result?>(null)
+    }
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Extract", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
                 modifier = Modifier.semantics { heading() })
-            if (!eligible) {
-                Text("Full ZIP folder extraction and selected SAF folders are temporarily unavailable. The first supported Downloads adapter handles a single verified flat .txt, .json, .bin, .torrent or .chunksnap file of up to 8 MiB. ZIP review remains available.")
+            if (!eligible && !multiEligible) {
+                Text("Nested ZIP folders, selected SAF destinations and unsupported files cannot be exported here. Supported new Downloads copies are one flat file up to 8 MiB, or 2–8 verified flat files up to 16 MiB in total. ZIP review remains available.")
+            } else if (multiEligible) {
+                Text("Save this ZIP's verified flat files as distinct NEW documents in Downloads/Chunks Exports. Every member gets a unique name. A batch is not atomic: if a later file fails, earlier verified files stay published and an uncertain item must be reviewed. The original ZIP is preserved. Replace and other destinations remain disabled.")
+                Button(
+                    onClick = {
+                        running = true
+                        scope.launch {
+                            val result = withContext(Dispatchers.IO) {
+                                try { LocalMultiZipMediaStoreExport.extractNew(context, sourceUri) }
+                                catch (_: Exception) {
+                                    LocalMultiZipMediaStoreExport.Result(
+                                        LocalMultiZipMediaStoreExport.State.NEEDS_ATTENTION,
+                                        "The batch result is uncertain. Check Downloads and saved operation records. No automatic cleanup was attempted.")
+                                }
+                            }
+                            multiOutcome = result
+                            onMultiResult?.invoke(result)
+                            running = false
+                        }
+                    },
+                    enabled = !running && multiOutcome == null,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                ) { Text(if (running) "Checking ZIP and saving…" else "Extract new files to Downloads") }
+                multiOutcome?.let { result ->
+                    Text(result.message + " Verified files: " + result.published.size +
+                        ". Not confirmed: " + result.remaining + ".",
+                        color = if (result.state == LocalMultiZipMediaStoreExport.State.EXPORTED)
+                            MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+                    result.published.forEach {
+                        Text("Created: " + it.publishedName,
+                            style = MaterialTheme.typography.bodySmall)
+                    }
+                }
             } else {
                 Text("Save this ZIP's single file as a NEW document in Downloads/Chunks Exports. Chunks gives it a unique name, keeps the original ZIP, and never replaces an existing file. Other destinations and multi-file archives remain unavailable.")
                 Button(

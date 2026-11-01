@@ -54,7 +54,7 @@ out="$(mktemp)"
 trap 'rm -f "$out"' EXIT
 set +e
 adb shell am instrument -w -r \
-  -e class io.github.gamesbyian.chunks.storage.OwnedMediaStoreDocumentPublicationInstrumentedTest,io.github.gamesbyian.chunks.LocalSingleZipMediaStoreExportInstrumentedTest,io.github.gamesbyian.chunks.LocalSingleLibraryMediaStoreCopyInstrumentedTest \
+  -e class io.github.gamesbyian.chunks.storage.OwnedMediaStoreDocumentPublicationInstrumentedTest,io.github.gamesbyian.chunks.LocalSingleZipMediaStoreExportInstrumentedTest,io.github.gamesbyian.chunks.LocalSingleLibraryMediaStoreCopyInstrumentedTest,io.github.gamesbyian.chunks.LocalMultiZipMediaStoreExportInstrumentedTest \
   io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner >"$out" 2>&1
 status=$?
 set -e
@@ -63,8 +63,8 @@ cat "$out"
   echo 'CHUNKS_OWNED_DOCS: instrumentation process failed' >&2
   exit 1
 }
-[[ "$(grep -Fxc 'OK (11 tests)' "$out" || true)" == 1 ]] || {
-  echo 'CHUNKS_OWNED_DOCS: exact eleven tests not confirmed' >&2
+[[ "$(grep -Fxc 'OK (14 tests)' "$out" || true)" == 1 ]] || {
+  echo 'CHUNKS_OWNED_DOCS: exact fourteen tests not confirmed' >&2
   exit 1
 }
 if [[ "$(grep -Fxc 'INSTRUMENTATION_CODE: -1' "$out" || true)" != 1 ]] ||
@@ -83,7 +83,10 @@ for case_name in \
   traversalNestedMultiMemberAndPreCancelledNeverPublishOrTouchCanary \
   seedingSingleFileCopiesThroughUiWhileOriginalAndExistingCanaryStayUntouched \
   pathnameSwapDuringPinnedLibraryReadRefusesBeforeDestinationCreation \
-  pinnedLibraryReadRefusesSwappedFifoPromptlyAndLeavesForeignBytesUntouched; do
+  pinnedLibraryReadRefusesSwappedFifoPromptlyAndLeavesForeignBytesUntouched \
+  composeTwoFlatFilesPublishIndependentlyAndPreserveCanaryAndArchive \
+  userCancellationAfterFirstPublishedFileRetainsItsBytesAndSkipsNext \
+  nestedUnknownAndTooManyMembersFailWithoutPublishingAnything; do
   # Android emits test=name at both start (status 1) and completion (status 0).
   # One genuinely executed test therefore has exactly TWO named statuses.
   [[ "$(grep -Fxc "INSTRUMENTATION_STATUS: test=$case_name" "$out" || true)" == 2 ]] || {

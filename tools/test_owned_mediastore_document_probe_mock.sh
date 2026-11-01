@@ -43,7 +43,10 @@ case "$1" in
           traversalNestedMultiMemberAndPreCancelledNeverPublishOrTouchCanary \
           seedingSingleFileCopiesThroughUiWhileOriginalAndExistingCanaryStayUntouched \
           pathnameSwapDuringPinnedLibraryReadRefusesBeforeDestinationCreation \
-          pinnedLibraryReadRefusesSwappedFifoPromptlyAndLeavesForeignBytesUntouched; do
+          pinnedLibraryReadRefusesSwappedFifoPromptlyAndLeavesForeignBytesUntouched \
+          composeTwoFlatFilesPublishIndependentlyAndPreserveCanaryAndArchive \
+          userCancellationAfterFirstPublishedFileRetainsItsBytesAndSkipsNext \
+          nestedUnknownAndTooManyMembersFailWithoutPublishingAnything; do
           [[ "${MOCK_MISSING_CASE:-0}" != 1 || "$name" != pathnameSwapDuringPinnedLibraryReadRefusesBeforeDestinationCreation ]] || continue
           [[ "${MOCK_MISSING_FIFO:-0}" != 1 || "$name" != pinnedLibraryReadRefusesSwappedFifoPromptlyAndLeavesForeignBytesUntouched ]] || continue
           # Mimic Android start/completion status records for ONE executed test.
@@ -52,8 +55,8 @@ case "$1" in
           [[ "${MOCK_DUPLICATE_CASE:-0}" != 1 || "$name" != pathnameSwapDuringPinnedLibraryReadRefusesBeforeDestinationCreation ]] || echo "INSTRUMENTATION_STATUS: test=$name"
           [[ "${MOCK_DUPLICATE_FIFO:-0}" != 1 || "$name" != pinnedLibraryReadRefusesSwappedFifoPromptlyAndLeavesForeignBytesUntouched ]] || echo "INSTRUMENTATION_STATUS: test=$name"
         done
-        echo 'OK (11 tests)'
-        [[ "${MOCK_DUPLICATE_OK:-0}" != 1 ]] || echo 'OK (11 tests)'
+        echo 'OK (14 tests)'
+        [[ "${MOCK_DUPLICATE_OK:-0}" != 1 ]] || echo 'OK (14 tests)'
         [[ "${MOCK_SKIP:-0}" != 1 ]] || echo 'INSTRUMENTATION_STATUS_CODE: -3'
         [[ "${MOCK_TEST_FAILURE:-0}" != 1 ]] || echo 'FAILURES!!!'
         [[ "${MOCK_MISSING_FINAL:-0}" == 1 ]] || echo 'INSTRUMENTATION_CODE: -1'
