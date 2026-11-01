@@ -92,7 +92,7 @@ jobs:
           if identity is not None:
               print("CHUNKS_HOST_BYTES: synthetic_exact_hash=" + identity)
           print("CHUNKS_HOST_BYTES: last_stage=" + (stages[-1] if stages else "unavailable"))
-          passed = (int(sys.argv[1]) == 0 and root.attrib.get("tests") == "1" and
+          passed = (int(sys.argv[1]) == 0 and root.attrib.get("tests") == "2" and
                     all(root.attrib.get(x) == "0" for x in ("failures", "errors", "skipped")) and
                     "bytes-verified" in stages and stages[-1:] == ["inventory-restored"])
           if not passed:
