@@ -276,7 +276,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         val fields = getters(if (rich) extended else minimum)
         val transfers = ArrayList<RemoteTransfer>(hashes.size)
         for (page in hashes.chunked(PAGE_SIZE)) {
-            val rows = pagedRows(page, fields)
+            val rows = pagedRowsWithinLimit(page, fields)
             for ((index, row) in rows.withIndex()) {
                 val transfer = transferFromRow(row, rich)
                 require(transfer.hash.equals(page[index], ignoreCase = true)) {
@@ -325,6 +325,25 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                 single[0]
             }
         }
+    }
+
+    /**
+     * Only a *size-limited* read-only page may be retried as two smaller pages.
+     * Server faults, timeouts, bad XML, identity mismatches and cancellations
+     * still fail the entire snapshot. A single oversized row is irreducible.
+     *
+     * All pages retain their original order. The caller validates each
+     * requested hash and re-reads view membership before publishing anything.
+     */
+    private suspend fun pagedRowsWithinLimit(
+        hashes: List<String>, getters: List<String>
+    ): List<List<Any?>> = try {
+        pagedRows(hashes, getters)
+    } catch (tooLarge: RpcReplyTooLarge) {
+        if (hashes.size <= 1) throw tooLarge
+        val middle = hashes.size / 2
+        pagedRowsWithinLimit(hashes.subList(0, middle), getters) +
+            pagedRowsWithinLimit(hashes.subList(middle, hashes.size), getters)
     }
 
     private fun transferFromRow(row: List<*>, rich: Boolean): RemoteTransfer {
