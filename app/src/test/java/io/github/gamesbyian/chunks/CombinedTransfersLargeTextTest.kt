@@ -116,11 +116,11 @@ class CombinedTransfersLargeTextTest {
         list.performScrollToNode(hasText("Attention"))
         rule.onNodeWithText("Attention").performClick()
         assertEquals(UnifiedTransferFilter.ATTENTION,
-            CombinedViewPreferences(ApplicationProvider.getApplicationContext()).load().filter)
+            CombinedViewPreferences(ApplicationProvider.getApplicationContext<android.content.Context>()).load().filter)
         list.performScrollToNode(hasText("Peers"))
         rule.onNodeWithText("Peers").performClick()
         assertEquals(UnifiedSortKey.PEERS,
-            CombinedViewPreferences(ApplicationProvider.getApplicationContext()).load().sortKey)
+            CombinedViewPreferences(ApplicationProvider.getApplicationContext<android.content.Context>()).load().sortKey)
         assertEquals(0, opened[0])
         assertEquals(0, backed[0])
         assertNull(LocalEngineHolder.current())
