@@ -53,7 +53,7 @@ internal object RemoteStallInspector {
         }
         fun flag(value: Any?, field: String): Boolean {
             val n = (value as? Number)?.toLong()
-            require(n in 0L..1L && n != null) { "Invalid remote $field flag" }
+            require(n != null && n in 0L..1L) { "Invalid remote $field flag" }
             return n == 1L
         }
         suspend fun optional(method: String): Any? = try {
