@@ -596,17 +596,18 @@ class SeedhostLiveAcceptanceTest {
 
         suspend fun observeActive(hash: String, expectedDirectory: String): Boolean {
             var last: RemoteTransfer? = null
+            var lastActive: Boolean? = null
             for (attempt in 0 until 25) {
                 last = remote.listTransfers("main").singleOrNull { it.hash.equals(hash, true) }
                 if (last != null) {
                     check(last.directory == expectedDirectory) { "Native Add used wrong destination" }
-                    val active = remote.readActivity(hash).active
-                    if (last.started && active == true) return true
+                    lastActive = remote.readActivity(hash).active
+                    if (last.started && lastActive == true) return true
                 }
                 if (attempt < 24) kotlinx.coroutines.delay(400L)
             }
             log("native-sample listed=${last != null} started=${last?.started} " +
-                "activity=${last?.let { remote.readActivity(hash).active } ?: "not-listed"}")
+                "activity=${lastActive ?: "unknown"}")
             return false
         }
 
