@@ -60,6 +60,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.platform.LocalDensity
@@ -277,6 +278,7 @@ private fun ChunksApp(
         }
     }
     val sortStore = remember(context) { TransferListSortStore(context) }
+    val remoteFilterStore = remember(context) { RemoteTransferFilterStore(context) }
     var orderDirection by remember { mutableStateOf(order.naturalDirection) }
     // Each authenticated server profile keeps its own list order; a profile
     // without a saved order starts at Name A–Z rather than inheriting another's.
@@ -290,6 +292,11 @@ private fun ChunksApp(
         val saved = sortEnvironment?.let { sortStore.get(it, TransferOrder.entries.toTypedArray()) }
         order = saved?.first ?: TransferOrder.NAME
         orderDirection = saved?.second ?: order.naturalDirection
+        // A different authenticated account cannot inherit another server's
+        // search/filter. Search is transient; only this exact profile's filter
+        // is restored from durable view-only preferences.
+        filter = remoteFilterStore.load(sortEnvironment)
+        query = ""
     }
     val remoteFence = remember { RemoteUiRequestFence() }
     val inspectionFence = remember { RemoteUiRequestFence() }
@@ -440,14 +447,32 @@ private fun ChunksApp(
                 onOpenPhone = { section = Section.LOCAL },
                 onOpenServer = if (server != null) ({ section = Section.TRANSFERS }) else null,
                 onOpenTransfer = { key ->
-                    if (key.environment == io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE) {
-                        phoneSearchPrefill = key.infoHash
-                        section = Section.LOCAL
-                    } else {
-                        // Exact hash search on the signed-in server's own list.
-                        query = key.infoHash
-                        filter = TransferFilter.ALL
-                        section = Section.TRANSFERS
+                    // Resolve an exact owner. A saved-only server, a disconnected
+                    // profile or the same hash on a different server must never
+                    // inherit the currently authenticated server's controls.
+                    val authenticatedId = if (server != null)
+                        io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverIdOfAliasScope(aliasScope)
+                        else null
+                    when (ExactOwningListNavigation.route(key, authenticatedId)) {
+                        ExactOwningListNavigation.Route.PHONE -> {
+                            phoneSearchPrefill = key.infoHash
+                            section = Section.LOCAL
+                        }
+                        ExactOwningListNavigation.Route.AUTHENTICATED_SERVER -> {
+                            query = key.infoHash
+                            filter = TransferFilter.ALL
+                            // Combined may show a full "main" inventory while
+                            // the signed-in screen is still on a filtered view.
+                            // The safe read-only refresh is queued if a read is
+                            // already active; no mutation or implicit retry.
+                            ExactOwningListNavigation.requestMainIfNeeded(
+                                currentView, requestedView,
+                                setRequestedView = { requestedView = it },
+                                refresh = refresh
+                            )
+                            section = Section.TRANSFERS
+                        }
+                        ExactOwningListNavigation.Route.UNAVAILABLE -> Unit
                     }
                 },
                 onBack = { section = Section.TRANSFERS }
@@ -878,7 +903,15 @@ private fun ChunksApp(
                     list = transfers, view = currentView, loading = loading, stale = stale,
                     snapshotRevision = snapshotRevision,
                     query = query, onQuery = { query = it },
-                    filter = filter, onFilter = { filter = it },
+                    filter = filter, onFilter = { next ->
+                        filter = next
+                        remoteFilterStore.save(sortEnvironment, next)
+                    },
+                    onClearView = {
+                        query = ""
+                        filter = TransferFilter.ALL
+                        remoteFilterStore.save(sortEnvironment, TransferFilter.ALL)
+                    },
                     order = order, direction = orderDirection,
                     onSort = { key, direction ->
                         order = key
@@ -1154,33 +1187,18 @@ private fun ConnectionScreen(
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         item {
-            ColoredPanel("Hello, server.", "Paste your seedbox hostname or ruTorrent web address. Chunks checks known secure rTorrent endpoints automatically. Torrent changes require separate confirmation.", Lilac)
+            ColoredPanel("Your downloads",
+                "Use this phone without a server account, or connect to an rTorrent server below. " +
+                    "Opening either option never moves existing downloads.", Lilac)
         }
+        item { PhoneFirstEntry(onOpenPhone = onLocalEngine) }
         item {
-            // Things that work without a server: the phone engine and two offline inspectors.
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                ActionTile("Download on this phone (experimental)", ChunksColors.Cyan,
-                    onClick = onLocalEngine, modifier = Modifier.fillMaxWidth(),
-                    icon = R.drawable.chunks_ic_phone, stacked = false)
-                // Half-width tiles split long words at 200% text; stack them instead.
-                val wideText = LocalDensity.current.fontScale >= 1.5f
-                val offline: @Composable (Modifier) -> Unit = { each ->
-                    ActionTile("Inspect a local ZIP without connecting", ChunksColors.Yellow,
-                        onClick = onLocalZipReview, modifier = each,
-                        icon = R.drawable.chunks_ic_archive, stacked = !wideText)
-                    ActionTile("Inspect .chunksnap backup (offline)", ChunksColors.Pink,
-                        onClick = onInspectSnapshot, modifier = each,
-                        icon = R.drawable.chunks_ic_document, stacked = !wideText)
-                }
-                if (wideText) offline(Modifier.fillMaxWidth())
-                else Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
-                    offline(Modifier.weight(1f).fillMaxHeight())
-                }
-                ActionTile("Create a torrent from phone files", ChunksColors.Green,
-                    onClick = onCreateTorrent, modifier = Modifier.fillMaxWidth(),
-                    icon = R.drawable.chunks_ic_add_torrent, stacked = false)
-            }
+            Text("Connect to another computer or server (optional)",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.semantics { heading() })
+            Text("Manage a seedbox here. Connecting checks a secure endpoint without changing " +
+                "its downloads; each transfer action is reviewed separately.",
+                style = MaterialTheme.typography.bodySmall)
         }
         if (rememberLogin && savedProfiles.isNotEmpty()) {
             item {
@@ -1310,6 +1328,21 @@ private fun ConnectionScreen(
             Text("Protected HTTPS is required for remote servers. Login is encrypted and stored only on this device unless you opt out. No torrents or files are changed by connecting.",
                 style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary)
         }
+        item {
+            Text("Other tools", style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.semantics { heading() })
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                ActionTile("Inspect a local ZIP without connecting", ChunksColors.Yellow,
+                    onClick = onLocalZipReview, modifier = Modifier.fillMaxWidth(),
+                    icon = R.drawable.chunks_ic_archive, stacked = false)
+                ActionTile("Inspect .chunksnap backup (offline)", ChunksColors.Pink,
+                    onClick = onInspectSnapshot, modifier = Modifier.fillMaxWidth(),
+                    icon = R.drawable.chunks_ic_document, stacked = false)
+                ActionTile("Create a torrent from phone files", ChunksColors.Green,
+                    onClick = onCreateTorrent, modifier = Modifier.fillMaxWidth(),
+                    icon = R.drawable.chunks_ic_add_torrent, stacked = false)
+            }
+        }
     }
 }
 
@@ -1324,7 +1357,7 @@ private fun TransfersScreen(
     snapshotRevision: Long,
     query: String, onQuery: (String) -> Unit, filter: TransferFilter,
     onCombined: () -> Unit,
-    onFilter: (TransferFilter) -> Unit, order: TransferOrder,
+    onFilter: (TransferFilter) -> Unit, onClearView: () -> Unit, order: TransferOrder,
     direction: UnifiedSortDirection,
     onSort: (TransferOrder, UnifiedSortDirection) -> Unit, onRefresh: () -> Unit, onAdd: () -> Unit,
     onReviewNames: () -> Unit, onExportSnapshot: () -> Unit,
@@ -1641,7 +1674,17 @@ private fun TransfersScreen(
             }
         }
         if (visible.isEmpty()) item {
-            ColoredPanel("Nothing in this view.", "Try another filter, search, or server view.", Lilac)
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                ColoredPanel("Nothing in this view.",
+                    RemoteEmptyTransfers.explanation(list.size, loading, stale, view,
+                        query.isNotBlank(), filter != TransferFilter.ALL), Lilac)
+                if (RemoteEmptyTransfers.canClear(query, filter)) {
+                    OutlinedButton(onClick = onClearView,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                        Text("Clear search and filter")
+                    }
+                }
+            }
         }
         items(visible, key = { it.hash }) { transfer ->
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
