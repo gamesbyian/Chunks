@@ -97,4 +97,66 @@ class LocalSingleLibraryMediaStoreCopyInstrumentedTest {
             root.deleteRecursively()
         }
     }
+
+    /**
+     * The native transfer remains complete, but an external actor replaces
+     * its source filename AFTER Chunks pins an original FD. A second path
+     * open would observe the replacement. The production adapter must refuse
+     * before any new MediaStore insert, without deleting either source file.
+     */
+    @Test fun pathnameSwapDuringPinnedLibraryReadRefusesBeforeDestinationCreation() {
+        val root = File(context.filesDir, "single-library-swap-test")
+        assertTrue("Disposable source-swap fixture must be fresh", root.mkdir())
+        var engine: LocalTorrentEngine? = null
+        try {
+            val sourceDir = File(root, "Source").apply { assertTrue(mkdir()) }
+            val original = ByteArray(221_000).also { Random(9101).nextBytes(it) }
+            val replacement = ByteArray(221_000).also { Random(9102).nextBytes(it) }
+            val sourceFile = File(sourceDir, "replace-race.bin").apply { writeBytes(original) }
+            val retired = File(sourceDir, "retired-original.bin")
+            val torrent = TorrentBuilder().path(sourceDir).pieceSize(16 * 1024)
+                .generate().entry().bencode()
+            val local = LocalTorrentEngine(LocalEngineConfig(listenInterfaces = "127.0.0.1:0"))
+            engine = local
+            local.start()
+            val added = (local.addStopped(torrent, root) as LocalAddResult.AddedStopped).status
+            local.resume(added.infoHash)
+            val deadline = System.nanoTime() + 30_000_000_000L
+            while (local.status(added.infoHash)?.state != LocalTransferState.SEEDING) {
+                if (System.nanoTime() > deadline) fail("Race fixture never reached verified seeding")
+                Thread.sleep(100)
+            }
+            val wanted = requireNotNull(LocalLibraryCopySource.of(
+                local, requireNotNull(local.status(added.infoHash))))
+            assertEquals(1, wanted.files.size)
+            assertEquals(sourceFile.canonicalPath, wanted.files.single().source.canonicalPath)
+
+            var callbacks = 0
+            val result = LocalSingleLibraryMediaStoreCopy.copyNew(context, local, added.infoHash) {
+                callbacks++
+                if (callbacks == 3) {
+                    // The callback executes inside the FIRST pinned-FD pread
+                    // pass, after original fstat/lstat identity checks.
+                    assertTrue("Original source rename must be possible",
+                        sourceFile.renameTo(retired))
+                    sourceFile.writeBytes(replacement)
+                }
+                false
+            }
+            assertTrue("The fixture must actually replace the source during a pinned read",
+                callbacks >= 3)
+            assertEquals("A swapped filename must be refused before an insert",
+                LocalSingleLibraryMediaStoreCopy.State.BLOCKED, result.state)
+            assertNull("No destination row may be returned for a rejected source",
+                result.publishedUri)
+            assertArrayEquals("Original native seeding bytes must remain untouched",
+                original, retired.readBytes())
+            assertArrayEquals("The planted replacement must not be cleaned up or overwritten",
+                replacement, sourceFile.readBytes())
+        } finally {
+            engine?.close()
+            // Test-private fixture only, never a user's torrent download root.
+            root.deleteRecursively()
+        }
+    }
 }
