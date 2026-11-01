@@ -1,5 +1,24 @@
 # Chunks evidence and release gate ledger
 
+## 2026-11-01 accepted oversized read-only remote paging
+
+[#892](https://github.com/gamesbyian/Chunks/pull/892) merged as
+`6ffec6b19013a120955c4fed40367f0acb53242a` from exact reviewed
+head `dfcff21aeff512b3223384b5fd6c993a3d3a6360`. All five CI
+checks succeeded: [foundation 41267740532](https://github.com/gamesbyian/Chunks/actions/runs/41267740532)
+(255 reports, 1,171 executed JVM cases, 30 skipped, zero failed, debug
+APK assembled), [disposable real rTorrent 41267740585](https://github.com/gamesbyian/Chunks/actions/runs/41267740585)
+(legacy and modern separate engine jobs), [R8 41267740577](https://github.com/gamesbyian/Chunks/actions/runs/41267740577),
+and [actual native Add review 41267740565](https://github.com/gamesbyian/Chunks/actions/runs/41267740565).
+
+The adapter now recursively bisects only oversized **read-only**
+`system.multicall` exact-hash getter pages after the large-inventory
+fallback, preserves row order and existing identity/member fences, and
+refuses unsplittable rows, bad XML, timeouts, server faults and changing
+view membership. Three localhost HTTP tests cover the positive and
+two refusal modes. This does not prove real thousands-row Seedhost queues,
+live byte growth, credentials, Android mutation or any write replay.
+
 ## 2026-11-01 saved combined-server reauthentication: source-only candidate
 
 In the existing `MainActivity` combined-saved-server callback, a newly
