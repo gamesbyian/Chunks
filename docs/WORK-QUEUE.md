@@ -10,15 +10,15 @@ and acceptance gaps in [SPEC-COVERAGE](SPEC-COVERAGE.md).
 
 ## Current dispatch checkpoint (2026-11-01)
 
-Reconciled against main `e5bcd0fc` and live app PRs/issues.
+Reconciled against main `e5bcd0fc` and live app PRs/issues; checked again after #940's exact-head green results. This is an evidence checkpoint, not a guarantee that main has not subsequently advanced.
 This is a dated checkpoint: individual live PR status remains authoritative.
 
 | Slice | Current disposition / next action |
 |---|---|
-| 0D #940 exact-session server-to-phone review | Integrated candidate `f130bc85` fixes the overlapping test fixture. Local 14/14 session/model/RPC tests pass; an old-key negative reproduces stale review. Fresh foundation/native Add/R8 are running; keep draft until qualified. |
-| 0D #927 scoped Add / combined freshness | Local candidate `909a9323` scrolls the actual Reverse pointer target into view and uniquely checks the summary; 20/20 combined/large-text tests pass. Qualify current-main integration after #940, retaining all saved-state assertions. |
+| 0D #940 exact-session server-to-phone review | Integrated candidate `f130bc85` fixes the overlapping test fixture. Local 14/14 session/model/RPC tests pass; an old-key negative reproduces stale review. Exact head `f130bc85` has foundation/native Add/R8 **green**; branch is synchronized with main. Review and integrate safely after verifying scope and independent qualification; do not repeat its corrected fixture work. |
+| 0D #927 scoped Add / combined freshness | Published PR head `7717fefd` has foundation **red** at combined persisted reverse-direction wait (line 134), while atlas/native Add/R8 passed. Separate local candidate `909a9323` reports 20/20 combined/large-text tests with an actual Reverse target visibility fix; verify that candidate exists in branch history, integrate it without dropping newer main/PR changes, and require fresh exact-head CI with unchanged saved-state assertions. |
 | 0B #956 standalone reboot target guard | Lifecycle workflow executes and fails the later intake restored-seeding wait. Keep draft; diagnose that observed failure. No physical/OEM proof. |
-| 0E #922 durable ZIP batch recovery → #923 cold recovery | #917 is merged as `e5bcd0fc`. Reconcile #922 onto main, preserve unique journal/tests, independently review storage and qualify exact integrated head; only then integrate #923. Historical stacked greens do not qualify main integration. |
+| 0E #922 durable ZIP batch recovery → #923 cold recovery | #917 is merged as `e5bcd0fc`. #922 is reconciled to main at `ca45176a` with a corrected **16-case** storage receipt harness retaining the prior FIFO-substitution negative (older head omitted it); it has **no reported fresh workflow runs** at this checkpoint. Obtain fresh exact-head API29/API35, foundation, native Add and R8 proof and independent storage review before integration; only then reconcile and integrate #923. Historical stacked greens do not qualify main integration. |
 | 0C #1/#4/#464 protected remote acceptance | #920 manual exact-hash peer-byte fixture is merged `35c4dab`; protected mutation was not dispatched. Current-head installed mutations, file priorities, per-transfer received+verified bytes, reconnect/401/timeout recovery and physical Android remain separate gates. Use [approved testing](SEEDHOST-REMOTE-TESTING.md). |
 | 0F #9/#10 release / repository gates | Keep actual required checks green, retain raw failures and source provenance. The previously observed ruleset did not target main; repository-admin branch protection remains unverified. Physical, signing, TalkBack and OEM evidence must not be inferred from JVM/emulator success. |
 
