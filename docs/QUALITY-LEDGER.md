@@ -1,5 +1,23 @@
 # Chunks evidence and release gate ledger
 
+## 2026-11-01 remote read-only acceptance authentication correction
+
+The test-only `test/remote-read-auth-proof-20261101` candidate closes a false
+positive in the protected probe: valid anonymous version/inventory replies
+previously produced an "authenticated" marker with no accepted challenge.
+The actual live test now shares an acceptance gate with real loopback HTTP
+counterexamples and reports a missing live environment as skipped. Six focused
+`RemoteReadAuthEvidenceTest` cases passed locally; the live smoke was explicitly
+skipped (one case). Only version and main-view RPC methods are permitted by the
+new positive/negative fixtures. No production transport, credential routing or
+remote mutation changes; no protected host was contacted for this receipt.
+
+Historical read-only success markers below prove validated replies, but do not
+alone prove supplied-credential authentication. A reviewed-main protected
+primary-profile run remains required after integration; accepted HTTP challenge
+evidence still does not grant human-account or mutation authority. See the
+[corrected protocol](SEEDHOST-REMOTE-TESTING.md#read-only-authentication-evidence-correction-2026-11-01).
+
 
 > **Current-status reconciliation (2026-11-01):** #568 is closed under ordinary authorized same-path regular payload semantics. #868/#869 are merged; their older red receipts below are historical. [PR #889](https://github.com/gamesbyian/Chunks/pull/889) passed all eight checks at `c377bf1` and awaits independent storage review, while main retains the earlier event backend. #809 remains contained and unfinished; #5/#569 track the actual Android journeys. Use [the live queue](WORK-QUEUE.md) and current PR heads before dispatch.
 

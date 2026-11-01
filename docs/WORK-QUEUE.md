@@ -4,6 +4,12 @@
 
 **Single executable priority authority; reviewed 2026-10-31.** Fetch current `main`, open PRs, issues, branch ownership and CI **before** picking a task. The [engineering delivery protocol](ENGINEERING-DELIVERY-PROTOCOL.md) governs how to complete it; [AGENTS](../AGENTS.md) governs agent behavior. Product requirements live in [PRODUCT](PRODUCT.md), [UX](UX.md), [ARCHITECTURE](ARCHITECTURE.md), [SECURITY](SECURITY.md), [DECISIONS](DECISIONS.md) and scoped contracts. Implementation truth belongs in [SPEC-COVERAGE](SPEC-COVERAGE.md), test evidence in [QUALITY-LEDGER](QUALITY-LEDGER.md). This queue is **not** a substitute for any of them.
 
+**Active 0C acceptance slice:** `test/remote-read-auth-proof-20261101` repairs
+the protected read-only probe's anonymous-read false positive using the existing
+HTTP challenge evidence. Six focused loopback tests passed; live smoke is skipped
+without secrets. Integrate qualified test-only work, then run the single existing
+trusted-main primary profile. No production transport or mutations are changed.
+
 ## Verified checkpoint and current boundaries
 
 - [#568](https://github.com/gamesbyian/Chunks/issues/568) is **closed, superseded**: chosen-root conventional libtorrent piece-check/reuse/replace of regular files at exact declared torrent paths is authorized. No required custom descriptor-owned JNI writer. Preserve real root escape, symlink/special-target, overlapping-writer and metadata hazards under [the collision policy](LOCAL-TORRENT-COLLISION-POLICY.md).

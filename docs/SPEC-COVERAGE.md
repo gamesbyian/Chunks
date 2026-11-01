@@ -2,6 +2,14 @@
 
 **Installed phone intake candidate (2026-11-01; unmerged):** `PhoneIntakeJourneyInstrumentedTest` plus the opt-in `tools/phone_intake_journey.sh` connects Android Share .torrent and external magnet review to the actual MainActivity controls, default public Downloads, real peer bytes, UI Stop, real process death, cold stopped restore, UI Start, upload to a fresh receiver and session-only Remove preserving bytes. Existing intent-only tests remain. The ordinary instrumentation suite skips the two self-kill phases; the existing API29 and lifecycle emulators run both phases explicitly. Offline receipt negatives are harness evidence only; installed-runtime results are pending and physical/OEM acceptance remains open. [Queue](WORK-QUEUE.md).
 
+**Remote acceptance correction (2026-11-01; merged #891):** the protected read-only
+smoke now requires accepted HTTP challenge evidence as well as valid version and
+main-view data. The same gate refuses a real anonymous localhost RPC endpoint
+with invented credentials and a rejected login, and accepts challenged reads.
+Six focused tests passed; the absent live environment is explicitly skipped.
+Historical read-only success markers alone do not establish credential checking;
+fresh trusted-main primary-profile evidence remains pending. [Protocol](SEEDHOST-REMOTE-TESTING.md#read-only-authentication-evidence-correction-2026-11-01).
+
 
 **Live coverage correction (2026-10-31):** [#868](https://github.com/gamesbyian/Chunks/pull/868) + [#869](https://github.com/gamesbyian/Chunks/pull/869) merged into main at `b402549a8355b0cc248b85cd74f67f0cb2c9bf0a`; **all eight final integrated-head workflows passed** (including [API35 actual native Add](https://github.com/gamesbyian/Chunks/actions/runs/41249697402)). The earlier [red run 41246130576](https://github.com/gamesbyian/Chunks/actions/runs/41246130576) is an old-head assertion about redundant fresh callback count, superseded by persisted immutable resume event + real restart/seed acceptance. [#865](https://github.com/gamesbyian/Chunks/issues/865) remains open for bounded retention and long-duration recovery, [#809](https://github.com/gamesbyian/Chunks/issues/809) for disabled unsafe ZIP/library operations, [#5](https://github.com/gamesbyian/Chunks/issues/5)/[#569](https://github.com/gamesbyian/Chunks/issues/569) for phone/background acceptance, and [#1](https://github.com/gamesbyian/Chunks/issues/1)/[#4](https://github.com/gamesbyian/Chunks/issues/4) for end-to-end remote. No physical handset or protected live host proof is implied. Historical rows below state dated evidence, never the current release verdict. [History-informed delivery rules](ENGINEERING-DELIVERY-PROTOCOL.md).
 
@@ -98,6 +106,8 @@ The [only live queue](WORK-QUEUE.md) now orders G0 architecture/viability, G1 or
 | Does it work on actual mobile UI? | Existing 320/412dp and UI automated test efforts are not uncoached/device approval | 48dp, 200% text, TalkBack/focus, no hidden action, physical handset and 40-second explain-back |
 
 **Gating:** These are G2 continuity requirements behind G0 #568 and safety/identity/remote prerequisites. Source/code-level pass, emulation, live remote and physical device should be recorded separately in [QUALITY-LEDGER](QUALITY-LEDGER.md); never mark these rows verified because a design PR merges. The [one active queue](WORK-QUEUE.md#milestone-gates-and-acceptance) owns execution order.
+
+**Gating:** These are G2 continuity requirements behind G0 #568 and safety/identity/remote prerequisites. Source/code-level pass, emulation, live remote and physical device should be recorded separately in [QUALITY-LEDGER](QUALITY-LEDGER.md); never mark these rows verified because a design PR merges. The [one active queue](WORK-QUEUE.md#one-ranked-dispatch-table) owns execution order.
 
 ## Five owner-approved niche workflows: specification versus evidence
 
