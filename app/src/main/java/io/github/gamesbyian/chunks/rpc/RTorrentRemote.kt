@@ -143,8 +143,11 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             (call("system.listMethods") as? List<*>)?.map { item ->
                 item as? String ?: error("Non-string RPC method name")
             }?.toSet()
-        } catch (_: RpcFault) {
-            // Missing introspection does not imply a missing torrent-list method.
+        } catch (fault: RpcFault) {
+            // Only actual missing introspection means capabilities unknown.
+            // A busy/forbidden backend response is a connection error and
+            // must not be presented as an unsupported optional method.
+            if (!fault.isUnsupportedOptionalGetter()) throw fault
             null
         }
         return RemoteProbe(serverVersion, methods)
@@ -155,7 +158,14 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
      * to *suggest* a Place; Adds still require an explicit user-confirmed path.
      */
     suspend fun defaultDirectory(): String? {
-        val value = try { call("directory.default") } catch (_: RpcFault) { return null }
+        val value = try {
+            call("directory.default")
+        } catch (fault: RpcFault) {
+            // No usable default is a valid old-server capability, but a
+            // permission or busy error cannot silently become that state.
+            if (!fault.isUnsupportedOptionalGetter()) throw fault
+            return null
+        }
         val path = (value as? String)?.trim()?.takeIf { it.startsWith("/") && it.length <= 4096 } ?: return null
         return path.trimEnd('/').ifEmpty { "/" }
     }
