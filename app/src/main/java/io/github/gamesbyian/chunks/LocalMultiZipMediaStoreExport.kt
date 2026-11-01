@@ -162,7 +162,7 @@ internal object LocalMultiZipMediaStoreExport {
                         // Preserving it and its exact per-file journal is vital.
                         return@batchUse Result(State.NEEDS_ATTENTION,
                             "Earlier copies were preserved. The current row or batch journal may be incomplete; review exact operation records. No automatic retry or cleanup.",
-                            receipts.toList(), members.size - index)
+                            receipts.toList(), members.size - receipts.size)
                     }
                 }
                 try {
