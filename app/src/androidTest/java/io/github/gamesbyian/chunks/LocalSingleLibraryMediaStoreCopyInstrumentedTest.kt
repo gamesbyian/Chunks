@@ -30,6 +30,53 @@ class LocalSingleLibraryMediaStoreCopyInstrumentedTest {
     private val context get() = InstrumentationRegistry.getInstrumentation().targetContext
     private val resolver get() = context.contentResolver
 
+
+    @Test fun pinnedLibraryReadRefusesSwappedFifoPromptlyAndLeavesForeignBytesUntouched() {
+        val root = File(context.cacheDir, "library-fifo-${System.nanoTime()}").apply {
+            assertTrue("Disposable FIFO fixture must be private", mkdir())
+        }
+        try {
+            val source = File(root, "source.fifo")
+            android.system.Os.mkfifo(source.absolutePath, 0x180) // 0600
+            val completion = java.util.concurrent.CountDownLatch(1)
+            val outcome = AtomicReference<Throwable?>()
+            // This must fail on Android itself in a bounded deadline. An
+            // O_RDONLY FIFO open without O_NONBLOCK would hang waiting for a
+            // writer forever. Keep any accidentally hung regression thread a
+            // daemon so the assertion can fail instead of blocking CI cleanup.
+            Thread {
+                try {
+                    val fd = LocalSingleLibraryMediaStoreCopy.openPinnedRegularSource(source)
+                    android.system.Os.close(fd)
+                    outcome.set(AssertionError("A FIFO must never become a library copy source"))
+                } catch (failure: Throwable) {
+                    outcome.set(failure)
+                } finally {
+                    completion.countDown()
+                }
+            }.apply { isDaemon = true; start() }
+            assertTrue("Library copy blocked on an attacker-substituted FIFO",
+                completion.await(2, java.util.concurrent.TimeUnit.SECONDS))
+            assertTrue("Non-regular library source must refuse before reading",
+                outcome.get() is java.io.IOException)
+
+            val foreign = File(root, "foreign.bin").apply {
+                writeBytes("other user's unchanged file".toByteArray())
+            }
+            val original = foreign.readBytes()
+            val link = File(root, "source-link.bin")
+            android.system.Os.symlink(foreign.absolutePath, link.absolutePath)
+            assertNotNull("O_NOFOLLOW must also refuse symlinked sources",
+                runCatching { LocalSingleLibraryMediaStoreCopy.openPinnedRegularSource(link) }
+                    .exceptionOrNull())
+            assertArrayEquals("Read-only refusal must not change the foreign canary",
+                original, foreign.readBytes())
+        } finally {
+            // Never delete other directories or public Downloads objects.
+            root.deleteRecursively()
+        }
+    }
+
     @Test fun seedingSingleFileCopiesThroughUiWhileOriginalAndExistingCanaryStayUntouched() {
         val root = File(context.filesDir, "single-library-export-test")
         assertTrue("Disposable fixture root must be fresh", root.mkdir())
