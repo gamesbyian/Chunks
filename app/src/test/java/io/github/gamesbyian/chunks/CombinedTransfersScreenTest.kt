@@ -117,6 +117,7 @@ class CombinedTransfersScreenTest {
         show()
         revealText("Change sort & grouping")
         rule.onNodeWithText("Change sort & grouping", substring = true).performClick()
+        revealText("Size")
         rule.onNodeWithText("Size").performClick()
         rule.onNodeWithContentDescription("Sorted by Size, Largest first. Reverse order").performClick()
         rule.onNodeWithContentDescription("Sorted by Size, Smallest first. Reverse order").assertExists()
