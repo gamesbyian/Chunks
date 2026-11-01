@@ -10,7 +10,17 @@ cat > "$tmp/bin/adb" <<'ADB_MOCK'
 #!/usr/bin/env bash
 set -euo pipefail
 case "${1:-}" in
+  devices)
+    printf 'List of devices attached\nMOCK_USB\tdevice\n'
+    [[ "${MOCK_BAD_DEVICE:-}" != second ]] || printf 'OTHER\tdevice\n'
+    [[ "${MOCK_BAD_DEVICE:-}" != devices_failed ]] || exit 65
+    ;;
+  get-state)
+    printf 'device\n'
+    [[ "${MOCK_BAD_DEVICE:-}" != state_failed ]] || exit 66
+    ;;
   logcat)
+    [[ "${2:-}" != -c ]] || echo logcat-clear >> "${MOCK_DEVICE_EVENTS:?}"
     if [[ "${2:-}" == -d ]]; then
       if [[ "${MOCK_ARM_MISSING:-0}" != 1 ]]; then
         printf 'CHUNKS_DEATH armed hash=0123456789012345678901234567890123456789\n'
@@ -20,25 +30,47 @@ case "${1:-}" in
     ;;
   shell)
     shift
+    if [[ "${1:-}" == getprop ]]; then
+      case "${2:-}" in
+        ro.kernel.qemu)
+          if [[ "${MOCK_BAD_DEVICE:-}" == physical ]]; then echo 0
+          elif [[ "${MOCK_BAD_DEVICE:-}" == unknown_qemu ]]; then echo unknown
+          else echo 1; fi
+          [[ "${MOCK_BAD_DEVICE:-}" != qemu_failed ]] || exit 67
+          ;;
+        ro.build.version.sdk)
+          [[ "${MOCK_BAD_DEVICE:-}" != old_api ]] && echo 35 || echo 28
+          [[ "${MOCK_BAD_DEVICE:-}" != sdk_failed ]] || exit 68
+          ;;
+        *) exit 69 ;;
+      esac
+      exit 0
+    fi
     if [[ "${1:-}" == pidof ]]; then
       [[ "${MOCK_PROCESS_ALIVE:-0}" == 1 ]]
       exit
     fi
     if [[ "${1:-} ${2:-}" == 'am instrument' ]]; then
       if [[ " $* " == *phaseA_seedUnderServiceThenDieWithoutWarning* ]]; then
+        echo phase-a >> "${MOCK_DEVICE_EVENTS:?}"
         if [[ "${MOCK_NO_CRASH:-0}" != 1 ]]; then printf 'Process crashed\n'; fi
         exit 0
       fi
       if [[ " $* " == *phaseB_restoredStoppedWithBytesIntactAndRechecks* ]]; then
+        echo phase-b >> "${MOCK_DEVICE_EVENTS:?}"
         : > "$MOCK_PHASE_B"
         case "${MOCK_PHASE_B_OUTCOME:-ok}" in
-          ok) printf 'OK (1 test)\n' ;;
+          ok) printf 'OK (1 test)\nINSTRUMENTATION_CODE: -1\n' ;;
           false_ok) printf 'INSTRUMENTATION_RESULT: stream=OK (1 test)\n' ;;
           skip) printf 'OK (1 test)\nINSTRUMENTATION_STATUS_CODE: -3\n' ;;
           fail) printf 'OK (1 test)\nINSTRUMENTATION_STATUS_CODE: -1\n' ;;
           other_negative) printf 'OK (1 test)\nINSTRUMENTATION_STATUS_CODE: -7\n' ;;
           duplicate) printf 'OK (1 test)\nOK (1 test)\n' ;;
-          command_failure) printf 'OK (1 test)\n'; exit 25 ;;
+          command_failure) printf 'OK (1 test)\nINSTRUMENTATION_CODE: -1\n'; exit 25 ;;
+          terminal_missing) printf 'OK (1 test)\n' ;;
+          terminal_failed) printf 'OK (1 test)\nINSTRUMENTATION_CODE: 0\n' ;;
+          terminal_duplicate) printf 'OK (1 test)\nINSTRUMENTATION_CODE: -1\nINSTRUMENTATION_CODE: -1\n' ;;
+          terminal_mixed) printf 'OK (1 test)\nINSTRUMENTATION_CODE: -1\nINSTRUMENTATION_CODE: 0\n' ;;
           *) exit 30 ;;
         esac
         exit 0
@@ -54,13 +86,36 @@ cat > "$tmp/bin/sleep" <<'MOCK_SLEEP'
 exit 0
 MOCK_SLEEP
 chmod +x "$tmp/bin/adb" "$tmp/bin/sleep"
-export PATH="$tmp/bin:$PATH" MOCK_PHASE_B="$tmp/phase-b"
+export PATH="$tmp/bin:$PATH" MOCK_PHASE_B="$tmp/phase-b" MOCK_DEVICE_EVENTS="$tmp/device-events"
 bash -n "$root/process_death_repro.sh"
 bash -n "$root/test_process_death_repro.sh"
 rm -f "$MOCK_PHASE_B"
-bash "$root/process_death_repro.sh" > "$tmp/positive.log"
+env -u ADB_SERIAL -u ANDROID_SERIAL bash "$root/process_death_repro.sh" > "$tmp/positive.log"
 [[ -e "$MOCK_PHASE_B" ]]
 grep -q 'OK (1 test)' "$tmp/positive.log"
+grep -Fq 'INSTRUMENTATION_CODE: -1' "$tmp/positive.log"
+
+# Fail before any logcat clear, app SIGKILL or instrumentation when the
+# selected device identity cannot be positively established.
+for bad in second devices_failed state_failed physical unknown_qemu qemu_failed old_api sdk_failed; do
+  rm -f "$MOCK_PHASE_B" "$MOCK_DEVICE_EVENTS"
+  if env -u ADB_SERIAL -u ANDROID_SERIAL MOCK_BAD_DEVICE="$bad" \
+      bash "$root/process_death_repro.sh" > "$tmp/device-$bad.log" 2>&1; then
+    echo "Unsafe process-death target accepted: $bad" >&2; exit 1
+  fi
+  [[ ! -e "$MOCK_DEVICE_EVENTS" && ! -e "$MOCK_PHASE_B" ]] || {
+    echo "Process/logcat mutation began before device preflight refusal: $bad" >&2; exit 1;
+  }
+done
+for selector in 'ADB_SERIAL=OTHER ANDROID_SERIAL=MOCK_USB' 'ANDROID_SERIAL=UNLISTED'; do
+  rm -f "$MOCK_PHASE_B" "$MOCK_DEVICE_EVENTS"
+  if env $selector bash "$root/process_death_repro.sh" > "$tmp/selector.log" 2>&1; then
+    echo "Contradictory or unlisted process-death target accepted: $selector" >&2; exit 1
+  fi
+  [[ ! -e "$MOCK_DEVICE_EVENTS" && ! -e "$MOCK_PHASE_B" ]] || {
+    echo "Mutation began before serial rejection: $selector" >&2; exit 1;
+  }
+done
 
 for fixture in MOCK_ARM_MISSING MOCK_NO_CRASH MOCK_PROCESS_ALIVE MOCK_LOG_FAILURE; do
   rm -f "$MOCK_PHASE_B"
@@ -71,7 +126,8 @@ for fixture in MOCK_ARM_MISSING MOCK_NO_CRASH MOCK_PROCESS_ALIVE MOCK_LOG_FAILUR
     echo "Recovery phase was entered despite broken phase A: $fixture" >&2; exit 1;
   }
 done
-for outcome in false_ok skip fail other_negative duplicate command_failure; do
+for outcome in false_ok skip fail other_negative duplicate command_failure \
+  terminal_missing terminal_failed terminal_duplicate terminal_mixed; do
   rm -f "$MOCK_PHASE_B"
   if env "MOCK_PHASE_B_OUTCOME=$outcome" bash "$root/process_death_repro.sh" > "$tmp/$outcome.log" 2>&1; then
     echo "False-positive process death recovery: $outcome" >&2; exit 1
@@ -80,4 +136,4 @@ for outcome in false_ok skip fail other_negative duplicate command_failure; do
     echo "Adversarial recovery phase was never exercised: $outcome" >&2; exit 1;
   }
 done
-echo 'CHUNKS_DEATH_WITNESS_TEST: valid recovery and 10 failed ADB, arm, crash and forged/skipped recovery receipts correctly classified'
+echo 'CHUNKS_DEATH_WITNESS_TEST: exact emulator target, authentic crash/restore and 14 forged or failed phase receipts refused'
