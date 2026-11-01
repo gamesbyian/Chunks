@@ -31,13 +31,13 @@ class RTorrentDisposableNativeStartedAddTest {
     private suspend fun expectActive(remote: RTorrentRemote, hash: String, parent: String) {
         var last: RemoteTransfer? = null
         var active = false
-        repeat(16) {
+        for (attempt in 0 until 16) {
             last = remote.listTransfers("main").singleOrNull { it.hash.equals(hash, true) }
             if (last != null) {
                 active = remote.readActivity(hash).active == true
-                if (active) return@repeat
+                if (active) break
             }
-            Thread.sleep(400)
+            if (attempt < 15) Thread.sleep(400)
         }
         assertNotNull("New native-Start Add must be registered under exact hash", last)
         assertEquals("A custom Add must honor its selected parent", parent, last!!.directory)
