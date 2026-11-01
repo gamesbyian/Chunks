@@ -457,11 +457,11 @@ private fun ChunksApp(
                             // the signed-in screen is still on a filtered view.
                             // The safe read-only refresh is queued if a read is
                             // already active; no mutation or implicit retry.
-                            if (ExactOwningListNavigation.needsMainViewRefresh(
-                                    currentView, requestedView)) {
-                                requestedView = "main"
-                                refresh()
-                            }
+                            ExactOwningListNavigation.requestMainIfNeeded(
+                                currentView, requestedView,
+                                setRequestedView = { requestedView = it },
+                                refresh = refresh
+                            )
                             section = Section.TRANSFERS
                         }
                         ExactOwningListNavigation.Route.UNAVAILABLE -> Unit
