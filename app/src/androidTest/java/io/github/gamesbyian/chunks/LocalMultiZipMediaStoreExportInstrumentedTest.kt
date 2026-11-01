@@ -12,6 +12,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import io.github.gamesbyian.chunks.storage.OwnedMediaStoreZipBatchJournal
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.atomic.AtomicReference
 import java.util.zip.ZipEntry
@@ -86,6 +87,7 @@ class LocalMultiZipMediaStoreExportInstrumentedTest {
         val canary = "foreign existing document stays untouched".toByteArray()
         createOwned(a, canary) { foreign ->
             createOwned(base + "-source.zip", original) { source ->
+                val existingBatchAlerts = OwnedMediaStoreZipBatchJournal.unfinishedDescriptions(context)
                 val reviewed = LocalZipDocumentInspector.inspect(context, source)
                 assertTrue("Two-file export should be available",
                     LocalMultiZipMediaStoreExport.eligible(reviewed))
@@ -114,6 +116,8 @@ class LocalMultiZipMediaStoreExportInstrumentedTest {
                     assertNotEquals(result.published[0].uri, result.published[1].uri)
                     assertArrayEquals(canary, bytes(foreign))
                     assertArrayEquals(original, bytes(source))
+                    assertEquals("Completed batch cannot appear interrupted after success",
+                        existingBatchAlerts, OwnedMediaStoreZipBatchJournal.unfinishedDescriptions(context))
                 } finally {
                     result.published.forEach {
                         assertEquals(1, resolver.delete(it.uri, null, null))
@@ -129,6 +133,7 @@ class LocalMultiZipMediaStoreExportInstrumentedTest {
         val second = "later" + base + ".json"
         val original = zip(first, second)
         createOwned("fixture-source-" + base + ".zip", original) { source ->
+            val batchWarningsBefore = OwnedMediaStoreZipBatchJournal.unfinishedDescriptions(context).size
             // The cancellation decision comes from a read-only observation of
             // a REAL first published row, never from a guessed iteration count.
             val result = LocalMultiZipMediaStoreExport.extractNew(context, source) {
@@ -137,6 +142,10 @@ class LocalMultiZipMediaStoreExportInstrumentedTest {
             assertEquals(result.message, LocalMultiZipMediaStoreExport.State.PARTIAL, result.state)
             assertEquals(1, result.published.size)
             assertEquals(1, result.remaining)
+            val batchWarningsAfter = OwnedMediaStoreZipBatchJournal.unfinishedDescriptions(context)
+            assertEquals("One fsynced partial batch receipt must be visible",
+                batchWarningsBefore + 1, batchWarningsAfter.size)
+            assertTrue(batchWarningsAfter.any { it.contains("stopped after 1 of 2") })
             try {
                 assertEquals(first, result.published.single().originalName)
                 assertArrayEquals(("batch content: " + first).toByteArray(),
@@ -182,12 +191,15 @@ class LocalMultiZipMediaStoreExportInstrumentedTest {
         )
         for ((index, original) in cases.withIndex()) {
             createOwned("invalid-batch-" + index + base + ".zip", original) { source ->
+                val warningsBefore = OwnedMediaStoreZipBatchJournal.unfinishedDescriptions(context)
                 val before = allOwnRowsWithMarker(base)
                 val result = LocalMultiZipMediaStoreExport.extractNew(context, source)
                 assertEquals(result.message, LocalMultiZipMediaStoreExport.State.BLOCKED, result.state)
                 assertTrue(result.published.isEmpty())
                 assertEquals("No new or pending provider row may appear on refused input",
                     before, allOwnRowsWithMarker(base))
+                assertEquals("No batch intent may be created for a refused ZIP",
+                    warningsBefore, OwnedMediaStoreZipBatchJournal.unfinishedDescriptions(context))
                 assertArrayEquals(original, bytes(source))
             }
         }
@@ -223,6 +235,7 @@ class LocalMultiZipMediaStoreExportInstrumentedTest {
         val second = "later" + base + ".bin"
         val original = zip(first, second)
         createOwned("fixture-source-" + base + ".zip", original) { source ->
+            val batchWarningsBefore = OwnedMediaStoreZipBatchJournal.unfinishedDescriptions(context).size
             val seenPending = AtomicReference<Uri?>()
             val result = LocalMultiZipMediaStoreExport.extractNew(context, source) {
                 val current = pendingRows("later" + base)
@@ -234,6 +247,10 @@ class LocalMultiZipMediaStoreExportInstrumentedTest {
             assertEquals(1, result.published.size)
             assertEquals(1, result.remaining)
             val uncertainUri = requireNotNull(seenPending.get())
+            val newBatchWarnings = OwnedMediaStoreZipBatchJournal.unfinishedDescriptions(context)
+            assertEquals("Exactly one interrupted batch intent must be visible",
+                batchWarningsBefore + 1, newBatchWarnings.size)
+            assertTrue(newBatchWarnings.any { it.contains("needs review after 1 of 2") })
             try {
                 assertEquals(first, result.published.single().originalName)
                 assertArrayEquals(("batch content: " + first).toByteArray(),
