@@ -57,6 +57,67 @@ jobs:
         self.assertTrue(report["workflows"][1]["pr_paths_filter"])
         self.assertIn("2 workflow files", markdown(report))
 
+    def test_workflow_only_main_push_duplicates_pr_verification(self):
+        self.fixture("redundant.yml", """name: Redundant
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/redundant.yml'
+      - 'assets/fonts/**'
+  pull_request:
+    paths:
+      - '.github/workflows/redundant.yml'
+  workflow_dispatch:
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo check
+""")
+        self.fixture("intended.yml", """name: Intended
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'assets/fonts/**'
+  pull_request:
+    paths:
+      - '.github/workflows/intended.yml'
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo check
+""")
+        report = collect(self.root)
+        self.assertEqual(
+            [".github/workflows/redundant.yml"],
+            report["main_self_trigger_candidates"],
+        )
+        rows = {Path(w["path"]).name: w for w in report["workflows"]}
+        self.assertTrue(rows["redundant.yml"]["self_trigger_on_pr"])
+        self.assertFalse(rows["intended.yml"]["self_trigger_on_main_push"])
+
+    def test_feature_push_is_not_flagged_as_main_duplicate(self):
+        path = self.fixture("feature.yml", """name: Feature
+on:
+  push:
+    branches: [development]
+    paths:
+      - '.github/workflows/feature.yml'
+  pull_request:
+    paths:
+      - '.github/workflows/feature.yml'
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo okay
+""")
+        result = inspect(path, self.root)
+        self.assertFalse(result["self_trigger_on_main_push"])
+
     def test_missing_workflow_fails_closed(self):
         with self.assertRaises(ValueError):
             collect(self.root)
