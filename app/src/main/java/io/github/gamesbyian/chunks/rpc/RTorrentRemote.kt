@@ -954,11 +954,22 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         require(Regex("[0-9a-fA-F]{40}").matches(hash)) { "Invalid v1 torrent hash" }
         suspend fun get(method: String): Long? = try {
             number(call(method, listOf(hash))).takeIf { it >= 0L }
-        } catch (cancel: kotlinx.coroutines.CancellationException) {
-            throw cancel
-        } catch (_: Exception) {
+        } catch (fault: RpcFault) {
+            // Older servers may omit optional getters. Only a recognizable
+            // "method unavailable" RPC fault can become an unknown statistic.
+            // A 200 XML-RPC envelope can also carry backend busy/permission
+            // faults. Those, and a vanished exact hash, must stop inspection.
+            val reason = fault.message.orEmpty().lowercase(java.util.Locale.ROOT)
+            val missingMethod = fault.code in setOf("-32601", "-506") &&
+                "method" in reason && listOf("not found", "not defined",
+                    "unknown", "unsupported").any { it in reason }
+            if (!missingMethod) throw fault
             null
         }
+        // HTTP 401/403/407/429, TLS/socket loss, truncated or malformed XML,
+        // and cancellation MUST propagate. Swallowing them would send up to
+        // four more requests against an expired login and falsely report a
+        // connected server with merely unavailable optional statistics.
         return RemoteTransferActivity(
             active = get("d.is_active")?.let { it != 0L },
             open = get("d.is_open")?.let { it != 0L },
