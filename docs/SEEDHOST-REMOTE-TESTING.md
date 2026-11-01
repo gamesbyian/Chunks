@@ -290,3 +290,10 @@ The earlier manual-workflow and test-gate wording elsewhere in this
 chronological document describes the state when each section was written.
 Current verified evidence in QUALITY-LEDGER and live main supersede older
 pending statements.
+
+
+## Standing owner permission superseding narrower test-host restrictions (2026-11-01)
+
+The owner explicitly authorizes realistic, repeatable and destructive testing on **all rTorrent environments for which the Chunks repository has saved credentials in GitHub Secrets**, including numbered Seedhost instances. Authorized operations include adding new metainfo and magnets, start/stop, pause/resume, reload, force recheck, file priority changes, session deletion and **physical deletion of full or partially downloaded transfer content**. Existing seedbox torrents and data are not precious. Prefer the supplied metainfo in `tests/fixtures/owner-supplied/` or public-source test torrents for destructive tests; other transfers on these authorized environments are also permitted. No need to request approval for each mutation or to limit test workflows forever to the old single-use primary-host smoke procedure.
+
+This supersedes earlier *consent/host scope* rules here that restrict writes to one specifically named instance, one-time operation, or pre-approved infohash. Those older workflows retain their own designed technical guards unless deliberately replaced. Maintain exact credential/profile and infohash scope, inventory snapshots, readback of transfer state and verified bytes, safe handling of uncertain ACKs, and prevention of deletion beyond the chosen transfer payload. Do not disclose credentials or tracker passkeys; do not grant secrets to untrusted PR code. This permission does not extend to unrelated accounts, arbitrary FTP files, or other host resources. See [USER-SUPPLIED-TORRENT-TEST-INPUTS](USER-SUPPLIED-TORRENT-TEST-INPUTS.md).
