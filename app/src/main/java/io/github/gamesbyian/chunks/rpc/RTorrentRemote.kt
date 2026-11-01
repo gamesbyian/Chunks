@@ -629,18 +629,75 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         return RemoteAddOutcome.PendingVerification(hash)
     }
 
-    private suspend fun postRuTorrentUpload(upload: URI, destination: String, torrentBytes: ByteArray): String =
+    /**
+     * Alternative Add transport for servers hosting ruTorrent. The browser's
+     * own addtorrent.php accepts both an uploaded .torrent and a magnet in
+     * the 'url' form field. Unlike direct load.raw_start / load.start through
+     * httprpc, ruTorrent assembles its own directory commands and escaping.
+     *
+     * This is an explicit, ONE-SHOT user-selected diagnostic route, never an
+     * automatic retry after an uncertain direct XML-RPC load. It is limited
+     * to the exact same scheme, host, port and ruTorrent instance as the
+     * authenticated XML-RPC profile. Every positive outcome uses independent
+     * exact-hash and selected-directory readback plus an active engine.
+     */
+    internal suspend fun loadStartedViaRuTorrentForm(
+        plan: StoppedRemoteAddPlan,
+        torrentBytes: ByteArray? = null
+    ): RemoteAddAndStart {
+        val hash = plan.expectedInfoHash
+        require(plan.kind == StoppedRemoteAddPlan.Kind.MAGNET) {
+            "ruTorrent form Add supports only selected .torrent bytes or a magnet"
+        }
+        if (torrentBytes != null) {
+            check(TorrentMetainfoReader.preview(torrentBytes).infoHashV1.equals(hash, true)) {
+                "The reviewed torrent identity changed before upload"
+            }
+        }
+        val upload = ruTorrentUploadAddress()
+            ?: throw IllegalStateException("This endpoint does not expose ruTorrent's Add handler")
+        if (listTransfers("main").any { it.hash.equals(hash, true) } ||
+            lookupName(hash) != null) {
+            return RemoteAddAndStart.AddedStopped(RemoteAddOutcome.AlreadyPresent(hash))
+        }
+        requireCurrentServerDefault(plan)
+        try {
+            postRuTorrentUpload(upload, plan.destination, torrentBytes,
+                magnet = if (torrentBytes == null) plan.source else null,
+                startStopped = false)
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            // A 401/timeout/invalid form response is NOT evidence of rollback.
+            // Read-only Recheck is allowed; never replay a non-idempotent Add.
+            return RemoteAddAndStart.StartNotVerified(hash, null)
+        }
+        return awaitNativeStartedReadback(plan)
+    }
+
+    private suspend fun postRuTorrentUpload(
+        upload: URI, destination: String, torrentBytes: ByteArray?,
+        magnet: String? = null, startStopped: Boolean = true
+    ): String =
         withContext(Dispatchers.IO) {
             val boundary = "----chunks" + java.util.UUID.randomUUID().toString().replace("-", "")
             val body = java.io.ByteArrayOutputStream().apply {
                 fun field(name: String, value: String) = write(("--$boundary\r\nContent-Disposition: form-data; " +
                     "name=\"$name\"\r\n\r\n$value\r\n").toByteArray(Charsets.UTF_8))
+                check((torrentBytes == null) != (magnet == null)) {
+                    "Choose exactly one ruTorrent upload source"
+                }
                 field("dir_edit", destination)
-                field("torrents_start_stopped", "1")
-                write(("--$boundary\r\nContent-Disposition: form-data; name=\"torrent_file\"; " +
-                    "filename=\"chunks.torrent\"\r\nContent-Type: application/x-bittorrent\r\n\r\n").toByteArray(Charsets.UTF_8))
-                write(torrentBytes)
-                write("\r\n--$boundary--\r\n".toByteArray(Charsets.UTF_8))
+                if (startStopped) field("torrents_start_stopped", "1")
+                if (magnet != null) {
+                    field("url", magnet)
+                } else {
+                    write(("--$boundary\r\nContent-Disposition: form-data; name=\"torrent_file\"; " +
+                        "filename=\"chunks.torrent\"\r\nContent-Type: application/x-bittorrent\r\n\r\n").toByteArray(Charsets.UTF_8))
+                    write(requireNotNull(torrentBytes))
+                    write("\r\n".toByteArray(Charsets.UTF_8))
+                }
+                write("--$boundary--\r\n".toByteArray(Charsets.UTF_8))
             }.toByteArray()
             val requestTarget = (upload.rawPath ?: "/") + (upload.rawQuery?.let { "?" + it } ?: "")
             // The upload form is non-idempotent. Discover authorization at
