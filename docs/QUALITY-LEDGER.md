@@ -1,5 +1,24 @@
 # Chunks evidence and release gate ledger
 
+## 2026-11-01 public-peer native positive receipt verification (0B #5/#569; 0F #9)
+
+[PR #935](https://github.com/gamesbyian/Chunks/pull/935) merged as
+`415b12555d7388075c5aad479f18996fd059c84e`, after the exact
+candidate head `c3b014d0a67d0b5f82e33dab4937f666d4250f2e` passed
+[radio-harness safety run 41277491099](https://github.com/gamesbyian/Chunks/actions/runs/41277491099).
+This is an **offline fake-adb/harness** success, not an installed real Internet
+peer transfer. The manual public-swarm runner now accepts only one fully
+executed `OK (1 test)`, a successful app logcat read with one complete
+`CHUNKS_ANDROID_SWARM: VERIFIED` receipt containing the exact v1 torrent
+hash and numeric verified/target byte counts, no contradictory
+`INCONCLUSIVE`, and positive verified bytes meeting the bounded requested
+budget. Previously a prefix `OK` and ignored negative status could pass
+without any native receipt. Negative controls reject missing/duplicate/short
+native receipts, failed logcat, skipped/failing/duplicate/prefix-only tests
+and ambiguous target/installation. No shipping engine or test fixture peer
+transport was changed. Explicit manual public-swarm dispatch and physical
+handset/Doze/VPN evidence are still open, never inferred from a green mock.
+
 ## 2026-11-01 independent ZIP/library publication and two-process recovery readback (0E #809, 0F #9)
 
 **Source and evidence boundary:** independent review from main `8d12a22aada6` of draft [#895](https://github.com/gamesbyian/Chunks/pull/895), [#917](https://github.com/gamesbyian/Chunks/pull/917), [#922](https://github.com/gamesbyian/Chunks/pull/922) and [#923](https://github.com/gamesbyian/Chunks/pull/923); **none was merged or installed from main by this audit**. The raw GitHub Actions job logs, rather than just PR summaries, establish these bounded Android emulator tiers:
