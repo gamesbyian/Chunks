@@ -184,6 +184,8 @@ private fun TransferDetailFacts(transfer: UnifiedTransferObservation) {
  */
 internal fun transferAtAGlance(transfer: UnifiedTransferObservation): String = when {
     transfer.hasError -> "Needs attention: an error was reported."
+    transfer.progressPpm == 1_000_000 && transfer.started == false ->
+        "Download complete; stopped in the last report."
     transfer.started == false -> "Stopped in the last report."
     transfer.progressPpm == 1_000_000 && (transfer.uploadBytesPerSecond ?: 0L) > 0L ->
         "Download complete; upload activity reported."
