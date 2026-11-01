@@ -29,7 +29,7 @@ class LocalPhoneFirstfoldEntryTest {
         rule.setContent {
             val density = LocalDensity.current
             CompositionLocalProvider(LocalDensity provides Density(density.density, 2f)) {
-                ChunksTheme { Surface { LocalEngineScreen() } }
+                ChunksTheme { Surface { LocalEngineScreen(onBack = {}, onCombined = {}, onSeedingRules = {}) } }
             }
         }
     }
