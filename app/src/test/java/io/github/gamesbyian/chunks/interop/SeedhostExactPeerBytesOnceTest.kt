@@ -75,17 +75,39 @@ class SeedhostExactPeerBytesOnceTest {
     /** The approved development seedbox is Internet-facing, never runner LAN. */
     private fun publicPeerAddress(address: InetAddress): Boolean {
         val bytes = address.address
-        val uniqueLocalIpv6 = bytes.size == 16 &&
-            (bytes[0].toInt() and 0xfe) == 0xfc
+        val b = bytes.map { it.toInt() and 0xff }
+        // Java's isSiteLocalAddress omits carrier-grade NAT, benchmarking,
+        // documentation and reserved IPv4 blocks. Never connect a protected
+        // acceptance runner to those merely because a server returned them.
+        val reservedV4 = b.size == 4 && (
+            b[0] == 0 || b[0] == 10 || b[0] == 127 ||
+            (b[0] == 100 && b[1] in 64..127) ||
+            (b[0] == 169 && b[1] == 254) ||
+            (b[0] == 172 && b[1] in 16..31) ||
+            (b[0] == 192 && (b[1] == 168 ||
+                (b[1] == 0 && b[2] in listOf(0, 2)) ||
+                (b[1] == 88 && b[2] == 99))) ||
+            (b[0] == 198 && (b[1] in 18..19 ||
+                (b[1] == 51 && b[2] == 100))) ||
+            (b[0] == 203 && b[1] == 0 && b[2] == 113) ||
+            b[0] >= 224
+        )
+        val reservedV6 = b.size == 16 && (
+            // Admit global-unicast 2000::/3 only, excluding RFC 3849 docs.
+            (b[0] and 0xe0) != 0x20 ||
+            (b[0] == 0x20 && b[1] == 0x01 && b[2] == 0x0d && b[3] == 0xb8)
+        )
         return !address.isAnyLocalAddress && !address.isLoopbackAddress &&
             !address.isMulticastAddress && !address.isLinkLocalAddress &&
-            !address.isSiteLocalAddress && !uniqueLocalIpv6
+            !address.isSiteLocalAddress && !reservedV4 && !reservedV6
     }
 
     @Test fun privateAndLoopbackPeerHintsCannotProbeTheRunnerNetwork() {
         listOf("127.0.0.1", "0.0.0.0", "10.1.2.3", "172.16.5.4",
-            "192.168.8.5", "169.254.3.4", "224.0.0.1", "::1",
-            "fe80::1", "fc00::1", "fd42::42").forEach { address ->
+            "192.168.8.5", "169.254.3.4", "100.64.2.1", "198.19.1.1",
+            "192.0.2.1", "198.51.100.7", "203.0.113.9", "192.0.0.8",
+            "240.0.0.1", "255.255.255.255", "224.0.0.1", "::1",
+            "fe80::1", "fc00::1", "fd42::42", "2001:db8::1").forEach { address ->
             assertFalse("Unapproved private/non-routable peer address",
                 publicPeerAddress(InetAddress.getByName(address)))
         }
@@ -195,8 +217,10 @@ class SeedhostExactPeerBytesOnceTest {
         val plan = StoppedRemoteAddPlan.fromMagnet("magnet:?xt=urn:btih:$hash", place)
         val seed = LocalTorrentEngine(LocalEngineConfig(allowMultipleConnectionsPerIp = true))
         var remoteAdded = false
-        var stopAttempted = false
-        var eraseAttempted = false
+        // The command can apply before its HTTP ACK is lost; this flag only
+        // indicates that Add might have been submitted, never that it worked.
+        var addMayHaveApplied = false
+        var exactSessionRemovedAndInventoryRestored = false
         try {
             seed.start()
             seed.setRateLimits(LocalRateLimits(uploadBytesPerSecond = 256 * 1024))
@@ -205,6 +229,7 @@ class SeedhostExactPeerBytesOnceTest {
             assertEquals(hash.lowercase(), localHash.lowercase())
             stage("seed-ready")
 
+            addMayHaveApplied = true
             val added = remote.loadStoppedTorrentBytes(metainfo, place)
             // A lost Add ACK is never grounds for a second load call.
             val settled = if (added is RemoteAddOutcome.VerifiedStopped) added
@@ -270,7 +295,6 @@ class SeedhostExactPeerBytesOnceTest {
                     it.hash.equals(hash, true)
                 } }.getOrNull()
                 if (row != null && row.name == name && row.directory == place) {
-                    stopAttempted = true
                     runCatching { remote.setStarted(hash, false) }
                     val stopped = runCatching { remote.listTransfers("main").singleOrNull {
                         it.hash.equals(hash, true)
@@ -279,24 +303,30 @@ class SeedhostExactPeerBytesOnceTest {
                         stopped.name == name && stopped.directory == place &&
                         runCatching { remote.readTrafficSample(hash).active == false }.getOrDefault(false)) {
                         stage("stopped")
-                        eraseAttempted = true
                         val removed = runCatching {
                             remote.eraseFromSession(hash, name, place)
                         }.getOrNull()
-                        if (removed is SessionEraseOutcome.VerifiedRemoved ||
-                            removed is SessionEraseOutcome.PendingRemoval) {
+                        // A PendingRemoval still has an exact-session hash.
+                        // Missing from the main view cannot override that
+                        // readback or produce a false successful-cleanup receipt.
+                        if (removed is SessionEraseOutcome.VerifiedRemoved) {
                             val remaining = runCatching { remote.listTransfers("main") }.getOrNull()
                             if (remaining != null &&
                                 remaining.map { it.hash.lowercase() }.toSet() ==
                                 beforeInventory.map { it.hash.lowercase() }.toSet()) {
                                 stage("removed")
                                 stage("inventory-restored")
+                                exactSessionRemovedAndInventoryRestored = true
                             }
                         }
                     }
                 }
             }
-            if (remoteAdded && (!stopAttempted || !eraseAttempted))
+            // Report uncertain post-submission outcomes even when Add was
+            // never positively read back. The printed synthetic hash allows
+            // manual read-only reconciliation without risking a duplicate Add
+            // or another d.erase after a lost acknowledgement.
+            if (addMayHaveApplied && !exactSessionRemovedAndInventoryRestored)
                 println("CHUNKS_HOST_BYTES_STAGE: manual-reconciliation-required")
         }
     }
