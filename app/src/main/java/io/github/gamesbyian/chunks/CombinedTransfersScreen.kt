@@ -254,6 +254,9 @@ internal fun CombinedTransfersScreen(
     // snapshot cannot replace a scope/filter/search chosen while it loads.
     var query by remember { mutableStateOf(UnifiedTransferQuery()) }
     var queryTouched by remember { mutableStateOf(false) }
+    // Lazy-list item callbacks must read the current query, not an older
+    // captured value when sort chips and the direction toggle recompose.
+    val latestQuery = rememberUpdatedState(query)
     var loadedPreferences by remember { mutableStateOf<CombinedViewPreferences?>(null) }
     LaunchedEffect(context) {
         try {
@@ -775,7 +778,10 @@ internal fun CombinedTransfersScreen(
             val sortName = CombinedSortChoices.firstOrNull { it.first == query.sortKey }?.second ?: "Name"
             TransferSortDirectionButton(sortName,
                 TransferSortOrdering.label(query.sortKey.orderingKind(), query.direction),
-                onReverse = { update(query.copy(direction = TransferSortOrdering.reversed(query.direction))) })
+                onReverse = {
+                    val current = latestQuery.value
+                    update(current.copy(direction = TransferSortOrdering.reversed(current.direction)))
+                })
             // Stacked so the label can wrap at 320dp and 200% text without pushing the switch off-screen.
             Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)) {
