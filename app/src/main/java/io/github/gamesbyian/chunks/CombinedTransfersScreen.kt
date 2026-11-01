@@ -664,6 +664,7 @@ internal fun CombinedTransfersScreen(
         item {
             CombinedAddActions(
                 serverLabel = serverId?.let { labels[it] },
+                hasOtherSavedServers = savedProfiles.any { EnvironmentId(it.id) != serverId },
                 onOpenPhone = onOpenPhone,
                 onAddToServer = onAddToServer
             )

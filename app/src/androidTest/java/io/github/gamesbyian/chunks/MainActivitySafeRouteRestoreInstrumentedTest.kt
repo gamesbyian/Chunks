@@ -46,6 +46,15 @@ class MainActivitySafeRouteRestoreInstrumentedTest {
         rule.onNodeWithText("Browse downloads together.", substring = true).assertExists()
         rule.onNodeWithText("Stop selected").assertDoesNotExist()
         rule.onNodeWithText("Start selected").assertDoesNotExist()
+        // With no saved servers, the phone is the only configured Add target.
+        rule.onNodeWithText("Other saved servers need their own connection before adding.")
+            .assertDoesNotExist()
+        // The launch surface survives Activity recreation. Back must return to
+        // the local list, never send a phone-only user to remote server setup.
+        rule.onNodeWithText("Back").performClick()
+        rule.onNodeWithText("On this phone (experimental)").assertExists()
+        rule.onNodeWithText("All environments…").assertExists()
+        rule.onNodeWithText("Your downloads").assertDoesNotExist()
     }
 
     @Test fun createRouteDropsPendingReviewAndReturnsToDisconnectedEntry() {

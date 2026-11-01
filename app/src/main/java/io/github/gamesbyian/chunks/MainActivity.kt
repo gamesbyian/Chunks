@@ -226,6 +226,9 @@ private fun ChunksApp(
     var currentView by remember { mutableStateOf("main") }
     var requestedView by remember { mutableStateOf("main") }
     var section by rememberSaveable(saver = SectionRestoreSaver) { mutableStateOf(Section.TRANSFERS) }
+    // Navigation only: no session, command, draft or selected transfer survives restore.
+    // A restored remote route safely falls back to the phone when no server exists.
+    var combinedFromPhone by rememberSaveable { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
     var filter by remember { mutableStateOf(TransferFilter.ALL) }
     var order by remember { mutableStateOf(TransferOrder.NAME) }
@@ -477,14 +480,19 @@ private fun ChunksApp(
                         ExactOwningListNavigation.Route.UNAVAILABLE -> Unit
                     }
                 },
-                onBack = { section = Section.TRANSFERS }
+                onBack = {
+                    // Respect the launching surface, even if the server disconnected
+                    // while browsing. Never infer any mutation authority from this origin.
+                    section = if (combinedFromPhone || server == null)
+                        Section.LOCAL else Section.TRANSFERS
+                }
             )
         } else if (section == Section.SEEDING) {
             SeedingRulesScreen(seedingEnvironments, onBack = { section = Section.TRANSFERS })
         } else if (section == Section.CREATE && server == null) {
             io.github.gamesbyian.chunks.create.CreateTorrentScreen(onBack = { section = Section.TRANSFERS },
                 shared = createRequest, onSharedConsumed = { createRequest = null })
-        } else if (section == Section.LOCAL) {
+        } else if (section == Section.LOCAL && server == null) {
             LocalTransferPrivacyGate(
                 scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
                 onBack = { section = Section.TRANSFERS }
@@ -492,7 +500,7 @@ private fun ChunksApp(
                 LocalEngineScreen(
                     onBack = { section = Section.TRANSFERS },
                     onSeedingRules = { section = Section.SEEDING },
-                    onCombined = { section = Section.COMBINED },
+                    onCombined = { combinedFromPhone = true; section = Section.COMBINED },
                     initialMagnet = phoneHandoffMagnet,
                     initialSearch = phoneSearchPrefill,
                     onSearchConsumed = { phoneSearchPrefill = null },
@@ -788,7 +796,7 @@ private fun ChunksApp(
                     LocalEngineScreen(
                         onBack = { section = Section.TRANSFERS },
                         onSeedingRules = { section = Section.SEEDING },
-                        onCombined = { section = Section.COMBINED },
+                        onCombined = { combinedFromPhone = true; section = Section.COMBINED },
                         initialMagnet = phoneHandoffMagnet,
                         initialSearch = phoneSearchPrefill,
                         onSearchConsumed = { phoneSearchPrefill = null },
@@ -920,7 +928,7 @@ private fun ChunksApp(
                         orderDirection = direction
                         sortEnvironment?.let { sortStore.set(it, key, direction) }
                     },
-                    onCombined = { section = Section.COMBINED },
+                    onCombined = { combinedFromPhone = false; section = Section.COMBINED },
                     onRefresh = refresh, onAdd = { section = Section.ADD },
                     onReviewNames = { section = Section.NAMES },
                     onExportSnapshot = { section = Section.SNAPSHOT },

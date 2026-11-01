@@ -23,7 +23,8 @@ import androidx.compose.ui.unit.dp
 internal fun CombinedAddActions(
     serverLabel: String?,
     onOpenPhone: () -> Unit,
-    onAddToServer: (() -> Unit)?
+    onAddToServer: (() -> Unit)?,
+    hasOtherSavedServers: Boolean = false
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text("Add a download", style = MaterialTheme.typography.titleMedium)
@@ -40,8 +41,13 @@ internal fun CombinedAddActions(
                     contentDescription = "Add download on $serverLabel"
                 }) { Text("Add on $serverLabel") }
         }
-        Text("Other saved servers need their own connection before adding. " +
+        if (hasOtherSavedServers) Text(
+            "Other saved servers need their own connection before adding.",
+            style = MaterialTheme.typography.bodySmall
+        )
+        if (onAddToServer != null || hasOtherSavedServers) Text(
             "Choosing which downloads to view never changes the Add destination.",
-            style = MaterialTheme.typography.bodySmall)
+            style = MaterialTheme.typography.bodySmall
+        )
     }
 }
