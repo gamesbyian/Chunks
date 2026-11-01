@@ -72,6 +72,29 @@ class SeedhostExactPeerBytesOnceTest {
         ).forEach { assertFalse("Disallowed alternate origin or instance", approvedPrimaryEndpoint(it)) }
     }
 
+    /** The approved development seedbox is Internet-facing, never runner LAN. */
+    private fun publicPeerAddress(address: InetAddress): Boolean {
+        val bytes = address.address
+        val uniqueLocalIpv6 = bytes.size == 16 &&
+            (bytes[0].toInt() and 0xfe) == 0xfc
+        return !address.isAnyLocalAddress && !address.isLoopbackAddress &&
+            !address.isMulticastAddress && !address.isLinkLocalAddress &&
+            !address.isSiteLocalAddress && !uniqueLocalIpv6
+    }
+
+    @Test fun privateAndLoopbackPeerHintsCannotProbeTheRunnerNetwork() {
+        listOf("127.0.0.1", "0.0.0.0", "10.1.2.3", "172.16.5.4",
+            "192.168.8.5", "169.254.3.4", "224.0.0.1", "::1",
+            "fe80::1", "fc00::1", "fd42::42").forEach { address ->
+            assertFalse("Unapproved private/non-routable peer address",
+                publicPeerAddress(InetAddress.getByName(address)))
+        }
+        listOf("8.8.8.8", "2001:4860:4860::8888").forEach { address ->
+            assertTrue("Ordinary public peer address rejected",
+                publicPeerAddress(InetAddress.getByName(address)))
+        }
+    }
+
     private fun stage(value: String) {
         require(value in setOf("preflight", "destination", "peer", "seed-ready",
             "added-stopped", "started", "bytes-verified", "stopped", "removed",
@@ -148,8 +171,7 @@ class SeedhostExactPeerBytesOnceTest {
         val peer = candidates.firstNotNullOfOrNull { candidate ->
             val address = runCatching { InetAddress.getByName(candidate) }.getOrNull()
                 ?: return@firstNotNullOfOrNull null
-            if (address.isAnyLocalAddress || address.isLoopbackAddress ||
-                address.isMulticastAddress || address.isLinkLocalAddress) return@firstNotNullOfOrNull null
+            if (!publicPeerAddress(address)) return@firstNotNullOfOrNull null
             val target = InetSocketAddress(address, source.listenPort.toInt())
             if (runCatching {
                     Socket().use { it.connect(target, 4_000) }
