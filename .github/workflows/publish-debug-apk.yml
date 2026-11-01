@@ -12,14 +12,7 @@ name: Publish Chunks installable Android debug APK
 # This DEBUG pre-alpha still has NO real peer payload or physical phone proof.
 # 2026-10-27 owner-approved icon adoption: publish source-stamped regular
 # and side-by-side APKs only after PR #293's provenance/native gates pass.
-# One-time owner-approved field build on reviewed main, so debug signing
-# changes cannot require uninstalling the existing Chunks app. Ordinary pushes
-# and pull requests cannot publish; preserve the default manual workflow.
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/publish-debug-apk.yml"
   workflow_dispatch:
 
 permissions:
@@ -31,11 +24,7 @@ concurrency:
 
 jobs:
   publish:
-    if: >-
-      ${{ github.ref == 'refs/heads/main' &&
-          (github.event_name == 'workflow_dispatch' ||
-           (github.event_name == 'push' &&
-            contains(github.event.head_commit.message, 'one-time Chunks remote-start preview publish'))) }}
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
