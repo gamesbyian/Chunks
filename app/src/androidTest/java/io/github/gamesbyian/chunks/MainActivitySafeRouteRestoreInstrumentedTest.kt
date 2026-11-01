@@ -4,6 +4,8 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -55,6 +57,22 @@ class MainActivitySafeRouteRestoreInstrumentedTest {
         rule.onNodeWithText("On this phone (experimental)").assertExists()
         rule.onNodeWithText("All environments…").assertExists()
         rule.onNodeWithText("Your downloads").assertDoesNotExist()
+
+        // Enter phone from Combined, recreate the actual Activity on that
+        // phone page, and press its own Back. Only the navigation return edge
+        // may survive: no server login, selected operation or Add draft.
+        rule.onNodeWithText("All environments…").performScrollTo().performClick()
+        val phoneAdd = hasContentDescription("Add download on this phone")
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(phoneAdd)
+        rule.onNodeWithContentDescription("Add download on this phone").performClick()
+        rule.onNodeWithText("On this phone (experimental)").assertExists()
+        rule.activityRule.scenario.recreate()
+        rule.waitForIdle()
+        rule.onNodeWithText("On this phone (experimental)").assertExists()
+        rule.onNodeWithText("Back").performScrollTo().performClick()
+        rule.onNodeWithText("All environments").assertExists()
+        rule.onNodeWithText("Stop selected").assertDoesNotExist()
+        rule.onNodeWithText("Start selected").assertDoesNotExist()
     }
 
     @Test fun createRouteDropsPendingReviewAndReturnsToDisconnectedEntry() {
