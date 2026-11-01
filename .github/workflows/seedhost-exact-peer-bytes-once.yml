@@ -1,13 +1,9 @@
 name: Manual owner-approved Seedhost exact-hash received-byte proof
 
-# Owner authorizes live development Seedhost test torrents. A narrowly
-# named trusted-main merge also runs this one-time native Add peer-byte proof.
-# PRs, schedules, ordinary pushes and reruns remain unable to mutate.
+# Development Seedhost accepts owner-authorized mutation tests on main only.
+# The one-time push trigger completed accepted byte proof in run 41350485602;
+# future tests require an explicit manual apply=true authorization.
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/seedhost-exact-peer-bytes-once.yml"
   workflow_dispatch:
     inputs:
       apply:
@@ -15,6 +11,11 @@ on:
         type: boolean
         required: true
         default: false
+      native_start:
+        description: "Use corrected native start-on-load; disable only for legacy stopped-first comparison"
+        type: boolean
+        required: true
+        default: true
 
 permissions:
   contents: read
@@ -27,18 +28,13 @@ concurrency:
 
 jobs:
   approved-host-received-bytes:
-    if: >-
-      ${{ github.ref == 'refs/heads/main' && github.run_attempt == 1 &&
-          ((github.event_name == 'workflow_dispatch' && inputs.apply) ||
-           (github.event_name == 'push' &&
-            contains(github.event.head_commit.message, 'one-time Seedhost native peer byte acceptance'))) }}
+    if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.apply && github.run_attempt == 1 }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
       CHUNKS_HOST_PEER_PROOF: authorized
-      # A trusted, specifically titled main push uses the corrected native
-      # start-on-load path. Manual dispatch retains the legacy comparison.
-      CHUNKS_HOST_PEER_PROOF_NATIVE_START: ${{ github.event_name == 'push' && 'authorized' || 'disabled' }}
+      # Explicit manual selection; defaults to corrected production Add path.
+      CHUNKS_HOST_PEER_PROOF_NATIVE_START: ${{ inputs.native_start && 'authorized' || 'disabled' }}
       CHUNKS_LIVE_RUTORRENT_URL: "https://ianseeds.wood.seedhost.eu/rutorrent/"
     steps:
       - uses: actions/checkout@v4
