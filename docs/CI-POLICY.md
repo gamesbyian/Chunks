@@ -1,5 +1,8 @@
 # Lean CI and evidence economy
 
+> **Native research run cancellation (2026-10-31):** The non-shipping owned JNI link matrix, writer experiment and offline overlay have workflow-level concurrency isolated by workflow and PR number. Only superseded **pull-request** revisions cancel; each manual investigation uses its unique run ID and remains independent. Checks for both ABIs and all existing safety probes remain unchanged. The policy saves runner work only when overlapping PR revisions occur; do not count hypothetical saved minutes as measured. See the machine-readable all-workflow inventory for residual ungrouped font/SVG lanes.
+
+
 > **Required JUnit positive evidence (2026-10-31):** The Android foundation and API35 native Add jobs now require the JUnit digest to show actual executed non-skipped tests, valid report XML and zero test failures on an otherwise green job. The check script is always invoked even if earlier steps fail and preserves their original red cause. API35 also retains raw JUnit XML and HTML report folders with its synthetic screenshots, without copying protected credentials. The flag and negative controls were separately checked in #879; the workflow change is accepted only after exact-head Android/JVM and emulator checks pass; no signing or physical-handset proof is implied.
 
 
