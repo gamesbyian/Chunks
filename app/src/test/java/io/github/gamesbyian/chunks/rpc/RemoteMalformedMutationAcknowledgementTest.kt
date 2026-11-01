@@ -82,14 +82,16 @@ class RemoteMalformedMutationAcknowledgementTest {
         for (badAck in listOf(true, false)) {
             Gateway { method, count -> when (method) {
                 "d.multicall2" -> transfers()
-                "d.hash" -> if (!badAck && count == 2) broken() else value("<string>$hash</string>")
+                "d.hash" -> if (!badAck && count == 3) broken() else value("<string>$hash</string>")
+                "d.name" -> value("<string>Sample</string>")
+                "d.directory" -> value("<string>$dir</string>")
                 "d.erase" -> if (badAck) broken() else value("<i8>0</i8>")
                 else -> error("Unexpected: $method")
             } }.use { g ->
                 assertEquals(SessionEraseOutcome.Uncertain(hash),
                     remote(g).eraseFromSession(hash, "Sample", dir))
                 assertEquals(1, g.calls.count { it == "d.erase" })
-                assertEquals(if (badAck) 1 else 2, g.calls.count { it == "d.hash" })
+                assertEquals(if (badAck) 2 else 3, g.calls.count { it == "d.hash" })
             }
         }
     }

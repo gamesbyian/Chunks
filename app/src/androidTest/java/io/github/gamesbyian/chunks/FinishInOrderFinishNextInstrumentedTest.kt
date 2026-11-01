@@ -10,6 +10,7 @@ import io.github.gamesbyian.chunks.engine.FinishInOrderPlanner
 import io.github.gamesbyian.chunks.engine.FinishInOrderRecord
 import io.github.gamesbyian.chunks.engine.LocalAddResult
 import java.io.File
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -47,7 +48,13 @@ class FinishInOrderFinishNextInstrumentedTest {
             FinishInOrderPlanner.Mode.BALANCED, files, order)))
         runBlocking { FinishInOrderController.stepNow(context, infoHash) }
 
-        rule.setContent { ChunksTheme { FinishInOrderPanel(infoHash, files, busy = false) {} } }
+        // A native priority read can become true *before* the Compose click's
+        // coroutine has completed its journal reread/UI reconciliation. Never
+        // destroy the Activity or remove the torrent with that coroutine alive.
+        val uiSettled = AtomicInteger(0)
+        rule.setContent { ChunksTheme {
+            FinishInOrderPanel(infoHash, files, busy = false) { uiSettled.incrementAndGet() }
+        } }
         rule.waitUntil(15_000) {
             rule.onAllNodesWithContentDescription("Finish Public S03E03.mkv next").fetchSemanticsNodes().isNotEmpty()
         }
@@ -55,6 +62,13 @@ class FinishInOrderFinishNextInstrumentedTest {
         rule.waitUntil(15_000) {
             engine.files(infoHash)?.single { it.path.endsWith("S03E03.mkv") }?.priority == 7
         }
+        // This event is dispatched at the END of FinishInOrderPanel.act(),
+        // after persisted-record readback and the pending Compose state change.
+        // The previous test exited when only JNI state changed, leaving a live
+        // coroutine to recompose during Activity destruction on API35.
+        rule.waitUntil(15_000) { uiSettled.get() == 1 }
+        rule.waitForIdle()
+        assertEquals("Exactly one user change completed", 1, uiSettled.get())
         val byName = requireNotNull(engine.files(infoHash)).associate { it.path.substringAfterLast('/') to it.priority }
         assertEquals(7, byName["Public S03E03.mkv"])
         assertEquals(4, byName["Public S03E01.mkv"])

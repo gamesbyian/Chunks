@@ -57,9 +57,27 @@ internal fun UnifiedTransferDetailPanel(
         }
         Text("Transfer details", style = MaterialTheme.typography.headlineSmall,
             modifier = Modifier.semantics { heading() })
+        if (!hidden) detail.observation?.let { transfer ->
+            Text(transfer.displayName, style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.semantics { heading() })
+            Text((if (detail.readState == TransferDetailReadState.CURRENT) "" else "Last known: ") +
+                transferAtAGlance(transfer), style = MaterialTheme.typography.titleMedium)
+        }
         Text("Environment: " + environmentLabel, style = MaterialTheme.typography.titleMedium)
         Text("Observation: " + detail.readState.explanation,
             style = MaterialTheme.typography.bodyMedium)
+        if (!hidden && onOpenOwningList != null) {
+            Text("To manage this download, open its own environment's transfer list.",
+                style = MaterialTheme.typography.bodyMedium)
+            OutlinedButton(onClick = onOpenOwningList,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                Text("Open " + environmentLabel + " transfers")
+            }
+        }
+        if (!hidden && onOpenOwningList == null && detail.observation != null) {
+            Text("This transfer is listed here for reference. Sign in to its own environment " +
+                "to change it.", style = MaterialTheme.typography.bodyMedium)
+        }
         if (!hidden) {
             Text("Exact infohash: " + detail.key.infoHash,
                 style = MaterialTheme.typography.bodySmall)
@@ -88,12 +106,6 @@ internal fun UnifiedTransferDetailPanel(
             OutlinedButton(onClick = onRefreshOwningList,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                 Text("Refresh " + environmentLabel)
-            }
-        }
-        if (onOpenOwningList != null && !hidden) {
-            OutlinedButton(onClick = onOpenOwningList,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                Text("Open " + environmentLabel + " transfers")
             }
         }
         if (!hidden) {
@@ -135,8 +147,6 @@ internal fun UnifiedTransferDetailPanel(
 @Composable
 private fun TransferDetailFacts(transfer: UnifiedTransferObservation) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(transfer.displayName, style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.semantics { heading() })
         if (transfer.originalName != transfer.displayName) {
             Text("Original torrent: " + transfer.originalName,
                 style = MaterialTheme.typography.bodyMedium)
@@ -165,4 +175,21 @@ private fun TransferDetailFacts(transfer: UnifiedTransferObservation) {
                 color = MaterialTheme.colorScheme.error)
         }
     }
+}
+
+/**
+ * User-facing state is derived only from the same exact-environment observation
+ * as the technical facts. Rates are reports, not verified peer-byte movement;
+ * a started flag never establishes seeding or successful download.
+ */
+internal fun transferAtAGlance(transfer: UnifiedTransferObservation): String = when {
+    transfer.hasError -> "Needs attention: an error was reported."
+    transfer.started == false -> "Stopped in the last report."
+    transfer.progressPpm == 1_000_000 && (transfer.uploadBytesPerSecond ?: 0L) > 0L ->
+        "Download complete; upload activity reported."
+    transfer.progressPpm == 1_000_000 ->
+        "Download complete; sharing activity not confirmed."
+    (transfer.downloadBytesPerSecond ?: 0L) > 0L -> "Download activity reported."
+    transfer.started == true -> "Started; download activity not confirmed."
+    else -> "Current activity unknown."
 }

@@ -56,19 +56,47 @@ configured="$(adb shell device_config get "$config" "$timer" | tr -d '\r\n')" ||
 }
 echo 'CHUNKS_FGS_TIMEOUT config verified=15000'
 adb logcat -c || true
-if ! out="$(adb shell am instrument -w -r \
-  -e class io.github.gamesbyian.chunks.LocalEngineServiceTimeoutInstrumentedTest \
+cls=io.github.gamesbyian.chunks.LocalEngineServiceTimeoutInstrumentedTest
+runner="$pkg.test/androidx.test.runner.AndroidJUnitRunner"
+# Do not mistake a successful adb process exit or skipped test for a proof.
+one_passing_test() {
+  local result="$1"
+  [[ "$(grep -Fxc 'OK (1 test)' <<< "$result" || true)" == 1 ]] &&
+    ! grep -Eq 'AssumptionViolatedException|^INSTRUMENTATION_STATUS_CODE: -[1-9]|^FAILURES!!!|^FAILURES:' <<< "$result"
+}
+if ! phase_a="$(adb shell am instrument -w -r \
+  -e class "$cls#shortenedDataSyncLimitPausesWithNoticeAndKeepsBytes" \
   -e chunksFgsTimeout 1 \
-  "$pkg.test/androidx.test.runner.AndroidJUnitRunner")"; then
-  echo 'CHUNKS_FGS_TIMEOUT: instrumentation adb command failed' >&2
-  exit 1
+  "$runner")"; then
+  echo 'CHUNKS_FGS_TIMEOUT: first instrumentation command failed' >&2; exit 1
 fi
-printf '%s\n' "$out"
-adb logcat -d -s ChunksFgsTimeout:I ActivityManager:W | grep -iE 'CHUNKS_FGS_TIMEOUT|timeout|dataSync' | tail -40 || true
-# am instrument can exit 0 after test failure; reject skips, failures and
-# missing exact one-test completion, even when a plausible OK line appears.
-if ! grep -Fxq 'OK (1 test)' <<< "$out" ||
-   grep -Eq 'AssumptionViolatedException|^INSTRUMENTATION_STATUS_CODE: -[1-9]|^FAILURES!!!|^FAILURES:' <<< "$out"; then
-  echo 'CHUNKS_FGS_TIMEOUT: one executed passing test was not verified' >&2
-  exit 1
+printf '%s\n' "$phase_a"
+if ! one_passing_test "$phase_a"; then
+  echo 'CHUNKS_FGS_TIMEOUT: timed-out pause and byte evidence failed' >&2; exit 1
 fi
+log_a="$(adb logcat -d -s ChunksFgsTimeout:I ActivityManager:W)"
+grep -iE 'CHUNKS_FGS_TIMEOUT|timeout|dataSync' <<< "$log_a" | tail -40 || true
+if ! grep -Eq 'CHUNKS_FGS_TIMEOUT armed=true paused_after_ms=[0-9]+' <<< "$log_a"; then
+  echo 'CHUNKS_FGS_TIMEOUT: no positive two-job timeout receipt' >&2; exit 1
+fi
+
+# A real process boundary, with package data intact. Never pm clear: that
+# erases the very metadata and shared Downloads ownership we need to test.
+adb shell am force-stop "$pkg"
+adb logcat -c || true
+if ! phase_b="$(adb shell am instrument -w -r \
+  -e class "$cls#coldRestoreAfterTimeoutRechecksSeedsAndKeepsPayload" \
+  -e chunksFgsTimeout 1 -e chunksFgsColdRestore 1 \
+  "$runner")"; then
+  echo 'CHUNKS_FGS_TIMEOUT: cold-restore instrumentation command failed' >&2; exit 1
+fi
+printf '%s\n' "$phase_b"
+if ! one_passing_test "$phase_b"; then
+  echo 'CHUNKS_FGS_TIMEOUT: post-timeout cold restore and seeding failed' >&2; exit 1
+fi
+log_b="$(adb logcat -d -s ChunksFgsTimeout:I)"
+grep 'CHUNKS_FGS_TIMEOUT' <<< "$log_b" | tail -20 || true
+if [[ "$(grep -c 'CHUNKS_FGS_TIMEOUT cold_restore=true jobs=2 stopped=true rechecked=true seeded=true removed_keep_files=true' <<< "$log_b" || true)" != 1 ]]; then
+  echo 'CHUNKS_FGS_TIMEOUT: no exact cold-recovery native receipt' >&2; exit 1
+fi
+echo 'CHUNKS_FGS_TIMEOUT: both disposable-emulator phases passed; not physical/OEM acceptance'

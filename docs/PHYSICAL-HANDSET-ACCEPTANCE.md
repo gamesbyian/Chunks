@@ -1,6 +1,6 @@
 # Physical handset acceptance runbook
 
-**Type:** reference/operations (how to produce evidence). It adds no requirements; the gates come from [WORK-QUEUE](WORK-QUEUE.md) 0B/0C/1B, [#568](https://github.com/gamesbyian/Chunks/issues/568), [#569](https://github.com/gamesbyian/Chunks/issues/569), [#8](https://github.com/gamesbyian/Chunks/issues/8) and [UNIFIED-ENVIRONMENTS](UNIFIED-ENVIRONMENTS.md). Emulator runs never satisfy a handset gate. Record results in [QUALITY-LEDGER](QUALITY-LEDGER.md).
+**Type:** reference/operations (how to produce evidence). It adds no requirements; the gates come from [WORK-QUEUE](WORK-QUEUE.md) 0B/0C/0D, [#5](https://github.com/gamesbyian/Chunks/issues/5) and [#865](https://github.com/gamesbyian/Chunks/issues/865), [#569](https://github.com/gamesbyian/Chunks/issues/569), [#8](https://github.com/gamesbyian/Chunks/issues/8) and [UNIFIED-ENVIRONMENTS](UNIFIED-ENVIRONMENTS.md). Emulator runs never satisfy a handset gate. Record results in [QUALITY-LEDGER](QUALITY-LEDGER.md).
 
 ## Receipt (fill for every run)
 
@@ -21,6 +21,8 @@ Enable USB debugging, connect one handset (`adb devices` lists exactly it), and 
 ```sh
 gradle :app:assembleDebug :app:assembleDebugAndroidTest
 ```
+
+**Emulator-only exception:** `tools/phone_intake_journey.sh` is the installed Share/magnet → real bytes → process death → restore/seeding acceptance harness. It starts a cold process for each flow, preserves package data/MediaStore ownership, refuses a nonempty pre-consent job inventory, and refuses physical devices before stopping the app. Data-clear/reinstall ownership is a separate scenario. Its CI success is never a handset receipt.
 
 ## Automated checks that run unchanged on a handset
 
