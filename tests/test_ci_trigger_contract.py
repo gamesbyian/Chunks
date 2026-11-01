@@ -144,6 +144,35 @@ class AndroidCiTriggerContract(unittest.TestCase):
                 self.assertTrue(dispatches_for_changed_paths(api29, changed))
                 self.assertTrue(dispatches_for_changed_paths(api35, changed))
 
+    def test_real_enospc_fixture_does_not_run_duplicate_broad_native_emulator(self):
+        """Opt-in low-space Android test has its own actual emulator acceptance."""
+        path = (
+            "app/src/androidTest/java/io/github/gamesbyian/chunks/"
+            "AndroidNativeLowStorageRecoveryInstrumentedTest.kt"
+        )
+        native = (ROOT / ".github/workflows/native-add-instrumentation.yml").read_text()
+        lowspace = (ROOT / ".github/workflows/android-native-low-storage-repro.yml").read_text()
+        self.assertIn("app/src/androidTest/**", pull_request_paths(native))
+        self.assertIn("!" + path, pull_request_paths(native))
+        self.assertFalse(dispatches_for_changed_paths(native, (path,)))
+        self.assertTrue(dispatches_for_changed_paths(lowspace, (path,)))
+        # A production Add/storage change or an ordinary Android test still
+        # receives the existing independent API35 native UI acceptance.
+        for other in (
+            "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalTorrentEngine.kt",
+            "app/src/androidTest/java/io/github/gamesbyian/chunks/PhoneIntakeJourneyInstrumentedTest.kt",
+            "app/build.gradle.kts",
+        ):
+            with self.subTest(other=other):
+                self.assertTrue(dispatches_for_changed_paths(native, (path, other)))
+        # Both workflows' own source changes remain workflow-triggered.
+        self.assertTrue(dispatches_for_changed_paths(
+            native, (".github/workflows/native-add-instrumentation.yml",)
+        ))
+        self.assertTrue(dispatches_for_changed_paths(
+            lowspace, (".github/workflows/android-native-low-storage-repro.yml",)
+        ))
+
     def test_native_research_source_changes_but_not_markdown_only_edits(self):
         # Positive allowlist stays active for native source; the following
         # negative patterns prevent documentation-only edits wasting JNI/NDK CI.
