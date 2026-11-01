@@ -1,0 +1,60 @@
+name: Android real low-storage native recovery (isolated)
+
+# Opt-in or PR change-scoped: real Android kernel-block exhaustion can perturb
+# an emulator. Never execute against a user handset or an unrelated PR.
+on:
+  pull_request:
+    paths:
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/AndroidNativeLowStorageRecoveryInstrumentedTest.kt"
+      - "tools/android_native_low_storage_repro.sh"
+      - "tools/test_android_native_low_storage_mock.sh"
+      - ".github/workflows/android-native-low-storage-repro.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chunks-low-storage-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  api35-real-low-space:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject unsafe/falsely accepted low-space receipts without emulator
+        run: bash tools/test_android_native_low_storage_mock.sh
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+      - name: Install pinned Android toolchain
+        run: |
+          printf 'y\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
+          if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          fi
+      - name: Compile actual app and installed native fixture
+        run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
+      - name: Enable emulator KVM
+        run: |
+          test -c /dev/kvm
+          sudo chmod 0666 /dev/kvm
+      - name: Real allocated /data pressure then native peer/hash recovery (disposable API35)
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          # Test caps its own real posix_fallocate at 1440MiB and demands
+          # actual measured free <48MiB, never accepts a fake sparse fill.
+          disk-size: 1536M
+          emulator-boot-timeout: 600
+          disable-animations: true
+          script: bash tools/android_native_low_storage_repro.sh
