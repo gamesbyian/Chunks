@@ -63,8 +63,8 @@ cat "$out"
   echo 'CHUNKS_OWNED_DOCS: instrumentation process failed' >&2
   exit 1
 }
-[[ "$(grep -Fxc 'OK (13 tests)' "$out" || true)" == 1 ]] || {
-  echo 'CHUNKS_OWNED_DOCS: exact thirteen tests not confirmed' >&2
+[[ "$(grep -Fxc 'OK (14 tests)' "$out" || true)" == 1 ]] || {
+  echo 'CHUNKS_OWNED_DOCS: exact fourteen tests not confirmed' >&2
   exit 1
 }
 if [[ "$(grep -Fxc 'INSTRUMENTATION_CODE: -1' "$out" || true)" != 1 ]] ||
@@ -83,6 +83,7 @@ for case_name in \
   traversalNestedMultiMemberAndPreCancelledNeverPublishOrTouchCanary \
   seedingSingleFileCopiesThroughUiWhileOriginalAndExistingCanaryStayUntouched \
   pathnameSwapDuringPinnedLibraryReadRefusesBeforeDestinationCreation \
+  pinnedLibraryReadRefusesSwappedFifoPromptlyAndLeavesForeignBytesUntouched \
   composeTwoFlatFilesPublishIndependentlyAndPreserveCanaryAndArchive \
   userCancellationAfterFirstPublishedFileRetainsItsBytesAndSkipsNext \
   nestedUnknownAndTooManyMembersFailWithoutPublishingAnything; do
