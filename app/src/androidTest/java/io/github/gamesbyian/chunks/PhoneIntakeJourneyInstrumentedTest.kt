@@ -317,7 +317,11 @@ class PhoneIntakeJourneyInstrumentedTest {
             waitForText("Start")
             val uploadedBefore = requireNotNull(phone.status(hash)).payloadUploadedBytes
             click("Start")
-            await("restored verified seeding") { phone.status(hash)?.state == LocalTransferState.SEEDING }
+            await("restored verified seeding", failure = {
+                "hash=$hash status=${phone.status(hash)} listenPort=${phone.listenPort()} " +
+                    "inventory=${phone.completeIdentityInventory()} restoreProblems=${phone.restoreProblems} " +
+                    "publicBytes=${target.length()} expectedBytes=${expected.size}"
+            }) { phone.status(hash)?.state == LocalTransferState.SEEDING }
             assertEquals(digest, sha(target.readBytes()))
             val receiverRoot = File(work, "fresh-receiver")
             assertTrue("Fresh receiver directory must be newly created", receiverRoot.mkdir())
