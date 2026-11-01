@@ -96,14 +96,15 @@ class VerifiedAddScreenAtlasTest {
             hasText("Choose a .torrent from Android Files"))
         val chooser = rule.onNodeWithText("Choose a .torrent from Android Files")
         assertTrue("Open-document control must retain at least 54dp", 
-            chooser.getUnclippedBoundsInRoot().height >= 54.dp)
+            (chooser.getUnclippedBoundsInRoot().bottom - chooser.getUnclippedBoundsInRoot().top) >= 54.dp)
         rule.onNode(hasScrollAction()).performScrollToNode(hasText("Review Add"))
         rule.onNodeWithText("Review Add").performClick()
         rule.onNode(hasScrollAction()).performScrollToNode(
             hasText("Confirm: add then start"))
         assertTrue("Confirm control must retain at least 56dp",
-            rule.onNodeWithText("Confirm: add then start")
-                .getUnclippedBoundsInRoot().height >= 56.dp)
+            (rule.onNodeWithText("Confirm: add then start")
+                .getUnclippedBoundsInRoot().bottom - rule.onNodeWithText("Confirm: add then start")
+                .getUnclippedBoundsInRoot().top) >= 56.dp)
         rule.onNode(hasScrollAction()).performScrollToNode(
             hasText("Cancel, don't add"))
         rule.onNodeWithText("Cancel, don't add").performClick()
