@@ -17,10 +17,12 @@ case "$1" in
     [[ "${MOCK_DEVICES_PARTIAL_FAIL:-0}" != 1 ]] || exit 73
     ;;
   get-state)
+    [[ "${ANDROID_SERIAL:-}" == emulator-5554 ]] || exit 79
     echo device
     [[ "${MOCK_STATE_PARTIAL_FAIL:-0}" != 1 ]] || exit 74
     ;;
   shell)
+    [[ "${ANDROID_SERIAL:-}" == emulator-5554 ]] || exit 79
     shift
     case "$1" in
       getprop)
@@ -56,6 +58,13 @@ case "$1" in
           if [[ "${MOCK_DUPLICATE_PASS:-}" == "$phase" ]]; then
             echo 'OK (1 test)'
           fi
+          case "${MOCK_BAD_TERMINAL:-}" in
+            "missing:$phase") ;;
+            "failed:$phase") echo 'INSTRUMENTATION_CODE: 0' ;;
+            "duplicate:$phase") echo 'INSTRUMENTATION_CODE: -1'; echo 'INSTRUMENTATION_CODE: -1' ;;
+            "mixed:$phase") echo 'INSTRUMENTATION_CODE: -1'; echo 'INSTRUMENTATION_CODE: 0' ;;
+            *) echo 'INSTRUMENTATION_CODE: -1' ;;
+          esac
         else exit 33; fi
         ;;
       pm)
@@ -75,6 +84,7 @@ case "$1" in
     esac
     ;;
   logcat)
+    [[ "${ANDROID_SERIAL:-}" == emulator-5554 ]] || exit 79
     [[ "${2:-}" == -c ]] && exit 0
     if [[ "${2:-}" == -d ]]; then
       phase="$(cat "$MOCK_DIR/last-phase" 2>/dev/null || true)"
@@ -132,6 +142,10 @@ run_bad() {
 reset; run_ok
 reset; run_bad env MOCK_TWO_DEVICES=1
 [[ ! -s "$MOCK_DIR/operations" ]]
+reset; run_bad env ADB_SERIAL=OTHER ANDROID_SERIAL=emulator-5554
+[[ ! -s "$MOCK_DIR/operations" ]]
+reset; run_bad env ANDROID_SERIAL=UNLISTED
+[[ ! -s "$MOCK_DIR/operations" ]]
 reset; run_bad env MOCK_DEVICES_PARTIAL_FAIL=1
 [[ ! -s "$MOCK_DIR/operations" ]]
 reset; run_bad env MOCK_STATE_PARTIAL_FAIL=1
@@ -152,6 +166,18 @@ reset; run_bad env MOCK_DUPLICATE_PASS=a
 [[ "$(grep -c '^revoke-' "$MOCK_DIR/operations" || true)" == 0 ]]
 reset; run_bad env MOCK_BAD_HASH=1
 [[ "$(grep -c '^revoke-' "$MOCK_DIR/operations" || true)" == 0 ]]
+# A false terminal result at any of the three independent processes is
+# never enough to authorize a later permission mutation or success claim.
+for phase in a b c; do
+  for kind in missing failed duplicate mixed; do
+    reset; run_bad env MOCK_BAD_TERMINAL="$kind:$phase"
+    if [[ "$phase" == a ]]; then
+      [[ "$(grep -c '^revoke-' "$MOCK_DIR/operations" || true)" == 0 ]]
+    else
+      [[ "$(grep -c '^grant-' "$MOCK_DIR/operations" || true)" -ge 2 ]]
+    fi
+  done
+done
 reset; run_bad env MOCK_REVOKE_FAIL=1
 [[ "$(grep -c '^grant-' "$MOCK_DIR/operations" || true)" -ge 2 ]]
 reset; run_bad env MOCK_SKIP=b

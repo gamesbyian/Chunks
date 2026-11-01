@@ -9,20 +9,28 @@ pkg=io.github.gamesbyian.chunks
 runner="$pkg.test/androidx.test.runner.AndroidJUnitRunner"
 class=io.github.gamesbyian.chunks.Android10DownloadsRevocationInstrumentedTest
 
-# Refuse all mutating commands unless ADB output succeeds and identifies
-# one connected target (or an explicitly selected ANDROID_SERIAL).
+# The test revokes OS permissions and force-stops an app. Pin exactly
+# the positively enumerated emulator before *any* device mutation, even
+# when this standalone script is invoked outside the normal CI harness.
+[[ -z "${ADB_SERIAL:-}" || -z "${ANDROID_SERIAL:-}" ||
+   "$ADB_SERIAL" == "$ANDROID_SERIAL" ]] || {
+  echo 'CHUNKS_GRANT: conflicting ADB serial selectors' >&2; exit 1;
+}
 devices="$(adb devices)" || {
   echo 'CHUNKS_GRANT: ADB enumeration failed' >&2; exit 1;
 }
-if [[ -n "${ANDROID_SERIAL:-}" ]]; then
-  [[ "$(awk -v serial="$ANDROID_SERIAL" '$1 == serial && $2 == "device" { n++ } END { print n+0 }' <<< "$devices")" == 1 ]] || {
-    echo 'CHUNKS_GRANT: selected target not uniquely connected' >&2; exit 1;
+selected="${ANDROID_SERIAL:-${ADB_SERIAL:-}}"
+if [[ -z "$selected" ]]; then
+  mapfile -t attached < <(awk 'NR > 1 && $2 == "device" { print $1 }' <<< "$devices")
+  [[ "${#attached[@]}" == 1 ]] || {
+    echo 'CHUNKS_GRANT: one authorized target required' >&2; exit 1;
   }
-else
-  [[ "$(awk 'NR > 1 && $2 == "device" { n++ } END { print n+0 }' <<< "$devices")" == 1 ]] || {
-    echo 'CHUNKS_GRANT: one target or explicit ANDROID_SERIAL required' >&2; exit 1;
-  }
+  selected="${attached[0]}"
 fi
+[[ "$(awk -v serial="$selected" '$1 == serial && $2 == "device" { n++ } END { print n+0 }' <<< "$devices")" == 1 ]] || {
+  echo 'CHUNKS_GRANT: selected target not uniquely connected' >&2; exit 1;
+}
+export ANDROID_SERIAL="$selected"
 state="$(adb get-state)" || {
   echo 'CHUNKS_GRANT: ADB get-state failed' >&2; exit 1;
 }
@@ -64,6 +72,8 @@ positive() {
   printf '%s\n' "$result"
   # adb may exit zero for a failing/assumption-skipped JUnit invocation.
   if [[ "$(grep -Fxc 'OK (1 test)' <<< "$result" || true)" != 1 ]] ||
+     [[ "$(grep -Fxc 'INSTRUMENTATION_CODE: -1' <<< "$result" || true)" != 1 ]] ||
+     [[ "$(grep -c '^INSTRUMENTATION_CODE:' <<< "$result" || true)" != 1 ]] ||
      grep -Eq 'AssumptionViolatedException|^FAILURES|^INSTRUMENTATION_STATUS_CODE: -[1-9]' <<< "$result"; then
     echo "CHUNKS_GRANT: phase $phase lacked one executed passing test" >&2; return 1
   fi
@@ -96,6 +106,8 @@ if ! a="$(adb shell am instrument -w -r \
 fi
 printf '%s\n' "$a"
 if [[ "$(grep -Fxc 'OK (1 test)' <<< "$a" || true)" != 1 ]] ||
+   [[ "$(grep -Fxc 'INSTRUMENTATION_CODE: -1' <<< "$a" || true)" != 1 ]] ||
+   [[ "$(grep -c '^INSTRUMENTATION_CODE:' <<< "$a" || true)" != 1 ]] ||
    grep -Eq 'AssumptionViolatedException|^FAILURES|^INSTRUMENTATION_STATUS_CODE: -[1-9]' <<< "$a"; then
   echo 'CHUNKS_GRANT: phase A not executed or not passing' >&2; exit 1
 fi
