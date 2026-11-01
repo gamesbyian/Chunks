@@ -9,10 +9,28 @@ cat > "$tmp/bin/adb" <<'MOCK'
 #!/usr/bin/env bash
 set -euo pipefail
 case "${1:-}" in
+  devices)
+    printf 'List of devices attached\nMOCK_USB\tdevice\n'
+    [[ "${BAD:-}" != second_device ]] || printf 'SECOND\tdevice\n'
+    [[ "${BAD:-}" != devices_failure ]] || exit 65
+    ;;
+  get-state)
+    printf 'device\n'
+    [[ "${BAD:-}" != state_failure ]] || exit 66
+    ;;
   shell)
     shift
     case "$*" in
-      'getprop ro.kernel.qemu') [[ "${BAD:-}" == physical ]] && echo 0 || echo 1 ;;
+      'getprop ro.kernel.qemu')
+        if [[ "${BAD:-}" == physical ]]; then echo 0
+        elif [[ "${BAD:-}" == ambiguous_qemu ]]; then echo unknown
+        else echo 1; fi
+        [[ "${BAD:-}" != identity_failure ]] || exit 67
+        ;;
+      'getprop ro.build.version.sdk')
+        [[ "${BAD:-}" != old_api ]] && echo 35 || echo 28
+        [[ "${BAD:-}" != sdk_failure ]] || exit 68
+        ;;
       'if pidof '* ) [[ "${BAD:-}" == alive ]] && echo running || echo stopped ;;
       'am force-stop '* )
         echo stop >> "$MOCK_STATE/stops"
@@ -33,8 +51,12 @@ case "${1:-}" in
             skip) printf 'OK (1 test)\nINSTRUMENTATION_STATUS_CODE: -3\n' ;;
             fail) printf 'OK (1 test)\nFAILURES!!!\n' ;;
             duplicate_ok) printf 'OK (1 test)\nOK (1 test)\n' ;;
-            command_fail) echo 'OK (1 test)'; exit 25 ;;
-            *) echo 'OK (1 test)' ;;
+            command_fail) printf 'OK (1 test)\nINSTRUMENTATION_CODE: -1\n'; exit 25 ;;
+            terminal_missing) echo 'OK (1 test)' ;;
+            terminal_failed) printf 'OK (1 test)\nINSTRUMENTATION_CODE: 0\n' ;;
+            terminal_duplicate) printf 'OK (1 test)\nINSTRUMENTATION_CODE: -1\nINSTRUMENTATION_CODE: -1\n' ;;
+            terminal_mixed) printf 'OK (1 test)\nINSTRUMENTATION_CODE: -1\nINSTRUMENTATION_CODE: 0\n' ;;
+            *) printf 'OK (1 test)\nINSTRUMENTATION_CODE: -1\n' ;;
           esac
         fi
         ;;
@@ -66,16 +88,34 @@ chmod +x "$tmp/bin/adb"
 export PATH="$tmp/bin:$PATH" MOCK_STATE="$tmp/state"
 bash -n "$root/phone_intake_journey.sh"
 bash -n "$root/test_phone_intake_journey.sh"
-bash "$root/phone_intake_journey.sh" > "$tmp/positive.log"
+env -u ADB_SERIAL -u ANDROID_SERIAL bash "$root/phone_intake_journey.sh" > "$tmp/positive.log"
 [[ "$(wc -l < "$MOCK_STATE/instruments")" == 4 ]]
-for bad in physical stop_failure alive no_death no_arm duplicate_arm log_failure wrong_kind \
-           false_ok skip fail duplicate_ok command_fail no_recovery changed_bytes no_seed duplicate_recovery; do
+for bad in physical second_device devices_failure state_failure ambiguous_qemu identity_failure \
+           sdk_failure old_api stop_failure alive no_death no_arm duplicate_arm log_failure wrong_kind \
+           false_ok skip fail duplicate_ok command_fail terminal_missing terminal_failed \
+           terminal_duplicate terminal_mixed no_recovery changed_bytes no_seed duplicate_recovery; do
   rm -f "$MOCK_STATE/stops" "$MOCK_STATE/instruments"
-  if BAD="$bad" bash "$root/phone_intake_journey.sh" > "$tmp/$bad.log" 2>&1; then
+  if env -u ADB_SERIAL -u ANDROID_SERIAL BAD="$bad" bash "$root/phone_intake_journey.sh" > "$tmp/$bad.log" 2>&1; then
     echo "CHUNKS_INTAKE_MOCK: falsely accepted $bad" >&2; exit 1
   fi
-  if [[ "$bad" == physical && -e "$MOCK_STATE/stops" ]]; then
-    echo 'CHUNKS_INTAKE_MOCK: attempted to stop a physical app' >&2; exit 1
-  fi
+  case "$bad" in
+    physical|second_device|devices_failure|state_failure|ambiguous_qemu|identity_failure|sdk_failure|old_api)
+      [[ ! -e "$MOCK_STATE/stops" && ! -e "$MOCK_STATE/instruments" ]] || {
+        echo "CHUNKS_INTAKE_MOCK: mutated before unsafe ADB target refusal: $bad" >&2; exit 1;
+      } ;;
+  esac
 done
-echo 'CHUNKS_INTAKE_MOCK: both entry kinds accepted; 17 false receipts/unsafe targets refused (offline only)'
+rm -f "$MOCK_STATE/stops" "$MOCK_STATE/instruments"
+if ADB_SERIAL=WRONG ANDROID_SERIAL=MOCK_USB bash "$root/phone_intake_journey.sh" > "$tmp/conflicting.log" 2>&1; then
+  echo 'CHUNKS_INTAKE_MOCK: accepted conflicting ADB selectors' >&2; exit 1
+fi
+[[ ! -e "$MOCK_STATE/stops" && ! -e "$MOCK_STATE/instruments" ]] || {
+  echo 'CHUNKS_INTAKE_MOCK: mutated before rejecting contradictory selectors' >&2; exit 1;
+}
+if ANDROID_SERIAL=NOT_CONNECTED bash "$root/phone_intake_journey.sh" > "$tmp/unknown.log" 2>&1; then
+  echo 'CHUNKS_INTAKE_MOCK: accepted unlisted ADB selector' >&2; exit 1
+fi
+[[ ! -e "$MOCK_STATE/stops" && ! -e "$MOCK_STATE/instruments" ]] || {
+  echo 'CHUNKS_INTAKE_MOCK: mutated before rejecting unlisted serial' >&2; exit 1;
+}
+echo 'CHUNKS_INTAKE_MOCK: exact ADB target guard, both routes and terminal false receipts rejected (offline only)'
