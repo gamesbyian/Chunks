@@ -95,7 +95,7 @@ The [only live queue](WORK-QUEUE.md) now orders G0 architecture/viability, G1 or
 | Which setting fixes this and did it apply? | Scope rules, effective-policy explanations and pending/uncertain receipts already specified; some partial implementation | Contextual symptom-to-setting links, exact effective value and overrides, supported/unsupported state, verified post-change readback, skip-safe later edits |
 | Does it work on actual mobile UI? | Existing 320/412dp and UI automated test efforts are not uncoached/device approval | 48dp, 200% text, TalkBack/focus, no hidden action, physical handset and 40-second explain-back |
 
-**Gating:** These are G2 continuity requirements behind G0 #568 and safety/identity/remote prerequisites. Source/code-level pass, emulation, live remote and physical device should be recorded separately in [QUALITY-LEDGER](QUALITY-LEDGER.md); never mark these rows verified because a design PR merges. The [one active queue](WORK-QUEUE.md#g2-interaction-acceptance-visible-defaults-truthful-states-and-findable-files) owns execution order.
+**Gating:** These are G2 continuity requirements behind genuine integrity, identity and remote prerequisites; the old #568 blanket collision gate is superseded. Source/code-level pass, emulation, live remote and physical device should be recorded separately in [QUALITY-LEDGER](QUALITY-LEDGER.md); never mark these rows verified because a design PR merges. The [one active queue](WORK-QUEUE.md#milestone-gates-and-acceptance) owns execution order.
 
 ## Five owner-approved niche workflows: specification versus evidence
 

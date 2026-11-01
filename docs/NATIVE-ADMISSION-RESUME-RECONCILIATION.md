@@ -1,5 +1,17 @@
 # Native admission and immutable resume reconciliation contract
 
+**Current baseline (2026-11-01):** #868/#869 are merged at `b402549a8355b0cc248b85cd74f67f0cb2c9bf0a`, with eight successful integrated-head workflows. The pre-merge status paragraphs below are historical, superseded by [the active dispatch](WORK-QUEUE.md). #865 remains open for measured long-term retention and sustained recovery.
+
+## Transactional retention follow-through
+
+For Android's app-private resume metadata, an ordinary SQLite transaction may replace the append-only writer. Keep one current snapshot or retirement state per infohash; repeated saves, restarts and same-hash re-adds must reuse database pages rather than append a new permanent file. Use durable transactions before acknowledging a save or invoking native Remove. SQLite's own database and rollback journal are mutable, library-managed internal state in a dedicated app-private namespace; they are not torrent payloads or arbitrary user-selected files.
+
+Migrate the complete verified immutable history in one transaction, preserving current SAVE, REMOVE_INTENT, REMOVED and corrupt-state refusals. Leave original event and legacy entries untouched. An interrupted migration may retry only when the new database has no committed migration; once committed, the database is authoritative and any corruption/unreadable state must refuse startup rather than fall back to obsolete snapshots. Disable SQLite's default corrupt-database deletion. Reject unknown schema, foreign database content, symlinks, special files and multiply linked database entries without mutation. Do not promise protection against an independently compromised same-UID process replacing SQLite's private files during an active transaction.
+
+Retention acceptance must measure on-disk bytes and reopen latency, repeated real-engine save/Stop/restore/seed/Remove/re-add, transaction interruption, legacy/torn-history migration, and foreign-entry preservation. Retain removal rows needed to prevent resurrection of preserved legacy metadata; growth with distinct transfer identities is separate from unbounded growth per periodic save. API29/API35 and physical evidence remain separate tiers. A fixed-count refusal alone does not complete retention.
+
+## Historical pre-merge integration plan
+
 
 > **Current integration update (2026-10-31):** [#868](https://github.com/gamesbyian/Chunks/pull/868) is the isolated-green immutable resume candidate; stacked [#869](https://github.com/gamesbyian/Chunks/pull/869) **failed** exact-head [API35 native Add review 41246130576](https://github.com/gamesbyian/Chunks/actions/runs/41246130576), because `LocalPublicDownloadsPlaceInstrumentedTest.magnetAutoStartsOverExistingRegularPayloadInPublicDownloadsAndRestores` asserted a completed magnet had no persisted resume state at the expected point. Different-source green suites do not waive this. Unique older #812 admission receipt/CI changes and #856 tests need individual port/reject decisions before safely closing those drafts. The superseded #568 native payload owner-writer premise must not be reintroduced. Current review order and evidence: [WORK-QUEUE](WORK-QUEUE.md) and [repository tracker audit](REPOSITORY-DOCS-AND-TRACKING-AUDIT-2026-10-31.md).
 

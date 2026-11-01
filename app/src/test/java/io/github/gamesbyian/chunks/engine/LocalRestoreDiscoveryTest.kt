@@ -26,6 +26,12 @@ class LocalRestoreDiscoveryTest {
         assertTrue(LocalRestoreDiscovery.shouldAttemptRestore(state))
     }
 
+    @Test fun transactionalStateWithoutLegacyEventsStillReachesStrictRestore() {
+        val state = temp.newFolder("transactional")
+        File(state, LocalResumeDatabase.DIRECTORY).mkdir()
+        assertTrue(LocalRestoreDiscovery.shouldAttemptRestore(state))
+    }
+
     @Test fun conflictingFileMustReachEnginePreflight() {
         val file = File(temp.root, "collision").apply { writeText("preserved") }
         assertTrue(LocalRestoreDiscovery.shouldAttemptRestore(file))
