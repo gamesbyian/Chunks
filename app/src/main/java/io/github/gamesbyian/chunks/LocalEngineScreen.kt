@@ -276,7 +276,12 @@ internal fun LocalEngineScreen(
     val inventoryStale = inventoryFrame.stale || LocalScreenReader.revision.blocksMutations()
     var transferPage by remember { mutableStateOf(0) }
     var transferSearch by remember { mutableStateOf("") }
-    var transferFilter by remember { mutableStateOf(LocalQueueFilter.ALL) }
+    val localFilterStore = remember(context) { LocalTransferFilterStore(context) }
+    var transferFilter by remember(localFilterStore) { mutableStateOf(localFilterStore.load()) }
+    fun chooseLocalFilter(choice: LocalQueueFilter) {
+        transferFilter = choice
+        localFilterStore.save(choice)
+    }
     LaunchedEffect(initialSearch) {
         if (!initialSearch.isNullOrBlank()) {
             transferSearch = initialSearch
@@ -1227,7 +1232,7 @@ internal fun LocalEngineScreen(
             LocalQueueFilter.entries.forEach { choice ->
                 FilterChip(
                     selected = transferFilter == choice,
-                    onClick = { transferFilter = choice },
+                    onClick = { chooseLocalFilter(choice) },
                     label = { Text(choice.label) },
                     modifier = Modifier.heightIn(min = 48.dp)
                 )
@@ -1263,7 +1268,7 @@ internal fun LocalEngineScreen(
             Text("No transfers match this search or filter.",
                 style = MaterialTheme.typography.bodySmall)
             OutlinedButton(
-                onClick = { transferSearch = ""; transferFilter = LocalQueueFilter.ALL },
+                onClick = { transferSearch = ""; chooseLocalFilter(LocalQueueFilter.ALL) },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
             ) { Text("Clear search and filter") }
         } else {
