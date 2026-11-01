@@ -276,6 +276,7 @@ private fun ChunksApp(
         }
     }
     val sortStore = remember(context) { TransferListSortStore(context) }
+    val remoteFilterStore = remember(context) { RemoteTransferFilterStore(context) }
     var orderDirection by remember { mutableStateOf(order.naturalDirection) }
     // Each authenticated server profile keeps its own list order; a profile
     // without a saved order starts at Name A–Z rather than inheriting another's.
@@ -289,6 +290,11 @@ private fun ChunksApp(
         val saved = sortEnvironment?.let { sortStore.get(it, TransferOrder.entries.toTypedArray()) }
         order = saved?.first ?: TransferOrder.NAME
         orderDirection = saved?.second ?: order.naturalDirection
+        // A different authenticated account cannot inherit another server's
+        // search/filter. Search is transient; only this exact profile's filter
+        // is restored from durable view-only preferences.
+        filter = remoteFilterStore.load(sortEnvironment)
+        query = ""
     }
     val remoteFence = remember { RemoteUiRequestFence() }
     val inspectionFence = remember { RemoteUiRequestFence() }
@@ -873,7 +879,15 @@ private fun ChunksApp(
                     list = transfers, view = currentView, loading = loading, stale = stale,
                     snapshotRevision = snapshotRevision,
                     query = query, onQuery = { query = it },
-                    filter = filter, onFilter = { filter = it },
+                    filter = filter, onFilter = { next ->
+                        filter = next
+                        remoteFilterStore.save(sortEnvironment, next)
+                    },
+                    onClearView = {
+                        query = ""
+                        filter = TransferFilter.ALL
+                        remoteFilterStore.save(sortEnvironment, TransferFilter.ALL)
+                    },
                     order = order, direction = orderDirection,
                     onSort = { key, direction ->
                         order = key
@@ -1319,7 +1333,7 @@ private fun TransfersScreen(
     snapshotRevision: Long,
     query: String, onQuery: (String) -> Unit, filter: TransferFilter,
     onCombined: () -> Unit,
-    onFilter: (TransferFilter) -> Unit, order: TransferOrder,
+    onFilter: (TransferFilter) -> Unit, onClearView: () -> Unit, order: TransferOrder,
     direction: UnifiedSortDirection,
     onSort: (TransferOrder, UnifiedSortDirection) -> Unit, onRefresh: () -> Unit, onAdd: () -> Unit,
     onReviewNames: () -> Unit, onExportSnapshot: () -> Unit,
@@ -1636,7 +1650,17 @@ private fun TransfersScreen(
             }
         }
         if (visible.isEmpty()) item {
-            ColoredPanel("Nothing in this view.", "Try another filter, search, or server view.", Lilac)
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                ColoredPanel("Nothing in this view.",
+                    RemoteEmptyTransfers.explanation(list.size, loading, stale, view,
+                        query.isNotBlank(), filter != TransferFilter.ALL), Lilac)
+                if (RemoteEmptyTransfers.canClear(query, filter)) {
+                    OutlinedButton(onClick = onClearView,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                        Text("Clear search and filter")
+                    }
+                }
+            }
         }
         items(visible, key = { it.hash }) { transfer ->
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
