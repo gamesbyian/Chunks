@@ -1,5 +1,12 @@
 # Chunks specification coverage and acceptance map
 
+## Final automated 0B reboot test-controller qualification (2026-11-01)
+
+**Integrated #956** `c05708a` after source `c02d4ee` passed [API35 lifecycle 41346911283](https://github.com/gamesbyian/Chunks/actions/runs/41346911283), [API29 public Downloads 41346911322](https://github.com/gamesbyian/Chunks/actions/runs/41346911322), and [native Add 41346911351](https://github.com/gamesbyian/Chunks/actions/runs/41346911351). Both cold-process phases now require exactly one final `INSTRUMENTATION_CODE: -1`, stopping the previously source-confirmed false-success reboot acceptance. Eighteen fake-ADB receipt negatives plus exact serial/physical opt-in and changed real kernel boot UUID are tested; API35 shows 15s foreground dataSync pause, stopped cold recovery/recheck/seed, Share+magnet 524288 real peer bytes with SHA and Remove preserving payload. API29 includes revoke/refuse/regrant/recheck/reseed with preserved data. This qualifies **disposable emulator** source-head test and controller integrity, not physical/OEM, full Doze/network handover, actual user-installed phone, persistent background seeding or unexpected power loss.
+
+**Still P0:** #4 owner-affected remote Add inactive after .torrent/magnet despite native ruTorrent comparison; #973 start-on-load and #976 sanitized exact-hash diagnostics are candidate work pending protected authenticated exact-hash active/readback/received-verified-byte proof. #975 combined phone/server Back/UI integration needs final exact-head acceptance. #809 per-selected-provider SAF Create new/Keep both and separately reviewed exact URI Replace remain blocked in production, unrelated foreign bytes preserved. #9/#10 signed/device/branch-protection governance remains outstanding; `main.protected=false` reported after #956 merge.
+
+
 ## 0E current API29/35 verified storage acceptance (2026-11-01)
 
 - **Integrated #922:** source `9b5ff0e` merged as `a30bcc60` after API29/35 actual 16 named ZIP/owned-Downloads test cases (FIFO substitution, wrong target, no foreign collision mutation, partial first publication, ambiguous second row, torn journal), Android foundation, native Add and R8 all passed on exact reviewed source. Mode supported: bounded flat ZIP batch **new MediaStore Downloads rows**, independent exact returned URI and byte readback, non-destructive partial warnings. Mode still unavailable: generic SAF and unchecked provider rows, nested/recursive ZIP, auto-cleanup, user-reviewed existing URI Replace and unbounded file types.
