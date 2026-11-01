@@ -38,7 +38,8 @@ class RemoteNativeStartedAddTest {
     }
 
     private fun exercise(
-        file: Boolean, active: Long = 1L, loseAcknowledgement: Boolean = false
+        file: Boolean, active: Long = 1L, loseAcknowledgement: Boolean = false,
+        transdroidStyle: Boolean = false, actualDirectory: String = destination
     ): Pair<RemoteAddAndStart, List<String>> = runBlocking {
         val expectedHash = if (file) TorrentMetainfoReader.preview(metainfo).infoHashV1 else hash
         val commands = mutableListOf<String>()
@@ -65,19 +66,25 @@ class RemoteNativeStartedAddTest {
                 "d.multicall2" -> "<value><array><data></data></array></value>"
                 "d.name" -> value(if (file) "test.txt" else "Test")
                 "d.hash" -> value(expectedHash)
-                "d.directory" -> value(destination)
+                "d.directory" -> value(actualDirectory)
                 "d.is_multi_file" -> num(0)
                 "d.state" -> num(1)
                 "d.is_active" -> num(active)
                 "load.start" -> {
                     assertFalse("File test should not send magnet", file)
-                    assertTrue(xml.contains("d.directory.set=/downloads"))
+                    if (transdroidStyle) {
+                        assertFalse(xml.contains("d.directory.set"))
+                        assertEquals(2, Regex("<param>").findAll(xml).count())
+                    } else assertTrue(xml.contains("d.directory.set=/downloads"))
                     loaded = true
                     num(0)
                 }
                 "load.raw_start" -> {
                     assertTrue("Magnet test should not send file", file)
-                    assertTrue(xml.contains("d.directory.set=/downloads"))
+                    if (transdroidStyle) {
+                        assertFalse(xml.contains("d.directory.set"))
+                        assertEquals(2, Regex("<param>").findAll(xml).count())
+                    } else assertTrue(xml.contains("d.directory.set=/downloads"))
                     sentBytes = Regex("<base64>([^<]+)</base64>")
                         .find(xml)?.groupValues?.get(1)
                         ?.let { Base64.getDecoder().decode(it) }
@@ -92,8 +99,12 @@ class RemoteNativeStartedAddTest {
         try {
             val remote = RTorrentRemote(RemoteCredentials(
                 "http://127.0.0.1:${server.address.port}/RPC2", "", ""))
-            val result = if (file) remote.loadStartedTorrentBytes(metainfo, destination)
-                else remote.loadStarted(StoppedRemoteAddPlan.fromMagnet(magnet, destination))
+            val plan = StoppedRemoteAddPlan.fromMagnet(
+                if (file) "magnet:?xt=urn:btih:$expectedHash" else magnet, destination)
+            val result = if (transdroidStyle) remote.loadStartedWithoutDirectoryCommand(
+                plan, if (file) metainfo else null)
+                else if (file) remote.loadStartedTorrentBytes(metainfo, destination)
+                else remote.loadStarted(plan)
             if (file && !loseAcknowledgement) assertArrayEquals(metainfo, sentBytes)
             result to commands.toList()
         } finally {
@@ -123,6 +134,33 @@ class RemoteNativeStartedAddTest {
         assertTrue(result is RemoteAddAndStart.StartNotVerified)
         assertEquals(1, commands.count { it == "load.start" })
         assertFalse(commands.any { it == "d.start" || it == "d.resume" })
+    }
+
+    @Test fun transdroidStyleFileAndMagnetSendExactlyTwoLoadArguments() {
+        val expected = TorrentMetainfoReader.preview(metainfo).infoHashV1
+        val (fileResult, fileCommands) = exercise(file = true, transdroidStyle = true)
+        assertEquals(RemoteAddAndStart.Started(expected), fileResult)
+        assertEquals(1, fileCommands.count { it == "load.raw_start" })
+        val (magnetResult, magnetCommands) = exercise(file = false, transdroidStyle = true)
+        assertEquals(RemoteAddAndStart.Started(hash), magnetResult)
+        assertEquals(1, magnetCommands.count { it == "load.start" })
+        assertFalse((fileCommands + magnetCommands).any {
+            it in listOf("d.directory.set", "d.start", "d.resume")
+        })
+    }
+
+    @Test fun transdroidStyleNeverClaimsCustomPlaceVerifiedIfServerUsesDifferentPath() {
+        val (result, commands) = exercise(file = false, transdroidStyle = true,
+            actualDirectory = "/another-place")
+        assertTrue(result is RemoteAddAndStart.StartNotVerified)
+        assertEquals(1, commands.count { it == "load.start" })
+    }
+
+    @Test fun transdroidStyleLostAcknowledgementNeverRetriesOrFallsBack() {
+        val (result, commands) = exercise(file = false, transdroidStyle = true,
+            loseAcknowledgement = true)
+        assertEquals(RemoteAddAndStart.StartNotVerified(hash, null), result)
+        assertEquals(listOf("d.multicall2", "d.name", "load.start"), commands)
     }
 
     @Test fun lostStartOnLoadAcknowledgementNeverReplaysMutation() {
