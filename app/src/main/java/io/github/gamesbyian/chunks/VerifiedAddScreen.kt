@@ -227,7 +227,7 @@ fun VerifiedAddScreen(
             OutlinedButton(
                 onClick = { picker.launch(arrayOf("application/x-bittorrent", "application/octet-stream", "*/*")) },
                 enabled = !choosing && !submitting && !alreadyAttempted,
-                modifier = Modifier.fillMaxWidth().height(54.dp)
+                modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp)
             ) {
                 Text(if (choosing) "Reading torrent…" else "Choose a .torrent from Android Files")
             }
@@ -338,7 +338,7 @@ fun VerifiedAddScreen(
                 item {
                     Button(
                         onClick = { awaitingConfirmation = true },
-                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
                         enabled = !submitting
                     ) { Text("Review Add") }
                 }
@@ -444,14 +444,14 @@ fun VerifiedAddScreen(
                             }
                         },
                         enabled = !submitting,
-                        modifier = Modifier.fillMaxWidth().height(56.dp)
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
                     ) { Text(if (startAfterAdd) "Confirm: add then start" else "Confirm: add stopped") }
                 }
                 item {
                     OutlinedButton(
                         onClick = { awaitingConfirmation = false },
                         enabled = !submitting,
-                        modifier = Modifier.fillMaxWidth().height(52.dp)
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
                     ) { Text("Cancel, don't add") }
                 }
             }
@@ -499,7 +499,7 @@ fun VerifiedAddScreen(
                         }
                     },
                     enabled = !submitting && !rechecking,
-                    modifier = Modifier.fillMaxWidth().height(54.dp)
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp)
                 ) {
                     Text(if (rechecking) "Checking server…" else "Check server state (read only)")
                 }
@@ -507,7 +507,7 @@ fun VerifiedAddScreen(
         }
         item {
             OutlinedButton(onClick = onBack, enabled = !submitting,
-                modifier = Modifier.fillMaxWidth().height(54.dp)) {
+                modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp)) {
                 Text("Back to transfers")
             }
         }
