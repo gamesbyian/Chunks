@@ -120,10 +120,11 @@ class CombinedTransfersScreenTest {
         revealText("Size")
         rule.onNodeWithText("Size").performClick()
         rule.onNodeWithContentDescription("Sorted by Size, Largest first. Reverse order").performClick()
-        // Reversing the order may recompose the lazy list below; fetch the
-        // reverse button by its new semantics even when it has left the viewport.
-        revealDescription("Sorted by Size, Smallest first. Reverse order")
-        rule.onNodeWithContentDescription("Sorted by Size, Smallest first. Reverse order").assertExists()
+        // The persisted sort choice is the source of truth, including after
+        // lazy row recycling. The compact summary must disclose the new order.
+        assertEquals(UnifiedSortDirection.ASCENDING, CombinedViewPreferences(context).load().direction)
+        revealText("Smallest first")
+        rule.onNodeWithText("Smallest first", substring = true).assertExists()
         // Only the connected server: phone and the offline profile drop out of the status lines.
         revealText(serverEnvironmentLabel(aliasScope))
         rule.onAllNodesWithText(serverEnvironmentLabel(aliasScope))[0].performClick()
