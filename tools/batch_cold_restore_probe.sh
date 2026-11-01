@@ -6,6 +6,11 @@ api="$1"
 [[ "$api" == 29 || "$api" == 35 ]] || {
   echo 'CHUNKS_BATCH_COLD: unsupported SDK request' >&2; exit 1;
 }
+# Refuse contradictory device selectors before any app/process/logcat mutation.
+[[ -z "${ADB_SERIAL:-}" || -z "${ANDROID_SERIAL:-}" ||
+   "$ADB_SERIAL" == "$ANDROID_SERIAL" ]] || {
+  echo 'CHUNKS_BATCH_COLD: conflicting ADB serial selectors' >&2; exit 1;
+}
 # Resolve the exact, authorized emulator once, before any force-stop/logcat
 # mutation. A failed enumeration may print a plausible target: refuse it.
 devices="$(adb devices)" || {
