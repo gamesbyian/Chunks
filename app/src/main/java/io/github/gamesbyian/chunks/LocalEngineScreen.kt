@@ -13,9 +13,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -1225,9 +1225,12 @@ internal fun LocalEngineScreen(
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
-        Row(
-            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        // Wrapping chips keeps the final filter/sort option reachable by
+        // vertical scroll, keyboard and TalkBack at 320dp and 200% type.
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             LocalQueueFilter.entries.forEach { choice ->
                 FilterChip(
@@ -1239,9 +1242,12 @@ internal fun LocalEngineScreen(
             }
         }
         Text("Sort by", style = MaterialTheme.typography.labelLarge)
-        Row(
-            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        // Wrapping chips keeps the final filter/sort option reachable by
+        // vertical scroll, keyboard and TalkBack at 320dp and 200% type.
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             LocalQueueOrder.entries.forEach { choice ->
                 FilterChip(
