@@ -108,16 +108,13 @@ class SeedhostExactPeerBytesOnceTest {
     private fun approvedPeerDestination(address: InetAddress): Boolean =
         publicPeerAddress(address) && address.hostAddress == "5.79.112.219"
 
-    @Test fun onlyPreviouslyApprovedPeerIpMayReceiveRunnerConnection() {
+    @Test fun privateAndLoopbackPeerHintsCannotProbeTheRunnerNetwork() {
         assertTrue(approvedPeerDestination(InetAddress.getByName("5.79.112.219")))
         listOf("8.8.8.8", "1.1.1.1", "5.79.112.210", "100.64.0.5",
             "2001:4860:4860::8888").forEach {
-            assertFalse("Public address alone does not authorize a different peer", 
+            assertFalse("A public IP alone does not authorize another peer",
                 approvedPeerDestination(InetAddress.getByName(it)))
         }
-    }
-
-    @Test fun privateAndLoopbackPeerHintsCannotProbeTheRunnerNetwork() {
         listOf("127.0.0.1", "0.0.0.0", "10.1.2.3", "172.16.5.4",
             "192.168.8.5", "169.254.3.4", "100.64.2.1", "198.19.1.1",
             "192.0.2.1", "198.51.100.7", "203.0.113.9", "192.0.0.8",
