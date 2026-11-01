@@ -8,6 +8,7 @@ import android.provider.MediaStore
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -251,6 +252,14 @@ class LocalMultiZipMediaStoreExportInstrumentedTest {
             assertEquals("Exactly one interrupted batch intent must be visible",
                 batchWarningsBefore + 1, newBatchWarnings.size)
             assertTrue(newBatchWarnings.any { it.contains("needs review after 1 of 2") })
+            compose.setContent { MaterialTheme { LocalZipInterruptedExtractions() } }
+            compose.waitUntil(20_000) {
+                compose.onAllNodesWithText("A ZIP batch needs review after 1 of 2", substring = true)
+                    .fetchSemanticsNodes().isNotEmpty()
+            }
+            compose.onNodeWithText("Earlier file operations need review").assertExists()
+            compose.onNodeWithText("A ZIP batch needs review after 1 of 2", substring = true)
+                .assertExists()
             try {
                 assertEquals(first, result.published.single().originalName)
                 assertArrayEquals(("batch content: " + first).toByteArray(),
