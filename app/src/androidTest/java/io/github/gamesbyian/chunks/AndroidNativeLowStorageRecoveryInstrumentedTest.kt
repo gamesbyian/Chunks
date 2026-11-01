@@ -43,7 +43,9 @@ class AndroidNativeLowStorageRecoveryInstrumentedTest {
     private val context get() = instrumentation.targetContext
     private val mib = 1_048_576L
     private val targetFree = 16L * mib
-    private val maxFill = 1_440L * mib
+    // API35 google_apis AVD still exposed ~5.24 GB free when its requested
+    // partition was 1536M: empirically cap at 5400MiB, never assume AVD size.
+    private val maxFill = 5_400L * mib
 
     private fun available(path: File) = StatFs(path.absolutePath).availableBytes
     private fun sha(path: File): ByteArray =
