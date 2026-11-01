@@ -257,7 +257,13 @@ internal fun LocalZipInterruptedExtractions() {
             val legacy = try { LocalZipExtraction.reconcilePending(context) } catch (_: Exception) { emptyList() }
             val pending = try { LocalSingleZipMediaStoreExport.unfinishedPublications(context) }
                 catch (_: Exception) { listOf("An earlier Downloads export could not be checked safely.") }
-            legacy to pending
+            val batches = try {
+                io.github.gamesbyian.chunks.storage.OwnedMediaStoreZipBatchJournal
+                    .unfinishedDescriptions(context)
+            } catch (_: Exception) {
+                listOf("An earlier ZIP batch record could not be checked safely.")
+            }
+            legacy to (pending + batches)
         }
         results = state.first
         downloads = state.second

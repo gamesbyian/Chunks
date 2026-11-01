@@ -8,11 +8,15 @@ import android.provider.MediaStore
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import io.github.gamesbyian.chunks.storage.OwnedMediaStoreZipBatchJournal
 import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.FileOutputStream
 import java.util.concurrent.atomic.AtomicReference
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
@@ -86,6 +90,7 @@ class LocalMultiZipMediaStoreExportInstrumentedTest {
         val canary = "foreign existing document stays untouched".toByteArray()
         createOwned(a, canary) { foreign ->
             createOwned(base + "-source.zip", original) { source ->
+                val existingBatchAlerts = OwnedMediaStoreZipBatchJournal.unfinishedDescriptions(context)
                 val reviewed = LocalZipDocumentInspector.inspect(context, source)
                 assertTrue("Two-file export should be available",
                     LocalMultiZipMediaStoreExport.eligible(reviewed))
@@ -114,6 +119,8 @@ class LocalMultiZipMediaStoreExportInstrumentedTest {
                     assertNotEquals(result.published[0].uri, result.published[1].uri)
                     assertArrayEquals(canary, bytes(foreign))
                     assertArrayEquals(original, bytes(source))
+                    assertEquals("Completed batch cannot appear interrupted after success",
+                        existingBatchAlerts, OwnedMediaStoreZipBatchJournal.unfinishedDescriptions(context))
                 } finally {
                     result.published.forEach {
                         assertEquals(1, resolver.delete(it.uri, null, null))
@@ -129,6 +136,7 @@ class LocalMultiZipMediaStoreExportInstrumentedTest {
         val second = "later" + base + ".json"
         val original = zip(first, second)
         createOwned("fixture-source-" + base + ".zip", original) { source ->
+            val batchWarningsBefore = OwnedMediaStoreZipBatchJournal.unfinishedDescriptions(context).size
             // The cancellation decision comes from a read-only observation of
             // a REAL first published row, never from a guessed iteration count.
             val result = LocalMultiZipMediaStoreExport.extractNew(context, source) {
@@ -137,6 +145,10 @@ class LocalMultiZipMediaStoreExportInstrumentedTest {
             assertEquals(result.message, LocalMultiZipMediaStoreExport.State.PARTIAL, result.state)
             assertEquals(1, result.published.size)
             assertEquals(1, result.remaining)
+            val batchWarningsAfter = OwnedMediaStoreZipBatchJournal.unfinishedDescriptions(context)
+            assertEquals("One fsynced partial batch receipt must be visible",
+                batchWarningsBefore + 1, batchWarningsAfter.size)
+            assertTrue(batchWarningsAfter.any { it.contains("stopped after 1 of 2") })
             try {
                 assertEquals(first, result.published.single().originalName)
                 assertArrayEquals(("batch content: " + first).toByteArray(),
@@ -145,6 +157,29 @@ class LocalMultiZipMediaStoreExportInstrumentedTest {
                 assertArrayEquals(original, bytes(source))
             } finally {
                 assertEquals(1, resolver.delete(result.published.single().uri, null, null))
+            }
+        }
+    }
+
+    /** Existing-name and hidden-pending inventory for a unique test marker. */
+    private fun allOwnRowsWithMarker(marker: String): Set<Uri> {
+        val cols = arrayOf(MediaStore.MediaColumns._ID, MediaStore.MediaColumns.DISPLAY_NAME,
+            MediaStore.MediaColumns.OWNER_PACKAGE_NAME)
+        val cursor = if (android.os.Build.VERSION.SDK_INT == 29) {
+            resolver.query(MediaStore.setIncludePending(downloads), cols, null, null, null)
+        } else {
+            val args = android.os.Bundle().apply {
+                putInt(MediaStore.QUERY_ARG_MATCH_PENDING, MediaStore.MATCH_INCLUDE)
+            }
+            resolver.query(downloads, cols, args, null)
+        }
+        return requireNotNull(cursor).use { rows ->
+            buildSet {
+                while (rows.moveToNext()) {
+                    if (rows.getString(1)?.contains(marker) == true &&
+                        rows.getString(2) == context.packageName)
+                        add(ContentUris.withAppendedId(downloads, rows.getLong(0)))
+                }
             }
         }
     }
@@ -159,13 +194,121 @@ class LocalMultiZipMediaStoreExportInstrumentedTest {
         )
         for ((index, original) in cases.withIndex()) {
             createOwned("invalid-batch-" + index + base + ".zip", original) { source ->
+                val warningsBefore = OwnedMediaStoreZipBatchJournal.unfinishedDescriptions(context)
+                val before = allOwnRowsWithMarker(base)
                 val result = LocalMultiZipMediaStoreExport.extractNew(context, source)
                 assertEquals(result.message, LocalMultiZipMediaStoreExport.State.BLOCKED, result.state)
                 assertTrue(result.published.isEmpty())
+                assertEquals("No new or pending provider row may appear on refused input",
+                    before, allOwnRowsWithMarker(base))
+                assertEquals("No batch intent may be created for a refused ZIP",
+                    warningsBefore, OwnedMediaStoreZipBatchJournal.unfinishedDescriptions(context))
                 assertArrayEquals(original, bytes(source))
             }
         }
         assertTrue("No candidate file may have reached published Downloads",
             newPublished(base).isEmpty())
     }
+    /** Read-only exact-platform observation. A pending object is never a published receipt. */
+    private fun pendingRows(base: String): List<Uri> {
+        val cols = arrayOf(MediaStore.MediaColumns._ID, MediaStore.MediaColumns.DISPLAY_NAME,
+            MediaStore.MediaColumns.OWNER_PACKAGE_NAME, MediaStore.MediaColumns.IS_PENDING)
+        val cursor = if (android.os.Build.VERSION.SDK_INT == 29) {
+            resolver.query(MediaStore.setIncludePending(downloads), cols, null, null, null)
+        } else {
+            val args = android.os.Bundle().apply {
+                putInt(MediaStore.QUERY_ARG_MATCH_PENDING, MediaStore.MATCH_INCLUDE)
+            }
+            resolver.query(downloads, cols, args, null)
+        }
+        return requireNotNull(cursor).use { rows ->
+            buildList {
+                while (rows.moveToNext()) {
+                    if (rows.getString(1)?.startsWith(base + "-") == true &&
+                        rows.getString(2) == context.packageName && rows.getInt(3) == 1)
+                        add(ContentUris.withAppendedId(downloads, rows.getLong(0)))
+                }
+            }
+        }
+    }
+
+    @Test fun failureInsideSecondNewRowKeepsFirstAndLeavesExactPendingForReview() {
+        val base = freshBase()
+        val first = base + ".txt"
+        val second = "later" + base + ".bin"
+        val original = zip(first, second)
+        createOwned("fixture-source-" + base + ".zip", original) { source ->
+            val batchWarningsBefore = OwnedMediaStoreZipBatchJournal.unfinishedDescriptions(context).size
+            val seenPending = AtomicReference<Uri?>()
+            val result = LocalMultiZipMediaStoreExport.extractNew(context, source) {
+                val current = pendingRows("later" + base)
+                if (current.size == 1) seenPending.set(current.single())
+                current.isNotEmpty()
+            }
+            assertEquals("An interrupted second provider write is uncertain, not rolled back",
+                LocalMultiZipMediaStoreExport.State.NEEDS_ATTENTION, result.state)
+            assertEquals(1, result.published.size)
+            assertEquals(1, result.remaining)
+            val uncertainUri = requireNotNull(seenPending.get())
+            val newBatchWarnings = OwnedMediaStoreZipBatchJournal.unfinishedDescriptions(context)
+            assertEquals("Exactly one interrupted batch intent must be visible",
+                batchWarningsBefore + 1, newBatchWarnings.size)
+            assertTrue(newBatchWarnings.any { it.contains("needs review after 1 of 2") })
+            compose.setContent { MaterialTheme { LocalZipInterruptedExtractions() } }
+            compose.waitUntil(20_000) {
+                compose.onAllNodesWithText("A ZIP batch needs review after 1 of 2", substring = true)
+                    .fetchSemanticsNodes().isNotEmpty()
+            }
+            compose.onNodeWithText("Earlier file operations need review").assertExists()
+            compose.onNodeWithText("A ZIP batch needs review after 1 of 2", substring = true)
+                .assertExists()
+            try {
+                assertEquals(first, result.published.single().originalName)
+                assertArrayEquals(("batch content: " + first).toByteArray(),
+                    bytes(result.published.single().uri))
+                assertEquals(listOf(uncertainUri), pendingRows("later" + base))
+                assertTrue("An uncertain pending row needs a visible forensic warning",
+                    LocalSingleZipMediaStoreExport.unfinishedPublications(context)
+                        .any { it.contains("interrupted Downloads export") })
+                assertArrayEquals(original, bytes(source))
+            } finally {
+                // Test-owned returned exact IDs; production never cleans these.
+                assertEquals(1, resolver.delete(result.published.single().uri, null, null))
+                assertEquals(1, resolver.delete(uncertainUri, null, null))
+            }
+        }
+    }
+
+    @Test fun tornAndFifoSubstitutedPrivateBatchJournalNeverClaimsCompletion() {
+        val nonce = freshBase()
+        val before = OwnedMediaStoreZipBatchJournal.unfinishedDescriptions(context)
+        val journal = OwnedMediaStoreZipBatchJournal.begin(context,
+            listOf(nonce + ".txt", "later" + nonce + ".bin"))
+        val exact = File(context.filesDir,
+            "owned-mediastore-zip-batches/" + journal.id + ".log")
+        journal.close()
+        try {
+            // A missing newline is a torn post-intent event, not completion.
+            FileOutputStream(exact, true).use { output ->
+                output.write("CHUNKS_ZIP_BATCH1\tEND".toByteArray())
+                output.fd.sync()
+            }
+            val interrupted = OwnedMediaStoreZipBatchJournal.unfinishedDescriptions(context)
+            assertEquals(before.size + 1, interrupted.size)
+            assertTrue(interrupted.any { it.contains("interrupted ZIP batch needs review after 0 of 2") })
+
+            // Replace ONLY this test-owned exact private journal path with a
+            // FIFO. Recovery may NOT block opening it or interpret it as a row.
+            assertTrue("Disposable private fixture log must be removable", exact.delete())
+            android.system.Os.mkfifo(exact.absolutePath, 0x180) // 0600
+            val unsafe = OwnedMediaStoreZipBatchJournal.unfinishedDescriptions(context)
+            assertEquals(before.size + 1, unsafe.size)
+            assertTrue(unsafe.any { it.contains("ZIP batch record needs manual review") })
+        } finally {
+            // Test-owned exact ID only; production recovery deletes nothing.
+            java.nio.file.Files.deleteIfExists(exact.toPath())
+        }
+        assertEquals(before, OwnedMediaStoreZipBatchJournal.unfinishedDescriptions(context))
+    }
+
 }
