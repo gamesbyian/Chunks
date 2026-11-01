@@ -72,6 +72,7 @@ class UnifiedTransferDetailPanelTest {
         rule.onNodeWithText("Transfer details").assertExists()
         rule.onNodeWithText("Environment: Server two / rutorrent2").assertExists()
         rule.onNodeWithText("Accessible selected transfer").assertExists()
+        rule.onNodeWithText("Needs attention: an error was reported.").assertExists()
         rule.onNodeWithText("Start state set; peer activity has not been verified.").assertExists()
         rule.onNodeWithText("Progress: 55.5%").assertExists()
         rule.onNodeWithText("Download rate: not reported").assertExists()
@@ -98,6 +99,7 @@ class UnifiedTransferDetailPanelTest {
             }
         }
         rule.onNodeWithText("Accessible selected transfer").assertExists()
+        rule.onNodeWithText("Last known: Needs attention: an error was reported.").assertExists()
         rule.onNodeWithText("Observation:", substring = true).assertExists()
         rule.onNodeWithText("Last-known transfer facts only.", substring = true).performScrollTo().assertExists()
         rule.onNodeWithText("Start and stop:", substring = true).performScrollTo().assertExists()
