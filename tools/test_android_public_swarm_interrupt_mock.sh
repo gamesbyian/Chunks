@@ -109,9 +109,9 @@ run_case() {
 }
 run_case MOCK_LONG_LOG=1 >"$tmp/success.log"
 grep -q 'VERIFIED restored_stopped=true' "$tmp/success.log"
-for fixture in MOCK_ARM_MISSING MOCK_NO_CRASH MOCK_ALIVE MOCK_INSTALL_BAD MOCK_MULTI
-               MOCK_DUPLICATE_A MOCK_A_TOO_SMALL MOCK_A_COMPLETE MOCK_A_INCONCLUSIVE
-               MOCK_DUPLICATE_B MOCK_B_MISSING MOCK_B_BAD_BEFORE MOCK_B_NO_GROWTH
+for fixture in MOCK_ARM_MISSING MOCK_NO_CRASH MOCK_ALIVE MOCK_INSTALL_BAD MOCK_MULTI \
+               MOCK_DUPLICATE_A MOCK_A_TOO_SMALL MOCK_A_COMPLETE MOCK_A_INCONCLUSIVE \
+               MOCK_DUPLICATE_B MOCK_B_MISSING MOCK_B_BAD_BEFORE MOCK_B_NO_GROWTH \
                MOCK_B_BAD_RECOVERED MOCK_B_OVER_WANTED MOCK_B_INCONCLUSIVE MOCK_LOGCAT_FAILURE; do
   if run_case "$fixture=1" >"$tmp/$fixture.log" 2>&1; then
     echo "False-positive interruption acceptance: $fixture" >&2
