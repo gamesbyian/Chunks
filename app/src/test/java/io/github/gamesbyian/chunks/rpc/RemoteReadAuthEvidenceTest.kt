@@ -272,4 +272,55 @@ class RemoteReadAuthEvidenceTest {
         }
     }
 
+    @Test fun savedNumberedInstanceReauthenticationNeverFallsBackToPrimaryMount() = runBlocking {
+        val server = HttpServer.create(
+            InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0)
+        val calls = java.util.Collections.synchronizedList(mutableListOf<String>())
+        val expectedAuth = "Basic " + java.util.Base64.getEncoder()
+            .encodeToString("bob:second-secret".toByteArray(Charsets.UTF_8))
+        server.createContext("/rutorrent/plugins/httprpc/action.php") { exchange ->
+            calls.add("primary")
+            exchange.sendResponseHeaders(500, -1)
+            exchange.close()
+        }
+        server.createContext("/rutorrent2/plugins/httprpc/action.php") { exchange ->
+            val body = exchange.requestBody.bufferedReader().use { it.readText() }
+            val method = Regex("<methodName>([^<]+)</methodName>")
+                .find(body)?.groupValues?.get(1).orEmpty()
+            calls.add("numbered:$method")
+            if (exchange.requestHeaders.getFirst("Authorization") != expectedAuth) {
+                exchange.responseHeaders.add("WWW-Authenticate", "Basic realm=\\\"numbered\\\"")
+                exchange.sendResponseHeaders(401, -1)
+                exchange.close()
+            } else {
+                val reply = when (method) {
+                    "system.client_version" -> version
+                    "d.multicall2" -> emptyList
+                    else -> error("Unexpected read method")
+                }.toByteArray(Charsets.UTF_8)
+                exchange.sendResponseHeaders(200, reply.size.toLong())
+                exchange.responseBody.use { it.write(reply) }
+            }
+        }
+        server.start()
+        try {
+            val exact = "http://127.0.0.1:${server.address.port}/rutorrent2/"
+            assertTrue(verifiedSavedProfileMainInventory(
+                RemoteCredentials(exact, "bob", "second-secret")).isEmpty())
+            assertFalse(calls.contains("primary"))
+            assertTrue(calls.any { it == "numbered:d.multicall2" })
+            val count = calls.size
+            try {
+                verifiedSavedProfileMainInventory(
+                    RemoteCredentials(exact, "bob", "expired"))
+                fail("Old numbered-instance credentials cannot reuse another tenant")
+            } catch (_: java.io.IOException) { }
+            assertFalse(calls.contains("primary"))
+            assertEquals(2, calls.size - count)
+            assertEquals("numbered:system.client_version", calls.last())
+        } finally {
+            server.stop(0)
+        }
+    }
+
 }
