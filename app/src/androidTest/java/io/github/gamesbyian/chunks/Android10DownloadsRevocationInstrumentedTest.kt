@@ -179,7 +179,7 @@ class Android10DownloadsRevocationInstrumentedTest {
         val deniedHash = requireNotNull(data.getProperty("deniedHash"))
         val deniedTarget = File(requireNotNull(data.getProperty("deniedPath")))
         val deniedExpected = requireNotNull(data.getProperty("deniedSha256"))
-        assertEquals(setOf(hash, deniedHash), restored.completeIdentityInventory().toSet())
+        assertEquals(setOf(hash, deniedHash), requireNotNull(restored.completeIdentityInventory()).toSet())
         assertTrue("Private denial fixture auto-started",
             requireNotNull(restored.status(deniedHash)).stopped)
         assertTrue("Revoked-grant restored job auto-started",
@@ -284,7 +284,7 @@ class Android10DownloadsRevocationInstrumentedTest {
         val deniedTarget = File(requireNotNull(data.getProperty("deniedPath")))
         val deniedExpected = requireNotNull(data.getProperty("deniedSha256"))
         assertEquals(deniedExpected, digest(deniedTarget))
-        assertEquals(setOf(hash, deniedHash), restored.completeIdentityInventory().toSet())
+        assertEquals(setOf(hash, deniedHash), requireNotNull(restored.completeIdentityInventory()).toSet())
         assertTrue("Grant restoration may not auto-start", requireNotNull(restored.status(hash)).stopped)
         assertEquals("Manual Start after grant must be accepted",
             LocalCommandOutcome.VERIFIED, restored.resume(hash).outcome)
