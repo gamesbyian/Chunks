@@ -36,7 +36,13 @@ class LocalSingleLibraryMediaStoreCopyInstrumentedTest {
             assertTrue("Disposable FIFO fixture must be private", mkdir())
         }
         try {
-            val source = File(root, "source.fifo")
+            // Model the actual race: the first pathname survey sees a
+            // regular file, then another actor renames it and plants a FIFO
+            // at the same leaf BEFORE the descriptor open.
+            val source = File(root, "source.bin").apply { writeBytes("source".toByteArray()) }
+            assertTrue(source.isFile)
+            val retired = File(root, "retired-source.bin")
+            assertTrue("Original regular bytes must be kept", source.renameTo(retired))
             android.system.Os.mkfifo(source.absolutePath, 0x180) // 0600
             val completion = java.util.concurrent.CountDownLatch(1)
             val outcome = AtomicReference<Throwable?>()
@@ -59,6 +65,8 @@ class LocalSingleLibraryMediaStoreCopyInstrumentedTest {
                 completion.await(2, java.util.concurrent.TimeUnit.SECONDS))
             assertTrue("Non-regular library source must refuse before reading",
                 outcome.get() is java.io.IOException)
+            assertArrayEquals("Original source bytes stay intact after FIFO swap",
+                "source".toByteArray(), retired.readBytes())
 
             val foreign = File(root, "foreign.bin").apply {
                 writeBytes("other user's unchanged file".toByteArray())
@@ -67,8 +75,10 @@ class LocalSingleLibraryMediaStoreCopyInstrumentedTest {
             val link = File(root, "source-link.bin")
             android.system.Os.symlink(foreign.absolutePath, link.absolutePath)
             assertNotNull("O_NOFOLLOW must also refuse symlinked sources",
-                runCatching { LocalSingleLibraryMediaStoreCopy.openPinnedRegularSource(link) }
-                    .exceptionOrNull())
+                runCatching {
+                    val descriptor = LocalSingleLibraryMediaStoreCopy.openPinnedRegularSource(link)
+                    android.system.Os.close(descriptor)
+                }.exceptionOrNull())
             assertArrayEquals("Read-only refusal must not change the foreign canary",
                 original, foreign.readBytes())
         } finally {
