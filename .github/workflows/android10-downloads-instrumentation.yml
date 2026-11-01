@@ -14,6 +14,9 @@ on:
       - "app/src/main/java/io/github/gamesbyian/chunks/LocalEngineScreen.kt"
       - "tools/android10_downloads_instrumentation.sh"
       - "tools/test_android10_downloads_instrumentation_mock.sh"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/PhoneIntakeJourneyInstrumentedTest.kt"
+      - "tools/phone_intake_journey.sh"
+      - "tools/test_phone_intake_journey.sh"
       # Checked Add/Start, path reservations and native collision surveys
       # directly guard user-visible shared Downloads bytes. Exercise API29
       # when their production logic changes even if androidTest stays untouched.
@@ -48,6 +51,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Reject misleading API29 install and test evidence (offline)
         run: bash tools/test_android10_downloads_instrumentation_mock.sh
+      - name: Reject forged intake/recovery receipts and physical data clearing (offline)
+        run: bash tools/test_phone_intake_journey.sh
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -76,4 +81,4 @@ jobs:
           profile: pixel_3a
           emulator-boot-timeout: 600
           disable-animations: true
-          script: bash tools/android10_downloads_instrumentation.sh
+          script: bash tools/android10_downloads_instrumentation.sh && bash tools/phone_intake_journey.sh
