@@ -31,7 +31,7 @@ jobs:
       ${{ github.ref == 'refs/heads/main' && github.run_attempt == 1 &&
           ((github.event_name == 'workflow_dispatch' && inputs.apply) ||
            (github.event_name == 'push' &&
-            contains(github.event.head_commit.message, 'one-time real Android Seedhost Add qualification (#1001)'))) }}
+            contains(github.event.head_commit.message, 'one-time corrected real Android Seedhost Add qualification (#1003)'))) }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
@@ -51,7 +51,7 @@ jobs:
           if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
             ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
           fi
-      - name: Assemble the exact candidate binary and instrumentation package
+      - name: Reject malformed runner before allocating emulator\n        run: bash -n tools/seedhost_android_real_transfer_add_once.sh\n      - name: Assemble the exact candidate binary and instrumentation package
         run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
       - name: Reclaim unrelated runner toolchains for the emulator
         run: |

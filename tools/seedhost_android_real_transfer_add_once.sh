@@ -35,21 +35,7 @@ unset url64 user64 pass64
 file=$(grep -Ec '^INSTRUMENTATION_STATUS: chunks_real_add_stage=file-passed' "$raw" || true)
 magnet=$(grep -Ec '^INSTRUMENTATION_STATUS: chunks_real_add_stage=magnet-passed' "$raw" || true)
 uncertain=$(grep -Ec '^INSTRUMENTATION_STATUS: chunks_real_add_stage=(file|magnet)-uncertain' "$raw" || true)
-last=$(grep -E '^INSTRUMENTATION_STATUS: chunks_real_add_stage=(file|magnet)-(preflight|review|ui-verified|bytes-verified|restarted|passed|uncertain)
-if [[ "$code" -ne 0 || "$file" -ne 1 || "$magnet" -ne 1 ||
-      "$uncertain" -ne 0 ]] ||
-   ! grep -qx 'INSTRUMENTATION_CODE: -1' "$raw" ||
-   grep -q '^INSTRUMENTATION_STATUS_CODE: -3' "$raw"; then
-  echo '::error::Real installed-app .torrent + magnet received/piece-verified acceptance FAILED or inconclusive. No qualified APK; reconcile exact test hashes before a repeat.'
-  exit 1
-fi
-mkdir -p "$RUNNER_TEMP/chunks-real-android-add"
-printf 'status=passed\nsha=%s\nrun=%s\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" \
-  > "$RUNNER_TEMP/chunks-real-android-add/ACCEPTANCE.txt"
-sha256sum app/build/outputs/apk/debug/app-debug.apk \
-  >> "$RUNNER_TEMP/chunks-real-android-add/ACCEPTANCE.txt"
-echo 'CHUNKS_REAL_ANDROID_ADD: both upstream public-source transfers started, retrieved real peer bytes and verified actual pieces; exact session cleanups independently verified.'
- "$raw" | tail -n 1 | sed 's/^INSTRUMENTATION_STATUS: chunks_real_add_stage=//' || true)
+last=$(grep -E '^INSTRUMENTATION_STATUS: chunks_real_add_stage=(file|magnet)-(preflight|review|ui-verified|bytes-verified|restarted|passed|uncertain)$' "$raw" | tail -n 1 | sed 's/^INSTRUMENTATION_STATUS: chunks_real_add_stage=//' || true)
 [[ "$last" =~ ^(file|magnet)-(preflight|review|ui-verified|bytes-verified|restarted|passed|uncertain)$ ]] || last=unavailable
 echo "CHUNKS_REAL_ANDROID_ADD: file=$file magnet=$magnet uncertain=$uncertain last_stage=$last run=$GITHUB_RUN_ID"
 if [[ "$code" -ne 0 || "$file" -ne 1 || "$magnet" -ne 1 ||
