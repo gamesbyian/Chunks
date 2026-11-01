@@ -63,6 +63,8 @@ class CombinedTransfersLargeTextTest {
         rule.onNodeWithText("Filter transfers").performScrollTo()
         // This label lives inside a lazy list item, not a nested ScrollState.
         // Scroll the LazyColumn itself to the matching descendant.
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Change sort & grouping", substring = true))
+        rule.onNodeWithText("Change sort & grouping", substring = true).performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Sort by"))
         rule.onNodeWithText("Sort by").assertExists()
 
@@ -90,6 +92,8 @@ class CombinedTransfersLargeTextTest {
         val opened = intArrayOf(0)
         val backed = intArrayOf(0)
         show(opened, backed)
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Change sort & grouping", substring = true))
+        rule.onNodeWithText("Change sort & grouping", substring = true).performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Group by environment"))
         val grouping = rule.onNodeWithContentDescription("Group by environment")
         val bounds = grouping.getUnclippedBoundsInRoot()
@@ -117,6 +121,8 @@ class CombinedTransfersLargeTextTest {
         rule.onNodeWithText("Attention").performClick()
         assertEquals(UnifiedTransferFilter.ATTENTION,
             CombinedViewPreferences(ApplicationProvider.getApplicationContext<android.content.Context>()).load().filter)
+        list.performScrollToNode(hasText("Change sort & grouping", substring = true))
+        rule.onNodeWithText("Change sort & grouping", substring = true).performClick()
         list.performScrollToNode(hasText("Peers"))
         rule.onNodeWithText("Peers").performClick()
         assertEquals(UnifiedSortKey.PEERS,
