@@ -95,13 +95,46 @@ set +e
 wait "$inst"
 instrument_status=$?
 set -e
-adb logcat -d -s ChunksSwarm:I | grep -o 'CHUNKS_SWARM_DOZE: .*' | tee -a "${GITHUB_STEP_SUMMARY:-/dev/null}" || true
-if [[ "$ready" -ne 1 ]]; then
-  echo "::error::Doze test never reached ready state; no forced-idle proof" >&2
-  exit 1
-fi
-if [[ "$instrument_status" -ne 0 ]] || ! grep -Fxq 'OK (1 test)' "$log" || grep -qE '^INSTRUMENTATION_STATUS_CODE: -[1-9]|^FAILURES' "$log"; then
+# A passing JUnit result alone does not establish actual sustained Doze:
+# the Android test intentionally permits both GROWTH and STALLED, but requires
+# nineteen observed isDeviceIdleMode samples spanning ninety seconds.
+native_log="$(adb logcat -d -s ChunksSwarm:I)" || {
+  echo "::error::Doze native evidence logcat is unavailable" >&2; exit 1;
+}
+receipts="$(grep -o 'CHUNKS_SWARM_DOZE: .*' <<< "$native_log" || true)"
+printf '%s\n' "$receipts" | tee -a "${GITHUB_STEP_SUMMARY:-/dev/null}"
+if [[ "$ready" -ne 1 || "$instrument_status" -ne 0 ]] ||
+   [[ "$(grep -Fxc 'OK (1 test)' "$log" || true)" != 1 ]] ||
+   grep -Eq '^INSTRUMENTATION_STATUS_CODE: -[1-9]|^FAILURES|AssumptionViolatedException' "$log" ||
+   grep -Fq 'CHUNKS_SWARM_DOZE: INCONCLUSIVE' <<< "$receipts"; then
   grep -A12 '^INSTRUMENTATION_STATUS: stack=' "$log" | head -40 || true
-  echo "::error::Doze test failed or was skipped (INCONCLUSIVE means peer availability)"
+  echo "::error::Doze test did not complete with actual native idle proof" >&2
   exit 1
 fi
+ready_re='^CHUNKS_SWARM_DOZE: ready verified=([0-9]{1,17})$'
+window_re='^CHUNKS_SWARM_DOZE: (GROWTH|STALLED) idle_mode=true idle_samples=19 window_ms=90000 verified_before=([0-9]{1,17}) verified_after=([0-9]{1,17}) grew=(-?[0-9]{1,17}) peers=([0-9]{1,17})$'
+ready_line="$(grep -E "$ready_re" <<< "$receipts" || true)"
+window_line="$(grep -E "$window_re" <<< "$receipts" || true)"
+if [[ "$(grep -c '^CHUNKS_SWARM_DOZE: ready ' <<< "$receipts" || true)" != 1 ||
+      "$(grep -Ec '^CHUNKS_SWARM_DOZE: (GROWTH|STALLED) ' <<< "$receipts" || true)" != 1 ]] ||
+   [[ ! "$ready_line" =~ $ready_re ]]; then
+  echo "::error::Missing or ambiguous native Doze warmup/idle-window receipt" >&2
+  exit 1
+fi
+ready_bytes="${BASH_REMATCH[1]}"
+if [[ ! "$window_line" =~ $window_re ]]; then
+  echo "::error::The app never certified the sustained 19-sample idle window" >&2
+  exit 1
+fi
+observation="${BASH_REMATCH[1]}"
+before="${BASH_REMATCH[2]}"
+after="${BASH_REMATCH[3]}"
+delta="${BASH_REMATCH[4]}"
+if (( ready_bytes < 4194304 || before < ready_bytes || after < 0 ||
+      after - before != delta )) ||
+   { [[ "$observation" == GROWTH ]] && (( delta <= 0 )); } ||
+   { [[ "$observation" == STALLED ]] && (( delta > 0 )); }; then
+  echo "::error::Doze idle-window native byte observation is contradictory" >&2
+  exit 1
+fi
+echo "CHUNKS_SWARM_DOZE: accepted 90-second observed idle window with outcome=$observation (not a long-run background guarantee)"
