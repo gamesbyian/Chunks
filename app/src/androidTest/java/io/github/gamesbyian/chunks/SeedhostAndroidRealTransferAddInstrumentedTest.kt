@@ -191,7 +191,7 @@ class SeedhostAndroidRealTransferAddInstrumentedTest {
             if (file) {
                 rule.waitUntil(30_000) { visible("Infohash: $hash") }
             }
-            rule.waitUntil(30_000) { visible("Using custom Place.") }
+            rule.waitUntil(30_000) {\n                runCatching { scroll("Custom server folder (optional)") }\n                visible("Using custom Place.")\n            }
             scroll("Review Add")
             rule.onNodeWithText("Review Add").performClick()
             scroll("Confirm: add then start")
