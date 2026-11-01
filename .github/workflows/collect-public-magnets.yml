@@ -73,7 +73,7 @@ jobs:
   quick-harvest:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 55
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -82,14 +82,14 @@ jobs:
       - name: Collect a small real-metainfo catalog and print reviewable JSON
         shell: bash
         run: |
-          python3 tools/collect_public_magnet_catalog.py --count 15 --pages 2 --rows 10 || true
+          python3 tools/collect_public_magnet_catalog.py --count 100 --pages 12 --rows 50 || true
           python3 tools/validate_public_magnet_catalog.py --allow-partial
           echo '<<<CHUNKS_CATALOG_BEGIN>>>'
           cat test-resources/public-magnets/catalog.json
           echo '<<<CHUNKS_CATALOG_END>>>'
       - uses: actions/upload-artifact@v4
         with:
-          name: chunks-quick-magnets
+          name: chunks-live-harvest-100
           path: |
             test-resources/public-magnets/catalog.json
             test-resources/public-magnets/magnets.txt
