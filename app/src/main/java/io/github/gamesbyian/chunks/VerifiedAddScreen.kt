@@ -202,9 +202,7 @@ fun VerifiedAddScreen(
         item {
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
                 Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("A place for every download.", style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Black)
-                    Text("Choose a magnet or .torrent. The configured server download folder is used unless you change it. Review the exact Place and whether to start after verification.")
+                    RemoteAddScopeIntro(environmentLabel, finishInOrderScope)
                 }
             }
         }
@@ -557,4 +555,22 @@ internal fun RecentRemotePlaces(
             "chosen folder again before reporting Add as verified.",
             style = MaterialTheme.typography.bodySmall)
     }
+}
+
+
+/** Scope stays visible before someone chooses a magnet, file or destination. */
+@Composable
+internal fun RemoteAddScopeIntro(environmentLabel: String?, aliasScope: String?) {
+    Text("Add a download to this server", style = MaterialTheme.typography.titleLarge,
+        fontWeight = FontWeight.Black)
+    environmentLabel?.let { label ->
+        EnvironmentBadge("Adding to: $label", server = true,
+            environment = aliasScope?.let {
+                io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverIdOfAliasScope(it)
+            })
+    }
+    Text("This server downloads to its own save folder. Nothing is copied to " +
+        "this phone by Add. Paste a magnet or choose a .torrent; the server's " +
+        "default folder is used unless you change it. Review before starting.",
+        style = MaterialTheme.typography.bodyMedium)
 }
