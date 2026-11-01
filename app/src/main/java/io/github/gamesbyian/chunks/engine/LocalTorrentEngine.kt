@@ -1,9 +1,12 @@
 package io.github.gamesbyian.chunks.engine
 
 import java.io.File
+import android.os.Build
 import android.system.Os
 import android.system.OsConstants
+import java.nio.ByteBuffer
 import java.nio.file.Files
+import java.nio.file.StandardOpenOption
 import java.nio.file.LinkOption
 import java.net.InetSocketAddress
 import java.util.Collections
@@ -314,15 +317,26 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                     (!Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS) ||
                      Files.isSymbolicLink(path))) return false
             }
-            val flags = OsConstants.O_RDONLY or OsConstants.O_CLOEXEC or
-                OsConstants.O_NONBLOCK or OsConstants.O_NOFOLLOW
-            val descriptor = Os.open(path.toString(), flags, 0)
-            try {
-                if (!OsConstants.S_ISREG(Os.fstat(descriptor).st_mode)) return false
-                Os.read(descriptor, ByteArray(1), 0, 1)
+            if (Build.VERSION.SDK_INT == 0) {
+                // JVM/libtorrent4j native regression tests execute with Android
+                // stubs. They still require a real no-follow read, but cannot
+                // call android.system.Os. Shipping minSdk=29 always uses the
+                // nonblocking kernel descriptor branch below.
+                Files.newByteChannel(
+                    path, setOf(StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS)
+                ).use { channel -> channel.read(ByteBuffer.allocate(1)) }
                 true
-            } finally {
-                Os.close(descriptor)
+            } else {
+                val flags = OsConstants.O_RDONLY or OsConstants.O_CLOEXEC or
+                    OsConstants.O_NONBLOCK or OsConstants.O_NOFOLLOW
+                val descriptor = Os.open(path.toString(), flags, 0)
+                try {
+                    if (!OsConstants.S_ISREG(Os.fstat(descriptor).st_mode)) return false
+                    Os.read(descriptor, ByteArray(1), 0, 1)
+                    true
+                } finally {
+                    Os.close(descriptor)
+                }
             }
         } catch (_: Exception) {
             false
