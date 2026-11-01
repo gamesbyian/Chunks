@@ -8,13 +8,21 @@
 - **Remaining P0 coverage:** #809 user-reviewed exact-target Replace, Create new/Keep both in individually qualified SAF providers, wrong-returned-URI/revoked-grant/power-failure negatives and correct partial-state feedback; #9 independent real installed positive and adversarial QA; #10 enforced branch protection, signed-release, physical/OEM/200%-TalkBack proof. #967 source-head foundation real failure in ruTorrent mock [41341545349](https://github.com/gamesbyian/Chunks/actions/runs/41341545349), and #956 missing terminal reboot instrumentation guard, remain separately actionable. Read [live queue](WORK-QUEUE.md#one-ranked-dispatch-table) and [ledger](QUALITY-LEDGER.md) for source/evidence details.
 
 
-**P0 UI qualification (2026-11-01; candidates, not merged):** #940 `f130bc85`
-passes 14 local session/model/RPC tests, including exact B handoff and old-A
-review refusal; an old-key negative fails as required. #927 local `909a9323`
-passes 20 combined-list/large-text tests after scrolling its off-screen
-Reverse pointer target into view. Required integrated-head CI is pending.
-These are host JVM/Robolectric receipts, not installed/physical Android,
-TalkBack or protected-host acceptance. [Evidence](QUALITY-LEDGER.md#2026-11-01-p0-ui-red-check-diagnosis-local-positive-and-negative-controls).
+**P0 UI qualification (2026-11-01; both merged):** #940 `f130bc85` →
+`ecfeceba` and #927 `280e0855` → `e0922f3e`. #940's session-bound
+server-to-phone review passed foundation/native Add/R8. #927's explicit
+combined Add and truthful freshness, offscreen Reverse target and full
+persisted sort/group/scope assertion, plus authenticated remote → phone Add
+route passed four exact-head suites: foundation [41342917332](https://github.com/gamesbyian/Chunks/actions/runs/41342917332),
+native Add [41342917418](https://github.com/gamesbyian/Chunks/actions/runs/41342917418),
+installed visual atlas [41342917361](https://github.com/gamesbyian/Chunks/actions/runs/41342917361)
+and R8 [41342917350](https://github.com/gamesbyian/Chunks/actions/runs/41342917350).
+**G2 acceptance remains OPEN** for real multi-server/phone operations and
+untouched default paths, physical/OEM and installed large-font/TalkBack/keyboard
+/ reduced motion, scoped settings/Place, process restoration and uncoached novice
+use. Emulator navigation and Robolectric large-text screenshots do not prove
+protected-host peer-byte activity or physical accessibility. [Full proof and
+red-to-green history](QUALITY-LEDGER.md#2026-11-01-0d-exact-head-ui-qualification-both-prs-merged).
 
 
 **Installed 0B Share/magnet automated tier integrated (2026-11-01):** [#890](https://github.com/gamesbyian/Chunks/pull/890) merged as `32797a8`, exact candidate `3aeefd2` **four/four** checks green, including API29 [41271931718](https://github.com/gamesbyian/Chunks/actions/runs/41271931718) and API35 [41271931680](https://github.com/gamesbyian/Chunks/actions/runs/41271931680). Both actual MainActivity Share and magnet review → public Downloads → 524,288 incoming real peer bytes → UI Stop → process death → STOPPED restore → UI Start → 524,288 actual fresh peer uploaded/downloaded bytes → native SHA-matched Remove keeping original data passed. Magnet fixture employs peer injection separately after metadata and after Start, *not* automatic peer-discovery evidence; [merged #912](https://github.com/gamesbyian/Chunks/pull/912) `642f5ba` independently proves native tracker-only discovery on desktop JNI. [Merged #897](https://github.com/gamesbyian/Chunks/pull/897) `025d015` covers shortened API35 FGS timeout and two-job cold restore with preserved file hashes. Physical, SD/SAF/reinstall, permission revocation, low storage, handover/Doze/OEM, accessibility and long-run claims stay open #5/#569.
