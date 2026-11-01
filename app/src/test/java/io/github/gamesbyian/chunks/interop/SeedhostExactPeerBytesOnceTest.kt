@@ -10,6 +10,7 @@ import io.github.gamesbyian.chunks.engine.LocalTransferState
 import io.github.gamesbyian.chunks.rpc.LifecycleOutcome
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteAddOutcome
+import io.github.gamesbyian.chunks.rpc.RemoteAddAndStart
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
 import io.github.gamesbyian.chunks.rpc.RemoteSmartConnect
 import io.github.gamesbyian.chunks.rpc.SeedhostDestinationPreflight
@@ -147,7 +148,7 @@ class SeedhostExactPeerBytesOnceTest {
 
     private fun stage(value: String) {
         require(value in setOf("preflight", "destination", "peer", "seed-ready",
-            "added-stopped", "started", "bytes-verified", "stopped", "removed",
+            "added-stopped", "added-started", "started", "bytes-verified", "stopped", "removed",
             "inventory-restored"))
         println("CHUNKS_HOST_BYTES_STAGE: $value")
     }
@@ -241,6 +242,11 @@ class SeedhostExactPeerBytesOnceTest {
         require(remote.listTransfers("main").none { it.hash.equals(hash, true) } &&
             remote.lookupName(hash) == null) { "Fresh synthetic hash already exists; no replay" }
         val plan = StoppedRemoteAddPlan.fromMagnet("magnet:?xt=urn:btih:$hash", place)
+        // On the separately authorized trusted-main native acceptance gate,
+        // prove the production Add-with-Start path downloads real peer bytes.
+        // The legacy manual stopped-first fixture stays available unchanged.
+        val nativeStartedAdd =
+            System.getenv("CHUNKS_HOST_PEER_PROOF_NATIVE_START") == "authorized"
         val seed = LocalTorrentEngine(LocalEngineConfig(allowMultipleConnectionsPerIp = true))
         var remoteAdded = false
         // The command can apply before its HTTP ACK is lost; this flag only
@@ -256,33 +262,57 @@ class SeedhostExactPeerBytesOnceTest {
             stage("seed-ready")
 
             addMayHaveApplied = true
-            val added = remote.loadStoppedTorrentBytes(metainfo, place)
-            // A lost Add ACK is never grounds for a second load call.
-            val settled = if (added is RemoteAddOutcome.VerifiedStopped) added
-                else remote.reconcileStoppedAdd(plan)
-            assertTrue("Exact stopped Add not positively verified",
-                settled is RemoteAddOutcome.VerifiedStopped)
-            val row = remote.listTransfers("main").singleOrNull {
-                it.hash.equals(hash, true)
+            if (nativeStartedAdd) {
+                // A single reviewed load.raw_start, not a stopped load plus
+                // speculative d.start/d.resume. A lost ACK never triggers an
+                // automatic second load; read exact state instead.
+                val native = remote.loadStartedTorrentBytes(metainfo, place)
+                assertTrue("Native Add returned an existing or invalid target: $native",
+                    native is RemoteAddAndStart.Started ||
+                        native is RemoteAddAndStart.StartNotVerified)
+            } else {
+                val added = remote.loadStoppedTorrentBytes(metainfo, place)
+                val settled = if (added is RemoteAddOutcome.VerifiedStopped) added
+                    else remote.reconcileStoppedAdd(plan)
+                assertTrue("Exact stopped Add not positively verified",
+                    settled is RemoteAddOutcome.VerifiedStopped)
+            }
+            val row = await("exact newly loaded native/legacy session", 30) {
+                runBlocking {
+                    val item = remote.listTransfers("main").singleOrNull {
+                        it.hash.equals(hash, true)
+                    }
+                    item != null && item.name == name && item.directory == place
+                }
+            }.let {
+                remote.listTransfers("main").singleOrNull { it.hash.equals(hash, true) }
             }
             assertNotNull("Synthetic Add did not enter the complete main view", row)
             assertEquals(name, row!!.name)
             assertEquals(place, row.directory)
-            assertFalse(row.started)
+            // Only our newly reviewed exact hash+name+Place can be retired.
             remoteAdded = true
-            stage("added-stopped")
+            if (nativeStartedAdd) {
+                stage("added-started")
+            } else {
+                assertFalse(row.started)
+                stage("added-stopped")
+            }
 
             val initial = remote.readTrafficSample(hash)
             assertEquals(0L, initial.receivedBytes)
             assertEquals(0L, initial.verifiedBytes)
             assertEquals(payload.size.toLong(), initial.expectedBytes)
-            val start = remote.setStarted(hash, true)
-            assertTrue("Exact Start was not verified or pending",
-                start is LifecycleOutcome.Verified || start is LifecycleOutcome.Pending)
-            await("host synthetic Start", 30) {
-                runBlocking { remote.listTransfers("main").any {
-                    it.hash.equals(hash, true) && it.started
-                } }
+            if (!nativeStartedAdd) {
+                val start = remote.setStarted(hash, true)
+                assertTrue("Exact Start was not verified or pending",
+                    start is LifecycleOutcome.Verified || start is LifecycleOutcome.Pending)
+            }
+            await("host synthetic active Start", 30) {
+                runBlocking {
+                    val transfer = remote.listTransfers("main").singleOrNull { it.hash.equals(hash, true) }
+                    transfer?.started == true && remote.readActivity(hash).active == true
+                }
             }
             stage("started")
 
