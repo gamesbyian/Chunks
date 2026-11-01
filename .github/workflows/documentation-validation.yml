@@ -10,6 +10,7 @@ on:
       - 'AGENTS.md'
       - 'assets/fonts/README.md'
       - 'tools/check_docs.py'
+      - 'tests/test_ci_debug_publish_gate.py'
       - 'tests/test_ci_font_permissions.py'
       - '.github/workflows/chunks-font-family.yml'
       - '.github/workflows/chunks-reference-alphabet.yml'
@@ -73,6 +74,7 @@ on:
       - 'AGENTS.md'
       - 'assets/fonts/README.md'
       - 'tools/check_docs.py'
+      - 'tests/test_ci_debug_publish_gate.py'
       - 'tests/test_ci_font_permissions.py'
       - '.github/workflows/chunks-font-family.yml'
       - '.github/workflows/chunks-reference-alphabet.yml'
@@ -164,6 +166,8 @@ jobs:
           if-no-files-found: warn
       - name: Refuse writable tokens in font verification and unreachable publish steps
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_font_permissions.py
+      - name: Verify explicit main-only debug publication and immutable actions
+        run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_debug_publish_gate.py
       - name: Validate native atlas names offline (no Android)
         run: |
           python3 tools/check_native_atlas_contract.py
