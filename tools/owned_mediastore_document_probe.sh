@@ -28,7 +28,7 @@ out="$(mktemp)"
 trap 'rm -f "$out"' EXIT
 set +e
 adb shell am instrument -w -r \
-  -e class io.github.gamesbyian.chunks.storage.OwnedMediaStoreDocumentPublicationInstrumentedTest,io.github.gamesbyian.chunks.LocalSingleZipMediaStoreExportInstrumentedTest \
+  -e class io.github.gamesbyian.chunks.storage.OwnedMediaStoreDocumentPublicationInstrumentedTest,io.github.gamesbyian.chunks.LocalSingleZipMediaStoreExportInstrumentedTest,io.github.gamesbyian.chunks.LocalSingleLibraryMediaStoreCopyInstrumentedTest \
   io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner >"$out" 2>&1
 status=$?
 set -e
@@ -37,8 +37,8 @@ cat "$out"
   echo 'CHUNKS_OWNED_DOCS: instrumentation process failed' >&2
   exit 1
 }
-grep -qx 'OK (8 tests)' "$out" || {
-  echo 'CHUNKS_OWNED_DOCS: exact six tests not confirmed' >&2
+grep -qx 'OK (9 tests)' "$out" || {
+  echo 'CHUNKS_OWNED_DOCS: exact nine tests not confirmed' >&2
   exit 1
 }
 if grep -qE '^INSTRUMENTATION_STATUS_CODE: -(1|2|3|4)|^FAILURES|^Tests run: .*Failures: [1-9]' "$out"; then
@@ -53,7 +53,8 @@ for case_name in \
   cancellationAfterJournaledRowPreservesAmbiguousPendingObjectForReview \
   independentlyVerifiedPendingRowIsNotConfusedWithPublishedAndTamperingIsRefused \
   userApprovedSingleMemberCreatesDistinctVerifiedDownloadAndKeepsBothSources \
-  traversalNestedMultiMemberAndPreCancelledNeverPublishOrTouchCanary; do
+  traversalNestedMultiMemberAndPreCancelledNeverPublishOrTouchCanary \
+  seedingSingleFileCopiesThroughUiWhileOriginalAndExistingCanaryStayUntouched; do
   grep -Fxq "INSTRUMENTATION_STATUS: test=$case_name" "$out" || {
     echo "CHUNKS_OWNED_DOCS: missing required real Android case $case_name" >&2
     exit 1
