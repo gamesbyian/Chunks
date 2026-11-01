@@ -1,5 +1,6 @@
 package io.github.gamesbyian.chunks
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -100,8 +101,13 @@ class ServerToPhoneSessionPlanTest {
         rule.setContent {
             ChunksTheme {
                 Surface {
-                    ServerToPhoneCopyControl(selected, sharedTransfer, stale = false) {
-                        handedOff += it
+                    // Match the production transfer card's vertical layout.
+                    // Surface alone stacks these sibling controls, so pointer
+                    // clicks can hit an overlapping action instead of Review.
+                    Column {
+                        ServerToPhoneCopyControl(selected, sharedTransfer, stale = false) {
+                            handedOff += it
+                        }
                     }
                 }
             }
