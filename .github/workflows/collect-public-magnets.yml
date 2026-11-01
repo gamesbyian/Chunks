@@ -45,6 +45,31 @@ jobs:
       - run: |
           python3 -m py_compile tools/collect_public_magnet_catalog.py tools/collect_linuxtracker_magnets.py tools/validate_public_magnet_catalog.py
           python3 -m unittest discover -s tools -p test_public_fixture_collector.py
+  source-probe:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Fetch and verify two actual public .torrent metadata files
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import sys
+          sys.path.insert(0, 'tools')
+          from collect_linuxtracker_magnets import get
+          from public_fixture_collector import archive_fixture, torrent_summary
+          h = '6ab547ee88571930f92452d965d1dde36ad5a0a1'
+          raw = get('https://linuxtracker.org/torrents/' + h + '/download/', 2*1024*1024)
+          _, info = torrent_summary(raw, 555000000, ())
+          assert info['infohash_v1'] == h
+          print('LINUXTRACKER SOURCE-VERIFIED', info['name'], info['total_bytes'], info['infohash_v1'], flush=True)
+          manifest, _raw = archive_fixture('BigBuckBunny_124', 555000000)
+          print('ARCHIVE SOURCE-VERIFIED', manifest['torrent']['name'], manifest['torrent']['total_bytes'], manifest['torrent']['infohash_v1'], flush=True)
+          PY
   collect:
     if: github.ref == 'refs/heads/test/public-magnet-catalog-harvester-20261101' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
