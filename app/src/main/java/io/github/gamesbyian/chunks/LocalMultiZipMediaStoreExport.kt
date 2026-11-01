@@ -7,6 +7,7 @@ import io.github.gamesbyian.chunks.model.ZipPayloadStatus
 import io.github.gamesbyian.chunks.model.ZipPayloadVerifier
 import io.github.gamesbyian.chunks.model.ZipPreflightStatus
 import io.github.gamesbyian.chunks.storage.OwnedMediaStoreDocumentPublication
+import io.github.gamesbyian.chunks.storage.OwnedMediaStoreZipBatchJournal
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.util.zip.CRC32
@@ -127,26 +128,54 @@ internal object LocalMultiZipMediaStoreExport {
             }
             if (cancelled()) return@use Result(State.BLOCKED,
                 "Cancelled before any Downloads creation.")
-            val receipts = ArrayList<Published>(members.size)
-            for ((index, member) in members.withIndex()) {
-                if (cancelled()) return@use Result(State.PARTIAL,
-                    "Stopped after " + receipts.size + " verified new file(s). Existing publications were preserved.",
-                    receipts.toList(), members.size - index)
+            // No destination row may be created without a durably recorded
+            // complete batch intent. This private journal is informational
+            // only, and can NEVER authorize provider cleanup or retries.
+            val batch = try {
+                OwnedMediaStoreZipBatchJournal.begin(context, members.map { it.name })
+            } catch (_: Exception) {
+                return@use Result(State.BLOCKED,
+                    "The batch intent could not be saved durably. Nothing was published.")
+            }
+            batch.use batchUse@ { journal ->
+                val receipts = ArrayList<Published>(members.size)
+                for ((index, member) in members.withIndex()) {
+                    if (cancelled()) {
+                        val durableStop = runCatching { journal.stopped(index) }.isSuccess
+                        return@batchUse Result(
+                            if (durableStop) State.PARTIAL else State.NEEDS_ATTENTION,
+                            "Stopped after " + receipts.size +
+                                " verified new file(s). Earlier files were preserved.",
+                            receipts.toList(), members.size - index)
+                    }
+                    try {
+                        val row = OwnedMediaStoreDocumentPublication.publish(
+                            context, member.name, member.mime, member.bytes, cancelled)
+                        // This exact provider row is independently published.
+                        // If the following fsync fails, it remains a verified
+                        // per-file receipt, but the batch record is uncertain.
+                        receipts += Published(member.name, row.publishedName, row.uri)
+                        journal.rowPublished(index, row)
+                    } catch (_: Exception) {
+                        runCatching { journal.uncertain(index) }
+                        // The current row may already be pending or published.
+                        // Preserving it and its exact per-file journal is vital.
+                        return@batchUse Result(State.NEEDS_ATTENTION,
+                            "Earlier copies were preserved. The current row or batch journal may be incomplete; review exact operation records. No automatic retry or cleanup.",
+                            receipts.toList(), members.size - index)
+                    }
+                }
                 try {
-                    val row = OwnedMediaStoreDocumentPublication.publish(
-                        context, member.name, member.mime, member.bytes, cancelled)
-                    receipts += Published(member.name, row.publishedName, row.uri)
+                    journal.finished()
+                    Result(State.EXPORTED, "Created " + receipts.size +
+                        " distinct verified Downloads files. Original ZIP preserved.",
+                        receipts.toList(), 0)
                 } catch (_: Exception) {
-                    // This row may be pending or already published. Never
-                    // delete/retry based on original or generated filenames.
-                    return@use Result(State.NEEDS_ATTENTION,
-                        "Earlier copies were preserved. The current new row may be incomplete: review its journal. No automatic retry or cleanup.",
-                        receipts.toList(), members.size - index)
+                    Result(State.NEEDS_ATTENTION,
+                        "Every file has an exact verified receipt, but batch completion was not saved durably. Review the batch operation record.",
+                        receipts.toList(), 0)
                 }
             }
-            Result(State.EXPORTED, "Created " + receipts.size +
-                " distinct verified Downloads files. Original ZIP preserved.",
-                receipts.toList(), 0)
         }
     }
 }
