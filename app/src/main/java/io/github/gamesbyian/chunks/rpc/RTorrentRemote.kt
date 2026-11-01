@@ -945,11 +945,15 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         suspend fun get(method: String): Long? = try {
             number(call(method, listOf(hash))).takeIf { it >= 0L }
         } catch (fault: RpcFault) {
-            // Optional activity getters can be absent on older rTorrent builds.
-            // An unknown exact hash is a disappeared selection, not an
-            // unsupported statistic. Fail that case instead of showing
-            // fictitious "unknown activity" for a vanished transfer.
-            if (fault.isUnknownInfoHash()) throw fault
+            // Older servers may omit optional getters. Only a recognizable
+            // "method unavailable" RPC fault can become an unknown statistic.
+            // A 200 XML-RPC envelope can also carry backend busy/permission
+            // faults. Those, and a vanished exact hash, must stop inspection.
+            val reason = fault.message.orEmpty().lowercase(java.util.Locale.ROOT)
+            val missingMethod = fault.code in setOf("-32601", "-506") &&
+                "method" in reason && listOf("not found", "not defined",
+                    "unknown", "unsupported").any { it in reason }
+            if (!missingMethod) throw fault
             null
         }
         // HTTP 401/403/407/429, TLS/socket loss, truncated or malformed XML,
