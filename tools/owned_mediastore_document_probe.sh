@@ -19,7 +19,7 @@ if [[ -n "${ANDROID_SERIAL:-}" ]]; then
     exit 1
   }
 else
-  awk 'NR > 1 && $1 !~ /^\\*/ && NF > 0 { n++; if ($2 != "device") bad=1 } END { exit(n == 1 && !bad ? 0 : 1) }' <<<"$devices" || {
+  awk 'NR > 1 && NF > 0 && $1 != "*" { n++; if ($2 != "device") bad=1 } END { exit(n == 1 && !bad ? 0 : 1) }' <<<"$devices" || {
     echo 'CHUNKS_OWNED_DOCS: require one authorized ADB device' >&2
     exit 1
   }
