@@ -42,15 +42,16 @@ case "$1" in
           userApprovedSingleMemberCreatesDistinctVerifiedDownloadAndKeepsBothSources \
           traversalNestedMultiMemberAndPreCancelledNeverPublishOrTouchCanary \
           seedingSingleFileCopiesThroughUiWhileOriginalAndExistingCanaryStayUntouched \
-          pathnameSwapDuringPinnedLibraryReadRefusesBeforeDestinationCreation; do
+          pathnameSwapDuringPinnedLibraryReadRefusesBeforeDestinationCreation \
+          pinnedLibraryReadRefusesSwappedFifoPromptlyAndLeavesForeignBytesUntouched; do
           [[ "${MOCK_MISSING_CASE:-0}" != 1 || "$name" != pathnameSwapDuringPinnedLibraryReadRefusesBeforeDestinationCreation ]] || continue
           # Mimic Android start/completion status records for ONE executed test.
           echo "INSTRUMENTATION_STATUS: test=$name"
           echo "INSTRUMENTATION_STATUS: test=$name"
           [[ "${MOCK_DUPLICATE_CASE:-0}" != 1 || "$name" != pathnameSwapDuringPinnedLibraryReadRefusesBeforeDestinationCreation ]] || echo "INSTRUMENTATION_STATUS: test=$name"
         done
-        echo 'OK (10 tests)'
-        [[ "${MOCK_DUPLICATE_OK:-0}" != 1 ]] || echo 'OK (10 tests)'
+        echo 'OK (11 tests)'
+        [[ "${MOCK_DUPLICATE_OK:-0}" != 1 ]] || echo 'OK (11 tests)'
         [[ "${MOCK_SKIP:-0}" != 1 ]] || echo 'INSTRUMENTATION_STATUS_CODE: -3'
         [[ "${MOCK_TEST_FAILURE:-0}" != 1 ]] || echo 'FAILURES!!!'
         [[ "${MOCK_MISSING_FINAL:-0}" == 1 ]] || echo 'INSTRUMENTATION_CODE: -1'
