@@ -34,7 +34,9 @@ class RemoteReadAuthEvidenceTest {
                     .find(body)?.groupValues?.get(1).orEmpty()
                 val authorization = exchange.requestHeaders.getFirst("Authorization")
                 requests.add(method to authorization)
-                if (challengeRead && (authorization == null || rejectAfterAuthorization)) {
+                val expectedAuthorization = "Basic " + java.util.Base64.getEncoder()
+                    .encodeToString("alice:secret".toByteArray(Charsets.UTF_8))
+                if (challengeRead && (authorization != expectedAuthorization || rejectAfterAuthorization)) {
                     exchange.responseHeaders.add("WWW-Authenticate", "Basic realm=\"read\"")
                     exchange.sendResponseHeaders(401, -1)
                     exchange.close()
@@ -74,6 +76,44 @@ class RemoteReadAuthEvidenceTest {
             assertNull(server.requests.first().second)
             assertTrue(server.requests.last().second.orEmpty().startsWith("Basic "))
             assertFalse(server.requests.last().second.orEmpty().contains("secret"))
+        }
+    }
+
+    @Test fun actualProtectedProbeGateRefusesValidPublicReadsWithInventedCredentials() = runBlocking {
+        Gateway(challengeRead = false).use { server ->
+            val remote = RTorrentRemote(RemoteCredentials(server.address, "invented-user", "wrong-secret"))
+            try {
+                verifySeedhostReadOnlyAcceptance(remote)
+                fail("Public version and main view cannot produce an authenticated acceptance receipt")
+            } catch (expected: IllegalStateException) {
+                assertTrue(expected.message.orEmpty().contains("authentication is unverified"))
+            }
+            assertEquals(setOf("system.client_version", "d.multicall2"), server.requests.map { it.first }.toSet())
+            assertTrue("An anonymous endpoint never challenges or validates this identity",
+                server.requests.all { it.second == null })
+        }
+    }
+
+    @Test fun actualProtectedProbeGateAcceptsChallengedVersionAndEmptyMainView() = runBlocking {
+        Gateway(challengeRead = true).use { server ->
+            val remote = RTorrentRemote(RemoteCredentials(server.address, "alice", "secret"))
+            assertEquals(0, verifySeedhostReadOnlyAcceptance(remote))
+            assertEquals(RemoteReadAuthEvidence.READ_CHALLENGE_ACCEPTED, remote.readAuthenticationEvidence())
+            assertTrue(server.requests.any { it.second.orEmpty().startsWith("Basic ") })
+            assertEquals(setOf("system.client_version", "d.multicall2"), server.requests.map { it.first }.toSet())
+        }
+    }
+
+    @Test fun actualProtectedProbeGateRefusesRejectedSuppliedCredentials() = runBlocking {
+        Gateway(challengeRead = true).use { server ->
+            val remote = RTorrentRemote(RemoteCredentials(server.address, "alice", "wrong-secret"))
+            try {
+                verifySeedhostReadOnlyAcceptance(remote)
+                fail("Rejected credentials cannot produce an authenticated receipt")
+            } catch (_: java.io.IOException) { }
+            assertEquals(RemoteReadAuthEvidence.NO_READ_CHALLENGE, remote.readAuthenticationEvidence())
+            assertEquals(2, server.requests.size)
+            assertTrue(server.requests.all { it.first == "system.client_version" })
         }
     }
 
