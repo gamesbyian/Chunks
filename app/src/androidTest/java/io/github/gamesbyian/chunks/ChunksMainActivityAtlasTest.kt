@@ -321,15 +321,27 @@ class ChunksMainActivityAtlasTest {
         // requests only the read-only default Place, never a torrent mutation.
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("All environments…"))
         rule.onNodeWithText("All environments…").performClick()
+        // Remote-initiated combined Back returns to the signed-in server,
+        // preserving its authenticated queue instead of opening phone UI.
+        rule.onNodeWithText("Back").performClick()
+        rule.onNodeWithText("It's all here.").assertExists()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("All environments…"))
+        rule.onNodeWithText("All environments…").performClick()
         // Regression: Add on this phone must render while a remote session is
-        // authenticated. Previously Section.LOCAL was only composed with server == null,
-        // leaving a blank route. This is the installed real MainActivity and privacy gate.
+        // authenticated using the connected phone adapter, without changing
+        // the verified remote session or dispatching any remote torrent command.
         val phoneAdd = androidx.compose.ui.test.hasContentDescription("Add download on this phone")
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(phoneAdd)
         rule.onNode(phoneAdd).performClick()
         rule.onNodeWithText("On this phone (experimental)").assertExists()
         rule.onNodeWithText("Add a download on this phone").assertExists()
         // Return through the existing local route without submitting any torrent.
+        rule.onNodeWithText("All environments…").performScrollTo().performClick()
+        // This second entry came from the phone while server is still connected.
+        rule.onNodeWithText("Back").performClick()
+        rule.onNodeWithText("On this phone (experimental)").assertExists()
+        rule.onNodeWithText("Add a download on this phone").assertExists()
+        // Return again, then choose the separately authenticated server Add.
         rule.onNodeWithText("All environments…").performScrollTo().performClick()
         val remoteAdd = androidx.compose.ui.test.hasContentDescription(
             "Add download on Server", substring = true)

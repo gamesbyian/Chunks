@@ -5,6 +5,7 @@ on:
     paths:
       - ".github/workflows/disposable-rtorrent-probe.yml"
       - "app/src/test/java/io/github/gamesbyian/chunks/rpc/RTorrentDisposableMutationTest.kt"
+      - "app/src/test/java/io/github/gamesbyian/chunks/rpc/RTorrentDisposableNativeStartedAddTest.kt"
       - "app/src/test/java/io/github/gamesbyian/chunks/rpc/RTorrentDisposableServerTest.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/rpc/RTorrentRemote.kt"
       # Cross-implementation peer-wire proof (rTorrent <-> phone libtorrent4j engine).
@@ -128,6 +129,15 @@ jobs:
           PY
             exit 1
           fi
+      - name: Native start-on-load file and magnet acceptance on real rTorrent
+        env:
+          CHUNKS_DISPOSABLE_RT_URL: http://127.0.0.1:18080/RPC2
+          CHUNKS_DISPOSABLE_TARGET_DIR: ${{ runner.temp }}/chunks-data
+        run: |
+          gradle --no-daemon :app:testDebugUnitTest --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableNativeStartedAddTest'
+          report=app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.RTorrentDisposableNativeStartedAddTest.xml
+          grep -q 'tests="2" skipped="0" failures="0" errors="0"' "$report"
+          echo "CHUNKS_NATIVE_STARTED_ADD: both sources active on disposable real rTorrent" >> "$GITHUB_STEP_SUMMARY"
       - name: Reviewed batch Start/Stop on real rTorrent
         env:
           CHUNKS_DISPOSABLE_RT_URL: http://127.0.0.1:18080/RPC2
@@ -281,6 +291,7 @@ jobs:
           status=0
           gradle --no-daemon :app:testDebugUnitTest --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableServerTest' || status=1
           gradle --no-daemon :app:testDebugUnitTest --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableMutationTest' || status=1
+          gradle --no-daemon :app:testDebugUnitTest --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableNativeStartedAddTest' || status=1
           python3 - <<'PY'
           import pathlib, xml.etree.ElementTree as ET
           for path in sorted(pathlib.Path("app/build/test-results/testDebugUnitTest").glob("TEST-*Disposable*.xml")):

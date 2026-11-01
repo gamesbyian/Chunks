@@ -563,4 +563,89 @@ class SeedhostLiveAcceptanceTest {
         }
         assertEquals(before, rtorrent.listTransfers("main").map { it.hash.lowercase() }.toSet())
     }
+    /**
+     * Owner explicitly authorized using the designated Seedhost as an active
+     * development test environment on 2026-11-01. This is a separate gated
+     * native start-on-load comparison, never triggered by untrusted PRs.
+     * Both unique synthetic entries are removed by exact-hash session erase.
+     * This probes engine activation, not peer availability or payload bytes.
+     */
+    @Test fun ownerAuthorizedNativeStartedAddFileAndMagnet() = runBlocking {
+        assumeTrue("Only trusted-main explicit native mutation",
+            System.getenv("CHUNKS_LIVE_MUTATION") == "apply" &&
+                System.getenv("CHUNKS_LIVE_NATIVE_STARTED_ADD") == "apply")
+        val remote = remote()
+        val target = requireNotNull(preflightExistingParent(remote)) {
+            "No independently observed destination for native start-on-load"
+        }.directory
+        val initial = remote.listTransfers("main").map { it.hash.lowercase() }.toSet()
+        val runId = System.getenv("GITHUB_RUN_ID").orEmpty()
+            .filter { it.isDigit() }.ifEmpty { System.currentTimeMillis().toString() }
+        val fileName = "chunks-acceptance-native-$runId.txt"
+        val bytes = syntheticTorrent(fileName)
+        val fileHash = TorrentMetainfoReader.preview(bytes).infoHashV1
+        val magnetHash = MessageDigest.getInstance("SHA-1")
+            .digest("chunks-acceptance-native-magnet-$runId".toByteArray(Charsets.UTF_8))
+            .joinToString("") { "%02x".format(it) }
+        val magnet = "magnet:?xt=urn:btih:$magnetHash" +
+            "&dn=chunks-acceptance-native-magnet-$runId" +
+            "&tr=http%3A%2F%2F127.0.0.1%3A1%2Fannounce"
+        require(fileHash !in initial && magnetHash !in initial) {
+            "Native start-on-load synthetic identities already exist"
+        }
+
+        suspend fun observeActive(hash: String, expectedDirectory: String): Boolean {
+            var last: RemoteTransfer? = null
+            var lastActive: Boolean? = null
+            for (attempt in 0 until 25) {
+                last = remote.listTransfers("main").singleOrNull { it.hash.equals(hash, true) }
+                if (last != null) {
+                    check(last.directory == expectedDirectory) { "Native Add used wrong destination" }
+                    lastActive = remote.readActivity(hash).active
+                    if (last.started && lastActive == true) return true
+                }
+                if (attempt < 24) kotlinx.coroutines.delay(400L)
+            }
+            log("native-sample listed=${last != null} started=${last?.started} " +
+                "activity=${lastActive ?: "unknown"}")
+            return false
+        }
+
+        try {
+            log("native phase=file")
+            val fileOutcome = remote.loadStartedTorrentBytes(bytes, target)
+            log("native file outcome=${fileOutcome::class.simpleName}")
+            assertTrue("Native file load never activated exact hash",
+                observeActive(fileHash, target))
+            log("native file startedAndActive=true")
+            log("native phase=magnet")
+            val magnetOutcome = remote.loadStarted(
+                StoppedRemoteAddPlan.fromMagnet(magnet, target))
+            log("native magnet outcome=${magnetOutcome::class.simpleName}")
+            assertTrue("Native magnet load never activated exact hash",
+                observeActive(magnetHash, target))
+            log("native magnet startedAndActive=true")
+        } finally {
+            for (hash in listOf(fileHash, magnetHash)) {
+                // No blind retries, other torrent identities, or payload deletes.
+                val current = remote.listTransfers("main").singleOrNull { it.hash.equals(hash, true) }
+                if (current != null) {
+                    val verified = remote.call("d.hash", listOf(hash)) as? String
+                    check(verified?.equals(hash, ignoreCase = true) == true) {
+                        "Exact test identity changed: manual reconciliation required"
+                    }
+                    val removed = remote.eraseFromSession(
+                        current.hash, current.name, current.directory)
+                    log("native cleanup=${removed::class.simpleName}")
+                    assertTrue("Synthetic session cleanup requires reconciliation",
+                        removed is SessionEraseOutcome.VerifiedRemoved ||
+                            removed is SessionEraseOutcome.PendingRemoval)
+                }
+            }
+        }
+        assertEquals("Native fixture must leave unrelated inventory unchanged", initial,
+            remote.listTransfers("main").map { it.hash.lowercase() }.toSet())
+        log("native result=two-started-active inventory-restored")
+    }
+
 }

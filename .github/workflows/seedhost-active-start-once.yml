@@ -107,6 +107,26 @@ jobs:
           if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
             ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
           fi
+      - name: Owner-approved native started Add for .torrent and magnet
+        env:
+          # Distinct positive gate: routine unit/PR builds cannot activate it.
+          CHUNKS_LIVE_NATIVE_STARTED_ADD: "apply"
+        run: |
+          set -euo pipefail
+          test "${CHUNKS_LIVE_MUTATION:-}" = apply
+          test "$CHUNKS_LIVE_NATIVE_STARTED_ADD" = apply
+          gradle --no-daemon --console=plain :app:testDebugUnitTest --tests 'io.github.gamesbyian.chunks.rpc.SeedhostLiveAcceptanceTest.ownerAuthorizedNativeStartedAddFileAndMagnet'
+          python3 - <<'PY'
+          import pathlib, xml.etree.ElementTree as ET
+          p = pathlib.Path('app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.SeedhostLiveAcceptanceTest.xml')
+          r = ET.parse(p).getroot()
+          assert int(r.attrib['tests']) == 1, 'Expected exactly one native fixture test'
+          assert int(r.attrib['skipped']) == 0, 'Native test must actually execute'
+          assert int(r.attrib['failures']) == 0 and int(r.attrib['errors']) == 0
+          lines = (r.findtext('system-out') or '').splitlines()
+          assert any('CHUNKS_LIVE: native result=two-started-active inventory-restored' in line for line in lines)
+          print('CHUNKS_SEEDHOST_NATIVE_STARTED_ADD: two actual exact-hash active loads, cleanup verified')
+          PY
       - name: Run exact-target owner-approved synthetic mutation and always erase
         run: |
           set -euo pipefail
