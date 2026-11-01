@@ -112,36 +112,50 @@ internal object LocalSingleLibraryMediaStoreCopy {
             !Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS) ||
             !path.toRealPath().startsWith(root.toRealPath()))
             throw IOException("Untrusted library source path")
-        val before = Files.readAttributes(path, java.nio.file.attribute.BasicFileAttributes::class.java,
-            LinkOption.NOFOLLOW_LINKS)
-        if (!before.isRegularFile || before.size() != expectedLength)
-            throw IOException("Source is not a completed regular file")
-        fun readBounded(): ByteArray {
+
+        // Pin ONE original file descriptor through both independent reads.
+        // Reopening the path for a second pass could read a substituted file
+        // whose name was the same but whose inode was unrelated.
+        val fd = android.system.Os.open(file.absolutePath,
+            android.system.OsConstants.O_RDONLY or android.system.OsConstants.O_CLOEXEC or
+                android.system.OsConstants.O_NOFOLLOW, 0)
+        try {
+            val before = android.system.Os.fstat(fd)
+            val namedBefore = android.system.Os.lstat(file.absolutePath)
+            fun sameObject(stat: android.system.StructStat): Boolean =
+                stat.st_dev == before.st_dev && stat.st_ino == before.st_ino &&
+                    android.system.OsConstants.S_ISREG(stat.st_mode) &&
+                    stat.st_size == expectedLength
+            if (!sameObject(before) || !sameObject(namedBefore))
+                throw IOException("Source file was substituted or did not have expected size")
+            val buffer = ByteArray(64 * 1024)
             val output = ByteArrayOutputStream(expectedLength.toInt())
-            java.nio.channels.FileChannel.open(path, StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS).use { channel ->
-                val buffer = java.nio.ByteBuffer.allocate(64 * 1024)
-                while (true) {
+            val digestFirst = MessageDigest.getInstance("SHA-256")
+            val digestSecond = MessageDigest.getInstance("SHA-256")
+            fun pass(hash: MessageDigest, saveBytes: Boolean) {
+                var offset = 0L
+                while (offset < expectedLength) {
                     if (cancelled()) throw IOException("Copy cancelled")
-                    buffer.clear()
-                    val count = channel.read(buffer)
-                    if (count < 0) break
-                    if (count == 0 || count.toLong() > expectedLength - output.size())
-                        throw IOException("Source changed size or stopped making progress")
-                    output.write(buffer.array(), 0, count)
+                    val want = minOf(buffer.size.toLong(), expectedLength - offset).toInt()
+                    val count = android.system.Os.pread(fd, buffer, 0, want, offset)
+                    if (count <= 0) throw IOException("Source stopped making progress")
+                    hash.update(buffer, 0, count)
+                    if (saveBytes) output.write(buffer, 0, count)
+                    offset += count
                 }
+                if (android.system.Os.pread(fd, buffer, 0, 1, expectedLength) != 0)
+                    throw IOException("Source grew during copy")
             }
-            if (output.size() != expectedLength.toInt()) throw IOException("Incomplete source")
+            pass(digestFirst, true)
+            pass(digestSecond, false)
+            val namedAfter = android.system.Os.lstat(file.absolutePath)
+            val after = android.system.Os.fstat(fd)
+            if (!sameObject(namedAfter) || !sameObject(after) ||
+                !MessageDigest.isEqual(digestFirst.digest(), digestSecond.digest()))
+                throw IOException("Source was replaced or changed during copy")
             return output.toByteArray()
+        } finally {
+            android.system.Os.close(fd)
         }
-        val payload = readBounded()
-        val second = readBounded()
-        val after = Files.readAttributes(path, java.nio.file.attribute.BasicFileAttributes::class.java,
-            LinkOption.NOFOLLOW_LINKS)
-        if (!after.isRegularFile || after.size() != expectedLength ||
-            (before.fileKey() != null && before.fileKey() != after.fileKey()) ||
-            !MessageDigest.isEqual(MessageDigest.getInstance("SHA-256").digest(payload),
-                MessageDigest.getInstance("SHA-256").digest(second)))
-            throw IOException("Source changed while copying")
-        return payload
     }
 }
