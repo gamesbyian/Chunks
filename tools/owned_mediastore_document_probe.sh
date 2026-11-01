@@ -37,8 +37,8 @@ cat "$out"
   echo 'CHUNKS_OWNED_DOCS: instrumentation process failed' >&2
   exit 1
 }
-grep -qx 'OK (13 tests)' "$out" || {
-  echo 'CHUNKS_OWNED_DOCS: exact thirteen tests not confirmed' >&2
+grep -qx 'OK (14 tests)' "$out" || {
+  echo 'CHUNKS_OWNED_DOCS: exact fourteen tests not confirmed' >&2
   exit 1
 }
 if grep -qE '^INSTRUMENTATION_STATUS_CODE: -(1|2|3|4)|^FAILURES|^Tests run: .*Failures: [1-9]' "$out"; then
@@ -58,7 +58,8 @@ for case_name in \
   pathnameSwapDuringPinnedLibraryReadRefusesBeforeDestinationCreation \
   composeTwoFlatFilesPublishIndependentlyAndPreserveCanaryAndArchive \
   userCancellationAfterFirstPublishedFileRetainsItsBytesAndSkipsNext \
-  nestedUnknownAndTooManyMembersFailWithoutPublishingAnything; do
+  nestedUnknownAndTooManyMembersFailWithoutPublishingAnything \
+  failureInsideSecondNewRowKeepsFirstAndLeavesExactPendingForReview; do
   grep -Fxq "INSTRUMENTATION_STATUS: test=$case_name" "$out" || {
     echo "CHUNKS_OWNED_DOCS: missing required real Android case $case_name" >&2
     exit 1
