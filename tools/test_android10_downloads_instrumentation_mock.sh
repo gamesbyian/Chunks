@@ -121,4 +121,4 @@ if bash "$root/android10_downloads_instrumentation.sh" > "$temp/skip-resume-even
   exit 1
 fi
 [[ "$(wc -l < "$MOCK_DIR/instruments")" -eq 6 ]]
-echo 'CHUNKS_ANDROID10_HARNESS_TEST: valid 1+16+3+2+2+9 cases passed; stale install, failed readbacks and skipped storage/resume/private-journal/event cases refused'
+echo 'CHUNKS_ANDROID10_HARNESS_TEST: valid 1+16+3+2+2+10 cases passed; stale install, failed readbacks and skipped storage/resume/private-journal/event cases refused'
