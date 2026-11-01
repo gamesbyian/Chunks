@@ -33,15 +33,34 @@ case "${1:-}" in
   exec-in) cat >/dev/null ;;
   logcat)
     if [[ "${2:-}" == "-d" ]]; then
-      if [[ "${MOCK_ARM_MISSING:-0}" != 1 && ! -e "$MOCK_DIR/b" ]]; then
-        printf 'CHUNKS_SWARM_INTERRUPT: armed verified_before_kill=8388608\n'
+      if [[ ! -e "$MOCK_DIR/b" ]]; then
+        if [[ "${MOCK_ARM_MISSING:-0}" != 1 ]]; then
+          before=8388608; wanted=16777216
+          [[ "${MOCK_A_TOO_SMALL:-0}" != 1 ]] || before=100
+          [[ "${MOCK_A_COMPLETE:-0}" != 1 ]] || wanted=8388608
+          receipt="CHUNKS_SWARM_INTERRUPT: armed hash=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa verified_before_kill=$before wanted=$wanted"
+          printf '10-31 12:00:00 I/ChunksSwarm: %s\n' "$receipt"
+          [[ "${MOCK_DUPLICATE_A:-0}" != 1 ]] || printf '10-31 12:00:00 I/ChunksSwarm: %s\n' "$receipt"
+        fi
         if [[ "${MOCK_LONG_LOG:-0}" == 1 ]]; then
           /bin/sleep 0.02
           for ((i=0; i<20000; i++)); do printf 'irrelevant fake log %d\n' "$i"; done
         fi
+        [[ "${MOCK_A_INCONCLUSIVE:-0}" != 1 ]] || echo "CHUNKS_SWARM_INTERRUPT: INCONCLUSIVE before kill"
       else
-        printf 'CHUNKS_SWARM_INTERRUPT: VERIFIED restored_stopped=true\n'
+        if [[ "${MOCK_B_MISSING:-0}" != 1 ]]; then
+          recovered=4194304; before=8388608; continued=12000000
+          [[ "${MOCK_B_BAD_BEFORE:-0}" != 1 ]] || before=7355222
+          [[ "${MOCK_B_NO_GROWTH:-0}" != 1 ]] || continued=8388608
+          [[ "${MOCK_B_BAD_RECOVERED:-0}" != 1 ]] || recovered=15000000
+          [[ "${MOCK_B_OVER_WANTED:-0}" != 1 ]] || continued=18000000
+          receipt="CHUNKS_SWARM_INTERRUPT: VERIFIED restored_stopped=true recovered=$recovered before=$before continued_to=$continued"
+          printf '10-31 12:00:00 I/ChunksSwarm: %s\n' "$receipt"
+          [[ "${MOCK_DUPLICATE_B:-0}" != 1 ]] || printf '10-31 12:00:00 I/ChunksSwarm: %s\n' "$receipt"
+        fi
+        [[ "${MOCK_B_INCONCLUSIVE:-0}" != 1 ]] || echo "CHUNKS_SWARM_INTERRUPT: INCONCLUSIVE after restore"
       fi
+      [[ "${MOCK_LOGCAT_FAILURE:-0}" != 1 ]] || exit 29
     fi
     ;;
   shell)
@@ -90,7 +109,10 @@ run_case() {
 }
 run_case MOCK_LONG_LOG=1 >"$tmp/success.log"
 grep -q 'VERIFIED restored_stopped=true' "$tmp/success.log"
-for fixture in MOCK_ARM_MISSING MOCK_NO_CRASH MOCK_ALIVE MOCK_INSTALL_BAD MOCK_MULTI; do
+for fixture in MOCK_ARM_MISSING MOCK_NO_CRASH MOCK_ALIVE MOCK_INSTALL_BAD MOCK_MULTI \
+               MOCK_DUPLICATE_A MOCK_A_TOO_SMALL MOCK_A_COMPLETE MOCK_A_INCONCLUSIVE \
+               MOCK_DUPLICATE_B MOCK_B_MISSING MOCK_B_BAD_BEFORE MOCK_B_NO_GROWTH \
+               MOCK_B_BAD_RECOVERED MOCK_B_OVER_WANTED MOCK_B_INCONCLUSIVE MOCK_LOGCAT_FAILURE; do
   if run_case "$fixture=1" >"$tmp/$fixture.log" 2>&1; then
     echo "False-positive interruption acceptance: $fixture" >&2
     exit 1
@@ -124,4 +146,4 @@ if run_case MOCK_GET_STATE_FAILURE=1 >"$tmp/state-failed.log" 2>&1; then
 fi
 grep -q 'Selected Android device unavailable' "$tmp/state-failed.log"
 [[ ! -s "$MOCK_DIR/commands" && ! -e "$tmp/b" ]]
-echo 'CHUNKS_INTERRUPT_HARNESS_TEST: large logs, positive recovery and failed inventory/state and false-success phase B negative controls passed'
+echo 'CHUNKS_INTERRUPT_HARNESS_TEST: large logs, exact cross-phase positive native bytes, missing/duplicate/insufficient/contradictory receipts, failed inventory/state and false-success phase B controls passed'

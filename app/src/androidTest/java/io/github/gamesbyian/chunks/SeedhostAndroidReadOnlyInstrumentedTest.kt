@@ -52,7 +52,10 @@ class SeedhostAndroidReadOnlyInstrumentedTest {
             "arguments", "form", "connect-visible", "connect", "queue", "inventory",
             "first-capture", "refresh-click", "refresh-busy",
             "refresh-idle", "final-capture", "add-open", "add-preview", "add-return",
-            "connect-error", "connect-busy", "connect-login-form", "connect-no-visible-state"
+            "connect-error", "connect-busy", "connect-login-form", "connect-no-visible-state",
+            "connect-identity-unverified", "connect-auth-rejected", "connect-tls-failed",
+            "connect-network-failed", "connect-protocol-failed", "connect-service-failed",
+            "connect-endpoint-missing", "connect-proxy-or-rate-limited"
         ))
         InstrumentationRegistry.getInstrumentation().sendStatus(
             2, Bundle().apply { putString("chunks_stage", stage) }
@@ -115,6 +118,27 @@ class SeedhostAndroidReadOnlyInstrumentedTest {
             // Compose LazyColumn virtualizes offscreen children: absence of a
             // visible error title alone cannot prove there was no error.
             val stage = when {
+                // These are fixed first-party error messages, not arbitrary
+                // server response text. Never emit the real error string,
+                // credentials, URL, HTTP challenge or screen hierarchy.
+                rule.onAllNodesWithText("The RPC gateway allowed public reads without verifying the supplied login", substring = true)
+                    .fetchSemanticsNodes().isNotEmpty() -> "connect-identity-unverified"
+                rule.onAllNodesWithText("Login rejected. Check the username/password", substring = true)
+                    .fetchSemanticsNodes().isNotEmpty() -> "connect-auth-rejected"
+                rule.onAllNodesWithText("Secure connection failed.", substring = true)
+                    .fetchSemanticsNodes().isNotEmpty() -> "connect-tls-failed"
+                rule.onAllNodesWithText("The server is unreachable or did not respond.", substring = true)
+                    .fetchSemanticsNodes().isNotEmpty() -> "connect-network-failed"
+                rule.onAllNodesWithText("The server answered, but its rTorrent identity could not be verified.", substring = true)
+                    .fetchSemanticsNodes().isNotEmpty() -> "connect-protocol-failed"
+                rule.onAllNodesWithText("The seedbox gateway could not process a read-only connection check.", substring = true)
+                    .fetchSemanticsNodes().isNotEmpty() -> "connect-service-failed"
+                rule.onAllNodesWithText("No compatible rTorrent XML-RPC endpoint was verified.", substring = true)
+                    .fetchSemanticsNodes().isNotEmpty() -> "connect-endpoint-missing"
+                rule.onAllNodesWithText("A network proxy requires separate authentication", substring = true)
+                    .fetchSemanticsNodes().isNotEmpty() ||
+                    rule.onAllNodesWithText("The server is limiting connection attempts", substring = true)
+                        .fetchSemanticsNodes().isNotEmpty() -> "connect-proxy-or-rate-limited"
                 rule.onAllNodesWithText("Connection unsuccessful").fetchSemanticsNodes().isNotEmpty() ->
                     "connect-error"
                 rule.onAllNodesWithText("Finding secure rTorrent…").fetchSemanticsNodes().isNotEmpty() ->

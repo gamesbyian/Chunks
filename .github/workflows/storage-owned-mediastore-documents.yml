@@ -20,6 +20,7 @@ on:
       - "app/src/test/java/io/github/gamesbyian/chunks/storage/OwnedMediaStorePublicationJournalTest.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/storage/OwnedMediaStoreDocumentPublicationInstrumentedTest.kt"
       - "tools/owned_mediastore_document_probe.sh"
+      - "tools/test_owned_mediastore_document_probe_mock.sh"
       - ".github/workflows/storage-owned-mediastore-documents.yml"
   workflow_dispatch:
 
@@ -42,6 +43,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Refuse false or unsafe cold ZIP batch receipts (offline)
         run: bash tools/test_batch_cold_restore_probe_mock.sh
+      - name: Reject ambiguous device targets and counterfeit provider test receipts (offline)
+        run: bash tools/test_owned_mediastore_document_probe_mock.sh
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
