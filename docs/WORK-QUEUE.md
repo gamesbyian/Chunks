@@ -1,31 +1,59 @@
 # Chunks active engineering work queue
 
+> **0E/0F live evidence and governance checkpoint (2026-11-01):** #895 single ZIP/finished single-file library **NEW primary MediaStore Downloads** is production-connected in its draft and passed 10 actual API29 and 10 API35 installed tests at exact source head `b5e3924`, independently checked in raw job logs. Stacked #917 flat multi-ZIP, #922 durable batch receipts and #923 real force-stop/cold-process partial-warning acceptance have bounded passing API29/API35 evidence (15 tests each on #923) but are **still drafts**, not integrated main. Reconcile predecessor/current main, obtain independent executor review and re-run final integrated-head Android storage/JVM/R8/native gates in order; then pursue exact-target reviewed Replace and supported SAF destinations without activating old unsafe mutators. [QA receipt](QUALITY-LEDGER.md#2026-11-01-independent-zip-library-publication-and-two-process-recovery-readback-0e-809-0f-9). **0F governance:** live [ruleset Default #26293772](https://github.com/gamesbyian/Chunks/rules/26293772) is labelled active but has `ref_name.include=[]`, matching no branches; `main.protected=false` and no PR/required-check gates were observed. GitHub administrator must fix target inclusion and enforce review plus an always-present check; documented in [#10](https://github.com/gamesbyian/Chunks/issues/10). This is a dependency, not a pretext to remove distinctive storage/lifecycle verification.
+
+
 > **CI optimization lane (cross-cutting #9/#10, 2026-10-31):** **Merged and exact-head validated:** #875 consolidated radio/Doze/interruption offline harness dispatch and added bounded JUnit diagnostics; #877 immutably pinned the manual signed-release action chain; #878 avoided duplicate full foundation builds for instrumentation-only and offline-preflight edits; #879 added the offline-tested fail-closed JUnit receipt API. **Next:** qualify #880's real Android execution-gate adoption, then measure and test scoped JVM-test fork parallelism and emulator critical paths, retaining every distinct Android API/storage/R8/security test. Branch record reports `main.protected=false`: require separate repository-admin merge protection and an always-present required check, not a skipped path-scoped context. Do not claim measured all-repo speed gains from predicted dispatch reductions. [Dated CI baseline](CI-AUDIT-2026-10-31.md); [CI policy](CI-POLICY.md). This remains part of 0F QA, not a competing queue.
+
+**0B network QA checkpoint (2026-11-01):** [#925](https://github.com/gamesbyian/Chunks/pull/925) merged `159944a` after [exact-head radio-harness CI 41275984335](https://github.com/gamesbyian/Chunks/actions/runs/41275984335) passed offline, including ignored Wi-Fi/data-disable negatives. A `svc` acknowledgement can no longer trigger a false `net-off` marker unless both radio settings read back disabled. This does **not** establish an actual connected-device network outage, byte recovery, VPN handover or Doze. Continue #5/#569 with real observable network loss/return and piece-verified recovery; the separate [#914](https://github.com/gamesbyian/Chunks/pull/914) revoked-permission engine candidate remains independent and review-gated.
 
 **Single executable priority authority; reviewed 2026-10-31.** Fetch current `main`, open PRs, issues, branch ownership and CI **before** picking a task. The [engineering delivery protocol](ENGINEERING-DELIVERY-PROTOCOL.md) governs how to complete it; [AGENTS](../AGENTS.md) governs agent behavior. Product requirements live in [PRODUCT](PRODUCT.md), [UX](UX.md), [ARCHITECTURE](ARCHITECTURE.md), [SECURITY](SECURITY.md), [DECISIONS](DECISIONS.md) and scoped contracts. Implementation truth belongs in [SPEC-COVERAGE](SPEC-COVERAGE.md), test evidence in [QUALITY-LEDGER](QUALITY-LEDGER.md). This queue is **not** a substitute for any of them.
 
-**Active 0C checkpoint (2026-11-01, source/CI-bound):** #891's corrected
-read-auth challenge probe is merged, and the exact-primary protected version/main
-view [41266094878](https://github.com/gamesbyian/Chunks/actions/runs/41266094878)
-passed. #898's **shipping Android Connect** gate is merged at `22ac3afe`
-after all five checks, refusing invented credentials even when anonymous
-version/inventory reads work. #892's bounded read-only paging and #906's
-exact-session hidden-view stopped-Add reconciliation are also merged.
-The existing historical protected installed **Android app UI** synthetic Add →
-Start → Stop → session Erase passed [40652034320](https://github.com/gamesbyian/Chunks/actions/runs/40652034320)
-on 2026-10-28, and installed adapter mutation passed
-[40581190487](https://github.com/gamesbyian/Chunks/actions/runs/40581190487)
-on 2026-10-27; both are historic code SHA evidence without peer-byte growth.
-A trusted-main production-Connect **read-only** Android rerun
-[41270975610](https://github.com/gamesbyian/Chunks/actions/runs/41270975610)
-was dispatched via comment-only #909; its result must be inspected before
-acceptance. [#908](https://github.com/gamesbyian/Chunks/pull/908)
-is testing fresh saved-profile reauthentication in combined browsing, and
-[#903](https://github.com/gamesbyian/Chunks/pull/903) tests real disposable
-per-infohash received+hash-verified peer bytes. **Still open:** current-head
-reconnect/401 uncertainty, separate approved protected-host per-transfer
-peer-byte growth, installed file-priority controls and real physical device.
-No global transfer-rate, anonymous-read or RPC ACK substitutes for these gates.
+**Active 0C checkpoint (2026-11-01, accepted by exact evidence tier):**
+[#891](https://github.com/gamesbyian/Chunks/pull/891)'s accepted-challenge
+read-only probe passed on the authorized primary HTTPS instance
+[41266094878](https://github.com/gamesbyian/Chunks/actions/runs/41266094878).
+[#898](https://github.com/gamesbyian/Chunks/pull/898) merged the same
+authentication evidence gate into **shipping Android Connect**, and
+[#916](https://github.com/gamesbyian/Chunks/pull/916), squash `42597a9`,
+merged exact-profile **saved-server reconnect authentication** after
+five green candidate-head workflows (1,211 executed JVM tests, zero failed,
+R8, API35 native Add, atlas and docs). It refuses public-readable anonymous
+inventory with supplied credentials, without switching numbered tenants.
+[#892](https://github.com/gamesbyian/Chunks/pull/892) merged bounded
+read-only oversize paging and [#906](https://github.com/gamesbyian/Chunks/pull/906)
+merged exact-session hidden-view stopped-Add reconciliation.
+
+**Positive peer-wire byte evidence:** [#903](https://github.com/gamesbyian/Chunks/pull/903),
+squash `1b22a8d`, actually proved **strictly positive per-infohash**
+received and piece-verified bytes at rTorrent 0.9.8 on a disposable
+runner (real libtorrent peer, exact stopped zero baseline, server completion,
+independently equal payload files). The modern rTorrent 0.16.x CI job
+proved distinct RPC compatibility, not a modern-version peer-wire test.
+Neither is protected-host Internet swarm evidence.
+
+**Current hosted Android read-only checkpoint:** after a transient earlier
+Connect failure [41270975610](https://github.com/gamesbyian/Chunks/actions/runs/41270975610),
+the merged #913 safe diagnostic ran the real installed API35 app on trusted
+main `674017a` and **PASSED**
+[41273818693](https://github.com/gamesbyian/Chunks/actions/runs/41273818693):
+credentialed primary HTTPS Connect, nonempty development queue, Refresh,
+read-only Add Place preview, return to Transfers, three 1080×2400 captures.
+This does not prove a physical handset or any new hosted mutation.
+Historical approved installed Android synthetic Add → Start → Stop → session
+Erase [40652034320](https://github.com/gamesbyian/Chunks/actions/runs/40652034320)
+and adapter mutation [40581190487](https://github.com/gamesbyian/Chunks/actions/runs/40581190487)
+remain genuine **older-source** proof, with no protected peer-byte growth.
+[#920](https://github.com/gamesbyian/Chunks/pull/920) is a separately
+review-gated **manual-only candidate** for a unique 512 KiB synthetic
+hosted received+piece-verified peer-byte witness; **no protected mutation
+has been executed by that PR**.
+
+**Still open #1/#4/#464:** protected-host *per-transfer* received+verified
+peer-byte growth, current-head hosted installed mutation and file priorities,
+authenticated reconnect/401/timeout reconciliation and physical Android/OEM.
+Neither a global server rate, public read, RPC acknowledgement nor an
+old-SHA emulator success closes those gates.
 
 ## Verified checkpoint and current boundaries
 
@@ -42,7 +70,7 @@ No global transfer-rate, anonymous-read or RPC ACK substitutes for these gates.
 | Rank | Executable deliverable and issue | Prerequisite / exit evidence | Avoid this old failure |
 |---|---|---|---|
 | **0A G0/P0 (automated tier integrated)** | **#865**: [SQLite bounded resume metadata #889](https://github.com/gamesbyian/Chunks/pull/889) **merged** on main as `15f507b`, with `synchronous=EXTRA`, reviewed legacy migration, durable retirement and same-hash re-add. Prioritize residual *measured* long-duration retention, power-cut and corruption recovery; do not reopen #568 or delay the independent 0B user journey for speculative writer work. | All **seven** exact candidate-head workflows passed at `68887d8`: Android 10 real production SQLite 10/10 (including mode-3 readback), Android 15 native Add/lifecycle, foundation, R8, docs and disposable RPC. Independently source-reviewed. Post-merge combined-main and physical/OEM/power-cut evidence remain **separate**; #865 stays open for those scoped receipts. | Treat old candidate status as live, or confuse green emulator SQLite fsync with a real power failure. |
-| **0B G1 critical path** | **#5, #569**: ordinary installed phone .torrent/magnet/Share → Downloads/selected Place → Add/Start/progress/Stop/piece recheck/restore/seed. Handle Android FGS limits with honest pause/resume, not impossible indefinite background promises. | Include real positive peer bytes, public storage, API29/35, low storage, permission changes and exact lifecycle receipts; physical/OEM tests only qualify physical/OEM claims. | Additional uninstalled storage prototypes instead of fixing production user workflows. |
+| **0B G1 critical path** | **#5, #569**: ordinary installed phone .torrent/magnet/Share → Downloads/selected Place → Add/Start/progress/Stop/piece recheck/restore/seed. Handle Android FGS limits with honest pause/resume, not impossible indefinite background promises. **Integrated automated 0B core:** [#890](https://github.com/gamesbyian/Chunks/pull/890) **merged** `32797a8` after four exact-head checks at `3aeefd2`: both API29 [41271931718](https://github.com/gamesbyian/Chunks/actions/runs/41271931718) and API35 [41271931680](https://github.com/gamesbyian/Chunks/actions/runs/41271931680) actually completed Share + magnet, per-hash peer bytes, public Downloads, Stop → process death → stopped restore → Start → fresh-peer seeding → Remove preserving file. [#897](https://github.com/gamesbyian/Chunks/pull/897) **merged** `025d015` after exact-head shortened FGS timeout → two stopped cold restores; [#912](https://github.com/gamesbyian/Chunks/pull/912) **merged** `642f5ba` for native automatic magnet tracker discovery without injected peers. Continue only unclaimed actual gaps: [#914](https://github.com/gamesbyian/Chunks/pull/914) Android10 revoked/owned-file grants, measured low storage, SD/SAF/reinstall, real network handover/Doze and physical/OEM/accessibility. | Include real positive peer bytes, public storage, API29/35, low storage, permission changes and exact lifecycle receipts; physical/OEM tests only qualify physical/OEM claims. | Additional uninstalled storage prototypes instead of fixing production user workflows. |
 | **0C G1 critical path** | **#1, #4, #464**: authenticated, exactly scoped Companion-free rTorrent inventory and Add/Start/Stop/priority/session-only Remove; safe numbered-instance Smart Connect. | Positive disposable/protected-authorized remote round trip with per-hash byte/state readback; Basic/Digest, public-read-vs-verified-account and ambiguous-ACK negatives. | Treat anonymous read as authenticated identity, a 401 as permission to replay, or global rate as per-torrent proof. |
 | **0D G2 critical path** | **#567, #8**: one observable local/multi-remote state model, consistent list/actions/filters/environment colors, accessible Add/controls and truthful offline/uncertain states. | Integrated positive local/remote/combined journeys; process restore, 320×700/412×892, 200% text, TalkBack and keyboard evidence by tier. | Build a separate second UI model or polish art ahead of working controls. |
 | **0E capability-local G0, parallel** | **#809**: repair demonstrated ZIP/library wrong-target delete/truncation and restore each adapter's conventional user-directed Create new/Keep both/reviewed Replace, with per-item recovery. **Unsafe executors remain disabled** until accepted. | One real production-connected positive Save/extract/copy flow per supported adapter plus exact-target, interruption and hostile-provider regressions; no unsupported all-provider atomic guarantee. | Label a dormant MediaStore proof as shipping; make disabled optional ZIP a global blocker to safe ordinary phone/rTorrent use. |

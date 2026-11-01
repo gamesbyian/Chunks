@@ -212,6 +212,24 @@ and [WORK-QUEUE](WORK-QUEUE.md) for live acceptance boundaries.
 
 Connect has an **Advanced connection settings** disclosure with one optional **Exact RPC path** field (for example `/RPC2`). `RemoteSmartConnect.withExactPath` joins it to a hostname-only address on the same origin, so discovery tests only that one address with the usual read-only version + main-view probe. It refuses a path without a leading `/`, `..`/encoded dot segments, `//`, spaces, `?` or `#`, and refuses an address that already names a path, so the two fields can never disagree about which instance is meant. HTTPS, embedded-credential and loopback rules still apply to the joined address. After a verified connection the address field holds the full RPC address and the path field is cleared. Evidence: JVM unit tests and a Robolectric Connect-screen test of both refusals; no real-provider or handset acceptance.
 
+## Reconnecting saved profiles in combined browsing (2026-11-01 candidate)
+
+A saved Keystore credential records the last accepted account connection; it
+is not fresh authenticated evidence on a later transport. A combined-list
+read of another saved server must construct a new `RTorrentRemote` for that
+**exact** full endpoint, perform read-only version + complete `main` inventory,
+and require accepted HTTP challenge evidence before showing the rows as that
+profile's current inventory when credentials are supplied. Any missing/rejected
+challenge, invalid reply or changed server address leaves the previous saved
+rows out of date; it must not silently show them as a verified live account or
+retry a command. Both credential fields empty deliberately permit anonymous
+read-only use, without claiming authenticated identity or write permission.
+Numbered `/rutorrent2/` and `/rutorrent3/` mounts never fall back to primary.
+This uses the existing combined saved-profile reader/freshness state, with no
+parallel account catalog, sign-in switch, write operation or new credential
+persistence. The candidate is not qualified until its source + live UI caller
+pass exact-head tests.
+
 ## Implementation note: saved-profile instance identity (2026-10-29)
 
 Each saved server on Connect now shows its exact address (host, non-default port and RPC path, never the scheme or credentials) and when it last authenticated ("Last connected 2 hours ago"). Two profiles for one account on one host, such as `/rutorrent/` and `/rutorrent2/`, previously had identical labels. The time is written only by the existing post-authentication save and lives inside the same Keystore-encrypted roster document. Records saved before this change still load and show "Last connection time not recorded". Evidence: a JVM address test and Android instrumented roster tests (legacy record, distinct addresses, times); no handset review.

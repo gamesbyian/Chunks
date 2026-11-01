@@ -9,6 +9,9 @@ name: Protected Seedhost Android read-only journey
 # 2026-11-01: one trusted-main-only non-mutating installed Android reacceptance
 # of merged #898's supplied-login challenge gate, exact primary HTTPS profile,
 # queue refresh and Add Place preview; no additional secrets or mutations.
+# 2026-11-01: classify previous protected Connect-error by enumerated, fixed
+# non-secret UI error category on a second trusted-main read-only pass.
+# Reuse identical authorized primary endpoint, credentials, emulator and RPC methods.
 on:
   push:
     branches: [main]

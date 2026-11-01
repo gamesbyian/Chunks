@@ -2,6 +2,9 @@ package io.github.gamesbyian.chunks.visual
 
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.hasScrollToIndexAction
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -27,13 +30,14 @@ class ChunksConnectLargeTextRenderTest {
     }
 
     @Test fun phoneAt200Percent() {
-        rule.onNodeWithText("Download on this phone", substring = true).performScrollTo().performClick()
+        rule.onNodeWithText("Open phone downloads").performClick()
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/chunks-visual/phone-200pct.png")
     }
 
     @Test fun createAt200Percent() {
-        rule.onNodeWithText("Create a torrent from phone files").performScrollTo().performClick()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Create a torrent from phone files"))
+        rule.onNodeWithText("Create a torrent from phone files").performClick()
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/chunks-visual/create-200pct.png")
     }
