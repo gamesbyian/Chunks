@@ -19,6 +19,8 @@ case "$1" in
     [[ "${MOCK_UNAUTHORIZED:-0}" != 1 ]] || echo 'emulator-5558 unauthorized'
     ;;
   shell)
+    # Any unpinned ADB call could retarget a newly attached phone.
+    [[ "${ANDROID_SERIAL:-}" == emulator-5554 ]] || exit 78
     shift
     case "$1" in
       getprop)
@@ -67,6 +69,7 @@ case "$1" in
     esac
     ;;
   install)
+    [[ "${ANDROID_SERIAL:-}" == emulator-5554 ]] || exit 78
     echo install >> "$MOCK_EVENTS"
     [[ "${MOCK_INSTALL_FAIL:-0}" != 1 ]] || exit 76
     echo Success
