@@ -68,18 +68,22 @@ set -e
 native_log="$(adb logcat -d -s ChunksSwarm:I)" || {
   echo "::error::Cannot read app-side public swarm evidence" >&2; exit 1;
 }
-grep -o 'CHUNKS_ANDROID_SWARM: .*' <<< "$native_log" |
-  tee -a "${GITHUB_STEP_SUMMARY:-/dev/null}" || true
+# Real adb logcat prefixes each application message with timestamp/tag.
+# Inspect the app-owned marker, not the full logcat prefix.
+native_receipts="$(grep -o 'CHUNKS_ANDROID_SWARM: .*' <<< "$native_log" || true)"
+printf '%s\n' "$native_receipts" |
+  tee -a "${GITHUB_STEP_SUMMARY:-/dev/null}"
 if [[ "$status" -ne 0 ]] ||
    [[ "$(grep -Fxc 'OK (1 test)' "$log" || true)" != 1 ]] ||
    grep -Eq '^INSTRUMENTATION_STATUS_CODE: -[1-9]|^FAILURES|AssumptionViolatedException' "$log" ||
-   grep -Fq 'CHUNKS_ANDROID_SWARM: INCONCLUSIVE' <<< "$native_log"; then
+   grep -Fq 'CHUNKS_ANDROID_SWARM: INCONCLUSIVE' <<< "$native_receipts"; then
   grep -A12 '^INSTRUMENTATION_STATUS: stack=' "$log" | head -40 || true
   echo "::error::Android swarm execution failed, was skipped or had an inconclusive peer result" >&2
   exit 1
 fi
-positive="$(grep -E '^CHUNKS_ANDROID_SWARM: VERIFIED hash=[0-9a-f]{40} verified=[0-9]+ target=[0-9]+ maxPeers=[0-9]+ trackers=.* seconds=[0-9]+ <<< "$native_log" || true)"
-if [[ "$(grep -c '^CHUNKS_ANDROID_SWARM: VERIFIED ' <<< "$positive" || true)" != 1 ]] ||
+positive="$(grep -E '^CHUNKS_ANDROID_SWARM: VERIFIED hash=[0-9a-f]{40} verified=[0-9]+ target=[0-9]+ maxPeers=[0-9]+ trackers=.* seconds=[0-9]+ <<< "$native_receipts" || true)"
+if [[ "$(grep -c '^CHUNKS_ANDROID_SWARM: VERIFIED ' <<< "$native_receipts" || true)" != 1 ]] ||
+   [[ "$(grep -c '^CHUNKS_ANDROID_SWARM: VERIFIED ' <<< "$positive" || true)" != 1 ]] ||
    [[ ! "$positive" =~ ^CHUNKS_ANDROID_SWARM:\ VERIFIED\ hash=[0-9a-f]{40}\ verified=([0-9]+)\ target=([0-9]+)\ maxPeers=[0-9]+\ trackers=.*\ seconds=[0-9]+$ ]]; then
   echo "::error::Missing or ambiguous complete native peer-byte receipt" >&2
   exit 1
