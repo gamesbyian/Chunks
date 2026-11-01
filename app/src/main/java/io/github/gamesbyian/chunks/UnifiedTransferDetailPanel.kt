@@ -20,6 +20,7 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.model.EnvironmentOperation
+import io.github.gamesbyian.chunks.rpc.RemoteStallEvidence
 import io.github.gamesbyian.chunks.model.TransferDetailReadState
 import io.github.gamesbyian.chunks.model.UnifiedTransferDetail
 import io.github.gamesbyian.chunks.model.UnifiedTransferObservation
@@ -45,7 +46,11 @@ internal fun UnifiedTransferDetailPanel(
     /** Only an authenticated, matching environment adapter may offer this read-only probe. */
     onCheckCapabilities: (() -> Unit)? = null,
     capabilityCheckInProgress: Boolean = false,
-    capabilityCheckError: String? = null
+    capabilityCheckError: String? = null,
+    onInspectStall: (() -> Unit)? = null,
+    stallCheckInProgress: Boolean = false,
+    stallReport: RemoteStallEvidence? = null,
+    stallCheckError: String? = null
 ) {
     val hidden = detail.readState == TransferDetailReadState.LOCKED
     Column(
@@ -106,6 +111,44 @@ internal fun UnifiedTransferDetailPanel(
             OutlinedButton(onClick = onRefreshOwningList,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                 Text("Refresh " + environmentLabel)
+            }
+        }
+        if (!hidden && onInspectStall != null) {
+            Text("Why is this transfer inactive?", style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.semantics { heading() })
+            Text("Read-only check of this exact transfer on its signed-in server. " +
+                "No Start, retry, file changes or cleanup will occur.",
+                style = MaterialTheme.typography.bodySmall)
+            OutlinedButton(
+                onClick = onInspectStall,
+                enabled = !stallCheckInProgress,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics {
+                    contentDescription = "Inspect this transfer on $environmentLabel without changing it"
+                }
+            ) {
+                Text(if (stallCheckInProgress) "Inspecting exact transfer…" else "Inspect transfer state")
+            }
+            Column(Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
+                verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                stallCheckError?.let {
+                    Text(it, color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium)
+                }
+                stallReport?.let { report ->
+                    Text(report.explanation(), style = MaterialTheme.typography.bodyMedium)
+                    Text("Server requested Start: ${report.started}; engine active: ${report.active}; " +
+                        "torrent open: ${report.open}; metadata placeholder: " +
+                        "${report.awaitingMetadata?.toString() ?: "unknown"}; " +
+                        "hash checking: ${report.hashChecking?.toString() ?: "unknown"}; " +
+                        "hash-check failure: ${report.hashCheckFailed?.toString() ?: "unknown"}; " +
+                        "hashing phase: ${report.hashingPhase?.toString() ?: "unknown"}.",
+                        style = MaterialTheme.typography.bodySmall)
+                    Text("Server message classification: " + report.messageClass.name +
+                        ". Raw messages and tracker details are withheld.",
+                        style = MaterialTheme.typography.bodySmall)
+                    Text("This is a momentary engine observation, not proof of peer bytes or storage writes.",
+                        style = MaterialTheme.typography.bodySmall)
+                }
             }
         }
         if (!hidden) {
