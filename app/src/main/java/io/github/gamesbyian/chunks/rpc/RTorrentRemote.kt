@@ -630,6 +630,43 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
     }
 
     /**
+     * Explicit Transdroid-compatible A/B route: the same load.raw_start and
+     * load.start RPC methods, but with ONLY the target and the metainfo/magnet.
+     * In contrast to ordinary Chunks Add, there is NO d.directory.set post-
+     * load expression. We verify the owner's reviewed expected parent after
+     * the single load. An unexpected location is unverified, never silently
+     * relocated. No hidden fallback or retry is permitted.
+     */
+    internal suspend fun loadStartedWithoutDirectoryCommand(
+        plan: StoppedRemoteAddPlan,
+        torrentBytes: ByteArray? = null
+    ): RemoteAddAndStart {
+        require(!plan.useServerDefault) {
+            "This diagnostic is only needed when a custom server Place is selected"
+        }
+        if (torrentBytes != null) {
+            check(TorrentMetainfoReader.preview(torrentBytes).infoHashV1
+                .equals(plan.expectedInfoHash, true)) {
+                "Selected torrent identity changed"
+            }
+        }
+        val hash = plan.expectedInfoHash
+        if (listTransfers("main").any { it.hash.equals(hash, true) } ||
+            lookupName(hash) != null) {
+            return RemoteAddAndStart.AddedStopped(RemoteAddOutcome.AlreadyPresent(hash))
+        }
+        try {
+            if (torrentBytes == null) call("load.start", listOf("", plan.source))
+            else call("load.raw_start", listOf("", torrentBytes))
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            return RemoteAddAndStart.StartNotVerified(hash, null)
+        }
+        return awaitNativeStartedReadback(plan)
+    }
+
+    /**
      * Alternative Add transport for servers hosting ruTorrent. The browser's
      * own addtorrent.php accepts both an uploaded .torrent and a magnet in
      * the 'url' form field. Unlike direct load.raw_start / load.start through
