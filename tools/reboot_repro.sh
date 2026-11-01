@@ -107,7 +107,16 @@ if adb shell pidof "$pkg" >/dev/null 2>&1; then echo "CHUNKS_REBOOT: Chunks proc
 adb logcat -c || true
 outB=$(adb shell am instrument -w -r -e class "$cls#phaseB_nothingStartsAfterBootAndRestoreIsStopped" -e chunksRebootPhase b "$runner")
 echo "$outB" | tail -6
-adb logcat -d -s ChunksReboot:I | tail -3
+log_b="$(adb logcat -d -s ChunksReboot:I)" || {
+  echo 'CHUNKS_REBOOT: post-reboot peer evidence unavailable' >&2; exit 1;
+}
+printf '%s\n' "$log_b" | tail -3
 instrument_passed_once "$outB" || {
   echo "CHUNKS_REBOOT: phase B did not report exactly one passing, non-skipped test"; exit 1;
+}
+# A stopped-restore receipt cannot establish that manual Start after the
+# actual reboot can upload verified bytes to a second, initially empty peer.
+# Require the instrumentation's byte/hash and session-only Remove witness.
+[[ "$(grep -Fc 'CHUNKS_REBOOT restored_stopped=true no_autostart=true sha_unchanged=true reseeded_bytes=96000 removed_keep_files=true' <<< "$log_b" || true)" == 1 ]] || {
+  echo 'CHUNKS_REBOOT: no unique real post-reboot fresh-peer seeding receipt' >&2; exit 1;
 }
