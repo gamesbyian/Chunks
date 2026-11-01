@@ -436,7 +436,10 @@ private fun ChunksApp(
                                 }
                             },
                             setStarted = remote::setStarted,
-                            probe = remote::probe),
+                            probe = remote::probe,
+                            inspectStall = { hash ->
+                                io.github.gamesbyian.chunks.rpc.RemoteStallInspector.inspect(remote, hash)
+                            }),
                         authenticatedSession = remote)
                 },
                 savedProfiles = savedProfiles.map { profile ->
