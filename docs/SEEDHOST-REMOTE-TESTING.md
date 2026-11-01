@@ -32,6 +32,16 @@ corroborated parent. It verifies Stop/inactivity before session-only Erase,
 leaves payload data untouched and compares unrelated inventory identities.
 A 401, timeout, lost ACK, unexpected directory or changed identity can leave
 the synthetic transfer behind rather than risk a blind repeat or deletion.
+The runner's peer preflight excludes reserved/non-global addresses,
+including shared-space CGNAT, benchmarking and documentation ranges, instead
+of relying only on Java's narrower private-address classification. A transient
+or malformed post-Add receipt must print `manual-reconciliation-required`
+once a synthetic Add could have been submitted, even when the job was never
+positively verified. A `PendingRemoval` result still has an exact-session
+hash and **cannot** be called session removed merely because it disappeared
+from the `main` view; the test requires exact-session `VerifiedRemoved`
+plus the original unrelated inventory identity set before success.
+
 The workflow emits only a strict stage allowlist and the **new synthetic
 infohash** to enable owner-approved manual reconciliation. Full Gradle output,
 headers, credentials, directory paths and tracker data are withheld.
