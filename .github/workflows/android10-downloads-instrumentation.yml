@@ -11,6 +11,9 @@ on:
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalPublicDownloadsPlaceInstrumentedTest.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalDownloadPlacePickerInstrumentedTest.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/Android10StoragePermissionDialogInstrumentedTest.kt"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/Android10DownloadsRevocationInstrumentedTest.kt"
+      - "tools/android10_downloads_revocation.sh"
+      - "tools/test_android10_downloads_revocation_mock.sh"
       - "app/src/main/java/io/github/gamesbyian/chunks/LocalEngineScreen.kt"
       - "tools/android10_downloads_instrumentation.sh"
       - "tools/test_android10_downloads_instrumentation_mock.sh"
@@ -50,6 +53,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Reject misleading API29 install and test evidence (offline)
         run: bash tools/test_android10_downloads_instrumentation_mock.sh
+      - name: Refuse unsafe grant-revocation emulators and false recovery receipts (offline)
+        run: bash tools/test_android10_downloads_revocation_mock.sh
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -78,4 +83,4 @@ jobs:
           profile: pixel_3a
           emulator-boot-timeout: 600
           disable-animations: true
-          script: bash tools/android10_downloads_instrumentation.sh
+          script: bash tools/android10_downloads_instrumentation.sh && bash tools/android10_downloads_revocation.sh
