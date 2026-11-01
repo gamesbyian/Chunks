@@ -6,6 +6,22 @@ api="$1"
 [[ "$api" == 29 || "$api" == 35 ]] || {
   echo 'CHUNKS_BATCH_COLD: unsupported SDK request' >&2; exit 1;
 }
+# Resolve the exact, authorized emulator once, before any force-stop/logcat
+# mutation. A failed enumeration may print a plausible target: refuse it.
+devices="$(adb devices)" || {
+  echo 'CHUNKS_BATCH_COLD: ADB enumeration failed' >&2; exit 1;
+}
+if [[ -n "${ANDROID_SERIAL:-}" ]]; then
+  awk -v serial="$ANDROID_SERIAL" 'NR > 1 && $1 == serial && $2 == "device" { n++ } END { exit(n == 1 ? 0 : 1) }' <<<"$devices" || {
+    echo 'CHUNKS_BATCH_COLD: selected ADB device is unavailable' >&2; exit 1;
+  }
+else
+  serial="$(awk 'NR > 1 && NF > 0 && $1 != "*" { n++; if ($2 != "device") bad=1; serial=$1 } END { if(n == 1 && !bad) print serial }' <<<"$devices")"
+  [[ -n "$serial" ]] || {
+    echo 'CHUNKS_BATCH_COLD: exactly one authorized ADB device is required' >&2; exit 1;
+  }
+  export ANDROID_SERIAL="$serial"
+fi
 [[ "$(adb shell getprop ro.kernel.qemu | tr -d '\r\n')" == 1 ]] || {
   echo 'CHUNKS_BATCH_COLD: physical device refused' >&2; exit 1;
 }

@@ -9,7 +9,14 @@ cat > "$tmp/bin/adb" <<'ADB_MOCK'
 #!/usr/bin/env bash
 set -eo pipefail
 case "$1" in
+  devices)
+    [[ "$MOCK_ADB_ENUM_FAIL" != 1 ]] || { printf 'List of devices attached\nemulator-5554\tdevice\n'; exit 71; }
+    printf 'List of devices attached\nemulator-5554\tdevice\n'
+    [[ "$MOCK_TWO_DEVICES" != 1 ]] || printf 'emulator-5556\tdevice\n'
+    [[ "$MOCK_UNAUTHORIZED" != 1 ]] || printf 'emulator-5558\tunauthorized\n'
+    ;;
   shell)
+    [[ "${ANDROID_SERIAL:-}" == emulator-5554 ]] || exit 94
     shift
     case "$1" in
       getprop)
@@ -104,6 +111,14 @@ reset; good
 [[ "$first_run" != "$(cat "$MOCK_DIR/run_id")" ]] || {
   echo "CHUNKS_BATCH_COLD_MOCK: separate runs reused a fixture identity" >&2; exit 1;
 }
+reset; bad env MOCK_ADB_ENUM_FAIL=1
+[[ ! -s "$MOCK_DIR/events" ]]
+reset; bad env MOCK_TWO_DEVICES=1
+[[ ! -s "$MOCK_DIR/events" ]]
+reset; bad env MOCK_UNAUTHORIZED=1
+[[ ! -s "$MOCK_DIR/events" ]]
+reset; bad env ANDROID_SERIAL=not-present
+[[ ! -s "$MOCK_DIR/events" ]]
 reset; bad env MOCK_PHYSICAL=1
 [[ ! -s "$MOCK_DIR/events" ]]
 reset; bad env MOCK_WRONG_API=1
@@ -116,4 +131,4 @@ reset; bad env MOCK_STOP_FAIL=1
 reset; bad env MOCK_FAIL=b
 reset; bad env MOCK_SKIP=b
 reset; bad env MOCK_NO_MARKER=b
-echo 'CHUNKS_BATCH_COLD_MOCK: positive and unsafe/false/skipped/missing receipts checked'
+echo 'CHUNKS_BATCH_COLD_MOCK: pinned target, ambiguous and failed adb enumeration, positive and unsafe/false/skipped/missing receipts checked'
