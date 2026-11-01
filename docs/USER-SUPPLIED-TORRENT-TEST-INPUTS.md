@@ -35,3 +35,8 @@ Use for parser-level regression of repeated `tr` fields, encoded `dn`, tracker p
 5. Keep source torrent payloads untouched; do not use these files as evidence of successful or lawful content transfer without independent verification.
 
 Related: [TRANSFER-SNAPSHOTS.md](TRANSFER-SNAPSHOTS.md), [SEEDHOST-REMOTE-TESTING.md](SEEDHOST-REMOTE-TESTING.md), [SECURITY.md](SECURITY.md).
+
+
+## Second batch of eight owner-provided torrents (2026-11-01)
+
+Eight additional owner-provided `.torrent` files have been relocated intact (original Git blob identities preserved) from the repository root to `tests/fixtures/owner-supplied/`. They are the ASC, Antenes, Anthemion Jutoh, Clax, Martin Goodwin, Monsters, Nines and Odes of the Kabatians files labeled `[IPT]`. The precise names are available in that directory. They are real metainfo inputs for parser/import and authorized remote integration tests, not a claim that distributing their referenced content is licensed or that live swarm downloads will succeed. Their metainfo may contain private tracker passkeys: suppress announce URLs, credentials and token-bearing fields in test logs and artifacts. The owner's expanded permission for all repo-secret-credentialed rTorrent environments is in [SEEDHOST-REMOTE-TESTING](SEEDHOST-REMOTE-TESTING.md).
