@@ -287,8 +287,24 @@ class PhoneIntakeJourneyInstrumentedTest {
             click("Stop")
             await("second UI Stop") { phone.status(hash)?.stopped == true }
             click("Remove…")
-            rule.onNodeWithText("Remove, keep files").assertIsEnabled().performClick()
-            await("session-only removal") { phone.status(hash) == null }
+            // Make the confirmation genuinely reachable to a user before
+            // dispatching it. An enabled but offscreen semantics node alone
+            // is weaker evidence than a scrolled, actionable control.
+            click("Remove, keep files")
+            await("session-only removal", failure = {
+                val messages = listOf(
+                    "Session removal was not confirmed",
+                    "A prior native action needs a fresh confirmed transfer list",
+                    "Phone torrent status unavailable"
+                ).filter { text ->
+                    runCatching {
+                        rule.onAllNodesWithText(text, substring = true)
+                            .fetchSemanticsNodes().isNotEmpty()
+                    }.getOrDefault(false)
+                }
+                "status=${phone.status(hash)} inventory=${phone.completeIdentityInventory()} " +
+                    "problems=${phone.restoreProblems} visible_warnings=$messages"
+            }) { phone.status(hash) == null }
             assertEquals("Remove must leave the downloaded payload", digest, sha(target.readBytes()))
             android.util.Log.i("ChunksIntake", "CHUNKS_INTAKE kind=$kind recovered stopped=true " +
                 "bytes=${expected.size} seeded_bytes=${expected.size} kept_files=true sha256=$digest")
