@@ -48,7 +48,8 @@ class RuTorrentUploadAddTest {
                     "<value><i8>0</i8></value><value><i8>0</i8></value><value><i8>0</i8></value></data></array></value>" else "") + "</data></array>")
                 request.contains("<methodName>d.directory</methodName>") -> value("<string>/home/dev/downloads</string>")
                 request.contains("<methodName>d.is_multi_file</methodName>") -> value("<i8>0</i8>")
-                request.contains("<methodName>d.state</methodName>") -> value("<i8>0</i8>")
+                request.contains("<methodName>d.state</methodName>") ||
+                    request.contains("<methodName>d.is_active</methodName>") -> value("<i8>0</i8>")
                 else -> "<methodResponse><fault><value><struct><member><name>faultCode</name><value><int>-506</int></value></member>" +
                     "<member><name>faultString</name><value><string>no</string></value></member></struct></value></fault></methodResponse>"
             }.toByteArray()
