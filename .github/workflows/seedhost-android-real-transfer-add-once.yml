@@ -1,10 +1,14 @@
 name: P0 installed Android real Seedhost transfer and qualified APK
 
-# Protected host mutations only on manually armed, trusted main. The APK
+# Protected host mutations only on armed trusted main (manual or exactly one\n# owner-authorized merge marker). The APK
 # artifact is published ONLY after the identical installed binary actually
 # sends BOTH real upstream .torrent and magnet and verifies exact-hash peer
-# bytes/pieces. No PR/push, scheduled or retry-triggered mutation.
+# bytes/pieces. No PR, scheduler or repeat-triggered mutation.
 on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/seedhost-android-real-transfer-add-once.yml"
   workflow_dispatch:
     inputs:
       apply:
@@ -22,7 +26,11 @@ concurrency:
 
 jobs:
   real-installed-android-add:
-    if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.apply && github.run_attempt == 1 }}
+    if: >-
+      ${{ github.ref == 'refs/heads/main' && github.run_attempt == 1 &&
+          ((github.event_name == 'workflow_dispatch' && inputs.apply) ||
+           (github.event_name == 'push' &&
+            github.event.head_commit.message == 'one-time real Android Seedhost Add qualification (#1001)')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
