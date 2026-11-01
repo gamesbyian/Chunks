@@ -128,7 +128,7 @@ class LocalMultiZipMediaStoreExportInstrumentedTest {
         val first = base + ".txt"
         val second = "later" + base + ".json"
         val original = zip(first, second)
-        createOwned(base + "-source.zip", original) { source ->
+        createOwned("fixture-source-" + base + ".zip", original) { source ->
             // The cancellation decision comes from a read-only observation of
             // a REAL first published row, never from a guessed iteration count.
             val result = LocalMultiZipMediaStoreExport.extractNew(context, source) {
