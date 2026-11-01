@@ -588,7 +588,12 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             val matches = listTransfers("main").filter {
                 it.hash.equals(plan.expectedInfoHash, ignoreCase = true)
             }
-            if (matches.size != 1) {
+            if (matches.isEmpty()) {
+                // A host may not publish newly loaded jobs in the main view.
+                // An exact session lookup can still positively verify the
+                // stopped destination without a second non-idempotent Add.
+                reconcileStoppedAddOutsideMain(plan)
+            } else if (matches.size != 1) {
                 RemoteAddOutcome.PendingVerification(plan.expectedInfoHash)
             } else {
                 val item = matches.single()
@@ -610,6 +615,33 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             // not a failure that invites a duplicate load.
             RemoteAddOutcome.Uncertain(plan.expectedInfoHash)
         }
+    }
+
+    /**
+     * No main-view row does not mean the load failed: a session can hold jobs
+     * outside that view. Verify the exact infohash independently with bounded
+     * read-only getters, both before and after checking its destination and
+     * stopped/inactive state. Never issue load/start or infer absence from
+     * view membership. All exceptions remain pending/uncertain in the caller.
+     */
+    private suspend fun reconcileStoppedAddOutsideMain(
+        plan: StoppedRemoteAddPlan
+    ): RemoteAddOutcome {
+        val hash = plan.expectedInfoHash
+        val name = lookupName(hash) ?: return RemoteAddOutcome.PendingVerification(hash)
+        suspend fun guardHash() {
+            check((call("d.hash", listOf(hash)) as? String)?.equals(hash, ignoreCase = true) == true) {
+                "rTorrent returned another infohash during exact Add readback"
+            }
+        }
+        guardHash()
+        val directory = readVerifiedAddDirectory(hash, plan.destination, name)
+        val state = number(call("d.state", listOf(hash)))
+        val active = number(call("d.is_active", listOf(hash)))
+        guardHash()
+        return if (directory != null && state == 0L && active == 0L)
+            RemoteAddOutcome.VerifiedStopped(hash, directory)
+        else RemoteAddOutcome.PendingVerification(hash)
     }
 
     /**

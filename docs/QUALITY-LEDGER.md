@@ -1,52 +1,6 @@
 # Chunks evidence and release gate ledger
 
-## Recovered accepted protected installed Android remote mutation receipts (2026-11-01 audit)
-
-**Historical accepted UI and adapter evidence, not current-head qualification:**
-[Protected installed Android Add UI 40652034320](https://github.com/gamesbyian/Chunks/actions/runs/40652034320)
-on 2026-10-28 at `46b00dd7dd6adda5393929d4101a3b52316f1832`
-passed its actual installed app Add flow against the owner's designated
-development Seedhost: a unique synthetic magnet at a verified Place,
-app-reported Verified Add+Start, independent exact-hash started/directory
-readback, exact Stop and session-only Erase, restoring unrelated inventory.
-Fixed terminal log stage was `inventory-restored`; no draft failure.
-[Protected installed Android adapter mutation 40581190487](https://github.com/gamesbyian/Chunks/actions/runs/40581190487)
-on 2026-10-27 at `fc8fb8430b9587a2665c315eadf0991d049bb8c8`
-separately confirmed synthetic exact Add, active Start, Stop and
-session-only Erase with unrelated inventory preserved. Its terminal
-sanitized marker explicitly disclaims app UI or peer bytes.
-
-These accepted real protected-host emulator receipts supersede stale
-2026-10-27 claims that the hosted installed Add UI has not succeeded.
-They prove neither current main nor physical Android/OEM, outside-UI
-file-priority integration, timeout/401 mutation recovery, conventional
-public-peer receipt or per-infohash received+hash-verified byte growth.
-The separate later protected current-main
-[read-only UI 41266326823](https://github.com/gamesbyian/Chunks/actions/runs/41266326823)
-covered credentialed Connect, nonempty queue, Refresh and Add Place
-preview without write. No extra protected mutation was dispatched
-during this audit. The exact hash/byte gate remains open #4.
-
-## 2026-11-01 accepted oversized read-only remote paging
-
-[#892](https://github.com/gamesbyian/Chunks/pull/892) merged as
-`6ffec6b19013a120955c4fed40367f0acb53242a` from exact reviewed
-head `dfcff21aeff512b3223384b5fd6c993a3d3a6360`. All five CI
-checks succeeded: [foundation 41267740532](https://github.com/gamesbyian/Chunks/actions/runs/41267740532)
-(255 reports, 1,171 executed JVM cases, 30 skipped, zero failed, debug
-APK assembled), [disposable real rTorrent 41267740585](https://github.com/gamesbyian/Chunks/actions/runs/41267740585)
-(legacy and modern separate engine jobs), [R8 41267740577](https://github.com/gamesbyian/Chunks/actions/runs/41267740577),
-and [actual native Add review 41267740565](https://github.com/gamesbyian/Chunks/actions/runs/41267740565).
-
-The adapter now recursively bisects only oversized **read-only**
-`system.multicall` exact-hash getter pages after the large-inventory
-fallback, preserves row order and existing identity/member fences, and
-refuses unsplittable rows, bad XML, timeouts, server faults and changing
-view membership. Three localhost HTTP tests cover the positive and
-two refusal modes. This does not prove real thousands-row Seedhost queues,
-live byte growth, credentials, Android mutation or any write replay.
-
-## 2026-11-01 saved combined-server reauthentication: source-only candidate
+## 2026-11-01 saved combined-server reauthentication: integrated-source candidate
 
 In the existing `MainActivity` combined-saved-server callback, a newly
 constructed `RTorrentRemote(profile.credentials)` directly read the
@@ -59,9 +13,18 @@ callback and requires fresh read-only version/main-view+HTTP challenge
 evidence for supplied credentials. Test cases cover public invented
 credentials, accepted Basic, expired Basic, intentional anonymous access and
 numbered-instance separation without fallback to the primary mount.
-It does not add mutation or login persistence. **No test or host acceptance
-yet**: branch work must follow PR #898's integration before independent
-qualification. Existing archived profile rows remain stale if reauth fails.
+It does not add mutation or login persistence. **Prior exact-head CI passed all five suites on PR #908** and was independently source-reviewed, but this reconciliation to newer protected main must pass its own exact-head checks before merge; no protected host authentication is established by local fixtures. Existing archived profile rows remain stale if reauth fails.
+
+
+## 2026-11-01 installed Share/magnet and foreground recovery integrated (automated tier)
+
+**Merged production-connected Android acceptance [#890](https://github.com/gamesbyian/Chunks/pull/890):** SHA-guarded squash `32797a868339a8be24836830f0d00a81432c6702`, exact candidate `3aeefd24a48b8ff2409bc319cdd3dc9c77b1bfc0`. All **four** required final-head workflows passed: API29 [41271931718](https://github.com/gamesbyian/Chunks/actions/runs/41271931718), API35 installed/lifecycle [41271931680](https://github.com/gamesbyian/Chunks/actions/runs/41271931680), native Compose Add [41271931667](https://github.com/gamesbyian/Chunks/actions/runs/41271931667), docs [41271931763](https://github.com/gamesbyian/Chunks/actions/runs/41271931763). Independent 0F source review validated the final staged magnet fixture and required these exact-head receipts. Both **Share/.torrent and magnet** entered real MainActivity review without unconsented Add; public Downloads received **524,288 actual peer payload bytes**, UI Stop → forced process death → recovered **STOPPED** → UI Start → independently fresh receiver with **524,288 measured phone uploaded/receiver downloaded bytes**, exact SHA-256, and session-only Remove leaving the original public payload unchanged. Prior-head red EACCES, disabled controls, metadata handoff and zero-counter candidates are historical, not these green results.
+
+**Merged FGS resilience [#897](https://github.com/gamesbyian/Chunks/pull/897):** `025d01567b40e728139a39f092395d9f4ecf4cff`, integrated-SQLite head `af016883c` passed API35 [lifecycle 41270702415](https://github.com/gamesbyian/Chunks/actions/runs/41270702415) and [native Add 41270702455](https://github.com/gamesbyian/Chunks/actions/runs/41270702455). Real shortened OS `dataSync` timeout paused **two distinct** native transfers, fresh process restored both stopped and explicit Start rechecked into seeding; session-only Remove kept exact original SHA for both. The fake-adb harness rejected absent/skipped false receipts.
+
+**Merged separate automatic discovery [#912](https://github.com/gamesbyian/Chunks/pull/912):** `642f5ba6061db37f6c61c5cdfd8dae674da0e3b9`, real [foundation/JNI 41271429568](https://github.com/gamesbyian/Chunks/actions/runs/41271429568) passed a magnet `xt+tr` discovering a seed with DHT/LSD off and **no** manually injected peers, full 384,000-byte verified payload readback and actual per-hash native sender/receiver counters. The installed #890 loopback fixture intentionally injects separate deterministic metadata and payload peers, so its acceptance proves actual lifecycle/bytes, **not** automatic mobile tracker/UDP/NAT discovery.
+
+**Remaining release boundaries:** All listed successes are disposable Android/JNI/emulator tiers. No physical handset/OEM six-hour/daylong service behavior, SD/SAF/reinstall rights, revoked permissions, measured ENOSPC, unpredictable VPN/Wi-Fi handover, manual accessibility or sustained seeding is claimed. [#914](https://github.com/gamesbyian/Chunks/pull/914) is testing API29 real grant revocation and app-owned-file continuity; its first red test incorrectly required blanket refusal despite lawful API29 app-owned access and was corrected for a byte-verified adaptive outcome. New exact-head CI and independent review pending; do not promote a red candidate or infer broad permission rights from it.
 
 ## 2026-11-01 production SQLite retention integrated at automated tier
 
@@ -71,7 +34,7 @@ qualification. Existing archived profile rows remain stale if reauth fails.
 
 **Still open [#865](https://github.com/gamesbyian/Chunks/issues/865):** sustained repeated real-engine retention/latency, physical power-loss and OEM/SD/permission testing. SQLite validates the app-private directory entries with `lstat` and subsequently opens a pathname; no atomic inode binding is claimed against hostile same-UID private-directory substitution. Ordinary selected-root BitTorrent payload replacement under superseded #568 remains supported.
 
-**Parallel #5/#569 evidence:** [#897](https://github.com/gamesbyian/Chunks/pull/897) has two successful *original-head* API35 workflows for real shortened timeout → force-stop → two stopped-job cold restores → explicit seed/remove/byte preservation; branch reconciliation with the merged SQLite main was created at `af016883c` and requires **new exact-head qualification**. [#890](https://github.com/gamesbyian/Chunks/pull/890) remains a **draft/red installed Share/magnet journey** until actual fresh-peer payload counters, UI Remove and API29/API35 outcomes all pass. These are disposable emulator tiers, never physical-phone acceptance.
+**Parallel #5/#569 evidence (reconciled 2026-11-01):** The new **installed Share/magnet** and **post-timeout two-hash cold-restoration** automated receipts are both merged (#890 `32797a8`, #897 `025d015`), with independently reviewed exact-head Android 10/15 real-instrumentation results listed above. Tracker-only JNI peer discovery #912 `642f5ba` also integrated. This proves scoped emulator/JNI journeys only; real physical storage/permission/network/OEM trials remain open.
 
 ## 2026-11-01 accepted protected read-only profile and installed Android UI
 

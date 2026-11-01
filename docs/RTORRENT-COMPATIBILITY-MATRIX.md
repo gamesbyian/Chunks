@@ -1,5 +1,24 @@
 # rTorrent read/write compatibility proof matrix
 
+## Pending 0C exact-session Add readback outside main view (2026-11-01)
+
+The existing production `reconcileStoppedAdd` could return Pending indefinitely
+for a newly loaded hash if rTorrent held it in the session but omitted it
+from the current `main` view. The staged
+`fix/remote-hidden-view-add-readback-20261101` candidate retains the
+complete main-view fast path, then uses **only read-only exact-infohash**
+`d.name`, bracketing `d.hash`, `d.directory`, `d.is_multi_file`,
+`d.state` and `d.is_active` when no main row exists. It returns
+VerifiedStopped only after matching the chosen parent, torrent type,
+exact hash twice and stopped/inactive engine state. An unresolved name,
+wrong directory, active state, changed hash or failed getter cannot
+produce a verified Add; no duplicate `load.*` or other mutation is sent.
+The direct caller is the existing Add/reconcile implementation; no
+second remote catalog or speculative RPC method is introduced.
+Localhost fixture tests were committed, but **real disposable and
+protected-host acceptance remain unrun**. Do not treat this candidate
+as accepted compatibility until exact-head CI and integration.
+
 This file owns the protocol acceptance protocol for #1, not the current task priority. Created 2026-10-24.
 
 | Evidence class | Acceptance meaning |
