@@ -34,8 +34,8 @@ CHUNKS_WIFI_BASELINE= CHUNKS_DATA_BASELINE=
 verify_radios_disabled() {
   local wifi data
   for _ in 1 2 3; do
-    if ! wifi="$(adb shell settings get global wifi_on | tr -d '\\r\\n')" ||
-       ! data="$(adb shell settings get global mobile_data | tr -d '\\r\\n')"; then
+    if ! wifi="$(adb shell settings get global wifi_on | tr -d '\r\n')" ||
+       ! data="$(adb shell settings get global mobile_data | tr -d '\r\n')"; then
       echo "CHUNKS_SWARM_NETFLAP: radio readback failed" >&2
       return 1
     fi
