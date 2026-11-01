@@ -946,6 +946,18 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
     }
 
     /**
+     * A method-unavailable XML-RPC fault is a bounded optional-capability
+     * fallback. An XML-RPC envelope may also contain an operational error
+     * despite HTTP 200. Busy, permission, unknown hash and opaque faults
+     * must retain their original failure, never trigger a substitute read.
+     */
+    private fun RpcFault.isUnsupportedOptionalGetter(): Boolean {
+        val reason = message.orEmpty().lowercase(java.util.Locale.ROOT)
+        return code in setOf("-32601", "-506") && "method" in reason &&
+            listOf("not found", "not defined", "unknown", "unsupported").any { it in reason }
+    }
+
+    /**
      * Read-only post-Start diagnosis. Optional calls are best-effort so older
      * restricted RPC gateways remain usable; do not emit server fault text.
      * This does not imply progress from rTorrent's started bit.
@@ -959,11 +971,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             // "method unavailable" RPC fault can become an unknown statistic.
             // A 200 XML-RPC envelope can also carry backend busy/permission
             // faults. Those, and a vanished exact hash, must stop inspection.
-            val reason = fault.message.orEmpty().lowercase(java.util.Locale.ROOT)
-            val missingMethod = fault.code in setOf("-32601", "-506") &&
-                "method" in reason && listOf("not found", "not defined",
-                    "unknown", "unsupported").any { it in reason }
-            if (!missingMethod) throw fault
+            if (!fault.isUnsupportedOptionalGetter()) throw fault
             null
         }
         // HTTP 401/403/407/429, TLS/socket loss, truncated or malformed XML,
@@ -1086,7 +1094,11 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             extractRows(call("t.multicall", listOf(hash, "") + withPeers))
         } catch (cancel: kotlinx.coroutines.CancellationException) {
             throw cancel
-        } catch (_: RpcFault) {
+        } catch (fault: RpcFault) {
+            // Only a recognized missing optional getter allows a read-only
+            // three-field fallback. Server-busy, permission and disappeared
+            // infohash faults are operational failures, not capabilities.
+            if (!fault.isUnsupportedOptionalGetter()) throw fault
             peerDataSupported = false
             extractRows(call("t.multicall", listOf(hash, "") + core))
         }
