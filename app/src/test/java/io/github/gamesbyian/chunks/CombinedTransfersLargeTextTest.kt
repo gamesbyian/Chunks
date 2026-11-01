@@ -60,7 +60,8 @@ class CombinedTransfersLargeTextTest {
         val backed = intArrayOf(0)
         show(opened, backed)
         rule.onNodeWithText("All environments").assertExists()
-        rule.onNodeWithText("Filter transfers").performScrollTo()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Filter transfers"))
+        rule.onNodeWithText("Filter transfers").assertExists()
         // This label lives inside a lazy list item, not a nested ScrollState.
         // Scroll the LazyColumn itself to the matching descendant.
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Change sort & grouping", substring = true))
