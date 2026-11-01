@@ -1340,7 +1340,10 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             "d.completed_bytes", "d.state", "d.directory", "d.down.rate",
             "d.up.rate", "d.ratio", "d.is_multi_file", "d.size_chunks",
             "d.bitfield", "d.is_private", "d.is_active", "d.is_open",
-            "d.peers_connected", "d.down.total", "d.tracker_size"
+            "d.peers_connected", "d.down.total", "d.tracker_size",
+            // Explicit rTorrent read-only diagnostic getters. Never classify
+            // methods by name prefix; .set variants remain write-only.
+            "d.message", "d.hashing", "d.hashing_failed", "d.is_hash_checking", "d.is_meta"
         )
         private val FILE_READ_FIELDS = setOf(
             "f.path=", "f.size_bytes=", "f.priority=",
