@@ -28,6 +28,22 @@ import io.github.gamesbyian.chunks.rpc.SessionEraseOutcome
 import kotlinx.coroutines.launch
 
 /**
+ * Postconditions are exact-session hash reads, not membership of the named
+ * `main` view. A torrent can remain in rTorrent's session while hidden from
+ * `main`, so never misdescribe a hidden-view result as session removal.
+ */
+internal fun sessionEraseFeedback(response: SessionEraseOutcome): String = when (response) {
+    is SessionEraseOutcome.VerifiedRemoved ->
+        "Verified: this exact infohash is absent from rTorrent's session. Physical files were not inspected."
+    is SessionEraseOutcome.AlreadyAbsent ->
+        "Already absent from rTorrent's session by exact infohash check. No erase command was sent."
+    is SessionEraseOutcome.PendingRemoval ->
+        "rTorrent still reports this exact infohash in its session after the removal request. Refresh and inspect before another action."
+    is SessionEraseOutcome.Uncertain ->
+        "Removal outcome uncertain. The server may already have removed this exact infohash. Refresh by hash; never blindly repeat."
+}
+
+/**
  * A single confirmed rTorrent session removal. Not a payload-file deletion.
  * Only the main server view can authorize this action; no blind repeat after
  * an uncertain response. The remote adapter separately guards name and path.
@@ -107,16 +123,7 @@ fun TransferSessionRemoveControl(
                                         val response = remote.eraseFromSession(
                                             transfer.hash, transfer.name, transfer.directory)
                                         verified = response is SessionEraseOutcome.VerifiedRemoved
-                                        feedback = when (response) {
-                                            is SessionEraseOutcome.VerifiedRemoved ->
-                                                "Verified: this infohash is absent from the main server view. Physical files were not inspected."
-                                            is SessionEraseOutcome.AlreadyAbsent ->
-                                                "Already absent from the main server view. No erase command was sent."
-                                            is SessionEraseOutcome.PendingRemoval ->
-                                                "The server acknowledged removal, but this torrent remains in the main view. Inspect and refresh before another action."
-                                            is SessionEraseOutcome.Uncertain ->
-                                                "Removal outcome uncertain. The server may already have removed it. Refresh by hash; never blindly repeat."
-                                        }
+                                        feedback = sessionEraseFeedback(response)
                                     } catch (_: Exception) {
                                         verified = false
                                         feedback = "Could not verify removal. The server state may have changed. Refresh before trying anything else."
