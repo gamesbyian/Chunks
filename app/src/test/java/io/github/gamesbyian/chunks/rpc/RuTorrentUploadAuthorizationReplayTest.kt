@@ -175,4 +175,23 @@ class RuTorrentUploadAuthorizationReplayTest {
             assertNull(fake.authorizations.single())
         }
     }
+    @Test fun startedRuTorrentFormPreauthorizesButNeverReplaysLostAck() = runBlocking {
+        for (challenge in listOf(challengeBasic, challengeDigest)) {
+            Fake(challenge, rejectAfterUpload = true, headChallenge = challenge).use { fake ->
+                val remote = RTorrentRemote(RemoteCredentials(fake.root, "alice", "secret"))
+                val plan = StoppedRemoteAddPlan.fromMagnet(
+                    "magnet:?xt=urn:btih:$hash", "/srv/media")
+                assertEquals(RemoteAddAndStart.StartNotVerified(hash, null),
+                    remote.loadStartedViaRuTorrentForm(plan, torrent))
+                assertEquals("One non-idempotent upload even after 401", 1, fake.uploads)
+                assertEquals("Own-path read-only auth preflight", 1, fake.heads)
+                val auth = fake.authorizations.single().orEmpty()
+                assertTrue(auth.startsWith(
+                    if (challenge.startsWith("Digest")) "Digest " else "Basic "))
+                assertFalse(auth.contains("secret"))
+                assertFalse(fake.methods.any { it == "d.start" || it.startsWith("load.") })
+            }
+        }
+    }
+
 }
