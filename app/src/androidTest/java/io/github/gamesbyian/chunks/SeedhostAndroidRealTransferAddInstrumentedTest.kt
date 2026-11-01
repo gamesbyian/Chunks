@@ -224,6 +224,7 @@ class SeedhostAndroidRealTransferAddInstrumentedTest {
                         traffic.hash.equals(hash, true) &&
                         traffic.expectedBytes == preview.sizeBytes &&
                         (traffic.receivedBytes ?: 0L) > 0L &&
+                        (traffic.peers ?: 0L) > 0L &&
                         traffic.verifiedBytes > 0L
                 }
                 if (passing) { observedProgress = true; break }
