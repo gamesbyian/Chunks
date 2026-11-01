@@ -9,6 +9,16 @@
 
 **0B candidate:** `app/phone-intake-journey-20261101` builds on that main. The existing cold-intent test opens an Add draft only; the new opt-in two-process fixture uses actual MainActivity Add/Stop/Start/Remove controls and independent real peer/digest witnesses for both Share and magnet. It is wired into the two existing API29/API35 emulators. The offline harness accepted both kinds and rejected 17 forged/unsafe cases, including physical-device clearing, skipped/failed/duplicate receipts, surviving processes, missing seeding and changed digests. These negatives do not execute Android. Installed-runtime acceptance is still pending. The earlier independently verified JVM callback-count correction from #889 is included without its storage implementation; it preserves real restart/seeding/byte/sibling checks.
 
+**Initial runtime failures at `e1c7bf2`:** foundation, ordinary API35 and docs
+passed. The new API29 journey [41264571180](https://github.com/gamesbyian/Chunks/actions/runs/41264571180)
+reached cold restore and byte-exact fresh-peer completion but timed out on its
+sender/receiver counter conjunction. API35 [41264571185](https://github.com/gamesbyian/Chunks/actions/runs/41264571185)
+completed the existing lifecycle checks, then the new Share journey encountered
+`EACCES` on its immediate independent public-file read. Neither new journey is
+accepted. The follow-up keeps all peer/digest/counter assertions, adds diagnostic
+counter snapshots, and uses the existing public-Place fixture's bounded exact
+readback pattern to distinguish transient visibility from persistent denial.
+
 ## 2026-10-31 owner correction: historical native collision witness reclassified
 
 **Policy changed; evidence has NOT changed.** The stock libtorrent JNI witness 41130188712 still observed 3/4 ordinary same-path regular-file replacements. Under [D-LOCAL-COLLISIONS-20261031](DECISIONS.md) these outcomes are authorized by a chosen download root and **not individually a G0 native ownership defect**. Prior RED labels in dated sections below refer to the superseded absolute non-clobber contract. Do **not** infer path-escape, unrelated sibling preservation, multi-writer exclusion, resumed piece hash correctness, Android permissions, native reliability, or physical handset acceptance from that diagnostic. Metadata `.resume`/`.admission` overwrite hazards are separate concerns and stay open until verified. [Policy and scoped acceptance](LOCAL-TORRENT-COLLISION-POLICY.md).

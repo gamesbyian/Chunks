@@ -32,11 +32,12 @@ for kind in share magnet; do
   out_b="$(adb shell am instrument -w -r -e class "$cls#phaseB_coldUiRestoreStartsSeedsToFreshPeerAndRemovesKeepingBytes" \
     -e chunksIntakePhase b -e chunksIntakeKind "$kind" "$runner")"
   printf '%s\n' "$out_b"
+  log_b="$(adb logcat -d -v raw -s ChunksIntake:I)"
+  grep '^CHUNKS_INTAKE_COUNTERS ' <<< "$log_b" || true
   if [[ "$(grep -Fxc 'OK (1 test)' <<< "$out_b" || true)" != 1 ]] ||
      grep -Eq '^INSTRUMENTATION_STATUS_CODE: -[1-9]|^FAILURES|AssumptionViolatedException' <<< "$out_b"; then
     echo 'CHUNKS_INTAKE: cold recovery did not execute exactly one passing test'; exit 1
   fi
-  log_b="$(adb logcat -d -v raw -s ChunksIntake:I)"
   recovered="$(grep -E "^CHUNKS_INTAKE kind=$kind recovered stopped=true bytes=524288 seeded_bytes=524288 kept_files=true sha256=[0-9a-f]{64}$" <<< "$log_b" || true)"
   [[ "$(grep -c '^CHUNKS_INTAKE ' <<< "$recovered" || true)" == 1 ]] || {
     echo 'CHUNKS_INTAKE: missing/duplicate actual restore, seeding and keep-files witness'; exit 1;

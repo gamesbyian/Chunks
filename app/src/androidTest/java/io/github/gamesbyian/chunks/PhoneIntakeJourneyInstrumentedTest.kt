@@ -74,6 +74,23 @@ class PhoneIntakeJourneyInstrumentedTest {
     private fun sha(bytes: ByteArray) = MessageDigest.getInstance("SHA-256").digest(bytes)
         .joinToString("") { (it.toInt() and 255).toString(16).padStart(2, '0') }
 
+    private fun assertPublicBytes(target: File, expected: ByteArray, phase: String) {
+        val deadline = System.nanoTime() + 30_000_000_000L
+        var failure: String
+        do {
+            val actual = try { target.readBytes() } catch (e: java.io.IOException) {
+                failure = e.toString()
+                if (System.nanoTime() >= deadline) fail("$phase: $failure; rootReadable=${publicRoot.canRead()}")
+                Thread.sleep(150)
+                continue
+            }
+            if (actual.contentEquals(expected)) return
+            failure = "read ${actual.size} bytes, sha256=${sha(actual)}"
+            if (System.nanoTime() >= deadline) fail("$phase: $failure")
+            Thread.sleep(150)
+        } while (true)
+    }
+
     private fun configurePermissions() {
         if (Build.VERSION.SDK_INT >= 33)
             instrumentation.uiAutomation.grantRuntimePermission(context.packageName, Manifest.permission.POST_NOTIFICATIONS)
@@ -153,7 +170,9 @@ class PhoneIntakeJourneyInstrumentedTest {
                 assertEquals("Untouched default must be the public Downloads root",
                     publicRoot.canonicalPath, phone.status(hash)?.savePath)
                 assertTrue(phone.flushCompletedForLibraryRead(hash, 30_000))
-                assertArrayEquals(payload, target.readBytes())
+                // Native cache flush and scoped-storage visibility are distinct.
+                // Require an independent exact read, bounded like the public Place fixture.
+                assertPublicBytes(target, payload, "after real UI download")
                 await("per-transfer real peer counters") {
                     (phone.status(hash)?.payloadDownloadedBytes ?: 0) >= payload.size &&
                         (seed.status(hash)?.payloadUploadedBytes ?: 0) >= payload.size
@@ -223,6 +242,8 @@ class PhoneIntakeJourneyInstrumentedTest {
                 await("fresh peer gets complete payload") { receiver.status(hash)?.progressPpm == 1_000_000 }
                 assertTrue(receiver.flushCompletedForLibraryRead(hash, 30_000))
                 assertArrayEquals(expected, File(receiverRoot, name).readBytes())
+                android.util.Log.i("ChunksIntake", "CHUNKS_INTAKE_COUNTERS kind=$kind " +
+                    "before=$uploadedBefore phone=${phone.status(hash)} receiver=${receiver.status(hash)}")
                 await("restored transfer actually uploads") {
                     (phone.status(hash)?.payloadUploadedBytes ?: 0) - uploadedBefore >= expected.size &&
                         (receiver.status(hash)?.payloadDownloadedBytes ?: 0) >= expected.size
