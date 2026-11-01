@@ -38,7 +38,10 @@ of relying only on Java's narrower private-address classification. It further
 pins the historical, independently observed rTorrent peer endpoint address
 `5.79.112.219` for this **one-time** host test. A provider-side readdress
 must trigger a new explicit review, not fallback to another returned public
-address or credential-bearing network sweep. A transient
+address or credential-bearing network sweep. Server-reported peer candidates
+are compared to that **literal** IP before any DNS resolution, so arbitrary
+hostnames cannot trigger resolver queries or DNS-rebinding effects from the
+trusted GitHub runner. A transient
 or malformed post-Add receipt must print `manual-reconciliation-required`
 once a synthetic Add could have been submitted, even when the job was never
 positively verified. A `PendingRemoval` result still has an exact-session
