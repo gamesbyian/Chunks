@@ -219,6 +219,16 @@ internal fun availabilityText(source: EnvironmentTransferSnapshot): String = whe
     EnvironmentAvailability.LOCKED -> "Locked, open it to unlock"
 }
 
+/** Facts from a stale/incomplete source remain visible, never advertised as current row status. */
+internal fun combinedRowFreshnessLabel(source: EnvironmentTransferSnapshot?): String? = when {
+    source == null -> "Source unavailable; status unverified"
+    source.canClaimCompleteLiveInventory -> null
+    source.availability == EnvironmentAvailability.LOCKED -> "Locked; current status hidden"
+    source.availability == EnvironmentAvailability.OFFLINE -> "Offline; last known facts only"
+    source.availability == EnvironmentAvailability.STALE -> "Out of date; last known facts only"
+    else -> "List not verified complete; last known facts only"
+}
+
 /**
  * Combined Transfers: one globally sorted (or grouped) union of the selected
  * environments. The environment chips are a VIEW scope only. The one action
@@ -232,6 +242,8 @@ internal fun CombinedTransfersScreen(
     savedProfiles: List<CombinedSavedProfile>,
     onOpenPhone: () -> Unit,
     onOpenServer: (() -> Unit)?,
+    /** Opens the connected, verified server's existing Add review. Never targets a saved-only profile. */
+    onAddToServer: (() -> Unit)? = null,
     /** Opens this exact transfer in its own environment's list; only phone and the signed-in server. */
     onOpenTransfer: (UnifiedTransferKey) -> Unit = {},
     onBack: () -> Unit
@@ -440,6 +452,7 @@ internal fun CombinedTransfersScreen(
         }
     }
     var choosingColours by remember { mutableStateOf(false) }
+    var showingSortOptions by rememberSaveable { mutableStateOf(false) }
     // Only environments with a live list here can open a row there.
     fun openFor(key: UnifiedTransferKey): (() -> Unit)? =
         if (key.environment == EnvironmentSnapshots.PHONE || (serverId != null && key.environment == serverId))
@@ -527,6 +540,7 @@ internal fun CombinedTransfersScreen(
         CombinedAliasProjection.apply(rawSources, aliasScopes, currentAliases)
     }
     val result = remember(sources, query) { UnifiedTransferCatalog.query(sources, query) }
+    val sourcesByEnvironment = result.sources.associateBy { it.environment }
 
     // Hide this window from screenshots/recents whenever a protected scope is shown.
     val secure = (phonePrivacy.needsSecureWindow && phonePrivacy.mayShow) ||
@@ -640,9 +654,16 @@ internal fun CombinedTransfersScreen(
             verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item {
             CombinedTransfersHeader(onBack)
-            Text("Browse every environment together. Start and Stop can be applied to a selection " +
-                "here; every other change happens in each environment's own list.",
+            Text("Browse downloads together. Choose the destination explicitly when adding; " +
+                "other controls open the download's own list.",
                 style = MaterialTheme.typography.bodySmall)
+        }
+        item {
+            CombinedAddActions(
+                serverLabel = serverId?.let { labels[it] },
+                onOpenPhone = onOpenPhone,
+                onAddToServer = onAddToServer
+            )
         }
         item {
             key(batchIdentity) {
@@ -729,6 +750,17 @@ internal fun CombinedTransfersScreen(
             }
         }
         item {
+            OutlinedButton(
+                onClick = { showingSortOptions = !showingSortOptions },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+            ) {
+                val name = CombinedSortChoices.firstOrNull { it.first == query.sortKey }?.second ?: "Name"
+                Text((if (showingSortOptions) "Hide" else "Change") + " sort & grouping · " +
+                    name + " · " + TransferSortOrdering.label(query.sortKey.orderingKind(), query.direction) +
+                    (if (query.groupByEnvironment) " · By environment" else " · Together"))
+            }
+        }
+        if (showingSortOptions) item {
             Text("Sort by", style = MaterialTheme.typography.labelLarge)
             FlowRow(Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -865,6 +897,7 @@ internal fun CombinedTransfersScreen(
                 }
                 items(group.transfers, key = { "row-" + it.key.environment.value + it.key.infoHash }) { row ->
                     CombinedTransferRow(row, labels[row.key.environment].orEmpty(), palette.hueOf(row.key.environment),
+                    source = sourcesByEnvironment[row.key.environment],
                         selection = if (selecting) row.key in selected else null,
                         onSelect = { on -> selected = if (on) selected + row.key else selected - row.key },
                         onOpen = openFor(row.key),
@@ -874,6 +907,7 @@ internal fun CombinedTransfersScreen(
         } else {
             items(result.transfers, key = { "row-" + it.key.environment.value + it.key.infoHash }) { row ->
                 CombinedTransferRow(row, labels[row.key.environment].orEmpty(), palette.hueOf(row.key.environment),
+                    source = sourcesByEnvironment[row.key.environment],
                     selection = if (selecting) row.key in selected else null,
                     onSelect = { on -> selected = if (on) selected + row.key else selected - row.key },
                     onOpen = openFor(row.key),
@@ -949,6 +983,7 @@ private fun CombinedTransferRow(
     row: UnifiedTransferObservation,
     environmentLabel: String,
     hue: EnvironmentHue?,
+    source: EnvironmentTransferSnapshot?,
     /** Null when not selecting. */
     selection: Boolean? = null,
     onSelect: (Boolean) -> Unit = {},
@@ -972,6 +1007,10 @@ private fun CombinedTransferRow(
         Column(Modifier.weight(1f).padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(environmentLabel, style = MaterialTheme.typography.labelMedium, color = labelColour,
                 fontWeight = FontWeight.Bold)
+            combinedRowFreshnessLabel(source)?.let { warning ->
+                Text(warning, style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             Text(row.displayName, style = MaterialTheme.typography.titleSmall)
             if (row.displayName != row.originalName) Text("Torrent name: " + row.originalName,
                 style = MaterialTheme.typography.bodySmall)
