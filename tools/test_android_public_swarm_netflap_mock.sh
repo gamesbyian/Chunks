@@ -12,7 +12,8 @@ set -euo pipefail
 case "$*" in
   devices)
     printf 'List of devices attached\nMOCK_USB\tdevice\n'
-    if [[ "${MOCK_SECOND_DEVICE:-0}" == 1 ]]; then printf 'SECOND\tdevice\n'; fi ;;
+    if [[ "${MOCK_SECOND_DEVICE:-0}" == 1 ]]; then printf 'SECOND\tdevice\n'; fi
+    [[ "${MOCK_ADB_DEVICES_PARTIAL_FAIL:-0}" != 1 ]] || exit 88 ;;
   get-state)
     printf 'device\n'
     [[ "${MOCK_GET_STATE_FAILURE:-0}" != 1 ]] || exit 1 ;;
@@ -29,7 +30,25 @@ case "$*" in
     if [[ "${MOCK_DATA_DISABLE_NOOP:-0}" != 1 ]]; then printf '0\n' > "$MOCK_DIR/data"; fi
     printf 'data-off\n' >> "$MOCK_DIR/commands" ;;
   'logcat -c') : ;;
-  'logcat -d -s ChunksSwarm:I') printf 'CHUNKS_SWARM_NETFLAP: ready verified=4194304\n' ;;
+  'logcat -d -s ChunksSwarm:I')
+    if [[ -e "$MOCK_DIR/net-on" && "${MOCK_NET_LOGCAT_FAIL:-0}" == 1 ]]; then exit 19; fi
+    printf '10-31 12:00:00 I/ChunksSwarm: CHUNKS_SWARM_NETFLAP: ready verified=4194304\n'
+    if [[ -e "$MOCK_DIR/net-on" ]]; then
+      [[ "${MOCK_NET_NO_WITNESS:-0}" == 1 ]] ||
+        printf 'CHUNKS_SWARM_NETFLAP: default_network_baseline_validated=true\nCHUNKS_SWARM_NETFLAP: network_witness_default_internet_lost=true\nCHUNKS_SWARM_NETFLAP: network_witness_default_internet_restored=true\n'
+      if [[ "${MOCK_NET_MISSING_VERIFIED:-0}" != 1 ]]; then
+        at_return=5242880; continued=7340032
+        [[ "${MOCK_NET_BAD_RETURN:-0}" != 1 ]] || at_return=3000000
+        [[ "${MOCK_NET_STALE_GROWTH:-0}" != 1 ]] || continued=6291456
+        printf 'CHUNKS_SWARM_NETFLAP: outage verified_at_loss=4194304 verified_at_return=%s stopped=false error=false\n' "$at_return"
+        printf 'CHUNKS_SWARM_NETFLAP: VERIFIED resumed_after_s=2 verified=%s peers=3\n' "$continued"
+        [[ "${MOCK_NET_DUPLICATE_VERIFIED:-0}" != 1 ]] ||
+          printf 'CHUNKS_SWARM_NETFLAP: VERIFIED resumed_after_s=2 verified=%s peers=3\n' "$continued"
+      fi
+      [[ "${MOCK_NET_INCONCLUSIVE:-0}" != 1 ]] ||
+        echo 'CHUNKS_SWARM_NETFLAP: INCONCLUSIVE no recovery'
+    fi
+    ;;
   install\ *)
     printf 'install\n' >> "$MOCK_DIR/commands"
     if [[ "${MOCK_INSTALL_FAILURE:-0}" == 1 ]]; then
@@ -92,6 +111,26 @@ for negative in MOCK_WIFI_DISABLE_NOOP MOCK_DATA_DISABLE_NOOP; do
     echo "Radio baseline not restored after $negative" >&2; exit 1
   }
 done
+# A passing instrumentation message can never replace Android's actual
+# validated-network loss/return and 2 MiB fresh native payload evidence.
+for negative in MOCK_NET_NO_WITNESS MOCK_NET_MISSING_VERIFIED \
+                MOCK_NET_BAD_RETURN MOCK_NET_STALE_GROWTH \
+                MOCK_NET_DUPLICATE_VERIFIED MOCK_NET_INCONCLUSIVE \
+                MOCK_NET_LOGCAT_FAIL; do
+  printf '1\n' > "$MOCK_DIR/wifi"; printf '0\n' > "$MOCK_DIR/data"
+  : > "$MOCK_DIR/commands"
+  rm -f "$MOCK_DIR/net-off" "$MOCK_DIR/net-on"
+  if env -u ADB_SERIAL -u ANDROID_SERIAL "$negative=1" \
+      bash "$repo/android_public_swarm_netflap.sh" > "$temp/$negative.log" 2>&1; then
+    echo "False-positive post-network Android receipt accepted: $negative" >&2; exit 1
+  fi
+  [[ -f "$MOCK_DIR/net-off" && -f "$MOCK_DIR/net-on" ]] || {
+    echo "Negative did not actually reach the post-radio acceptance boundary: $negative" >&2; exit 1
+  }
+  [[ "$(cat "$MOCK_DIR/wifi")" == 1 && "$(cat "$MOCK_DIR/data")" == 0 ]] || {
+    echo "Radio baseline not restored after post-outage refusal: $negative" >&2; exit 1
+  }
+done
 printf '1\n' > "$MOCK_DIR/wifi"; printf '0\n' > "$MOCK_DIR/data"; : > "$MOCK_DIR/commands"
 if MOCK_UNREADABLE_DATA=1 bash "$repo/android_public_swarm_netflap.sh" > "$temp/fail" 2>&1; then
   echo 'Unknown baseline was accepted' >&2; exit 1
@@ -102,6 +141,21 @@ fi
 if MOCK_SECOND_DEVICE=1 bash "$repo/android_public_swarm_netflap.sh" > "$temp/fail" 2>&1; then
   echo 'Multiple adb devices were accepted' >&2; exit 1
 fi
+[[ ! -s "$MOCK_DIR/commands" ]]
+# ADB may print a plausible, unique USB device and still exit nonzero.
+# No installation, service or radio operation may follow that failure.
+: > "$MOCK_DIR/commands"
+if env -u ADB_SERIAL -u ANDROID_SERIAL MOCK_ADB_DEVICES_PARTIAL_FAIL=1 \
+    bash "$repo/android_public_swarm_netflap.sh" > "$temp/devices-failed.log" 2>&1; then
+  echo 'Failed adb enumeration with plausible output was accepted' >&2; exit 1
+fi
+grep -q 'Could not enumerate ADB devices' "$temp/devices-failed.log"
+[[ ! -s "$MOCK_DIR/commands" ]]
+: > "$MOCK_DIR/commands"
+if ADB_SERIAL=NOT_CONNECTED bash "$repo/android_public_swarm_netflap.sh" > "$temp/stale-selector.log" 2>&1; then
+  echo 'Unlisted explicit ADB serial was accepted' >&2; exit 1
+fi
+grep -q 'Selected ADB_SERIAL is absent' "$temp/stale-selector.log"
 [[ ! -s "$MOCK_DIR/commands" ]]
 if ADB_SERIAL=192.0.2.10:5555 bash "$repo/android_public_swarm_netflap.sh" > "$temp/fail" 2>&1; then
   echo 'Wireless adb was accepted' >&2; exit 1
@@ -115,4 +169,4 @@ fi
 grep -q 'Selected adb device unavailable' "$temp/state-failed.log"
 [[ ! -s "$MOCK_DIR/commands" && ! -e "$MOCK_DIR/net-off" && ! -e "$MOCK_DIR/net-on" ]]
 [[ "$(cat "$MOCK_DIR/wifi")" == 1 && "$(cat "$MOCK_DIR/data")" == 0 ]]
-echo 'CHUNKS_NETFLAP_MOCK: baseline preservation, outage signaling, failed state query, unknown state, no-op radio commands, ambiguous/wireless adb, zero-exit install failures and nonzero instrumentation all passed'
+echo 'CHUNKS_NETFLAP_MOCK: baseline preservation, outage signaling, failed state query, unknown state, no-op radio commands, ambiguous/unlisted/wireless adb, partial-output device enumeration, zero-exit install failures, false network/wire byte receipts and nonzero instrumentation all passed'

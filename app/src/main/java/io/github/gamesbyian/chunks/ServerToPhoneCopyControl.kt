@@ -43,10 +43,13 @@ internal fun ServerToPhoneCopyControl(
 ) {
     if (transfer.sizeBytes <= 0 || transfer.completedBytes != transfer.sizeBytes) return
     val scope = rememberCoroutineScope()
-    var checking by remember(transfer.hash) { mutableStateOf(false) }
-    var plan by remember(transfer.hash) { mutableStateOf<ServerToPhoneCopy.Plan?>(null) }
-    var addressDraft by remember(transfer.hash) { mutableStateOf("") }
-    var editingAddress by remember(transfer.hash) { mutableStateOf(false) }
+    // A shared infohash can exist on different authenticated profiles. A saved
+    // peer-copy draft is authority for this exact remote session and source,
+    // never for whichever server happens to display the same torrent next.
+    var checking by remember(remote, transfer.hash, transfer.name, transfer.sizeBytes, transfer.directory) { mutableStateOf(false) }
+    var plan by remember(remote, transfer.hash, transfer.name, transfer.sizeBytes, transfer.directory) { mutableStateOf<ServerToPhoneCopy.Plan?>(null) }
+    var addressDraft by remember(remote, transfer.hash, transfer.name, transfer.sizeBytes, transfer.directory) { mutableStateOf("") }
+    var editingAddress by remember(remote, transfer.hash, transfer.name, transfer.sizeBytes, transfer.directory) { mutableStateOf(false) }
 
     fun check(addressOverride: String?) {
         checking = true
@@ -82,7 +85,14 @@ internal fun ServerToPhoneCopyControl(
                 "network data, and other public peers may also contribute pieces.",
                 style = MaterialTheme.typography.bodySmall)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { plan = null; onReviewPhoneAdd(current.magnet) }, enabled = !stale,
+                Button(onClick = {
+                    // Consume this exact-session review *before* navigation may
+                    // dispose the current composition. The magnet is captured
+                    // first; the callback still receives the exact reviewed plan.
+                    val reviewedMagnet = current.magnet
+                    plan = null
+                    onReviewPhoneAdd(reviewedMagnet)
+                }, enabled = !stale,
                     modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Review phone Add") }
                 OutlinedButton(onClick = { plan = null },
                     modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Cancel") }

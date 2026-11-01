@@ -17,6 +17,11 @@ class RemotePeerSourceIntegrityTest {
     private fun result(value: String) =
         "<methodResponse><params><param><value>$value</value></param></params></methodResponse>"
 
+    private fun fault(code: Int, reason: String): String = """<methodResponse><fault><value><struct>
+        <member><name>faultCode</name><value><int>$code</int></value></member>
+        <member><name>faultString</name><value><string>$reason</string></value></member>
+        </struct></value></fault></methodResponse>"""
+
     private class Gateway(private val answer: (String) -> String) : AutoCloseable {
         private val server = HttpServer.create(
             InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0)
@@ -123,6 +128,54 @@ class RemotePeerSourceIntegrityTest {
             }
         }
     }
+    @Test fun missingOptionalPeerAddressGettersRemainUnknownWithoutInventingAnIp() {
+        Gateway { method ->
+            when (method) {
+                "d.hash" -> result(str(hash))
+                "network.local_address", "network.bind_address" ->
+                    fault(-32601, "Method $method not found")
+                "network.listen.port" -> result(integer(51413))
+                "d.is_private" -> result(integer(0))
+                "d.is_active" -> result(integer(1))
+                else -> error("Unexpected RPC: $method")
+            }
+        }.use { gateway ->
+            val source = runBlocking {
+                RTorrentRemote(RemoteCredentials(gateway.endpoint, "", "")).peerSource(hash)
+            }
+            assertNull(source.announcedAddress)
+            assertNull(source.boundAddress)
+            assertEquals(51413L, source.listenPort)
+            assertEquals(listOf("d.hash", "network.local_address", "network.bind_address",
+                "network.listen.port", "d.is_private", "d.is_active", "d.hash"),
+                gateway.methods)
+        }
+    }
+
+    @Test fun peerSourceOperationalRpcFaultAbortsBeforeAnyOtherGetter() {
+        for (blocked in listOf("network.local_address", "network.bind_address")) {
+            Gateway { method ->
+                when (method) {
+                    "d.hash" -> result(str(hash))
+                    blocked -> fault(-503, "Server busy")
+                    "network.local_address" -> result(str("198.51.100.8"))
+                    else -> error("Must stop reading after $blocked server fault: $method")
+                }
+            }.use { gateway ->
+                val error = assertThrows(RpcFault::class.java) {
+                    runBlocking {
+                        RTorrentRemote(RemoteCredentials(gateway.endpoint, "", "")).peerSource(hash)
+                    }
+                }
+                assertEquals("-503", error.code)
+                val expected = if (blocked == "network.local_address")
+                    listOf("d.hash", "network.local_address")
+                else listOf("d.hash", "network.local_address", "network.bind_address")
+                assertEquals(expected, gateway.methods)
+            }
+        }
+    }
+
     @Test fun vanishedOrRetargetedHashNeverBecomesTrustedPeerSource() {
         for (failBefore in listOf(true, false)) {
             var checks = 0

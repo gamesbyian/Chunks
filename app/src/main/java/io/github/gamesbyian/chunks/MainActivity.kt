@@ -1519,13 +1519,7 @@ private fun TransfersScreen(
             )
         }
         item {
-            Row(modifier = Modifier.horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                for (option in TransferFilter.entries) {
-                    FilterChip(selected = filter == option, onClick = { onFilter(option) },
-                        label = { Text(option.label) }, modifier = Modifier.heightIn(min = 48.dp))
-                }
-            }
+            RemoteTransferFilterChoices(selected = filter, onChoose = onFilter)
         }
         item {
             RemoteTransfersSortSummary(visible.size, order.label, onCycleSort = {

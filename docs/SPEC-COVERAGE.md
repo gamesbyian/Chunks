@@ -1,5 +1,14 @@
 # Chunks specification coverage and acceptance map
 
+**P0 UI qualification (2026-11-01; candidates, not merged):** #940 `f130bc85`
+passes 14 local session/model/RPC tests, including exact B handoff and old-A
+review refusal; an old-key negative fails as required. #927 local `909a9323`
+passes 20 combined-list/large-text tests after scrolling its off-screen
+Reverse pointer target into view. Required integrated-head CI is pending.
+These are host JVM/Robolectric receipts, not installed/physical Android,
+TalkBack or protected-host acceptance. [Evidence](QUALITY-LEDGER.md#2026-11-01-p0-ui-red-check-diagnosis-local-positive-and-negative-controls).
+
+
 **Installed 0B Share/magnet automated tier integrated (2026-11-01):** [#890](https://github.com/gamesbyian/Chunks/pull/890) merged as `32797a8`, exact candidate `3aeefd2` **four/four** checks green, including API29 [41271931718](https://github.com/gamesbyian/Chunks/actions/runs/41271931718) and API35 [41271931680](https://github.com/gamesbyian/Chunks/actions/runs/41271931680). Both actual MainActivity Share and magnet review → public Downloads → 524,288 incoming real peer bytes → UI Stop → process death → STOPPED restore → UI Start → 524,288 actual fresh peer uploaded/downloaded bytes → native SHA-matched Remove keeping original data passed. Magnet fixture employs peer injection separately after metadata and after Start, *not* automatic peer-discovery evidence; [merged #912](https://github.com/gamesbyian/Chunks/pull/912) `642f5ba` independently proves native tracker-only discovery on desktop JNI. [Merged #897](https://github.com/gamesbyian/Chunks/pull/897) `025d015` covers shortened API35 FGS timeout and two-job cold restore with preserved file hashes. Physical, SD/SAF/reinstall, permission revocation, low storage, handover/Doze/OEM, accessibility and long-run claims stay open #5/#569.
 
 **#865 SQLite integration (2026-11-01; merged):** Android production resume metadata now uses transactional SQLite as merged [#889](https://github.com/gamesbyian/Chunks/pull/889), `15f507b`; the final candidate `68887d8` passed seven exact-head groups, including actual API29 `synchronous=EXTRA` mode 3, cold retirement, legacy migration and native recovery. Desktop JNI remains on the immutable event backend. Missing/zeroed authoritative state and unsafe metadata refuse. Open #865 only for sustained, power-loss and physical tiers; no claim that emulator fsync is a physical power-cut. [Contract](NATIVE-ADMISSION-RESUME-RECONCILIATION.md#transactional-retention-follow-through).

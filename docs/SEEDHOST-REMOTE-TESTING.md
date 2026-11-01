@@ -1,5 +1,66 @@
 # Seedhost rTorrent remote testing
 
+## Proposed manual, exact-infohash hosted received-byte proof (2026-11-01, not accepted)
+
+The [owner-authorized synthetic peer-byte workflow](../.github/workflows/seedhost-exact-peer-bytes-once.yml)
+is **manual-only**, on **reviewed `main`**, with a required `apply=true`
+confirmation and `GITHUB_RUN_ATTEMPT=1` fence. It is never invoked by a
+pull request, push, scheduler, or an automatic retry. Protected credentials
+remain exclusively in trusted GitHub Actions secrets. This is a separate
+host/JVM peer test, not the installed Android Connect, Add, or physical phone
+gate. The workflow must not be advertised as passing until its real,
+non-skipped, exact-head result is inspected.
+
+The test first authenticates the **one specifically authorized primary HTTPS
+ruTorrent instance**, checks its exact read challenge and current queue, and
+selects a server parent corroborated by pre-existing complete single-file
+jobs through `SeedhostDestinationPreflight`. It reads the same host's peer
+listener and verifies a TCP connection **before any remote write**. It
+generates a unique 512 KiB public/untracked synthetic V1 payload using the
+GitHub run identity. Only its fresh exact infohash may receive a single
+stopped `load.raw_verbose`, Start, Stop, and session-only `d.erase`.
+All authoritative postconditions are re-read by exact infohash. A runner-side
+libtorrent seeder transfers the actual payload to rTorrent through its
+known TCP peer port; `d.down.total` and `d.completed_bytes` must both
+grow **strictly from zero** to received and hash-verified positive values,
+respectively. The runner also requires positive independent upload bytes
+and a local payload SHA-256 re-read. A global rTorrent counter, successful
+RPC acknowledgement, or stopped Add by itself is insufficient.
+
+Cleanup is one-shot, only for the same freshly observed hash, unique name and
+corroborated parent. It verifies Stop/inactivity before session-only Erase,
+leaves payload data untouched and compares unrelated inventory identities.
+A 401, timeout, lost ACK, unexpected directory or changed identity can leave
+the synthetic transfer behind rather than risk a blind repeat or deletion.
+The runner's peer preflight excludes reserved/non-global addresses,
+including shared-space CGNAT, benchmarking and documentation ranges, instead
+of relying only on Java's narrower private-address classification. It further
+pins the historical, independently observed rTorrent peer endpoint address
+`5.79.112.219` for this **one-time** host test. A provider-side readdress
+must trigger a new explicit review, not fallback to another returned public
+address or credential-bearing network sweep. Server-reported peer candidates
+are compared to that **literal** IP before any DNS resolution, so arbitrary
+hostnames cannot trigger resolver queries or DNS-rebinding effects from the
+trusted GitHub runner. A transient
+or malformed post-Add receipt must print `manual-reconciliation-required`
+once a synthetic Add could have been submitted, even when the job was never
+positively verified. A `PendingRemoval` result still has an exact-session
+hash and **cannot** be called session removed merely because it disappeared
+from the `main` view; the test requires exact-session `VerifiedRemoved`
+plus the original unrelated inventory identity set before success.
+
+The workflow emits only a strict stage allowlist and the **new synthetic
+infohash** to enable owner-approved manual reconciliation. Full Gradle output,
+headers, credentials, directory paths and tracker data are withheld.
+
+This acceptance is intentionally **not** a promise that Internet swarm peers
+will be available or that the installed phone can download in the background.
+It also does not verify bytes by reopening the server filesystem independently:
+host-side piece-hash verification and exact-hash counters are paired with the
+runner's original payload and seeder upload observations. The synthetic
+payload may remain in the approved parent after session removal, as is
+conventional for rTorrent and required by Chunks' Remove semantics.
+
 The Chunks Android client derives a candidate XML-RPC plugin endpoint from an HTTPS ruTorrent web URL. **The owner's designated development instance subsequently passed authenticated Kotlin inventory of 437 torrents and scoped exact-target Add, file-priority, Start/Stop and session-only Remove, plus magnet and ruTorrent upload journeys**; see QUALITY-LEDGER. Android handset-to-host acceptance is still pending. Subsequent dated sections supersede older candidate-only status.
 
 **Owner-confirmed development URL:** `https://ianseeds.wood.seedhost.eu/rutorrent/` (credential-free web address). This is the default workflow-dispatch input for `seedhost-kotlin-adapter-smoke.yml`, `seedhost-readonly-probe.yml` and the protected `seedhost-android-readonly.yml` API35 installed-app journey; manual overrides remain available. Its corresponding candidate HTTP-RPC plugin path is `/rutorrent/plugins/httprpc/action.php`. Credentials must remain in GitHub Secrets `rtorrent_user` and `rtorrent_pass`, never appended to this URL. The previously successful authenticated version-only probe was [run 40063547095](https://github.com/gamesbyian/Chunks/actions/runs/40063547095); do not infer that the full Kotlin adapter smoke has passed.

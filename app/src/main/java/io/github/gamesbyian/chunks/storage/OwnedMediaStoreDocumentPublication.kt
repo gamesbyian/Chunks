@@ -15,8 +15,10 @@ import java.security.MessageDigest
 import java.util.UUID
 
 /**
- * Isolated, NON-SHIPPING experiment for a POSITIVE, user-visible document
- * publication on Android's platform MediaStore Downloads collection.
+ * Capability-scoped platform-owned document publication, newly connected
+ * only to bounded, single-file ZIP and finished-local-library Save actions
+ * after explicit user confirmation. Android's MediaStore Downloads collection
+ * is the one supported provider for this path.
  *
  * This only supports one fresh row on the primary Downloads volume. It is
  * NOT a generic SAF writer, ZIP tree extractor, native payload store, or a

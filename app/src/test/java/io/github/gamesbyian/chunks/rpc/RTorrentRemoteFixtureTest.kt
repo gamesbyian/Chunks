@@ -105,6 +105,27 @@ class RTorrentRemoteFixtureTest {
         }
     }
 
+    @Test fun introspectionBusyOrPermissionFaultIsNotMissingCapability() = runBlocking {
+        for ((code, message) in listOf(-503 to "Server busy", -403 to "Permission denied")) {
+            Fixture { request, _ ->
+                when {
+                    request.contains("system.client_version") ->
+                        Reply(200, result("<string>0.16</string>"))
+                    request.contains("system.listMethods") -> Reply(200, fault(code, message))
+                    else -> error("No further RPC after failed introspection")
+                }
+            }.use { fixture ->
+                val error = assertThrows(RpcFault::class.java) {
+                    runBlocking {
+                        RTorrentRemote(RemoteCredentials(fixture.endpoint, "", "")).probe()
+                    }
+                }
+                assertEquals(code.toString(), error.code)
+                assertEquals(2, fixture.methods.size)
+            }
+        }
+    }
+
     @Test fun methodProbeReturnsReportedCapabilities() = runBlocking {
         Fixture { request, _ ->
             when {
@@ -147,7 +168,7 @@ class RTorrentRemoteFixtureTest {
         Fixture { request, _ ->
             if (request.contains("d.down.rate=")) {
                 triedExtended = true
-                Reply(200, fault(-32601, "d.down.rate missing"))
+                Reply(200, fault(-32601, "Method d.down.rate not defined"))
             } else Reply(200, result("""<array><data><value><array><data>
                 <value><string>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA</string></value>
                 <value><string>Old server sample</string></value>
@@ -162,6 +183,24 @@ class RTorrentRemoteFixtureTest {
             assertEquals(1, items.size)
             assertNull(items.single().downBytesPerSecond)
             assertEquals("Old server sample", items.single().name)
+        }
+    }
+
+    @Test fun serverBusyAndPermissionFaultsDoNotTriggerSecondInventoryRequest() = runBlocking {
+        for ((code, message) in listOf(-503 to "Server busy", -403 to "Permission denied")) {
+            Fixture { request, _ ->
+                assertTrue(request.contains("<methodName>d.multicall2</methodName>"))
+                Reply(200, fault(code, message))
+            }.use { fixture ->
+                val observed = assertThrows(RpcFault::class.java) {
+                    runBlocking {
+                        RTorrentRemote(RemoteCredentials(fixture.endpoint, "", "")).listTransfers()
+                    }
+                }
+                assertEquals(code.toString(), observed.code)
+                assertEquals("Do not retry inventory after an operational RPC fault",
+                    1, fixture.methods.size)
+            }
         }
     }
 
@@ -428,6 +467,23 @@ class RTorrentRemoteFixtureTest {
         assertFalse(failure is XmlRpcSizeLimitExceeded)
     }
 
+    @Test fun defaultPlaceBackendFaultDoesNotLookLikeMissingServerDefault() = runBlocking {
+        for ((code, reason) in listOf(-503 to "Server busy", -403 to "Permission denied")) {
+            Fixture { request, _ ->
+                assertTrue(request.contains("<methodName>directory.default</methodName>"))
+                Reply(200, fault(code, reason))
+            }.use { fixture ->
+                val observed = assertThrows(RpcFault::class.java) {
+                    runBlocking {
+                        RTorrentRemote(RemoteCredentials(fixture.endpoint, "", "")).defaultDirectory()
+                    }
+                }
+                assertEquals(code.toString(), observed.code)
+                assertEquals(1, fixture.methods.size)
+            }
+        }
+    }
+
     @Test fun defaultDirectoryIsReadOnlyAndValidated() = runBlocking {
         for ((reply, expected) in listOf(
             result("<string>/home/dev/downloads/</string>") to "/home/dev/downloads",
@@ -513,6 +569,10 @@ class RTorrentRemoteFixtureTest {
                 request.contains("<methodName>d.multicall2</methodName>") ->
                     Reply(200, result("<array><data>" +
                         eraseFixtureRow(hash, "Example", "/data") + "</data></array>"))
+                request.contains("<methodName>d.name</methodName>") ->
+                    Reply(200, result("<string>Example</string>"))
+                request.contains("<methodName>d.directory</methodName>") ->
+                    Reply(200, result("<string>/data</string>"))
                 request.contains("<methodName>d.hash</methodName>") ->
                     Reply(200, result("<string>$hash</string>"))
                 request.contains("<methodName>d.erase</methodName>") -> {
@@ -527,7 +587,7 @@ class RTorrentRemoteFixtureTest {
             assertTrue(erased)
             assertTrue(result is SessionEraseOutcome.PendingRemoval)
             assertEquals(1, fixture.methods.count { it.contains("<methodName>d.erase</methodName>") })
-            assertEquals(2, fixture.methods.count { it.contains("<methodName>d.hash</methodName>") })
+            assertEquals(3, fixture.methods.count { it.contains("<methodName>d.hash</methodName>") })
         }
     }
 
@@ -539,6 +599,10 @@ class RTorrentRemoteFixtureTest {
                 request.contains("<methodName>d.multicall2</methodName>") ->
                     Reply(200, result("<array><data>" +
                         eraseFixtureRow(hash, "Example", "/data") + "</data></array>"))
+                request.contains("<methodName>d.name</methodName>") ->
+                    Reply(200, result("<string>Example</string>"))
+                request.contains("<methodName>d.directory</methodName>") ->
+                    Reply(200, result("<string>/data</string>"))
                 request.contains("<methodName>d.hash</methodName>") ->
                     if (erased) Reply(200, fault(-501, "Could not find info-hash."))
                     else Reply(200, result("<string>$hash</string>"))
@@ -565,6 +629,10 @@ class RTorrentRemoteFixtureTest {
                 request.contains("<methodName>d.multicall2</methodName>") ->
                     Reply(200, result("<array><data>" +
                         eraseFixtureRow(hash, "Example", "/data") + "</data></array>"))
+                request.contains("<methodName>d.name</methodName>") ->
+                    Reply(200, result("<string>Example</string>"))
+                request.contains("<methodName>d.directory</methodName>") ->
+                    Reply(200, result("<string>/data</string>"))
                 request.contains("<methodName>d.hash</methodName>") ->
                     if (erased) Reply(200, fault(-503, "Server busy"))
                     else Reply(200, result("<string>$hash</string>"))

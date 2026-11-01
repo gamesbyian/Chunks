@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.hasContentDescription
@@ -127,7 +128,11 @@ class CombinedTransfersScreenTest {
             saved.sortKey == UnifiedSortKey.SIZE &&
                 saved.direction == UnifiedSortDirection.DESCENDING
         }
-        rule.onNodeWithContentDescription("Sorted by Size, Largest first. Reverse order").performClick()
+        // Expanded Add controls move Reverse below the viewport. Deliver a real visible
+        // pointer click rather than silently tapping an off-screen lazy node.
+        revealDescription("Sorted by Size, Largest first. Reverse order")
+        rule.onNodeWithContentDescription("Sorted by Size, Largest first. Reverse order")
+            .assertIsDisplayed().performClick()
         // Click delivery and recomposition may finish in separate Robolectric
         // frames. Observe the *actual committed preference* with a bounded
         // deadline, rather than equating scheduler idleness with persistence.

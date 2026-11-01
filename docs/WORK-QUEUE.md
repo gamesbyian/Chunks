@@ -1,63 +1,38 @@
 # Chunks active engineering work queue
 
-> **CI optimization lane (cross-cutting #9/#10, 2026-10-31):** **Merged and exact-head validated:** #875 consolidated radio/Doze/interruption offline harness dispatch and added bounded JUnit diagnostics; #877 immutably pinned the manual signed-release action chain; #878 avoided duplicate full foundation builds for instrumentation-only and offline-preflight edits; #879 added the offline-tested fail-closed JUnit receipt API. **Next:** qualify #880's real Android execution-gate adoption, then measure and test scoped JVM-test fork parallelism and emulator critical paths, retaining every distinct Android API/storage/R8/security test. Branch record reports `main.protected=false`: require separate repository-admin merge protection and an always-present required check, not a skipped path-scoped context. Do not claim measured all-repo speed gains from predicted dispatch reductions. [Dated CI baseline](CI-AUDIT-2026-10-31.md); [CI policy](CI-POLICY.md). This remains part of 0F QA, not a competing queue.
+**Single executable priority authority.** Inspect live main, open PRs/issues,
+ownership and current CI before taking a slice. Product requirements remain in
+[PRODUCT](PRODUCT.md), [UX](UX.md), [ARCHITECTURE](ARCHITECTURE.md),
+[SECURITY](SECURITY.md), [DECISIONS](DECISIONS.md) and their domain contracts.
+Use the [six-line execution card](ENGINEERING-DELIVERY-PROTOCOL.md#before-coding-six-line-execution-card)
+in the owning issue/PR; record proof in [QUALITY-LEDGER](QUALITY-LEDGER.md)
+and acceptance gaps in [SPEC-COVERAGE](SPEC-COVERAGE.md).
 
-**0B network QA checkpoint (2026-11-01):** [#925](https://github.com/gamesbyian/Chunks/pull/925) merged `159944a` after [exact-head radio-harness CI 41275984335](https://github.com/gamesbyian/Chunks/actions/runs/41275984335) passed offline, including ignored Wi-Fi/data-disable negatives. A `svc` acknowledgement can no longer trigger a false `net-off` marker unless both radio settings read back disabled. This does **not** establish an actual connected-device network outage, byte recovery, VPN handover or Doze. Continue #5/#569 with real observable network loss/return and piece-verified recovery; the separate [#914](https://github.com/gamesbyian/Chunks/pull/914) revoked-permission engine candidate remains independent and review-gated.
+## Current dispatch checkpoint (2026-11-01)
 
-**Single executable priority authority; reviewed 2026-10-31.** Fetch current `main`, open PRs, issues, branch ownership and CI **before** picking a task. The [engineering delivery protocol](ENGINEERING-DELIVERY-PROTOCOL.md) governs how to complete it; [AGENTS](../AGENTS.md) governs agent behavior. Product requirements live in [PRODUCT](PRODUCT.md), [UX](UX.md), [ARCHITECTURE](ARCHITECTURE.md), [SECURITY](SECURITY.md), [DECISIONS](DECISIONS.md) and scoped contracts. Implementation truth belongs in [SPEC-COVERAGE](SPEC-COVERAGE.md), test evidence in [QUALITY-LEDGER](QUALITY-LEDGER.md). This queue is **not** a substitute for any of them.
+Reconciled against main `e5bcd0fc` and live app PRs/issues; checked again after #940's exact-head green results. This is an evidence checkpoint, not a guarantee that main has not subsequently advanced.
+This is a dated checkpoint: individual live PR status remains authoritative.
 
-**Active 0C checkpoint (2026-11-01, accepted by exact evidence tier):**
-[#891](https://github.com/gamesbyian/Chunks/pull/891)'s accepted-challenge
-read-only probe passed on the authorized primary HTTPS instance
-[41266094878](https://github.com/gamesbyian/Chunks/actions/runs/41266094878).
-[#898](https://github.com/gamesbyian/Chunks/pull/898) merged the same
-authentication evidence gate into **shipping Android Connect**, and
-[#916](https://github.com/gamesbyian/Chunks/pull/916), squash `42597a9`,
-merged exact-profile **saved-server reconnect authentication** after
-five green candidate-head workflows (1,211 executed JVM tests, zero failed,
-R8, API35 native Add, atlas and docs). It refuses public-readable anonymous
-inventory with supplied credentials, without switching numbered tenants.
-[#892](https://github.com/gamesbyian/Chunks/pull/892) merged bounded
-read-only oversize paging and [#906](https://github.com/gamesbyian/Chunks/pull/906)
-merged exact-session hidden-view stopped-Add reconciliation.
+| Slice | Current disposition / next action |
+|---|---|
+| 0D #940 exact-session server-to-phone review | Integrated candidate `f130bc85` fixes the overlapping test fixture. Local 14/14 session/model/RPC tests pass; an old-key negative reproduces stale review. Exact head `f130bc85` has foundation/native Add/R8 **green**; branch is synchronized with main. Review and integrate safely after verifying scope and independent qualification; do not repeat its corrected fixture work. |
+| 0D #927 scoped Add / combined freshness | Published PR head `7717fefd` has foundation **red** at combined persisted reverse-direction wait (line 134), while atlas/native Add/R8 passed. Separate local candidate `909a9323` reports 20/20 combined/large-text tests with an actual Reverse target visibility fix; verify that candidate exists in branch history, integrate it without dropping newer main/PR changes, and require fresh exact-head CI with unchanged saved-state assertions. |
+| 0B #956 standalone reboot target guard | Lifecycle workflow executes and fails the later intake restored-seeding wait. Keep draft; diagnose that observed failure. No physical/OEM proof. |
+| 0E #922 durable ZIP batch recovery → #923 cold recovery | #917 is merged as `e5bcd0fc`. #922 is reconciled to main at `ca45176a` with a corrected **16-case** storage receipt harness retaining the prior FIFO-substitution negative (older head omitted it); it has **no reported fresh workflow runs** at this checkpoint. Obtain fresh exact-head API29/API35, foundation, native Add and R8 proof and independent storage review before integration; only then reconcile and integrate #923. Historical stacked greens do not qualify main integration. |
+| 0C #1/#4/#464 protected remote acceptance | #920 manual exact-hash peer-byte fixture is merged `35c4dab`; protected mutation was not dispatched. Current-head installed mutations, file priorities, per-transfer received+verified bytes, reconnect/401/timeout recovery and physical Android remain separate gates. Use [approved testing](SEEDHOST-REMOTE-TESTING.md). |
+| 0F #9/#10 release / repository gates | Keep actual required checks green, retain raw failures and source provenance. The previously observed ruleset did not target main; repository-admin branch protection remains unverified. Physical, signing, TalkBack and OEM evidence must not be inferred from JVM/emulator success. |
 
-**Positive peer-wire byte evidence:** [#903](https://github.com/gamesbyian/Chunks/pull/903),
-squash `1b22a8d`, actually proved **strictly positive per-infohash**
-received and piece-verified bytes at rTorrent 0.9.8 on a disposable
-runner (real libtorrent peer, exact stopped zero baseline, server completion,
-independently equal payload files). The modern rTorrent 0.16.x CI job
-proved distinct RPC compatibility, not a modern-version peer-wire test.
-Neither is protected-host Internet swarm evidence.
-
-**Current hosted Android read-only checkpoint:** after a transient earlier
-Connect failure [41270975610](https://github.com/gamesbyian/Chunks/actions/runs/41270975610),
-the merged #913 safe diagnostic ran the real installed API35 app on trusted
-main `674017a` and **PASSED**
-[41273818693](https://github.com/gamesbyian/Chunks/actions/runs/41273818693):
-credentialed primary HTTPS Connect, nonempty development queue, Refresh,
-read-only Add Place preview, return to Transfers, three 1080×2400 captures.
-This does not prove a physical handset or any new hosted mutation.
-Historical approved installed Android synthetic Add → Start → Stop → session
-Erase [40652034320](https://github.com/gamesbyian/Chunks/actions/runs/40652034320)
-and adapter mutation [40581190487](https://github.com/gamesbyian/Chunks/actions/runs/40581190487)
-remain genuine **older-source** proof, with no protected peer-byte growth.
-[#920](https://github.com/gamesbyian/Chunks/pull/920) is a separately
-review-gated **manual-only candidate** for a unique 512 KiB synthetic
-hosted received+piece-verified peer-byte witness; **no protected mutation
-has been executed by that PR**.
-
-**Still open #1/#4/#464:** protected-host *per-transfer* received+verified
-peer-byte growth, current-head hosted installed mutation and file priorities,
-authenticated reconnect/401/timeout reconciliation and physical Android/OEM.
-Neither a global server rate, public read, RPC acknowledgement nor an
-old-SHA emulator success closes those gates.
+Merged prerequisite receipts and older checkpoint narratives are retained in
+[the pre-qualification snapshot](archive/WORK-QUEUE-2026-11-01-pre-p0-qualification.txt)
+and the [quality ledger](QUALITY-LEDGER.md). They are historical evidence,
+not additional active dispatch lists. The G0–G2 ranking below still governs.
 
 ## Verified checkpoint and current boundaries
 
 - [#568](https://github.com/gamesbyian/Chunks/issues/568) is **closed, superseded**: chosen-root conventional libtorrent piece-check/reuse/replace of regular files at exact declared torrent paths is authorized. No required custom descriptor-owned JNI writer. Preserve real root escape, symlink/special-target, overlapping-writer and metadata hazards under [the collision policy](LOCAL-TORRENT-COLLISION-POLICY.md).
 - [#868](https://github.com/gamesbyian/Chunks/pull/868) + [#869](https://github.com/gamesbyian/Chunks/pull/869) are **merged** at `b402549a8355b0cc248b85cd74f67f0cb2c9bf0a`, with all eight integrated-head workflows green, including [API35 native Add](https://github.com/gamesbyian/Chunks/actions/runs/41249697402). The previous #869 failed run belongs to an earlier head; [#865](https://github.com/gamesbyian/Chunks/issues/865) stays open for bounded retention, sustained recovery and separately identified remaining risks.
 - [#809](https://github.com/gamesbyian/Chunks/issues/809) remains **real and unfinished**: ZIP/library wrong-target deletion/truncation. Unsafe generic executors remain **refuse-before-write disabled**. Restore per verified adapter under [user-directed file operations](USER-DIRECTED-FILE-OPERATIONS.md); do not treat disabled optional actions as an automatic veto on otherwise independently accepted core transfers.
-- At the preceding live audit there were **26 open issues and zero open PRs**; this is a dated snapshot, **not a live roster**. [#810](https://github.com/gamesbyian/Chunks/issues/810) is closed; its account-isolation regressions must remain covered. Historic branches #812/#856 and bespoke native writer experiments are closed/research-only.
+- [#810](https://github.com/gamesbyian/Chunks/issues/810) is closed; its account-isolation regressions must remain covered. Historic branches #812/#856 and bespoke native writer experiments are closed/research-only.
 - **Remaining proof:** physical handset/OEM/SD/permissions and Android FGS limitations (#5/#569), actual per-transfer remote-host outcomes (#1/#4), unified interaction/accessibility (#567/#8), exact integrated-source QA and release provenance (#9/#10). Green emulators or component tests do not silently confer other tiers.
 
 ## One ranked dispatch table
@@ -66,8 +41,8 @@ old-SHA emulator success closes those gates.
 
 | Rank | Executable deliverable and issue | Prerequisite / exit evidence | Avoid this old failure |
 |---|---|---|---|
-| **0A G0/P0 (automated tier integrated)** | **#865**: [SQLite bounded resume metadata #889](https://github.com/gamesbyian/Chunks/pull/889) **merged** on main as `15f507b`, with `synchronous=EXTRA`, reviewed legacy migration, durable retirement and same-hash re-add. Prioritize residual *measured* long-duration retention, power-cut and corruption recovery; do not reopen #568 or delay the independent 0B user journey for speculative writer work. | All **seven** exact candidate-head workflows passed at `68887d8`: Android 10 real production SQLite 10/10 (including mode-3 readback), Android 15 native Add/lifecycle, foundation, R8, docs and disposable RPC. Independently source-reviewed. Post-merge combined-main and physical/OEM/power-cut evidence remain **separate**; #865 stays open for those scoped receipts. | Treat old candidate status as live, or confuse green emulator SQLite fsync with a real power failure. |
-| **0B G1 critical path** | **#5, #569**: ordinary installed phone .torrent/magnet/Share → Downloads/selected Place → Add/Start/progress/Stop/piece recheck/restore/seed. Handle Android FGS limits with honest pause/resume, not impossible indefinite background promises. **Integrated automated 0B core:** [#890](https://github.com/gamesbyian/Chunks/pull/890) **merged** `32797a8` after four exact-head checks at `3aeefd2`: both API29 [41271931718](https://github.com/gamesbyian/Chunks/actions/runs/41271931718) and API35 [41271931680](https://github.com/gamesbyian/Chunks/actions/runs/41271931680) actually completed Share + magnet, per-hash peer bytes, public Downloads, Stop → process death → stopped restore → Start → fresh-peer seeding → Remove preserving file. [#897](https://github.com/gamesbyian/Chunks/pull/897) **merged** `025d015` after exact-head shortened FGS timeout → two stopped cold restores; [#912](https://github.com/gamesbyian/Chunks/pull/912) **merged** `642f5ba` for native automatic magnet tracker discovery without injected peers. Continue only unclaimed actual gaps: [#914](https://github.com/gamesbyian/Chunks/pull/914) Android10 revoked/owned-file grants, measured low storage, SD/SAF/reinstall, real network handover/Doze and physical/OEM/accessibility. | Include real positive peer bytes, public storage, API29/35, low storage, permission changes and exact lifecycle receipts; physical/OEM tests only qualify physical/OEM claims. | Additional uninstalled storage prototypes instead of fixing production user workflows. |
+| **0A G0/P0 (automated tier integrated)** | **#865**: [SQLite bounded resume metadata #889](https://github.com/gamesbyian/Chunks/pull/889) **merged** on main as `15f507b`, with `synchronous=EXTRA`, reviewed legacy migration, durable retirement and same-hash re-add. [Concurrent Android SQLite stale-write test #934](https://github.com/gamesbyian/Chunks/pull/934) also **merged** `0091b27`, with installed API29 11/11 and API35 295 executed / zero failed. Prioritize residual *measured* long-duration retention, real power-cut and corruption recovery, not superseded #568 bespoke payload storage. | All **seven** exact candidate-head workflows passed at `68887d8`: Android 10 real production SQLite 10/10 (including mode-3 readback), Android 15 native Add/lifecycle, foundation, R8, docs and disposable RPC. Independently source-reviewed. The Android two-connection Remove→re-Add stale-callback negative passed [API29 41277678727](https://github.com/gamesbyian/Chunks/actions/runs/41277678727) and [API35 41277678745](https://github.com/gamesbyian/Chunks/actions/runs/41277678745). Physical/OEM/actual-power-cut evidence remains **separate**, with #865 open. | Treat old candidate status as live, or confuse green emulator SQLite fsync with a real power failure. |
+| **0B G1 critical path** | **#5, #569**: ordinary installed phone .torrent/magnet/Share → Downloads/selected Place → Add/Start/progress/Stop/piece recheck/restore/seed. Handle Android FGS limits with honest pause/resume, not impossible indefinite background promises. **Integrated automated 0B core:** [#890](https://github.com/gamesbyian/Chunks/pull/890) **merged** `32797a8` after four exact-head checks at `3aeefd2`: both API29 [41271931718](https://github.com/gamesbyian/Chunks/actions/runs/41271931718) and API35 [41271931680](https://github.com/gamesbyian/Chunks/actions/runs/41271931680) actually completed Share + magnet, per-hash peer bytes, public Downloads, Stop → process death → stopped restore → Start → fresh-peer seeding → Remove preserving file. [#897](https://github.com/gamesbyian/Chunks/pull/897) **merged** `025d015` after exact-head shortened FGS timeout → two stopped cold restores; [#912](https://github.com/gamesbyian/Chunks/pull/912) **merged** `642f5ba` for native automatic magnet tracker discovery without injected peers. [PR #914](https://github.com/gamesbyian/Chunks/pull/914) **merged** `788ecd18` after all seven exact-head workflows, including installed API29 grant revocation → refused actual unreadable stopped Start → regrant/recheck/seed/Remove preserving bytes, and adversarial FIFO/symlink negatives. Continue unclaimed **measured low-space, SD/SAF/reinstall, real network/VPN handover, long Doze, and physical/OEM/accessibility** gaps. Do not claim restored-path permission race freedom or all-files validation from a bounded read preflight. | Include real positive peer bytes, public storage, API29/35, low storage, permission changes and exact lifecycle receipts; physical/OEM tests only qualify physical/OEM claims. | Additional uninstalled storage prototypes instead of fixing production user workflows. |
 | **0C G1 critical path** | **#1, #4, #464**: authenticated, exactly scoped Companion-free rTorrent inventory and Add/Start/Stop/priority/session-only Remove; safe numbered-instance Smart Connect. | Positive disposable/protected-authorized remote round trip with per-hash byte/state readback; Basic/Digest, public-read-vs-verified-account and ambiguous-ACK negatives. | Treat anonymous read as authenticated identity, a 401 as permission to replay, or global rate as per-torrent proof. |
 | **0D G2 critical path** | **#567, #8**: one observable local/multi-remote state model, consistent list/actions/filters/environment colors, accessible Add/controls and truthful offline/uncertain states. | Integrated positive local/remote/combined journeys; process restore, 320×700/412×892, 200% text, TalkBack and keyboard evidence by tier. | Build a separate second UI model or polish art ahead of working controls. |
 | **0E capability-local G0, parallel** | **#809**: repair demonstrated ZIP/library wrong-target delete/truncation and restore each adapter's conventional user-directed Create new/Keep both/reviewed Replace, with per-item recovery. **Unsafe executors remain disabled** until accepted. | One real production-connected positive Save/extract/copy flow per supported adapter plus exact-target, interruption and hostile-provider regressions; no unsupported all-provider atomic guarantee. | Label a dormant MediaStore proof as shipping; make disabled optional ZIP a global blocker to safe ordinary phone/rTorrent use. |
@@ -97,4 +72,4 @@ old-SHA emulator success closes those gates.
 
 ## Historical preservation (non-executable)
 
-Previous work-queue text is preserved **verbatim** in [the 2026-10-31 superseded snapshot](archive/WORK-QUEUE-2026-10-31-pre-history-reset.txt). It includes old red #568 instructions, closed-draft references, dated CI failures and experimental research proposals. They are evidence only and have **no current priority authority**. Earlier historical snapshots remain at [2026-10-29 dependency reset](archive/WORK-QUEUE-2026-10-29-pre-dependency-reset.txt) and [preconsolidation](archive/WORK-QUEUE-2026-10-29-preconsolidation.md); deep source/test receipts remain in [QUALITY-LEDGER](QUALITY-LEDGER.md). All owner-approved feature requirements persist in their canonical contracts.
+Previous work-queue text is preserved **verbatim** in [the 2026-10-31 superseded snapshot](archive/WORK-QUEUE-2026-10-31-pre-history-reset.txt). It includes old red #568 instructions, closed-draft references, dated CI failures and experimental research proposals. They are evidence only and have **no current priority authority**. Earlier historical snapshots remain at [2026-10-29 dependency reset](archive/WORK-QUEUE-2026-10-29-pre-dependency-reset.txt) and [preconsolidation](archive/WORK-QUEUE-2026-10-29-preconsolidation.md); deep source/test receipts remain in [QUALITY-LEDGER](QUALITY-LEDGER.md). The [2026-11-01 pre-qualification snapshot](archive/WORK-QUEUE-2026-11-01-pre-p0-qualification.txt) preserves the later accumulated checkpoints verbatim. All owner-approved feature requirements persist in their canonical contracts.
