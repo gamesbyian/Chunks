@@ -16,13 +16,32 @@ At **draft** source `20712032c178a9901afdc3a37c24e26f7492efa6`, [storage run 412
 
 **Independent review, with bounded tiers:** [#933](https://github.com/gamesbyian/Chunks/pull/933) head `6ee2a9ce444c81d2ee3a4898047b12a1713cddb3` corrects the physical-device network-flap and Doze test scripts' hidden `adb devices` failures (process substitution) and stale explicit serial acceptance. Its [offline radio-harness run 41277625891](https://github.com/gamesbyian/Chunks/actions/runs/41277625891) is SUCCESS, and independent source review found no blocker within this non-shipping harness change; this is **not** actual phone/radio/Doze acceptance. [#934](https://github.com/gamesbyian/Chunks/pull/934) head `9095c4beb04822b8addd9003074162afafae9bf0` adds an actual Android two-connection stale-writer regression after Remove/re-Add, including the API29 11-case executed-test gate. Independent source review was conditional and **does not claim** exact-head API29/API35 pass, cross-process power-loss proof, or physical flash durability. Production SQLite, user file writes and remote mutations were not modified by either QA review.
 
+## 2026-11-01 public-peer native positive receipt verification (0B #5/#569; 0F #9)
+
+[PR #935](https://github.com/gamesbyian/Chunks/pull/935) merged as
+`415b12555d7388075c5aad479f18996fd059c84e`, after the exact
+candidate head `c3b014d0a67d0b5f82e33dab4937f666d4250f2e` passed
+[radio-harness safety run 41277491099](https://github.com/gamesbyian/Chunks/actions/runs/41277491099).
+This is an **offline fake-adb/harness** success, not an installed real Internet
+peer transfer. The manual public-swarm runner now accepts only one fully
+executed `OK (1 test)`, a successful app logcat read with one complete
+`CHUNKS_ANDROID_SWARM: VERIFIED` receipt containing the exact v1 torrent
+hash and numeric verified/target byte counts, no contradictory
+`INCONCLUSIVE`, and positive verified bytes meeting the bounded requested
+budget. Previously a prefix `OK` and ignored negative status could pass
+without any native receipt. Negative controls reject missing/duplicate/short
+native receipts, failed logcat, skipped/failing/duplicate/prefix-only tests
+and ambiguous target/installation. No shipping engine or test fixture peer
+transport was changed. Explicit manual public-swarm dispatch and physical
+handset/Doze/VPN evidence are still open, never inferred from a green mock.
+
 ## 2026-11-01 independent ZIP/library publication and two-process recovery readback (0E #809, 0F #9)
 
 **Source and evidence boundary:** independent review from main `8d12a22aada6` of draft [#895](https://github.com/gamesbyian/Chunks/pull/895), [#917](https://github.com/gamesbyian/Chunks/pull/917), [#922](https://github.com/gamesbyian/Chunks/pull/922) and [#923](https://github.com/gamesbyian/Chunks/pull/923); **none was merged or installed from main by this audit**. The raw GitHub Actions job logs, rather than just PR summaries, establish these bounded Android emulator tiers:
 
 - [#895 MediaStore run 41271895036](https://github.com/gamesbyian/Chunks/actions/runs/41271895036), exact source `b5e39247ea22760c1ddedef49f41142f978d2a4a`: API29 job `124746187670` and API35 job `124746187539` each printed `OK (10 tests)`, `INSTRUMENTATION_CODE: -1`, and `CHUNKS_OWNED_MEDIASTORE_DOCUMENTS=PASS`. Its six relevant source-head workflow groups succeeded. The explicitly selected flat ZIP or completed single-file native source creates a separately verified NEW primary Downloads/Chunks Exports row via exact owner/ID, new pending row, fsynced write and SHA readback; the original ZIP and native seeding bytes remain unchanged. No general SAF or Replace.
 - [#922 MediaStore run 41274670993](https://github.com/gamesbyian/Chunks/actions/runs/41274670993), exact source `7b8bebba12574694e65381d0b3ae67e25272feee`: API29/35 jobs `124754315051` and `124754315147` each printed `OK (15 tests)` and PASS. Its journal establishes durable batch intent, individual receipt/partial-state descriptions and preserved uncertain rows, not an atomic multi-file publish.
-- [#923 MediaStore and cold recovery run 41275222329](https://github.com/gamesbyian/Chunks/actions/runs/41275222329), exact source `165e672b48cd86d71b520d8a15b3bc2a942d1e28`: API29 job `124755990561` and API35 job `124755990718` each printed `OK (15 tests)`, individual platform PASS, separate positive phase-A and phase-B receipts after `adb shell am force-stop`, and final `CHUNKS_BATCH_COLD=PASS`. Confirmed the first member's exact completed row and unchanged source ZIP, plus an actual Compose interrupted-batch warning. **Evidence correction:** this older test only queried the first member's filename prefix, so it did **not** independently rule out a hidden pending or published second-member row; the added second-prefix assertion is a newer, unaccepted candidate. [API35 native Add run 41275222303](https://github.com/gamesbyian/Chunks/actions/runs/41275222303) also succeeded.
+- [#923 MediaStore and cold recovery run 41275222329](https://github.com/gamesbyian/Chunks/actions/runs/41275222329), exact source `165e672b48cd86d71b520d8a15b3bc2a942d1e28`: API29 job `124755990561` and API35 job `124755990718` each printed `OK (15 tests)`, individual platform PASS, separate positive phase-A and phase-B receipts after `adb shell am force-stop`, and final `CHUNKS_BATCH_COLD=PASS`. Confirmed the first member's exact completed row and unchanged source ZIP, plus an actual Compose interrupted-batch warning. **Evidence correction:** this older test only queried the first member's filename prefix, so it did **not** independently rule out a hidden pending or published second-member row; the added second-prefix assertion is a newer, separately accepted API29/API35 candidate, not the historical run. [API35 native Add run 41275222303](https://github.com/gamesbyian/Chunks/actions/runs/41275222303) also succeeded.
 
 **Limits and merge disposition:** this is an intentionally stopped batch followed by a cold new process, **not an abrupt kill during provider write or physical power loss**. All four storage PRs remain draft/stacked; #895 is behind intervening main changes. Source-head green runs do not certify an updated integrated head, physical handset, removable SD, arbitrary DocumentsProvider, reviewed exact-target Replace or generic nested ZIP/library operations. Existing unsafe executors remain refuse-before-write disabled. Independent source review is conditional, not a same-account formal approval. Reconcile one predecessor at a time, rerun the affected exact integrated-head suites, obtain separate executor review and preserve recovery/foreign-canary negatives. #809 remains open.
 
