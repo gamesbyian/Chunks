@@ -1,6 +1,12 @@
 package io.github.gamesbyian.chunks
 
 import androidx.compose.material3.Surface
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
@@ -41,10 +47,12 @@ class TransferSessionRemoveLargeTextTest {
             CompositionLocalProvider(LocalDensity provides Density(density.density, 2f)) {
                 ChunksTheme {
                     Surface {
+                      Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                         TransferSessionRemoveControl(
                             remote, transfer, snapshotStale = false, mainView = true,
                             onMutationStarted = { mutations++; false }, onSettled = {}
                         )
+                      }
                     }
                 }
             }
@@ -57,11 +65,11 @@ class TransferSessionRemoveLargeTextTest {
         rule.onNodeWithText("Confirm removal from rTorrent").assertExists()
         rule.onNodeWithText("Infohash: " + "c".repeat(40)).assertExists()
         rule.onNodeWithText("Current directory: /downloads/specific-profile").assertExists()
-        val confirm = rule.onNodeWithText("Confirm remove").getUnclippedBoundsInRoot()
-        val cancel = rule.onNodeWithText("Cancel").getUnclippedBoundsInRoot()
+        val confirm = rule.onNodeWithText("Confirm remove").performScrollTo().getUnclippedBoundsInRoot()
+        val cancel = rule.onNodeWithText("Cancel").performScrollTo().getUnclippedBoundsInRoot()
         assertTrue("Confirm needs a minimum 52dp touch target", confirm.bottom - confirm.top >= 52.dp)
         assertTrue("Cancel needs a minimum 48dp touch target", cancel.bottom - cancel.top >= 48.dp)
-        rule.onNodeWithText("Cancel").performClick()
+        rule.onNodeWithText("Cancel").performScrollTo().performClick()
         rule.onNodeWithText("Confirm remove").assertDoesNotExist()
         assertEquals("Cancel must not request a remote mutation", 0, mutations)
     }
