@@ -26,17 +26,17 @@ fi
 state="$(adb get-state)" || {
   echo 'CHUNKS_GRANT: ADB get-state failed' >&2; exit 1;
 }
-state="$(tr -d '\\r\\n' <<< "$state")"
+state="$(tr -d '\r\n' <<< "$state")"
 [[ "$state" == device ]] || {
   echo 'CHUNKS_GRANT: ADB target not ready' >&2; exit 1;
 }
-qemu="$(adb shell getprop ro.kernel.qemu | tr -d '\\r\\n')" || {
+qemu="$(adb shell getprop ro.kernel.qemu | tr -d '\r\n')" || {
   echo 'CHUNKS_GRANT: ADB emulator identity command failed' >&2; exit 1;
 }
 [[ "$qemu" == 1 ]] || {
   echo 'CHUNKS_GRANT: refusing physical-device permission mutation' >&2; exit 1;
 }
-sdk="$(adb shell getprop ro.build.version.sdk | tr -d '\\r\\n')" || {
+sdk="$(adb shell getprop ro.build.version.sdk | tr -d '\r\n')" || {
   echo 'CHUNKS_GRANT: ADB SDK command failed' >&2; exit 1;
 }
 [[ "$sdk" == 29 ]] || {
