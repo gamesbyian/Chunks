@@ -1,5 +1,32 @@
 # Chunks evidence and release gate ledger
 
+## 2026-11-01 Android SQLite cross-writer retirement regression integrated (0A #865)
+
+[PR #934](https://github.com/gamesbyian/Chunks/pull/934) merged
+`0091b278015ee3bd77e2b1cea8b92db9ceccceac` from exact candidate
+`9095c4beb04822b8addd9003074162afafae9bf0`.
+[API29 installed 41277678727](https://github.com/gamesbyian/Chunks/actions/runs/41277678727)
+**SUCCESS**, raw job `124763054650`: the new concurrency test actually
+executed and completed with a positive JUnit status, and the real shell
+requires **11** resume tests after the new method (mock receipt updated).
+[API35 native Add 41277678745](https://github.com/gamesbyian/Chunks/actions/runs/41277678745)
+**SUCCESS**, raw job `124763071849`: full connected Android instrumentation
+ran **314 tests, 295 executed, 19 deliberately skipped, zero failed**. Its
+normal `connectedDebugAndroidTest` class selection includes the added
+non-opt-in SQLite test. Both are disposable emulators, never a physical
+device.
+
+The existing *production* `LocalResumeStore.open` is used with two
+simultaneously open SQLite connections. A saves one snapshot; B checks it,
+commits `REMOVE_INTENT` and `REMOVED`, then explicitly saves a distinct
+same-infohash re-Add generation. A late, even byte-identical callback
+to A must fail, invalidate A's cached state, and a fresh C connection must
+restore only B's replacement. Both production opens affirm the Android
+SQLite `PRAGMA synchronous=EXTRA` policy. No shipping SQLite or JNI code
+was changed; the test extends the already merged #889 integrity contract.
+Real sudden power loss, physical/OEM flash durability and unsupported storage
+providers remain separate open #865/#5 requirements.
+
 ## 2026-11-01 local native restored-payload grant refusal integrated (0B #5/#569)
 
 [PR #914](https://github.com/gamesbyian/Chunks/pull/914) **merged** as
