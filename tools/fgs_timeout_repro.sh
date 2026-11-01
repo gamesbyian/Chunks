@@ -47,13 +47,19 @@ sdk="$(printf '%s' "$sdk" | tr -d '\r\n')"
 [[ "$sdk" =~ ^[0-9]+$ && "$sdk" -ge 35 ]] || {
   echo 'CHUNKS_FGS_TIMEOUT: Android API35+ required' >&2; exit 2;
 }
+# An unknown/malformed Android getprop value is NOT verified physical identity.
+# It cannot be turned into authorization merely by setting physical opt-in.
+[[ "$qemu" == 0 || "$qemu" == 1 ]] || {
+  echo 'CHUNKS_FGS_TIMEOUT: unrecognized emulator/physical identity' >&2; exit 2;
+}
 tier=emulator
-if [[ "$qemu" != 1 ]]; then
+if [[ "$qemu" == 0 ]]; then
   [[ "$explicit" == 1 && "${CHUNKS_ALLOW_PHYSICAL_LIFECYCLE_TEST:-0}" == 1 ]] || {
     echo 'CHUNKS_FGS_TIMEOUT: refusing physical device without explicit serial and consent' >&2
     exit 2
   }
   tier=physical-explicit
+  echo 'CHUNKS_FGS_TIMEOUT: physical opt-in resets any prior FGS compat override on exit; use a disposable handset' >&2
 fi
 gradle --no-daemon :app:installDebug :app:installDebugAndroidTest
 
