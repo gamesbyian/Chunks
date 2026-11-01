@@ -52,9 +52,11 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_6
-          # Test caps its own real posix_fallocate at 1440MiB and demands
-          # actual measured free <48MiB, never accepts a fake sparse fill.
-          disk-size: 1536M
+          # Google API35 AVD exposed ~5.24GB free even with a 1536M disk
+          # request. Do not pretend disk-size shrinks its existing userdata.
+          # The installed test measures free bytes, caps its own *real*
+          # posix_fallocate at 5400MiB, and refuses if it cannot reach <48MiB.
+          # This only allocates data on the disposable isolated emulator.
           emulator-boot-timeout: 600
           disable-animations: true
           script: bash tools/android_native_low_storage_repro.sh
