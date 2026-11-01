@@ -427,15 +427,7 @@ fun VerifiedAddScreen(
                                     }
                                     orderNote?.let { outcome = outcome.orEmpty() + " " + it }
                                     if (!plan.useServerDefault &&
-                                        (result is RemoteAddAndStart.Started ||
-                                         // Stopped-first Finish-in-Order always verified
-                                         // exact hash+Place before issuing Start. Native
-                                         // start-on-load does NOT establish a verified
-                                         // destination when its result is uncertain.
-                                         (result is RemoteAddAndStart.StartNotVerified &&
-                                          orderScope != null) ||
-                                         (result is RemoteAddAndStart.AddedStopped &&
-                                          result.result is RemoteAddOutcome.VerifiedStopped))) {
+                                        verifiedCustomPlaceOutcome(result, priorityBeforeStart = orderScope != null)) {
                                         val saved = runCatching {
                                             onCustomPlaceVerified(plan.destination)
                                         }.getOrDefault(false)
@@ -588,4 +580,20 @@ internal fun RemoteAddScopeIntro(environmentLabel: String?, aliasScope: String?)
         "this phone by Add. Paste a magnet or choose a .torrent; the server's " +
         "default folder is used unless you change it. Review before starting.",
         style = MaterialTheme.typography.bodyMedium)
+}
+
+/**
+ * Only truly verified Adds may create a trusted Recent Place shortcut.
+ * Native start-on-load's uncertain receipt does not prove the destination.
+ * Stopped-first, priority-before-start flow already verified exact Place
+ * before its distinct Start attempt.
+ */
+internal fun verifiedCustomPlaceOutcome(
+    result: RemoteAddAndStart,
+    priorityBeforeStart: Boolean
+): Boolean = when (result) {
+    is RemoteAddAndStart.Started -> true
+    is RemoteAddAndStart.StartNotVerified -> priorityBeforeStart
+    is RemoteAddAndStart.AddedStopped ->
+        result.result is RemoteAddOutcome.VerifiedStopped
 }
