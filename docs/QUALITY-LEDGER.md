@@ -1,5 +1,30 @@
 # Chunks evidence and release gate ledger
 
+## 2026-11-01 interrupted real-peer acceptance receipt guard (0B #5/#569; 0F #9)
+
+[PR #943](https://github.com/gamesbyian/Chunks/pull/943) merged as
+`fd6466db51074ae3d8c7716400e429a10ab50e99`. Its final source
+`930d58fde8f0bf742cb488c61d5531470a384242` passed
+[radio-harness safety run 41278807324](https://github.com/gamesbyian/Chunks/actions/runs/41278807324),
+job `124766310994`, including the existing interrupted-peer fake-adb
+controls plus new missing/duplicated/contradictory native receipt negatives.
+This is an **offline controller contract**, not real Internet, physical
+handset, long background run or actual OS-kill peer acceptance.
+
+The manual interrupted-peer harness now requires one actual app-side phase-A
+`armed` receipt with v1/v2 infohash, pre-kill verified bytes at or above the
+requested bounded budget but short of total torrent size, observed crash and
+absent process. A second instrumented Android process must report exactly one
+executed passing test AND a unique `VERIFIED restored_stopped=true` native
+receipt showing post-restart verified bytes strictly above both pre-kill and
+rechecked recovered-piece counts, never beyond recorded torrent size. Missing,
+failed logcat, misleading JUnit, duplicate, inconsistent or
+`INCONCLUSIVE` receipts refuse. The actual Android test still resolves
+the same exact infohash from the persisted phase-A marker; its native engine,
+payload data and restart policy are unchanged. A separately dispatched real
+public-peer interrupted download is still required to prove peer recovery
+under a genuinely active network; #5/#569 stay open.
+
 ## 2026-11-01 #923 corrected partial-batch cold recovery: exact API29/API35 green
 
 At **draft** source `20712032c178a9901afdc3a37c24e26f7492efa6`, [storage run 41277962860](https://github.com/gamesbyian/Chunks/actions/runs/41277962860) completed **SUCCESS**. Independently inspected raw emulator job logs: API35 job `124763941927` and API29 job `124763942179` each show `OK (15 tests)`, `INSTRUMENTATION_CODE: -1`, `CHUNKS_OWNED_MEDIASTORE_DOCUMENTS=PASS`, phase A's `partial=true verified=1 original=true`, phase B's `cold=true warning=true original=true no_duplicate=true`, and `CHUNKS_BATCH_COLD=PASS`. Compared with the earlier `165e672` run, this head adds per-run unique private fixture ID, a distinct pending-included second-member-prefix query, and proof the warning count increases for **this** batch. Thus the specific earlier second-member false-negative is covered by a real installed-emulator acceptance, at this exact head. No user files or arbitrary SAF paths were mutated by the test. It remains an intentionally stopped batch across two processes, not abrupt mid-write kill, power cut, provider-independent atomic Replace or handset acceptance. This is an **unmerged draft** and is stacked on #922/#917/old #895; its green matrix does not qualify a final integrated main build. The separate native Add workflow is a distinct gate.
