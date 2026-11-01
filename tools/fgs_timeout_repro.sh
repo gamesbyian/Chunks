@@ -5,6 +5,56 @@ set -euo pipefail
 pkg=io.github.gamesbyian.chunks
 config=activity_manager
 timer=data_sync_fgs_timeout_duration
+
+# This test installs APKs and changes the system-wide dataSync test override.
+# Resolve and PIN the target before even invoking Gradle's install tasks.
+# ADB may print a convincing device list before exiting with a failure.
+[[ -z "${ADB_SERIAL:-}" || -z "${ANDROID_SERIAL:-}" ||
+   "$ADB_SERIAL" == "$ANDROID_SERIAL" ]] || {
+  echo 'CHUNKS_FGS_TIMEOUT: conflicting explicit ADB serials' >&2; exit 2;
+}
+devices="$(adb devices)" || {
+  echo 'CHUNKS_FGS_TIMEOUT: device enumeration failed' >&2; exit 2;
+}
+serial="${ADB_SERIAL:-${ANDROID_SERIAL:-}}"
+explicit=1
+if [[ -z "$serial" ]]; then
+  explicit=0
+  mapfile -t connected < <(awk 'NR > 1 && $2 == "device" { print $1 }' <<< "$devices")
+  [[ "${#connected[@]}" == 1 ]] || {
+    echo 'CHUNKS_FGS_TIMEOUT: select one authorized connected ADB target' >&2; exit 2;
+  }
+  serial="${connected[0]}"
+fi
+[[ "$(awk -v wanted="$serial" '$1 == wanted && $2 == "device" { n++ } END {print n+0}' <<< "$devices")" == 1 ]] || {
+  echo 'CHUNKS_FGS_TIMEOUT: selected ADB serial is absent or not ready' >&2; exit 2;
+}
+export ANDROID_SERIAL="$serial"
+state="$(adb get-state)" || {
+  echo 'CHUNKS_FGS_TIMEOUT: ADB target state probe failed' >&2; exit 2;
+}
+[[ "$(printf '%s' "$state" | tr -d '\r\n')" == device ]] || {
+  echo 'CHUNKS_FGS_TIMEOUT: ADB target not ready' >&2; exit 2;
+}
+qemu="$(adb shell getprop ro.kernel.qemu)" || {
+  echo 'CHUNKS_FGS_TIMEOUT: emulator identity probe failed' >&2; exit 2;
+}
+sdk="$(adb shell getprop ro.build.version.sdk)" || {
+  echo 'CHUNKS_FGS_TIMEOUT: platform SDK probe failed' >&2; exit 2;
+}
+qemu="$(printf '%s' "$qemu" | tr -d '\r\n')"
+sdk="$(printf '%s' "$sdk" | tr -d '\r\n')"
+[[ "$sdk" =~ ^[0-9]+$ && "$sdk" -ge 35 ]] || {
+  echo 'CHUNKS_FGS_TIMEOUT: Android API35+ required' >&2; exit 2;
+}
+tier=emulator
+if [[ "$qemu" != 1 ]]; then
+  [[ "$explicit" == 1 && "${CHUNKS_ALLOW_PHYSICAL_LIFECYCLE_TEST:-0}" == 1 ]] || {
+    echo 'CHUNKS_FGS_TIMEOUT: refusing physical device without explicit serial and consent' >&2
+    exit 2
+  }
+  tier=physical-explicit
+fi
 gradle --no-daemon :app:installDebug :app:installDebugAndroidTest
 
 # Preserve an explicit prior timeout value instead of always deleting it.
@@ -99,4 +149,4 @@ grep 'CHUNKS_FGS_TIMEOUT' <<< "$log_b" | tail -20 || true
 if [[ "$(grep -c 'CHUNKS_FGS_TIMEOUT cold_restore=true jobs=2 stopped=true rechecked=true seeded=true removed_keep_files=true' <<< "$log_b" || true)" != 1 ]]; then
   echo 'CHUNKS_FGS_TIMEOUT: no exact cold-recovery native receipt' >&2; exit 1
 fi
-echo 'CHUNKS_FGS_TIMEOUT: both disposable-emulator phases passed; not physical/OEM acceptance'
+echo "CHUNKS_FGS_TIMEOUT: both phases passed tier=$tier; no long-run background acceptance"
