@@ -622,10 +622,16 @@ internal fun LocalEngineScreen(
         if (onSeedingRules != null) OutlinedButton(onClick = onSeedingRules, modifier = Modifier.heightIn(min = 48.dp)) {
             Text("Seeding rules…")
         }
-        Text("Downloads and seeds with Chunks' own engine. While a transfer runs, an ongoing notification keeps it going in the background, with Stop all; Android may still stop it, and from Android 15 limits this kind of background transfer to about 6 hours a day, after which Chunks pauses everything. Nothing connects to the network until you add a torrent. Transfers are remembered and come back stopped after Chunks restarts. Peers and trackers can see this phone's IP address.")
+        Text("Add a download on this phone", style = MaterialTheme.typography.titleMedium)
         ActionTile("Choose .torrent file", ChunksColors.Green, onClick = { picker.launch(arrayOf("*/*")) },
             enabled = !busy && !inventoryStale && destination != null,
             modifier = Modifier.fillMaxWidth(), icon = R.drawable.chunks_ic_add_torrent, stacked = false)
+        OutlinedTextField(value = magnet, onValueChange = { magnet = it.trim() },
+            label = { Text("Or paste a magnet link") }, singleLine = true,
+            modifier = Modifier.fillMaxWidth())
+        // Keep both intake methods discoverable before optional storage, seeding
+        // and engine explanations. Existing Place and safety gates remain authoritative.
+        Text("Downloads and seeds with Chunks' own engine. While a transfer runs, an ongoing notification keeps it going in the background, with Stop all; Android may still stop it, and from Android 15 limits this kind of background transfer to about 6 hours a day, after which Chunks pauses everything. Nothing connects to the network until you add a torrent. Transfers are remembered and come back stopped after Chunks restarts. Peers and trackers can see this phone's IP address.")
         LocalDownloadPlacePicker(
             resolution = placeResolution,
             enabled = !busy && !inventoryStale,
@@ -688,9 +694,6 @@ internal fun LocalEngineScreen(
             Checkbox(checked = startAfterAdd, enabled = !busy && !inventoryStale, onCheckedChange = null)
             Text("Start downloading after Add (recommended)", modifier = Modifier.padding(start = 8.dp))
         }
-        OutlinedTextField(value = magnet, onValueChange = { magnet = it.trim() },
-            label = { Text("Or paste a magnet link") }, singleLine = true,
-            modifier = Modifier.fillMaxWidth())
         var finishInOrderDefault by remember { mutableStateOf(finishInOrderStore.defaultForNewAdds()) }
         var magnetFinishInOrder by remember(magnet) { mutableStateOf(finishInOrderDefault) }
         if (magnet.isNotEmpty() && destination != null) {
