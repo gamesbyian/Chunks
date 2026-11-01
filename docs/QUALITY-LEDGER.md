@@ -1,5 +1,58 @@
 # Chunks evidence and release gate ledger
 
+## 2026-11-01 protected Android read-only reacceptance after challenged login
+
+[Protected installed Android read-only run 41273818693](https://github.com/gamesbyian/Chunks/actions/runs/41273818693)
+**SUCCESS** on merged main
+`674017a1912bf70c9ca259dff3b9922de91b755a`, including
+[#898](https://github.com/gamesbyian/Chunks/pull/898)'s shipping
+authentication challenge gate and [#916](https://github.com/gamesbyian/Chunks/pull/916)'s
+saved-profile exact-endpoint revalidation. The actual API35 emulator installed
+both app and androidTest, connected to the owner's approved primary HTTPS
+Seedhost using GitHub-protected credentials, rendered a **nonempty** inventory,
+refreshed, opened Add to inspect its default Place **without submitting**,
+and returned to Transfers. Three connected-screen 1080×2400 PNGs were produced;
+the sanitized accepted terminal result is in job `124751811921`.
+This is the successor to the earlier transient failed-Connect
+[41270975610](https://github.com/gamesbyian/Chunks/actions/runs/41270975610),
+whose cause remains unresolved: one later successful attempt does not prove
+all 401/timeout/reconnect paths. No host mutation, payload download or physical
+device acceptance occurred in the successful read-only run.
+
+**Saved-profile account boundary:** [#916](https://github.com/gamesbyian/Chunks/pull/916)
+merged to main as `42597a993769070631874cc51aa95c50a6a86cc4`,
+reviewed exact head `8ac894899baf71699aaee3659c7f9fb198a07197`,
+after five green CI groups: 1,211 actually executed JVM tests with zero
+failures, R8, native Android Add instrumentation, visual atlas and docs.
+Combined saved-server inventory now demands fresh HTTP challenge evidence on
+the exact stored endpoint (or explicitly anonymous blank credentials);
+expired, invented and numbered-instance tests refuse account substitution.
+This is production-called logic plus synthetic HTTP/Android regressions,
+not independent protected reconnect or server mutation acceptance.
+Duplicate #908 was closed without losing any distinct source code.
+
+**Actual disposable per-torrent peer-byte growth:** [#903](https://github.com/gamesbyian/Chunks/pull/903)
+merged to main as `1b22a8d8a303c84b210939e7dafacb5c1da494f6`,
+from independent-reviewed head `cdebd3b32feaaf5deb7eccacdf17fca230adaf75`.
+[Real disposable rTorrent CI 41271311628](https://github.com/gamesbyian/Chunks/actions/runs/41271311628)
+ran the 0.9.8 loopback peer-wire interoperability trio with production
+`readTrafficSample(exactHash)` sampled while stopped at zero and after a
+real runner libtorrent seeder delivered bytes. Received and piece-verified
+per-hash counters both grew strictly, expected size and independent file
+bytes matched, and phone-side upload was observed. Its modern 0.16.x
+matrix verified separate read/mutation compatibility, **not** modern peer-wire
+growth. [JVM foundation 41271311655](https://github.com/gamesbyian/Chunks/actions/runs/41271311655)
+passed. This is not a protected Seedhost download or an installed Android
+phone-to-host peer receipt.
+
+**Open protected-host byte gate:** [#920](https://github.com/gamesbyian/Chunks/pull/920)
+adds a proposed owner-scoped **manual-only, apply=false by default** 512 KiB
+synthetic exact-hash hosted peer proof with one-shot mutation and cleanup
+guards. The candidate had performed **no hosted mutation** at this entry.
+It requires its own exact-head compilation/CI and independent security
+review before any manually approved trusted-main test. Current #1/#4
+and physical/OEM gates remain open.
+
 ## 2026-11-01 installed Share/magnet and foreground recovery integrated (automated tier)
 
 **Merged production-connected Android acceptance [#890](https://github.com/gamesbyian/Chunks/pull/890):** SHA-guarded squash `32797a868339a8be24836830f0d00a81432c6702`, exact candidate `3aeefd24a48b8ff2409bc319cdd3dc9c77b1bfc0`. All **four** required final-head workflows passed: API29 [41271931718](https://github.com/gamesbyian/Chunks/actions/runs/41271931718), API35 installed/lifecycle [41271931680](https://github.com/gamesbyian/Chunks/actions/runs/41271931680), native Compose Add [41271931667](https://github.com/gamesbyian/Chunks/actions/runs/41271931667), docs [41271931763](https://github.com/gamesbyian/Chunks/actions/runs/41271931763). Independent 0F source review validated the final staged magnet fixture and required these exact-head receipts. Both **Share/.torrent and magnet** entered real MainActivity review without unconsented Add; public Downloads received **524,288 actual peer payload bytes**, UI Stop → forced process death → recovered **STOPPED** → UI Start → independently fresh receiver with **524,288 measured phone uploaded/receiver downloaded bytes**, exact SHA-256, and session-only Remove leaving the original public payload unchanged. Prior-head red EACCES, disabled controls, metadata handoff and zero-counter candidates are historical, not these green results.

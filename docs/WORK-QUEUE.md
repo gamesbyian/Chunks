@@ -4,28 +4,51 @@
 
 **Single executable priority authority; reviewed 2026-10-31.** Fetch current `main`, open PRs, issues, branch ownership and CI **before** picking a task. The [engineering delivery protocol](ENGINEERING-DELIVERY-PROTOCOL.md) governs how to complete it; [AGENTS](../AGENTS.md) governs agent behavior. Product requirements live in [PRODUCT](PRODUCT.md), [UX](UX.md), [ARCHITECTURE](ARCHITECTURE.md), [SECURITY](SECURITY.md), [DECISIONS](DECISIONS.md) and scoped contracts. Implementation truth belongs in [SPEC-COVERAGE](SPEC-COVERAGE.md), test evidence in [QUALITY-LEDGER](QUALITY-LEDGER.md). This queue is **not** a substitute for any of them.
 
-**Active 0C checkpoint (2026-11-01, source/CI-bound):** #891's corrected
-read-auth challenge probe is merged, and the exact-primary protected version/main
-view [41266094878](https://github.com/gamesbyian/Chunks/actions/runs/41266094878)
-passed. #898's **shipping Android Connect** gate is merged at `22ac3afe`
-after all five checks, refusing invented credentials even when anonymous
-version/inventory reads work. #892's bounded read-only paging and #906's
-exact-session hidden-view stopped-Add reconciliation are also merged.
-The existing historical protected installed **Android app UI** synthetic Add →
-Start → Stop → session Erase passed [40652034320](https://github.com/gamesbyian/Chunks/actions/runs/40652034320)
-on 2026-10-28, and installed adapter mutation passed
-[40581190487](https://github.com/gamesbyian/Chunks/actions/runs/40581190487)
-on 2026-10-27; both are historic code SHA evidence without peer-byte growth.
-A trusted-main production-Connect **read-only** Android rerun
-[41270975610](https://github.com/gamesbyian/Chunks/actions/runs/41270975610)
-was dispatched via comment-only #909; its result must be inspected before
-acceptance. [#908](https://github.com/gamesbyian/Chunks/pull/908)
-is testing fresh saved-profile reauthentication in combined browsing, and
-[#903](https://github.com/gamesbyian/Chunks/pull/903) tests real disposable
-per-infohash received+hash-verified peer bytes. **Still open:** current-head
-reconnect/401 uncertainty, separate approved protected-host per-transfer
-peer-byte growth, installed file-priority controls and real physical device.
-No global transfer-rate, anonymous-read or RPC ACK substitutes for these gates.
+**Active 0C checkpoint (2026-11-01, accepted by exact evidence tier):**
+[#891](https://github.com/gamesbyian/Chunks/pull/891)'s accepted-challenge
+read-only probe passed on the authorized primary HTTPS instance
+[41266094878](https://github.com/gamesbyian/Chunks/actions/runs/41266094878).
+[#898](https://github.com/gamesbyian/Chunks/pull/898) merged the same
+authentication evidence gate into **shipping Android Connect**, and
+[#916](https://github.com/gamesbyian/Chunks/pull/916), squash `42597a9`,
+merged exact-profile **saved-server reconnect authentication** after
+five green candidate-head workflows (1,211 executed JVM tests, zero failed,
+R8, API35 native Add, atlas and docs). It refuses public-readable anonymous
+inventory with supplied credentials, without switching numbered tenants.
+[#892](https://github.com/gamesbyian/Chunks/pull/892) merged bounded
+read-only oversize paging and [#906](https://github.com/gamesbyian/Chunks/pull/906)
+merged exact-session hidden-view stopped-Add reconciliation.
+
+**Positive peer-wire byte evidence:** [#903](https://github.com/gamesbyian/Chunks/pull/903),
+squash `1b22a8d`, actually proved **strictly positive per-infohash**
+received and piece-verified bytes at rTorrent 0.9.8 on a disposable
+runner (real libtorrent peer, exact stopped zero baseline, server completion,
+independently equal payload files). The modern rTorrent 0.16.x CI job
+proved distinct RPC compatibility, not a modern-version peer-wire test.
+Neither is protected-host Internet swarm evidence.
+
+**Current hosted Android read-only checkpoint:** after a transient earlier
+Connect failure [41270975610](https://github.com/gamesbyian/Chunks/actions/runs/41270975610),
+the merged #913 safe diagnostic ran the real installed API35 app on trusted
+main `674017a` and **PASSED**
+[41273818693](https://github.com/gamesbyian/Chunks/actions/runs/41273818693):
+credentialed primary HTTPS Connect, nonempty development queue, Refresh,
+read-only Add Place preview, return to Transfers, three 1080×2400 captures.
+This does not prove a physical handset or any new hosted mutation.
+Historical approved installed Android synthetic Add → Start → Stop → session
+Erase [40652034320](https://github.com/gamesbyian/Chunks/actions/runs/40652034320)
+and adapter mutation [40581190487](https://github.com/gamesbyian/Chunks/actions/runs/40581190487)
+remain genuine **older-source** proof, with no protected peer-byte growth.
+[#920](https://github.com/gamesbyian/Chunks/pull/920) is a separately
+review-gated **manual-only candidate** for a unique 512 KiB synthetic
+hosted received+piece-verified peer-byte witness; **no protected mutation
+has been executed by that PR**.
+
+**Still open #1/#4/#464:** protected-host *per-transfer* received+verified
+peer-byte growth, current-head hosted installed mutation and file priorities,
+authenticated reconnect/401/timeout reconciliation and physical Android/OEM.
+Neither a global server rate, public read, RPC acknowledgement nor an
+old-SHA emulator success closes those gates.
 
 ## Verified checkpoint and current boundaries
 
