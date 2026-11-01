@@ -64,7 +64,7 @@ cat "$out"
   exit 1
 }
 [[ "$(grep -Fxc 'OK (16 tests)' "$out" || true)" == 1 ]] || {
-  echo 'CHUNKS_OWNED_DOCS: exact fifteen tests not confirmed' >&2
+  echo 'CHUNKS_OWNED_DOCS: exact sixteen tests not confirmed' >&2
   exit 1
 }
 if [[ "$(grep -Fxc 'INSTRUMENTATION_CODE: -1' "$out" || true)" != 1 ]] ||
@@ -81,6 +81,7 @@ for case_name in \
   independentlyVerifiedPendingRowIsNotConfusedWithPublishedAndTamperingIsRefused \
   userApprovedSingleMemberCreatesDistinctVerifiedDownloadAndKeepsBothSources \
   traversalNestedMultiMemberAndPreCancelledNeverPublishOrTouchCanary \
+  pinnedLibraryReadRefusesSwappedFifoPromptlyAndLeavesForeignBytesUntouched \
   seedingSingleFileCopiesThroughUiWhileOriginalAndExistingCanaryStayUntouched \
   pathnameSwapDuringPinnedLibraryReadRefusesBeforeDestinationCreation \
   composeTwoFlatFilesPublishIndependentlyAndPreserveCanaryAndArchive \
