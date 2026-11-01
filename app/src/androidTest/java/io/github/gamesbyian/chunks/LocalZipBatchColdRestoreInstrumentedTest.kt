@@ -121,6 +121,7 @@ class LocalZipBatchColdRestoreInstrumentedTest {
         val sourceBytes = zip(first, second)
         val source = createSource(sourceBytes, "fixture-cold-" + nonce + ".zip")
         val prefix = first.substringBeforeLast('.')
+        val secondPrefix = second.substringBeforeLast('.')
         val result = LocalMultiZipMediaStoreExport.extractNew(context, source) {
             // A pending FIRST row is not a finished file. Wait for its
             // independently verified publication before stopping the batch.
@@ -132,6 +133,8 @@ class LocalZipBatchColdRestoreInstrumentedTest {
         val row = result.published.single()
         assertEquals(first, row.originalName)
         assertEquals(setOf(row.uri), exactOutputs(prefix))
+        assertTrue("Unpublished second member must not exist, even as a hidden pending row",
+            exactOutputs(secondPrefix).isEmpty())
         val expected = ("cold batch: " + first).toByteArray()
         assertArrayEquals(expected, read(row.uri))
         assertArrayEquals(sourceBytes, read(source))
@@ -140,6 +143,7 @@ class LocalZipBatchColdRestoreInstrumentedTest {
 
         Properties().apply {
             setProperty("prefix", prefix)
+            setProperty("secondPrefix", secondPrefix)
             setProperty("source", source.toString())
             setProperty("published", row.uri.toString())
             setProperty("payloadSha", sha(expected))
@@ -161,9 +165,14 @@ class LocalZipBatchColdRestoreInstrumentedTest {
         val receipt = Properties().apply { marker.inputStream().use { load(it) } }
         val prefix = requireNotNull(receipt.getProperty("prefix"))
         assertTrue(prefix.matches(Regex("chunkscold[0-9a-f]{16}")))
+        val secondPrefix = requireNotNull(receipt.getProperty("secondPrefix"))
+        assertEquals("later" + prefix, secondPrefix)
         val source = Uri.parse(requireNotNull(receipt.getProperty("source")))
         val published = Uri.parse(requireNotNull(receipt.getProperty("published")))
         val before = exactOutputs(prefix)
+        val secondBefore = exactOutputs(secondPrefix)
+        assertTrue("Cold recovery must not silently create the second published OR pending row",
+            secondBefore.isEmpty())
         assertEquals("Cold restore must never auto-create the remaining batch row",
             setOf(published), before)
         assertEquals(receipt.getProperty("payloadSha"), sha(read(published)))
@@ -177,7 +186,9 @@ class LocalZipBatchColdRestoreInstrumentedTest {
                 substring = true).fetchSemanticsNodes().isNotEmpty()
         }
         compose.onNodeWithText("Earlier file operations need review").assertExists()
-        assertEquals("UI recovery may not publish more objects", before, exactOutputs(prefix))
+        assertEquals("UI recovery may not publish more first-member objects", before, exactOutputs(prefix))
+        assertEquals("UI recovery may not create any second-member objects",
+            secondBefore, exactOutputs(secondPrefix))
         assertEquals(receipt.getProperty("payloadSha"), sha(read(published)))
         assertEquals(receipt.getProperty("sourceSha"), sha(read(source)))
         android.util.Log.i("ChunksBatchCold",
