@@ -1,14 +1,9 @@
 name: One-time protected Seedhost active-Start acceptance
 
-# A subsequent one-time exact-target mutation is permitted ONLY after protected read-only
-# absence reconciliation (40464540703) and existing-directory proof (40557896602).
-# The mutation remains separately gated to an explicitly named trusted-main merge;
-# this PR does not invoke it and cannot access production credentials on its branch.
+# Owner-authorized development Seedhost mutations run only through deliberate
+# trusted-main workflow_dispatch with apply_mutation=true. The special one-time
+# push trigger was retired after accepted real-host run 41349305222.
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/seedhost-active-start-once.yml"
   workflow_dispatch:
     inputs:
       apply_mutation:
@@ -25,10 +20,10 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # On changes to THIS workflow merged to trusted main, perform only read-only
-  # destination discovery. The separately authorized mutation remains gated.
+  # Explicit manual dispatch may first gather read-only destination evidence
+  # even when apply_mutation=false; never start a protected run on a push.
   existing-destination-preflight:
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 12
     env:
@@ -79,11 +74,7 @@ jobs:
           test "$status" -eq 0
 
   exact-hash-start:
-    if: >-
-      ${{ github.ref == 'refs/heads/main' &&
-          ((github.event_name == 'workflow_dispatch' && inputs.apply_mutation) ||
-           (github.event_name == 'push' &&
-            contains(github.event.head_commit.message, 'one-time Seedhost active Start acceptance'))) }}
+    if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.apply_mutation }}
     runs-on: ubuntu-latest
     timeout-minutes: 23
     env:
