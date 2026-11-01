@@ -86,10 +86,12 @@ internal fun ServerToPhoneCopyControl(
                 style = MaterialTheme.typography.bodySmall)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = {
-                    // Complete the requested handoff before clearing the local review:
-                    // an account switch or navigation can invalidate this composition.
-                    onReviewPhoneAdd(current.magnet)
+                    // Consume this exact-session review *before* navigation may
+                    // dispose the current composition. The magnet is captured
+                    // first; the callback still receives the exact reviewed plan.
+                    val reviewedMagnet = current.magnet
                     plan = null
+                    onReviewPhoneAdd(reviewedMagnet)
                 }, enabled = !stale,
                     modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Review phone Add") }
                 OutlinedButton(onClick = { plan = null },
