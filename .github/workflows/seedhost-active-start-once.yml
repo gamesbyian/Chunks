@@ -107,22 +107,6 @@ jobs:
           if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
             ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
           fi
-      - name: Run exact-target owner-approved synthetic mutation and always erase
-        run: |
-          set -euo pipefail
-          test -n "$CHUNKS_LIVE_RTORRENT_USER"
-          test -n "$CHUNKS_LIVE_RTORRENT_PASS"
-          gradle --no-daemon --console=plain :app:testDebugUnitTest \
-            --tests 'io.github.gamesbyian.chunks.rpc.SeedhostLiveAcceptanceTest.ownerAuthorizedExactTargetMutationRoundTrip'
-          python3 - <<'PY'
-          import xml.etree.ElementTree as ET
-          p = 'app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.SeedhostLiveAcceptanceTest.xml'
-          r = ET.parse(p).getroot()
-          assert int(r.attrib['tests']) == 1, 'Expected exactly one guarded fixture acceptance'
-          assert int(r.attrib['skipped']) == 0, 'Seedhost acceptance must actually execute'
-          assert int(r.attrib['failures']) == 0 and int(r.attrib['errors']) == 0
-          print('CHUNKS_SEEDHOST_ACTIVE_START: guarded synthetic Add, active Start, Stop and erase passed')
-          PY
       - name: Owner-approved native started Add for .torrent and magnet
         env:
           # Distinct positive gate: routine unit/PR builds cannot activate it.
@@ -142,4 +126,20 @@ jobs:
           lines = (r.findtext('system-out') or '').splitlines()
           assert any('CHUNKS_LIVE: native result=two-started-active inventory-restored' in line for line in lines)
           print('CHUNKS_SEEDHOST_NATIVE_STARTED_ADD: two actual exact-hash active loads, cleanup verified')
+          PY
+      - name: Run exact-target owner-approved synthetic mutation and always erase
+        run: |
+          set -euo pipefail
+          test -n "$CHUNKS_LIVE_RTORRENT_USER"
+          test -n "$CHUNKS_LIVE_RTORRENT_PASS"
+          gradle --no-daemon --console=plain :app:testDebugUnitTest \
+            --tests 'io.github.gamesbyian.chunks.rpc.SeedhostLiveAcceptanceTest.ownerAuthorizedExactTargetMutationRoundTrip'
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          p = 'app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.SeedhostLiveAcceptanceTest.xml'
+          r = ET.parse(p).getroot()
+          assert int(r.attrib['tests']) == 1, 'Expected exactly one guarded fixture acceptance'
+          assert int(r.attrib['skipped']) == 0, 'Seedhost acceptance must actually execute'
+          assert int(r.attrib['failures']) == 0 and int(r.attrib['errors']) == 0
+          print('CHUNKS_SEEDHOST_ACTIVE_START: guarded synthetic Add, active Start, Stop and erase passed')
           PY
