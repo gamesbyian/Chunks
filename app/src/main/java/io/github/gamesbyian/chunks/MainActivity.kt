@@ -89,6 +89,7 @@ import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
 import io.github.gamesbyian.chunks.rpc.RemoteSmartConnect
 import io.github.gamesbyian.chunks.rpc.requireRemoteConnectIdentityEvidence
+import io.github.gamesbyian.chunks.rpc.verifiedSavedProfileMainInventory
 import io.github.gamesbyian.chunks.rpc.RemoteProviderCatalog
 import io.github.gamesbyian.chunks.rpc.RemoteFile
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
@@ -442,7 +443,7 @@ private fun ChunksApp(
                     CombinedSavedProfile(profile.id, profile.label + " · " + profile.address,
                         aliasScope = RemoteVerifiedUiIdentity.aliasScopeOf(profile.credentials),
                         // Read-only "main" list with this profile's own saved credentials (HTTPS enforced).
-                        listOnly = { RTorrentRemote(profile.credentials).listTransfers("main") })
+                        listOnly = { verifiedSavedProfileMainInventory(profile.credentials) })
                 },
                 onOpenPhone = { section = Section.LOCAL },
                 onOpenServer = if (server != null) ({ section = Section.TRANSFERS }) else null,
