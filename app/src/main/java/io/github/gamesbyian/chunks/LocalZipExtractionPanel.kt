@@ -36,6 +36,7 @@ import io.github.gamesbyian.chunks.model.ZipExtractionStatus
 import io.github.gamesbyian.chunks.model.ZipExtractor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
 
 /** Everything the user must see before approving a write. */
 internal data class LocalZipExtractionPlan(
@@ -49,17 +50,51 @@ internal data class LocalZipExtractionPlan(
     val copy: Boolean = false
 )
 
-/**
- * Explain why destination writing is temporarily unavailable; ZIP review remains available.
- */
+/** First qualified platform adapter only; generic ZIP/SAF tree writes remain disabled. */
 @Composable
 internal fun LocalZipExtractionPanel(sourceUri: Uri, review: LocalZipReview) {
     if (review.verification == null) return
+    val context = LocalContext.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var running by remember(sourceUri, review) { mutableStateOf(false) }
+    var outcome by remember(sourceUri, review) {
+        mutableStateOf<LocalSingleZipMediaStoreExport.Result?>(null)
+    }
+    val eligible = LocalSingleZipMediaStoreExport.eligible(review)
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Extract", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
                 modifier = Modifier.semantics { heading() })
-            Text("Extraction is temporarily unavailable while destination file safety is being improved. You can still review the ZIP.")
+            if (!eligible) {
+                Text("Full ZIP folder extraction and selected SAF folders are temporarily unavailable. The first supported Downloads adapter handles a single verified flat .txt, .json, .bin, .torrent or .chunksnap file of up to 8 MiB. ZIP review remains available.")
+            } else {
+                Text("Save this ZIP's single file as a NEW document in Downloads/Chunks Exports. Chunks gives it a unique name, keeps the original ZIP, and never replaces an existing file. Other destinations and multi-file archives remain unavailable.")
+                Button(
+                    onClick = {
+                        running = true
+                        scope.launch {
+                            val result = withContext(Dispatchers.IO) {
+                                try { LocalSingleZipMediaStoreExport.extractNew(context, sourceUri) }
+                                catch (_: Exception) {
+                                    LocalSingleZipMediaStoreExport.Result(
+                                        LocalSingleZipMediaStoreExport.State.NEEDS_ATTENTION,
+                                        "Could not confirm the export. No automatic retry or cleanup was attempted.")
+                                }
+                            }
+                            outcome = result
+                            running = false
+                        }
+                    },
+                    enabled = !running && outcome == null,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                ) { Text(if (running) "Extracting and verifying…" else "Extract new file to Downloads") }
+                outcome?.let { result ->
+                    Text(result.message + (result.publishedName?.let { " Name: " + it } ?: ""),
+                        color = if (result.state == LocalSingleZipMediaStoreExport.State.EXPORTED)
+                            MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+                }
+            }
         }
     }
 }
