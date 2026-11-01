@@ -1,6 +1,5 @@
 package io.github.gamesbyian.chunks
 
-import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Environment
@@ -43,8 +42,9 @@ class Android10DownloadsRevocationInstrumentedTest {
     private fun requirePhase(phase: String) {
         assumeTrue("Only tools/android10_downloads_revocation.sh may run this test",
             args.getString("chunksGrantPhase") == phase && Build.VERSION.SDK_INT == 29)
-        assertEquals("Physical-device instrumentation is not permitted", "1",
-            android.os.SystemProperties.get("ro.kernel.qemu", "0"))
+        assertTrue("This destructive permission lifecycle test is emulator-only",
+            Build.HARDWARE in setOf("ranchu", "goldfish") ||
+                Build.FINGERPRINT.startsWith("generic"))
     }
 
     private fun hasStorageGrants() = LocalDownloadPlaces.ANDROID_10_STORAGE_PERMISSIONS.all {
