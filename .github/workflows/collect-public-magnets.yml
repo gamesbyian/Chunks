@@ -16,17 +16,11 @@ on:
       - tools/collect_public_magnet_catalog.py
       - tools/collect_linuxtracker_magnets.py
       - tools/validate_public_magnet_catalog.py
-      - .github/workflows/collect-public-magnets.yml
-  push:
-    branches:
-      - test/public-magnet-catalog-harvester-20261101
-    paths:
-      - tools/collect_public_magnet_catalog.py
-      - tools/collect_linuxtracker_magnets.py
+      - test-resources/public-magnets/**
       - .github/workflows/collect-public-magnets.yml
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: public-magnet-catalog-${{ github.ref }}
@@ -45,6 +39,7 @@ jobs:
       - run: |
           python3 -m py_compile tools/collect_public_magnet_catalog.py tools/collect_linuxtracker_magnets.py tools/validate_public_magnet_catalog.py
           python3 -m unittest discover -s tools -p test_public_fixture_collector.py
+          python3 tools/validate_public_magnet_catalog.py
   source-probe:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
@@ -54,7 +49,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Fetch and verify two actual public .torrent metadata files
+      - name: Verify two live .torrent info dictionaries (not payloads)
         shell: bash
         run: |
           python3 - <<'PY'
@@ -66,68 +61,37 @@ jobs:
           raw = get('https://linuxtracker.org/torrents/' + h + '/download/', 2*1024*1024)
           _, info = torrent_summary(raw, 555000000, ())
           assert info['infohash_v1'] == h
-          print('LINUXTRACKER SOURCE-VERIFIED', info['name'], info['total_bytes'], info['infohash_v1'], flush=True)
+          print('LINUXTRACKER SOURCE-VERIFIED', info['name'], info['total_bytes'], h, flush=True)
           manifest, _raw = archive_fixture('BigBuckBunny_124', 555000000)
-          print('ARCHIVE SOURCE-VERIFIED', manifest['torrent']['name'], manifest['torrent']['total_bytes'], manifest['torrent']['infohash_v1'], flush=True)
+          assert manifest['torrent']['infohash_v1'] == 'b63eaa9720ee797667ef58ea35ef7d81ab5d1c16'
+          print('ARCHIVE SOURCE-VERIFIED', manifest['torrent']['name'], manifest['torrent']['total_bytes'], flush=True)
           PY
-  quick-harvest:
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    timeout-minutes: 55
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Collect a small real-metainfo catalog and print reviewable JSON
-        shell: bash
-        run: |
-          python3 tools/collect_public_magnet_catalog.py --count 100 --pages 12 --rows 50 || true
-          python3 tools/validate_public_magnet_catalog.py --allow-partial
-          echo '<<<CHUNKS_CATALOG_BEGIN>>>'
-          cat test-resources/public-magnets/catalog.json
-          echo '<<<CHUNKS_CATALOG_END>>>'
-      - uses: actions/upload-artifact@v4
-        with:
-          name: chunks-live-harvest-100
-          path: |
-            test-resources/public-magnets/catalog.json
-            test-resources/public-magnets/magnets.txt
-          if-no-files-found: warn
-          retention-days: 3
   collect:
-    if: github.ref == 'refs/heads/test/public-magnet-catalog-harvester-20261101' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 55
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.ref_name }}
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Compile collector and run existing offline fixture tests
-        shell: bash
-        run: |
-          python3 -m py_compile tools/collect_public_magnet_catalog.py tools/collect_linuxtracker_magnets.py tools/validate_public_magnet_catalog.py
-          python3 -m unittest discover -s tools -p test_public_fixture_collector.py
-      - name: Harvest licensed original .torrent metainfo (no payloads)
+      - name: Collect and validate authentic public metainfo (no payloads)
         id: collect
         shell: bash
         env:
-          COUNT: ${{ inputs.count || '100' }}
-          PAGES: ${{ inputs.pages || '12' }}
+          COUNT: ${{ inputs.count }}
+          PAGES: ${{ inputs.pages }}
         run: |
           set +e
-          python3 tools/collect_public_magnet_catalog.py \
-            --count "$COUNT" --pages "$PAGES" --max-bytes 555000000
+          python3 tools/collect_public_magnet_catalog.py --count "$COUNT" --pages "$PAGES" --max-bytes 555000000
           status=$?
           echo "exit_code=$status" >> "$GITHUB_OUTPUT"
           if test -f test-resources/public-magnets/catalog.json; then
             python3 tools/validate_public_magnet_catalog.py --allow-partial
           fi
           exit 0
-      - name: Publish generated catalog for review (including partial result)
+      - name: Publish generated catalog for independent review
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: chunks-public-magnet-catalog
@@ -136,19 +100,6 @@ jobs:
             test-resources/public-magnets/magnets.txt
           if-no-files-found: warn
           retention-days: 14
-      - name: Commit untrusted collected data to isolated review branch only
-        if: github.ref == 'refs/heads/test/public-magnet-catalog-harvester-20261101'
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add test-resources/public-magnets/catalog.json test-resources/public-magnets/magnets.txt
-          if ! git diff --cached --quiet; then
-            git commit -m "data: collect source-verified public magnet candidates"
-            git fetch origin test/public-magnet-catalog-harvester-20261101
-            git rebase origin/test/public-magnet-catalog-harvester-20261101
-            git push origin HEAD:test/public-magnet-catalog-harvester-20261101
-          fi
-      - name: Require complete catalog (partial catalog still archived)
+      - name: Require complete catalog
         if: steps.collect.outputs.exit_code != '0'
         run: exit 1
