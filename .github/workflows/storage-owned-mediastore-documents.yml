@@ -11,6 +11,7 @@ on:
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalMultiZipMediaStoreExportInstrumentedTest.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalZipBatchColdRestoreInstrumentedTest.kt"
       - "tools/batch_cold_restore_probe.sh"
+      - "tools/test_batch_cold_restore_probe_mock.sh"
       - "app/src/main/java/io/github/gamesbyian/chunks/LocalSingleZipMediaStoreExport.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/LocalZipExtractionPanel.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalSingleZipMediaStoreExportInstrumentedTest.kt"
@@ -39,6 +40,8 @@ jobs:
         api: [29, 35]
     steps:
       - uses: actions/checkout@v4
+      - name: Refuse false or unsafe cold ZIP batch receipts (offline)
+        run: bash tools/test_batch_cold_restore_probe_mock.sh
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
