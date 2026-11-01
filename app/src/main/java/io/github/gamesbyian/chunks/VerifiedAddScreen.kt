@@ -67,6 +67,8 @@ fun VerifiedAddScreen(
     onMutationStarted: () -> Boolean,
     onMutationSettled: () -> Unit,
     recentPlaces: List<String> = emptyList(),
+    /** Read-only paths observed on this exact current server; not a writable-folder probe. */
+    observedPlaces: List<String> = emptyList(),
     /** Return whether the already-verified custom Place shortcut was persisted. */
     onCustomPlaceVerified: (String) -> Boolean = { true },
     /** A phone-prepared .torrent draft (transfer export or Android file); never auto-submitted. */
@@ -297,6 +299,31 @@ fun VerifiedAddScreen(
                 RecentRemotePlaces(recentPlaces, enabled = !submitting) { parent ->
                     onDestination(parent)
                     awaitingConfirmation = false
+                }
+            }
+        }
+        if (!alreadyAttempted && observedPlaces.isNotEmpty()) {
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("Folders seen on this server", fontWeight = FontWeight.Bold)
+                    Text("Choose a folder used by an existing transfer. These are server-reported " +
+                        "suggestions, not a filesystem browser or proof that new files can be saved there.",
+                        style = MaterialTheme.typography.bodySmall)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        observedPlaces.take(8).forEach { parent ->
+                            FilterChip(
+                                selected = destination == parent,
+                                enabled = !submitting,
+                                onClick = {
+                                    onDestination(parent)
+                                    awaitingConfirmation = false
+                                },
+                                modifier = Modifier.heightIn(min = 48.dp),
+                                label = { Text(parent) }
+                            )
+                        }
+                    }
                 }
             }
         }
