@@ -18,7 +18,7 @@ import java.security.MessageDigest
 
 /**
  * Android's ordinary transactional private metadata store. One row per hash,
- * FULL synchronous rollback-journal commits, no permanent per-save files.
+ * EXTRA-synchronous DELETE-journal commits, no permanent per-save files.
  * Immutable pre-upgrade inputs are read once and never cleaned up by pathname.
  */
 internal class LocalResumeDatabase private constructor(
