@@ -112,9 +112,14 @@ class LocalZipBatchColdRestoreInstrumentedTest {
         }
     }
 
+    private fun stoppedWarningCount(): Int =
+        OwnedMediaStoreZipBatchJournal.unfinishedDescriptions(context)
+            .count { it.contains("stopped after 1 of 2") }
+
     @Test fun phaseA_publishOneThenPersistStoppedBatchBeforeForceStop() {
         phase("a")
         assertTrue("Test fixture cannot adopt an old private receipt", fixture.mkdir())
+        val priorStoppedBatches = stoppedWarningCount()
         val nonce = UUID.randomUUID().toString().replace("-", "").take(16)
         val first = "chunkscold" + nonce + ".txt"
         val second = "laterchunkscold" + nonce + ".bin"
@@ -138,10 +143,11 @@ class LocalZipBatchColdRestoreInstrumentedTest {
         val expected = ("cold batch: " + first).toByteArray()
         assertArrayEquals(expected, read(row.uri))
         assertArrayEquals(sourceBytes, read(source))
-        assertTrue(OwnedMediaStoreZipBatchJournal.unfinishedDescriptions(context)
-            .any { it.contains("stopped after 1 of 2") })
+        assertEquals("Current batch must add exactly one durable partial warning",
+            priorStoppedBatches + 1, stoppedWarningCount())
 
         Properties().apply {
+            setProperty("expectedStoppedWarnings", (priorStoppedBatches + 1).toString())
             setProperty("prefix", prefix)
             setProperty("secondPrefix", secondPrefix)
             setProperty("source", source.toString())
@@ -177,8 +183,9 @@ class LocalZipBatchColdRestoreInstrumentedTest {
             setOf(published), before)
         assertEquals(receipt.getProperty("payloadSha"), sha(read(published)))
         assertEquals(receipt.getProperty("sourceSha"), sha(read(source)))
-        assertTrue(OwnedMediaStoreZipBatchJournal.unfinishedDescriptions(context)
-            .any { it.contains("stopped after 1 of 2") })
+        assertEquals("Cold recovery must retain this run\'s additional batch warning",
+            requireNotNull(receipt.getProperty("expectedStoppedWarnings")).toInt(),
+            stoppedWarningCount())
 
         compose.setContent { MaterialTheme { LocalZipInterruptedExtractions() } }
         compose.waitUntil(20_000) {
