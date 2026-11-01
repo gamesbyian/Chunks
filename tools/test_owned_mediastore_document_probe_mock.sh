@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Offline fake-adb acceptance for the real MediaStore test harness. No device.
-set -euo pipefail
+set -Eeuo pipefail
 root="$(cd "$(dirname "$0")" && pwd -P)"
 temp="$(mktemp -d)"
+trap 'rc=$?; echo "CHUNKS_OWNED_DOCS_MOCK: unexpected failure at line $LINENO exit=$rc" >&2; if [[ -f "$temp/accepted" ]]; then sed -n "1,80p" "$temp/accepted" >&2; fi; if [[ -f "$temp/rejected" ]]; then sed -n "1,80p" "$temp/rejected" >&2; fi; exit "$rc"' ERR
 trap 'rm -rf "$temp"' EXIT
 mkdir -p "$temp/bin"
 cat > "$temp/bin/adb" <<'ADB_MOCK'
