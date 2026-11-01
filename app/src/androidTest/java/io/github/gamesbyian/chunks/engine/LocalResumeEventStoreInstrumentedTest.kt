@@ -145,6 +145,68 @@ class LocalResumeEventStoreInstrumentedTest {
         } finally { restarted.close() }
     }
 
+    /**
+     * Query the actual SQLite connection the Android production store opened,
+     * not a second connection (where synchronous is connection-local).
+     * These tests run in both API29 and API35 installed instrumentation.
+     */
+    private fun assertProductionExtraSync(store: LocalResumeStore) {
+        assertTrue("Android must open its transactional resume implementation",
+            store is LocalResumeDatabase)
+        val field = LocalResumeDatabase::class.java.getDeclaredField("database")
+        field.isAccessible = true
+        val connection = field.get(store) as android.database.sqlite.SQLiteDatabase
+        connection.rawQuery("PRAGMA synchronous", null).use { cursor ->
+            assertTrue("Production SQLite PRAGMA query returned no row", cursor.moveToFirst())
+            assertEquals("DELETE journal retirement needs EXTRA directory sync",
+                3, cursor.getInt(0))
+        }
+    }
+
+    @Test fun androidProductionExtraSyncKeepsRemoveIntentAndCommitAcrossFreshOpens() {
+        val dir = root()
+        val legacy = "pre-upgrade immutable snapshot".toByteArray()
+        val saved = "new transactional snapshot".toByteArray()
+        val readded = "explicitly re-added new generation".toByteArray()
+        // Leave the pre-upgrade generation in place: a stale migration must
+        // never resurrect it after a committed Remove intent.
+        open(dir).save(hash, legacy)
+        val original = requireNotNull(dir.toFile().listFiles()).associate { it.name to it.readBytes() }
+        val rootFile = dir.toFile()
+        fun fresh() = LocalResumeStore.open(rootFile,
+            LocalResumeDirectoryInventory.prepare(rootFile))
+        fresh().use { store ->
+            assertProductionExtraSync(store)
+            assertArrayEquals(legacy, store.current(hash))
+            store.save(hash, saved)
+        }
+        fresh().use { store ->
+            assertProductionExtraSync(store)
+            assertArrayEquals(saved, store.current(hash))
+            store.removeIntent(hash)
+        }
+        fresh().use { store ->
+            assertProductionExtraSync(store)
+            assertFalse("Committed REMOVE_INTENT forbids stale re-Add", store.canRegister(hash))
+            assertTrue("Old saved state must not resurrect", store.restorable().isEmpty())
+            store.removeCommit(hash)
+        }
+        fresh().use { store ->
+            assertProductionExtraSync(store)
+            assertTrue("Committed Remove permits explicit fresh Add", store.canRegister(hash))
+            assertTrue("Old legacy data must remain retired", store.restorable().isEmpty())
+            store.save(hash, readded)
+        }
+        fresh().use { store ->
+            assertProductionExtraSync(store)
+            assertArrayEquals(readded, store.current(hash))
+        }
+        for ((name, bytes) in original) {
+            assertArrayEquals("Migration may not mutate old immutable source $name",
+                bytes, dir.resolve(name).toFile().readBytes())
+        }
+    }
+
     @Test fun androidTransactionalSnapshotsHaveBoundedGrowthAndDurableRetirementAcrossReopen() {
         val dir = root().toFile()
         val payload = ByteArray(64 * 1024) { (it % 251).toByte() }
