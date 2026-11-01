@@ -108,12 +108,28 @@ class SeedhostExactPeerBytesOnceTest {
     private fun approvedPeerDestination(address: InetAddress): Boolean =
         publicPeerAddress(address) && address.hostAddress == "5.79.112.219"
 
+    // Reject candidate strings BEFORE resolving them. Server-supplied DNS
+    // names do not authorize arbitrary DNS queries, rebinding or outbound
+    // probes from a trusted Actions runner. The single approved literal is
+    // independently verified against the rTorrent bind address in the matrix.
+    private fun approvedPeerLiteral(candidate: String): InetAddress? {
+        if (candidate != "5.79.112.219") return null
+        return InetAddress.getByName("5.79.112.219").takeIf(::approvedPeerDestination)
+    }
+
     @Test fun privateAndLoopbackPeerHintsCannotProbeTheRunnerNetwork() {
         assertTrue(approvedPeerDestination(InetAddress.getByName("5.79.112.219")))
+        assertEquals("5.79.112.219", approvedPeerLiteral("5.79.112.219")?.hostAddress)
         listOf("8.8.8.8", "1.1.1.1", "5.79.112.210", "100.64.0.5",
             "2001:4860:4860::8888").forEach {
             assertFalse("A public IP alone does not authorize another peer",
                 approvedPeerDestination(InetAddress.getByName(it)))
+        }
+        listOf("localhost", "127.0.0.1", "169.254.1.1", "attacker.invalid",
+            "seedhost.example", "5.79.112.219.", "005.079.112.219",
+            "5.79.112.219\n", "5.79.112.219.evil.example").forEach {
+            assertNull("Do not resolve a server-supplied unapproved hostname",
+                approvedPeerLiteral(it))
         }
         listOf("127.0.0.1", "0.0.0.0", "10.1.2.3", "172.16.5.4",
             "192.168.8.5", "169.254.3.4", "100.64.2.1", "198.19.1.1",
@@ -203,9 +219,7 @@ class SeedhostExactPeerBytesOnceTest {
         val candidates = listOfNotNull(source.announcedAddress, source.boundAddress, source.rpcHost)
             .distinct()
         val peer = candidates.firstNotNullOfOrNull { candidate ->
-            val address = runCatching { InetAddress.getByName(candidate) }.getOrNull()
-                ?: return@firstNotNullOfOrNull null
-            if (!approvedPeerDestination(address)) return@firstNotNullOfOrNull null
+            val address = approvedPeerLiteral(candidate) ?: return@firstNotNullOfOrNull null
             val target = InetSocketAddress(address, source.listenPort.toInt())
             if (runCatching {
                     Socket().use { it.connect(target, 4_000) }
