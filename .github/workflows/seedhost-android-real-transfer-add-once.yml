@@ -1,6 +1,7 @@
 name: P0 installed Android real Seedhost transfer and qualified APK
 
-# Protected host mutations only on armed trusted main (manual or exactly one\n# owner-authorized merge marker). The APK
+# Protected host mutations only on armed trusted main (manual or exactly one
+# owner-authorized merge marker). The APK
 # artifact is published ONLY after the identical installed binary actually
 # sends BOTH real upstream .torrent and magnet and verifies exact-hash peer
 # bytes/pieces. No PR, scheduler or repeat-triggered mutation.
