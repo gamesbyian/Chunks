@@ -3,7 +3,7 @@ package io.github.gamesbyian.chunks
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -26,6 +26,22 @@ import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
 import io.github.gamesbyian.chunks.rpc.SessionEraseOutcome
 import kotlinx.coroutines.launch
+
+/**
+ * Postconditions are exact-session hash reads, not membership of the named
+ * `main` view. A torrent can remain in rTorrent's session while hidden from
+ * `main`, so never misdescribe a hidden-view result as session removal.
+ */
+internal fun sessionEraseFeedback(response: SessionEraseOutcome): String = when (response) {
+    is SessionEraseOutcome.VerifiedRemoved ->
+        "Verified: this exact infohash is absent from rTorrent's session. Physical files were not inspected."
+    is SessionEraseOutcome.AlreadyAbsent ->
+        "Already absent from rTorrent's session by exact infohash check. No erase command was sent."
+    is SessionEraseOutcome.PendingRemoval ->
+        "rTorrent still reports this exact infohash in its session after the removal request. Refresh and inspect before another action."
+    is SessionEraseOutcome.Uncertain ->
+        "Removal outcome uncertain. The server may already have removed this exact infohash. Refresh by hash; never blindly repeat."
+}
 
 /**
  * A single confirmed rTorrent session removal. Not a payload-file deletion.
@@ -107,16 +123,7 @@ fun TransferSessionRemoveControl(
                                         val response = remote.eraseFromSession(
                                             transfer.hash, transfer.name, transfer.directory)
                                         verified = response is SessionEraseOutcome.VerifiedRemoved
-                                        feedback = when (response) {
-                                            is SessionEraseOutcome.VerifiedRemoved ->
-                                                "Verified: this infohash is absent from the main server view. Physical files were not inspected."
-                                            is SessionEraseOutcome.AlreadyAbsent ->
-                                                "Already absent from the main server view. No erase command was sent."
-                                            is SessionEraseOutcome.PendingRemoval ->
-                                                "The server acknowledged removal, but this torrent remains in the main view. Inspect and refresh before another action."
-                                            is SessionEraseOutcome.Uncertain ->
-                                                "Removal outcome uncertain. The server may already have removed it. Refresh by hash; never blindly repeat."
-                                        }
+                                        feedback = sessionEraseFeedback(response)
                                     } catch (_: Exception) {
                                         verified = false
                                         feedback = "Could not verify removal. The server state may have changed. Refresh before trying anything else."
@@ -135,12 +142,12 @@ fun TransferSessionRemoveControl(
                             enabled = !pending && mainView && !snapshotStale,
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.error),
-                            modifier = Modifier.fillMaxWidth().height(52.dp)
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
                         ) { Text("Confirm remove") }
                         OutlinedButton(
                             onClick = { confirming = false },
                             enabled = !pending,
-                            modifier = Modifier.fillMaxWidth().height(48.dp)
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                         ) { Text("Cancel") }
                     }
                 }

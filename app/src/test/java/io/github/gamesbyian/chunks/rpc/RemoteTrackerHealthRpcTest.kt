@@ -16,9 +16,10 @@ class RemoteTrackerHealthRpcTest {
             "<value><array><data>" + row.joinToString("") { num(it) } +
                 "</data></array></value>"
         } + "</data></array></value>"
-    private fun fault() = """<methodResponse><fault><value><struct>
-        <member><name>faultCode</name><value><int>-32601</int></value></member>
-        <member><name>faultString</name><value><string>Unsupported getter</string></value></member>
+    private fun fault(code: Int = -32601, reason: String = "Method not found: t.latest_sum_peers") =
+        """<methodResponse><fault><value><struct>
+        <member><name>faultCode</name><value><int>$code</int></value></member>
+        <member><name>faultString</name><value><string>$reason</string></value></member>
         </struct></value></fault></methodResponse>"""
 
     private fun withServer(
@@ -88,6 +89,29 @@ class RemoteTrackerHealthRpcTest {
             assertEquals(listOf("d.hash", "d.tracker_size", "t.multicall",
                 "t.multicall", "d.hash"), methods)
         }
+
+    @Test fun serverBusyAndPermissionFaultCannotTriggerOptionalGetterFallback() {
+        for ((code, reason) in listOf(-503 to "Server busy", -403 to "Permission denied")) {
+            withServer({ method, request ->
+                when (method) {
+                    "d.hash" -> str(hash)
+                    "d.tracker_size" -> num(1)
+                    "t.multicall" -> {
+                        assertTrue("Only the original four-field request is allowed",
+                            request.contains("t.latest_sum_peers="))
+                        fault(code, reason)
+                    }
+                    else -> throw AssertionError("Unexpected RPC getter")
+                }
+            }) { remote, methods ->
+                val received = assertThrows(RpcFault::class.java) {
+                    runBlocking { remote.readTrackerHealth(hash) }
+                }
+                assertEquals(code.toString(), received.code)
+                assertEquals(listOf("d.hash", "d.tracker_size", "t.multicall"), methods)
+            }
+        }
+    }
 
     @Test fun wrongHashAfterReadingTrackerRowsRefusesResult() = withServer({ method, _ ->
         when (method) {

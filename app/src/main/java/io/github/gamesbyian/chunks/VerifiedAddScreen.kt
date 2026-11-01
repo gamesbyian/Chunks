@@ -6,12 +6,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Button
@@ -202,9 +201,7 @@ fun VerifiedAddScreen(
         item {
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
                 Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("A place for every download.", style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Black)
-                    Text("Choose a magnet or .torrent. The configured server download folder is used unless you change it. Review the exact Place and whether to start after verification.")
+                    RemoteAddScopeIntro(environmentLabel, finishInOrderScope)
                 }
             }
         }
@@ -229,7 +226,7 @@ fun VerifiedAddScreen(
             OutlinedButton(
                 onClick = { picker.launch(arrayOf("application/x-bittorrent", "application/octet-stream", "*/*")) },
                 enabled = !choosing && !submitting && !alreadyAttempted,
-                modifier = Modifier.fillMaxWidth().height(54.dp)
+                modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp)
             ) {
                 Text(if (choosing) "Reading torrent…" else "Choose a .torrent from Android Files")
             }
@@ -297,29 +294,10 @@ fun VerifiedAddScreen(
         }
         if (!alreadyAttempted && recentPlaces.isNotEmpty()) {
             item {
-                Text("Recently used custom folders", fontWeight = FontWeight.Bold)
-                Row(
-                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    recentPlaces.forEach { parent ->
-                        OutlinedButton(
-                            onClick = {
-                                onDestination(parent)
-                                awaitingConfirmation = false
-                            },
-                            enabled = !submitting,
-                            modifier = Modifier.height(48.dp)
-                                .semantics { contentDescription = "Use recent server folder: $parent" }
-                        ) {
-                            Text(parent, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.widthIn(max = 255.dp))
-                        }
-                    }
+                RecentRemotePlaces(recentPlaces, enabled = !submitting) { parent ->
+                    onDestination(parent)
+                    awaitingConfirmation = false
                 }
-                Text("Previously verified folders may have changed on the server. " +
-                    "Chunks checks each Add again before reporting success.",
-                    style = MaterialTheme.typography.bodySmall)
             }
         }
         if (!alreadyAttempted && plan == null) {
@@ -359,7 +337,7 @@ fun VerifiedAddScreen(
                 item {
                     Button(
                         onClick = { awaitingConfirmation = true },
-                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
                         enabled = !submitting
                     ) { Text("Review Add") }
                 }
@@ -465,14 +443,14 @@ fun VerifiedAddScreen(
                             }
                         },
                         enabled = !submitting,
-                        modifier = Modifier.fillMaxWidth().height(56.dp)
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
                     ) { Text(if (startAfterAdd) "Confirm: add then start" else "Confirm: add stopped") }
                 }
                 item {
                     OutlinedButton(
                         onClick = { awaitingConfirmation = false },
                         enabled = !submitting,
-                        modifier = Modifier.fillMaxWidth().height(52.dp)
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
                     ) { Text("Cancel, don't add") }
                 }
             }
@@ -520,7 +498,7 @@ fun VerifiedAddScreen(
                         }
                     },
                     enabled = !submitting && !rechecking,
-                    modifier = Modifier.fillMaxWidth().height(54.dp)
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp)
                 ) {
                     Text(if (rechecking) "Checking server…" else "Check server state (read only)")
                 }
@@ -528,7 +506,7 @@ fun VerifiedAddScreen(
         }
         item {
             OutlinedButton(onClick = onBack, enabled = !submitting,
-                modifier = Modifier.fillMaxWidth().height(54.dp)) {
+                modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp)) {
                 Text("Back to transfers")
             }
         }
@@ -540,3 +518,58 @@ internal fun trackerlessWarning(isFile: Boolean): String =
     (if (isFile) "This .torrent lists no tracker. " else "This magnet link lists no tracker. ") +
         "Some servers, including the tested Seedhost, silently discard tracker-less torrents, so it may not " +
         "appear after Add. Chunks will then report it as unconfirmed, not added, and will not retry."
+
+
+/**
+ * Optional Add shortcuts must be discoverable on narrow phones and at 200%
+ * font size without a horizontal-only gesture. Choosing a shortcut changes
+ * only this Add draft, never the remote default or a file already on disk.
+ */
+@Composable
+internal fun RecentRemotePlaces(
+    paths: List<String>,
+    enabled: Boolean,
+    onChoose: (String) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Recent save folders", fontWeight = FontWeight.Bold)
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            paths.forEach { parent ->
+                OutlinedButton(
+                    onClick = { onChoose(parent) },
+                    enabled = enabled,
+                    modifier = Modifier.heightIn(min = 48.dp)
+                        .semantics { contentDescription = "Use recent server folder: $parent" }
+                ) {
+                    Text(parent, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.widthIn(max = 255.dp))
+                }
+            }
+        }
+        Text("These folders may have changed on the server. Chunks checks the " +
+            "chosen folder again before reporting Add as verified.",
+            style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+
+/** Scope stays visible before someone chooses a magnet, file or destination. */
+@Composable
+internal fun RemoteAddScopeIntro(environmentLabel: String?, aliasScope: String?) {
+    Text("Add a download to this server", style = MaterialTheme.typography.titleLarge,
+        fontWeight = FontWeight.Black)
+    environmentLabel?.let { label ->
+        EnvironmentBadge("Adding to: $label", server = true,
+            environment = aliasScope?.let {
+                io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverIdOfAliasScope(it)
+            })
+    }
+    Text("This server downloads to its own save folder. Nothing is copied to " +
+        "this phone by Add. Paste a magnet or choose a .torrent; the server's " +
+        "default folder is used unless you change it. Review before starting.",
+        style = MaterialTheme.typography.bodyMedium)
+}

@@ -72,6 +72,7 @@ class UnifiedTransferDetailPanelTest {
         rule.onNodeWithText("Transfer details").assertExists()
         rule.onNodeWithText("Environment: Server two / rutorrent2").assertExists()
         rule.onNodeWithText("Accessible selected transfer").assertExists()
+        rule.onNodeWithText("Needs attention: an error was reported.").assertExists()
         rule.onNodeWithText("Start state set; peer activity has not been verified.").assertExists()
         rule.onNodeWithText("Progress: 55.5%").assertExists()
         rule.onNodeWithText("Download rate: not reported").assertExists()
@@ -98,6 +99,7 @@ class UnifiedTransferDetailPanelTest {
             }
         }
         rule.onNodeWithText("Accessible selected transfer").assertExists()
+        rule.onNodeWithText("Last known: Needs attention: an error was reported.").assertExists()
         rule.onNodeWithText("Observation:", substring = true).assertExists()
         rule.onNodeWithText("Last-known transfer facts only.", substring = true).performScrollTo().assertExists()
         rule.onNodeWithText("Start and stop:", substring = true).performScrollTo().assertExists()
@@ -141,4 +143,20 @@ class UnifiedTransferDetailPanelTest {
         rule.onNodeWithText("Environment: Locked server").assertExists()
         rule.onRoot().captureRoboImage("build/chunks-visual/details-locked-320x700.png")
     }
+
+    @Test fun completedStoppedDownloadRemainsIdentifiableWithoutClaimingPeerProof() {
+        val completed = UnifiedTransferObservation(
+            key = key, displayName = "Finished archive", originalName = "Finished archive",
+            sizeBytes = 1024, progressPpm = 1_000_000, started = false,
+            downloadBytesPerSecond = 0, uploadBytesPerSecond = 0, peers = null
+        )
+        assertEquals("Download complete; stopped in the last report.", transferAtAGlance(completed))
+        assertEquals("Stopped in the last report.",
+            transferAtAGlance(completed.copy(progressPpm = 900_000)))
+        assertEquals("Needs attention: an error was reported.",
+            transferAtAGlance(completed.copy(hasError = true)))
+        assertEquals("Download complete; sharing activity not confirmed.",
+            transferAtAGlance(completed.copy(started = true)))
+    }
+
 }
