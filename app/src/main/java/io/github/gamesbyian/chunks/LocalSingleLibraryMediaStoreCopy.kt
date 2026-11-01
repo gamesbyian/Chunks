@@ -99,6 +99,33 @@ internal object LocalSingleLibraryMediaStoreCopy {
         }
     }
 
+    /**
+     * Open only a regular read-only source without waiting on a substituted
+     * FIFO. The earlier pathname survey is point-in-time; an attacker can
+     * swap a regular file for a FIFO between the survey and this open.
+     * O_NOFOLLOW rejects a leaf symlink, O_NONBLOCK prevents FIFO-open hangs,
+     * and fstat refuses every non-regular descriptor before any reads.
+     *
+     * Caller must close the returned pinned descriptor and independently
+     * verify expected source inode, size and digest. This does not confer
+     * provider write/delete authority or solve arbitrary parent-path races.
+     */
+    internal fun openPinnedRegularSource(file: File): java.io.FileDescriptor {
+        val flags = android.system.OsConstants.O_RDONLY or
+            android.system.OsConstants.O_CLOEXEC or
+            android.system.OsConstants.O_NOFOLLOW or
+            android.system.OsConstants.O_NONBLOCK
+        val fd = android.system.Os.open(file.absolutePath, flags, 0)
+        try {
+            if (!android.system.OsConstants.S_ISREG(android.system.Os.fstat(fd).st_mode))
+                throw IOException("Library source is not a regular file")
+            return fd
+        } catch (failure: Exception) {
+            android.system.Os.close(fd)
+            throw failure
+        }
+    }
+
     private fun readAndRecheck(
         sourceRoot: File,
         file: File,
@@ -116,9 +143,7 @@ internal object LocalSingleLibraryMediaStoreCopy {
         // Pin ONE original file descriptor through both independent reads.
         // Reopening the path for a second pass could read a substituted file
         // whose name was the same but whose inode was unrelated.
-        val fd = android.system.Os.open(file.absolutePath,
-            android.system.OsConstants.O_RDONLY or android.system.OsConstants.O_CLOEXEC or
-                android.system.OsConstants.O_NOFOLLOW, 0)
+        val fd = openPinnedRegularSource(file)
         try {
             val before = android.system.Os.fstat(fd)
             val namedBefore = android.system.Os.lstat(file.absolutePath)
