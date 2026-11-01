@@ -1,5 +1,12 @@
 # Chunks specification coverage and acceptance map
 
+## Current 0D unified navigation qualification (2026-11-01)
+
+**MERGED #975 + #986:** precise Combined-header phone/server Back and phone-screen Back-to-Combined, connected-session full existing phone adapter, phone-only absence of phantom saved-server Add guidance. Source heads `1aed53c5` and `907eac1f`, merges `a7bdacaf` and `6f03702e`, each passed exact-head foundation, installed API35 native Add, installed visual atlas and R8. [Evidence ledger](QUALITY-LEDGER.md#2026-11-01-0d-final-head-navigation-regressions-and-compose-teardown-receipt). Transient navigation origin is saveable without persisting mutation/session authority; restored old remote sessions are not authenticated by Back. **MERGED test-only #981:** API35 private-torrent refusal wait-for-completion passed, while intermittent Compose thread-affinity issue #901 remains open.
+
+**NOT YET ACCEPTED:** exact real 2+ remote-and-phone multienvironment Add/list/Stop/Start/Remove and peer-byte proofs; origin-colored scopes/settings/default Places across process death; actual installed 320×700 and 412×892 at 200% font, keyboard/TalkBack and reduced motion; physical/OEM and uncoached novice 40-second teach-back. Keep #567, #8, #779, #9/#10 open. Do not confuse hosted suite/loopback synthetic transfer status with actual protected Seedhost per-hash data, local payload durability or physical accessibility.
+
+
 ## 2026-11-01 0F installed API29 grant, intake and protected-host acceptance boundaries
 
 **Integrated device-controller acceptance:** [#977](https://github.com/gamesbyian/Chunks/pull/977) (merged `261fb9e`) and [#985](https://github.com/gamesbyian/Chunks/pull/985) (merged `d82f405`) pin complete verified emulator ADB identities and refuse fake Android terminal success receipts. API29 [41349112650](https://github.com/gamesbyian/Chunks/actions/runs/41349112650) proves native stopped grant/persisted exact bytes, permission revoke and blocked Start, regrant/recheck/seed and Remove keeping files, plus cold Share/magnet 524288-byte actual peer transfers on disposable emulator; final terminal instrumentation receipts required at every non-crash phase. API35 [41348768284](https://github.com/gamesbyian/Chunks/actions/runs/41348768284) proves separate real phone intake fixture, FGS/reboot tiers. None confer physical OEM/SD/cloud/power-loss acceptance.
