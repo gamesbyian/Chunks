@@ -57,7 +57,10 @@ class RemoteMutationRpcFaultTest {
                         if (existingForErase) torrentRow() + "</data></array>"
                         else "</data></array>")
                     "d.hash" -> value("<string>$hash</string>")
-                    "d.name" -> rpcFault(-501, "Could not find info-hash.")
+                    "d.name" -> if (existingForErase) value("<string>$name</string>")
+                        else rpcFault(-501, "Could not find info-hash.")
+                    "d.directory" -> if (existingForErase) value("<string>$destination</string>")
+                        else rpcFault(-501, "Could not find info-hash.")
                     "load.verbose", "load.raw_verbose", "d.erase" -> {
                         writeApplied = true
                         rpcFault(-503, "Backend reported fault after submitting write")
@@ -105,7 +108,7 @@ class RemoteMutationRpcFaultTest {
             assertEquals(SessionEraseOutcome.Uncertain(hash),
                 remote.eraseFromSession(hash, name, destination))
             assertTrue(gateway.writeApplied)
-            assertEquals(listOf("d.multicall2", "d.hash", "d.erase"), gateway.calls)
+            assertEquals(listOf("d.multicall2", "d.hash", "d.name", "d.directory", "d.hash", "d.erase"), gateway.calls)
         }
     }
 }

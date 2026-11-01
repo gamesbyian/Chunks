@@ -696,7 +696,17 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             matching.single().directory == expectedDirectory) {
             "Torrent name or location changed; refresh before removal"
         }
-        // Guard again outside the view before the irreversible session write.
+        // The main-view snapshot is not a lock. A second client can rename or
+        // relocate the selected job while this confirmation is in progress.
+        // Re-read exact-session identity and location immediately before erase,
+        // refusing stale consent instead of relying on the unchanged hash alone.
+        // These reads narrow the race; rTorrent exposes no atomic compare/erase.
+        check(sessionContainsExactHash(hash)) { "Torrent disappeared before removal; refresh" }
+        val latestName = lookupName(hash)
+        val latestDirectory = call("d.directory", listOf(hash)) as? String
+        check(latestName == expectedName && latestDirectory == expectedDirectory) {
+            "Torrent name or location changed; refresh before removal"
+        }
         check(sessionContainsExactHash(hash)) { "Torrent disappeared before removal; refresh" }
         try {
             call("d.erase", listOf(hash))
