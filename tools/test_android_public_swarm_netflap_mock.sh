@@ -31,7 +31,7 @@ case "$*" in
     printf 'data-off\n' >> "$MOCK_DIR/commands" ;;
   'logcat -c') : ;;
   'logcat -d -s ChunksSwarm:I')
-    if [[ "${MOCK_NET_LOGCAT_FAIL:-0}" == 1 ]]; then exit 19; fi
+    if [[ -e "$MOCK_DIR/net-on" && "${MOCK_NET_LOGCAT_FAIL:-0}" == 1 ]]; then exit 19; fi
     printf '10-31 12:00:00 I/ChunksSwarm: CHUNKS_SWARM_NETFLAP: ready verified=4194304\n'
     if [[ -e "$MOCK_DIR/net-on" ]]; then
       [[ "${MOCK_NET_NO_WITNESS:-0}" == 1 ]] ||
