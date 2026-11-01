@@ -23,10 +23,10 @@ on:
       - '.github/workflows/chunks-reference-punctuation.yml'
   workflow_dispatch:
 permissions:
-  contents: write
+  contents: read
 concurrency:
   group: chunks-punctuation-${{ github.event_name }}-${{ github.head_ref || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   trace-source-glyphs:
     runs-on: ubuntu-latest
@@ -34,7 +34,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          persist-credentials: true
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -54,20 +54,3 @@ jobs:
             assets/fonts/source/reference-punctuation/*
             reference-punctuation-atlas.png
           retention-days: 30
-      - name: Commit source-derived SVGs on feature branch only
-        if: github.event_name == 'push' && github.ref != 'refs/heads/main'
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add assets/fonts/source/reference-punctuation
-          if ! git diff --cached --quiet; then
-            git commit -m 'build(fonts): retain all 28 source-derived punctuation SVGs'
-            branch="${GITHUB_REF#refs/heads/}"
-            for attempt in 1 2 3; do
-              git fetch origin "$branch"
-              git rebase "origin/$branch"
-              if git push origin "HEAD:$branch"; then exit 0; fi
-            done
-            echo 'Unable to reconcile generated SVG artifact commit' >&2
-            exit 1
-          fi

@@ -30,10 +30,10 @@ on:
       - 'docs/design/CHUNKS-REFERENCE-STACKED-ACCENTS.md'
   workflow_dispatch:
 permissions:
-  contents: write
+  contents: read
 concurrency:
   group: chunks-font-stacked-${{ github.event_name }}-${{ github.head_ref || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   build-five-stacked-prototypes:
     runs-on: ubuntu-latest
@@ -41,7 +41,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          persist-credentials: true
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -68,20 +68,3 @@ jobs:
             reference-stacked-grid-metrics.json
             assets/fonts/source/OFL.txt
           retention-days: 30
-      - name: Commit deterministic prototypes only to the source branch
-        if: github.event_name == 'push' && github.ref != 'refs/heads/main'
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add assets/fonts/experimental/stacked-studies
-          if ! git diff --cached --quiet; then
-            git commit -m 'build(font): retain reversible five stacked accent studies'
-            branch="${GITHUB_REF#refs/heads/}"
-            for attempt in 1 2 3; do
-              git fetch origin "$branch"
-              git rebase "origin/$branch"
-              if git push origin "HEAD:$branch"; then exit 0; fi
-            done
-            echo 'Failed to rebase and push reproducible stacked font artifacts' >&2
-            exit 1
-          fi

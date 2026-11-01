@@ -10,6 +10,19 @@ on:
       - 'AGENTS.md'
       - 'assets/fonts/README.md'
       - 'tools/check_docs.py'
+      - 'tests/test_ci_font_permissions.py'
+      - '.github/workflows/chunks-font-family.yml'
+      - '.github/workflows/chunks-reference-alphabet.yml'
+      - '.github/workflows/chunks-reference-panel-font.yml'
+      - '.github/workflows/chunks-reference-punctuation.yml'
+      - '.github/workflows/reference-layered-latin-coverage.yml'
+      - '.github/workflows/reference-mixed-mark-studies.yml'
+      - '.github/workflows/reference-panel-accent-kerned.yml'
+      - '.github/workflows/reference-panel-accent-studies.yml'
+      - '.github/workflows/reference-panel-consolidated.yml'
+      - '.github/workflows/reference-panel-dotless-kerned.yml'
+      - '.github/workflows/reference-panel-stacked-studies.yml'
+      - '.github/workflows/reference-panel-weight-studies.yml'
       - 'tools/ci_workflow_inventory.py'
       - 'tests/test_ci_workflow_inventory.py'
       - 'tools/ci_jvm_two_forks.init.gradle'
@@ -60,6 +73,19 @@ on:
       - 'AGENTS.md'
       - 'assets/fonts/README.md'
       - 'tools/check_docs.py'
+      - 'tests/test_ci_font_permissions.py'
+      - '.github/workflows/chunks-font-family.yml'
+      - '.github/workflows/chunks-reference-alphabet.yml'
+      - '.github/workflows/chunks-reference-panel-font.yml'
+      - '.github/workflows/chunks-reference-punctuation.yml'
+      - '.github/workflows/reference-layered-latin-coverage.yml'
+      - '.github/workflows/reference-mixed-mark-studies.yml'
+      - '.github/workflows/reference-panel-accent-kerned.yml'
+      - '.github/workflows/reference-panel-accent-studies.yml'
+      - '.github/workflows/reference-panel-consolidated.yml'
+      - '.github/workflows/reference-panel-dotless-kerned.yml'
+      - '.github/workflows/reference-panel-stacked-studies.yml'
+      - '.github/workflows/reference-panel-weight-studies.yml'
       - 'tools/ci_workflow_inventory.py'
       - 'tests/test_ci_workflow_inventory.py'
       - 'tools/ci_jvm_two_forks.init.gradle'
@@ -136,6 +162,8 @@ jobs:
           path: ${{ runner.temp }}/chunks-workflow-inventory.json
           retention-days: 7
           if-no-files-found: warn
+      - name: Refuse writable tokens in font verification and unreachable publish steps
+        run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_font_permissions.py
       - name: Validate native atlas names offline (no Android)
         run: |
           python3 tools/check_native_atlas_contract.py

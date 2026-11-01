@@ -20,13 +20,19 @@ on:
       - '.github/workflows/chunks-reference-alphabet.yml'
   workflow_dispatch:
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: chunks-font-chunks-reference-alphabet-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   trace-reference-glyphs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -65,16 +71,6 @@ jobs:
             assets/fonts/source/reference-alphabet/**
             chunks-reference-alphabet-atlas.png
           retention-days: 30
-      - name: Commit regenerated masters on feature branch
-        if: github.event_name == 'push' && github.ref != 'refs/heads/main'
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add assets/fonts/source/reference-alphabet
-          if ! git diff --cached --quiet; then
-            git commit -m 'build(fonts): regenerate all 62 source-traced glyph SVGs'
-            git push
-          fi
       - name: Guard checked-in master drift on main
         if: github.ref == 'refs/heads/main'
         run: git diff --exit-code -- assets/fonts/source/reference-alphabet

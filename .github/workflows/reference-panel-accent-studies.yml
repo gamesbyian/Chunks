@@ -23,10 +23,10 @@ on:
       - '.github/workflows/reference-panel-accent-studies.yml'
   workflow_dispatch:
 permissions:
-  contents: write
+  contents: read
 concurrency:
   group: chunks-accent-study-${{ github.event_name }}-${{ github.head_ref || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   five-accent-studies:
     runs-on: ubuntu-latest
@@ -34,7 +34,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          persist-credentials: true
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -55,13 +55,3 @@ jobs:
             reference-accent-five-weights.png
             assets/fonts/source/OFL.txt
           retention-days: 30
-      - name: Check in reproducible experimental fonts on source branches only
-        if: github.event_name == 'push' && github.ref != 'refs/heads/main'
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add assets/fonts/experimental/accent-studies
-          if ! git diff --cached --quiet; then
-            git commit -m 'build(fonts): generate five separate accent prototype OTFs'
-            git push
-          fi
