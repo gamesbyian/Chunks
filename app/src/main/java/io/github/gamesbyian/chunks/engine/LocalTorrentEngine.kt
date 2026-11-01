@@ -299,7 +299,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
      * exercise the exact production probe against disposable FIFO/link paths.
      */
     internal fun canReadExistingPayload(root: File, relative: String): Boolean {
-        if (relative.isBlank() || relative.startsWith('/') || relative.contains('\\\\')) return false
+        if (relative.isBlank() || relative.startsWith('/') || relative.contains('\\')) return false
         val parts = relative.split('/')
         if (parts.any { it.isEmpty() || it == "." || it == ".." }) return false
         return try {
