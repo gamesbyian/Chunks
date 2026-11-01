@@ -42,15 +42,18 @@ case "$1" in
           userApprovedSingleMemberCreatesDistinctVerifiedDownloadAndKeepsBothSources \
           traversalNestedMultiMemberAndPreCancelledNeverPublishOrTouchCanary \
           seedingSingleFileCopiesThroughUiWhileOriginalAndExistingCanaryStayUntouched \
-          pathnameSwapDuringPinnedLibraryReadRefusesBeforeDestinationCreation; do
+          pathnameSwapDuringPinnedLibraryReadRefusesBeforeDestinationCreation \
+          pinnedLibraryReadRefusesSwappedFifoPromptlyAndLeavesForeignBytesUntouched; do
           [[ "${MOCK_MISSING_CASE:-0}" != 1 || "$name" != pathnameSwapDuringPinnedLibraryReadRefusesBeforeDestinationCreation ]] || continue
+          [[ "${MOCK_MISSING_FIFO:-0}" != 1 || "$name" != pinnedLibraryReadRefusesSwappedFifoPromptlyAndLeavesForeignBytesUntouched ]] || continue
           # Mimic Android start/completion status records for ONE executed test.
           echo "INSTRUMENTATION_STATUS: test=$name"
           echo "INSTRUMENTATION_STATUS: test=$name"
           [[ "${MOCK_DUPLICATE_CASE:-0}" != 1 || "$name" != pathnameSwapDuringPinnedLibraryReadRefusesBeforeDestinationCreation ]] || echo "INSTRUMENTATION_STATUS: test=$name"
+          [[ "${MOCK_DUPLICATE_FIFO:-0}" != 1 || "$name" != pinnedLibraryReadRefusesSwappedFifoPromptlyAndLeavesForeignBytesUntouched ]] || echo "INSTRUMENTATION_STATUS: test=$name"
         done
-        echo 'OK (10 tests)'
-        [[ "${MOCK_DUPLICATE_OK:-0}" != 1 ]] || echo 'OK (10 tests)'
+        echo 'OK (11 tests)'
+        [[ "${MOCK_DUPLICATE_OK:-0}" != 1 ]] || echo 'OK (11 tests)'
         [[ "${MOCK_SKIP:-0}" != 1 ]] || echo 'INSTRUMENTATION_STATUS_CODE: -3'
         [[ "${MOCK_TEST_FAILURE:-0}" != 1 ]] || echo 'FAILURES!!!'
         [[ "${MOCK_MISSING_FINAL:-0}" == 1 ]] || echo 'INSTRUMENTATION_CODE: -1'
@@ -94,7 +97,7 @@ done
 reset; bad env ANDROID_SERIAL=unknown
 [[ ! -s "$MOCK_EVENTS" ]]
 reset; good
-for item in MOCK_INSTALL_FAIL MOCK_INSTRUMENT_FAIL MOCK_MISSING_CASE MOCK_DUPLICATE_CASE MOCK_DUPLICATE_OK MOCK_SKIP MOCK_TEST_FAILURE MOCK_MISSING_FINAL; do
+for item in MOCK_INSTALL_FAIL MOCK_INSTRUMENT_FAIL MOCK_MISSING_CASE MOCK_DUPLICATE_CASE MOCK_MISSING_FIFO MOCK_DUPLICATE_FIFO MOCK_DUPLICATE_OK MOCK_SKIP MOCK_TEST_FAILURE MOCK_MISSING_FINAL; do
   reset; bad env "$item=1"
 done
 echo 'CHUNKS_OWNED_DOCS_MOCK: unique physical target, negative receipts and positive emulator acceptance checked'
