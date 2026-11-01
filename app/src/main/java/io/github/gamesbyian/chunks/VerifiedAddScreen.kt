@@ -428,7 +428,12 @@ fun VerifiedAddScreen(
                                     orderNote?.let { outcome = outcome.orEmpty() + " " + it }
                                     if (!plan.useServerDefault &&
                                         (result is RemoteAddAndStart.Started ||
-                                         result is RemoteAddAndStart.StartNotVerified ||
+                                         // Stopped-first Finish-in-Order always verified
+                                         // exact hash+Place before issuing Start. Native
+                                         // start-on-load does NOT establish a verified
+                                         // destination when its result is uncertain.
+                                         (result is RemoteAddAndStart.StartNotVerified &&
+                                          orderScope != null) ||
                                          (result is RemoteAddAndStart.AddedStopped &&
                                           result.result is RemoteAddOutcome.VerifiedStopped))) {
                                         val saved = runCatching {
