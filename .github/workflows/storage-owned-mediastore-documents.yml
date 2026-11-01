@@ -6,6 +6,8 @@ on:
       - "app/src/main/java/io/github/gamesbyian/chunks/LocalSingleLibraryMediaStoreCopy.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/LocalLibraryCopy.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalSingleLibraryMediaStoreCopyInstrumentedTest.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/LocalMultiZipMediaStoreExport.kt"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalMultiZipMediaStoreExportInstrumentedTest.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/LocalSingleZipMediaStoreExport.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/LocalZipExtractionPanel.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalSingleZipMediaStoreExportInstrumentedTest.kt"
