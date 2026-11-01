@@ -1,5 +1,22 @@
 # Chunks evidence and release gate ledger
 
+## 2026-11-01 opt-in network-flap acceptance precondition (0B #5/#569)
+
+[PR #925](https://github.com/gamesbyian/Chunks/pull/925) merged on main
+as `159944a6467c79bd895f1cb7254c250687d77434` from exact
+candidate head `421633900e1863d4cbfdfb71a4fb822ed5c4ffeb`.
+The scoped [radio harness run 41275984335](https://github.com/gamesbyian/Chunks/actions/runs/41275984335)
+finished **SUCCESS** (job `124758137880`), including fake-adb
+negative controls for zero-exit `svc` requests that fail to disable Wi-Fi or
+mobile data. Before creating the test's `net-off` signal, the shell now
+requires bounded readback of **both** disabled radio settings; a failed,
+unknown or unchanged state refuses the test and its exit trap restores the
+original settings. The separate installed `DefaultNetworkValidationWitness`
+still requires actual loss and return of the app's validated Internet
+connection and subsequent real peer-byte growth. This was **offline
+harness** acceptance only: no real network flap, Doze, physical handset,
+VPN handover or public-swarm transfer was executed by #925.
+
 ## 2026-11-01 protected Android read-only reacceptance after challenged login
 
 [Protected installed Android read-only run 41273818693](https://github.com/gamesbyian/Chunks/actions/runs/41273818693)
