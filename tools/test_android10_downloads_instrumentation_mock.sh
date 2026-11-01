@@ -56,7 +56,7 @@ case "$1" in
             ;;
           *LocalResumeEventStoreInstrumentedTest*)
             [[ "$MOCK_EVENT_SKIP" != 1 ]] || echo 'INSTRUMENTATION_STATUS_CODE: -3'
-            printf 'OK (10 tests)\n'
+            printf 'OK (11 tests)\n'
             ;;
           *) exit 1 ;;
         esac

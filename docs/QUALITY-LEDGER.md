@@ -35,6 +35,86 @@ and ambiguous target/installation. No shipping engine or test fixture peer
 transport was changed. Explicit manual public-swarm dispatch and physical
 handset/Doze/VPN evidence are still open, never inferred from a green mock.
 
+## 2026-11-01 Android SQLite cross-writer retirement regression integrated (0A #865)
+
+[PR #934](https://github.com/gamesbyian/Chunks/pull/934) merged
+`0091b278015ee3bd77e2b1cea8b92db9ceccceac` from exact candidate
+`9095c4beb04822b8addd9003074162afafae9bf0`.
+[API29 installed 41277678727](https://github.com/gamesbyian/Chunks/actions/runs/41277678727)
+**SUCCESS**, raw job `124763054650`: the new concurrency test actually
+executed and completed with a positive JUnit status, and the real shell
+requires **11** resume tests after the new method (mock receipt updated).
+[API35 native Add 41277678745](https://github.com/gamesbyian/Chunks/actions/runs/41277678745)
+**SUCCESS**, raw job `124763071849`: full connected Android instrumentation
+ran **314 tests, 295 executed, 19 deliberately skipped, zero failed**. Its
+normal `connectedDebugAndroidTest` class selection includes the added
+non-opt-in SQLite test. Both are disposable emulators, never a physical
+device.
+
+The existing *production* `LocalResumeStore.open` is used with two
+simultaneously open SQLite connections. A saves one snapshot; B checks it,
+commits `REMOVE_INTENT` and `REMOVED`, then explicitly saves a distinct
+same-infohash re-Add generation. A late, even byte-identical callback
+to A must fail, invalidate A's cached state, and a fresh C connection must
+restore only B's replacement. Both production opens affirm the Android
+SQLite `PRAGMA synchronous=EXTRA` policy. No shipping SQLite or JNI code
+was changed; the test extends the already merged #889 integrity contract.
+Real sudden power loss, physical/OEM flash durability and unsupported storage
+providers remain separate open #865/#5 requirements.
+
+## 2026-11-01 local native restored-payload grant refusal integrated (0B #5/#569)
+
+[PR #914](https://github.com/gamesbyian/Chunks/pull/914) **merged** as
+`788ecd18f26ccf38a1ca94b57a8a0ea57b530d6a`. Exact source head
+`bd41fe28c0ce55b72b1904084a13a953ebd079da` passed seven workflows:
+[API29 installed 41277282694](https://github.com/gamesbyian/Chunks/actions/runs/41277282694),
+[Android foundation 41277282836](https://github.com/gamesbyian/Chunks/actions/runs/41277282836),
+[API35 native Add 41277282612](https://github.com/gamesbyian/Chunks/actions/runs/41277282612),
+[API35 lifecycle 41277282685](https://github.com/gamesbyian/Chunks/actions/runs/41277282685),
+[R8 41277282595](https://github.com/gamesbyian/Chunks/actions/runs/41277282595),
+[disposable rTorrent 41277282535](https://github.com/gamesbyian/Chunks/actions/runs/41277282535)
+and [docs 41277282544](https://github.com/gamesbyian/Chunks/actions/runs/41277282544).
+Independent source review checked the prior base against newer main for overlap:
+none of PR #914's five changed files conflicted with intervening source.
+
+The earlier actual API29 result showed that after revoking READ/WRITE external
+storage, a selected restored public Downloads payload was **unreadable** while
+native Start still returned `VERIFIED` from the paused flag alone. The merged
+fix checks up to 20 already-existing surveyed payloads with read-only
+`O_NONBLOCK|O_NOFOLLOW` descriptor opens, `fstat` regular-file validation
+and one-byte read before restored/checked Start. Actual denial refuses
+without changing files; still-readable owned public Downloads can recheck and
+seed. The three **different emulator processes** verify original stopped
+seeding, grant revoke and denied FD → `REFUSED` with the job still stopped,
+FIFO/leaf-/parent-symlink negatives, grant re-enable, genuine native SEEDING
+and session-only Remove preserving payload SHA. Raw API29 job log
+`124761919928` includes the three phase markers and final accepted receipt.
+
+These are exact-head **disposable-emulator** results, not physical/OEM,
+removable SD/SAF, low-space/ENOSPC, arbitrary uninspected files, genuine
+power-cut, VPN/network switch or long-running Doze. The point-in-time FD
+preflight is not a race-free universal path permission proof. Issues #5 and
+#569 remain open for those concrete tiers; superseded #568 remains closed.
+
+## 2026-11-01 public-peer native positive receipt verification (0B #5/#569; 0F #9)
+
+[PR #935](https://github.com/gamesbyian/Chunks/pull/935) merged as
+`415b12555d7388075c5aad479f18996fd059c84e`, after the exact
+candidate head `c3b014d0a67d0b5f82e33dab4937f666d4250f2e` passed
+[radio-harness safety run 41277491099](https://github.com/gamesbyian/Chunks/actions/runs/41277491099).
+This is an **offline fake-adb/harness** success, not an installed real Internet
+peer transfer. The manual public-swarm runner now accepts only one fully
+executed `OK (1 test)`, a successful app logcat read with one complete
+`CHUNKS_ANDROID_SWARM: VERIFIED` receipt containing the exact v1 torrent
+hash and numeric verified/target byte counts, no contradictory
+`INCONCLUSIVE`, and positive verified bytes meeting the bounded requested
+budget. Previously a prefix `OK` and ignored negative status could pass
+without any native receipt. Negative controls reject missing/duplicate/short
+native receipts, failed logcat, skipped/failing/duplicate/prefix-only tests
+and ambiguous target/installation. No shipping engine or test fixture peer
+transport was changed. Explicit manual public-swarm dispatch and physical
+handset/Doze/VPN evidence are still open, never inferred from a green mock.
+
 ## 2026-11-01 independent ZIP/library publication and two-process recovery readback (0E #809, 0F #9)
 
 **Source and evidence boundary:** independent review from main `8d12a22aada6` of draft [#895](https://github.com/gamesbyian/Chunks/pull/895), [#917](https://github.com/gamesbyian/Chunks/pull/917), [#922](https://github.com/gamesbyian/Chunks/pull/922) and [#923](https://github.com/gamesbyian/Chunks/pull/923); **none was merged or installed from main by this audit**. The raw GitHub Actions job logs, rather than just PR summaries, establish these bounded Android emulator tiers:
