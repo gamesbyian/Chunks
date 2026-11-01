@@ -37,6 +37,38 @@ A controlled locally seeded real swarm is preferable to a flaky public swarm for
 7. When results contradict the shipping experience, prioritize real observations and investigate **why the former test passed**; add a regression that fails on the earlier code and passes on the correction, retaining realistic peer/metadata acceptance. Never weaken assertions to manufacture green.
 8. Protect basic Add/Start/Stop/download/seed/list and storage journeys from unrelated feature expansion until accepted. New advanced features may proceed on separate lanes when they do not delay core completion.
 
+
+## Android-to-real-Seedhost Add release gate (P0, pending, 2026-11-01)
+
+[PR #1001](https://github.com/gamesbyian/Chunks/pull/1001) adds an **unaccepted until executed** trusted-main manual workflow
+`.github/workflows/seedhost-android-real-transfer-add-once.yml`. It compiles a
+single APK, installs that exact binary on API35 and runs the real production
+`VerifiedAddScreen` with two different official Ubuntu BitTorrent sources
+against the authenticated approved development Seedhost. One is submitted as
+actual v1 `.torrent` metainfo; the other uses only a magnet with a real
+tracker and must fetch metadata from peers. Both must show the independently
+read exact hash, expected metainfo/name/size, correct observed Place, started
+state, **positive received peer bytes and positive piece-verified bytes**.
+Exact Stop and session-only Erase retain payload and verify unrelated inventory.
+
+An active bit, fake tracker, UI confirmation or mock success cannot pass. The
+workflow emits its APK + source-SHA evidence **only if both tests pass**, and
+keeps failure/inconclusive results red. It is manual-only, protected by an
+explicit `apply=true` on trusted `main`, first-attempt-only and has the
+same host mutation concurrency group as existing Seedhost Android acceptance.
+The tests use the **production Add Compose screen directly**, not full
+MainActivity Connect navigation, which remains a separate acceptance tier.
+Public peer availability is not guaranteed, so an unavailable swarm means
+**not accepted**, not proof of a product defect. A controlled-seeder
+installed-app case is a desirable further improvement.
+
+Until an exact-SHA successful protected workflow receipt exists, **do not
+label any APK as rTorrent Add-qualified**. The existing synthetic installed
+MainActivity test and JVM real-byte test do not satisfy this release gate
+separately. The owner's physical device is still final OEM acceptance;
+it is not the primary engine-start discovery tool. No automatic dispatch
+or protected secret access from untrusted pull requests.
+
 ## Current concrete baseline and open acceptance (2026-11-01)
 
 - [#973](https://github.com/gamesbyian/Chunks/pull/973) corrected Chunks' regular remote load to rTorrent native start-on-load after a physical user reported Chunks-created .torrent/magnet jobs locked paused while ruTorrent and Transdroid Adds worked.
