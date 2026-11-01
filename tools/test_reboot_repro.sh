@@ -71,11 +71,15 @@ case "${1:-}" in
             skip) printf 'OK (1 test)\nINSTRUMENTATION_STATUS_CODE: -3\n' ;;
             fail) printf 'OK (1 test)\nINSTRUMENTATION_STATUS_CODE: -1\n' ;;
             duplicate) printf 'OK (1 test)\nOK (1 test)\n' ;;
-            command_failure) printf 'OK (1 test)\n'; exit 25 ;;
+            command_failure) printf 'OK (1 test)\nINSTRUMENTATION_CODE: -1\n'; exit 25 ;;
+            terminal_missing) printf 'OK (1 test)\n' ;;
+            terminal_failed) printf 'OK (1 test)\nINSTRUMENTATION_CODE: 0\n' ;;
+            terminal_duplicate) printf 'OK (1 test)\nINSTRUMENTATION_CODE: -1\nINSTRUMENTATION_CODE: -1\n' ;;
+            terminal_mixed) printf 'OK (1 test)\nINSTRUMENTATION_CODE: -1\nINSTRUMENTATION_CODE: 0\n' ;;
             *) echo 'Missing mock bad kind' >&2; exit 30 ;;
           esac
         else
-          printf 'OK (1 test)\n'
+          printf 'OK (1 test)\nINSTRUMENTATION_CODE: -1\n'
         fi
         ;;
       *) exit 1 ;;
@@ -151,7 +155,8 @@ grep -q 'no valid original kernel boot ID' "$temp/invalid.log"
 # instrumentation stream or alongside a skip/failure status. Refuse both
 # phases independently. Phase A failures must never reach the reboot call.
 for phase in a b; do
-  for kind in false_ok skip fail duplicate command_failure; do
+  for kind in false_ok skip fail duplicate command_failure \
+    terminal_missing terminal_failed terminal_duplicate terminal_mixed; do
     rm -f "$MOCK_REBOOT_FLAG" "$MOCK_PHASE_B_FLAG"
     if MOCK_BAD_PHASE="$phase" MOCK_BAD_KIND="$kind" bash "$repo/tools/reboot_repro.sh" >"$temp/$phase-$kind.log" 2>&1; then
       echo "False reboot acceptance for phase=$phase kind=$kind" >&2; exit 1
@@ -168,4 +173,4 @@ for phase in a b; do
   done
 done
 
-echo "CHUNKS_REBOOT_WITNESS_TEST: fail-closed exact device selection, physical opt-in, authentic reboot, no-reboot/invalid-ID, and ten false instrumentation receipts correctly rejected"
+echo "CHUNKS_REBOOT_WITNESS_TEST: fail-closed exact device selection, physical opt-in, authentic reboot, no-reboot/invalid-ID, and eighteen false instrumentation receipts correctly rejected"
