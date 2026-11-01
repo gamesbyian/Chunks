@@ -70,7 +70,7 @@ internal object LocalSingleLibraryMediaStoreCopy {
             refreshed.state !in setOf(LocalTransferState.FINISHED, LocalTransferState.SEEDING))
             return blocked("The transfer changed before the copy.")
         val checked = try { LocalLibraryCopySource.of(engine, refreshed) } catch (_: Exception) { null }
-        if (checked?.files?.size != 1 ||
+        if (checked == null || checked.files.size != 1 ||
             checked.files.single().outputPath != relative ||
             checked.files.single().sizeBytes != file.sizeBytes ||
             checked.files.single().source != file.source)
