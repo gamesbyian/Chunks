@@ -33,6 +33,26 @@ internal object LocalSingleZipMediaStoreExport {
         val publishedUri: Uri? = null
     )
 
+    /** Read-only post-process reconciliation. No row update, deletion or replay. */
+    fun unfinishedPublications(context: Context): List<String> {
+        val dir = io.github.gamesbyian.chunks.storage.OwnedMediaStorePublicationJournal.journalRoot(context).toFile()
+        val files = dir.listFiles() ?: return emptyList()
+        return files.asSequence()
+            .filter { Regex("[a-f0-9]{32}\\.log").matches(it.name) }
+            .map { it.name.removeSuffix(".log") }
+            .sorted()
+            .map { id ->
+                val assessment = io.github.gamesbyian.chunks.storage.OwnedMediaStorePublicationJournal.assess(context, id)
+                when (assessment.verdict) {
+                    io.github.gamesbyian.chunks.storage.OwnedMediaStorePublicationJournal.Verdict.VERIFIED_PUBLISHED -> null
+                    io.github.gamesbyian.chunks.storage.OwnedMediaStorePublicationJournal.Verdict.VERIFIED_PENDING ->
+                        "A verified new Downloads file is still pending publication; no automatic action was taken."
+                    io.github.gamesbyian.chunks.storage.OwnedMediaStorePublicationJournal.Verdict.NEEDS_ATTENTION ->
+                        "An interrupted Downloads export needs review; Chunks did not retry or remove any file."
+                }
+            }.filterNotNull().toList()
+    }
+
     fun eligible(review: LocalZipReview): Boolean =
         review.inventory?.status != null &&
             review.inventory.status != ZipPreflightStatus.BLOCKED &&
