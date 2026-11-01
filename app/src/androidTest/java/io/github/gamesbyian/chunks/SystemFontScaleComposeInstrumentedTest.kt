@@ -183,6 +183,15 @@ class SystemFontScaleComposeInstrumentedTest {
     }
 
 
+    // The CI harness supplies a single measured viewport per installed run.
+    // Separate MediaStore subfolders prevent two passes from silently satisfying
+    // one another with stale/renamed screenshots.
+    private val viewportKey: String
+        get() = requireNotNull(
+            InstrumentationRegistry.getArguments().getString("viewport")
+                ?.takeIf { it == "320x700" || it == "412x892" }
+        ) { "Explicit exact viewport receipt is required" }
+
     private fun savePixels(name: String) {
         val image = rule.onRoot().captureToImage().asAndroidBitmap()
         assertTrue("Real Compose screenshot too small", image.width >= 300 && image.height >= 500)
@@ -201,7 +210,7 @@ class SystemFontScaleComposeInstrumentedTest {
             put(MediaStore.Images.Media.DISPLAY_NAME, "chunks-compose-200pct-$name.png")
             put(MediaStore.Images.Media.MIME_TYPE, "image/png")
             put(MediaStore.Images.Media.RELATIVE_PATH,
-                Environment.DIRECTORY_PICTURES + "/ChunksCompose200Pct")
+                Environment.DIRECTORY_PICTURES + "/ChunksCompose200Pct/" + viewportKey)
             put(MediaStore.Images.Media.IS_PENDING, 1)
         }
         val uri = requireNotNull(resolver.insert(
@@ -220,9 +229,16 @@ class SystemFontScaleComposeInstrumentedTest {
 
     @Test
     fun actualChunksActivityKeepsItsCoreScreensAccessibleAtRealSystemFontScale200Percent() {
+        val expected = viewportKey
         val actual = rule.activity.resources.configuration.fontScale
         assertTrue("Android app must run with real system font scale at least 190%, got $actual",
             actual >= 1.9f)
+        // These are real installed Layout/Compose pixels under wm size/density,
+        // not a synthetic CompositionLocalProvider.
+        val expectedWidth = if (expected == "320x700") 320 else 412
+        val widthDp = rule.activity.resources.configuration.screenWidthDp
+        assertTrue("Installed width must match $expected: observed widthDp=$widthDp",
+            kotlin.math.abs(widthDp - expectedWidth) <= 2)
         rule.waitForIdle()
         rule.onNodeWithContentDescription("chunks. Your downloads have places to be.")
             .assertExists()
