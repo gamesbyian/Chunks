@@ -87,9 +87,9 @@ class LocalZipBatchColdRestoreInstrumentedTest {
     }
 
     /** Read-only, includes pending rows so an interrupted duplicate cannot hide. */
-    private fun exactOutputs(prefix: String): Set<Uri> {
+    private fun exactOutputs(prefix: String, publishedOnly: Boolean = false): Set<Uri> {
         val cols = arrayOf(MediaStore.MediaColumns._ID, MediaStore.MediaColumns.DISPLAY_NAME,
-            MediaStore.MediaColumns.OWNER_PACKAGE_NAME)
+            MediaStore.MediaColumns.OWNER_PACKAGE_NAME, MediaStore.MediaColumns.IS_PENDING)
         val cursor = if (Build.VERSION.SDK_INT == 29)
             resolver.query(MediaStore.setIncludePending(downloads), cols, null, null, null)
         else resolver.query(downloads, cols, Bundle().apply {
@@ -99,7 +99,8 @@ class LocalZipBatchColdRestoreInstrumentedTest {
             buildSet {
                 while (rows.moveToNext()) {
                     if (rows.getString(1)?.startsWith(prefix + "-") == true &&
-                        rows.getString(2) == context.packageName)
+                        rows.getString(2) == context.packageName &&
+                        (!publishedOnly || rows.getInt(3) == 0))
                         add(ContentUris.withAppendedId(downloads, rows.getLong(0)))
                 }
             }
@@ -116,7 +117,9 @@ class LocalZipBatchColdRestoreInstrumentedTest {
         val source = createSource(sourceBytes, "fixture-cold-" + nonce + ".zip")
         val prefix = first.substringBeforeLast('.')
         val result = LocalMultiZipMediaStoreExport.extractNew(context, source) {
-            exactOutputs(prefix).isNotEmpty()
+            // A pending FIRST row is not a finished file. Wait for its
+            // independently verified publication before stopping the batch.
+            exactOutputs(prefix, publishedOnly = true).isNotEmpty()
         }
         assertEquals(result.message, LocalMultiZipMediaStoreExport.State.PARTIAL, result.state)
         assertEquals(1, result.published.size)
