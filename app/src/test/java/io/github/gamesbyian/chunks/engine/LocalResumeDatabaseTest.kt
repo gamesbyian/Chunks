@@ -158,7 +158,24 @@ class LocalResumeDatabaseTest {
         refused { open(root).close() }
         assertFalse("Missing committed state must not create a replacement database", file(root).exists())
         file(root).writeBytes(ByteArray(0))
+        val namespace = requireNotNull(file(root).parentFile)
+        // This is *authoritative* state: a zero-length replacement may be
+        // corrupt/power-interrupted, but SQLite open must not silently
+        // initialize or mutate it before refusing to resurrect old jobs.
+        val before = requireNotNull(namespace.listFiles()).associate {
+            it.name to it.readBytes()
+        }
+        assertTrue("Zeroed authoritative database fixture is not empty",
+            file(root).length() == 0L)
         refused { open(root).close() }
+        assertEquals("Refused zeroed database must remain byte-for-byte empty",
+            0L, file(root).length())
+        assertEquals("Refusing an authoritative zeroed database cannot create sidecars",
+            before.keys, requireNotNull(namespace.listFiles()).map { it.name }.toSet())
+        for ((name, bytes) in before) {
+            assertArrayEquals("Refused open changed authoritative entry $name",
+                bytes, File(namespace, name).readBytes())
+        }
         assertEquals("obsolete snapshot", old.readText())
     }
 
