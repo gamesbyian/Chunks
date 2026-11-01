@@ -1027,16 +1027,22 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         }
         suspend fun optionalNumber(method: String): Long? = try {
             number(call(method, listOf(hash))).takeIf { it >= 0L }
-        } catch (cancel: kotlinx.coroutines.CancellationException) {
-            throw cancel
-        } catch (_: Exception) {
+        } catch (fault: RpcFault) {
+            // Optional counters can be unsupported on older rTorrent.
+            // HTTP 401/503, lost transport, invalid XML and an XML-RPC
+            // operational fault cannot become "unknown bytes" while the
+            // client silently continues with five more credentialed reads.
+            if (!fault.isUnsupportedOptionalGetter()) throw fault
             null
         }
         guardIdentity()
         val received = optionalNumber("d.down.total")
         val verified = optionalNumber("d.completed_bytes")
         val size = optionalNumber("d.size_bytes")
-        val active = optionalNumber("d.is_active")?.let { it != 0L }
+        val active = optionalNumber("d.is_active")?.let {
+            require(it in 0L..1L) { "Invalid rTorrent activity flag" }
+            it == 1L
+        }
         val peers = optionalNumber("d.peers_connected")
         val rate = optionalNumber("d.down.rate")
         guardIdentity()
