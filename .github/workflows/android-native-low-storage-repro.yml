@@ -41,6 +41,14 @@ jobs:
           fi
       - name: Compile actual app and installed native fixture
         run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
+      - name: Require disposable host filesystem headroom before low-space AVD
+        run: |
+          set -euo pipefail
+          free_kib="$(df -Pk "$RUNNER_TEMP" | awk 'NR==2 {print $4}')"
+          [[ "$free_kib" =~ ^[0-9]+$ && "$free_kib" -ge 8388608 ]] || {
+            echo "::error::Runner lacks 8GiB free; refuse Android disk pressure"; exit 1;
+          }
+          echo "CHUNKS_LOW_SPACE_HOST precondition_free_kib=$free_kib"
       - name: Enable emulator KVM
         run: |
           test -c /dev/kvm
