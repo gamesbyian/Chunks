@@ -70,6 +70,31 @@ jobs:
           manifest, _raw = archive_fixture('BigBuckBunny_124', 555000000)
           print('ARCHIVE SOURCE-VERIFIED', manifest['torrent']['name'], manifest['torrent']['total_bytes'], manifest['torrent']['infohash_v1'], flush=True)
           PY
+  quick-harvest:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Collect a small real-metainfo catalog and print reviewable JSON
+        shell: bash
+        run: |
+          python3 tools/collect_public_magnet_catalog.py --count 15 --pages 2 --rows 10 || true
+          python3 tools/validate_public_magnet_catalog.py --allow-partial
+          echo '<<<CHUNKS_CATALOG_BEGIN>>>'
+          cat test-resources/public-magnets/catalog.json
+          echo '<<<CHUNKS_CATALOG_END>>>'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chunks-quick-magnets
+          path: |
+            test-resources/public-magnets/catalog.json
+            test-resources/public-magnets/magnets.txt
+          if-no-files-found: warn
+          retention-days: 3
   collect:
     if: github.ref == 'refs/heads/test/public-magnet-catalog-harvester-20261101' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
