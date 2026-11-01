@@ -6,6 +6,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -16,6 +17,9 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
 import io.github.gamesbyian.chunks.model.UnifiedTransferQuery
+import io.github.gamesbyian.chunks.model.UnifiedSortKey
+import io.github.gamesbyian.chunks.model.UnifiedTransferFilter
+import io.github.gamesbyian.chunks.model.EnvironmentHue
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -102,4 +106,45 @@ class CombinedTransfersLargeTextTest {
         assertEquals(0, backed[0])
         assertNull(LocalEngineHolder.current())
     }
+    @Test fun at320And200PercentFilterAndLastSortOptionNeedNoHorizontalGesture() {
+        val opened = intArrayOf(0)
+        val backed = intArrayOf(0)
+        show(opened, backed)
+        val list = rule.onNode(hasScrollToIndexAction())
+        // All chips must be inside the vertical list. Nothing requires a
+        // sideways-only gesture or a horizontal-scroll semantics action.
+        list.performScrollToNode(hasText("Attention"))
+        rule.onNodeWithText("Attention").performClick()
+        assertEquals(UnifiedTransferFilter.ATTENTION,
+            CombinedViewPreferences(ApplicationProvider.getApplicationContext()).load().filter)
+        list.performScrollToNode(hasText("Peers"))
+        rule.onNodeWithText("Peers").performClick()
+        assertEquals(UnifiedSortKey.PEERS,
+            CombinedViewPreferences(ApplicationProvider.getApplicationContext()).load().sortKey)
+        assertEquals(0, opened[0])
+        assertEquals(0, backed[0])
+        assertNull(LocalEngineHolder.current())
+    }
+
+    @Test
+    @Config(sdk = [35], qualifiers = "w412dp-h892dp-mdpi")
+    fun at412And200PercentLastPaletteChoiceIsVerticallyReachableAnd48dp() {
+        val opened = intArrayOf(0)
+        val backed = intArrayOf(0)
+        show(opened, backed)
+        val list = rule.onNode(hasScrollToIndexAction())
+        list.performScrollToNode(hasText("Environment colours…"))
+        rule.onNodeWithText("Environment colours…").performClick()
+        val lastColour = "On this phone colour " + EnvironmentHue.entries.last().label
+        list.performScrollToNode(hasContentDescription(lastColour))
+        val swatch = rule.onNodeWithContentDescription(lastColour)
+        val bounds = swatch.getUnclippedBoundsInRoot()
+        assertTrue("Every palette option retains a 48dp target",
+            bounds.bottom - bounds.top >= 48.dp)
+        swatch.performClick()
+        assertEquals(0, opened[0])
+        assertEquals(0, backed[0])
+        assertNull(LocalEngineHolder.current())
+    }
+
 }
