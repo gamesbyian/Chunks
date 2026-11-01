@@ -28,7 +28,7 @@ out="$(mktemp)"
 trap 'rm -f "$out"' EXIT
 set +e
 adb shell am instrument -w -r \
-  -e class io.github.gamesbyian.chunks.storage.OwnedMediaStoreDocumentPublicationInstrumentedTest \
+  -e class io.github.gamesbyian.chunks.storage.OwnedMediaStoreDocumentPublicationInstrumentedTest,io.github.gamesbyian.chunks.LocalSingleZipMediaStoreExportInstrumentedTest \
   io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner >"$out" 2>&1
 status=$?
 set -e
@@ -37,7 +37,7 @@ cat "$out"
   echo 'CHUNKS_OWNED_DOCS: instrumentation process failed' >&2
   exit 1
 }
-grep -qx 'OK (6 tests)' "$out" || {
+grep -qx 'OK (8 tests)' "$out" || {
   echo 'CHUNKS_OWNED_DOCS: exact six tests not confirmed' >&2
   exit 1
 }
@@ -51,10 +51,12 @@ for case_name in \
   malformedOrCancelledRequestDoesNotCreateAProviderDocument \
   durableExclusiveJournalConfirmsOnlyAnUnchangedExactPublishedRow \
   cancellationAfterJournaledRowPreservesAmbiguousPendingObjectForReview \
-  independentlyVerifiedPendingRowIsNotConfusedWithPublishedAndTamperingIsRefused; do
+  independentlyVerifiedPendingRowIsNotConfusedWithPublishedAndTamperingIsRefused \
+  userApprovedSingleMemberCreatesDistinctVerifiedDownloadAndKeepsBothSources \
+  traversalNestedMultiMemberAndPreCancelledNeverPublishOrTouchCanary; do
   grep -Fxq "INSTRUMENTATION_STATUS: test=$case_name" "$out" || {
     echo "CHUNKS_OWNED_DOCS: missing required real Android case $case_name" >&2
     exit 1
   }
 done
-echo "CHUNKS_OWNED_MEDIASTORE_DOCUMENTS=PASS api=$expected fresh-row-fsync-journal-readonly-recovery-foreign-preservation"
+echo "CHUNKS_OWNED_MEDIASTORE_DOCUMENTS=PASS api=$expected fresh-row-fsync-zip-new-recovery-foreign-preservation"
