@@ -9,6 +9,9 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasScrollToIndexAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
@@ -42,6 +45,16 @@ class CombinedTransfersScreenTest {
         RemoteTransfer("1".repeat(40), "Big Archive", 900, 900, true, "/d", 0, 10),
         RemoteTransfer("2".repeat(40), "Small Episode", 10, 5, false, "/d", null, null))
 
+    // Wrapped scope/filter/sort groups can push rows below the first lazy viewport.
+    // Reveal actual list items before tapping; never depend on initial composition.
+    private fun revealText(text: String) {
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(text))
+    }
+    private fun revealDescription(description: String) {
+        rule.onNode(hasScrollToIndexAction())
+            .performScrollToNode(hasContentDescription(description))
+    }
+
     private val commands = ArrayList<Pair<String, Boolean>>()
     private var settles = 0
     private val gate = CombinedServerLifecycle(begin = { true }, settled = { settles++ },
@@ -59,7 +72,8 @@ class CombinedTransfersScreenTest {
     @Test fun detailFocusResolvesExactServerAndHashWithoutLifecycleCommands() {
         show()
         val target = "Details for Big Archive on " + serverEnvironmentLabel(aliasScope)
-        rule.onNodeWithContentDescription(target).performScrollTo().performClick()
+        revealDescription(target)
+        rule.onNodeWithContentDescription(target).performClick()
         rule.onNodeWithText("Transfer details").assertExists()
         rule.onNodeWithText("Environment: " + serverEnvironmentLabel(aliasScope)).assertExists()
         rule.onNodeWithText("Exact infohash: " + "1".repeat(40)).assertExists()
@@ -111,6 +125,7 @@ class CombinedTransfersScreenTest {
         rule.onNodeWithText("Group by environment").performScrollTo()
         rule.onNodeWithContentDescription("Group by environment").assertExists()
         rule.onNode(androidx.compose.ui.test.isToggleable()).performClick()
+        revealText(serverEnvironmentLabel(aliasScope) + " · 2 shown")
         rule.onNodeWithText(serverEnvironmentLabel(aliasScope) + " · 2 shown").assertExists()
         val saved = CombinedViewPreferences(context).load()
         assertEquals(UnifiedSortKey.SIZE, saved.sortKey)
@@ -126,13 +141,16 @@ class CombinedTransfersScreenTest {
         show()
         rule.onNodeWithText("Search all selected").performTextInput("not-in-any-transfer")
         rule.onNodeWithText("Showing 0", substring = true).assertExists()
-        rule.onNodeWithText("Show all transfers").performScrollTo().performClick()
+        revealText("Show all transfers")
+        rule.onNodeWithText("Show all transfers").performClick()
         rule.onNodeWithText("Showing 2", substring = true).assertExists()
         // Rows below the recovery button are lazy and may not be composed yet.
         val viewport = rule.onNode(androidx.compose.ui.test.hasScrollToIndexAction())
         viewport.performScrollToNode(androidx.compose.ui.test.hasText("Big Archive"))
+        revealText("Big Archive")
         rule.onNodeWithText("Big Archive").assertExists()
         viewport.performScrollToNode(androidx.compose.ui.test.hasText("Small Episode"))
+        revealText("Small Episode")
         rule.onNodeWithText("Small Episode").assertExists()
         val recovered = CombinedViewPreferences(context).load()
         assertEquals(io.github.gamesbyian.chunks.model.UnifiedTransferFilter.ALL, recovered.filter)
@@ -146,12 +164,16 @@ class CombinedTransfersScreenTest {
         show()
         rule.onNodeWithText("Filter transfers").assertExists()
         rule.onNodeWithText("Stopped").performClick()
+        revealText("Small Episode")
         rule.onNodeWithText("Small Episode").assertExists()
         rule.onNodeWithText("Big Archive").assertDoesNotExist()
+        revealText("Showing 1")
         rule.onNodeWithText("Showing 1", substring = true).assertExists()
         assertEquals(io.github.gamesbyian.chunks.model.UnifiedTransferFilter.STOPPED,
             CombinedViewPreferences(context).load().filter)
+        revealText("All transfers")
         rule.onNodeWithText("All transfers").performClick()
+        revealText("Big Archive")
         rule.onNodeWithText("Big Archive").assertExists()
         assertEquals(io.github.gamesbyian.chunks.model.UnifiedTransferFilter.ALL,
             CombinedViewPreferences(context).load().filter)
@@ -169,10 +191,14 @@ class CombinedTransfersScreenTest {
         rule.onNodeWithText(serverEnvironmentLabel(aliasScope) + ": Out of date, showing last list · 2 transfers")
             .assertExists()
         rule.onNodeWithText("Select…").performClick()
-        rule.onNodeWithContentDescription("Select Big Archive on " + serverEnvironmentLabel(aliasScope))
-            .performScrollTo().performClick()
+        val selectRow = "Select Big Archive on " + serverEnvironmentLabel(aliasScope)
+        revealDescription(selectRow)
+        rule.onNodeWithContentDescription(selectRow).performClick()
+        revealText("1 selected")
         rule.onNodeWithText("1 selected").performScrollTo()
+        revealText("Stop…")
         rule.onNodeWithText("Stop…").performClick()
+        revealText("Stop selected")
         rule.onNodeWithText("Stop selected").performClick()
         rule.onNodeWithText(serverEnvironmentLabel(aliasScope) +
             ": 1 not attempted (Transfer list is out of date; refresh first).").assertExists()
@@ -183,15 +209,21 @@ class CombinedTransfersScreenTest {
     @Test fun selectedStopIsPreviewedPerEnvironmentAndRunsOnlyOnThatServer() {
         show()
         rule.onNodeWithText("Select…").performClick()
-        rule.onNodeWithContentDescription("Select Big Archive on " + serverEnvironmentLabel(aliasScope))
-            .performScrollTo().performClick()
+        val selectRow = "Select Big Archive on " + serverEnvironmentLabel(aliasScope)
+        revealDescription(selectRow)
+        rule.onNodeWithContentDescription(selectRow).performClick()
+        revealText("1 selected")
         rule.onNodeWithText("1 selected").performScrollTo().assertExists()
+        revealText("Stop…")
         rule.onNodeWithText("Stop…").performClick()
+        revealText("Stop 1 selected")
         rule.onNodeWithText("Stop 1 selected", substring = true).assertExists()
         rule.onNodeWithText(serverEnvironmentLabel(aliasScope) + ": 1", substring = true).assertExists()
         assertTrue("nothing runs before confirmation", commands.isEmpty())
+        revealText("Stop selected")
         rule.onNodeWithText("Stop selected").performClick()
         rule.waitUntil(5_000) { settles == 1 }
+        revealText(serverEnvironmentLabel(aliasScope) + ": 1 confirmed stopped.")
         rule.onNodeWithText(serverEnvironmentLabel(aliasScope) + ": 1 confirmed stopped.").assertExists()
         assertEquals(listOf("1".repeat(40) to false), commands)
         rule.onRoot().captureRoboImage("build/chunks-visual/combined-batch-result.png")
@@ -219,9 +251,11 @@ class CombinedTransfersScreenTest {
             } }
         }
         rule.onNodeWithText("Select…").performClick()
-        rule.onNodeWithContentDescription("Select Big Archive on " + serverEnvironmentLabel(aliasScope))
-            .performScrollTo().performClick()
-        rule.onNodeWithText("Stop…").performScrollTo().performClick()
+        val selectRow = "Select Big Archive on " + serverEnvironmentLabel(aliasScope)
+        revealDescription(selectRow)
+        rule.onNodeWithContentDescription(selectRow).performClick()
+        revealText("Stop…")
+        rule.onNodeWithText("Stop…").performClick()
         rule.onNodeWithText("Stop selected").assertExists()
         assertTrue(commands.isEmpty())
         rule.runOnIdle {
@@ -238,9 +272,11 @@ class CombinedTransfersScreenTest {
         // Reconnect to the same account also retires the new session's
         // selection even though both its hash and authenticated scope match.
         rule.onNodeWithText("Select…").performClick()
-        rule.onNodeWithContentDescription("Select Big Archive on " + serverEnvironmentLabel(otherScope))
-            .performScrollTo().performClick()
-        rule.onNodeWithText("Stop…").performScrollTo().performClick()
+        val otherRow = "Select Big Archive on " + serverEnvironmentLabel(otherScope)
+        revealDescription(otherRow)
+        rule.onNodeWithContentDescription(otherRow).performClick()
+        revealText("Stop…")
+        rule.onNodeWithText("Stop…").performClick()
         rule.onNodeWithText("Stop selected").assertExists()
         rule.runOnIdle { active = active.copy(authenticatedSession = Any()) }
         rule.onNodeWithText("Stop selected").assertDoesNotExist()
@@ -263,9 +299,11 @@ class CombinedTransfersScreenTest {
             } }
         }
         rule.onNodeWithText("Select…").performClick()
-        rule.onNodeWithContentDescription("Select Big Archive on " + serverEnvironmentLabel(aliasScope))
-            .performScrollTo().performClick()
-        rule.onNodeWithText("Stop…").performScrollTo().performClick()
+        val selectRow = "Select Big Archive on " + serverEnvironmentLabel(aliasScope)
+        revealDescription(selectRow)
+        rule.onNodeWithContentDescription(selectRow).performClick()
+        revealText("Stop…")
+        rule.onNodeWithText("Stop…").performClick()
         rule.onNodeWithText("Stop selected").assertExists()
         rule.runOnIdle {
             // Same saved roster slot, different authenticated endpoint/account.
