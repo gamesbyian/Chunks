@@ -10,6 +10,16 @@ cat > "$tmp/bin/adb" <<'ADB_MOCK'
 #!/usr/bin/env bash
 set -euo pipefail
 case "$1" in
+  devices)
+    echo 'List of devices attached'
+    echo 'emulator-5554 device'
+    [[ "${MOCK_TWO_DEVICES:-0}" != 1 ]] || echo 'emulator-5556 device'
+    [[ "${MOCK_DEVICES_PARTIAL_FAIL:-0}" != 1 ]] || exit 73
+    ;;
+  get-state)
+    echo device
+    [[ "${MOCK_STATE_PARTIAL_FAIL:-0}" != 1 ]] || exit 74
+    ;;
   shell)
     shift
     case "$1" in
@@ -19,6 +29,7 @@ case "$1" in
         elif [[ "$2" == ro.build.version.sdk ]]; then
           [[ "${MOCK_WRONG_SDK:-0}" == 1 ]] && echo 35 || echo 29
         else exit 97; fi
+        [[ "${MOCK_GETPROP_PARTIAL_FAIL:-}" != "$2" ]] || exit 75
         ;;
       am)
         if [[ "$2" == force-stop ]]; then
@@ -55,6 +66,7 @@ case "$1" in
             ;;
           grant)
             echo "grant-$4" >> "$MOCK_DIR/operations"
+            [[ "${MOCK_GRANT_FAIL:-0}" != 1 ]] || exit 76
             ;;
           *) exit 35 ;;
         esac
@@ -74,7 +86,15 @@ case "$1" in
           [[ "${MOCK_BAD_HASH:-0}" != 1 ]] || hash=gggggggggggggggggggggggggggggggggggggggg
           echo "CHUNKS_GRANT phase=a persisted=true stopped=true bytes=262144 hash=$hash sha256=$sha"
           ;;
-        b) echo 'CHUNKS_GRANT phase=b permission_revoked=true stopped_restored=true path_checked=true' ;;
+        b)
+          [[ "${MOCK_MISSING_ACCESS:-0}" == 1 ]] ||
+            echo 'CHUNKS_GRANT_OBSERVED access=denied'
+          [[ "${MOCK_MISSING_DENIAL:-0}" == 1 ]] ||
+            echo 'CHUNKS_GRANT_DENIAL restored=true os_open=denied start=refused stopped=true'
+          [[ "${MOCK_MISSING_ADVERSARIAL:-0}" == 1 ]] ||
+            echo 'CHUNKS_GRANT_ADVERSARIAL fifo=refused leaf_link=refused parent_link=refused'
+          echo 'CHUNKS_GRANT phase=b permission_revoked=true stopped_restored=true path_checked=true'
+          ;;
         c) echo "CHUNKS_GRANT phase=c restored=true seeded=true removed_keep_files=true sha256=$sha" ;;
         *) exit 37 ;;
       esac
@@ -110,6 +130,16 @@ run_bad() {
   fi
 }
 reset; run_ok
+reset; run_bad env MOCK_TWO_DEVICES=1
+[[ ! -s "$MOCK_DIR/operations" ]]
+reset; run_bad env MOCK_DEVICES_PARTIAL_FAIL=1
+[[ ! -s "$MOCK_DIR/operations" ]]
+reset; run_bad env MOCK_STATE_PARTIAL_FAIL=1
+[[ ! -s "$MOCK_DIR/operations" ]]
+reset; run_bad env MOCK_GETPROP_PARTIAL_FAIL=ro.kernel.qemu
+[[ ! -s "$MOCK_DIR/operations" ]]
+reset; run_bad env MOCK_GETPROP_PARTIAL_FAIL=ro.build.version.sdk
+[[ ! -s "$MOCK_DIR/operations" ]]
 reset; run_bad env MOCK_PHYSICAL=1
 [[ ! -s "$MOCK_DIR/operations" ]]
 reset; run_bad env MOCK_WRONG_SDK=1
@@ -127,6 +157,14 @@ reset; run_bad env MOCK_REVOKE_FAIL=1
 reset; run_bad env MOCK_SKIP=b
 [[ "$(grep -c '^grant-' "$MOCK_DIR/operations" || true)" -ge 2 ]]
 reset; run_bad env MOCK_MISSING_MARKER=b
+[[ "$(grep -c '^grant-' "$MOCK_DIR/operations" || true)" -ge 2 ]]
+reset; run_bad env MOCK_MISSING_ACCESS=1
+[[ "$(grep -c '^grant-' "$MOCK_DIR/operations" || true)" -ge 2 ]]
+reset; run_bad env MOCK_MISSING_DENIAL=1
+[[ "$(grep -c '^grant-' "$MOCK_DIR/operations" || true)" -ge 2 ]]
+reset; run_bad env MOCK_MISSING_ADVERSARIAL=1
+[[ "$(grep -c '^grant-' "$MOCK_DIR/operations" || true)" -ge 2 ]]
+reset; run_bad env MOCK_GRANT_FAIL=1
 [[ "$(grep -c '^grant-' "$MOCK_DIR/operations" || true)" -ge 2 ]]
 reset; run_bad env MOCK_PHASE_FAILURE=c
 [[ "$(grep -c '^grant-' "$MOCK_DIR/operations" || true)" -ge 2 ]]
