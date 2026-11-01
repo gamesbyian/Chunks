@@ -54,17 +54,18 @@ class SeedhostAndroidRealTransferAddInstrumentedTest {
         Base64.decode(requireNotNull(argument(key)), Base64.NO_WRAP), Charsets.UTF_8)
 
     private fun report(stage: String) {
-        require(stage.matches(Regex("(file|magnet)-(preflight|review|ui-verified|bytes-verified|restarted|passed|uncertain)")))
+        require(stage.matches(Regex("(file|magnet|magnet2)-(preflight|review|ui-verified|metadata|peer-progress|bytes-verified|restarted|passed|uncertain)")))
         InstrumentationRegistry.getInstrumentation().sendStatus(
             2, Bundle().apply { putString("chunks_real_add_stage", stage) })
     }
 
-    private fun sourceBytes(file: Boolean): ByteArray {
+    private fun sourceBytes(file: Boolean, alternative: Boolean = false): ByteArray {
         // Real upstream Ubuntu v1 metainfo; different infohashes so the
         // second Add cannot inherit the first torrent's registered identity.
-        val filename = if (file) "ubuntu-26.04.1-live-server-amd64.iso.torrent"
+        val filename = if (alternative) "ubuntu-25.10-desktop-amd64.iso.torrent"
+                       else if (file) "ubuntu-26.04.1-live-server-amd64.iso.torrent"
                        else "ubuntu-26.04.1-desktop-amd64.iso.torrent"
-        val address = URI("https://releases.ubuntu.com/26.04/$filename")
+        val address = URI("https://releases.ubuntu.com/${if (alternative) "25.10" else "26.04"}/$filename")
         require(address.scheme == "https" && address.host == "releases.ubuntu.com")
         val connection = URL(address.toASCIIString()).openConnection() as HttpURLConnection
         connection.connectTimeout = 15_000
@@ -151,10 +152,10 @@ class SeedhostAndroidRealTransferAddInstrumentedTest {
     private fun scroll(text: String) =
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(text, substring = true))
 
-    private fun journey(file: Boolean) {
-        val stage = if (file) "file" else "magnet"
+    private fun journey(file: Boolean, alternative: Boolean = false) {
+        val stage = if (file) "file" else if (alternative) "magnet2" else "magnet"
         val remote = remote()
-        val metainfo = sourceBytes(file)
+        val metainfo = sourceBytes(file, alternative)
         val preview = TorrentMetainfoReader.preview(metainfo)
         val hash = preview.infoHashV1
         val magnet = if (file) "" else
@@ -218,23 +219,32 @@ class SeedhostAndroidRealTransferAddInstrumentedTest {
             // Independent RPC readback, NOT a UI state echo. A magnet must
             // resolve its metadata; both sources must receive and verify pieces.
             var observedProgress = false
+            var metadata = false
+            var peers = false
             val deadline = SystemClock.elapsedRealtime() + 180_000L
             while (SystemClock.elapsedRealtime() < deadline) {
-                val passing = runCatching { runBlocking {
+                val result = runCatching { runBlocking {
                     val transfer = remote.listTransfers("main")
                         .singleOrNull { it.hash.equals(hash, true) }
-                    val traffic = remote.readTrafficSample(hash)
-                    transfer != null && transfer.started &&
-                        transfer.directory == parent &&
-                        transfer.name == preview.name &&
-                        transfer.sizeBytes == preview.sizeBytes &&
-                        traffic.hash.equals(hash, true) &&
-                        traffic.expectedBytes == preview.sizeBytes &&
-                        (traffic.receivedBytes ?: 0L) > 0L &&
-                        (traffic.peers ?: 0L) > 0L &&
-                        (traffic.verifiedBytes ?: 0L) > 0L
-                } }.getOrDefault(false)
-                if (passing) { observedProgress = true; break }
+                    val traffic = transfer?.let { remote.readTrafficSample(hash) }
+                    Pair(transfer, traffic)
+                } }.getOrNull()
+                val transfer = result?.first
+                val traffic = result?.second
+                if (transfer?.started == true && transfer.directory == parent &&
+                    transfer.name == preview.name && transfer.sizeBytes == preview.sizeBytes &&
+                    traffic?.hash?.equals(hash, true) == true &&
+                    traffic.expectedBytes == preview.sizeBytes) {
+                    if (!metadata) { metadata = true; report("$stage-metadata") }
+                    if ((traffic.peers ?: 0L) > 0L && (traffic.receivedBytes ?: 0L) > 0L) {
+                        if (!peers) { peers = true; report("$stage-peer-progress") }
+                    }
+                    if ((traffic.receivedBytes ?: 0L) > 0L &&
+                        (traffic.verifiedBytes ?: 0L) > 0L && peers) {
+                        observedProgress = true
+                        break
+                    }
+                }
                 Thread.sleep(2_000L)
             }
             assertTrue("No real metadata + exact-hash received AND verified peer-byte progress",
@@ -326,4 +336,6 @@ class SeedhostAndroidRealTransferAddInstrumentedTest {
 
     @Test fun installedTorrentFileAddReceivesVerifiedPeerBytes() = journey(true)
     @Test fun installedMagnetAddResolvesMetadataAndReceivesVerifiedPeerBytes() = journey(false)
+    @Test fun installedAlternateMagnetResolvesMetadataAndReceivesVerifiedPeerBytes() =
+        journey(false, alternative = true)
 }
