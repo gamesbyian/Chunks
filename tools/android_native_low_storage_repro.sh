@@ -4,6 +4,12 @@
 set -euo pipefail
 pkg=io.github.gamesbyian.chunks
 
+# Device pressure is irreversible while this controller runs. Refuse contradictory
+# selectors instead of silently targeting an arbitrary connected AVD.
+[[ -z "${ADB_SERIAL:-}" || -z "${ANDROID_SERIAL:-}" ||
+   "$ADB_SERIAL" == "$ANDROID_SERIAL" ]] || {
+  echo 'CHUNKS_LOW_SPACE: conflicting ADB serial selectors' >&2; exit 2;
+}
 devices="$(adb devices)" || {
   echo 'CHUNKS_LOW_SPACE: ADB enumeration failed' >&2; exit 2;
 }
