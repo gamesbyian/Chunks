@@ -25,6 +25,19 @@ def block(text, key):
     return ""
 
 
+def event_block(on, event):
+    lines = on.splitlines()
+    for i, line in enumerate(lines):
+        if line.startswith("  " + event + ":"):
+            out = []
+            for child in lines[i + 1:]:
+                if re.match(r"^  [a-zA-Z_-]+:", child):
+                    break
+                out.append(child)
+            return "\n".join(out)
+    return ""
+
+
 def inspect(path, root):
     source = path.read_text(encoding="utf-8")
     clean = "\n".join(line for line in source.splitlines()
@@ -40,6 +53,17 @@ def inspect(path, root):
     if single:
         events.append(single.group(1))
     events = sorted(set(events))
+    self_path = path.relative_to(root).as_posix()
+    push_scope = event_block(on, "push")
+    pr_scope = event_block(on, "pull_request")
+    def path_entries(block):
+        return set(re.findall(r"(?m)^\s+-\s+['\"]?(\.github/workflows/[^'\"\s]+)", block))
+    self_on_push = self_path in path_entries(push_scope)
+    self_on_pr = self_path in path_entries(pr_scope)
+    # A workflow-only edit is then tested at PR head and re-dispatched after
+    # the merge solely because the workflow file itself is in main push paths.
+    main_only_push = bool(re.search(r"(?m)^\s+branches:\s*\[main\]", push_scope))
+    duplicate_self_candidate = self_on_push and self_on_pr and main_only_push
     jobs = sorted(set(re.findall(
         r"(?m)^  ([A-Za-z_][\w-]*):\s*$", block(source, "jobs"))))
     concurrent = ("workflow" if re.search(r"(?m)^concurrency:", clean) else
@@ -68,6 +92,8 @@ def inspect(path, root):
         issues.append("pr_without_concurrency")
     return {
         "path": path.relative_to(root).as_posix(),
+        "self_trigger_on_main_push": duplicate_self_candidate,
+        "self_trigger_on_pr": self_on_pr,
         "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
         "events": events, "jobs": jobs,
         "pr_paths_filter": bool(re.search(r"(?m)^    paths(?:-ignore)?:", on)),
@@ -98,6 +124,8 @@ def collect(root):
         "workflow_count": len(workflows),
         "event_counts": {e: sum(e in w["events"] for w in workflows)
                          for e in EVENTS if any(e in w["events"] for w in workflows)},
+        "main_self_trigger_candidates": [w["path"] for w in workflows
+                                         if w["self_trigger_on_main_push"]],
         "missing_concurrency": [w["path"] for w in workflows
                                 if "pr_without_concurrency" in w["review_flags"]],
         "privilege_review": [w["path"] for w in workflows if
@@ -118,6 +146,8 @@ def markdown(report):
             f"{k}: {v}" for k, v in sorted(report["event_counts"].items())),
         f"- PR workflows without concurrency: {len(report['missing_concurrency'])} "
         f"({names(report['missing_concurrency'])})",
+        f"- Main-push self-trigger candidates: {len(report['main_self_trigger_candidates'])} "
+        f"({names(report['main_self_trigger_candidates'])})",
         f"- Privilege review candidates: {len(report['privilege_review'])} "
         f"({names(report['privilege_review'])})",
         "- Full JSON in workflow-inventory artifact; flags are not product failures.", "",
