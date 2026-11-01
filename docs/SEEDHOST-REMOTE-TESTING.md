@@ -34,7 +34,11 @@ A 401, timeout, lost ACK, unexpected directory or changed identity can leave
 the synthetic transfer behind rather than risk a blind repeat or deletion.
 The runner's peer preflight excludes reserved/non-global addresses,
 including shared-space CGNAT, benchmarking and documentation ranges, instead
-of relying only on Java's narrower private-address classification. A transient
+of relying only on Java's narrower private-address classification. It further
+pins the historical, independently observed rTorrent peer endpoint address
+`5.79.112.219` for this **one-time** host test. A provider-side readdress
+must trigger a new explicit review, not fallback to another returned public
+address or credential-bearing network sweep. A transient
 or malformed post-Add receipt must print `manual-reconciliation-required`
 once a synthetic Add could have been submitted, even when the job was never
 positively verified. A `PendingRemoval` result still has an exact-session
