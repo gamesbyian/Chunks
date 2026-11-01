@@ -1,21 +1,29 @@
 package io.github.gamesbyian.chunks
 
 import android.content.ContentValues
+import androidx.activity.ComponentActivity
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.ByteArrayOutputStream
+import java.util.concurrent.atomic.AtomicReference
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import org.junit.Assert.*
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
 /** Installed, actual ContentResolver / app ZIP-intake -> fresh Downloads row. */
 @RunWith(AndroidJUnit4::class)
 class LocalSingleZipMediaStoreExportInstrumentedTest {
+    @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
     private val context get() = InstrumentationRegistry.getInstrumentation().targetContext
     private val resolver get() = context.contentResolver
 
@@ -60,7 +68,16 @@ class LocalSingleZipMediaStoreExportInstrumentedTest {
             document("source-for-single-zip.zip", "application/zip", zipBytes) { source ->
                 val reviewed = LocalZipDocumentInspector.inspect(context, source)
                 assertTrue(LocalSingleZipMediaStoreExport.eligible(reviewed))
-                val result = LocalSingleZipMediaStoreExport.extractNew(context, source)
+                val outcome = AtomicReference<LocalSingleZipMediaStoreExport.Result?>()
+                compose.setContent {
+                    MaterialTheme {
+                        LocalZipExtractionPanel(source, reviewed, onResult = { outcome.set(it) })
+                    }
+                }
+                compose.onNodeWithText("Extract new file to Downloads").performClick()
+                compose.waitUntil(90_000) { outcome.get() != null }
+                val result = requireNotNull(outcome.get())
+                compose.onNodeWithText("Verified new Downloads file", substring = true).assertExists()
                 assertEquals(result.message, LocalSingleZipMediaStoreExport.State.EXPORTED, result.state)
                 val newUri = requireNotNull(result.publishedUri)
                 try {
