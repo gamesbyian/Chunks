@@ -8,6 +8,12 @@ on:
       # without this suite ever running on those PRs.
       - "app/src/main/**"
       - "app/src/androidTest/**"
+      # The opt-in real-ENOSPC class runs in its own allocated-disk API35
+      # workflow. Its single-file edit must not redundantly boot this broad
+      # native Add atlas (where that class is intentionally skipped).
+      # Other Android tests, production sources, Gradle and this workflow
+      # retain the full suite. Ordered exclude applies to this path only.
+      - "!app/src/androidTest/java/io/github/gamesbyian/chunks/AndroidNativeLowStorageRecoveryInstrumentedTest.kt"
       - "app/build.gradle.kts"
       # Changes to the test command must re-run this suite.
       - "tools/native_add_review.sh"
