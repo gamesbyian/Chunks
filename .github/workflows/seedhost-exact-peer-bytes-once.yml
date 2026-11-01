@@ -15,7 +15,9 @@ permissions:
   contents: read
 
 concurrency:
-  group: chunks-approved-seedhost-exact-peer-bytes
+  # Share a repository-wide mutation lease with the other protected Android
+  # scoped-host acceptance workflows; never mutate the same host in parallel.
+  group: chunks-android-seedhost-scope-mutation
   cancel-in-progress: false
 
 jobs:
