@@ -119,6 +119,8 @@ reset; bad env MOCK_UNAUTHORIZED=1
 [[ ! -s "$MOCK_DIR/events" ]]
 reset; bad env ANDROID_SERIAL=not-present
 [[ ! -s "$MOCK_DIR/events" ]]
+reset; bad env ADB_SERIAL=OTHER ANDROID_SERIAL=emulator-5554
+[[ ! -s "$MOCK_DIR/events" ]]
 reset; bad env MOCK_PHYSICAL=1
 [[ ! -s "$MOCK_DIR/events" ]]
 reset; bad env MOCK_WRONG_API=1
