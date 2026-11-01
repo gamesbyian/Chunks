@@ -26,17 +26,18 @@ internal fun CombinedAddActions(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text("Add a download", style = MaterialTheme.typography.titleMedium)
-        ResponsiveActionGroup(Modifier.fillMaxWidth()) { buttonModifier ->
-            OutlinedButton(onClick = onOpenPhone,
-                modifier = buttonModifier.semantics {
-                    contentDescription = "Add download on this phone"
-                }) { Text("Add on this phone") }
-            if (!serverLabel.isNullOrBlank() && onAddToServer != null) {
-                OutlinedButton(onClick = onAddToServer,
-                    modifier = buttonModifier.semantics {
-                        contentDescription = "Add download on $serverLabel"
-                    }) { Text("Add on $serverLabel") }
-            }
+        // Always stack exact destinations: full server names (username, host,
+        // numbered instance) must never be squeezed into a 412dp two-button
+        // row or truncated into a misleading destination identity.
+        OutlinedButton(onClick = onOpenPhone,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics {
+                contentDescription = "Add download on this phone"
+            }) { Text("Add on this phone") }
+        if (!serverLabel.isNullOrBlank() && onAddToServer != null) {
+            OutlinedButton(onClick = onAddToServer,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics {
+                    contentDescription = "Add download on $serverLabel"
+                }) { Text("Add on $serverLabel") }
         }
         Text("Other saved servers need their own connection before adding. " +
             "Choosing which downloads to view never changes the Add destination.",
