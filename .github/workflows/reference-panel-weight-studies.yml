@@ -31,10 +31,10 @@ on:
       - '.github/workflows/reference-panel-weight-studies.yml'
   workflow_dispatch:
 permissions:
-  contents: write
+  contents: read
 concurrency:
   group: chunks-panel-weight-studies-${{ github.event_name }}-${{ github.head_ref || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   build-weight-studies:
     runs-on: ubuntu-latest
@@ -42,7 +42,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          persist-credentials: true
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -69,20 +69,3 @@ jobs:
             reference-panel-glyph-grid-metrics.json
             assets/fonts/source/OFL.txt
           retention-days: 30
-      - name: Commit reproducible studies from source branch, never main
-        if: github.event_name == 'push' && github.ref != 'refs/heads/main'
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add assets/fonts/experimental/weight-studies
-          if ! git diff --cached --quiet; then
-            git commit -m 'build(fonts): check in four reference-panel CFF weight studies'
-            branch="${GITHUB_REF#refs/heads/}"
-            for attempt in 1 2 3; do
-              git fetch origin "$branch"
-              git rebase "origin/$branch"
-              if git push origin "HEAD:$branch"; then exit 0; fi
-            done
-            echo 'Could not save compiled CFFs and source hashes onto feature branch' >&2
-            exit 1
-          fi
