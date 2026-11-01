@@ -289,7 +289,7 @@ class RemoteReadAuthEvidenceTest {
                 .find(body)?.groupValues?.get(1).orEmpty()
             calls.add("numbered:$method")
             if (exchange.requestHeaders.getFirst("Authorization") != expectedAuth) {
-                exchange.responseHeaders.add("WWW-Authenticate", "Basic realm=\\\"numbered\\\"")
+                exchange.responseHeaders.add("WWW-Authenticate", "Basic realm=\"numbered\"")
                 exchange.sendResponseHeaders(401, -1)
                 exchange.close()
             } else {
