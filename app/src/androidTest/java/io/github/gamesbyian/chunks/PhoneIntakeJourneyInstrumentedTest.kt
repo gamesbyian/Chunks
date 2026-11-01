@@ -218,6 +218,28 @@ class PhoneIntakeJourneyInstrumentedTest {
                     android.util.Log.i("ChunksIntake", "CHUNKS_INTAKE_PEER kind=magnet " +
                         "source=explicit_fixture_after_ui_consent seed_port=${seed.listenPort()}")
                 }
+                if (kind == "magnet") {
+                    // Metadata and payload are separate libtorrent protocol
+                    // phases. An upload-only magnet can exchange metadata,
+                    // drop that initial peer, then become an active downloader
+                    // with no connected peers. Only once its metadata has
+                    // passed the native path survey and UPLOAD_MODE has cleared
+                    // may the fixture establish a payload connection.
+                    await("magnet metadata handoff into native payload mode", 45,
+                        failure = { "phone=${phone.status(hash)} seed=${seed.status(hash)}" }) {
+                        phone.status(hash)?.let {
+                            it.metadataKnown && !it.stopped && !it.uploadOnly
+                        } == true
+                    }
+                    val afterMetadata = requireNotNull(phone.status(hash))
+                    if (afterMetadata.progressPpm != 1_000_000 && afterMetadata.peers == 0) {
+                        assertTrue("Exact-hash payload peer after metadata transition refused",
+                            phone.connectPeer(hash, InetSocketAddress("127.0.0.1", seed.listenPort())))
+                        android.util.Log.i("ChunksIntake",
+                            "CHUNKS_INTAKE_PEER kind=magnet source=payload_after_metadata " +
+                                "seed_port=${seed.listenPort()}")
+                    }
+                }
                 await("real UI Add and peer download", failure = {
                     "kind=$kind phone=${phone.status(hash)} seed=${seed.status(hash)}"
                 }) {
