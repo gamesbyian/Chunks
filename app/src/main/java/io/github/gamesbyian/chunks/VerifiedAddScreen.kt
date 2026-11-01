@@ -353,7 +353,11 @@ fun VerifiedAddScreen(
                         modifier = Modifier.padding(start = 8.dp))
                 }
             }
-            if (offersRuTorrentForm && startAfterAdd) item {
+            // Priority-before-start uses the stopped-first workflow. Do not
+            // advertise a handler route that this Add cannot actually use.
+            if (offersRuTorrentForm && startAfterAdd &&
+                !(useFile && finishInOrderAfterAdd &&
+                    (selectedTorrent?.fileCount ?: 0) >= 2 && finishInOrderScope != null)) item {
                 Row(
                     Modifier.fillMaxWidth().toggleable(
                         value = useRuTorrentForm, enabled = !submitting,
