@@ -10,6 +10,8 @@ on:
       - 'AGENTS.md'
       - 'assets/fonts/README.md'
       - 'tools/check_docs.py'
+      - 'tools/ci_jvm_two_forks.init.gradle'
+      - 'tests/test_ci_jvm_parallelism.py'
       - 'tools/physical_android_preflight.sh'
       - 'tools/test_physical_android_preflight.sh'
       - 'tests/test_ci_trigger_contract.py'
@@ -56,6 +58,8 @@ on:
       - 'AGENTS.md'
       - 'assets/fonts/README.md'
       - 'tools/check_docs.py'
+      - 'tools/ci_jvm_two_forks.init.gradle'
+      - 'tests/test_ci_jvm_parallelism.py'
       - 'tools/physical_android_preflight.sh'
       - 'tools/test_physical_android_preflight.sh'
       - 'tests/test_ci_trigger_contract.py'
@@ -114,6 +118,8 @@ jobs:
         run: |
           bash tools/test_physical_android_preflight.sh
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_trigger_contract.py
+      - name: Verify CI JVM fork experiment remains scoped and covered
+        run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_jvm_parallelism.py
       - name: Validate native atlas names offline (no Android)
         run: |
           python3 tools/check_native_atlas_contract.py
