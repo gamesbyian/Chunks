@@ -69,7 +69,7 @@ class RemoteStallInspectorTest {
                         method == "d.is_hash_checking" -> number(0)
                         method == "d.is_meta" -> number(1)
                         method == "d.message" ->
-                            string("Permission denied /private/secret-path?passkey=NEVER-DISCLOSE")
+                            string("Failed to open file: Permission denied /private/secret-path?passkey=NEVER-DISCLOSE")
                         else -> error("Unrecognized command $method")
                     }.toByteArray(Charsets.UTF_8)
                     exchange.sendResponseHeaders(200, reply.size.toLong())
@@ -156,6 +156,10 @@ class RemoteStallInspectorTest {
         val raw = "Tracker failed https://private.example/?passkey=123 account/test"
         assertEquals(RemoteStallEvidence.MessageClass.TRACKER_OR_NETWORK,
             RemoteStallInspector.classify(raw))
+        assertEquals(RemoteStallEvidence.MessageClass.TRACKER_OR_NETWORK,
+            RemoteStallInspector.classify("Tracker rejected: permission denied https://host/?passkey=SECRET"))
+        assertEquals(RemoteStallEvidence.MessageClass.OTHER,
+            RemoteStallInspector.classify("Permission denied"))
         assertEquals(RemoteStallEvidence.MessageClass.NONE, RemoteStallInspector.classify(""))
         assertEquals(RemoteStallEvidence.MessageClass.OTHER,
             RemoteStallInspector.classify("private data without recognizable hint"))
