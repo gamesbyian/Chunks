@@ -539,6 +539,15 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
     }
 
     /**
+     * Explicit read-only recovery for the original native Add-with-Start
+     * intent after a lost ACK, timeout or pending activation. The original
+     * reviewed identity and Place must agree; no mutation is attempted.
+     * Never use stopped-Add reconciliation for an already active torrent.
+     */
+    internal suspend fun reconcileStartedAdd(plan: StoppedRemoteAddPlan): RemoteAddAndStart =
+        awaitNativeStartedReadback(plan)
+
+    /**
      * Bounded READ-ONLY post-load polling, never a second load or lifecycle
      * command. In-flight hashing or a server policy can delay activation.
      * Unknown readback must remain non-verified, with explicit user refresh.
