@@ -10,6 +10,7 @@ import io.github.gamesbyian.chunks.engine.LocalTransferState
 import io.github.gamesbyian.chunks.rpc.LifecycleOutcome
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteAddOutcome
+import io.github.gamesbyian.chunks.rpc.RemoteAddAndStart
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
 import io.github.gamesbyian.chunks.rpc.RemoteSmartConnect
 import io.github.gamesbyian.chunks.rpc.SeedhostDestinationPreflight
