@@ -195,7 +195,10 @@ class SeedhostAndroidRealTransferAddInstrumentedTest {
                     visible("Infohash: $hash")
                 }
             }
-            rule.waitUntil(30_000) {\n                runCatching { scroll("Custom server folder (optional)") }\n                visible("Using custom Place.")\n            }
+            rule.waitUntil(30_000) {
+                runCatching { scroll("Custom server folder (optional)") }
+                visible("Using custom Place.")
+            }
             scroll("Review Add")
             rule.onNodeWithText("Review Add").performClick()
             scroll("Confirm: add then start")
@@ -203,7 +206,11 @@ class SeedhostAndroidRealTransferAddInstrumentedTest {
             report("$stage-review")
             submitted = true
             rule.onNodeWithText("Confirm: add then start").performClick()
-            rule.waitUntil(120_000) { visible("Operation outcome") }
+            rule.waitUntil(120_000) {
+                runCatching { scroll("Operation outcome") }
+                visible("Operation outcome")
+            }
+            scroll("Operation outcome")
             assertTrue("Installed app did not positively verify Add+Start",
                 visible("Verified: added and started on rTorrent."))
             report("$stage-ui-verified")
@@ -213,7 +220,7 @@ class SeedhostAndroidRealTransferAddInstrumentedTest {
             var observedProgress = false
             val deadline = SystemClock.elapsedRealtime() + 180_000L
             while (SystemClock.elapsedRealtime() < deadline) {
-                val passing = runBlocking {
+                val passing = runCatching { runBlocking {
                     val transfer = remote.listTransfers("main")
                         .singleOrNull { it.hash.equals(hash, true) }
                     val traffic = remote.readTrafficSample(hash)
@@ -225,8 +232,8 @@ class SeedhostAndroidRealTransferAddInstrumentedTest {
                         traffic.expectedBytes == preview.sizeBytes &&
                         (traffic.receivedBytes ?: 0L) > 0L &&
                         (traffic.peers ?: 0L) > 0L &&
-                        traffic.verifiedBytes > 0L
-                }
+                        (traffic.verifiedBytes ?: 0L) > 0L
+                } }.getOrDefault(false)
                 if (passing) { observedProgress = true; break }
                 Thread.sleep(2_000L)
             }
