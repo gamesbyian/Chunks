@@ -121,7 +121,7 @@ class Android10DownloadsRevocationInstrumentedTest {
         // Do not engine.close() or remove: harness forces a process boundary.
     }
 
-    @Test fun phaseB_storageRevokedRefusesStartWithoutResumingJob() {
+    @Test fun phaseB_storageRevokedRechecksOwnedFileOrSafelyRefuses() {
         requirePhase("b")
         assertNull("Phase B must have a new process", LocalEngineHolder.current())
         assertFalse("Harness did not revoke Android 10 storage permissions", hasStorageGrants())
@@ -144,12 +144,36 @@ class Android10DownloadsRevocationInstrumentedTest {
         assertEquals(listOf(hash), restored.completeIdentityInventory())
         assertTrue("Revoked-grant restored job auto-started",
             requireNotNull(restored.status(hash)).stopped)
-        val outcome = restored.resume(hash).outcome
-        assertEquals("Native Start must refuse before storage permission is restored",
-            LocalCommandOutcome.REFUSED, outcome)
-        assertTrue("Refused Start must remain stopped", requireNotNull(restored.status(hash)).stopped)
+        // Android 10 may legitimately retain access to media this same
+        // package created even without broad READ/WRITE storage permission.
+        // Probe the exact owned bytes before deciding the native Start
+        // contract; blanket refusal would turn lawful seeding into a bug.
+        val target = File(folder, requireNotNull(data.getProperty("name")))
+        val expected = requireNotNull(data.getProperty("sha256"))
+        val readableDigest = runCatching { digest(target) }.getOrNull()
+        if (readableDigest != null) {
+            assertEquals("Revoked grant may not hide actual content changes",
+                expected, readableDigest)
+            assertEquals("Accessible owned file must still support manual Start",
+                LocalCommandOutcome.VERIFIED, restored.resume(hash).outcome)
+            await("verified native seeding of still-accessible owned bytes") {
+                restored.status(hash)?.state == LocalTransferState.SEEDING
+            }
+            assertEquals("Native recheck must not mutate original owned file",
+                expected, digest(target))
+            assertEquals(LocalCommandOutcome.VERIFIED, restored.pause(hash).outcome)
+            assertTrue("Native Stop after accessible recheck not confirmed",
+                requireNotNull(restored.status(hash)).stopped)
+            android.util.Log.i("ChunksGrant", "CHUNKS_GRANT_OBSERVED access=owned-file")
+        } else {
+            assertEquals("Inaccessible exact payload path must refuse native Start",
+                LocalCommandOutcome.REFUSED, restored.resume(hash).outcome)
+            assertTrue("Refused Start must remain stopped",
+                requireNotNull(restored.status(hash)).stopped)
+            android.util.Log.i("ChunksGrant", "CHUNKS_GRANT_OBSERVED access=denied")
+        }
         android.util.Log.i("ChunksGrant",
-            "CHUNKS_GRANT phase=b refused=true stopped=true permission_revoked=true")
+            "CHUNKS_GRANT phase=b permission_revoked=true stopped_restored=true path_checked=true")
     }
 
     @Test fun phaseC_grantRestoredRechecksSeedsAndRemovesWithoutDeletingFiles() {
