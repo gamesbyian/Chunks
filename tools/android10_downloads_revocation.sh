@@ -29,7 +29,7 @@ positive() {
   adb logcat -c
   if ! result="$(adb shell am instrument -w -r \
       -e class "$class#phase$phase" \
-      -e chunksGrantPhase "${phase:0:1}" "$runner")"; then
+      -e chunksGrantPhase "$(printf '%s' "${phase:0:1}" | tr '[:upper:]' '[:lower:]')" "$runner")"; then
     echo "CHUNKS_GRANT: instrumentation command failed in $phase" >&2; return 1
   fi
   printf '%s\n' "$result"
