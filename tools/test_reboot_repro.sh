@@ -22,6 +22,13 @@ case "${1:-}" in
   logcat)
     if [[ "${2:-}" == "-d" ]]; then
       printf 'CHUNKS_REBOOT armed\n'
+      if [[ -e "${MOCK_PHASE_B_FLAG:?}" ]]; then
+        if [[ "${MOCK_NO_RESEED:-0}" != 1 ]]; then
+          printf 'CHUNKS_REBOOT restored_stopped=true no_autostart=true sha_unchanged=true reseeded_bytes=96000 removed_keep_files=true\n'
+          [[ "${MOCK_DUPLICATE_RESEED:-0}" != 1 ]] ||
+            printf 'CHUNKS_REBOOT restored_stopped=true no_autostart=true sha_unchanged=true reseeded_bytes=96000 removed_keep_files=true\n'
+        fi
+      fi
     fi
     ;;
   reboot)
@@ -173,4 +180,16 @@ for phase in a b; do
   done
 done
 
-echo "CHUNKS_REBOOT_WITNESS_TEST: fail-closed exact device selection, physical opt-in, authentic reboot, no-reboot/invalid-ID, and eighteen false instrumentation receipts correctly rejected"
+# A successful JUnit code cannot stand in for the exact real peer counter/
+# independent payload receipt emitted after the *actual* boot identity change.
+for bad in MOCK_NO_RESEED MOCK_DUPLICATE_RESEED; do
+  rm -f "$MOCK_REBOOT_FLAG" "$MOCK_PHASE_B_FLAG"
+  if env -u ADB_SERIAL -u ANDROID_SERIAL "$bad=1" bash "$repo/tools/reboot_repro.sh" >"$temp/$bad.log" 2>&1; then
+    echo "False post-reboot byte evidence accepted: $bad" >&2; exit 1
+  fi
+  [[ -e "$MOCK_REBOOT_FLAG" && -e "$MOCK_PHASE_B_FLAG" ]] || {
+    echo "Phase B did not run for post-reboot receipt negative: $bad" >&2; exit 1
+  }
+done
+
+echo "CHUNKS_REBOOT_WITNESS_TEST: exact ADB target, real boot, eighteen false instrumentation receipts, and two false post-boot seeding receipts rejected"
