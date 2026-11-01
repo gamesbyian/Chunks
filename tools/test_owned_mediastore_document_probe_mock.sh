@@ -51,7 +51,7 @@ case "$1" in
         [[ "${MOCK_DUPLICATE_OK:-0}" != 1 ]] || echo 'OK (10 tests)'
         [[ "${MOCK_SKIP:-0}" != 1 ]] || echo 'INSTRUMENTATION_STATUS_CODE: -3'
         [[ "${MOCK_TEST_FAILURE:-0}" != 1 ]] || echo 'FAILURES!!!'
-        [[ "${MOCK_MISSING_FINAL:-0}" != 1 ]] || echo 'INSTRUMENTATION_CODE: -1'
+        [[ "${MOCK_MISSING_FINAL:-0}" == 1 ]] || echo 'INSTRUMENTATION_CODE: -1'
         ;;
       *) exit 75 ;;
     esac
