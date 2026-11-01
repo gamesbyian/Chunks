@@ -696,7 +696,17 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             matching.single().directory == expectedDirectory) {
             "Torrent name or location changed; refresh before removal"
         }
-        // Guard again outside the view before the irreversible session write.
+        // The main-view snapshot is not a lock. A second client can rename or
+        // relocate the selected job while this confirmation is in progress.
+        // Re-read exact-session identity and location immediately before erase,
+        // refusing stale consent instead of relying on the unchanged hash alone.
+        // These reads narrow the race; rTorrent exposes no atomic compare/erase.
+        check(sessionContainsExactHash(hash)) { "Torrent disappeared before removal; refresh" }
+        val latestName = lookupName(hash)
+        val latestDirectory = call("d.directory", listOf(hash)) as? String
+        check(latestName == expectedName && latestDirectory == expectedDirectory) {
+            "Torrent name or location changed; refresh before removal"
+        }
         check(sessionContainsExactHash(hash)) { "Torrent disappeared before removal; refresh" }
         try {
             call("d.erase", listOf(hash))
@@ -944,11 +954,22 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         require(Regex("[0-9a-fA-F]{40}").matches(hash)) { "Invalid v1 torrent hash" }
         suspend fun get(method: String): Long? = try {
             number(call(method, listOf(hash))).takeIf { it >= 0L }
-        } catch (cancel: kotlinx.coroutines.CancellationException) {
-            throw cancel
-        } catch (_: Exception) {
+        } catch (fault: RpcFault) {
+            // Older servers may omit optional getters. Only a recognizable
+            // "method unavailable" RPC fault can become an unknown statistic.
+            // A 200 XML-RPC envelope can also carry backend busy/permission
+            // faults. Those, and a vanished exact hash, must stop inspection.
+            val reason = fault.message.orEmpty().lowercase(java.util.Locale.ROOT)
+            val missingMethod = fault.code in setOf("-32601", "-506") &&
+                "method" in reason && listOf("not found", "not defined",
+                    "unknown", "unsupported").any { it in reason }
+            if (!missingMethod) throw fault
             null
         }
+        // HTTP 401/403/407/429, TLS/socket loss, truncated or malformed XML,
+        // and cancellation MUST propagate. Swallowing them would send up to
+        // four more requests against an expired login and falsely report a
+        // connected server with merely unavailable optional statistics.
         return RemoteTransferActivity(
             active = get("d.is_active")?.let { it != 0L },
             open = get("d.is_open")?.let { it != 0L },

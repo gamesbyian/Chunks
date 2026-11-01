@@ -15,11 +15,24 @@ outage=${CHUNKS_NET_OUTAGE_SECONDS:-30}
 # A wireless adb connection would disappear when the script disables radios.
 # Pin an explicit serial before *any* install or radio operation.
 serial="${ADB_SERIAL:-${ANDROID_SERIAL:-}}"
+# Process substitution hides the ADB exit status. A failed adb devices that
+# prints one plausible serial must never authorize physical radio mutations.
+devices="$(adb devices)" || {
+  echo "Could not enumerate ADB devices: no install or radio operations" >&2; exit 2;
+}
 if [[ -z "$serial" ]]; then
-  mapfile -t serials < <(adb devices | awk 'NR > 1 && $2 == "device" {print $1}')
-  [[ "${#serials[@]}" -eq 1 ]] || { echo "Select exactly one authorized device (ADB_SERIAL)" >&2; exit 2; }
+  mapfile -t serials < <(awk 'NR > 1 && $2 == "device" { print $1 }' <<< "$devices")
+  [[ "${#serials[@]}" -eq 1 ]] || {
+    echo "Select exactly one authorized device (ADB_SERIAL)" >&2; exit 2;
+  }
   serial="${serials[0]}"
 fi
+# Even an explicitly selected serial must be connected and uniquely listed;
+# adb get-state alone is insufficient when a selector is stale/misconfigured.
+[[ "$(awk -v selected="$serial" '$1 == selected && $2 == "device" { n++ } END { print n+0 }' <<< "$devices")" == 1 ]] || {
+  echo "Selected ADB_SERIAL is absent or not uniquely connected" >&2; exit 2;
+}
+export ANDROID_SERIAL="$serial"
 [[ "$serial" != *:* ]] || { echo "Network-flap acceptance requires USB adb, not wireless adb" >&2; exit 2; }
 export ANDROID_SERIAL="$serial"
 # Failed ADB queries can leave plausible output; neither alone verifies a target.
@@ -28,6 +41,27 @@ if ! device_state="$(adb get-state | tr -d '\r\n')" || [[ "$device_state" != dev
 fi
 
 CHUNKS_WIFI_BASELINE= CHUNKS_DATA_BASELINE=
+# svc returns an acknowledgement, not proof that a requested radio state
+# changed. The app's separate ConnectivityManager witness must ALSO observe
+# loss/return of validated Internet; neither observation replaces the other.
+verify_radios_disabled() {
+  local wifi data
+  for _ in 1 2 3; do
+    if ! wifi="$(adb shell settings get global wifi_on | tr -d '\r\n')" ||
+       ! data="$(adb shell settings get global mobile_data | tr -d '\r\n')"; then
+      echo "CHUNKS_SWARM_NETFLAP: radio readback failed" >&2
+      return 1
+    fi
+    if [[ ! "$wifi" =~ ^[01]$ || ! "$data" =~ ^[01]$ ]]; then
+      echo "CHUNKS_SWARM_NETFLAP: ambiguous radio readback" >&2
+      return 1
+    fi
+    if [[ "$wifi" == 0 && "$data" == 0 ]]; then return 0; fi
+    sleep 1
+  done
+  echo "CHUNKS_SWARM_NETFLAP: radios did not both turn off (wifi=$wifi data=$data)" >&2
+  return 1
+}
 # Reject unsupported OEM settings *before* installing APKs or launching
 # instrumentation; refresh the baseline again immediately before toggling.
 chunks_read_radio_baseline || { echo "Radio baseline unavailable: no test started" >&2; exit 1; }
@@ -79,6 +113,9 @@ if [[ "$ready" -eq 1 ]]; then
   radio_changed=1
   adb shell svc wifi disable
   adb shell svc data disable
+  # Never signal a network outage to the instrumented app on svc ACK alone.
+  # The exit trap reverts even a partially executed radio command.
+  verify_radios_disabled || exit 1
   adb exec-out run-as "$pkg" touch files/net-off
   echo "CHUNKS_SWARM_NETFLAP network off for ${outage}s"
   sleep "$outage"
