@@ -1,5 +1,19 @@
 # Chunks active engineering work queue
 
+## 2026-11-01 0F exact-head storage and cross-lane qualification (dated checkpoint)
+
+This section supersedes older candidate instructions in the table below where later live events differ. Main was `ecfeceba86868932c35f5be7ae5db2debfd0d38c` at this review; recheck it before merging.
+
+- **#917 and #940 MERGED.** #917's verified 2–8-member new Downloads ZIP source and #940's exact authenticated server-to-phone review are in main; do not dispatch them as unmerged. #809 still blocks the unsafe generic SAF/ZIP/library Replace and cleanup paths, **not** these verified Create new adapters.
+- **0E #922 (draft, retargeted to main):** latest reviewed head `9b5ff0e25af420fc362f0086c48dea78c16b1850` restores the inherited pinned-library FIFO-substitution test to the exact **16 named cases per API**, with negative mock coverage; also pins the single verified emulator serial before all ADB install/shell actions. Older `bf48f4b` had real API29/35 16/16 with original/sibling preservation, but native Add/R8 were canceled after new commits. Treat [API29/API35 storage 41342081521](https://github.com/gamesbyian/Chunks/actions/runs/41342081521), [foundation 41342081505](https://github.com/gamesbyian/Chunks/actions/runs/41342081505), [native Add 41342081464](https://github.com/gamesbyian/Chunks/actions/runs/41342081464) and [R8 41342081477](https://github.com/gamesbyian/Chunks/actions/runs/41342081477) as **pending final-head gates**, not inferred successes. Qualify both emulator jobs and independent final-head review before an ordinary, SHA-guarded merge.
+- **0E #923 (stacked draft):** its prior API29/35 two-process STOP→real force-stop→fresh-process exact-row and Compose warning receipts are useful, but have not been requalified on post-#922 main. Reconcile only after #922 merge, retain its four unique test/workflow files, rerun storage, foundation, native Add and R8. STOP is not a mid-write SIGKILL or physical power cut.
+- **0F independent #967 source/red diagnosis:** new `d.state=0` + `d.is_active=0` exact-hash stopped-Add guard is correct in principle; old head `6229e4d` [foundation run 41341545349](https://github.com/gamesbyian/Chunks/actions/runs/41341545349) **failed** `RuTorrentUploadAddTest.uploadsStoppedIntoTheChosenFolderAndVerifiesByReadback` (1/1298 failed) because its loopback server did not implement the added `d.is_active` getter. Repair the fixture, not the production fail-closed readback, and require new-head green.
+- **0F independent #956 review:** reboot preflight improvements are valuable, but earlier `8b38c10` harness accepted a lone `OK (1 test)` without required terminal `INSTRUMENTATION_CODE: -1` before device reboot; independent review requests both phase A/B negative controls. Verify repaired later head and actual stopped-restoration acceptance; no physical reboot.
+- **0F #10 governance:** GitHub reports `main.protected=false`. An authorized repository administrator must install a compatible PR/required-status gate; path-scoped/manual workflows are not always emitted. Green optional, skipped or canceled runs never substitute for exact-head required checks.
+
+Keep this checkpoint's work in the existing ranked 0B/0C/0D/0E/0F slices, not a parallel queue. Historical candidate and red receipts remain below for provenance.
+
+
 **Single executable priority authority.** Inspect live main, open PRs/issues,
 ownership and current CI before taking a slice. Product requirements remain in
 [PRODUCT](PRODUCT.md), [UX](UX.md), [ARCHITECTURE](ARCHITECTURE.md),
