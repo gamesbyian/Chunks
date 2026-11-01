@@ -52,7 +52,11 @@ internal data class LocalZipExtractionPlan(
 
 /** First qualified platform adapter only; generic ZIP/SAF tree writes remain disabled. */
 @Composable
-internal fun LocalZipExtractionPanel(sourceUri: Uri, review: LocalZipReview) {
+internal fun LocalZipExtractionPanel(
+    sourceUri: Uri,
+    review: LocalZipReview,
+    onResult: ((LocalSingleZipMediaStoreExport.Result) -> Unit)? = null
+) {
     if (review.verification == null) return
     val context = LocalContext.current
     val scope = androidx.compose.runtime.rememberCoroutineScope()
@@ -82,6 +86,7 @@ internal fun LocalZipExtractionPanel(sourceUri: Uri, review: LocalZipReview) {
                                 }
                             }
                             outcome = result
+                            onResult?.invoke(result)
                             running = false
                         }
                     },
