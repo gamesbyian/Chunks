@@ -27,3 +27,8 @@ Typeface development is intentionally isolated in the single persistent [`font/l
 ## Owner assignment: lead app agent owns open PRs and issues (2026-10-29)
 
 The owner assigned the lead app agent ownership of **all open pull requests and issues**. That agent drives each open PR to a mergeable state (merge main in with a merge commit, fix CI properly, merge on exact-head green) or records a disposition. It also keeps each open issue's status current. This assignment does not change the font laboratory exception above: glyph drawing and font source iteration stay on `font/lab`, and promotion still arrives as one reviewed batch. The lead agent may review and merge such a promotion PR, as it did for #528, the approved ExtraBold 800, after verifying binary identity, glyph coverage and full CI.
+
+
+## rTorrent live-test permission update (2026-11-01)
+
+All relevant agents may run repeatable Add/Start/Stop/Pause/Resume/Reload/Recheck/reprioritization and destructive session or payload-deletion tests on **any repo-secret-credentialed rTorrent environment**, including numbered instances, without further owner approval. Prefer the fixture files under `tests/fixtures/owner-supplied/` or public torrents; other existing seedbox transfers are expendable too. Prior single-host consent limits are superseded. Preserve exact environment+hash targeting, verify postconditions, avoid blind write retries and protect credentials/passkeys. See [SEEDHOST-REMOTE-TESTING](SEEDHOST-REMOTE-TESTING.md).
