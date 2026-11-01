@@ -78,8 +78,10 @@ class AndroidNativeLowStorageRecoveryInstrumentedTest {
                 reserved += block
             }
             output.fd.sync()
-            assertTrue("Fallocate did not consume physical available blocks",
-                reserved > 0L && ballast.length() >= reserved)
+            val allocatedBlocks = Os.stat(ballast.absolutePath).st_blocks * 512L
+            assertTrue("No independent real-block evidence: reserved=$reserved allocated=$allocatedBlocks",
+                reserved > 0L && ballast.length() >= reserved &&
+                    allocatedBlocks >= reserved - 4096L)
         }
         val remaining = available(root)
         Log.i("ChunksLowSpace", "CHUNKS_LOW_SPACE_PRESSURE baseline=$initial " +
