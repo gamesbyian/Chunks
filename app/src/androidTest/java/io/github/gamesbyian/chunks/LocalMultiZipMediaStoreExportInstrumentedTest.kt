@@ -15,6 +15,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.gamesbyian.chunks.storage.OwnedMediaStoreZipBatchJournal
 import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.FileOutputStream
 import java.util.concurrent.atomic.AtomicReference
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
@@ -275,6 +277,38 @@ class LocalMultiZipMediaStoreExportInstrumentedTest {
                 assertEquals(1, resolver.delete(uncertainUri, null, null))
             }
         }
+    }
+
+    @Test fun tornAndFifoSubstitutedPrivateBatchJournalNeverClaimsCompletion() {
+        val nonce = freshBase()
+        val before = OwnedMediaStoreZipBatchJournal.unfinishedDescriptions(context)
+        val journal = OwnedMediaStoreZipBatchJournal.begin(context,
+            listOf(nonce + ".txt", "later" + nonce + ".bin"))
+        val exact = File(context.filesDir,
+            "owned-mediastore-zip-batches/" + journal.id + ".log")
+        journal.close()
+        try {
+            // A missing newline is a torn post-intent event, not completion.
+            FileOutputStream(exact, true).use { output ->
+                output.write("CHUNKS_ZIP_BATCH1\tEND".toByteArray())
+                output.fd.sync()
+            }
+            val interrupted = OwnedMediaStoreZipBatchJournal.unfinishedDescriptions(context)
+            assertEquals(before.size + 1, interrupted.size)
+            assertTrue(interrupted.any { it.contains("interrupted ZIP batch needs review after 0 of 2") })
+
+            // Replace ONLY this test-owned exact private journal path with a
+            // FIFO. Recovery may NOT block opening it or interpret it as a row.
+            assertTrue("Disposable private fixture log must be removable", exact.delete())
+            android.system.Os.mkfifo(exact.absolutePath, 0x180) // 0600
+            val unsafe = OwnedMediaStoreZipBatchJournal.unfinishedDescriptions(context)
+            assertEquals(before.size + 1, unsafe.size)
+            assertTrue(unsafe.any { it.contains("ZIP batch record needs manual review") })
+        } finally {
+            // Test-owned exact ID only; production recovery deletes nothing.
+            java.nio.file.Files.deleteIfExists(exact.toPath())
+        }
+        assertEquals(before, OwnedMediaStoreZipBatchJournal.unfinishedDescriptions(context))
     }
 
 }
