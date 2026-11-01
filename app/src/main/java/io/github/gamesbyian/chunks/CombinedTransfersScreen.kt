@@ -5,11 +5,11 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.view.WindowManager
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
@@ -687,8 +686,9 @@ internal fun CombinedTransfersScreen(
         }
         item {
             Text("Show", style = MaterialTheme.typography.labelLarge)
-            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 FilterChip(selected = query.scope == EnvironmentViewScope.All,
                     onClick = { update(query.copy(scope = EnvironmentViewScope.All)) },
                     label = { Text("All") }, modifier = Modifier.heightIn(min = 48.dp))
@@ -711,8 +711,9 @@ internal fun CombinedTransfersScreen(
         }
         item {
             Text("Filter transfers", style = MaterialTheme.typography.labelLarge)
-            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 listOf(
                     UnifiedTransferFilter.ALL to "All transfers",
                     UnifiedTransferFilter.STARTED to "Started",
@@ -729,8 +730,9 @@ internal fun CombinedTransfersScreen(
         }
         item {
             Text("Sort by", style = MaterialTheme.typography.labelLarge)
-            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 CombinedSortChoices.forEach { (key, label) ->
                     FilterChip(selected = query.sortKey == key, onClick = {
                         if (query.sortKey != key) update(query.copy(sortKey = key,
@@ -1194,8 +1196,9 @@ private fun EnvironmentColourChooser(
             Text(label + " · " + (current?.label ?: "no colour") +
                 if (id in palette.chosen) " (chosen)" else " (automatic)",
                 style = MaterialTheme.typography.titleSmall)
-            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            FlowRow(Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 EnvironmentHue.entries.forEach { hue ->
                     val isCurrent = hue == current
                     Box(Modifier.size(48.dp).clip(CircleShape)
