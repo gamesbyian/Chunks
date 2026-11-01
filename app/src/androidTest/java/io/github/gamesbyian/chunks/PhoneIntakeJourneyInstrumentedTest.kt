@@ -283,8 +283,11 @@ class PhoneIntakeJourneyInstrumentedTest {
             await("restored phone has a listening port", 20) { phone.listenPort() in 1..65535 }
             val seedPort = phone.listenPort()
             LocalTorrentEngine(LocalEngineConfig(listenInterfaces = "127.0.0.1:0",
-                allowMultipleConnectionsPerIp = true)).use { receiver ->
+                allowMultipleConnectionsPerIp = true, rateLimitLocalPeers = true)).use { receiver ->
                 receiver.start()
+                // A bounded fixture download makes counter and peer observations
+                // reproducible on the emulator's otherwise near-instant loopback.
+                receiver.setRateLimits(LocalRateLimits(downloadBytesPerSecond = 64 * 1024))
                 val addedReceiver = receiver.addStopped(File(work, "fixture.torrent").readBytes(), receiverRoot,
                     listOf(InetSocketAddress("127.0.0.1", seedPort)))
                 assertTrue("Actual native receiver Add: $addedReceiver",
@@ -298,6 +301,21 @@ class PhoneIntakeJourneyInstrumentedTest {
                 assertFalse("A newly admitted receiver must not already have complete bytes",
                     receiveTarget.exists())
                 assertEquals(LocalCommandOutcome.VERIFIED, receiver.resume(hash).outcome)
+                // add_torrent_params.peers may be consumed while a stopped job is
+                // checking files. Inject the explicit fixture endpoint *after*
+                // a confirmed Start, as the native engine's own peer tests do.
+                await("fresh receiver ready for peer connection", 30, failure = {
+                    "receiver=${receiver.status(hash)} phone=${phone.status(hash)}"
+                }) {
+                    receiver.status(hash)?.let {
+                        !it.stopped && (it.state == LocalTransferState.DOWNLOADING ||
+                            (it.state == LocalTransferState.SEEDING &&
+                                it.payloadDownloadedBytes >= expected.size))
+                    } == true
+                }
+                if ((receiver.status(hash)?.payloadDownloadedBytes ?: 0) < expected.size)
+                    assertTrue("Exact-hash post-Start fixture peer connection refused",
+                        receiver.connectPeer(hash, InetSocketAddress("127.0.0.1", seedPort)))
                 // A successful native flush and independent file readback must
                 // precede the payload-statistics witness, just as in the
                 // original production-connected journey. Polling all-time
