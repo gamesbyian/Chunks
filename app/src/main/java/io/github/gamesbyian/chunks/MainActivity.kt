@@ -447,6 +447,7 @@ private fun ChunksApp(
                 },
                 onOpenPhone = { section = Section.LOCAL },
                 onOpenServer = if (server != null) ({ section = Section.TRANSFERS }) else null,
+                onAddToServer = if (server != null) ({ section = Section.ADD }) else null,
                 onOpenTransfer = { key ->
                     // Resolve an exact owner. A saved-only server, a disconnected
                     // profile or the same hash on a different server must never
