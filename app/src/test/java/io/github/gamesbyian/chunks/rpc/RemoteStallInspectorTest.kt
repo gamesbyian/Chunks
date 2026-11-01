@@ -28,7 +28,9 @@ class RemoteStallInspectorTest {
         private val missingOptional: Boolean = false,
         private val busyOptional: Boolean = false,
         private val substituteFinalHash: Boolean = false,
-        private val nonIntegralActivity: Boolean = false
+        private val nonIntegralActivity: Boolean = false,
+        private val mode: Long = 1,
+        private val ignore: Long = 0
     ) : AutoCloseable {
         private val server = HttpServer.create(
             InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0)
@@ -54,7 +56,8 @@ class RemoteStallInspectorTest {
                     exchange.close()
                 } else {
                     val optional = method in setOf("d.hashing", "d.hashing_failed",
-                        "d.is_hash_checking", "d.is_meta", "d.message")
+                        "d.is_hash_checking", "d.is_meta", "d.message",
+                        "d.mode", "d.ignore_commands")
                     val reply = when {
                         optional && busyOptional -> fault(-503, "Server busy")
                         optional && missingOptional -> fault(-32601, "Method not found")
@@ -70,6 +73,8 @@ class RemoteStallInspectorTest {
                         method == "d.hashing_failed" -> number(0)
                         method == "d.is_hash_checking" -> number(0)
                         method == "d.is_meta" -> number(1)
+                        method == "d.mode" -> number(mode)
+                        method == "d.ignore_commands" -> number(ignore)
                         method == "d.message" ->
                             string("Failed to open file: Permission denied /private/secret-path?passkey=NEVER-DISCLOSE")
                         else -> error("Unrecognized command $method")
@@ -93,6 +98,8 @@ class RemoteStallInspectorTest {
             assertFalse(report.open)
             assertEquals(0, report.hashingPhase)
             assertEquals(true, report.awaitingMetadata)
+            assertEquals(1, report.controlMode)
+            assertEquals(false, report.ignoresConditionalCommands)
             assertEquals(RemoteStallEvidence.MessageClass.STORAGE, report.messageClass)
             assertTrue(report.explanation().contains("storage-related"))
             assertFalse(report.toString().contains("passkey"))
@@ -100,7 +107,7 @@ class RemoteStallInspectorTest {
             assertEquals(2, gateway.hashReads)
             assertEquals("d.hash", gateway.methods.first())
             assertEquals("d.hash", gateway.methods.last())
-            assertEquals(10, gateway.methods.size)
+            assertEquals(12, gateway.methods.size)
             assertTrue(gateway.verbs.all { it == "POST" })
             assertTrue(gateway.targets.all { hash in it })
         }
@@ -111,7 +118,7 @@ class RemoteStallInspectorTest {
             val result = RemoteStallInspector.inspect(RTorrentRemote(
                 RemoteCredentials(gateway.address, "alice", "secret")), hash)
             assertFalse(result.active)
-            assertEquals(20, gateway.methods.size) // Each read is challenged once.
+            assertEquals(24, gateway.methods.size) // Each read is challenged once.
             assertFalse(gateway.methods.contains("system.client_version"))
             assertTrue(gateway.verbs.all { it == "POST" })
         }
@@ -125,6 +132,8 @@ class RemoteStallInspectorTest {
             assertNull(report.hashCheckFailed)
             assertNull(report.hashChecking)
             assertNull(report.awaitingMetadata)
+            assertNull(report.controlMode)
+            assertNull(report.ignoresConditionalCommands)
             assertEquals(RemoteStallEvidence.MessageClass.UNKNOWN, report.messageClass)
             assertEquals(2, gateway.hashReads)
         }
@@ -178,6 +187,47 @@ class RemoteStallInspectorTest {
         assertEquals(RemoteStallEvidence.MessageClass.OTHER,
             RemoteStallInspector.classify("private data without recognizable hint"))
         assertFalse(RemoteStallInspector.classify(raw).toString().contains("123"))
+    }
+
+    @Test fun forcedOffAndIgnoreFlagsAreReadOnlyDistinctEvidence() = runBlocking {
+        Fixture(mode = 3, ignore = 1).use { gateway ->
+            val report = RemoteStallInspector.inspect(
+                RTorrentRemote(RemoteCredentials(gateway.address, "", "")), hash)
+            assertEquals(3, report.controlMode)
+            assertEquals(true, report.ignoresConditionalCommands)
+            assertTrue(report.explanation().contains("forced off"))
+            assertTrue(gateway.methods.contains("d.mode"))
+            assertTrue(gateway.methods.contains("d.ignore_commands"))
+            assertTrue(gateway.verbs.all { it == "POST" })
+            assertFalse(gateway.methods.any { it.endsWith(".set") || it.startsWith("load.") })
+        }
+        Fixture(mode = 1, ignore = 1).use { gateway ->
+            val report = RemoteStallInspector.inspect(
+                RTorrentRemote(RemoteCredentials(gateway.address, "", "")), hash)
+            assertEquals(1, report.controlMode)
+            assertEquals(true, report.ignoresConditionalCommands)
+            assertFalse(report.explanation().contains("forced off"))
+        }
+    }
+
+    @Test fun invalidSchedulingFlagsFailClosedWithoutClaimingCause() = runBlocking {
+        for (badMode in listOf(-1L, 4L)) Fixture(mode = badMode).use { gateway ->
+            assertThrows(IllegalArgumentException::class.java) {
+                runBlocking {
+                    RemoteStallInspector.inspect(
+                        RTorrentRemote(RemoteCredentials(gateway.address, "", "")), hash)
+                }
+            }
+            assertEquals(1, gateway.hashReads)
+        }
+        Fixture(ignore = 9).use { gateway ->
+            assertThrows(IllegalArgumentException::class.java) {
+                runBlocking {
+                    RemoteStallInspector.inspect(
+                        RTorrentRemote(RemoteCredentials(gateway.address, "", "")), hash)
+                }
+            }
+        }
     }
 
     @Test fun malformedInfohashNeverContactsGateway() = runBlocking {
