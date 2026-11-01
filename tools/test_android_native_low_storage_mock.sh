@@ -89,6 +89,11 @@ fail_case env -u ANDROID_SERIAL -u ADB_SERIAL MOCK_SDK=34
 [[ ! -e "$MOCK_DIR/install" ]]
 fail_case env ANDROID_SERIAL=UNLISTED
 [[ ! -e "$MOCK_DIR/install" ]]
+fail_case env ADB_SERIAL=OTHER ANDROID_SERIAL=MOCK_USB
+[[ ! -e "$MOCK_DIR/install" && ! -e "$MOCK_DIR/instrument" ]] || {
+  echo 'CHUNKS_LOW_SPACE_MOCK: contradictory selector crossed destructive preflight' >&2
+  exit 1
+}
 for flag in MOCK_INSTRUMENT_FAIL MOCK_SKIP MOCK_INSTALL_FALSE MOCK_MISSING_PRESSURE \
   MOCK_MISSING_BLOCKED MOCK_MISSING_RECOVERED MOCK_DUPLICATE_RECOVERED; do
   fail_case env -u ANDROID_SERIAL -u ADB_SERIAL "$flag=1"
