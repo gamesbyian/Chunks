@@ -113,6 +113,7 @@ class ServerToPhoneSessionPlanTest {
         }
         rule.onNodeWithText("Review phone Add").assertExists()
         rule.runOnUiThread { selected = second }
+        rule.waitForIdle()
         rule.onNodeWithText("Review phone Add").assertDoesNotExist()
         assertTrue("Switching servers must never hand off the previous plan", handedOff.isEmpty())
         rule.onNodeWithText("Copy files to this phone").performClick()
@@ -124,6 +125,7 @@ class ServerToPhoneSessionPlanTest {
         // exactly one B peer hint must reach the existing phone Add flow.
         rule.onNodeWithText("Review phone Add").assertExists()
         rule.onNodeWithText("Review phone Add").performClick()
+        rule.waitForIdle()
         // The click must consume its review as well as dispatch exactly one
         // magnet: distinguish a missed Compose click from a lost callback.
         rule.onNodeWithText("Review phone Add").assertDoesNotExist()
