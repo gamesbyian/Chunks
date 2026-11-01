@@ -18,11 +18,17 @@ internal data class RemoteStallEvidence(
     val hashCheckFailed: Boolean?,
     val hashChecking: Boolean?,
     val awaitingMetadata: Boolean?,
+    /** 0=off, 1=scheduler controlled, 2=forced on, 3=forced off. */
+    val controlMode: Int?,
+    /** Blocks d.try_* commands; does not by itself explain a failed d.start. */
+    val ignoresConditionalCommands: Boolean?,
     val messageClass: MessageClass
 ) {
     enum class MessageClass { NONE, STORAGE, TRACKER_OR_NETWORK, HASH_CHECK, OTHER, UNKNOWN }
 
     fun explanation(): String = when {
+        controlMode == 3 ->
+            "rTorrent marks this torrent as forced off (d.mode=3). Compare with a working torrent and inspect server scheduler policy before changing anything."
         messageClass == MessageClass.STORAGE ->
             "The server reports a storage-related problem. Inspect the exact destination, available space and account permissions in ruTorrent."
         hashCheckFailed == true || messageClass == MessageClass.HASH_CHECK ->
@@ -84,6 +90,12 @@ internal object RemoteStallInspector {
         val hashFailure = optionalFlag("d.hashing_failed")
         val checking = optionalFlag("d.is_hash_checking")
         val metadata = optionalFlag("d.is_meta")
+        val controlMode = optional("d.mode")?.let {
+            val n = it as? Long
+            require(n != null && n in 0L..3L) { "Invalid remote control mode" }
+            n.toInt()
+        }
+        val ignoresConditionalCommands = optionalFlag("d.ignore_commands")
         val message = optional("d.message")
         val category = when (message) {
             null -> RemoteStallEvidence.MessageClass.UNKNOWN
@@ -92,7 +104,7 @@ internal object RemoteStallInspector {
         }
         guard()
         return RemoteStallEvidence(hash, started, active, open, phase, hashFailure,
-            checking, metadata, category)
+            checking, metadata, controlMode, ignoresConditionalCommands, category)
     }
 
     /** No raw message, snippet, URL, path or tracker error is returned/logged. */
