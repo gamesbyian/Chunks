@@ -1,6 +1,15 @@
 package io.github.gamesbyian.chunks
 
 import android.content.ContentValues
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.Modifier
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Box
 import android.graphics.Bitmap
 import android.os.Environment
 import android.provider.MediaStore
@@ -61,6 +70,45 @@ class VerifiedAddScreenAtlasTest {
         }
         val publish = ContentValues().apply { put(MediaStore.Images.Media.IS_PENDING, 0) }
         assertTrue("Screenshot must be made readable by adb", resolver.update(uri, publish, null, null) == 1)
+    }
+
+    /** Installed Compose at a 320dp content constraint and 200% text.
+     * Navigation and Cancel are local-only; no authenticated remote write is attempted. */
+    @Test fun remoteAddReviewAndCancelStayReachableAtNarrowLargeText() {
+        var magnet by mutableStateOf(validMagnet)
+        var destination by mutableStateOf("/home/dev/chunks-public-test")
+        rule.setContent {
+            val current = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(current.density, 2f)) {
+                MaterialTheme {
+                    Box(Modifier.width(320.dp).height(700.dp)) {
+                        VerifiedAddScreen(remote, magnet, destination,
+                            onMagnet = { magnet = it },
+                            onDestination = { destination = it },
+                            onBack = {}, onComplete = {},
+                            onMutationStarted = { error("This test must not mutate a server") },
+                            onMutationSettled = {})
+                    }
+                }
+            }
+        }
+        rule.onNode(hasScrollAction()).performScrollToNode(
+            hasText("Choose a .torrent from Android Files"))
+        val chooser = rule.onNodeWithText("Choose a .torrent from Android Files")
+        assertTrue("Open-document control must retain at least 54dp", 
+            chooser.getUnclippedBoundsInRoot().height >= 54.dp)
+        rule.onNode(hasScrollAction()).performScrollToNode(hasText("Review Add"))
+        rule.onNodeWithText("Review Add").performClick()
+        rule.onNode(hasScrollAction()).performScrollToNode(
+            hasText("Confirm: add then start"))
+        assertTrue("Confirm control must retain at least 56dp",
+            rule.onNodeWithText("Confirm: add then start")
+                .getUnclippedBoundsInRoot().height >= 56.dp)
+        rule.onNode(hasScrollAction()).performScrollToNode(
+            hasText("Cancel, don't add"))
+        rule.onNodeWithText("Cancel, don't add").performClick()
+        rule.onNodeWithText("Confirm: add then start").assertDoesNotExist()
+        rule.onNodeWithText("Review Add").assertExists()
     }
 
     @Test fun reviewedStoppedAddShowsExactHashAndDestination() {
