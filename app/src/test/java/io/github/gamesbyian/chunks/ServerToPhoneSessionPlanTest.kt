@@ -120,11 +120,15 @@ class ServerToPhoneSessionPlanTest {
             rule.onAllNodesWithText("directly from your server at 127.0.0.1:6891", substring = true)
                 .fetchSemanticsNodes().isNotEmpty()
         }
-        // A second server can offer a fresh review only after its own reads;
-        // this regression never clicks Review, so no phone Add is dispatched.
+        // A new server requires an independent review. On the actual click,
+        // exactly one B peer hint must reach the existing phone Add flow.
         rule.onNodeWithText("Review phone Add").assertExists()
+        rule.onNodeWithText("Review phone Add").performClick()
         rule.runOnIdle {
-            assertTrue("No stale A handoff or unsolicited B handoff", handedOff.isEmpty())
+            assertTrue("Only one current-server Review callback may be delivered",
+                handedOff.size == 1)
+            assertTrue("No old-server peer address may survive the switch",
+                handedOff.single().contains("x.pe=127.0.0.1:6891"))
         }
         assertTrue("Only read-only RPCs may be sent", invoked.isNotEmpty() &&
             invoked.all { it in setOf("d.hash", "network.local_address",
