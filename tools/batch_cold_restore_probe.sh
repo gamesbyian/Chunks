@@ -12,6 +12,10 @@ api="$1"
 [[ "$(adb shell getprop ro.build.version.sdk | tr -d '\r\n')" == "$api" ]] || {
   echo 'CHUNKS_BATCH_COLD: Android SDK identity mismatch' >&2; exit 1;
 }
+run_id="$(od -An -N8 -tx1 /dev/urandom | tr -d '[:space:]')"
+[[ "$run_id" =~ ^[0-9a-f]{16}$ ]] || {
+  echo 'CHUNKS_BATCH_COLD: no safe unique fixture identity' >&2; exit 1;
+}
 pkg=io.github.gamesbyian.chunks
 runner="$pkg.test/androidx.test.runner.AndroidJUnitRunner"
 class=io.github.gamesbyian.chunks.LocalZipBatchColdRestoreInstrumentedTest
@@ -23,7 +27,8 @@ run_phase() {
   output="$(mktemp)"
   if ! adb shell am instrument -w -r \
       -e class "$class#$test" \
-      -e chunksBatchPhase "$phase" "$runner" >"$output" 2>&1; then
+      -e chunksBatchPhase "$phase" \
+      -e chunksBatchRunId "$run_id" "$runner" >"$output" 2>&1; then
     rm -f "$output"
     echo "CHUNKS_BATCH_COLD: instrumentation command failed phase=$phase" >&2
     return 1

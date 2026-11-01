@@ -42,13 +42,18 @@ class LocalZipBatchColdRestoreInstrumentedTest {
     private val resolver get() = context.contentResolver
     private val downloads get() =
         MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
-    private val fixture get() = File(context.filesDir, "chunks-batch-cold-restore-test")
+    // One host-selected nonce is shared across both processes. Repeated runs
+    // against retained app data cannot adopt an earlier test receipt.
+    private val runId get() = InstrumentationRegistry.getArguments().getString("chunksBatchRunId").orEmpty()
+    private val fixture get() = File(context.filesDir, "chunks-batch-cold-restore-test-$runId")
     private val marker get() = File(fixture, "receipt.properties")
 
     private fun phase(value: String) {
         assumeTrue("Only guarded batch-cold process harness may run",
             InstrumentationRegistry.getArguments().getString("chunksBatchPhase") == value &&
                 Build.VERSION.SDK_INT in setOf(29, 35))
+        assertTrue("Cold-process phases require a unique shared fixture ID",
+            runId.matches(Regex("[0-9a-f]{16}")))
         assertTrue("No physical device may be targeted by this test",
             Build.HARDWARE in setOf("ranchu", "goldfish") ||
                 Build.FINGERPRINT.startsWith("generic"))

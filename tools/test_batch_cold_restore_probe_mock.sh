@@ -30,6 +30,18 @@ case "$1" in
             *phaseB_coldProcessRecoveryShowsWarningWithoutCreatingAnotherRow*) phase=b ;;
           esac
           [[ "$phase" != unknown ]] || exit 35
+          run_id=""
+          previous=""
+          for token in "$@"; do
+            if [[ "$previous" == chunksBatchRunId ]]; then run_id="$token"; break; fi
+            previous="$token"
+          done
+          [[ "$run_id" =~ ^[0-9a-f]{16}$ ]] || exit 42
+          if [[ "$phase" == a ]]; then
+            printf '%s' "$run_id" > "$MOCK_DIR/run_id"
+          else
+            [[ "$run_id" == "$(cat "$MOCK_DIR/run_id")" ]] || exit 43
+          fi
           printf '%s\n' "$phase" > "$MOCK_DIR/phase"
           echo "instrument-$phase" >> "$MOCK_DIR/events"
           [[ "$MOCK_INSTRUMENT_FAIL" != "$phase" ]] || exit 36
@@ -72,7 +84,7 @@ bash -n "$root/batch_cold_restore_probe.sh"
 bash -n "$root/test_batch_cold_restore_probe_mock.sh"
 reset() {
   : > "$MOCK_DIR/events"
-  rm -f "$MOCK_DIR/phase"
+  rm -f "$MOCK_DIR/phase" "$MOCK_DIR/run_id"
 }
 good() {
   bash "$root/batch_cold_restore_probe.sh" 29 > "$tmp/yes" 2>&1
@@ -87,6 +99,11 @@ bad() {
   fi
 }
 reset; good
+first_run="$(cat "$MOCK_DIR/run_id")"
+reset; good
+[[ "$first_run" != "$(cat "$MOCK_DIR/run_id")" ]] || {
+  echo "CHUNKS_BATCH_COLD_MOCK: separate runs reused a fixture identity" >&2; exit 1;
+}
 reset; bad env MOCK_PHYSICAL=1
 [[ ! -s "$MOCK_DIR/events" ]]
 reset; bad env MOCK_WRONG_API=1
