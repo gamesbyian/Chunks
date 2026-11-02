@@ -525,7 +525,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         // addStopped(). Drain the exact old native tombstone here or its
         // surviving checked reservation would always reject same-hash re-Add,
         // even after libtorrent invalidates the old handle.
-        releaseDrainedNativeRetirements()
+        releaseDrainedNativeRetirement(key)
         // Register BEFORE native Add. A failed resume-file fsync may throw after
         // libtorrent registered a stopped handle: the UI can still discover it.
         // That partially admitted handle must never evade the first-Start fence.
@@ -572,7 +572,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             return LocalAddResult.Refused("This torrent is already in the local engine")
         // A prior removed handle is safe to reuse only after libtorrent has
         // retired all old native tasks. Never clear this guard by elapsed time.
-        releaseDrainedNativeRetirements()
+        releaseDrainedNativeRetirement(hash)
         if (hash in retiredThisSession)
             return LocalAddResult.Refused(
                 "The previous Remove is still finishing native file I/O. Try Add again when it settles; a full phone-engine restart also drains old work. Downloaded files were kept.")
@@ -644,7 +644,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         if (handles.containsKey(hash)) return LocalAddResult.Refused("This torrent is already in the local engine")
         // A prior removed handle is safe to reuse only after libtorrent has
         // retired all old native tasks. Never clear this guard by elapsed time.
-        releaseDrainedNativeRetirements()
+        releaseDrainedNativeRetirement(hash)
         if (hash in retiredThisSession)
             return LocalAddResult.Refused(
                 "The previous Remove is still finishing native file I/O. Try Add again when it settles; a full phone-engine restart also drains old work. Downloaded files were kept.")
@@ -1385,14 +1385,16 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
      * still independently blocks an unsafe Add through canRegister().
      * Must be called under the engine monitor before any new path admission.
      */
-    private fun releaseDrainedNativeRetirements() {
-        for ((hash, oldHandle) in retiredNativeHandles.toList()) {
-            val drained = try { !oldHandle.isValid } catch (_: Exception) { false }
-            if (!drained) continue
-            retiredNativeHandles.remove(hash)
-            retiredThisSession.remove(hash)
-            checkedPayloadReservations.release(hash)
-        }
+    private fun releaseDrainedNativeRetirement(requestedHash: String) {
+        // Only a deliberate exact-same-infohash re-Add may reclaim its old
+        // paths. An unrelated torrent is NOT licensed to reuse that old
+        // filename merely because the retired engine handle has drained.
+        val oldHandle = retiredNativeHandles[requestedHash] ?: return
+        val drained = try { !oldHandle.isValid } catch (_: Exception) { false }
+        if (!drained) return
+        retiredNativeHandles.remove(requestedHash)
+        retiredThisSession.remove(requestedHash)
+        checkedPayloadReservations.release(requestedHash)
     }
 
     /** Remove from the session only. Payload files are never deleted here. */
