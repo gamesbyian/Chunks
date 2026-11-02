@@ -81,9 +81,9 @@ jobs:
           fi
       - name: Run real BEP9 magnet and preserve a private Gradle status
         env:
-          CHUNKS_LIVE_RTORRENT_USER: ${ secrets.rtorrent_user }}
-          CHUNKS_LIVE_RTORRENT_PASS: ${ secrets.rtorrent_pass }}
-          CHUNKS_MAGNET_RECEIPT_PATH: ${ runner.temp }}/chunks-magnet-peer-stages.txt
+          CHUNKS_LIVE_RTORRENT_USER: ${{ secrets.rtorrent_user }}
+          CHUNKS_LIVE_RTORRENT_PASS: ${{ secrets.rtorrent_pass }}
+          CHUNKS_MAGNET_RECEIPT_PATH: ${{ runner.temp }}/chunks-magnet-peer-stages.txt
         run: |
           set -euo pipefail
           test "$GITHUB_REF" = "refs/heads/main"
@@ -113,6 +113,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: chunks-real-magnet-peer-receipt
-          path: ${ runner.temp }}/chunks-real-magnet-peer-receipt.json
+          path: ${{ runner.temp }}/chunks-real-magnet-peer-receipt.json
           retention-days: 14
           if-no-files-found: error
