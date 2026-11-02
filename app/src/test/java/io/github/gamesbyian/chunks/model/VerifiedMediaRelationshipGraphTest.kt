@@ -147,6 +147,14 @@ class VerifiedMediaRelationshipGraphTest {
             fact("writer", movie, MediaGraphPredicate.WRITTEN_BY, book)
         }
         assertThrows(IllegalArgumentException::class.java) {
+            fact("bogus-adaptation", movie, MediaGraphPredicate.ADAPTED_FROM,
+                entity("person", MediaGraphEntityKind.PERSON))
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            fact("bogus-sequel", entity("actor", MediaGraphEntityKind.PERSON),
+                MediaGraphPredicate.SEQUEL_TO, movie)
+        }
+        assertThrows(IllegalArgumentException::class.java) {
             MediaGraphEntity("TMDB", MediaGraphEntityKind.FILM, "1")
         }
     }

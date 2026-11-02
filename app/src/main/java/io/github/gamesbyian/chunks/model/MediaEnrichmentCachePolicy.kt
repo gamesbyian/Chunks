@@ -79,7 +79,8 @@ class MediaEnrichmentCachePolicy private constructor(
         if (key in ambiguous) return MediaMetadataCacheDecision.SCHEMA_QUARANTINE
         val receipt = latest[key] ?: return if (networkAllowed) MediaMetadataCacheDecision.FETCH_ELIGIBLE
             else MediaMetadataCacheDecision.OFFLINE_MISS
-        if (receipt.normalizedSchemaVersion != currentSchemaVersion) {
+        if (receipt.normalizedSchemaVersion != currentSchemaVersion || nowMs < receipt.observedAtMs) {
+            // An observation timestamp in the future cannot prove any cached field is currently valid.
             return MediaMetadataCacheDecision.SCHEMA_QUARANTINE
         }
         return when (receipt.state) {

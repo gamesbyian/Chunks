@@ -25,6 +25,7 @@ class MediaEnrichmentCachePolicyTest {
         assertEquals(MediaMetadataCacheDecision.STALE_DISPLAY_ONLY, decision(cache, now=2000, network=false, stale=true))
         assertEquals(MediaMetadataCacheDecision.OFFLINE_MISS, decision(cache, now=2000, network=false))
         assertEquals(MediaMetadataCacheDecision.SCHEMA_QUARANTINE, decision(cache, schema=2))
+        assertEquals(MediaMetadataCacheDecision.SCHEMA_QUARANTINE, decision(cache, now=999))
     }
 
     @Test fun optOutUnapprovedSourceAndHiddenMemberAlwaysForbidEvenFreshCache() {

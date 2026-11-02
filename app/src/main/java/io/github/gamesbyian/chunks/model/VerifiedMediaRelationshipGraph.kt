@@ -49,6 +49,15 @@ data class MediaGraphClaim(
         require(subject != target)
         require(predicate != MediaGraphPredicate.ABOUT_TOPIC || target.kind == MediaGraphEntityKind.TOPIC)
         require(!specificTopic || predicate == MediaGraphPredicate.ABOUT_TOPIC)
+        // Directional work lineage cannot point to a person, genre/topic or production entity.
+        // A malformed provider observation must not become a confirmed adaptation or sequel.
+        val nonWorks = setOf(MediaGraphEntityKind.PERSON, MediaGraphEntityKind.CHARACTER,
+            MediaGraphEntityKind.UNIVERSE, MediaGraphEntityKind.PRODUCTION,
+            MediaGraphEntityKind.TOPIC)
+        if (predicate in setOf(MediaGraphPredicate.ADAPTED_FROM, MediaGraphPredicate.REMAKE_OF,
+                MediaGraphPredicate.SEQUEL_TO, MediaGraphPredicate.EDITION_OF)) {
+            require(subject.kind !in nonWorks && target.kind !in nonWorks)
+        }
         when (predicate) {
             MediaGraphPredicate.WRITTEN_BY, MediaGraphPredicate.CREATED_BY,
             MediaGraphPredicate.ACTED_BY, MediaGraphPredicate.PERFORMED_BY,
