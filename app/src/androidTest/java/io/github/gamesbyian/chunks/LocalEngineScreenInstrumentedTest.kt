@@ -133,7 +133,7 @@ class LocalEngineScreenInstrumentedTest {
         assertEquals(0, removed)
         rule.onNodeWithText("Downloaded files stay in Chunks' folder", substring = true).assertExists()
         capture("local-engine-remove-confirm-real-compose")
-        rule.onNodeWithText("Remove, keep files").performClick()
+        rule.onNodeWithText("Remove transfer, keep data").performClick()
         assertEquals(1, removed)
     }
 
