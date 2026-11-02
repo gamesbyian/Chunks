@@ -20,6 +20,19 @@ class DebugPublicationTests(unittest.TestCase):
         self.assertIn("if: github.ref == 'refs/heads/main'", s)
         self.assertIn("cancel-in-progress: false", s)
 
+    def test_publish_retire_serialize_across_different_commit_shas(self):
+        s = FILE.read_text()
+        # Two owner-dispatched builds at distinct SHAs must never publish and
+        # delete each other's latest requested release concurrently.
+        scope = s.split("\\nconcurrency:\\n", 1)[1].split("\\njobs:", 1)[0]
+        self.assertIn("  group: chunks-owner-debug-publication", scope)
+        self.assertIn("  cancel-in-progress: false", scope)
+        self.assertNotIn("github.sha", scope)
+        self.assertNotIn("github.run_id", scope)
+        self.assertIn('gh release delete "$obsolete"', s)
+        self.assertLess(s.index('gh release create "$tag"'),
+                        s.index('gh release delete "$obsolete"'))
+
     def test_no_privileged_token_in_build_environment(self):
         s = FILE.read_text()
         job_env = s.split("jobs:\n  publish:", 1)[1].split("    steps:", 1)[0]
