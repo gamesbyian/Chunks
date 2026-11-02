@@ -1,0 +1,40 @@
+name: P0 read-only reconcile synthetic magnet from prior red run
+
+on:
+  pull_request:
+    paths:
+      - tools/seedhost_recent_magnet_reconcile.py
+      - .github/workflows/seedhost-recent-magnet-reconcile.yml
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/seedhost-recent-magnet-reconcile.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m py_compile tools/seedhost_magnet_readonly_forensics.py tools/seedhost_recent_magnet_reconcile.py
+
+  readonly:
+    if: >-
+      ${{ github.ref == 'refs/heads/main' && github.run_attempt == 1 &&
+          ((github.event_name == 'workflow_dispatch') ||
+           (github.event_name == 'push' &&
+            contains(github.event.head_commit.message, 'one-time synthetic magnet read-only reconciliation (#1015)'))) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CHUNKS_LIVE_RTORRENT_USER: ${{ secrets.rtorrent_user }}
+      CHUNKS_LIVE_RTORRENT_PASS: ${{ secrets.rtorrent_pass }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m py_compile tools/seedhost_magnet_readonly_forensics.py tools/seedhost_recent_magnet_reconcile.py
+      - name: No mutations; inspect unique failed-test synthetic name only
+        run: python3 tools/seedhost_recent_magnet_reconcile.py
