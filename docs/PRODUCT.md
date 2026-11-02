@@ -1,5 +1,12 @@
 # Chunks canonical product contract
 
+## Planned transfer sharing and optional Expository file associations (not shipped)
+
+After a user has added a transfer, Chunks shall offer **Share magnet**, **Copy magnet**, and, when its verified complete metadata is accessible, **Share .torrent**, consistently for phone and native rTorrent sources even when the original input is gone. Sharing never changes a torrent or promises the same live peers. Preserve exact v1/v2 swarm identity, tracker information where known, environment origin, and private-tracker disclosure. See [TRANSFER-SHARING](TRANSFER-SHARING.md).
+
+With explicit user pairing, Chunks may provide Expository Transfer a **read-only, permission-protected snapshot** of per-profile rTorrent file membership and observed status to annotate accessible FTP/FTPS/SFTP files. Stale/incomplete inventory is not evidence a file is unrelated or safe to delete; no new filesystem or torrent mutation authority is granted. See [EXPOSITORY-FILE-ASSOCIATIONS](EXPOSITORY-FILE-ASSOCIATIONS.md). Both are deferred behind supported daily-use P0 acceptance.
+
+
 ## Shared media intelligence and relationship discovery (owner-approved, planned 2026-11-01)
 
 Chunks SHALL use one lossless, versioned name/metadata identity service for artwork, media information, Similar Transfers, Smart Rename, Bulk Rename, search/grouping and Plex-compatible repair. Cached provider-backed identities and a bounded on-device graph support **direct and explainable cross-media relations** (writer/actor/artist, work/adaptation, sequels, episodes, subject, high-specificity themes) across all configured active environments. Composite transfer identity and environment colour/name remain explicit. The expanded details Similar Transfers section defaults enabled, all active environments, five suggestions, with Options → Transfer Details controls for disabling and same-environment-only scope. Collections require member-level evidence; never assume the entire 1987–1998 Hulk collection shares one writer. No cloud/LLM dependency for relationship querying; enrichment still obeys existing privacy and provider consent. Inferred identity NEVER changes a filename, path or torrent; rename actions remain separately previewed and authorized. This is a post-P0 feature. [Normative graph and UX contract](SHARED-MEDIA-IDENTITY-AND-SIMILAR-TRANSFERS.md) · [researched metadata provider registry](MEDIA-PROVIDER-REGISTRY.md) · [artwork/privacy rules](TRANSFER-ARTWORK.md).
