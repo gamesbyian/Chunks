@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       apply_mutation:
-        description: "Explicitly authorize one synthetic Add/Start/Stop/Erase on development Seedhost"
+        description: "Authorize three synthetic transfers: native-start file and magnet, then file Add/priority/Start/Stop; session-erase each on development Seedhost"
         type: boolean
         required: true
         default: false
@@ -16,7 +16,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: chunks-seedhost-active-start-acceptance
+  group: chunks-android-seedhost-scope-mutation
   cancel-in-progress: false
 
 jobs:
@@ -74,7 +74,7 @@ jobs:
           test "$status" -eq 0
 
   exact-hash-start:
-    if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.apply_mutation }}
+    if: ${{ github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.apply_mutation && github.run_attempt == 1 }}
     runs-on: ubuntu-latest
     timeout-minutes: 23
     env:

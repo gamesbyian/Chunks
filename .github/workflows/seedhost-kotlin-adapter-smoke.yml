@@ -4,17 +4,17 @@ on:
   workflow_dispatch:
     inputs:
       apply_mutation:
-        description: "Owner-authorized: add, prioritise, start/stop and session-erase ONE unique synthetic test torrent under <default>/chunks-acceptance"
+        description: "Authorize three synthetic Adds: file priority/Start/Stop, stopped magnet, stopped ruTorrent upload; session-erase each at a corroborated server parent"
         type: boolean
         required: false
         default: false
       diagnose_add:
-        description: "Owner-authorized (needs apply_mutation): compare Add variants with unique synthetic torrents, erasing each"
+        description: "Read-only diagnostics; mutation comparison is disabled pending exact-identity cleanup and uncertain-Add review"
         type: boolean
         required: false
         default: false
       reconcile_hash:
-        description: "Optional: read-only reconcile of an earlier uncertain synthetic Add (40-hex); erases only a chunks-acceptance fixture"
+        description: "Optional exact hash: read-only reconciliation; with apply_mutation, also session-erase a matching chunks-acceptance fixture"
         type: string
         required: false
         default: ""
@@ -23,15 +23,20 @@ permissions:
   contents: read
 
 concurrency:
-  group: chunks-seedhost-kotlin-readonly
+  group: chunks-android-seedhost-scope-mutation
   cancel-in-progress: false
 
 jobs:
   read-only-native-adapter:
-    if: github.ref == 'refs/heads/main'
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && (!inputs.apply_mutation || github.run_attempt == 1) }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
+      - name: Refuse unsafe diagnostic mutation mode
+        if: ${{ inputs.apply_mutation && inputs.diagnose_add }}
+        run: |
+          echo '::error::Diagnostic Add variants use unguarded erase and cannot run against the protected host. Read-only diagnostics remain available.'
+          exit 1
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with:

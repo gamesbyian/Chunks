@@ -21,7 +21,7 @@ concurrency:
 
 jobs:
   installed-add-ui:
-    if: ${{ github.ref == 'refs/heads/main' && inputs.apply_add }}
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.apply_add && github.run_attempt == 1 }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
