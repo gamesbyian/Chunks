@@ -215,7 +215,7 @@ internal class MainActivityRealMagnetJourney(
         fun remove(hash: String) {
             if (row(hash)?.started == true) lifecycle(hash, false)
             refreshAndFind(hash)
-            click("Remove from rTorrent…"); click("Confirm remove")
+            click("Remove from rTorrent…"); click("Remove transfer, keep data")
             await { runBlocking { remote.lookupName(hash) } == null }
             assertEquals(before, runBlocking { remote.listTransfers("main") }.map { it.hash.lowercase() }.toSet())
         }
