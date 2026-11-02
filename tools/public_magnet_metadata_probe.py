@@ -62,7 +62,9 @@ def main():
             if not trackers:
                 raise ValueError("Public fixture has no standard tracker")
             magnet = "magnet:?xt=urn:btih:" + target + "".join("&tr=" + urllib.parse.quote(t, safe="") for t in trackers)
-            data = root / (label + "-rtorrent")
+            # This parent is the explicit writable volume in the modern container.
+            # A runner-only evidence directory is not a server download Place.
+            data = Path(os.environ["RUNNER_TEMP"]) / "probe-data" / label
             data.mkdir()
             item = {"infohash": target, "name": ti.name(), "size": ti.total_size(),
                     "source": source, "magnet_sha256": hashlib.sha256(magnet.encode()).hexdigest(),
