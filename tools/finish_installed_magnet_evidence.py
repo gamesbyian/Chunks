@@ -38,13 +38,19 @@ def main():
             for label, source in receipt["sources"].items():
                 independent = peer["fixtures"][label]
                 peer_valid = peer_valid and (source["exact_infohash"] == independent["hash"] and
-                    independent["native_verified_bytes"] >= independent["prefix_bytes"] > 0 and
-                    independent["payload_uploaded_bytes"] > 0 and independent["peer_connections"] > 0)
+                    independent["native_verified_bytes"] >= independent["prefix_bytes"] > 0)
+                if receipt["public_peer_discovery"]:
+                    # Public-mode acceptance must not secretly use our seed.
+                    peer_valid = peer_valid and (independent["stages"] == ["preflight"] and
+                        independent["payload_uploaded_bytes"] == independent["peer_connections"] == 0)
+                else:
+                    peer_valid = peer_valid and (independent["payload_uploaded_bytes"] > 0 and independent["peer_connections"] > 0)
             shutil.copyfile(peer_path, a.output / "PEER-RECEIPT.json")
         except (ValueError, KeyError, TypeError):
             peer_valid = False
     receipt["application_id"] = "io.github.gamesbyian.chunks." + env.get("CHUNKS_PREVIEW_SUFFIX", "preview")
     receipt["independent_peer_evidence"] = "verified" if peer_valid else "missing-or-inconsistent"
+    receipt["independent_evidence_kind"] = "original source pieces checked; supplied peer unused" if receipt["public_peer_discovery"] else "real supplied peer upload and connections"
     if not peer_valid:
         receipt["result"] = "failed-or-inconclusive"
     (a.output / "RECEIPT.json").write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n")

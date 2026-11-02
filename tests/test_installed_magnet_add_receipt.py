@@ -77,6 +77,17 @@ class InstalledMagnetReceiptTests(unittest.TestCase):
         self.assertNotEqual("passed", result["result"])
         self.assertEqual(["passed", "failed"], [x["outcome"] for x in result["actual_case_results"]])
 
+    def test_public_completed_transfer_can_restart_without_fabricated_growth(self):
+        env = dict(self.env, CHUNKS_CONTROLLED_PEER="1", CHUNKS_PUBLIC_DISCOVERY="1")
+        data = self.controlled_log().replace("-resumed-traffic", "-completed-at-stop").replace(
+            "_resumed=600000,524288,1000000", "_resumed=1000000,1000000,1000000")
+        result = parse(data, 0, env)
+        self.assertEqual("passed", result["result"])
+        self.assertTrue(result["public_peer_discovery"])
+        self.assertFalse(result["controlled_real_peer"])
+        self.assertNotEqual("passed", parse(data, 0, dict(env, CHUNKS_PUBLIC_DISCOVERY="0"))["result"])
+        self.assertNotEqual("passed", parse(data.replace("_resumed=1000000,1000000", "_resumed=1000000,900000"), 0, env)["result"])
+
     def test_missing_exact_hash_blocks_otherwise_green_completion(self):
         data = self.success_log().replace(
             "INSTRUMENTATION_STATUS: chunks_real_add_hash_magnet2=" + "b" * 40 + "\n", "")

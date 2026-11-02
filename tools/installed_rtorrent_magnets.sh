@@ -9,6 +9,9 @@ test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
 test -s app/build/outputs/apk/debug/app-debug.apk
 test -s app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 args=(-e chunks_controlled_peer authorized -e chunks_acceptance_run "$GITHUB_RUN_ID")
+if [[ "${CHUNKS_PUBLIC_DISCOVERY:-}" = 1 ]]; then
+  args+=(-e chunks_public_discovery authorized)
+fi
 if [[ "${CHUNKS_DISPOSABLE:-}" = 1 ]]; then
   test "$CHUNKS_LIVE_RUTORRENT_URL" = http://127.0.0.1:18080/RPC2
   args+=(-e chunks_disposable authorized)

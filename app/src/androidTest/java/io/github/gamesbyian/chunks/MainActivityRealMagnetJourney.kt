@@ -70,7 +70,7 @@ internal class MainActivityRealMagnetJourney(
         fail("Required exact-server checkpoint missing")
     }
     private fun controller(path: String, port: Long? = null): ByteArray {
-        require(path.matches(Regex("/magnet2?(\\.torrent|/(metadata|payload|resume))")))
+        require(path.matches(Regex("/magnet2?(\\.(torrent|magnet)|/(metadata|payload|resume))")))
         val connection = URL("http://127.0.0.1:18081$path").openConnection() as HttpURLConnection
         connection.connectTimeout = 5_000; connection.readTimeout = 60_000
         connection.instanceFollowRedirects = false
@@ -92,6 +92,7 @@ internal class MainActivityRealMagnetJourney(
         require(arg("chunks_real_add") == "authorized")
         report("chunks_real_add_app_stage", "runner-ready")
         val disposable = arg("chunks_disposable") == "authorized"
+        val publicDiscovery = arg("chunks_public_discovery") == "authorized"
         val url = decoded("chunks_live_url_b64")
         if (disposable) require(url == "http://127.0.0.1:18080/RPC2")
         else {
@@ -132,7 +133,10 @@ internal class MainActivityRealMagnetJourney(
             click("+ Add torrent")
             rule.waitUntil(30_000) { visible("Add a download to this server") }
             report("chunks_real_add_app_stage", "add-open")
-            type("Magnet link", "magnet:?xt=urn:btih:$hash&tr=http%3A%2F%2F127.0.0.1%3A1%2Fannounce")
+            val link = if (publicDiscovery && label != null) String(controller("/$label.magnet"), Charsets.UTF_8)
+                else "magnet:?xt=urn:btih:$hash&tr=http%3A%2F%2F127.0.0.1%3A1%2Fannounce"
+            require(StoppedRemoteAddPlan.fromMagnet(link, parent).expectedInfoHash == hash)
+            type("Magnet link", link)
             report("chunks_real_add_app_stage", "magnet-entered")
             rule.waitUntil(30_000) {
                 runCatching { scroll("Custom server folder (optional)") }
@@ -180,35 +184,39 @@ internal class MainActivityRealMagnetJourney(
                 add(hash, label) { submitted = true }
                 stage(label, "ui-verified")
                 val placeholder = requireNotNull(row(hash))
-                assertEquals(parent, placeholder.directory)
+                assertTrue(placeholder.directory in setOf(parent, "$parent/${preview.name}"))
+                if (!publicDiscovery) assertEquals(1, (runBlocking { remote.call("d.is_meta", listOf(hash)) } as Number).toInt())
                 assertTrue(placeholder.started)
                 assertEquals(true, runBlocking { remote.readActivity(hash).active })
                 stage(label, "registered")
                 val source = runBlocking { remote.peerSource(hash) }
                 val host = if (disposable) "127.0.0.1" else "5.79.112.219"
                 require(source.boundAddress == host || (disposable && source.rpcHost == host))
-                controller("/$label/metadata", source.listenPort)
+                if (!publicDiscovery) controller("/$label/metadata", source.listenPort)
                 await(90) {
                     val exact = row(hash)
                     exact?.name == preview.name && exact.sizeBytes == preview.sizeBytes &&
                         (runBlocking { remote.call("d.is_meta", listOf(hash)) } as Number).toInt() == 0
                 }
                 stage(label, "metadata")
-                controller("/$label/payload", source.listenPort)
+                if (!publicDiscovery) controller("/$label/payload", source.listenPort)
                 await(90) {
                     val sample = runBlocking { remote.readTrafficSample(hash) }
-                    sample.active == true && (sample.peers ?: 0L) > 0L &&
+                    sample.active == true && ((sample.peers ?: 0L) > 0L ||
+                        (publicDiscovery && sample.verifiedBytes == sample.expectedBytes)) &&
                         (sample.receivedBytes ?: 0L) > 0L && (sample.verifiedBytes ?: 0L) > 0L &&
                         sample.expectedBytes == preview.sizeBytes
                 }
                 traffic(label, "initial", runBlocking { remote.readTrafficSample(hash) })
                 stage(label, "peer-progress"); stage(label, "bytes-verified")
                 rule.waitUntil(15_000) { runCatching { scroll("Operation outcome") }
-                    visible("Payload:") && visible("Downloading payload from peers.") }
+                    visible("Payload:") && (visible("Downloading payload from peers.") ||
+                        (publicDiscovery && visible("Download complete. All payload pieces verified by rTorrent."))) }
                 stage(label, "ui-progress")
                 val payload = requireNotNull(row(hash))
                 assertEquals(if (preview.fileCount > 1) "$parent/${preview.name}" else parent, payload.directory)
-                assertTrue(payload.completedBytes in 1 until payload.sizeBytes)
+                assertTrue(payload.completedBytes in 1..payload.sizeBytes)
+                if (!publicDiscovery) assertTrue(payload.completedBytes < payload.sizeBytes)
                 click("Back to transfers")
                 refreshAndFind(hash)
                 scroll(preview.name)
@@ -218,14 +226,16 @@ internal class MainActivityRealMagnetJourney(
                 stage(label, "stopped")
                 val stopped = runBlocking { remote.readTrafficSample(hash) }
                 lifecycle(hash, true)
-                controller("/$label/resume", source.listenPort)
-                await(90) {
+                if (!publicDiscovery) controller("/$label/resume", source.listenPort)
+                val completeBeforeRestart = publicDiscovery && stopped.verifiedBytes == stopped.expectedBytes
+                if (!completeBeforeRestart) await(90) {
                     val sample = runBlocking { remote.readTrafficSample(hash) }
                     (sample.receivedBytes ?: 0L) > (stopped.receivedBytes ?: 0L) &&
                         (sample.verifiedBytes ?: 0L) > (stopped.verifiedBytes ?: 0L)
                 }
                 traffic(label, "resumed", runBlocking { remote.readTrafficSample(hash) })
-                stage(label, "restarted"); stage(label, "resumed-traffic")
+                stage(label, "restarted")
+                stage(label, if (completeBeforeRestart) "completed-at-stop" else "resumed-traffic")
                 remove(hash); removed = true
                 stage(label, "removed")
                 stage(label, "ui-controls"); stage(label, "passed")

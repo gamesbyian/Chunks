@@ -13,7 +13,7 @@ import re
 SOURCES = ("magnet", "magnet2")
 PHASES = ("preflight", "review", "ui-verified", "registered",
           "readback-error", "metadata", "peer-progress", "bytes-verified",
-          "ui-progress", "stopped", "restarted", "resumed-traffic", "ui-controls", "removed", "passed", "uncertain")
+          "ui-progress", "stopped", "restarted", "resumed-traffic", "completed-at-stop", "ui-controls", "removed", "passed", "uncertain")
 FAILURE_TYPES = {
     "AssertionError", "IllegalStateException", "IllegalArgumentException",
     "SocketTimeoutException", "ConnectException", "IOException", "ComposeTimeoutException",
@@ -35,6 +35,7 @@ def parse(raw, exit_code, env=None):
     app_stages, negative_stages, source_frames = [], [], []
     terminal_count = 0
     controlled = env.get("CHUNKS_CONTROLLED_PEER") == "1"
+    public = env.get("CHUNKS_PUBLIC_DISCOVERY") == "1"
     expected_cases = {"installedAppAddsOneSyntheticMagnetAtAVerifiedServerPlace"} if controlled else {
         "installedMagnetAddResolvesMetadataAndReceivesVerifiedPeerBytes",
         "installedAlternateMagnetResolvesMetadataAndReceivesVerifiedPeerBytes",
@@ -144,14 +145,20 @@ def parse(raw, exit_code, env=None):
         for source in SOURCES:
             initial, resumed = (traffic[source].get(phase, {}) for phase in ("initial", "resumed"))
             complete = complete and all(phases[source][stage] == 1 for stage in
-                ("ui-progress", "stopped", "resumed-traffic", "ui-controls", "removed")) and bool(initial and resumed)
+                ("ui-progress", "stopped", "ui-controls", "removed")) and bool(initial and resumed)
             if initial and resumed:
-                complete = complete and (0 < initial["verified"] < initial["expected"] == resumed["expected"] and
+                grew = (phases[source]["resumed-traffic"] == 1 and phases[source]["completed-at-stop"] == 0 and
+                    0 < initial["verified"] < initial["expected"] == resumed["expected"] and
                     0 < initial["received"] < resumed["received"] and initial["verified"] < resumed["verified"])
+                finished = (public and phases[source]["completed-at-stop"] == 1 and phases[source]["resumed-traffic"] == 0 and
+                    0 < initial["verified"] <= initial["expected"] == resumed["expected"] == resumed["verified"] and
+                    0 < initial["received"] <= resumed["received"])
+                complete = complete and (grew or finished)
     return {
         "schema_version": 1, "source_sha": env.get("GITHUB_SHA"),
         "entry_path": "actual MainActivity Connect, Add, Transfers lifecycle and Remove" if controlled else "production Add composable",
-        "controlled_real_peer": controlled, "peerless_negative_passed": peerless == 1,
+        "controlled_real_peer": controlled and not public, "public_peer_discovery": controlled and public,
+        "peerless_negative_passed": peerless == 1,
         "safe_failure_source_frames": source_frames,
         "app_stage_evidence": app_stages, "negative_stage_evidence": negative_stages,
         "actual_case_identities": cases, "actual_case_results": case_results, "terminal_count": terminal_count,
