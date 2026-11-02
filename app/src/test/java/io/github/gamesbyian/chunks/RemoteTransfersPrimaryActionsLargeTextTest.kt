@@ -10,6 +10,7 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.Density
@@ -99,14 +100,20 @@ class RemoteTransfersPrimaryActionsLargeTextTest {
         }
     }
 
-    @Test fun sortHeaderIsVerticalAndAccessibleAt320dp200Percent() {
+    @Test fun sortHeaderCombinesCountAndActionAt320dp200Percent() {
         var callbacks = 0
         showSort(320, 2f) { callbacks++ }
-        val count = rule.onNodeWithText("120 shown").getUnclippedBoundsInRoot()
-        val sort = rule.onNodeWithText("Sort: Download speed").getUnclippedBoundsInRoot()
-        assertTrue("Sort button must not fight the count for width", sort.top >= count.bottom)
-        assertTrue(sort.left >= 0.dp && sort.right <= 320.dp)
-        rule.onNodeWithText("Sort: Download speed").performClick()
+        val action = rule.onNodeWithContentDescription(
+            "120 transfers shown. Sort by Download speed. Change sort"
+        )
+        val bounds = action.getUnclippedBoundsInRoot()
+        assertTrue("Compact combined sort action must fit the available width",
+            bounds.left >= 0.dp && bounds.right <= 320.dp)
+        assertTrue("Compact sort action must remain a full-sized tap target",
+            bounds.bottom - bounds.top >= 48.dp)
+        rule.onNodeWithText("120 shown · Sort: Download speed", useUnmergedTree = true)
+            .assertExists()
+        action.performClick()
         assertEquals(1, callbacks)
         rule.onRoot().captureRoboImage("build/chunks-visual/remote-sort-320x700-200pct.png")
     }
