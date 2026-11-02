@@ -60,7 +60,7 @@ jobs:
     timeout-minutes: 24
     env:
       CHUNKS_CONTROLLED_PEER: "1"
-      CHUNKS_PUBLIC_DISCOVERY: ${{ inputs.discovery == 'public' && '1' || '0' }}
+      CHUNKS_PUBLIC_DISCOVERY: ${{ (github.event_name == 'push' || inputs.discovery == 'public') && '1' || '0' }}
       CHUNKS_DISPOSABLE: ${{ (github.event_name == 'push' || inputs.environment == 'live') && '0' || '1' }}
       CHUNKS_SOURCE_SHA: ${{ github.sha }}
       CHUNKS_SIDE_BY_SIDE: "1"
