@@ -1,6 +1,12 @@
 name: Installed Chunks real rTorrent magnet lifecycle
 
 on:
+  # Only a uniquely named first-attempt main merge touching this workflow can
+  # initiate the one-time owner-authorized protected Seedhost experiment.
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/installed-rtorrent-magnets.yml"
   pull_request:
     paths:
       - "app/src/main/java/io/github/gamesbyian/chunks/VerifiedAddScreen.kt"
@@ -37,8 +43,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ inputs.environment == 'live' && 'chunks-android-seedhost-scope-mutation' || format('chunks-installed-magnets-{0}', github.event.pull_request.number || github.run_id) }}
-  cancel-in-progress: ${{ inputs.environment != 'live' }}
+  group: ${{ (github.event_name == 'push' || inputs.environment == 'live') && 'chunks-android-seedhost-scope-mutation' || format('chunks-installed-magnets-{0}', github.event.pull_request.number || github.run_id) }}
+  cancel-in-progress: ${{ github.event_name != 'push' && inputs.environment != 'live' }}
 
 jobs:
   installed-magnet-lifecycle:
@@ -46,16 +52,19 @@ jobs:
       ${{ github.event_name == 'pull_request' ||
           (github.event_name == 'workflow_dispatch' &&
            (inputs.environment == 'disposable' ||
-            (github.ref == 'refs/heads/main' && inputs.apply && github.run_attempt == 1))) }}
+            (github.ref == 'refs/heads/main' && inputs.apply && github.run_attempt == 1))) ||
+          (github.event_name == 'push' && github.ref == 'refs/heads/main' &&
+           github.run_attempt == 1 &&
+           contains(github.event.head_commit.message, 'one-time trusted installed Seedhost magnet acceptance (#1030)')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 24
     env:
       CHUNKS_CONTROLLED_PEER: "1"
       CHUNKS_PUBLIC_DISCOVERY: ${{ inputs.discovery == 'public' && '1' || '0' }}
-      CHUNKS_DISPOSABLE: ${{ inputs.environment == 'live' && '0' || '1' }}
+      CHUNKS_DISPOSABLE: ${{ (github.event_name == 'push' || inputs.environment == 'live') && '0' || '1' }}
       CHUNKS_SOURCE_SHA: ${{ github.sha }}
       CHUNKS_SIDE_BY_SIDE: "1"
-      CHUNKS_LIVE_RUTORRENT_URL: ${{ inputs.environment == 'live' && 'https://ianseeds.wood.seedhost.eu/rutorrent/' || 'http://127.0.0.1:18080/RPC2' }}
+      CHUNKS_LIVE_RUTORRENT_URL: ${{ (github.event_name == 'push' || inputs.environment == 'live') && 'https://ianseeds.wood.seedhost.eu/rutorrent/' || 'http://127.0.0.1:18080/RPC2' }}
     steps:
       - uses: actions/checkout@v4
       - name: Give this verified candidate a separate application identity
@@ -139,8 +148,8 @@ jobs:
       - name: Installed production UI adds two magnets and exercises real lifecycle
         uses: reactivecircus/android-emulator-runner@v2
         env:
-          CHUNKS_LIVE_RTORRENT_USER: ${{ inputs.environment == 'live' && secrets.rtorrent_user || '' }}
-          CHUNKS_LIVE_RTORRENT_PASS: ${{ inputs.environment == 'live' && secrets.rtorrent_pass || '' }}
+          CHUNKS_LIVE_RTORRENT_USER: ${{ (github.event_name == 'push' || inputs.environment == 'live') && secrets.rtorrent_user || '' }}
+          CHUNKS_LIVE_RTORRENT_PASS: ${{ (github.event_name == 'push' || inputs.environment == 'live') && secrets.rtorrent_pass || '' }}
         with:
           api-level: 35
           target: google_apis
@@ -172,7 +181,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: chunks-installed-magnets-${{ inputs.environment || 'disposable' }}-evidence
+          name: chunks-installed-magnets-${{ (github.event_name == 'push' && 'live') || inputs.environment || 'disposable' }}-evidence
           path: ${{ runner.temp }}/chunks-installed-magnet-evidence/
           retention-days: 14
           if-no-files-found: error
