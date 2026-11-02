@@ -136,6 +136,7 @@ class InstalledMagnetReceiptTests(unittest.TestCase):
         self.assertEqual("passed", result["result"])
         self.assertTrue(result["public_peer_discovery"])
         self.assertFalse(result["controlled_real_peer"])
+        self.assertNotIn("magnet0", result["sources"])
         self.assertNotEqual("passed", parse(data, 0, dict(env, CHUNKS_PUBLIC_DISCOVERY="0"))["result"])
         self.assertNotEqual("passed", parse(data.replace("_resumed=1000000,1000000", "_resumed=1000000,900000"), 0, env)["result"])
 

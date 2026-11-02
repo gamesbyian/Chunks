@@ -152,7 +152,7 @@ internal class MainActivityRealMagnetJourney(
         val parent = default ?: requireNotNull(runBlocking { corroboratedParent(remote, beforeRows) }) {
             "No independently corroborated server Place; no Add allowed"
         }
-        val groups = listOf((if (disposable) listOf("magnet0") else emptyList()) +
+        val groups = listOf((if (disposable && !publicDiscovery) listOf("magnet0") else emptyList()) +
             listOf("magnet", "magnet3"), listOf("magnet2", "magnet4"))
         val fixtures = groups.flatten().associateWith { label ->
             TorrentMetainfoReader.preview(controller("/$label.torrent")).also { preview ->

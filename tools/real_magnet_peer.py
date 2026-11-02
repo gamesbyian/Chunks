@@ -100,7 +100,7 @@ def prepare(root):
             "peer_error_alerts": 0, "max_active_peers": 0, "payload_uploaded_bytes": 0,
             "stages": [], "native_verified_bytes": 0,
         }
-    if os.getenv("CHUNKS_DISPOSABLE") == "1":
+    if os.getenv("CHUNKS_DISPOSABLE") == "1" and os.getenv("CHUNKS_PUBLIC_DISCOVERY") != "1":
         # Small synthetic *negative* control: the workflow copies these exact
         # bytes into its disposable rTorrent directory before the UI Add. It
         # cannot count as either of the two genuine publisher successes.

@@ -137,7 +137,7 @@ jobs:
           echo '::error::Known real metadata-serving peer unavailable; no Add'
           exit 1
       - name: Preload one genuine fixture on the disposable server only
-        if: env.CHUNKS_DISPOSABLE == '1'
+        if: env.CHUNKS_DISPOSABLE == '1' && env.CHUNKS_PUBLIC_DISCOVERY != '1'
         run: python3 tools/preload_disposable_magnet.py
       - name: Prepare hardware-accelerated API35 emulator
         run: |
@@ -159,7 +159,7 @@ jobs:
           disable-animations: true
           script: bash tools/installed_rtorrent_magnets.sh
       - name: Verify disposable precompleted bytes were preserved
-        if: env.CHUNKS_DISPOSABLE == '1'
+        if: env.CHUNKS_DISPOSABLE == '1' && env.CHUNKS_PUBLIC_DISCOVERY != '1'
         run: |
           cmp "$RUNNER_TEMP/chunks-real-peer/magnet0/chunks-precompleted-control.bin" \
               "$RUNNER_TEMP/chunks-disposable/data/chunks-precompleted-control.bin"

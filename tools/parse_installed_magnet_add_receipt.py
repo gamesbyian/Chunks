@@ -27,7 +27,9 @@ def parse(raw, exit_code, env=None):
     env = os.environ if env is None else env
     controlled = env.get("CHUNKS_CONTROLLED_PEER") == "1"
     disposable = env.get("CHUNKS_DISPOSABLE") == "1"
-    sources = (("magnet0",) + CANDIDATES if disposable else CANDIDATES) if controlled else SOURCES
+    public = env.get("CHUNKS_PUBLIC_DISCOVERY") == "1"
+    has_negative = controlled and disposable and not public
+    sources = (("magnet0",) + CANDIDATES if has_negative else CANDIDATES) if controlled else SOURCES
     phases = {source: {name: 0 for name in PHASES} for source in sources}
     observed_hashes = {source: set() for source in sources}
     traffic = {source: {} for source in sources}
@@ -41,7 +43,6 @@ def parse(raw, exit_code, env=None):
     peerless = 0
     app_stages, negative_stages, source_frames = [], [], []
     terminal_count = 0
-    public = env.get("CHUNKS_PUBLIC_DISCOVERY") == "1"
     expected_cases = {"installedAppAddsOneSyntheticMagnetAtAVerifiedServerPlace"} if controlled else {
         "installedMagnetAddResolvesMetadataAndReceivesVerifiedPeerBytes",
         "installedAlternateMagnetResolvesMetadataAndReceivesVerifiedPeerBytes",
@@ -174,7 +175,7 @@ def parse(raw, exit_code, env=None):
                 item["traffic"].get("initial", {}).get("received") == 0 and
                 item["traffic"].get("initial", {}).get("expected", 0) > 0 and
                 item["traffic"]["initial"].get("verified") == item["traffic"]["initial"]["expected"])
-        if disposable:
+        if has_negative:
             complete = complete and precompleted(per_source["magnet0"])
         for group in CANDIDATE_GROUPS:
             first, alternate = (per_source[source] for source in group)
