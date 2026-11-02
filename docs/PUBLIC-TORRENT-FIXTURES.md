@@ -1,5 +1,7 @@
 # Public torrent and media fixture process
 
+**Repository hygiene:** Use source-verified, explicitly public torrent fixtures and the curated magnet resources below. Raw downloaded `.torrent` files can embed private-tracker announce credentials/passkeys even when their filenames appear harmless. Do not commit personal/private tracker metainfo, credentials, or raw client session exports. The default `.gitignore` excludes `*.torrent`; force-add a reviewed, redistributable public test fixture only with recorded source/license, hash and checked announce URLs. Removing a sensitive file from current Git does **not** purge its history or revoke a leaked passkey.
+
 **Owner testing priority (2026-11-01):** use real, legally obtained `.torrent` inputs, metadata-resolving magnets, actual torrent clients/servers and actual peers as the **primary** functional acceptance path. Controlled peer-seeded actual files and magnet metadata exchanges are legitimate real-engine tests; mock replies, fake hashes and artificial magnets remain secondary parser/edge tests and cannot prove everyday downloading. See [real-transfer acceptance](REAL-TRANSFER-ACCEPTANCE.md). Do not confuse a sourced public .torrent with a currently healthy swarm; confirm conventional seeders or provide a genuine local peer, and measure the exact job's verified pieces/bytes. Respect owner-approved hosts, exact-hash cleanup and secret/passkey boundaries.
 
 ## Curated small magnet resource (2026-11-01)
