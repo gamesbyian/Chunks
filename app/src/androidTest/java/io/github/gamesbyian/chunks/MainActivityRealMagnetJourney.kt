@@ -133,8 +133,13 @@ internal class MainActivityRealMagnetJourney(
             click("+ Add torrent")
             rule.waitUntil(30_000) { visible("Add a download to this server") }
             report("chunks_real_add_app_stage", "add-open")
-            val link = if (publicDiscovery && label != null) String(controller("/$label.magnet"), Charsets.UTF_8)
+            // The real Seedhost must receive the actual publisher magnet, including
+            // its original tracker list. The disposable controlled test keeps
+            // the deliberate dead tracker to isolate the supplied peer.
+            val link = if ((publicDiscovery || !disposable) && label != null)
+                String(controller("/$label.magnet"), Charsets.UTF_8)
                 else "magnet:?xt=urn:btih:$hash&tr=http%3A%2F%2F127.0.0.1%3A1%2Fannounce"
+            if (!disposable && label != null) require("&tr=" in link) { "Original source trackers missing" }
             require(StoppedRemoteAddPlan.fromMagnet(link, parent).expectedInfoHash == hash)
             type("Magnet link", link)
             report("chunks_real_add_app_stage", "magnet-entered")
