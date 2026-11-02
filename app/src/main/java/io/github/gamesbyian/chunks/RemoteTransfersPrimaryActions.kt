@@ -11,6 +11,8 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 
@@ -68,12 +70,16 @@ internal fun RemoteTransfersSortSummary(
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         val stacked = maxWidth < 380.dp || LocalDensity.current.fontScale >= 1.5f
         if (stacked) {
-            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("$count shown", style = androidx.compose.material3.MaterialTheme.typography.titleMedium)
-                OutlinedButton(onClick = onCycleSort,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                    Text("Sort: $sortLabel")
+            // A separate count heading costs a whole row on the smallest screens.
+            // Combine the read-only count and the existing sort action into one
+            // full-width, wrapping, accessible control. No list state is changed.
+            OutlinedButton(
+                onClick = onCycleSort,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics {
+                    contentDescription = "$count transfers shown. Sort by $sortLabel. Change sort"
                 }
+            ) {
+                Text("$count shown · Sort: $sortLabel")
             }
         } else {
             Row(Modifier.fillMaxWidth(),
