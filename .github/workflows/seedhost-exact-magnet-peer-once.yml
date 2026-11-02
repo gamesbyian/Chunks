@@ -58,7 +58,7 @@ jobs:
       ${{ github.ref == 'refs/heads/main' && github.run_attempt == 1 &&
           ((github.event_name == 'workflow_dispatch' && inputs.apply) ||
            (github.event_name == 'push' &&
-            contains(github.event.head_commit.message, 'one-time controlled real magnet peer proof (#1013)'))) }}
+            contains(github.event.head_commit.message, 'one-time crash-safe real magnet peer proof (#1022)'))) }}
     runs-on: ubuntu-latest
     timeout-minutes: 22
     env:
