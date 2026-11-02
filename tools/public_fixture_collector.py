@@ -135,7 +135,9 @@ def clean_name(name):
     if not isinstance(name, bytes):
         raise ValueError("Invalid torrent name")
     text = name.decode("utf-8", errors="strict")
-    if text in ("", ".", "..") or "/" in text or "\\" in text or any(ord(x) < 32 for x in text):
+    if (not 1 <= len(name) <= 1024 or text in ("", ".", "..")
+            or "/" in text or "\\" in text
+            or any(ord(x) < 32 or ord(x) == 127 for x in text)):
         raise ValueError("Unsafe torrent name/path")
     return text
 
@@ -150,18 +152,37 @@ def torrent_summary(data, max_total_bytes, tracker_hosts=ARCHIVE_TRACKERS):
     if b"meta version" in info:
         raise ValueError("BEP 52 v2/hybrid torrent fixture requires verified piece layers")
     name = clean_name(info.get(b"name.utf-8", info.get(b"name")))
+    # BEP 3 permits exactly one backing layout. Keep the collector's
+    # source-verification semantics aligned with the Android importer: a
+    # duplicate file, or a file that is another file's parent, cannot
+    # resolve to an unambiguous destination on a real filesystem.
+    if (b"files" in info) == (b"length" in info):
+        raise ValueError("Torrent must declare exactly one file layout")
     paths = []
     if b"files" in info:
-        for item in info[b"files"]:
-            if not isinstance(item, dict) or not isinstance(item.get(b"length"), int):
+        files = info[b"files"]
+        if not isinstance(files, list) or not 1 <= len(files) <= 20000:
+            raise ValueError("Invalid torrent file list")
+        seen_files, seen_directories = set(), set()
+        for item in files:
+            if not isinstance(item, dict) or type(item.get(b"length")) is not int:
                 raise ValueError("Invalid torrent file")
             path = item.get(b"path.utf-8", item.get(b"path"))
-            if not isinstance(path, list) or not path:
+            if not isinstance(path, list) or not 1 <= len(path) <= 64:
                 raise ValueError("Invalid multi-file path")
-            paths.append(("/".join(clean_name(p) for p in path), item[b"length"]))
+            parts = tuple(clean_name(part) for part in path)
+            if parts in seen_files or parts in seen_directories:
+                raise ValueError("Duplicate or conflicting torrent file path")
+            for index in range(1, len(parts)):
+                parent = parts[:index]
+                if parent in seen_files:
+                    raise ValueError("Torrent file path conflicts with a directory")
+                seen_directories.add(parent)
+            seen_files.add(parts)
+            paths.append(("/".join(parts), item[b"length"]))
     else:
-        paths.append((name, info.get(b"length")))
-    if any(not isinstance(n, int) or n < 0 for _, n in paths):
+        paths.append((name, info[b"length"]))
+    if any(type(n) is not int or n < 0 for _, n in paths):
         raise ValueError("Invalid torrent length")
     total = sum(size for _, size in paths)
     if total > max_total_bytes:
