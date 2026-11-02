@@ -194,11 +194,13 @@ class TransferSessionRemoveLargeTextTest {
     @Test fun deniedMutationGateDoesNotTrapRemoveForever() {
         show()
         rule.onNodeWithText("Remove from rTorrent…").performClick()
-        rule.onNodeWithText("Remove transfer, keep data").performClick()
+        // The 200%-font confirmation is below the viewport. A real tap must
+        // scroll it into view first; an off-screen click is not a sent command.
+        rule.onNodeWithText("Remove transfer, keep data").performScrollTo().performClick()
+        assertEquals("The denied mutation gate must have been invoked exactly once", 1, mutations)
         rule.waitUntil(10_000) {
             rule.onAllNodesWithText("Remove from rTorrent…").fetchSemanticsNodes().isNotEmpty()
         }
-        assertEquals(1, mutations)
         // A new review is allowed; no second mutation is dispatched implicitly.
         rule.onNodeWithText("Remove from rTorrent…").performClick()
         rule.onNodeWithText("Remove transfer, keep data").assertExists()
