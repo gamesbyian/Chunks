@@ -19,7 +19,7 @@ VERSION = 1
 
 # JUnit test names can contain arbitrary input values (notably parameters).
 # Summaries may be public even when original JUnit artifacts are restricted.
-IDENTIFIER = re.compile(r"[A-Za-z_][A-Za-z0-9_.$]*\\Z")
+IDENTIFIER = re.compile(r"[A-Za-z_][A-Za-z0-9_.$]*\Z")
 
 
 def safe_junit_identifier(value):
