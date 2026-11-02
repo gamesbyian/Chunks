@@ -94,6 +94,8 @@ def prepare(root):
             "prefix_bytes": budget, "source": source, "license": license_text,
             "metainfo_sha256": hashlib.sha256(raw).hexdigest(),
             "peer_connections": 0, "payload_uploaded_bytes": 0,
+            "peer_disconnects": 0, "peer_errors": 0,
+            "max_active_peers": 0,
             "stages": [], "native_verified_bytes": 0,
         }
     return fixtures
@@ -172,9 +174,19 @@ class Peer:
         while not self.stopping.wait(.1):
             with self.lock:
                 for label, (session, handle) in self.active.items():
+                    # Preserve bounded, credential-free connection diagnostics
+                    # even when the remote rTorrent never requests metadata.
+                    item = self.fixtures[label]
+                    item["max_active_peers"] = max(
+                        item["max_active_peers"], handle.status().num_peers
+                    )
                     for alert in session.pop_alerts():
                         if isinstance(alert, lt.peer_connect_alert):
-                            self.fixtures[label]["peer_connections"] += 1
+                            item["peer_connections"] += 1
+                        elif isinstance(alert, lt.peer_disconnected_alert):
+                            item["peer_disconnects"] += 1
+                        elif isinstance(alert, lt.peer_error_alert):
+                            item["peer_errors"] += 1
 
     def close(self):
         self.stopping.set()
