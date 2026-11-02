@@ -33,10 +33,17 @@ internal class MainActivityRealMagnetJourney(
     private fun visible(text: String) = rule.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty()
     private fun scroll(text: String) = rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(text, substring = true))
     private fun click(text: String) {
+        // LazyColumn scrollToNode has already brought this target into view.
+        // A *second* performScrollTo on a re-composing Connect screen races
+        // focus/layout on real authenticated Android journeys.
         rule.waitUntil(45_000) { runCatching {
-            scroll(text); rule.onNodeWithText(text).assertIsEnabled(); true
+            scroll(text)
+            rule.onNodeWithText(text).assertIsEnabled().assertIsDisplayed()
+            true
         }.getOrDefault(false) }
-        rule.onNodeWithText(text).performScrollTo().performClick()
+        rule.waitForIdle()
+        // Exactly one click; never retry a possibly submitted RPC mutation.
+        rule.onNodeWithText(text).performClick()
     }
     private fun type(label: String, text: String) {
         scroll(label)
@@ -122,8 +129,9 @@ internal class MainActivityRealMagnetJourney(
         type("Seedbox hostname, ruTorrent URL or RPC address", url)
         type("Username, if required", user)
         type("Password", password)
-        report("chunks_real_add_app_stage", "connect-submitted")
+        report("chunks_real_add_app_stage", "connect-click-attempt")
         click("Connect to rTorrent")
+        report("chunks_real_add_app_stage", "connect-submitted")
         rule.waitUntil(90_000) { visible("It's all here.") }
         rule.onNodeWithText("Password").assertDoesNotExist()
         report("chunks_real_add_app_stage", "queue")
