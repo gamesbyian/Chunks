@@ -1,5 +1,10 @@
 # Real-transfer-first acceptance and upstream reuse
 
+## Existing-transfer sharing (planned acceptance)
+
+From real local and rTorrent transfers without their original input, export magnet and, when available, .torrent; import into a second real client. Check exact v1/v2/hybrid hashes, tracker metadata and peer discovery, validate .torrent metadata/piece layers and test unavailable/private/passkey/remote failure cases. Mocks are secondary. See [TRANSFER-SHARING](TRANSFER-SHARING.md).
+
+
 **Owner direction (2026-11-01):** Chunks' ordinary features must be judged primarily by behavior on **real BitTorrent engines, real .torrent files, actual magnets, real peers and real servers**, through the shipping app path whenever applicable. Mock, synthetic, replay and simulated tests remain useful **secondary tools** for rapid feedback, security/negative cases and deterministic failures. They cannot certify a working torrent feature.
 
 **Scope/authority:** This operational acceptance standard supplements [AGENTS](../AGENTS.md), [engineering delivery](ENGINEERING-DELIVERY-PROTOCOL.md), [CI policy](CI-POLICY.md), [quality ledger](QUALITY-LEDGER.md) and the existing [protected-host scope](SEEDHOST-REMOTE-TESTING.md). [WORK-QUEUE](WORK-QUEUE.md) alone orders implementation work. Do not invent a second queue or retroactively invalidate genuine evidence.
