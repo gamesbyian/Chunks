@@ -1,0 +1,116 @@
+name: Manual safe Chunks auto-APK artifact cleanup
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "plan (default, no deletion) or apply after reviewing an exact plan"
+        required: true
+        type: choice
+        default: plan
+        options: [plan, apply]
+      expected_sha256:
+        description: "For apply only: exact candidate_sha256 printed by a previous plan run"
+        type: string
+        required: false
+      confirmation:
+        description: "For apply only: type DELETE-CHUNKS-AUTO-APK-ARTIFACTS"
+        type: string
+        required: false
+  pull_request:
+    paths:
+      - '.github/workflows/manual-auto-apk-artifact-cleanup.yml'
+      - 'tools/actions_artifact_housekeeping.py'
+      - 'tests/test_actions_artifact_housekeeping.py'
+
+permissions:
+  contents: read
+concurrency:
+  group: chunks-auto-apk-cleanup-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify deletion controls without accessing GitHub
+        run: python3 -m unittest discover -s tests -p test_actions_artifact_housekeeping.py -v
+
+  plan:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    needs: contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Read-only eligible-artifact plan (never deletes)
+        run: |
+          python3 tools/actions_artifact_housekeeping.py --mode plan --json-out "$RUNNER_TEMP/chunks-cleanup-plan.json"
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          plan=json.loads((Path(os.environ['RUNNER_TEMP'])/'chunks-cleanup-plan.json').read_text())
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as out:
+              out.write('## Chunks auto-APK cleanup (read-only plan)\n\n')
+              out.write(f"Candidates: {len(plan['candidates'])}, compressed bytes: {plan['candidate_bytes']:,}.\n\n")
+              out.write(f"Expected plan SHA-256: `{plan['candidate_sha256']}`\n\n")
+              out.write('**No files were deleted.** Apply requires a separately dispatched run on main with that hash and the confirmation text.\n')
+          PY
+      - name: Preserve the exact candidate list for owner inspection
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-auto-apk-cleanup-plan
+          path: ${{ runner.temp }}/chunks-cleanup-plan.json
+          retention-days: 3
+          if-no-files-found: error
+
+  apply:
+    needs: [contract, plan]
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.ref == 'refs/heads/main' &&
+      inputs.mode == 'apply' &&
+      inputs.confirmation == 'DELETE-CHUNKS-AUTO-APK-ARTIFACTS' &&
+      inputs.expected_sha256 != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: write
+      pull-requests: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      EXPECTED_PLAN_SHA: ${{ inputs.expected_sha256 }}
+      CONFIRMATION: ${{ inputs.confirmation }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Revalidate and remove at most 20 exact older automated APKs
+        run: |
+          python3 tools/actions_artifact_housekeeping.py --mode apply \
+            --expected-plan-sha256 "$EXPECTED_PLAN_SHA" \
+            --confirmation "$CONFIRMATION" \
+            --json-out "$RUNNER_TEMP/chunks-cleanup-receipt.json"
+      - name: Retain verified deletion receipts (success only)
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-auto-apk-cleanup-deletion-receipt
+          path: ${{ runner.temp }}/chunks-cleanup-receipt.json
+          retention-days: 14
+          if-no-files-found: error
