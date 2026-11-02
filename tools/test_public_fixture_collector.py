@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).parent))
 import public_fixture_collector as f
+import collect_linuxtracker_magnets as linux
 
 def enc(value):
     if isinstance(value, bool):
@@ -301,6 +302,44 @@ class CollectorTest(unittest.TestCase):
                 source = enc({b"info": info})
                 with self.assertRaisesRegex(ValueError, "BEP 52.*piece layers"):
                     f.torrent_summary(source, 100)
+
+
+class LinuxTrackerBep12Test(unittest.TestCase):
+    primary = b"udp://tracker.linuxtracker.org:6969/announce"
+    backup = b"udp://tracker.opentrackr.org:1337/announce"
+
+    def test_tier_order_and_source_announce_precedence(self):
+        root = {b"announce": self.primary,
+                b"announce-list": [
+                    [b"http://untrusted.example/announce?private=redacted", self.backup],
+                    [self.primary, self.backup]]}
+        self.assertEqual([self.backup.decode(), self.primary.decode()],
+                         linux.safe_trackers(root))
+
+    def test_empty_malformed_and_untrusted_tiers_cannot_revive_announce(self):
+        cases = ([], b"bad-list", [b"not-a-tier"], [[b"\xff"]],
+                 [[b"https://tracker.linuxtracker.org/announce/private"]],
+                 [[b"https://tracker.linuxtracker.org/announce?passkey=redacted"]],
+                 [[b"https://tracker.linuxtracker.org:bad/announce"]],
+                 [[b"https://tracker.linuxtracker.org:0/announce"]],
+                 [[b"https://tracker.linuxtracker.org:99999/announce"]],
+                 [[self.primary + b"\\x00"]],
+                 [[self.primary + b"x" * 2049]])
+        for tiers in cases:
+            with self.subTest(shape=type(tiers).__name__):
+                self.assertEqual([], linux.safe_trackers(
+                    {b"announce": self.primary, b"announce-list": tiers}))
+
+    def test_single_announce_fallback_remains_usable_without_list(self):
+        self.assertEqual([self.primary.decode()],
+                         linux.safe_trackers({b"announce": self.primary}))
+        self.assertEqual([], linux.safe_trackers(
+            {b"announce": b"https://untrusted.example/announce"}))
+
+    def test_tier_duplicates_and_output_are_bounded_without_network(self):
+        many = [[self.primary] * 30, [self.backup] * 30]
+        self.assertEqual([self.primary.decode(), self.backup.decode()],
+                         linux.safe_trackers({b"announce-list": many}))
 
 if __name__ == "__main__":
     unittest.main()

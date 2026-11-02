@@ -103,20 +103,27 @@ def parse_rows(data):
                "category": cells[1], "reported_size": size_text}
 
 def safe_trackers(root):
-    values = [root.get(b"announce")]
-    for tier in root.get(b"announce-list", []):
-        if isinstance(tier, list):
-            values.extend(tier)
+    # BEP 12: announce-list, when present, replaces announce completely.
+    # Preserve the order of its approved public tiers for magnet handoff;
+    # never smuggle in a misleading top-level announce as a fallback.
+    if b"announce-list" in root:
+        tiers = root[b"announce-list"]
+        values = (url for tier in tiers[:16] if isinstance(tier, list)
+                  for url in tier[:64]) if isinstance(tiers, list) else ()
+    else:
+        values = (root.get(b"announce"),)
     unique = []
     for raw in values:
-        if not isinstance(raw, bytes):
+        if not isinstance(raw, bytes) or not 1 <= len(raw) <= 2048:
             continue
         try:
             url = raw.decode("utf-8", errors="strict")
+            if any(ord(char) < 32 or ord(char) == 127 for char in url):
+                continue
             p = urllib.parse.urlsplit(url)
             if (p.scheme not in ("http", "https", "udp")
                 or p.hostname not in ALLOWED_TRACKERS or p.username
-                or p.password or p.query or p.fragment
+                or p.password or p.query or p.fragment or p.port == 0
                 or p.path != "/announce"):
                 continue
         except ValueError:
