@@ -70,6 +70,14 @@ sealed class SessionEraseOutcome {
     data class Uncertain(val hash: String) : SessionEraseOutcome()
 }
 
+/** Read-only post-Remove evidence; only PresentMatching permits a NEW human-reviewed attempt. */
+sealed class SessionEraseRecheck {
+    data object Absent : SessionEraseRecheck()
+    data object PresentMatching : SessionEraseRecheck()
+    data object Changed : SessionEraseRecheck()
+    data object Unavailable : SessionEraseRecheck()
+}
+
 
 /**
  * One exact file priority change, not a blanket torrent or disk operation.
@@ -921,6 +929,39 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         }
     }
 
+
+    /**
+     * A new user action after an unsuccessful/uncertain session removal, never
+     * an automatic command replay. Check the exact session, not the main view:
+     * another client may have removed, replaced, renamed or moved the job.
+     *
+     * Missing/invalid RPC responses remain unavailable. Even a matching read
+     * is not removal authority: eraseFromSession repeats its full fresh
+     * main-view, exact-name and exact-directory preflight before writing.
+     */
+    suspend fun recheckSessionErase(
+        hash: String, expectedName: String, expectedDirectory: String
+    ): SessionEraseRecheck {
+        require(Regex("[0-9a-fA-F]{40}").matches(hash)) { "Invalid torrent identity" }
+        require(expectedName.isNotBlank() && expectedDirectory.startsWith("/")) {
+            "Invalid reviewed transfer identity"
+        }
+        return try {
+            if (!sessionContainsExactHash(hash)) return SessionEraseRecheck.Absent
+            val currentName = lookupName(hash)
+            if (currentName == null) return SessionEraseRecheck.Absent
+            val currentDirectory = call("d.directory", listOf(hash)) as? String
+                ?: return SessionEraseRecheck.Unavailable
+            if (!sessionContainsExactHash(hash)) return SessionEraseRecheck.Absent
+            if (currentName == expectedName && currentDirectory == expectedDirectory)
+                SessionEraseRecheck.PresentMatching
+            else SessionEraseRecheck.Changed
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            SessionEraseRecheck.Unavailable
+        }
+    }
 
     /** Read-only session identity independent of any visible rTorrent view. */
     private suspend fun sessionContainsExactHash(hash: String): Boolean = try {
