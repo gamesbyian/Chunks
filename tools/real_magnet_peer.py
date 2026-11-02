@@ -172,27 +172,35 @@ class Peer:
             classes.add_rule("0.0.0.0", "255.255.255.255", 1)
             session.set_peer_class_filter(classes)
             ti = lt.torrent_info(str(self.root / (label + ".torrent")))
-            params = {"ti": ti, "save_path": str(self.root / label)}
+            metadata_only = label == "magnet0" and stage == "metadata"
+            save_path = self.root / ("magnet0-metadata" if metadata_only else label)
+            if metadata_only:
+                # Supply BEP9 metainfo from an empty directory. The test
+                # must establish precompletion by rTorrent's own disk
+                # recheck, before any peer can upload payload to it.
+                save_path.mkdir()
+            params = {"ti": ti, "save_path": str(save_path)}
             handle = session.add_torrent(params)
             # Never fetch missing bytes from public trackers or webseeds.
             handle.replace_trackers([])
             for webseed in handle.url_seeds():
                 handle.remove_url_seed(webseed)
             handle.resume()
-            deadline = time.monotonic() + 45
-            while time.monotonic() < deadline:
+            if not metadata_only:
+                deadline = time.monotonic() + 45
+                while time.monotonic() < deadline:
+                    status = handle.status(lt.status_flags_t.query_pieces)
+                    verified = sum(ti.piece_size(i) for i, complete in enumerate(status.pieces) if complete)
+                    if status.error:
+                        raise ValueError("Native source recheck failed")
+                    if verified >= item["prefix_bytes"]:
+                        break
+                    time.sleep(.1)
                 status = handle.status(lt.status_flags_t.query_pieces)
                 verified = sum(ti.piece_size(i) for i, complete in enumerate(status.pieces) if complete)
-                if status.error:
-                    raise ValueError("Native source recheck failed")
-                if verified >= item["prefix_bytes"]:
-                    break
-                time.sleep(.1)
-            status = handle.status(lt.status_flags_t.query_pieces)
-            verified = sum(ti.piece_size(i) for i, complete in enumerate(status.pieces) if complete)
-            if verified < item["prefix_bytes"]:
-                raise ValueError("Original source pieces are unavailable")
-            item["native_verified_bytes"] = verified
+                if verified < item["prefix_bytes"]:
+                    raise ValueError("Original source pieces are unavailable")
+                item["native_verified_bytes"] = verified
             self.active[label] = session, handle
             item["stages"].append(stage)
             if stage != "preflight":
