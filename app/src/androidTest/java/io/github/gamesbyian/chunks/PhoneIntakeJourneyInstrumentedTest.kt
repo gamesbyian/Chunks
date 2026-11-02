@@ -393,7 +393,7 @@ class PhoneIntakeJourneyInstrumentedTest {
             // Make the confirmation genuinely reachable to a user before
             // dispatching it. An enabled but offscreen semantics node alone
             // is weaker evidence than a scrolled, actionable control.
-            click("Remove, keep files")
+            click("Remove transfer, keep data")
             await("session-only removal", failure = {
                 val messages = listOf(
                     "Session removal was not confirmed",

@@ -1888,14 +1888,20 @@ internal fun LocalTransferCard(
             )
             if (filesShown && files != null) LocalFilesOnDiskCheck(transfer.infoHash, transfer.savePath, files)
             if (confirmRemove) {
-                Text("Remove from the phone engine only. Downloaded files stay in Chunks' folder; sharing of this torrent stops.")
+                Text("Choose what to remove from this phone. Keeping data stops this torrent in Chunks, but leaves downloaded files in their current folder.")
                 LocalTransferConfirmationActions(
-                    confirmLabel = "Remove, keep files",
-                    cancelLabel = "Keep",
+                    confirmLabel = "Remove transfer, keep data",
+                    cancelLabel = "Cancel",
                     enabled = !busy,
                     onConfirm = { confirmRemove = false; onRemove() },
                     onCancel = { confirmRemove = false }
                 )
+                OutlinedButton(
+                    onClick = {}, enabled = false,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                ) { Text("Remove transfer and data (unavailable)") }
+                Text("Deleting downloaded data is not yet available: Chunks must first verify exactly which files belong only to this transfer. You can manage downloaded files separately in Android Files. Re-adding the same torrent immediately after removal may require a full phone-engine restart while native disk work finishes.",
+                    style = MaterialTheme.typography.bodySmall)
             }
         }
     }

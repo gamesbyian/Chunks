@@ -131,9 +131,9 @@ class LocalEngineScreenInstrumentedTest {
         rule.onNodeWithText("Stop").assertExists()
         rule.onNodeWithText("Remove…").performClick()
         assertEquals(0, removed)
-        rule.onNodeWithText("Downloaded files stay in Chunks' folder", substring = true).assertExists()
+        rule.onNodeWithText("leaves downloaded files in their current folder", substring = true).assertExists()
         capture("local-engine-remove-confirm-real-compose")
-        rule.onNodeWithText("Remove, keep files").performClick()
+        rule.onNodeWithText("Remove transfer, keep data").performClick()
         assertEquals(1, removed)
     }
 
