@@ -17,6 +17,23 @@ import xml.etree.ElementTree as ET
 
 VERSION = 1
 
+# JUnit test names can contain arbitrary input values (notably parameters).
+# Summaries may be public even when original JUnit artifacts are restricted.
+IDENTIFIER = re.compile(r"[A-Za-z_][A-Za-z0-9_.$]*\\Z")
+
+
+def safe_junit_identifier(value):
+    """Keep conventional static test labels; redact arbitrary data-bearing ones."""
+    if value and len(value) <= 160 and IDENTIFIER.fullmatch(value):
+        return value
+    return "<redacted-identifier>"
+
+
+def safe_report_reference(path):
+    """Opaque correlation identifier: no local path or filename is published."""
+    digest = hashlib.sha256(os.fsencode(path)).hexdigest()[:20]
+    return "junit-sha256-" + digest
+
 
 def junit_declared_count_conflicts(root):
     """Check optional JUnit summary totals against actual testcase elements.
@@ -63,7 +80,7 @@ def make_digest(paths, status, suite, env=None):
             if root.tag not in ("testsuite", "testsuites"):
                 raise ValueError("unexpected JUnit root")
             if junit_declared_count_conflicts(root):
-                invalid.append({"report": Path(path).name[:120],
+                invalid.append({"report": safe_report_reference(path),
                                 "problem": "JUnitDeclaredCountMismatch"})
             cases = root.findall(".//testcase")
             reports += 1
@@ -88,9 +105,7 @@ def make_digest(paths, status, suite, env=None):
                         if not math.isfinite(duration) or duration < 0:
                             raise ValueError("invalid duration")
                         # Class identifiers only, sanitized before publishing.
-                        klass = re.sub(r"[^A-Za-z0-9_.$]", "?", (
-                            case.get("classname") or "<unclassified>"
-                        ))[:120]
+                        klass = safe_junit_identifier(case.get("classname"))
                         class_seconds[klass] = class_seconds.get(klass, 0.0) + duration
                         timed_cases += 1
                     except (TypeError, ValueError, OverflowError):
@@ -102,11 +117,11 @@ def make_digest(paths, status, suite, env=None):
                     if len(failed_cases) < 20:
                         # No exception text, output, paths or environment values.
                         failed_cases.append({
-                            "class": (case.get("classname") or "")[:160],
-                            "test": (case.get("name") or "")[:160],
+                            "class": safe_junit_identifier(case.get("classname")),
+                            "test": safe_junit_identifier(case.get("name")),
                         })
         except (ET.ParseError, ValueError, OSError) as exc:
-            invalid.append({"report": Path(path).name[:120],
+            invalid.append({"report": safe_report_reference(path),
                             "problem": type(exc).__name__})
     status = status.lower()
     if invalid:
