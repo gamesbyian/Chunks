@@ -559,8 +559,12 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         val hash = identity(info)
         if (handles.containsKey(hash) || session.find(info.infoHash())?.isValid == true)
             return LocalAddResult.Refused("This torrent is already in the local engine")
-        if (resumeEvents?.canRegister(hash) == false || hash in retiredThisSession)
-            return LocalAddResult.Refused("Existing, removed or uncertain state requires restart/recovery before a new Add")
+        if (hash in retiredThisSession)
+            return LocalAddResult.Refused(
+                "You removed this torrent during this phone-engine session. Native file I/O may still be finishing. A full phone-engine restart is required before safely re-adding the same torrent. Downloaded files were kept.")
+        if (resumeEvents?.canRegister(hash) == false)
+            return LocalAddResult.Refused(
+                "The previous saved or removed state of this torrent is not ready for safe reuse. Stop phone transfers and restart the app's engine before re-adding. No files were deleted.")
 
         val params = AddTorrentParams()
         params.setTorrentInfo(info)
@@ -624,8 +628,12 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             return LocalAddResult.Refused("Choose an existing folder for this download")
         val hash = magnetIdentity(magnet) ?: return LocalAddResult.Refused("Use a magnet link with exactly one v1 info hash")
         if (handles.containsKey(hash)) return LocalAddResult.Refused("This torrent is already in the local engine")
-        if (resumeEvents?.canRegister(hash) == false || hash in retiredThisSession)
-            return LocalAddResult.Refused("Existing, removed or uncertain state requires restart/recovery before a new Add")
+        if (hash in retiredThisSession)
+            return LocalAddResult.Refused(
+                "You removed this torrent during this phone-engine session. Native file I/O may still be finishing. A full phone-engine restart is required before safely re-adding the same torrent. Downloaded files were kept.")
+        if (resumeEvents?.canRegister(hash) == false)
+            return LocalAddResult.Refused(
+                "The previous saved or removed state of this torrent is not ready for safe reuse. Stop phone transfers and restart the app's engine before re-adding. No files were deleted.")
         // The previous handle may have been removed from the visible list
         // while native disk I/O still holds it. Its path claims are tombstoned
         // until session shutdown; do not resurrect the same hash via a magnet.
