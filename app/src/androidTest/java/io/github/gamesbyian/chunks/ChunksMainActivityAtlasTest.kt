@@ -407,8 +407,25 @@ class ChunksMainActivityAtlasTest {
         // A collapsed row retains status/progress without composing its
         // mutation actions. Disclosure is a user gesture; it sends no RPC.
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("More details"))
-        rule.onNodeWithText("More details").performClick()
-        rule.onNodeWithText("Hide details").assertExists()
+        // A footer now overlays the bottom of the scrolling list. Bring the
+        // *actual* disclosure into the visible area before sending a tap;
+        // merely composing the lazy item does not guarantee an unobscured hit.
+        rule.onNodeWithText("More details").performScrollTo()
+            .assertIsDisplayed().performClick()
+        try {
+            rule.waitUntil(10_000) {
+                rule.onAllNodesWithText("Hide details").fetchSemanticsNodes().isNotEmpty()
+            }
+            rule.onNodeWithText("Hide details").assertExists()
+        } catch (failure: Throwable) {
+            save("app-expand-details-timeout-diagnostic-real-compose")
+            val relevant = rule.onRoot(useUnmergedTree = true).printToString()
+                .lineSequence().filter { it.contains("details") ||
+                    it.contains("Public.Example") || it.contains("Options") }
+                .take(35).joinToString(" | ").take(3000)
+            throw AssertionError("Expanded transfer details were not observed. " +
+                "Relevant Compose semantics=" + relevant, failure)
+        }
         // An actual installed-app queue action, not only an isolated editor
         // component. Wait for the filtered count, not just the IME's text;
         // rerendering the list can otherwise detach the click's modifier.
