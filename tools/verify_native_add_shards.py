@@ -15,6 +15,8 @@ import sys
 from check_native_atlas_contract import required_images
 
 REPO = Path(__file__).resolve().parent.parent
+# Accepted unsharded run 41367486529 executed 362 genuine tests.
+BASELINE_EXECUTED_TESTS = 362
 
 
 def verify(root, count, sha, screenshot_manifest=None):
@@ -53,6 +55,11 @@ def verify(root, count, sha, screenshot_manifest=None):
                 raise ValueError("failed test in accepted shard")
         for key in totals:
             totals[key] += int(j[key])
+        print("CHUNKS_NATIVE_SHARDS_PHASE: shard=" + str(index) +
+              " reports=" + str(j["reports"]) +
+              " executed=" + str(j["executed"]) +
+              " skipped=" + str(j["skipped"]) +
+              " failures=" + str(j["failed"]))
         summaries.append({
             "shard": index, "executed": j["executed"],
             "skipped": j["skipped"], "failed": j["failed"],
@@ -60,6 +67,8 @@ def verify(root, count, sha, screenshot_manifest=None):
         })
     if len(known_test_ids) != totals['executed'] + totals['skipped']:
         raise ValueError('missing test-case identities')
+    if totals['executed'] < BASELINE_EXECUTED_TESTS:
+        raise ValueError('below accepted 362-test unsharded baseline')
     screenshots = {}
     for name in manifest:
         candidates = []
