@@ -1,5 +1,11 @@
 # Chunks active engineering work queue
 
+## Owner device priority correction (2026-11-02)
+
+**Primary release target is the owner's Pixel 6 Pro.** Optimize and physically accept the actual daily-use UI on that device at its real Android display configuration. The Pixel 6-class 1080×2400, 20:9 display is a **lower-bound preference**, not a requirement to qualify every screen of that size. **Viewport breadth is not P0:** 320×700, 412×892 and other small/narrow device screenshot matrices, tablet layouts, uncommon resolutions and broad density variation are P1 compatibility work; they must not hold up the Pixel 6 Pro daily-use APK. The currently open dual-viewport [#992](https://github.com/gamesbyian/Chunks/pull/992) remains useful nonblocking test research, not mandatory P0 release acceptance. Never mark that failing 412×892 run green or remove it from history.
+
+Pixel 6 Pro acceptance still requires functional touch targets, readable/default text, correct system insets/IME, keyboard/focus and TalkBack semantics on the **supported target**, and no clipped/hidden essential actions or false command outcomes. Avoid adding arbitrary fixed-pixel assumptions or deliberately damaging other devices; retain existing responsive code where it costs nothing. But do **not** optimize, retest or redesign for sub-Pixel-6-size phones as a P0 dependency. This overrides older 320×700/412×892 and 200%-font *matrix* P0 instructions below; accessibility fundamentals on the primary phone remain relevant.
+
 ## P0 closure contract: a usable, safe daily-use Android client (2026-11-02)
 
 **Decision rule:** P0 blocks the **supported everyday local BitTorrent and rTorrent remote journeys**, causes a reachable wrong-file/data-loss or cross-environment/security failure, or makes basic installed use inaccessible/unreliable. A feature is **not** automatically P0 because an open issue describes it, because it is desirable for public distribution, or because a test exists for an uncommon environment. This release-scoping rule does **not** change the binding product requirements; safely deferred capabilities stay in their existing P1/P2 issues. Any *reachable* destructive corruption, cross-profile write, credential exposure or false verified transfer is immediate P0 regardless of lane.

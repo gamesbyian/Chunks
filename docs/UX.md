@@ -1,5 +1,11 @@
 # Chunks interaction and accessibility contract
 
+## Primary handset and acceptance scope (owner correction, 2026-11-02)
+
+The owner's **Pixel 6 Pro** is Chunks' authoritative daily-use design and physical acceptance target. The Pixel 6-class 1080×2400, 20:9 phone display is the owner's practical lower-bound preference. Design for the actual Pixel 6 Pro Android display, density, insets, font settings and touch behavior, not a universal tiny-phone matrix. Screens below the Pixel 6 class, including **320×700dp**, are not a P0 design/testing priority; alternative 412×892dp and 200%-font viewport matrix testing is also not a mandatory P0 gate. Retain adaptive Android UI, responsive layout, semantics and accessibility where already implemented, without deliberate breakage. Large font, TalkBack and keyboard should still work reasonably on the primary phone; a true blocker on that supported device is P0. Independent viewport research and exhaustive size/scale permutations may continue as P1 without delaying ordinary release readiness.
+
+This specific owner correction supersedes earlier mandatory multi-viewport P0 evidence statements elsewhere in this UX contract. Continue prioritizing above-fold Transfers visibility, focused Add/Start/Stop/files/error controls, and correct target/environment identity on the actual phone.
+
 ## Philosophy and priorities
 
 1. **Visible choices, effortless defaults.** The ordinary Add/transfer journey should work with no optional configuration when a verified, authorized default exists. Expose important options through a readable current-value summary plus contextual **Change**, not a compulsory setup interview or a hidden maze of settings. Enthusiasts retain granular control; there is no forked novice/expert application.
