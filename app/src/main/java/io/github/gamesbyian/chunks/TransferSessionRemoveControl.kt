@@ -180,7 +180,10 @@ fun TransferSessionRemoveControl(
                     Text("Removal result", fontWeight = FontWeight.Bold)
                     Text(if (pending) "Checking exact server session…" else
                         feedback ?: "Result unavailable. Inspect the server.")
-                    if (!pending && !verified) {
+                    // A removed exact hash may later be re-added to the same
+                    // account with the same name/path. Remembered UI state is
+                    // never proof that the NEW session is still absent.
+                    if (!pending) {
                         OutlinedButton(
                             onClick = {
                                 checking = true
@@ -188,8 +191,10 @@ fun TransferSessionRemoveControl(
                                     try {
                                         when (recheck(transfer.hash, transfer.name, transfer.directory)) {
                                             SessionEraseRecheck.PresentMatching -> {
-                                                // Fresh exact hash/name/directory. A NEW tap,
-                                                // confirmation and guarded preflight is required.
+                                                // A re-added same-hash job must never inherit
+                                                // an earlier success or attempted-operation lock.
+                                                // Fresh name+path match only reopens REVIEW.
+                                                verified = false
                                                 attempted = false
                                                 feedback = "The same transfer is still in this server's session. You can review a new Remove attempt."
                                             }
