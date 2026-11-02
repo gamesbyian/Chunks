@@ -133,7 +133,11 @@ internal class MainActivityRealMagnetJourney(
             click("+ Add torrent")
             rule.waitUntil(30_000) { visible("Add a download to this server") }
             report("chunks_real_add_app_stage", "add-open")
-            val link = if (publicDiscovery && label != null) String(controller("/$label.magnet"), Charsets.UTF_8)
+            // Preserve published trackers in both controlled and public
+            // modes. The previous loopback-dead tracker prevented normal
+            // public discovery on the actual Seedhost.
+            // The peerless negative remains an isolated dead-tracker magnet.
+            val link = if (label != null) String(controller("/$label.magnet"), Charsets.UTF_8)
                 else "magnet:?xt=urn:btih:$hash&tr=http%3A%2F%2F127.0.0.1%3A1%2Fannounce"
             require(StoppedRemoteAddPlan.fromMagnet(link, parent).expectedInfoHash == hash)
             type("Magnet link", link)
