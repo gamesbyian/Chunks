@@ -157,6 +157,16 @@ def torrent_summary(data, max_total_bytes, tracker_hosts=ARCHIVE_TRACKERS):
     # Refuse until a real BEP 52 writer/validator is integrated.
     if b"meta version" in info:
         raise ValueError("BEP 52 v2/hybrid torrent fixture requires verified piece layers")
+    # BEP 27 private=1 forbids DHT/PEX peer discovery. This collector
+    # produces *public-swarm* test fixtures, so it must not turn a tracker-
+    # restricted source into an apparently public magnet by dropping its
+    # original announce information. Leave private torrent handling to the
+    # user's actual client, not this source-fixture generator.
+    private = info.get(b"private", 0)
+    if type(private) is not int or private not in (0, 1):
+        raise ValueError("Invalid BEP 27 private torrent flag")
+    if private == 1:
+        raise ValueError("BEP 27 private torrent is unsuitable for public-swarm fixture")
     name = clean_name(info.get(b"name.utf-8", info.get(b"name")))
     # BEP 3 permits exactly one backing layout. Keep the collector's
     # source-verification semantics aligned with the Android importer: a
