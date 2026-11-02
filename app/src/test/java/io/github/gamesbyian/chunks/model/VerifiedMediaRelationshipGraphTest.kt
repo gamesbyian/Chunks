@@ -261,6 +261,21 @@ class VerifiedMediaRelationshipGraphTest {
         assertTrue(graph.related(works.first(), works.toSet(), 100).isEmpty())
     }
 
+    @Test fun corroboratingSourceStatementsDoNotTripDistinctWorkFanoutCap() {
+        val writer = entity("widely-credited", MediaGraphEntityKind.PERSON)
+        val works = (0 until 200).map { entity("work$it", MediaGraphEntityKind.COMIC_ISSUE) }
+        val claims = works.flatMapIndexed { index, work ->
+            listOf("source-a", "source-b").map { provider ->
+                fact("credit$index", work, MediaGraphPredicate.WRITTEN_BY, writer, provider=provider)
+            }
+        }
+        val related = VerifiedMediaRelationshipGraph.build(claims, setOf("source-a", "source-b"))
+            .related(works.first(), setOf(works.first(), works.last()))
+        assertEquals(1, related.size)
+        assertEquals(MediaGraphRelation.SHARED_WRITER, related.single().strongest)
+        assertEquals(4, related.single().explanations.single().evidence.size)
+    }
+
     @Test fun offlinePureQueryHasBoundedLimitAndNoUnlimitedHops() {
         val movie = entity("m",MediaGraphEntityKind.FILM)
         val person = entity("person",MediaGraphEntityKind.PERSON)

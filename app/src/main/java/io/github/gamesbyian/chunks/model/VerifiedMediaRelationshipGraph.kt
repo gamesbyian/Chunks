@@ -182,7 +182,11 @@ class VerifiedMediaRelationshipGraph private constructor(
             direct(claim.predicate)?.let { add(claim.target, MediaGraphExplanation(it, null, listOf(claim))) }
             // Broad, high-degree terms are not useful as a default recommendation signal.
             val peers = incoming[claim.target].orEmpty()
-            if (peers.size <= MAX_SHARED_POSTING) {
+            // Count unique related *works*, not corroborating source assertions. Two
+            // approved catalogs citing 200 works must not trip a 256-work fanout cap.
+            val distinctWorks = peers.asSequence().map { it.subject }.distinct()
+                .take(MAX_SHARED_POSTING + 1).count()
+            if (distinctWorks <= MAX_SHARED_POSTING) {
                 for (peer in peers) {
                     val relation = shared(claim.predicate, peer.predicate) ?: continue
                     add(peer.subject, MediaGraphExplanation(relation, claim.target, listOf(claim, peer)))
