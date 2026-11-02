@@ -180,8 +180,8 @@ def main():
         print(
             "MAGNET_FORENSICS_METHODS source=" + label + " " +
             " ".join(method.replace(".", "_") + "=" + status(method) for method in METHODS) +
-            " ignore_commands=" + str(value("d.ignore_commands"))[:8] +
-            " mode=" + str(value("d.mode"))[:8]
+            " ignore_commands=" + str(value("d.ignore_commands")) if isinstance(value("d.ignore_commands"), int) else "unknown" +
+            " mode=" + str(value("d.mode")) if isinstance(value("d.mode"), int) else "unknown"
         )
     print("MAGNET_FORENSICS completed; zero mutation RPCs issued.")
 
