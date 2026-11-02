@@ -35,6 +35,16 @@ unset url64 user64 pass64
 magnet=$(grep -Ec '^INSTRUMENTATION_STATUS: chunks_real_add_stage=magnet-passed' "$raw" || true)
 magnet2=$(grep -Ec '^INSTRUMENTATION_STATUS: chunks_real_add_stage=magnet2-passed' "$raw" || true)
 uncertain=$(grep -Ec '^INSTRUMENTATION_STATUS: chunks_real_add_stage=(magnet|magnet2)-uncertain' "$raw" || true)
+# Independently print only allowlisted test-phase counts. Never print raw
+# instrumentation payload, URLs, exceptions or credentials.
+for label in magnet magnet2; do
+  summary=""
+  for stage in preflight review ui-verified metadata peer-progress bytes-verified restarted passed uncertain; do
+    count=$(grep -Ec "^INSTRUMENTATION_STATUS: chunks_real_add_stage=${label}-${stage}$" "$raw" || true)
+    summary="${summary} ${stage}=${count}"
+  done
+  echo "CHUNKS_REAL_ANDROID_ADD_PHASE: test=${label}${summary} run=$GITHUB_RUN_ID"
+done
 last=$(grep -E '^INSTRUMENTATION_STATUS: chunks_real_add_stage=(magnet|magnet2)-(preflight|review|ui-verified|metadata|peer-progress|bytes-verified|restarted|passed|uncertain)$' "$raw" | tail -n 1 | sed 's/^INSTRUMENTATION_STATUS: chunks_real_add_stage=//' || true)
 [[ "$last" =~ ^(magnet|magnet2)-(preflight|review|ui-verified|metadata|peer-progress|bytes-verified|restarted|passed|uncertain)$ ]] || last=unavailable
 echo "CHUNKS_REAL_ANDROID_ADD: magnet=$magnet magnet2=$magnet2 uncertain=$uncertain last_stage=$last run=$GITHUB_RUN_ID"
