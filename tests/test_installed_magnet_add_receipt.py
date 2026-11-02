@@ -120,7 +120,7 @@ class InstalledMagnetReceiptTests(unittest.TestCase):
             "INSTRUMENTATION_STATUS: chunks_real_add_stage=magnet-peer-progress",
             "INSTRUMENTATION_STATUS: chunks_real_add_diagnostic_magnet="
             "state=1,active=0,open=0,phase=0,hashfailed=0,hashing=0,meta=0,"
-            "message=storage\\n"
+            "message=storage\n"
             "INSTRUMENTATION_STATUS: chunks_real_add_stage=magnet-peer-progress"
         )
         result = parse(raw, 1, self.env)
