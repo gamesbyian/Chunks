@@ -10,6 +10,8 @@ on:
       - 'AGENTS.md'
       - 'assets/fonts/README.md'
       - 'tools/check_docs.py'
+      - 'tools/check_docs_dispatch_contract.py'
+      - 'tests/test_docs_dispatch_contract.py'
       - 'tests/test_ci_native_concurrency.py'
       - 'tools/phone_intake_journey.sh'
       - 'tools/test_phone_intake_journey.sh'
@@ -84,7 +86,6 @@ on:
       - '.github/workflows/disposable-rtorrent-probe.yml'
       - '.github/workflows/release-apk.yml'
       - '.github/workflows/publish-debug-apk.yml'
-      - '.github/workflows/release-apk.yml'
       - '.github/workflows/documentation-validation.yml'
   pull_request:
     paths:
@@ -93,6 +94,8 @@ on:
       - 'AGENTS.md'
       - 'assets/fonts/README.md'
       - 'tools/check_docs.py'
+      - 'tools/check_docs_dispatch_contract.py'
+      - 'tests/test_docs_dispatch_contract.py'
       - 'tests/test_ci_native_concurrency.py'
       - 'tools/phone_intake_journey.sh'
       - 'tools/test_phone_intake_journey.sh'
@@ -167,7 +170,6 @@ on:
       - '.github/workflows/disposable-rtorrent-probe.yml'
       - '.github/workflows/release-apk.yml'
       - '.github/workflows/publish-debug-apk.yml'
-      - '.github/workflows/release-apk.yml'
       - '.github/workflows/documentation-validation.yml'
   workflow_dispatch:
 
@@ -226,6 +228,10 @@ jobs:
         run: |
           python3 tools/check_native_atlas_contract.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_native_atlas_contract.py
+      - name: Guard documentation dispatch parity and existing path targets
+        run: |
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_docs_dispatch_contract.py
+          python3 tools/check_docs_dispatch_contract.py
       - name: Validate repository-wide local documentation links
         run: python3 tools/check_docs.py
       - name: Test documentation validator
