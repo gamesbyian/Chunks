@@ -1238,12 +1238,11 @@ private fun ConnectionScreen(
     // endpoint is broadcast to an unverified profile, and no torrent mutation
     // occurs merely because the app opened. Consume before invoking the action
     // to avoid an automatic loop if authentication/network validation fails.
-    LaunchedEffect(startupReconnectEligible) {
-        if (startupReconnectEligible) {
-            onStartupReconnectConsumed()
-            onConnect()
-        }
-    }
+    StartupRemoteReconnectEffect(
+        eligible = startupReconnectEligible,
+        onConsumed = onStartupReconnectConsumed,
+        onConnect = onConnect
+    )
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
