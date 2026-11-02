@@ -411,7 +411,11 @@ private fun ChunksApp(
         modifier = Modifier.fillMaxSize().background(Cream).safeDrawingPadding(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        ChunksBrandHeader()
+        if (section == Section.TRANSFERS && server != null) {
+            CompactChunksHeader()
+        } else {
+            ChunksBrandHeader()
+        }
 
         if (section == Section.ARCHIVES) {
             LocalTransferPrivacyGate(
@@ -925,6 +929,9 @@ private fun ChunksApp(
                     aliasSessions = aliasSessions,
                     aliasRevision = aliasRevision, onAliasSaved = { aliasRevision++ },
                     list = transfers, view = currentView, loading = loading, stale = stale,
+                    environmentLabel = savedProfiles.firstOrNull {
+                        RemoteVerifiedUiIdentity.aliasScopeOf(it.credentials) == aliasScope
+                    }?.label?.takeIf { it.isNotBlank() } ?: "rTorrent",
                     snapshotRevision = snapshotRevision,
                     query = query, onQuery = { query = it },
                     filter = filter, onFilter = { next ->
@@ -1388,6 +1395,7 @@ private fun TransfersScreen(
     aliasSessions: MutableMap<String, TransferAliasEditSession>,
     aliasRevision: Int, onAliasSaved: () -> Unit,
     list: List<RemoteTransfer>, view: String, loading: Boolean, stale: Boolean,
+    environmentLabel: String,
     snapshotRevision: Long,
     query: String, onQuery: (String) -> Unit, filter: TransferFilter,
     onCombined: () -> Unit,
@@ -1450,17 +1458,15 @@ private fun TransfersScreen(
         ) {
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                ColoredPanel(
-                    "It's all here.",
-                    list.size.toString() + " transfers in the '" + view + "' server view" +
-                        if (stale) " · last known snapshot" else " · refreshed on demand",
-                    Lime
+                CompactRemoteInventoryHeader(
+                    environmentLabel = environmentLabel,
+                    environment = io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverIdOfAliasScope(aliasScope),
+                    loadedCount = list.size,
+                    view = view,
+                    stale = stale,
+                    loading = loading,
+                    onAllEnvironments = onCombined
                 )
-                EnvironmentBadge(serverEnvironmentLabel(aliasScope), server = true,
-                    environment = io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverIdOfAliasScope(aliasScope))
-                OutlinedButton(onClick = onCombined, modifier = Modifier.heightIn(min = 48.dp)) {
-                    Text("All environments…")
-                }
                 RemoteTransfersPrimaryActions(
                     loading = loading, stale = stale,
                     onAdd = onAdd, onRefresh = onRefresh
@@ -1512,7 +1518,7 @@ private fun TransfersScreen(
                 }
             }
         }
-        item {
+        if (toolsOpen) item {
             val down = remember(list) { RemoteRateEvidence.download(list) }
             val up = remember(list) { RemoteRateEvidence.upload(list) }
             RemoteRateStatTiles(down, up, list.count { it.started })
@@ -1523,7 +1529,7 @@ private fun TransfersScreen(
                 Text(it, style = MaterialTheme.typography.bodySmall)
             }
         }
-        item {
+        if (toolsOpen) item {
             val transferring = list.count {
                 (it.downBytesPerSecond ?: 0L) > 0L ||
                     (it.upBytesPerSecond ?: 0L) > 0L
@@ -1544,10 +1550,9 @@ private fun TransfersScreen(
                 style = MaterialTheme.typography.bodySmall)
         }
         item {
-            OutlinedTextField(
-                value = query, onValueChange = onQuery, singleLine = true,
-                label = { Text("Search names or Places") },
-                modifier = Modifier.fillMaxWidth()
+            ClearableTransferSearchField(
+                value = query, onValueChange = onQuery,
+                label = "Search names or Places"
             )
         }
         item {

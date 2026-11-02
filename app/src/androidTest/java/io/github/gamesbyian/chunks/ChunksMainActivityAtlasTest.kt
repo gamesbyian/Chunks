@@ -9,6 +9,7 @@ import android.provider.MediaStore
 import android.security.NetworkSecurityPolicy
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
@@ -301,7 +302,7 @@ class ChunksMainActivityAtlasTest {
         rule.onNode(connectButton, useUnmergedTree = true).performSemanticsAction(SemanticsActions.OnClick)
         try {
             rule.waitUntil(20_000) {
-                rule.onAllNodesWithText("It's all here.").fetchSemanticsNodes().isNotEmpty()
+                rule.onAllNodesWithText("3 transfers", substring = true).fetchSemanticsNodes().isNotEmpty()
             }
         } catch (failure: androidx.compose.ui.test.ComposeTimeoutException) {
             // Genuine diagnostic from installed app UI. This fixture uses no
@@ -313,7 +314,12 @@ class ChunksMainActivityAtlasTest {
                     "; fixture=" + (fixtureProblem ?: "none") +
                     "; actual native UI=" + ui, failure)
         }
-        rule.onNodeWithText("It's all here.").assertExists()
+        rule.onNodeWithText("3 transfers", substring = true).assertExists()
+        // Supported Pixel 6-class installed screen: the first actual transfer
+        // must be visible without scrolling past introductory panels. This
+        // is a viewport requirement, not a server-data or engine assertion.
+        rule.onNodeWithText("A deliberately very long test filename", substring = true)
+            .assertIsDisplayed()
         save("app-transfers-populated-real-compose")
 
         // An installed, authenticated server must route from the real shared
@@ -324,7 +330,7 @@ class ChunksMainActivityAtlasTest {
         // Remote-initiated combined Back returns to the signed-in server,
         // preserving its authenticated queue instead of opening phone UI.
         rule.onNodeWithText("Back").performClick()
-        rule.onNodeWithText("It's all here.").assertExists()
+        rule.onNodeWithText("3 transfers", substring = true).assertExists()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("All environments…"))
         rule.onNodeWithText("All environments…").performClick()
         // Regression: Add on this phone must render while a remote session is
@@ -358,7 +364,7 @@ class ChunksMainActivityAtlasTest {
         rule.onNodeWithText("Magnet link").assertExists()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Back to transfers"))
         rule.onNodeWithText("Back to transfers").performClick()
-        rule.onNodeWithText("It's all here.").assertExists()
+        rule.onNodeWithText("3 transfers", substring = true).assertExists()
 
         // Identify the episodic fixture by its *original* server-reported name.
         // The queue is name-sorted, so the first unfiltered card is not this item.
