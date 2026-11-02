@@ -276,5 +276,31 @@ class CollectorTest(unittest.TestCase):
                 self.assertEqual({b"info"}, set(f.parse_bencode(safe)[0]))
                 self.assertEqual(f.parse_bencode(original)[1], f.parse_bencode(safe)[1])
 
+
+    def test_bep52_hybrid_piece_layers_are_not_silently_discarded(self):
+        # Hybrid metainfo has a v1 pieces array *and* v2 Merkle metadata.
+        # "piece layers" is outside info, so copying info alone can produce
+        # a correct-looking v1/v2 hash with an unusable v2 payload.
+        info = {**self.info, b"meta version": 2,
+                b"file tree": {b"Public test.txt": {
+                    b"": {b"length": 5, b"pieces root": b"r" * 32}}}}
+        original = enc({b"info": info, b"piece layers": {b"r" * 32: b"h" * 64},
+                        b"announce": b"https://bt1.archive.org:6969/announce"})
+        with self.assertRaisesRegex(ValueError, "BEP 52.*piece layers"):
+            f.torrent_summary(original, 100)
+        self.assertNotEqual(hashlib.sha1(enc(self.info)).hexdigest(),
+                            hashlib.sha1(f.parse_bencode(original)[1]).hexdigest())
+
+    def test_bep52_v2_only_or_unknown_metaversion_fails_explicitly(self):
+        for version in (2, 3):
+            with self.subTest(version=version):
+                info = {b"name": b"Public test.txt", b"piece length": 16384,
+                        b"meta version": version,
+                        b"file tree": {b"Public test.txt": {
+                            b"": {b"length": 5, b"pieces root": b"x" * 32}}}}
+                source = enc({b"info": info})
+                with self.assertRaisesRegex(ValueError, "BEP 52.*piece layers"):
+                    f.torrent_summary(source, 100)
+
 if __name__ == "__main__":
     unittest.main()
