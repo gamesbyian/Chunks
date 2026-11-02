@@ -19,10 +19,10 @@ import org.libtorrent4j.TorrentBuilder
 /**
  * Real Android/libtorrent session exercise, not a mock.
  *
- * A user who removes a torrent and immediately opens the same .torrent again
- * must receive a safe refusal until the old native session joins its disk I/O.
- * A later clean session must permit an explicit re-Add, preserve original
- * payload bytes, and restore a different job independently.
+ * A removed torrent may be re-added in the same session ONLY after libtorrent
+ * reports its old handle invalid (all old native tasks released). Never infer
+ * safety from an elapsed time alone; a refusal before that remains correct.
+ * An independent clean-restart path must also preserve unrelated jobs/bytes.
  *
  * All test paths are isolated beneath app-private filesDir; this test never
  * touches public Downloads, user torrent data or a network peer.
@@ -34,7 +34,7 @@ class LocalRemoveReAddSafetyInstrumentedTest {
     private fun digest(bytes: ByteArray): ByteArray =
         MessageDigest.getInstance("SHA-256").digest(bytes)
 
-    @Test fun sameHashRequiresNewNativeSessionAndDoesNotDisruptOtherTransfer() {
+    @Test fun sameHashReAddsOnlyAfterNativeRetirementAndDoesNotDisruptOtherTransfer() {
         val root = File(context.filesDir, "remove-readd-native-" + System.nanoTime())
         assertTrue(root.mkdir())
         val state = File(root, "state").apply { assertTrue(mkdir()) }
@@ -73,18 +73,37 @@ class LocalRemoveReAddSafetyInstrumentedTest {
             assertTrue("Session-only Remove must be acknowledged", initial.removeKeepingData(oldHash))
             assertEquals(null, initial.status(oldHash))
 
-            val immediate = initial.addStopped(removedTorrent, downloads)
-            assertTrue("Old native I/O tombstone MUST refuse immediate same-hash Add: $immediate",
-                immediate is LocalAddResult.Refused)
-            assertNotNull("A refused re-Add must not disturb the unrelated live job",
-                initial.status(otherHash))
+            // Native Remove is asynchronous. A first Add may be refused if
+            // the old handle still owns disk work, or succeed if the native
+            // handle has *already* become invalid. Both are safe outcomes.
+            // The new engine must eventually release only this hash's claim,
+            // with NO restart and NO interruption to the other torrent.
+            var attempted: LocalAddResult = initial.addStopped(removedTorrent, downloads)
+            val deadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(20)
+            var rejectedWhileDraining = 0
+            while (attempted is LocalAddResult.Refused && System.nanoTime() < deadline) {
+                rejectedWhileDraining++
+                assertNotNull("A refused Add disturbed the unrelated session job",
+                    initial.status(otherHash))
+                assertArrayEquals(digest(removedBytes), digest(removedFile.readBytes()))
+                Thread.sleep(100)
+                attempted = initial.addStopped(removedTorrent, downloads)
+            }
+            assertTrue("Drained old native handle must permit same-session re-Add: $attempted",
+                attempted is LocalAddResult.AddedStopped)
+            val sameSession = (attempted as LocalAddResult.AddedStopped).status
+            assertEquals(oldHash, sameSession.infoHash)
+            assertTrue("Re-added transfer must remain stopped", sameSession.stopped)
+            assertNotNull(initial.status(otherHash))
             assertArrayEquals(digest(removedBytes), digest(removedFile.readBytes()))
             assertArrayEquals(digest(otherBytes), digest(otherFile.readBytes()))
             assertArrayEquals(foreignDigest, digest(foreign.readBytes()))
-
-            // close() synchronously stops the native session and joins its
-            // old work before path claims can be reused. The unrelated job
-            // must be persisted, not silently erased to allow this re-Add.
+            println("CHUNKS_NATIVE_RETIREMENT drained=true refusalsBeforeDrain=$rejectedWhileDraining")
+            // Retire the newly re-added job again, retaining original data.
+            // The restart path then independently proves unrelated-job
+            // persistence and a fresh same-hash Add remains safe.
+            assertTrue(initial.removeKeepingData(oldHash))
+            assertEquals(null, initial.status(oldHash))
             initial.close()
             first = null
             val newSession = LocalTorrentEngine(config).also { it.start() }
