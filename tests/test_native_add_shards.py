@@ -114,7 +114,7 @@ class ShardedNativeAddTests(unittest.TestCase):
         shell = (ROOT / "tools/native_add_review.sh").read_text()
         self.assertIn("shard: [0, 1]", workflow)
         self.assertIn('CHUNKS_NATIVE_ADD_SHARD_COUNT: "2"', workflow)
-        self.assertIn('CHUNKS_NATIVE_ADD_SHARD_INDEX: ${ matrix.shard }}', workflow)
+        self.assertIn('CHUNKS_NATIVE_ADD_SHARD_INDEX: ${{ matrix.shard }}', workflow)
         self.assertIn('if: always()', workflow)
         self.assertIn('if-no-files-found: error', workflow)
         self.assertIn('--shards 2 --sha "$GITHUB_SHA"', workflow)
