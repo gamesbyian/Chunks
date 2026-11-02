@@ -1,5 +1,7 @@
 # Open-source reuse candidates for Chunks: dependency-first audit
 
+> **2026-11-02 supersession:** the historical #568 storage-collision work and the original P0 ordering below are **not live dispatch**. #568 is closed under the owner-approved native payload policy; use [WORK-QUEUE](../WORK-QUEUE.md) for current P0, #5/#569 for local runtime acceptance, #865 for metadata durability and #809 for restricted ZIP/library publication. See the [2026-11-02 code-verified delta](#code-verified-interoperability-delta-2026-11-02) below before importing an old reuse recommendation.
+
 **Researched 2026-10-29.** Non-normative implementation research, **not** another work queue. Source baseline: `main` `2202baa26ede143157a68de28dfb790ac3d49c01`; shared-observation PR [#571](https://github.com/gamesbyian/Chunks/pull/571) subsequently merged as `40d01124`, with pure catalog/DTO but no UI integration; inspect current main before additional model work. Priorities and release gates remain in [WORK-QUEUE](../WORK-QUEUE.md); owner requirements remain in PRODUCT and their canonical feature contracts. The goal is to **borrow proven mechanisms, tests and failure cases instead of reimplementing them**, without treating a README feature claim as Chunks acceptance.
 
 ## Existing Chunks public-Downloads proof found after initial research (correction, 2026-10-29)
