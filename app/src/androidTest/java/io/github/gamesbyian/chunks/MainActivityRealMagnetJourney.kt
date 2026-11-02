@@ -3,6 +3,7 @@ package io.github.gamesbyian.chunks
 import android.os.Bundle
 import android.os.SystemClock
 import android.util.Base64
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
@@ -33,10 +34,26 @@ internal class MainActivityRealMagnetJourney(
     private fun visible(text: String) = rule.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty()
     private fun scroll(text: String) = rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(text, substring = true))
     private fun click(text: String) {
+        // First find the LazyColumn item and confirm the action is enabled.
+        // A large transfer Card may be taller than the viewport: scrolling to
+        // its item alone does NOT expose a confirmation button near its end.
         rule.waitUntil(45_000) { runCatching {
-            scroll(text); rule.onNodeWithText(text).assertIsEnabled(); true
+            scroll(text)
+            rule.onNodeWithText(text).assertIsEnabled()
+            true
         }.getOrDefault(false) }
-        rule.onNodeWithText(text).performScrollTo().performClick()
+        rule.waitForIdle()
+        // Connect is already visible; a redundant scroll there previously
+        // raced its re-composing form. Only scroll within an oversized item
+        // when the actual action remains offscreen.
+        val shown = runCatching {
+            rule.onNodeWithText(text).assertIsDisplayed()
+            true
+        }.getOrDefault(false)
+        if (!shown) rule.onNodeWithText(text).performScrollTo()
+        rule.onNodeWithText(text).assertIsDisplayed()
+        // Exactly one click; never retry a possibly submitted RPC mutation.
+        rule.onNodeWithText(text).performClick()
     }
     private fun type(label: String, text: String) {
         scroll(label)
@@ -122,8 +139,9 @@ internal class MainActivityRealMagnetJourney(
         type("Seedbox hostname, ruTorrent URL or RPC address", url)
         type("Username, if required", user)
         type("Password", password)
-        report("chunks_real_add_app_stage", "connect-submitted")
+        report("chunks_real_add_app_stage", "connect-click-attempt")
         click("Connect to rTorrent")
+        report("chunks_real_add_app_stage", "connect-submitted")
         rule.waitUntil(90_000) { visible("It's all here.") }
         rule.onNodeWithText("Password").assertDoesNotExist()
         report("chunks_real_add_app_stage", "queue")
@@ -200,6 +218,7 @@ internal class MainActivityRealMagnetJourney(
                         assertEquals("Immediately resolved metadata name", preview.name, placeholder.name)
                         assertEquals("Immediately resolved metadata size", preview.sizeBytes, placeholder.sizeBytes)
                         report("chunks_real_add_app_stage", "metadata-already-resolved")
+                        stage(label, "metadata-already-resolved")
                     }
                 }
                 assertTrue(placeholder.started)

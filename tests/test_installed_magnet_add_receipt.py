@@ -88,6 +88,33 @@ class InstalledMagnetReceiptTests(unittest.TestCase):
         self.assertNotEqual("passed", parse(data, 0, dict(env, CHUNKS_PUBLIC_DISCOVERY="0"))["result"])
         self.assertNotEqual("passed", parse(data.replace("_resumed=1000000,1000000", "_resumed=1000000,900000"), 0, env)["result"])
 
+    def test_immediately_resolved_metadata_is_reported_without_fabricating_peer_proof(self):
+        env = dict(self.env, CHUNKS_CONTROLLED_PEER="1", CHUNKS_DISPOSABLE="0")
+        data = self.controlled_log().replace(
+            "INSTRUMENTATION_STATUS: chunks_real_add_stage=magnet-registered",
+            "INSTRUMENTATION_STATUS: chunks_real_add_app_stage=metadata-already-resolved\n"
+            "INSTRUMENTATION_STATUS: chunks_real_add_stage=magnet-metadata-already-resolved\n"
+            "INSTRUMENTATION_STATUS: chunks_real_add_stage=magnet-registered"
+        )
+        result = parse(data, 0, env)
+        self.assertEqual("passed", result["result"])
+        self.assertEqual(1, result["sources"]["magnet"]["phase_counts"]["metadata-already-resolved"])
+        self.assertEqual(0, result["sources"]["magnet2"]["phase_counts"]["metadata-already-resolved"])
+        self.assertEqual(["metadata-already-resolved"], result["app_stage_evidence"])
+        self.assertTrue(result["sources"]["magnet"]["piece_verified"])
+        self.assertNotEqual("passed", parse(data.replace("chunks_real_add_stage=magnet-peer-progress",
+                                                       "arbitrary_early_metadata=1"), 0, env)["result"])
+
+    def test_connect_click_attempt_does_not_claim_authenticated_submit(self):
+        raw = ("INSTRUMENTATION_STATUS: chunks_real_add_app_stage=runner-ready\n"
+               "INSTRUMENTATION_STATUS: chunks_real_add_app_stage=connect-click-attempt\n"
+               "INSTRUMENTATION_STATUS_CODE: -2\n"
+               "INSTRUMENTATION_CODE: -1")
+        result = parse(raw, 1, self.env)
+        self.assertEqual(["runner-ready", "connect-click-attempt"], result["app_stage_evidence"])
+        self.assertNotIn("connect-submitted", result["app_stage_evidence"])
+        self.assertEqual("failed-or-inconclusive", result["result"])
+
     def test_missing_exact_hash_blocks_otherwise_green_completion(self):
         data = self.success_log().replace(
             "INSTRUMENTATION_STATUS: chunks_real_add_hash_magnet2=" + "b" * 40 + "\n", "")
