@@ -51,6 +51,18 @@ class RealMagnetReceiptTests(unittest.TestCase):
         self.assertEqual("unconfirmed-after-add", r["cleanup"])
         self.assertEqual(self.infohash, r["synthetic_infohash"])
 
+    def test_registration_failure_is_distinct_from_metadata_failure(self):
+        self.sidecar.write_text("hash:" + self.infohash + "\n" +
+            "".join("stage:" + s + "\n" for s in
+                    ("runner-ready", "preflight", "destination", "peer", "seed-ready", "add-submitted")))
+        result = parse(self.xml, self.sidecar, 1, self.env)
+        self.assertEqual("remote-magnet-registration", result["failure_boundary"])
+        self.assertEqual("unconfirmed-after-add", result["cleanup"])
+        self.assertFalse(result["acceptance"]["metadata"])
+        with self.sidecar.open("a") as out:
+            out.write("stage:added-started\nstage:started\nstage:seed-started\nstage:peer-connected\n")
+        self.assertEqual("BEP9-metadata", parse(self.xml, self.sidecar, 1, self.env)["failure_boundary"])
+
     def test_junit_failure_category_never_leaks_exception_message(self):
         self.xml.write_text(
             '<testsuite tests="3" failures="1" errors="0" skipped="0">'
