@@ -98,3 +98,5 @@ The [documentation architecture and authoring standard](DOCUMENTATION-STANDARD.m
 A user-facing promise goes in PRODUCT or its linked feature contract; screen behavior in UX; implementation details in ARCHITECTURE; a binding choice in DECISIONS; proof in QUALITY-LEDGER; missing test coverage in SPEC-COVERAGE; prioritized work in WORK-QUEUE. Use concise cross-references rather than distributing whole requirements across all seven files.
 
 - [Per-transfer home-screen widgets](PER-TRANSFER-HOME-WIDGETS.md): deferred P3, independent live indicator per transfer, launcher removal feasibility gate.
+
+- [Cross-media real-record/API verification](research/MEDIA-API-RECORD-EVIDENCE-2026-11-02.md): dated public credits and provider-specific API schema/quality caveats, with explicit gaps before live JSON and installed integration acceptance.
