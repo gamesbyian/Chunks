@@ -249,6 +249,53 @@ jobs:
         self.assertEqual(1, len(result["missing_concurrency"]))
         self.assertEqual(1, result["workflow_count"])
 
+    def test_artifact_default_retention_counts_real_steps_not_shell_text(self):
+        self.fixture("uploads.yml", """name: Uploads
+on:
+  workflow_dispatch:
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Explicit short retention
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports
+          retention-days: 3
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: implicit-repository-default
+      - run: |
+          echo testing
+          - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
+        with:
+          name: second-implicit
+""")
+        self.fixture("bounded.yml", """name: Bounded
+on:
+  workflow_dispatch:
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/upload-artifact@v4
+        with:
+          retention-days: 7
+""")
+        report = collect(self.root)
+        rows = {Path(w["path"]).name: w for w in report["workflows"]}
+        self.assertEqual(3, rows["uploads.yml"]["artifact_upload_steps"])
+        self.assertEqual(
+            2, rows["uploads.yml"]["artifact_upload_steps_with_default_retention"])
+        self.assertEqual(1, rows["bounded.yml"]["artifact_upload_steps"])
+        self.assertEqual(
+            0, rows["bounded.yml"]["artifact_upload_steps_with_default_retention"])
+        self.assertEqual(2, report["artifact_default_retention_upload_steps"])
+        self.assertEqual([".github/workflows/uploads.yml"],
+                         report["artifact_default_retention_candidates"])
+        self.assertIn("2 steps across 1 workflows", markdown(report))
+
     def test_current_repo_has_no_missing_workflows(self):
         result = collect(ROOT)
         expected = sorted(p.relative_to(ROOT).as_posix()
