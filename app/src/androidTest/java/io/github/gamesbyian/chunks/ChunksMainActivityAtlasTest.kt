@@ -397,6 +397,11 @@ class ChunksMainActivityAtlasTest {
             throw AssertionError("Search did not show one match with its sort action. " +
                 "Visible relevant semantics=" + lines, failure)
         }
+        // A collapsed row retains status/progress without composing its
+        // mutation actions. Disclosure is a user gesture; it sends no RPC.
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("More details"))
+        rule.onNodeWithText("More details").performClick()
+        rule.onNodeWithText("Hide details").assertExists()
         // An actual installed-app queue action, not only an isolated editor
         // component. Wait for the filtered count, not just the IME's text;
         // rerendering the list can otherwise detach the click's modifier.
@@ -446,6 +451,12 @@ class ChunksMainActivityAtlasTest {
         save("app-server-populated-real-compose")
 
         rule.onNodeWithText("Transfers").performClick()
+        // The filtered card remains the exact same server/infohash identity.
+        // Reopen its secondary actions only if navigation recreated the row.
+        if (rule.onAllNodesWithText("Inspect files").fetchSemanticsNodes().isEmpty()) {
+            rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("More details"))
+            rule.onNodeWithText("More details").performClick()
+        }
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Inspect files"))
         rule.onAllNodesWithText("Inspect files").onFirst().performClick()
         rule.waitUntil(15_000) {
