@@ -45,6 +45,12 @@ on:
       - 'tests/test_native_add_shards.py'
       - 'tools/parse_installed_magnet_add_receipt.py'
       - 'tests/test_installed_magnet_add_receipt.py'
+      - 'tests/test_seedhost_manual_gate.py'
+      - '.github/workflows/seedhost-active-start-once.yml'
+      - '.github/workflows/seedhost-exact-peer-bytes-once.yml'
+      - '.github/workflows/seedhost-android-add-ui-once.yml'
+      - '.github/workflows/seedhost-kotlin-adapter-smoke.yml'
+      - '.github/workflows/seedhost-public-add-smoke.yml'
       - 'tests/test_ci_failure_digest.py'
       - 'tests/test_ci_orchestration.py'
       - '.github/workflows/android-radio-harness-qa.yml'
@@ -122,6 +128,12 @@ on:
       - 'tests/test_native_add_shards.py'
       - 'tools/parse_installed_magnet_add_receipt.py'
       - 'tests/test_installed_magnet_add_receipt.py'
+      - 'tests/test_seedhost_manual_gate.py'
+      - '.github/workflows/seedhost-active-start-once.yml'
+      - '.github/workflows/seedhost-exact-peer-bytes-once.yml'
+      - '.github/workflows/seedhost-android-add-ui-once.yml'
+      - '.github/workflows/seedhost-kotlin-adapter-smoke.yml'
+      - '.github/workflows/seedhost-public-add-smoke.yml'
       - 'tests/test_ci_failure_digest.py'
       - 'tests/test_ci_orchestration.py'
       - '.github/workflows/android-radio-harness-qa.yml'
@@ -202,6 +214,8 @@ jobs:
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_phone_intake.py
       - name: Validate installed real-source magnet reporting without secrets or emulator
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_installed_magnet_add_receipt.py
+      - name: Verify protected Seedhost dispatch gates offline
+        run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_seedhost_manual_gate.py
       - name: Test complete native Add sharding and CI evidence contracts offline
         run: |
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_failure_digest.py
