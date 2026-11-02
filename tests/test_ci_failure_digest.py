@@ -42,6 +42,61 @@ class DigestTests(unittest.TestCase):
         self.assertFalse(empty["evidence_executed"])
         self.assertEqual(empty["phase"], "unexecuted")
 
+    def test_declared_junit_totals_reject_missing_cases_and_hidden_failures(self):
+        # A parser that only counts testcase elements could otherwise certify
+        # a report declaring more tests, skips, failures or errors than exist.
+        variants = (
+            '<testsuite tests="2"><testcase name="passed"/></testsuite>',
+            '<testsuite tests="1" failures="1"><testcase name="passed"/></testsuite>',
+            '<testsuite tests="1" errors="1"><testcase name="passed"/></testsuite>',
+            '<testsuite tests="1" skipped="1"><testcase name="passed"/></testsuite>',
+            '<testsuite tests="-1"><testcase name="passed"/></testsuite>',
+            '<testsuite tests="bogus"><testcase name="passed"/></testsuite>',
+            '<testsuites tests="2"><testsuite tests="1">'
+            '<testcase name="passed"/></testsuite></testsuites>',
+        )
+        for xml in variants:
+            with self.subTest(xml=xml):
+                self.path.write_text(xml)
+                d = make_digest([str(self.path)], "success", "unit", self.env)
+                self.assertEqual("harness_report", d["phase"])
+                self.assertFalse(d["evidence_executed"])
+                self.assertTrue(rejects_unverified_green(d, "success", True))
+                self.assertIn("JUnitDeclaredCountMismatch",
+                              [v["problem"] for v in d["invalid_reports"]])
+                self.assertNotIn(xml, str(d))
+
+    def test_declared_junit_totals_accept_consistent_and_nested_reports(self):
+        variants = (
+            '<testsuite tests="2" failures="0" errors="0" skipped="1">'
+            '<testcase name="passed"/><testcase name="skipped"><skipped/>'
+            '</testcase></testsuite>',
+            '<testsuites tests="2" failures="0" errors="0" skipped="0">'
+            '<testsuite name="A" tests="1"><testcase classname="A" name="one"/>'
+            '</testsuite><testsuite name="B" tests="1">'
+            '<testcase classname="B" name="two"/></testsuite></testsuites>',
+            '<testsuite><testcase name="present"/></testsuite>',
+        )
+        for xml in variants:
+            with self.subTest(xml=xml):
+                self.path.write_text(xml)
+                d = make_digest([str(self.path)], "success", "unit", self.env)
+                self.assertEqual("none", d["phase"])
+                self.assertTrue(d["evidence_executed"])
+                self.assertFalse(rejects_unverified_green(d, "success", True))
+
+    def test_declared_failure_consistent_with_case_keeps_first_failure(self):
+        self.path.write_text(
+            '<testsuite tests="1" failures="1" errors="0">'
+            '<testcase classname="Sample" name="bad">'
+            '<failure message="secret-text">internal stack</failure>'
+            '</testcase></testsuite>')
+        d = make_digest([str(self.path)], "failure", "unit", self.env)
+        self.assertEqual("test_assertion", d["phase"])
+        self.assertEqual(1, d["junit"]["failed"])
+        self.assertEqual([{"class": "Sample", "test": "bad"}], d["failed_cases"])
+        self.assertNotIn("secret-text", str(d))
+
     def test_infrastructure_failure_without_junit_is_unknown(self):
         d = make_digest([], "failure", "instrumentation", self.env)
         self.assertEqual(d["phase"], "unknown_pre_or_post_test")

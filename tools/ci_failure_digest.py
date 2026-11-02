@@ -18,6 +18,34 @@ import xml.etree.ElementTree as ET
 VERSION = 1
 
 
+def junit_declared_count_conflicts(root):
+    """Check optional JUnit summary totals against actual testcase elements.
+
+    The top-level testsuites aggregate and each testsuite may advertise
+    counts. Accept reports with no totals, but never trust contradictory
+    declared totals over the actual case outcomes. No XML text is exposed.
+    """
+    nodes = [root] if root.tag == "testsuites" else []
+    nodes.extend(root.iter("testsuite"))
+    for node in nodes:
+        cases = list(node.iter("testcase"))
+        counts = {
+            "tests": len(cases),
+            "failures": sum(c.find("failure") is not None for c in cases),
+            "errors": sum(c.find("error") is not None for c in cases),
+            "skipped": sum(c.find("skipped") is not None for c in cases),
+        }
+        for key, actual in counts.items():
+            reported = node.get(key)
+            if reported is None:
+                continue
+            if not re.fullmatch(r"[0-9]+", reported):
+                return True
+            if int(reported) != actual:
+                return True
+    return False
+
+
 def make_digest(paths, status, suite, env=None):
     env = os.environ if env is None else env
     tests = failures = skipped = 0
@@ -34,6 +62,9 @@ def make_digest(paths, status, suite, env=None):
             root = ET.parse(path).getroot()
             if root.tag not in ("testsuite", "testsuites"):
                 raise ValueError("unexpected JUnit root")
+            if junit_declared_count_conflicts(root):
+                invalid.append({"report": Path(path).name[:120],
+                                "problem": "JUnitDeclaredCountMismatch"})
             cases = root.findall(".//testcase")
             reports += 1
             for case in cases:
