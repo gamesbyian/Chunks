@@ -32,7 +32,7 @@ jobs:
     timeout-minutes: 23
     env:
       CHUNKS_NATIVE_ADD_SHARD_COUNT: "2"
-      CHUNKS_NATIVE_ADD_SHARD_INDEX: ${ matrix.shard }}
+      CHUNKS_NATIVE_ADD_SHARD_INDEX: ${{ matrix.shard }}
     steps:
       - uses: actions/checkout@v4
       - name: Check required native atlas captures before SDK and emulator allocation
@@ -92,16 +92,16 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: chunks-native-add-receipt-shard-${ matrix.shard }}
-          path: ${ runner.temp }}/chunks-native-add-receipt/digest.json
+          name: chunks-native-add-receipt-shard-${{ matrix.shard }}
+          path: ${{ runner.temp }}/chunks-native-add-receipt/digest.json
           retention-days: 14
           if-no-files-found: error
       - name: Upload every real screenshot captured by this emulator
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: chunks-native-add-atlas-shard-${ matrix.shard }}
-          path: ${ runner.temp }}/chunks-add-native-review/*.png
+          name: chunks-native-add-atlas-shard-${{ matrix.shard }}
+          path: ${{ runner.temp }}/chunks-add-native-review/*.png
           retention-days: 14
           if-no-files-found: warn
 
@@ -116,7 +116,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           pattern: chunks-native-add-*
-          path: ${ runner.temp }}/chunks-native-add-shards
+          path: ${{ runner.temp }}/chunks-native-add-shards
       - name: Require all shards and every mandatory actual Compose screenshot
         run: |
           python3 tools/verify_native_add_shards.py \
@@ -127,6 +127,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: chunks-native-add-sharded-acceptance
-          path: ${ runner.temp }}/chunks-native-add-shards/native-add-acceptance.json
+          path: ${{ runner.temp }}/chunks-native-add-shards/native-add-acceptance.json
           retention-days: 14
           if-no-files-found: error
