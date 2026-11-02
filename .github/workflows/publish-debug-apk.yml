@@ -18,8 +18,10 @@ on:
 permissions:
   contents: write
 
+# Every owner-requested publication retires prior debug prereleases. Cross-SHA
+# dispatches must serialize, or a late old run can delete a newer test APK.
 concurrency:
-  group: chunks-release-${{ github.sha }}
+  group: chunks-owner-debug-publication
   cancel-in-progress: false
 
 jobs:
