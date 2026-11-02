@@ -16,6 +16,7 @@ on:
       - tools/collect_public_magnet_catalog.py
       - tools/collect_linuxtracker_magnets.py
       - tools/validate_public_magnet_catalog.py
+      - tools/test_validate_public_magnet_catalog.py
       - test-resources/public-magnets/**
       - .github/workflows/collect-public-magnets.yml
 
@@ -39,6 +40,7 @@ jobs:
       - run: |
           python3 -m py_compile tools/collect_public_magnet_catalog.py tools/collect_linuxtracker_magnets.py tools/validate_public_magnet_catalog.py
           python3 -m unittest discover -s tools -p test_public_fixture_collector.py
+          python3 -m unittest discover -s tools -p test_validate_public_magnet_catalog.py -v
           python3 tools/validate_public_magnet_catalog.py
   source-probe:
     if: github.event_name == 'pull_request'
