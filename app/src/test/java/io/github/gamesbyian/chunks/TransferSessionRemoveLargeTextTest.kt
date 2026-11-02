@@ -194,8 +194,13 @@ class TransferSessionRemoveLargeTextTest {
         show()
         rule.onNodeWithText("Remove from rTorrent…").performClick()
         rule.onNodeWithText("Remove transfer, keep data").performClick()
-        rule.waitForIdle()
-        rule.onNodeWithText("Remove from rTorrent…").assertExists()
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithText("Remove from rTorrent…").fetchSemanticsNodes().isNotEmpty()
+        }
+        assertEquals(1, mutations)
+        // A new review is allowed; no second mutation is dispatched implicitly.
+        rule.onNodeWithText("Remove from rTorrent…").performClick()
+        rule.onNodeWithText("Remove transfer, keep data").assertExists()
         assertEquals(1, mutations)
     }
 
