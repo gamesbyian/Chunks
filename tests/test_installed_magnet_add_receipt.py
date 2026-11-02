@@ -33,7 +33,8 @@ class InstalledMagnetReceiptTests(unittest.TestCase):
         self.assertFalse(result["physical_device_proven"])
 
     def controlled_log(self):
-        lines = ["INSTRUMENTATION_STATUS: test=installedAppAddsOneSyntheticMagnetAtAVerifiedServerPlace",
+        lines = ["INSTRUMENTATION_STATUS: class=io.github.gamesbyian.chunks.SeedhostAndroidAddUiInstrumentedTest",
+                 "INSTRUMENTATION_STATUS: test=installedAppAddsOneSyntheticMagnetAtAVerifiedServerPlace",
                  "INSTRUMENTATION_STATUS_CODE: 1"]
         for label in SOURCES:
             lines.append("INSTRUMENTATION_STATUS: chunks_real_add_hash_" + label + "=" +
@@ -43,6 +44,8 @@ class InstalledMagnetReceiptTests(unittest.TestCase):
                 lines.append("INSTRUMENTATION_STATUS: chunks_real_add_stage=" + label + "-" + stage)
             lines.append("INSTRUMENTATION_STATUS: chunks_real_add_traffic_" + label + "_initial=300000,262144,1000000,1,10000")
             lines.append("INSTRUMENTATION_STATUS: chunks_real_add_traffic_" + label + "_resumed=600000,524288,1000000,1,10000")
+        lines += ["INSTRUMENTATION_STATUS: chunks_real_add_negative_stage=" + s for s in
+                  ("preflight", "registered", "add-ui-truthful", "transfers-ui-truthful", "removed")]
         lines += ["INSTRUMENTATION_STATUS: chunks_real_add_hash_negative=" + "c" * 40,
                   "INSTRUMENTATION_STATUS: chunks_real_add_negative=peerless-ui-and-cleanup-passed",
                   "INSTRUMENTATION_STATUS_CODE: 0", "INSTRUMENTATION_CODE: -1"]
@@ -60,6 +63,8 @@ class InstalledMagnetReceiptTests(unittest.TestCase):
             "installedAppAddsOneSyntheticMagnetAtAVerifiedServerPlace",
             "installedMagnetAddResolvesMetadataAndReceivesVerifiedPeerBytes"), 0, env)["result"])
         self.assertNotEqual("passed", parse(data + "\nINSTRUMENTATION_CODE: -1", 0, env)["result"])
+        self.assertNotEqual("passed", parse(data.replace("chunks_real_add_hash_negative", "unknown"), 0, env)["result"])
+        self.assertNotEqual("passed", parse(data.replace("SeedhostAndroidAddUiInstrumentedTest", "UnexpectedClass"), 0, env)["result"])
 
     def test_actual_pass_is_preserved_when_other_case_fails(self):
         data = self.success_log()

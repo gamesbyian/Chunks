@@ -43,6 +43,7 @@ def main():
             shutil.copyfile(peer_path, a.output / "PEER-RECEIPT.json")
         except (ValueError, KeyError, TypeError):
             peer_valid = False
+    receipt["application_id"] = "io.github.gamesbyian.chunks." + env.get("CHUNKS_PREVIEW_SUFFIX", "preview")
     receipt["independent_peer_evidence"] = "verified" if peer_valid else "missing-or-inconsistent"
     if not peer_valid:
         receipt["result"] = "failed-or-inconclusive"
@@ -56,7 +57,7 @@ def main():
     failures, errors = 0, 0
     for name in expected_cases:
         case = ET.SubElement(suite, "testcase", classname="io.github.gamesbyian.chunks.SeedhostAndroidAddUiInstrumentedTest", name=name)
-        actual = [c for c in receipt["actual_case_results"] if c["name"] == name]
+        actual = [c for c in receipt["actual_case_results"] if c["name"] == name and c["class"] == "io.github.gamesbyian.chunks.SeedhostAndroidAddUiInstrumentedTest"]
         if len(actual) != 1:
             errors += 1
             ET.SubElement(case, "error", type="RunnerReportMissing", message="Actual Android test completion absent or conflicting")

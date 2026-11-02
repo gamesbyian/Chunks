@@ -28,15 +28,23 @@ adb shell wm size 1080x2400
 adb shell wm density 420
 adb install -r app/build/outputs/apk/debug/app-debug.apk >/dev/null
 adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk >/dev/null
-installed_package=$(adb shell dumpsys package io.github.gamesbyian.chunks.preview)
+candidate_package="io.github.gamesbyian.chunks.${CHUNKS_PREVIEW_SUFFIX:?}"
+installed_package=$(adb shell dumpsys package "$candidate_package")
 grep -Fq "versionName=0.1.0-dev+${GITHUB_SHA:0:12}" <<< "$installed_package"
 unset installed_package
+installed_apk=$(adb shell pm path "$candidate_package")
+installed_apk=${installed_apk#package:}
+installed_apk=${installed_apk//$'\r'/}
+adb pull "$installed_apk" "$RUNNER_TEMP/chunks-installed-base.apk" >/dev/null 2>&1
+cmp -s app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/chunks-installed-base.apk"
+rm "$RUNNER_TEMP/chunks-installed-base.apk"
+unset installed_apk
 acceptance_started=$(date +%s)
 set +e
 adb shell am instrument -w -r \
   -e class io.github.gamesbyian.chunks.SeedhostAndroidAddUiInstrumentedTest#installedAppAddsOneSyntheticMagnetAtAVerifiedServerPlace \
   -e chunks_real_add authorized -e chunks_live_url_b64 "$url64" "${args[@]}" \
-  io.github.gamesbyian.chunks.preview.test/androidx.test.runner.AndroidJUnitRunner \
+  "${candidate_package}.test/androidx.test.runner.AndroidJUnitRunner" \
   > "$RUNNER_TEMP/chunks-installed-magnets.raw" 2>&1
 acceptance_status=$?
 set -e

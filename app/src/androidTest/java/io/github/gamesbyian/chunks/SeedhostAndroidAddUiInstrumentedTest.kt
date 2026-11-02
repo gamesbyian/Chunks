@@ -197,7 +197,7 @@ class SeedhostAndroidAddUiInstrumentedTest {
             checkpoint("queue")
 
             rule.onNodeWithText("+ Add torrent").performClick()
-            rule.waitUntil(30_000) { visible("A place for every download.") }
+            rule.waitUntil(30_000) { visible("Add a download to this server") }
             checkpoint("add-open")
             try {
                 rule.onNodeWithText("Magnet link").performTextReplacement(magnet)

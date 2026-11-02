@@ -18,9 +18,12 @@ android {
         // CHUNKS_SIDE_BY_SIDE=1 produces a separately installable preview app:
         // never require uninstalling a previous Chunks with app-owned torrents.
         val sideBySide = providers.environmentVariable("CHUNKS_SIDE_BY_SIDE").orNull == "1"
-        applicationId = if (sideBySide) "io.github.gamesbyian.chunks.preview"
+        val previewSuffix = providers.environmentVariable("CHUNKS_PREVIEW_SUFFIX").orNull ?: "preview"
+        require(previewSuffix.matches(Regex("[a-z][a-z0-9_]{1,60}"))) { "Invalid preview application identity" }
+        applicationId = if (sideBySide) "io.github.gamesbyian.chunks.$previewSuffix"
                         else "io.github.gamesbyian.chunks"
-        resValue("string", "chunks_app_name", if (sideBySide) "Chunks Preview" else "Chunks")
+        resValue("string", "chunks_app_name", if (!sideBySide) "Chunks"
+            else if (previewSuffix.startsWith("magnet")) "Chunks Magnet Preview" else "Chunks Preview")
         minSdk = 29
         targetSdk = 37
         // Release builds supply a monotonically increasing code; dev stays 1.

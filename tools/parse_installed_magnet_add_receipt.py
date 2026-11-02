@@ -16,7 +16,8 @@ PHASES = ("preflight", "review", "ui-verified", "registered",
           "ui-progress", "stopped", "restarted", "resumed-traffic", "ui-controls", "removed", "passed", "uncertain")
 FAILURE_TYPES = {
     "AssertionError", "IllegalStateException", "IllegalArgumentException",
-    "SocketTimeoutException", "ConnectException", "IOException",
+    "SocketTimeoutException", "ConnectException", "IOException", "ComposeTimeoutException",
+    "ComposeNotIdleException", "PerformException", "NullPointerException", "SecurityException",
 }
 
 
@@ -26,11 +27,12 @@ def parse(raw, exit_code, env=None):
     observed_hashes = {source: set() for source in SOURCES}
     traffic = {source: {} for source in SOURCES}
     current_case = None
+    current_class = None
     cases = []
     case_results = []
     peerless_hashes = set()
     peerless = 0
-    app_stages, negative_stages = [], []
+    app_stages, negative_stages, source_frames = [], [], []
     terminal_count = 0
     controlled = env.get("CHUNKS_CONTROLLED_PEER") == "1"
     expected_cases = {"installedAppAddsOneSyntheticMagnetAtAVerifiedServerPlace"} if controlled else {
@@ -46,13 +48,18 @@ def parse(raw, exit_code, env=None):
     allow = re.compile(r"^INSTRUMENTATION_STATUS: chunks_real_add_stage=(magnet2|magnet)-([a-z-]+)$")
     hashes = re.compile(r"^INSTRUMENTATION_STATUS: chunks_real_add_hash_(magnet2|magnet)=([a-f0-9]{40})$")
     for line in raw.splitlines():
+        if line.startswith("INSTRUMENTATION_STATUS: class="):
+            candidate_class = line.split("class=", 1)[1]
+            current_class = candidate_class if candidate_class in {
+                "io.github.gamesbyian.chunks.SeedhostAndroidAddUiInstrumentedTest",
+                "io.github.gamesbyian.chunks.SeedhostAndroidRealTransferAddInstrumentedTest"} else None
         if line.startswith("INSTRUMENTATION_STATUS: test="):
             candidate = line.split("test=", 1)[1]
             current_case = candidate if candidate in known_cases else None
         if line in ("INSTRUMENTATION_STATUS_CODE: 0", "INSTRUMENTATION_STATUS_CODE: -2", "INSTRUMENTATION_STATUS_CODE: -3"):
             cases.append(current_case)
-            case_results.append({"name": current_case, "outcome": "passed" if line.endswith(": 0") else "failed"})
-        app_stage = re.fullmatch(r"INSTRUMENTATION_STATUS: chunks_real_add_app_stage=(runner-ready|connect-submitted|queue|add-submitted|add-registered)", line)
+            case_results.append({"class": current_class, "name": current_case, "outcome": "passed" if line.endswith(": 0") else "failed"})
+        app_stage = re.fullmatch(r"INSTRUMENTATION_STATUS: chunks_real_add_app_stage=(runner-ready|connect-submitted|queue|add-open-requested|add-open|magnet-entered|place-ready|add-review|add-submitted|add-registered)", line)
         if app_stage:
             app_stages.append(app_stage.group(1))
         negative_stage = re.fullmatch(r"INSTRUMENTATION_STATUS: chunks_real_add_negative_stage=(preflight|registered|add-ui-truthful|transfers-ui-truthful|removed)", line)
@@ -71,6 +78,9 @@ def parse(raw, exit_code, env=None):
             if len(values) == 5 and all(v.isdecimal() and 0 <= int(v) < 2**63 for v in values):
                 traffic[sample.group(1)][sample.group(2)] = dict(zip(
                     ("received", "verified", "expected", "peers", "rate"), map(int, values)))
+        frame = re.fullmatch(r"\s*at [A-Za-z0-9_.$<>]+\((MainActivityRealMagnetJourney|SeedhostAndroidAddUiInstrumentedTest|VerifiedAddScreen|RTorrentRemote|TransferLifecycleControl)\.kt:([0-9]{1,5})\)", line)
+        if frame and len(source_frames) < 8 and 0 < int(frame.group(2)) <= 10000:
+            source_frames.append({"file": frame.group(1) + ".kt", "line": int(frame.group(2))})
         identity = hashes.fullmatch(line)
         if identity:
             observed_hashes[identity.group(1)].add(identity.group(2))
@@ -127,6 +137,10 @@ def parse(raw, exit_code, env=None):
                     for x in per_source.values()))
     if controlled:
         complete = complete and peerless == 1 and terminal_count == 1 and set(cases) == expected_cases and len(cases) == expected_test_count
+        complete = complete and len(peerless_hashes) == 1 and not (peerless_hashes & set.union(*observed_hashes.values()))
+        complete = complete and all(c["class"] == "io.github.gamesbyian.chunks.SeedhostAndroidAddUiInstrumentedTest" for c in case_results)
+        complete = complete and all(negative_stages.count(stage) == 1 for stage in
+            ("preflight", "registered", "add-ui-truthful", "transfers-ui-truthful", "removed"))
         for source in SOURCES:
             initial, resumed = (traffic[source].get(phase, {}) for phase in ("initial", "resumed"))
             complete = complete and all(phases[source][stage] == 1 for stage in
@@ -138,6 +152,7 @@ def parse(raw, exit_code, env=None):
         "schema_version": 1, "source_sha": env.get("GITHUB_SHA"),
         "entry_path": "actual MainActivity Connect, Add, Transfers lifecycle and Remove" if controlled else "production Add composable",
         "controlled_real_peer": controlled, "peerless_negative_passed": peerless == 1,
+        "safe_failure_source_frames": source_frames,
         "app_stage_evidence": app_stages, "negative_stage_evidence": negative_stages,
         "actual_case_identities": cases, "actual_case_results": case_results, "terminal_count": terminal_count,
         "peerless_negative_hash": next(iter(peerless_hashes)) if len(peerless_hashes) == 1 else None,

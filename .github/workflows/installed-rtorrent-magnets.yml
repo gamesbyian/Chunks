@@ -51,6 +51,8 @@ jobs:
       CHUNKS_LIVE_RUTORRENT_URL: ${{ inputs.environment == 'live' && 'https://ianseeds.wood.seedhost.eu/rutorrent/' || 'http://127.0.0.1:18080/RPC2' }}
     steps:
       - uses: actions/checkout@v4
+      - name: Give this verified candidate a separate application identity
+        run: printf 'CHUNKS_PREVIEW_SUFFIX=magnet%s\n' "${GITHUB_SHA:0:12}" >> "$GITHUB_ENV"
       - name: Cheap receipt and controller checks before native build
         run: |
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_installed_magnet_add_receipt.py

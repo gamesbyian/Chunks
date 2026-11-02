@@ -110,6 +110,12 @@ internal class MainActivityRealMagnetJourney(
         val parent = default ?: requireNotNull(runBlocking { corroboratedParent(remote, beforeRows) }) {
             "No independently corroborated server Place; no Add allowed"
         }
+        val fixtures = listOf("magnet", "magnet2").associateWith { label ->
+            TorrentMetainfoReader.preview(controller("/$label.torrent")).also { preview ->
+                report("chunks_real_add_hash_$label", preview.infoHashV1)
+                require(preview.infoHashV1 !in before && runBlocking { remote.lookupName(preview.infoHashV1) } == null)
+            }
+        }
         // Real connection UI; its ordinary authentication, saved profile,
         // selected environment and mutation fence remain in the call chain.
         type("Seedbox hostname, ruTorrent URL or RPC address", url)
@@ -121,19 +127,25 @@ internal class MainActivityRealMagnetJourney(
         rule.onNodeWithText("Password").assertDoesNotExist()
         report("chunks_real_add_app_stage", "queue")
 
-        fun add(hash: String, label: String? = null) {
+        fun add(hash: String, label: String? = null, onSubmit: () -> Unit = {}) {
+            report("chunks_real_add_app_stage", "add-open-requested")
             click("+ Add torrent")
-            rule.waitUntil(30_000) { visible("A place for every download.") }
+            rule.waitUntil(30_000) { visible("Add a download to this server") }
+            report("chunks_real_add_app_stage", "add-open")
             type("Magnet link", "magnet:?xt=urn:btih:$hash&tr=http%3A%2F%2F127.0.0.1%3A1%2Fannounce")
+            report("chunks_real_add_app_stage", "magnet-entered")
             rule.waitUntil(30_000) {
                 runCatching { scroll("Custom server folder (optional)") }
                 visible("Using rTorrent default Place:") || visible("No usable default Place was reported.")
             }
             if (default == null) type("Custom server folder (optional)", parent)
+            report("chunks_real_add_app_stage", "place-ready")
             click("Review Add")
             scroll("Confirm one server operation")
             assertTrue("Review lost exact public identity", visible("Infohash: $hash"))
             if (label != null) stage(label, "review")
+            report("chunks_real_add_app_stage", "add-review")
+            onSubmit()
             report("chunks_real_add_app_stage", "add-submitted")
             click("Confirm: add then start")
             rule.waitUntil(60_000) { runCatching { scroll("Operation outcome") }; visible("Operation outcome") }
@@ -158,16 +170,14 @@ internal class MainActivityRealMagnetJourney(
             assertEquals(before, runBlocking { remote.listTransfers("main") }.map { it.hash.lowercase() }.toSet())
         }
         for (label in listOf("magnet", "magnet2")) {
-            val preview = TorrentMetainfoReader.preview(controller("/$label.torrent"))
+            val preview = fixtures.getValue(label)
             val hash = preview.infoHashV1
-            report("chunks_real_add_hash_$label", hash)
             require(hash !in before && runBlocking { remote.lookupName(hash) } == null)
             stage(label, "preflight")
             var submitted = false
             var removed = false
             try {
-                submitted = true
-                add(hash, label)
+                add(hash, label) { submitted = true }
                 stage(label, "ui-verified")
                 val placeholder = requireNotNull(row(hash))
                 assertEquals(parent, placeholder.directory)
@@ -259,7 +269,7 @@ internal class MainActivityRealMagnetJourney(
             refreshAndFind(negative)
             scroll("Fetching metadata")
             assertTrue(visible("Payload size and progress pending metadata"))
-            assertFalse(visible("Complete"))
+            assertFalse(visible("100% ·"))
             report("chunks_real_add_negative_stage", "transfers-ui-truthful")
         } finally {
             if (row(negative) != null) {
