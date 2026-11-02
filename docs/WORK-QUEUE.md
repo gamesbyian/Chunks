@@ -1,5 +1,10 @@
 # Chunks active engineering work queue
 
+## Planned cross-app dependency (after existing P0 real transfer acceptance)
+
+[Expository read-only file association feed](EXPOSITORY-FILE-ASSOCIATIONS.md): expose optional permission-protected, versioned, per-environment snapshots of observed rTorrent file membership and status for native Expository Transfer FTP/SFTP badges, filters and mutation warnings. First complete trustworthy per-file remote inventory and preserve exact-host, real-peer acceptance. No implementation is claimed, no new P0 lane, and no network scan on Expository folder open.
+
+
 ## 2026-11-01 owner direction: real transfer tests are the P0 acceptance authority
 
 **Binding engineering policy:** [REAL-TRANSFER-ACCEPTANCE](REAL-TRANSFER-ACCEPTANCE.md). Prioritize actual `.torrent` and metadata-resolving magnet tests on real servers/peers and installed Chunks paths over extending mock-only suites. Mocks remain secondary edge/negative tests. Status must distinguish real adapter/host, installed emulator and physical handset; a simulator-only green check does not close a torrent feature. Reuse rTorrent/libtorrent/native API behaviour and compare known-good ruTorrent/Transdroid operations before building custom substitutes. Do not reinterpret this as automatically mutating credentialed hosts on every PR.
