@@ -119,6 +119,12 @@ def parse(raw, exit_code, env=None):
             "source_id": (("debian-cdimage" if source == "magnet" else "blender-sintel-webtorrent") if controlled else
                           ("ubuntu-25.10-live-server" if source == "magnet" else "ubuntu-25.10-desktop")),
             "traffic": traffic[source],
+            "fresh_ingress_blocker": (
+                "already-complete-without-new-ingress"
+                if (traffic[source].get("initial", {}).get("expected", 0) > 0 and
+                    traffic[source]["initial"].get("verified") == traffic[source]["initial"]["expected"] and
+                    traffic[source]["initial"].get("received") == 0)
+                else None),
             "read_only_stall_diagnostic": stall_diagnostics[source],
             "phase_counts": counts,
             "first_unverified_checkpoint": next((stage for stage in
