@@ -59,6 +59,16 @@ class SeedhostAndroidRealTransferAddInstrumentedTest {
             2, Bundle().apply { putString("chunks_real_add_stage", stage) })
     }
 
+    private fun reportExactPublicHash(label: String, hash: String) {
+        require(label in setOf("file", "magnet", "magnet2"))
+        val exact = hash.lowercase(java.util.Locale.ROOT)
+        require(exact.matches(Regex("[a-f0-9]{40}")))
+        // This is strictly the official, reusable public-test fixture hash.
+        // Never emit URL/tracker, host name, credentials or server-side paths.
+        InstrumentationRegistry.getInstrumentation().sendStatus(
+            2, Bundle().apply { putString("chunks_real_add_hash_$label", exact) })
+    }
+
     private fun sourceBytes(file: Boolean, alternative: Boolean = false): ByteArray {
         // Real upstream Ubuntu v1 metainfo; different infohashes so the
         // second Add cannot inherit the first torrent's registered identity.
@@ -158,6 +168,7 @@ class SeedhostAndroidRealTransferAddInstrumentedTest {
         val metainfo = sourceBytes(file, alternative)
         val preview = TorrentMetainfoReader.preview(metainfo)
         val hash = preview.infoHashV1
+        reportExactPublicHash(stage, hash)
         val magnet = if (file) "" else
             "magnet:?xt=urn:btih:$hash&tr=" +
                 URLEncoder.encode(announce(metainfo), "UTF-8")

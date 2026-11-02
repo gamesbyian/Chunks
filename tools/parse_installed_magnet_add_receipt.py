@@ -23,11 +23,16 @@ FAILURE_TYPES = {
 def parse(raw, exit_code, env=None):
     env = os.environ if env is None else env
     phases = {source: {name: 0 for name in PHASES} for source in SOURCES}
+    observed_hashes = {source: set() for source in SOURCES}
     runner = {"started_tests": 0, "passed_tests": 0, "failed_tests": 0,
               "total_test_end_codes": 0, "runner_finished": False,
               "exception_classes": []}
     allow = re.compile(r"^INSTRUMENTATION_STATUS: chunks_real_add_stage=(magnet2|magnet)-([a-z-]+)$")
+    hashes = re.compile(r"^INSTRUMENTATION_STATUS: chunks_real_add_hash_(magnet2|magnet)=([a-f0-9]{40})$")
     for line in raw.splitlines():
+        identity = hashes.fullmatch(line)
+        if identity:
+            observed_hashes[identity.group(1)].add(identity.group(2))
         match = allow.fullmatch(line)
         if match and match.group(2) in PHASES:
             phases[match.group(1)][match.group(2)] += 1
@@ -53,8 +58,9 @@ def parse(raw, exit_code, env=None):
             "source_id": "ubuntu-25.10-live-server" if source == "magnet"
                          else "ubuntu-25.10-desktop",
             "phase_counts": counts,
-            "exact_infohash": None,
-            "hash_receipt": "not-emitted-by-current-instrumentation",
+            "exact_infohash": next(iter(observed_hashes[source])) if len(observed_hashes[source]) == 1 else None,
+            "hash_receipt": "confirmed" if len(observed_hashes[source]) == 1 else
+                            "missing" if not observed_hashes[source] else "conflicting",
             "metadata_verified": counts["metadata"] == 1,
             "real_peer_received": counts["peer-progress"] == 1,
             "piece_verified": counts["bytes-verified"] == 1,
@@ -67,7 +73,9 @@ def parse(raw, exit_code, env=None):
                 runner["started_tests"] == runner["passed_tests"] == 2 and
                 runner["failed_tests"] == 0 and
                 runner["total_test_end_codes"] == 2 and
-                all(x["passed"] and x["piece_verified"] and x["restarted"]
+                len(set.union(*observed_hashes.values())) == len(SOURCES) and
+                all(x["hash_receipt"] == "confirmed" and
+                    x["passed"] and x["piece_verified"] and x["restarted"]
                     and x["metadata_verified"] and x["real_peer_received"]
                     and x["cleanup"] == "verified-by-test"
                     for x in per_source.values()))

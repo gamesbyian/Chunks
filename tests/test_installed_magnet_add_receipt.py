@@ -10,6 +10,8 @@ class InstalledMagnetReceiptTests(unittest.TestCase):
     def success_log(self):
         lines = []
         for label in SOURCES:
+            lines.append("INSTRUMENTATION_STATUS: chunks_real_add_hash_" + label +
+                         "=" + ("a" * 40 if label == "magnet" else "b" * 40))
             lines.append("INSTRUMENTATION_STATUS_CODE: 1")
             for stage in ("preflight", "review", "ui-verified", "registered",
                           "metadata", "peer-progress", "bytes-verified", "restarted", "passed"):
@@ -29,6 +31,21 @@ class InstalledMagnetReceiptTests(unittest.TestCase):
             self.assertTrue(result["sources"][label]["passed"])
             self.assertEqual("verified-by-test", result["sources"][label]["cleanup"])
         self.assertFalse(result["physical_device_proven"])
+
+    def test_missing_exact_hash_blocks_otherwise_green_completion(self):
+        data = self.success_log().replace(
+            "INSTRUMENTATION_STATUS: chunks_real_add_hash_magnet2=" + "b" * 40 + "\n", "")
+        result = parse(data, 0, self.env)
+        self.assertNotEqual("passed", result["result"])
+        self.assertEqual("missing", result["sources"]["magnet2"]["hash_receipt"])
+
+    def test_conflicting_duplicate_public_hash_is_never_qualified(self):
+        data = self.success_log().replace(
+            "INSTRUMENTATION_STATUS: chunks_real_add_hash_magnet2=" + "b" * 40,
+            "INSTRUMENTATION_STATUS: chunks_real_add_hash_magnet2=" + "a" * 40
+        )
+        result = parse(data, 0, self.env)
+        self.assertNotEqual("passed", result["result"])
 
     def test_missing_second_magnet_never_passes(self):
         result = parse("INSTRUMENTATION_STATUS: chunks_real_add_stage=magnet-passed\n"
