@@ -41,16 +41,32 @@ def validate(path, magnets_path, allow_partial=False):
         if fingerprint in hashes:
             raise ValueError(f"Duplicate infohash at {i}")
         hashes.add(fingerprint)
-        magnet = urllib.parse.urlsplit(item["magnet"])
-        if magnet.scheme != "magnet" or magnet.netloc or magnet.fragment:
+        uri = item["magnet"]
+        # urllib normalizes stray control characters before parsing. Reject
+        # them from the raw catalog entry, and allow only the curator's actual
+        # identity/display/tracker fields, not peer injection or web seeds.
+        if (not isinstance(uri, str) or len(uri) > 8192
+                or any(ord(c) < 32 or ord(c) == 127 for c in uri)):
+            raise ValueError(f"Unsafe magnet text at {i}")
+        magnet = urllib.parse.urlsplit(uri)
+        if (magnet.scheme != "magnet" or magnet.netloc or magnet.path
+                or magnet.fragment):
             raise ValueError(f"Bad magnet URI at {i}")
         params = urllib.parse.parse_qs(magnet.query, keep_blank_values=True)
-        if h1 and "urn:btih:" + h1 not in params.get("xt", []):
-            raise ValueError(f"Magnet hash mismatch at {i}")
-        if h2 and "urn:btmh:1220" + h2 not in params.get("xt", []):
-            raise ValueError(f"Magnet v2 hash mismatch at {i}")
-        if not item["name"] or not item.get("source_url"):
-            raise ValueError(f"Missing identity/provenance at {i}")
+        if set(params) - {"xt", "dn", "tr"}:
+            raise ValueError(f"Unexpected magnet parameter at {i}")
+        expected_topics = (
+            (["urn:btih:" + h1] if h1 else [])
+            + (["urn:btmh:1220" + h2] if h2 else [])
+        )
+        # A magnet that contains the correct xt plus a second unrelated xt
+        # is ambiguous to actual clients and is not a source-verified fixture.
+        if sorted(params.get("xt", [])) != sorted(expected_topics):
+            raise ValueError(f"Magnet exact topic mismatch at {i}")
+        if (not isinstance(item.get("name"), str) or not item["name"]
+                or params.get("dn") != [item["name"]]
+                or not item.get("source_url")):
+            raise ValueError(f"Missing or conflicting identity/provenance at {i}")
         source = urllib.parse.urlsplit(item["source_url"])
         if source.scheme != "https" or source.hostname not in ("archive.org", "linuxtracker.org"):
             raise ValueError(f"Unexpected source at {i}")
