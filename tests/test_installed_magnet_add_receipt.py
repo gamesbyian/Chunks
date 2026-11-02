@@ -115,6 +115,24 @@ class InstalledMagnetReceiptTests(unittest.TestCase):
         self.assertNotIn("connect-submitted", result["app_stage_evidence"])
         self.assertEqual("failed-or-inconclusive", result["result"])
 
+    def test_payload_timeout_preserves_only_safe_exact_hash_stall_state(self):
+        raw = self.controlled_log().replace(
+            "INSTRUMENTATION_STATUS: chunks_real_add_stage=magnet-peer-progress",
+            "INSTRUMENTATION_STATUS: chunks_real_add_diagnostic_magnet="
+            "state=1,active=0,open=0,phase=0,hashfailed=0,hashing=0,meta=0,"
+            "message=storage\\n"
+            "INSTRUMENTATION_STATUS: chunks_real_add_stage=magnet-peer-progress"
+        )
+        result = parse(raw, 1, self.env)
+        self.assertEqual("failed-or-inconclusive", result["result"])
+        self.assertEqual(
+            "state=1,active=0,open=0,phase=0,hashfailed=0,hashing=0,meta=0,message=storage",
+            result["sources"]["magnet"]["read_only_stall_diagnostic"])
+        self.assertIsNone(result["sources"]["magnet2"]["read_only_stall_diagnostic"])
+        injected = raw.replace("message=storage", "message=https://private.example?passkey=SECRET")
+        self.assertIsNone(parse(injected, 1, self.env)["sources"]["magnet"]["read_only_stall_diagnostic"])
+        self.assertNotIn("SECRET", str(parse(injected, 1, self.env)))
+
     def test_missing_exact_hash_blocks_otherwise_green_completion(self):
         data = self.success_log().replace(
             "INSTRUMENTATION_STATUS: chunks_real_add_hash_magnet2=" + "b" * 40 + "\n", "")
