@@ -133,11 +133,13 @@ internal class MainActivityRealMagnetJourney(
             click("+ Add torrent")
             rule.waitUntil(30_000) { visible("Add a download to this server") }
             report("chunks_real_add_app_stage", "add-open")
-            // Preserve published trackers in both controlled and public
-            // modes. The previous loopback-dead tracker prevented normal
-            // public discovery on the actual Seedhost.
-            // The peerless negative remains an isolated dead-tracker magnet.
-            val link = if (label != null) String(controller("/$label.magnet"), Charsets.UTF_8)
+            // Live hosts and explicitly public-discovery tests keep every
+            // original upstream tracker. Disposable controlled-peer tests
+            // retain a deliberately unreachable tracker to isolate and
+            // verify the real supplied libtorrent metadata/payload path.
+            // The peerless negative also remains intentionally unreachable.
+            val link = if (label != null && (publicDiscovery || !disposable))
+                String(controller("/$label.magnet"), Charsets.UTF_8)
                 else "magnet:?xt=urn:btih:$hash&tr=http%3A%2F%2F127.0.0.1%3A1%2Fannounce"
             require(StoppedRemoteAddPlan.fromMagnet(link, parent).expectedInfoHash == hash)
             type("Magnet link", link)
@@ -239,12 +241,22 @@ internal class MainActivityRealMagnetJourney(
                 lifecycle(hash, true)
                 if (!publicDiscovery) controller("/$label/resume", source.listenPort)
                 val completeBeforeRestart = publicDiscovery && stopped.verifiedBytes == stopped.expectedBytes
-                if (!completeBeforeRestart) await(90) {
-                    val sample = runBlocking { remote.readTrafficSample(hash) }
-                    (sample.receivedBytes ?: 0L) > (stopped.receivedBytes ?: 0L) &&
-                        (sample.verifiedBytes ?: 0L) > (stopped.verifiedBytes ?: 0L)
-                }
-                traffic(label, "resumed", runBlocking { remote.readTrafficSample(hash) })
+                if (!completeBeforeRestart) {
+                    try {
+                        // Reopening a partially populated torrent can require
+                        // hashing and a fresh tracker announce. Never equate
+                        // merely active=true with resumed data transfer.
+                        await(180) {
+                            val sample = runBlocking { remote.readTrafficSample(hash) }
+                            (sample.receivedBytes ?: 0L) > (stopped.receivedBytes ?: 0L) &&
+                                (sample.verifiedBytes ?: 0L) > (stopped.verifiedBytes ?: 0L)
+                        }
+                    } finally {
+                        // Retain the exact post-restart peer/rate/byte sample
+                        // even when the bounded resume test fails.
+                        traffic(label, "resumed", runBlocking { remote.readTrafficSample(hash) })
+                    }
+                } else traffic(label, "resumed", runBlocking { remote.readTrafficSample(hash) })
                 stage(label, "restarted")
                 stage(label, if (completeBeforeRestart) "completed-at-stop" else "resumed-traffic")
                 remove(hash); removed = true
