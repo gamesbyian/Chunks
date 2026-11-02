@@ -55,7 +55,7 @@ jobs:
             (github.ref == 'refs/heads/main' && inputs.apply && github.run_attempt == 1))) ||
           (github.event_name == 'push' && github.ref == 'refs/heads/main' &&
            github.run_attempt == 1 &&
-           contains(github.event.head_commit.message, 'one-time connect-click stabilized Seedhost magnet acceptance 2026-11-02')) }}
+           contains(github.event.head_commit.message, 'one-time live payload stall diagnostic with exact readback 2026-11-02')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 24
     env:
