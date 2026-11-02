@@ -236,10 +236,12 @@ internal class MainActivityRealMagnetJourney(
             }
             stage(label, "preflight")
             var submitted = false
+            var verifiedAdded = false
             var removed = false
             var cleanupAttempted = false
             try {
                 add(hash, label) { submitted = true }
+                verifiedAdded = true
                 stage(label, "ui-verified")
                 val placeholder = requireNotNull(row(hash))
                 assertTrue(placeholder.directory in setOf(parent, "$parent/${preview.name}"))
@@ -358,9 +360,11 @@ internal class MainActivityRealMagnetJourney(
                 groupPassed = true
             } finally {
                 if (submitted && !removed) {
-                    // Failure-only exact owned-session cleanup. A fresh exact
-                    // row and metadata flag guard changes; no Add is replayed.
-                    val current = if (cleanupAttempted) null else row(hash)
+                    // A timeout or other uncertain Add does not establish
+                    // that this test created a matching session. Preserve it
+                    // for read-only reconciliation; never adopt and erase it.
+                    // A cleanup attempt is also never blindly repeated.
+                    val current = if (cleanupAttempted || !verifiedAdded) null else row(hash)
                     if (current != null && current.directory in setOf(parent, "$parent/${preview.name}")) {
                         if (current.started) runBlocking { remote.setStarted(hash, false) }
                         await { row(hash)?.started == false && runBlocking { remote.readActivity(hash).active } == false }
