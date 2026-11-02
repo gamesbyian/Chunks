@@ -8,10 +8,6 @@ on:
     paths:
       - "tools/seedhost_magnet_twoarg_control_once.py"
       - ".github/workflows/seedhost-magnet-twoarg-control-once.yml"
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/seedhost-magnet-twoarg-control-once.yml"
   workflow_dispatch:
     inputs:
       apply:
@@ -38,9 +34,7 @@ jobs:
   live-reference:
     if: >-
       ${{ github.ref == 'refs/heads/main' && github.run_attempt == 1 &&
-          ((github.event_name == 'workflow_dispatch' && inputs.apply) ||
-           (github.event_name == 'push' &&
-            contains(github.event.head_commit.message, 'one-time Seedhost twoarg magnet control (#1010)'))) }}
+          github.event_name == 'workflow_dispatch' && inputs.apply }}
     runs-on: ubuntu-latest
     timeout-minutes: 12
     env:
