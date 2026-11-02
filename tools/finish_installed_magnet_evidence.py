@@ -43,7 +43,7 @@ def main():
                     # Public-mode acceptance must not secretly use our seed.
                     peer_valid = peer_valid and (independent["stages"] == ["preflight"] and
                         independent["payload_uploaded_bytes"] == independent["peer_connections"] == 0)
-                else:
+                elif source["passed"]:
                     peer_valid = peer_valid and (independent["payload_uploaded_bytes"] > 0 and independent["peer_connections"] > 0)
             shutil.copyfile(peer_path, a.output / "PEER-RECEIPT.json")
         except (ValueError, KeyError, TypeError):

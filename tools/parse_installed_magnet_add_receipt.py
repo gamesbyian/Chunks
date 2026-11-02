@@ -11,9 +11,11 @@ from pathlib import Path
 import re
 
 SOURCES = ("magnet", "magnet2")
+CANDIDATE_GROUPS = (("magnet", "magnet3"), ("magnet2", "magnet4"))
+CANDIDATES = tuple(source for group in CANDIDATE_GROUPS for source in group)
 PHASES = ("preflight", "review", "ui-verified", "registered",
           "readback-error", "metadata", "metadata-already-resolved", "peer-progress", "bytes-verified",
-          "ui-progress", "stopped", "restarted", "resumed-traffic", "completed-at-stop", "ui-controls", "removed", "passed", "uncertain")
+          "ui-progress", "stopped", "restarted", "resumed-traffic", "completed-at-stop", "ui-controls", "removed", "passed", "uncertain", "already-present", "fixture-precompleted")
 FAILURE_TYPES = {
     "AssertionError", "IllegalStateException", "IllegalArgumentException",
     "SocketTimeoutException", "ConnectException", "IOException", "ComposeTimeoutException",
@@ -23,10 +25,13 @@ FAILURE_TYPES = {
 
 def parse(raw, exit_code, env=None):
     env = os.environ if env is None else env
-    phases = {source: {name: 0 for name in PHASES} for source in SOURCES}
-    observed_hashes = {source: set() for source in SOURCES}
-    traffic = {source: {} for source in SOURCES}
-    stall_diagnostics = {source: None for source in SOURCES}
+    controlled = env.get("CHUNKS_CONTROLLED_PEER") == "1"
+    sources = CANDIDATES if controlled else SOURCES
+    phases = {source: {name: 0 for name in PHASES} for source in sources}
+    observed_hashes = {source: set() for source in sources}
+    traffic = {source: {} for source in sources}
+    traffic_counts = {source: {"initial": 0, "resumed": 0} for source in sources}
+    stall_diagnostics = {source: None for source in sources}
     current_case = None
     current_class = None
     cases = []
@@ -35,7 +40,6 @@ def parse(raw, exit_code, env=None):
     peerless = 0
     app_stages, negative_stages, source_frames = [], [], []
     terminal_count = 0
-    controlled = env.get("CHUNKS_CONTROLLED_PEER") == "1"
     public = env.get("CHUNKS_PUBLIC_DISCOVERY") == "1"
     expected_cases = {"installedAppAddsOneSyntheticMagnetAtAVerifiedServerPlace"} if controlled else {
         "installedMagnetAddResolvesMetadataAndReceivesVerifiedPeerBytes",
@@ -47,8 +51,8 @@ def parse(raw, exit_code, env=None):
     runner = {"started_tests": 0, "passed_tests": 0, "failed_tests": 0,
               "total_test_end_codes": 0, "runner_finished": False,
               "exception_classes": []}
-    allow = re.compile(r"^INSTRUMENTATION_STATUS: chunks_real_add_stage=(magnet2|magnet)-([a-z-]+)$")
-    hashes = re.compile(r"^INSTRUMENTATION_STATUS: chunks_real_add_hash_(magnet2|magnet)=([a-f0-9]{40})$")
+    allow = re.compile(r"^INSTRUMENTATION_STATUS: chunks_real_add_stage=(magnet[234]?)-([a-z-]+)$")
+    hashes = re.compile(r"^INSTRUMENTATION_STATUS: chunks_real_add_hash_(magnet[234]?)=([a-f0-9]{40})$")
     for line in raw.splitlines():
         if line.startswith("INSTRUMENTATION_STATUS: class="):
             candidate_class = line.split("class=", 1)[1]
@@ -74,28 +78,29 @@ def parse(raw, exit_code, env=None):
             peerless += 1
         if line == "INSTRUMENTATION_CODE: -1":
             terminal_count += 1
-        sample = re.fullmatch(r"INSTRUMENTATION_STATUS: chunks_real_add_traffic_(magnet2|magnet)_(initial|resumed)=([0-9,]{1,120})", line)
-        if sample:
+        sample = re.fullmatch(r"INSTRUMENTATION_STATUS: chunks_real_add_traffic_(magnet[234]?)_(initial|resumed)=([0-9,]{1,120})", line)
+        if sample and sample.group(1) in traffic:
             values = sample.group(3).split(",")
             if len(values) == 5 and all(v.isdecimal() and 0 <= int(v) < 2**63 for v in values):
+                traffic_counts[sample.group(1)][sample.group(2)] += 1
                 traffic[sample.group(1)][sample.group(2)] = dict(zip(
                     ("received", "verified", "expected", "peers", "rate"), map(int, values)))
         diagnostic = re.fullmatch(
-            r"INSTRUMENTATION_STATUS: chunks_real_add_diagnostic_(magnet2|magnet)="
+            r"INSTRUMENTATION_STATUS: chunks_real_add_diagnostic_(magnet[234]?)="
             r"(state=[01],active=[01],open=[01],phase=[0-3x],"
             r"hashfailed=[01x],hashing=[01x],meta=[01x],"
             r"message=(?:none|storage|tracker-or-network|hash-check|other|unknown)|unavailable)",
             line)
-        if diagnostic:
+        if diagnostic and diagnostic.group(1) in stall_diagnostics:
             stall_diagnostics[diagnostic.group(1)] = diagnostic.group(2)
         frame = re.fullmatch(r"\s*at [A-Za-z0-9_.$<>]+\((MainActivityRealMagnetJourney|SeedhostAndroidAddUiInstrumentedTest|VerifiedAddScreen|RTorrentRemote|TransferLifecycleControl)\.kt:([0-9]{1,5})\)", line)
         if frame and len(source_frames) < 8 and 0 < int(frame.group(2)) <= 10000:
             source_frames.append({"file": frame.group(1) + ".kt", "line": int(frame.group(2))})
         identity = hashes.fullmatch(line)
-        if identity:
+        if identity and identity.group(1) in observed_hashes:
             observed_hashes[identity.group(1)].add(identity.group(2))
         match = allow.fullmatch(line)
-        if match and match.group(2) in PHASES:
+        if match and match.group(1) in phases and match.group(2) in PHASES:
             phases[match.group(1)][match.group(2)] += 1
         if line == "INSTRUMENTATION_STATUS_CODE: 1":
             runner["started_tests"] += 1
@@ -113,12 +118,13 @@ def parse(raw, exit_code, env=None):
                 first if first in FAILURE_TYPES else "OtherFailure"
             )
     per_source = {}
-    for source in SOURCES:
+    for source in sources:
         counts = phases[source]
         per_source[source] = {
-            "source_id": (("debian-cdimage" if source == "magnet" else "blender-sintel-webtorrent") if controlled else
+            "source_id": ({"magnet": "debian-arm64", "magnet3": "debian-amd64", "magnet2": "blender-sintel", "magnet4": "blender-big-buck-bunny"}[source] if controlled else
                           ("ubuntu-25.10-live-server" if source == "magnet" else "ubuntu-25.10-desktop")),
             "traffic": traffic[source],
+            "traffic_sample_counts": traffic_counts[source],
             "read_only_stall_diagnostic": stall_diagnostics[source],
             "phase_counts": counts,
             "first_unverified_checkpoint": next((stage for stage in
@@ -140,22 +146,48 @@ def parse(raw, exit_code, env=None):
                 runner["started_tests"] == runner["passed_tests"] == expected_test_count and
                 runner["failed_tests"] == 0 and
                 runner["total_test_end_codes"] == expected_test_count and
-                len(set.union(*observed_hashes.values())) == len(SOURCES) and
-                all(x["hash_receipt"] == "confirmed" and
+                len(set.union(*observed_hashes.values())) == len(sources) and
+                all(x["hash_receipt"] == "confirmed" for x in per_source.values()))
+    if not controlled:
+        complete = complete and all(
                     x["passed"] and x["piece_verified"] and x["restarted"]
                     and x["metadata_verified"] and x["real_peer_received"]
                     and x["cleanup"] == "verified-by-test"
-                    for x in per_source.values()))
+                    for x in per_source.values())
     if controlled:
         complete = complete and peerless == 1 and terminal_count == 1 and set(cases) == expected_cases and len(cases) == expected_test_count
         complete = complete and len(peerless_hashes) == 1 and not (peerless_hashes & set.union(*observed_hashes.values()))
         complete = complete and all(c["class"] == "io.github.gamesbyian.chunks.SeedhostAndroidAddUiInstrumentedTest" for c in case_results)
         complete = complete and all(negative_stages.count(stage) == 1 for stage in
             ("preflight", "registered", "add-ui-truthful", "transfers-ui-truthful", "removed"))
-        for source in SOURCES:
+        for group in CANDIDATE_GROUPS:
+            first, alternate = (per_source[source] for source in group)
+            skipped = (first["phase_counts"]["already-present"] == 1 and
+                       sum(first["phase_counts"].values()) == 1) or (
+                first["phase_counts"]["fixture-precompleted"] == 1 and
+                first["phase_counts"]["removed"] == 1 and
+                first["phase_counts"]["uncertain"] == 0 and
+                first["phase_counts"]["passed"] == 0 and
+                all(first["phase_counts"][stage] == 1 for stage in
+                    ("preflight", "review", "ui-verified", "registered", "metadata")) and
+                all(first["phase_counts"][stage] == 0 for stage in
+                    ("peer-progress", "bytes-verified", "ui-progress", "stopped", "restarted", "ui-controls", "already-present")) and
+                first["traffic_sample_counts"] == {"initial": 1, "resumed": 0} and
+                first["traffic"].get("initial", {}).get("received") == 0 and
+                first["traffic"].get("initial", {}).get("expected", 0) > 0 and
+                first["traffic"]["initial"].get("verified") == first["traffic"]["initial"]["expected"])
+            unused = sum(alternate["phase_counts"].values()) == 0 and not alternate["traffic"]
+            complete = complete and ((first["passed"] and unused) or (skipped and alternate["passed"]))
+        for source in sources:
+            if not per_source[source]["passed"]:
+                continue
             initial, resumed = (traffic[source].get(phase, {}) for phase in ("initial", "resumed"))
+            complete = complete and traffic_counts[source] == {"initial": 1, "resumed": 1}
+            complete = complete and all(phases[source][stage] == 0 for stage in
+                ("already-present", "fixture-precompleted", "uncertain", "readback-error"))
             complete = complete and all(phases[source][stage] == 1 for stage in
-                ("ui-progress", "stopped", "ui-controls", "removed")) and bool(initial and resumed)
+                ("preflight", "review", "ui-verified", "registered", "metadata", "peer-progress",
+                 "bytes-verified", "ui-progress", "stopped", "restarted", "ui-controls", "removed", "passed")) and bool(initial and resumed)
             if initial and resumed:
                 grew = (phases[source]["resumed-traffic"] == 1 and phases[source]["completed-at-stop"] == 0 and
                     0 < initial["verified"] < initial["expected"] == resumed["expected"] and

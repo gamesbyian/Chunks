@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Real libtorrent metadata/payload peer for installed remote-Add acceptance.
 
-Two independently published, redistributable v1 torrents: official Debian
-netinst and Blender's CC BY 3.0 Sintel via WebTorrent. Only a bounded prefix
-is fetched over HTTPS; libtorrent independently checks the original pieces.
+Two independently published groups of redistributable v1 torrents: official
+Debian arm64/amd64 netinst and Blender's CC BY 3.0 Sintel/Big Buck Bunny via
+WebTorrent. Only a bounded prefix is fetched over HTTPS; libtorrent checks
+the original pieces before the installed app is allowed to submit a magnet.
 The Android app submits magnets, never these metainfo bytes, to rTorrent.
 The loopback controller only dials the configured disposable/development host.
 """
@@ -42,18 +43,20 @@ def fetch(url, limit, offset=0):
 
 
 def prepare(root):
-    manifest, debian = debian_fixture(2 * 1024**3, architecture="arm64")
-    sintel_url = "https://webtorrent.io/torrents/sintel.torrent"
-    with urllib.request.urlopen(sintel_url, timeout=30) as response:
-        sintel = response.read(2_097_153)
-    if not sintel or len(sintel) > 2_097_152:
-        raise ValueError("Sintel metainfo unavailable")
-    sources = {
-        "magnet": (debian, manifest["torrent_url"].replace("/bt-cd/", "/iso-cd/").removesuffix(".torrent"),
-                   manifest["source_url"], manifest["license"]),
-        "magnet2": (sintel, "https://webtorrent.io/torrents/", sintel_url,
-                    "Blender Foundation Sintel, CC BY 3.0, https://durian.blender.org/sharing/"),
-    }
+    sources = {}
+    for label, architecture in (("magnet", "arm64"), ("magnet3", "amd64")):
+        manifest, raw = debian_fixture(2 * 1024**3, architecture=architecture)
+        sources[label] = (raw, manifest["torrent_url"].replace("/bt-cd/", "/iso-cd/").removesuffix(".torrent"),
+                          manifest["source_url"], manifest["license"])
+    for label, title in (("magnet2", "sintel"), ("magnet4", "big-buck-bunny")):
+        source = "https://webtorrent.io/torrents/" + title + ".torrent"
+        with urllib.request.urlopen(source, timeout=30) as response:
+            raw = response.read(2_097_153)
+        if not raw or len(raw) > 2_097_152:
+            raise ValueError("Blender metainfo unavailable")
+        license_url = "https://durian.blender.org/sharing/" if title == "sintel" else "https://peach.blender.org/about/"
+        sources[label] = (raw, "https://webtorrent.io/torrents/", source,
+                          "Blender Foundation, CC BY 3.0, " + license_url)
     fixtures = {}
     for label, (raw, payload_source, source, license_text) in sources.items():
         ti = lt.torrent_info(raw)
@@ -85,7 +88,7 @@ def prepare(root):
                 out.truncate(length)
                 wanted = min(remaining, length)
                 if wanted:
-                    url = payload_source if label == "magnet" else payload_source + urllib.parse.quote(str(relative))
+                    url = payload_source if label in ("magnet", "magnet3") else payload_source + urllib.parse.quote(str(relative))
                     out.write(fetch(url, wanted))
                     remaining -= wanted
         (root / (label + ".torrent")).write_bytes(raw)
@@ -97,6 +100,8 @@ def prepare(root):
             "peer_error_alerts": 0, "max_active_peers": 0, "payload_uploaded_bytes": 0,
             "stages": [], "native_verified_bytes": 0,
         }
+    if len({item["hash"] for item in fixtures.values()}) != len(fixtures):
+        raise ValueError("Public candidates must have distinct infohashes")
     return fixtures
 
 
@@ -214,7 +219,8 @@ def main():
             def do_GET(self):
                 if self.path == "/ready":
                     body = json.dumps(peer.fixtures).encode()
-                elif self.path in ("/magnet.torrent", "/magnet2.torrent", "/magnet.magnet", "/magnet2.magnet"):
+                elif self.path in tuple("/" + label + extension for label in peer.fixtures
+                                        for extension in (".torrent", ".magnet")):
                     body = (args.root / self.path[1:]).read_bytes()
                 else:
                     self.send_error(404)

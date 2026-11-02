@@ -66,7 +66,7 @@ internal class MainActivityRealMagnetJourney(
         rule.waitForIdle()
     }
     private fun report(key: String, value: String) {
-        require(key.matches(Regex("chunks_real_add_(stage|hash_(magnet2?|negative)|traffic_magnet2?_(initial|resumed)|diagnostic_magnet2?|negative|negative_stage|app_stage)")))
+        require(key.matches(Regex("chunks_real_add_(stage|hash_(magnet[234]?|negative)|traffic_magnet[234]?_(initial|resumed)|diagnostic_magnet[234]?|negative|negative_stage|app_stage)")))
         require(value.length <= 160 && value.matches(Regex("[a-z0-9,=-]+")))
         InstrumentationRegistry.getInstrumentation().sendStatus(2, Bundle().apply { putString(key, value) })
     }
@@ -110,7 +110,7 @@ internal class MainActivityRealMagnetJourney(
         fail("Required exact-server checkpoint missing")
     }
     private fun controller(path: String, port: Long? = null): ByteArray {
-        require(path.matches(Regex("/magnet2?(\\.(torrent|magnet)|/(metadata|payload|resume))")))
+        require(path.matches(Regex("/magnet[234]?(\\.(torrent|magnet)|/(metadata|payload|resume))")))
         val connection = URL("http://127.0.0.1:18081$path").openConnection() as HttpURLConnection
         connection.connectTimeout = 5_000; connection.readTimeout = 60_000
         connection.instanceFollowRedirects = false
@@ -151,12 +151,13 @@ internal class MainActivityRealMagnetJourney(
         val parent = default ?: requireNotNull(runBlocking { corroboratedParent(remote, beforeRows) }) {
             "No independently corroborated server Place; no Add allowed"
         }
-        val fixtures = listOf("magnet", "magnet2").associateWith { label ->
+        val groups = listOf(listOf("magnet", "magnet3"), listOf("magnet2", "magnet4"))
+        val fixtures = groups.flatten().associateWith { label ->
             TorrentMetainfoReader.preview(controller("/$label.torrent")).also { preview ->
                 report("chunks_real_add_hash_$label", preview.infoHashV1)
-                require(preview.infoHashV1 !in before && runBlocking { remote.lookupName(preview.infoHashV1) } == null)
             }
         }
+        require(fixtures.values.map { it.infoHashV1 }.toSet().size == fixtures.size)
         // Real connection UI; its ordinary authentication, saved profile,
         // selected environment and mutation fence remain in the call chain.
         type("Seedbox hostname, ruTorrent URL or RPC address", url)
@@ -219,13 +220,20 @@ internal class MainActivityRealMagnetJourney(
             await { runBlocking { remote.lookupName(hash) } == null }
             assertEquals(before, runBlocking { remote.listTransfers("main") }.map { it.hash.lowercase() }.toSet())
         }
-        for (label in listOf("magnet", "magnet2")) {
+        for (group in groups) {
+          var groupPassed = false
+          for (label in group) {
             val preview = fixtures.getValue(label)
             val hash = preview.infoHashV1
-            require(hash !in before && runBlocking { remote.lookupName(hash) } == null)
+            if (hash in before || runBlocking { remote.lookupName(hash) } != null) {
+                // A pre-existing session is never ours to stop or erase.
+                stage(label, "already-present")
+                continue
+            }
             stage(label, "preflight")
             var submitted = false
             var removed = false
+            var cleanupAttempted = false
             try {
                 add(hash, label) { submitted = true }
                 stage(label, "ui-verified")
@@ -258,15 +266,43 @@ internal class MainActivityRealMagnetJourney(
                         (runBlocking { remote.call("d.is_meta", listOf(hash)) } as Number).toInt() == 0
                 }
                 stage(label, "metadata")
+                class PrecompletedFixture : RuntimeException()
+                fun rejectPrecompleted(sample: RemoteTrafficSample) {
+                    if (sample.expectedBytes == preview.sizeBytes && preview.sizeBytes > 0 &&
+                        sample.verifiedBytes == preview.sizeBytes && sample.receivedBytes == 0L) {
+                        traffic(label, "initial", sample)
+                        throw PrecompletedFixture()
+                    }
+                }
+                try {
+                    rejectPrecompleted(runBlocking { remote.readTrafficSample(hash) })
+                } catch (_: PrecompletedFixture) {
+                    // Remove only the just-created exact job via production UI.
+                    // A failed or uncertain removal must stop rotation.
+                    stage(label, "fixture-precompleted")
+                    click("Back to transfers")
+                    cleanupAttempted = true
+                    remove(hash); removed = true
+                    stage(label, "removed")
+                    continue
+                }
                 if (!publicDiscovery) controller("/$label/payload", source.listenPort)
                 try {
                     await(90) {
                         val sample = runBlocking { remote.readTrafficSample(hash) }
+                        rejectPrecompleted(sample)
                         sample.active == true && ((sample.peers ?: 0L) > 0L ||
                             (publicDiscovery && sample.verifiedBytes == sample.expectedBytes)) &&
                             (sample.receivedBytes ?: 0L) > 0L && (sample.verifiedBytes ?: 0L) > 0L &&
                             sample.expectedBytes == preview.sizeBytes
                     }
+                } catch (_: PrecompletedFixture) {
+                    stage(label, "fixture-precompleted")
+                    click("Back to transfers")
+                    cleanupAttempted = true
+                    remove(hash); removed = true
+                    stage(label, "removed")
+                    continue
                 } catch (timeout: AssertionError) {
                     // Prior failed live run had zero independent uploads but
                     // discarded *all* remote counters and state on timeout.
@@ -307,14 +343,16 @@ internal class MainActivityRealMagnetJourney(
                 traffic(label, "resumed", runBlocking { remote.readTrafficSample(hash) })
                 stage(label, "restarted")
                 stage(label, if (completeBeforeRestart) "completed-at-stop" else "resumed-traffic")
+                cleanupAttempted = true
                 remove(hash); removed = true
                 stage(label, "removed")
                 stage(label, "ui-controls"); stage(label, "passed")
+                groupPassed = true
             } finally {
                 if (submitted && !removed) {
                     // Failure-only exact owned-session cleanup. A fresh exact
                     // row and metadata flag guard changes; no Add is replayed.
-                    val current = row(hash)
+                    val current = if (cleanupAttempted) null else row(hash)
                     if (current != null && current.directory in setOf(parent, "$parent/${preview.name}")) {
                         if (current.started) runBlocking { remote.setStarted(hash, false) }
                         await { row(hash)?.started == false && runBlocking { remote.readActivity(hash).active } == false }
@@ -326,6 +364,9 @@ internal class MainActivityRealMagnetJourney(
                     stage(label, "uncertain")
                 }
             }
+            if (groupPassed) break
+          }
+          assertTrue("All genuine candidates in a publisher group were unavailable or precompleted", groupPassed)
         }
         val run = requireNotNull(arg("chunks_acceptance_run"))
         require(run.matches(Regex("[0-9]{5,20}")))

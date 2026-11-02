@@ -35,7 +35,9 @@ class InstalledMagnetReceiptTests(unittest.TestCase):
     def controlled_log(self):
         lines = ["INSTRUMENTATION_STATUS: class=io.github.gamesbyian.chunks.SeedhostAndroidAddUiInstrumentedTest",
                  "INSTRUMENTATION_STATUS: test=installedAppAddsOneSyntheticMagnetAtAVerifiedServerPlace",
-                 "INSTRUMENTATION_STATUS_CODE: 1"]
+                 "INSTRUMENTATION_STATUS_CODE: 1",
+                 "INSTRUMENTATION_STATUS: chunks_real_add_hash_magnet3=" + "d" * 40,
+                 "INSTRUMENTATION_STATUS: chunks_real_add_hash_magnet4=" + "e" * 40]
         for label in SOURCES:
             lines.append("INSTRUMENTATION_STATUS: chunks_real_add_hash_" + label + "=" +
                          ("a" * 40 if label == "magnet" else "b" * 40))
@@ -65,6 +67,50 @@ class InstalledMagnetReceiptTests(unittest.TestCase):
         self.assertNotEqual("passed", parse(data + "\nINSTRUMENTATION_CODE: -1", 0, env)["result"])
         self.assertNotEqual("passed", parse(data.replace("chunks_real_add_hash_negative", "unknown"), 0, env)["result"])
         self.assertNotEqual("passed", parse(data.replace("SeedhostAndroidAddUiInstrumentedTest", "UnexpectedClass"), 0, env)["result"])
+
+    def test_precompleted_candidate_rotates_only_after_exact_cleanup(self):
+        env = dict(self.env, CHUNKS_CONTROLLED_PEER="1", CHUNKS_DISPOSABLE="1")
+        data = self.controlled_log()
+        lines = data.splitlines()
+        start = next(i for i, s in enumerate(lines) if s.endswith("stage=magnet-preflight"))
+        end = next(i for i, s in enumerate(lines) if "traffic_magnet_resumed=" in s)
+        original = lines[start:end + 1]
+        rotated = [s.replace("stage=magnet-", "stage=magnet3-")
+                     .replace("traffic_magnet_", "traffic_magnet3_") for s in original]
+        precompleted = [
+            "INSTRUMENTATION_STATUS: chunks_real_add_stage=magnet-preflight",
+            "INSTRUMENTATION_STATUS: chunks_real_add_stage=magnet-review",
+            "INSTRUMENTATION_STATUS: chunks_real_add_stage=magnet-ui-verified",
+            "INSTRUMENTATION_STATUS: chunks_real_add_stage=magnet-registered",
+            "INSTRUMENTATION_STATUS: chunks_real_add_stage=magnet-metadata",
+            "INSTRUMENTATION_STATUS: chunks_real_add_traffic_magnet_initial=0,1000000,1000000,0,0",
+            "INSTRUMENTATION_STATUS: chunks_real_add_stage=magnet-fixture-precompleted",
+            "INSTRUMENTATION_STATUS: chunks_real_add_stage=magnet-removed",
+        ]
+        raw = "\n".join(lines[:start] + precompleted + rotated + lines[end + 1:])
+        result = parse(raw, 0, env)
+        self.assertEqual("passed", result["result"])
+        self.assertFalse(result["sources"]["magnet"]["passed"])
+        self.assertTrue(result["sources"]["magnet3"]["passed"])
+        for bad in (raw.replace("chunks_real_add_stage=magnet-removed", "ignored=missing"),
+                    raw.replace("_initial=0,1000000,1000000", "_initial=1,1000000,1000000"),
+                    raw.replace("chunks_real_add_stage=magnet-fixture-precompleted", "ignored=missing"),
+                    raw + "\nINSTRUMENTATION_STATUS: chunks_real_add_stage=magnet-uncertain",
+                    raw + "\nINSTRUMENTATION_STATUS: chunks_real_add_traffic_magnet_initial=0,1000000,1000000,0,0",
+                    raw.replace("chunks_real_add_stage=magnet3-passed", "ignored=exhausted")):
+            self.assertNotEqual("passed", parse(bad, 0, env)["result"])
+
+    def test_existing_session_rotates_without_claiming_cleanup(self):
+        env = dict(self.env, CHUNKS_CONTROLLED_PEER="1", CHUNKS_DISPOSABLE="1")
+        lines = self.controlled_log().splitlines()
+        start = next(i for i, s in enumerate(lines) if s.endswith("stage=magnet2-preflight"))
+        end = next(i for i, s in enumerate(lines) if "traffic_magnet2_resumed=" in s)
+        alternate = [s.replace("stage=magnet2-", "stage=magnet4-")
+                       .replace("traffic_magnet2_", "traffic_magnet4_") for s in lines[start:end + 1]]
+        raw = "\n".join(lines[:start] + ["INSTRUMENTATION_STATUS: chunks_real_add_stage=magnet2-already-present"] + alternate + lines[end + 1:])
+        self.assertEqual("passed", parse(raw, 0, env)["result"])
+        self.assertEqual("not-proven", parse(raw, 0, env)["sources"]["magnet2"]["cleanup"])
+        self.assertNotEqual("passed", parse(raw.replace("chunks_real_add_stage=magnet4-passed", "ignored=exhausted"), 0, env)["result"])
 
     def test_actual_pass_is_preserved_when_other_case_fails(self):
         data = self.success_log()
