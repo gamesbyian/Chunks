@@ -1,4 +1,5 @@
 """Offline negative controls for CI evidence summaries (never use protected logs)."""
+import json
 import tempfile
 import unittest
 import subprocess
