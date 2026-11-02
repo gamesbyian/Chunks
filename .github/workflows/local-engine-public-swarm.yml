@@ -30,9 +30,11 @@ on:
         default: 600
         required: true
   pull_request:
+    # Python collector changes already have exact-head source/parser tests in
+    # public-source-fixtures.yml. No torrent path is supplied to this PR job,
+    # so the opt-in peer test is intentionally skipped on PRs.
     paths:
       - ".github/workflows/local-engine-public-swarm.yml"
-      - "tools/public_fixture_collector.py"
       - "app/src/test/java/io/github/gamesbyian/chunks/engine/LocalEnginePublicSwarmTest.kt"
 
 permissions:
@@ -90,7 +92,7 @@ jobs:
           if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
             ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
           fi
-      - name: Download a verified budget from ordinary peers with the local engine
+      - name: Compile opt-in peer test (real download on manual dispatch only)
         env:
           EVENT_NAME: ${{ github.event_name }}
         run: |
@@ -101,6 +103,10 @@ jobs:
           set -e
           report=app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.engine.LocalEnginePublicSwarmTest.xml
           grep -o 'CHUNKS_PUBLIC_SWARM: [^<]*' "$report" | tee -a "$GITHUB_STEP_SUMMARY" || true
+          if [ "$EVENT_NAME" = pull_request ]; then
+            echo "PR gate: engine test compiled; peer-download test intentionally SKIPPED (no source torrent). No real-peer bytes verified." >> "$GITHUB_STEP_SUMMARY"
+            echo "::notice::PR compilation only: opt-in live swarm test skipped because no source torrent is supplied"
+          fi
           if [ "$EVENT_NAME" = workflow_dispatch ]; then
             grep -q 'CHUNKS_PUBLIC_SWARM: VERIFIED' "$report" || {
               echo "::error::No verified peer budget (see INCONCLUSIVE line: peer availability, not engine acceptance)"; exit 1; }
