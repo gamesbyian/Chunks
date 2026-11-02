@@ -1,5 +1,10 @@
 # Chunks active engineering work queue
 
+## Deferred P1 cross-app and sharing contracts (not P0 work)
+
+After the active Pixel 6 Pro daily-use local, remote and combined acceptance: [TRANSFER-SHARING](TRANSFER-SHARING.md) specifies magnet sharing and conditional `.torrent` export from existing local/rTorrent transfers; [EXPOSITORY-FILE-ASSOCIATIONS](EXPOSITORY-FILE-ASSOCIATIONS.md) specifies an optional read-only, permissioned per-profile membership snapshot for Expository Transfer. Both are **planned only**, have no accepted installed implementation, and may not displace active P0 removal recovery, reconnect, first-viewport transfers or real-engine QA.
+
+
 ## Owner device priority correction (2026-11-02)
 
 **Primary release target is the owner's Pixel 6 Pro.** Optimize and physically accept the actual daily-use UI on that device at its real Android display configuration. The Pixel 6-class 1080×2400, 20:9 display is a **lower-bound preference**, not a requirement to qualify every screen of that size. **Viewport breadth is not P0:** 320×700, 412×892 and other small/narrow device screenshot matrices, tablet layouts, uncommon resolutions and broad density variation are P1 compatibility work; they must not hold up the Pixel 6 Pro daily-use APK. The currently open dual-viewport [#992](https://github.com/gamesbyian/Chunks/pull/992) remains useful nonblocking test research, not mandatory P0 release acceptance. Never mark that failing 412×892 run green or remove it from history.
