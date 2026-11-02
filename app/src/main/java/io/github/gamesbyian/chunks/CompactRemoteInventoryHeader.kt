@@ -51,7 +51,7 @@ internal fun CompactRemoteInventoryHeader(
                     modifier = Modifier.semantics { heading() })
                 OutlinedButton(onClick = onAllEnvironments,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                    Text("All environments")
+                    Text("All environments…")
                 }
             }
         } else {
@@ -64,7 +64,7 @@ internal fun CompactRemoteInventoryHeader(
                     modifier = Modifier.weight(1f).semantics { heading() })
                 OutlinedButton(onClick = onAllEnvironments,
                     modifier = Modifier.heightIn(min = 48.dp)) {
-                    Text("All")
+                    Text("All environments…")
                 }
             }
         }
