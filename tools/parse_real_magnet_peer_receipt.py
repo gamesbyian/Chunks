@@ -16,7 +16,7 @@ import xml.etree.ElementTree as ET
 
 STAGES = (
     "runner-ready", "preflight", "destination", "peer", "seed-ready",
-    "add-submitted", "added-started", "started", "seed-started", "peer-connected", "metadata-verified", "bytes-verified",
+    "add-submitted", "added-started", "started", "seed-started", "payload-seed-ready", "peer-connected", "metadata-verified", "bytes-verified",
     "stopped", "removed", "inventory-restored", "manual-reconciliation-required",
 )
 STAGE_SET = set(STAGES)
