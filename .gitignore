@@ -19,6 +19,7 @@ secrets.properties
 # Downloaded torrent metadata may embed private tracker passkeys.
 # Only source-reviewed public fixtures should ever be deliberately force-added.
 *.torrent
+*.[tT][oO][rR][rR][eE][nN][tT]
 
 # Python test/helper interpreter caches (regenerate locally; never source).
 __pycache__/
