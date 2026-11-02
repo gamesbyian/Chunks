@@ -68,10 +68,15 @@ def parse(xml_path, sidecar_path, exit_code, env=None):
             cases = root.findall(".//testcase")
             if len(cases) != suite["tests"]:
                 raise ValueError("inconsistent junit test count")
+            actual_counts = {"failures": 0, "errors": 0, "skipped": 0}
             for case in cases:
                 for node in case.findall("system-out"):
                     for line in (node.text or "").splitlines():
                         consume(line)
+                for kind, tag in (("failures", "failure"), ("errors", "error"),
+                                  ("skipped", "skipped")):
+                    if case.find(tag) is not None:
+                        actual_counts[kind] += 1
                 failure = case.find("failure")
                 if failure is None:
                     failure = case.find("error")
@@ -87,6 +92,8 @@ def parse(xml_path, sidecar_path, exit_code, env=None):
                     "id_sha256": hashlib.sha256(identity.encode("utf-8")).hexdigest(),
                     "outcome": outcome,
                 })
+            if any(actual_counts[key] != suite[key] for key in actual_counts):
+                raise ValueError("JUnit summary contradicts testcase outcomes")
             for node in root.findall("./system-out"):
                 for line in (node.text or "").splitlines():
                     consume(line)

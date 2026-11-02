@@ -78,6 +78,37 @@ class RealMagnetReceiptTests(unittest.TestCase):
         self.assertNotIn("private backend traceback", str(result))
         self.assertNotIn("Secret/ShouldNotLog", str(result))
 
+    def test_falsely_green_junit_counters_never_qualify_failed_testcase(self):
+        # Some runners can emit stale or contradictory suite summaries.
+        # Real testcase errors must override a claimed green aggregate.
+        for tag in ("failure", "error", "skipped"):
+            with self.subTest(contradiction=tag):
+                self.xml.write_text(
+                    '<testsuite tests="3" failures="0" errors="0" skipped="0">'
+                    '<testcase classname="Safe" name="a"><' + tag
+                    + ' type="java.lang.AssertionError">hidden diagnostic</' + tag
+                    + '></testcase>'
+                    '<testcase classname="Safe" name="b"/>'
+                    '<testcase classname="Safe" name="c"/>'
+                    '</testsuite>'
+                )
+                result = parse(self.xml, self.sidecar, 0, self.env)
+                self.assertEqual("invalid", result["junit"]["report"])
+                self.assertEqual("failed-or-inconclusive", result["result"])
+                self.assertNotIn("hidden diagnostic", str(result))
+
+    def test_falsely_red_junit_counters_are_invalid_not_executed_proof(self):
+        self.xml.write_text(
+            '<testsuite tests="3" failures="1" errors="0" skipped="0">'
+            '<testcase classname="Safe" name="a"/>'
+            '<testcase classname="Safe" name="b"/>'
+            '<testcase classname="Safe" name="c"/>'
+            '</testsuite>'
+        )
+        result = parse(self.xml, self.sidecar, 0, self.env)
+        self.assertEqual("invalid", result["junit"]["report"])
+        self.assertEqual("failed-or-inconclusive", result["result"])
+
     def test_malformed_junit_and_conflicting_hashes_are_unqualified(self):
         self.xml.write_text("<testsuite>")
         self.sidecar.write_text("hash:" + self.infohash + "\nhash:" + "c" * 40 + "\n")
