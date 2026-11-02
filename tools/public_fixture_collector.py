@@ -142,6 +142,13 @@ def clean_name(name):
 def torrent_summary(data, max_total_bytes, tracker_hosts=ARCHIVE_TRACKERS):
     root, raw_info = parse_bencode(data)
     info = root[b"info"]
+    # BEP 52 places Merkle piece layers outside the identity-hashed info
+    # dictionary. This v1-only sanitizer deliberately strips top-level
+    # extensions; exporting a v2/hybrid torrent without its authenticated
+    # piece layers can generate broken metadata despite unchanged infohash.
+    # Refuse until a real BEP 52 writer/validator is integrated.
+    if b"meta version" in info:
+        raise ValueError("BEP 52 v2/hybrid torrent fixture requires verified piece layers")
     name = clean_name(info.get(b"name.utf-8", info.get(b"name")))
     paths = []
     if b"files" in info:
@@ -159,16 +166,11 @@ def torrent_summary(data, max_total_bytes, tracker_hosts=ARCHIVE_TRACKERS):
     total = sum(size for _, size in paths)
     if total > max_total_bytes:
         raise ValueError("Torrent payload exceeds test budget")
-    v2 = info.get(b"meta version") == 2
     v1 = isinstance(info.get(b"pieces"), bytes) and len(info[b"pieces"]) % 20 == 0 and len(info[b"pieces"]) > 0
-    if not (v1 or v2):
-        raise ValueError("Unsupported v1/v2 torrent structure")
-    fields = []
-    if v1:
-        fields.append(("xt", "urn:btih:" + hashlib.sha1(raw_info).hexdigest()))
-    if v2:
-        fields.append(("xt", "urn:btmh:1220" + hashlib.sha256(raw_info).hexdigest()))
-    fields.append(("dn", name))
+    if not v1:
+        raise ValueError("Unsupported BitTorrent v1 torrent structure")
+    fields = [("xt", "urn:btih:" + hashlib.sha1(raw_info).hexdigest()),
+              ("dn", name)]
     magnet = "magnet:?" + urllib.parse.urlencode(fields)
     # BEP 12: when announce-list exists, announce is ignored. Source
     # selection and sanitation must follow effective tiers, not a misleading
@@ -207,7 +209,7 @@ def torrent_summary(data, max_total_bytes, tracker_hosts=ARCHIVE_TRACKERS):
         safe += bstr(b"announce") + bstr(tracker)
     safe += bstr(b"info") + raw_info + b"e"
     return safe, {"name": name, "infohash_v1": hashlib.sha1(raw_info).hexdigest() if v1 else None,
-                  "infohash_v2": hashlib.sha256(raw_info).hexdigest() if v2 else None,
+                  "infohash_v2": None,
                   "magnet": magnet, "total_bytes": total,
                   "files": [{"path": path, "bytes": n} for path, n in paths[:1000]],
                   "file_count": len(paths), "truncated_file_list": len(paths) > 1000,
