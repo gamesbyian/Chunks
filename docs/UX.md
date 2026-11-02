@@ -1,5 +1,10 @@
 # Chunks interaction and accessibility contract
 
+## Similar Transfers and explainable cross-media relations (planned, 2026-11-01)
+
+In expanded transfer details, beneath essential transfer controls, show a compact, optionally collapsible **Similar transfers** list when high-confidence related transfer instances exist. Default enabled / all configured active environments / five items then Show all. Options → Transfer Details offers off and **same environment as viewed transfer**; secondary Explore related may surface more distant explainable connections. Display exact environment **name** in its configured colour plus a non-colour distinguishing marker; preserve existing filters/search/scroll on exact scoped navigation and label stale/offline cached results. Prefer direct franchise/episode/edition/creator and adaptation relations over generic topic overlap. Supply a `Why related?` explanation (e.g. `Shared writer: Peter David`, supported by `Babylon 5` S02E07 and verified Hulk issue credits). A shared collection title is not proof of issue credits, and an ambiguous relationship should be omitted from default suggestions. No suggestions, no panel. Neither suggestions nor smart normalization automatically rename files, read remote payloads or contact providers. [Full design and accessibility contract](SHARED-MEDIA-IDENTITY-AND-SIMILAR-TRANSFERS.md).
+
+
 **Purpose:** one intentional interaction system for a native Android BitTorrent client and rTorrent remote, not a chronological log of feature requests. **Authority:** [PRODUCT](PRODUCT.md) owns promises; this file owns cross-surface UX rules; [UNIFIED-ENVIRONMENTS](UNIFIED-ENVIRONMENTS.md) and the linked focused contracts own domain-specific identities and capabilities. [SPEC-COVERAGE](SPEC-COVERAGE.md) and [QUALITY-LEDGER](QUALITY-LEDGER.md) alone own implementation/evidence status; [WORK-QUEUE](WORK-QUEUE.md) owns execution order. The [preserved original UX notes (with archive-relative links normalized)](archive/UX-2026-10-30-pre-reconciliation.md) are archived for traceability and are non-normative.
 
 ## Philosophy and priorities
