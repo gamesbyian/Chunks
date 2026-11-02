@@ -24,7 +24,7 @@ class DebugPublicationTests(unittest.TestCase):
         s = FILE.read_text()
         # Two owner-dispatched builds at distinct SHAs must never publish and
         # delete each other's latest requested release concurrently.
-        scope = s.split("\\nconcurrency:\\n", 1)[1].split("\\njobs:", 1)[0]
+        scope = s.split("\nconcurrency:\n", 1)[1].split("\njobs:", 1)[0]
         self.assertIn("  group: chunks-owner-debug-publication", scope)
         self.assertIn("  cancel-in-progress: false", scope)
         self.assertNotIn("github.sha", scope)
