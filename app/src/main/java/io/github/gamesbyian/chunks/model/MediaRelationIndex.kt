@@ -60,24 +60,26 @@ data class RelatedTransferCandidate(
 }
 
 /** Inverted index; a details query only reads postings for terms in the selected transfer. */
+/** Indexed on source facet, then by exact transfer key; never scan the entire catalog for a detail. */
 class MediaRelationIndex private constructor(
     private val records: Map<UnifiedTransferKey, MediaTransferMembers>,
-    private val postings: Map<String, List<IndexedMember>>,
+    private val postings: Map<String, Map<UnifiedTransferKey, List<MediaContentMember>>>,
     private val byInfohash: Map<String, List<UnifiedTransferKey>>
 ) {
-    private data class IndexedMember(val key: UnifiedTransferKey, val member: MediaContentMember)
-
     companion object {
         fun build(transfers: Collection<MediaTransferMembers>): MediaRelationIndex {
             require(transfers.map { it.key }.distinct().size == transfers.size) {
                 "Ambiguous duplicate transfer identities"
             }
-            val inverted = mutableMapOf<String, MutableList<IndexedMember>>()
+            val inverted = mutableMapOf<String, MutableMap<UnifiedTransferKey, MutableList<MediaContentMember>>>()
             for (transfer in transfers) for (member in transfer.members) {
-                val ref = IndexedMember(transfer.key, member)
-                for (term in terms(member)) inverted.getOrPut(term) { mutableListOf() }.add(ref)
+                for (term in terms(member)) inverted.getOrPut(term) { mutableMapOf() }
+                    .getOrPut(transfer.key) { mutableListOf() }.add(member)
             }
-            return MediaRelationIndex(transfers.associateBy { it.key }, inverted,
+            val postings = inverted.mapValues { (_, byTransfer) ->
+                byTransfer.mapValues { (_, members) -> members.toList() }
+            }
+            return MediaRelationIndex(transfers.associateBy { it.key }, postings,
                 transfers.groupBy { it.key.infoHash }.mapValues { (_, group) -> group.map { it.key } })
         }
 
@@ -94,10 +96,12 @@ class MediaRelationIndex private constructor(
         }
     }
 
-    /**
-     * [visible] is supplied by the authorized inventory: never pass LOCKED, revoked or
-     * excluded items. Exact scoped identity is preserved; no network calls or full scan.
-     */
+    private class Matches {
+        val evidence = mutableListOf<MediaRelationEvidence>()
+        val memberIds = mutableSetOf<String>()
+    }
+
+    /** The caller supplies privacy/lock-authorized exact keys; no network or engine mutation. */
     fun similar(
         source: UnifiedTransferKey,
         visible: Set<UnifiedTransferKey>,
@@ -107,42 +111,72 @@ class MediaRelationIndex private constructor(
         require(limit in 1..100) { "Use an explicit bounded results window" }
         val sourceRecord = records[source] ?: return emptyList()
         if (source !in visible) return emptyList()
-        val hits = mutableMapOf<UnifiedTransferKey, MutableList<MediaRelationEvidence>>()
-        // Exact infohash means the same torrent, regardless of media lookup success.
-        for (sameHash in byInfohash[source.infoHash].orEmpty()) {
-            if (sameHash != source && sameHash in visible &&
-                (!sameEnvironmentOnly || sameHash.environment == source.environment)) {
-                hits.getOrPut(sameHash) { mutableListOf() }.add(
-                    MediaRelationEvidence(MediaRelationKind.SAME_TORRENT, source.infoHash,
-                        null, "<transfer>", "<transfer>")
-                )
-            }
+        val hits = mutableMapOf<UnifiedTransferKey, Matches>()
+        fun allowed(target: UnifiedTransferKey): Boolean = target != source && target in visible &&
+            (!sameEnvironmentOnly || target.environment == source.environment)
+        for (target in byInfohash[source.infoHash].orEmpty()) if (allowed(target)) {
+            hits.getOrPut(target) { Matches() }.evidence.add(MediaRelationEvidence(
+                MediaRelationKind.SAME_TORRENT, source.infoHash, null, "<transfer>", "<transfer>"))
         }
-        for (member in sourceRecord.members) {
-            for (term in terms(member)) {
-                for (candidate in postings[term].orEmpty()) {
-                    if (candidate.key == source || candidate.key !in visible ||
-                        (sameEnvironmentOnly && candidate.key.environment != source.environment)) continue
-                    val evidence = classify(term, member, candidate.member) ?: continue
-                    hits.getOrPut(candidate.key) { mutableListOf() }.add(evidence)
+        // One visit per distinct facet prevents repeated 10x10 member joins for albums or collections.
+        val sourceTerms = mutableMapOf<String, MutableList<MediaContentMember>>()
+        for (member in sourceRecord.members) for (term in terms(member))
+            sourceTerms.getOrPut(term) { mutableListOf() }.add(member)
+        for ((term, sources) in sourceTerms) for ((target, members) in postings[term].orEmpty()) {
+            if (!allowed(target)) continue
+            val kind = term.substringBefore(':')
+            val match = hits.getOrPut(target) { Matches() }
+            when (kind) {
+                "subject-artist" -> {
+                    var best: MediaRelationEvidence? = null
+                    for (candidate in members) {
+                        var candidateBest: MediaRelationEvidence? = null
+                        for (origin in sources) {
+                            val evidence = classify(term, origin, candidate) ?: continue
+                            if (candidateBest == null || evidence.kind.rank > candidateBest.kind.rank)
+                                candidateBest = evidence
+                        }
+                        if (candidateBest != null) {
+                            match.memberIds.add(candidate.memberId)
+                            if (best == null || candidateBest.kind.rank > best.kind.rank) best = candidateBest
+                        }
+                    }
+                    if (best != null) match.evidence.add(best)
+                }
+                "series" -> {
+                    var best = classify(term, sources.first(), members.first())!!
+                    search@ for (origin in sources) for (candidate in members) {
+                        if (origin.season != null && origin.season == candidate.season &&
+                            origin.episode != null && candidate.episode != null &&
+                            kotlin.math.abs(origin.episode - candidate.episode) == 1) {
+                            best = classify(term, origin, candidate)!!
+                            break@search
+                        }
+                    }
+                    match.evidence.add(best)
+                    for (candidate in members) match.memberIds.add(candidate.memberId)
+                }
+                else -> {
+                    val evidence = classify(term, sources.first(), members.first()) ?: continue
+                    match.evidence.add(evidence)
+                    for (candidate in members) match.memberIds.add(candidate.memberId)
                 }
             }
         }
-        return hits.mapNotNull { (key, allEvidence) ->
-            val unique = allEvidence.distinctBy {
-                listOf(it.kind.name, it.identifier, it.sourceMemberId, it.matchedMemberId)
-            }.sortedWith(compareByDescending<MediaRelationEvidence> { it.kind.rank }
-                .thenBy { it.identifier }.thenBy { it.matchedMemberId })
-            val count = records[key]?.members?.size ?: return@mapNotNull null
-            RelatedTransferCandidate(key, unique, unique.map { it.matchedMemberId }.distinct().size, count)
+        return hits.mapNotNull { (key, match) ->
+            if (match.evidence.isEmpty()) return@mapNotNull null
+            val evidence = match.evidence.distinctBy { it.kind to it.identifier }
+                .sortedWith(compareByDescending<MediaRelationEvidence> { it.kind.rank }
+                    .thenBy { it.identifier }.thenBy { it.matchedMemberId })
+            RelatedTransferCandidate(key, evidence, match.memberIds.size,
+                records[key]?.members?.size ?: return@mapNotNull null)
         }.sortedWith(compareByDescending<RelatedTransferCandidate> { it.strongestRelation.rank }
             .thenByDescending { it.matchedMembers }
             .thenBy { it.key.environment.value }.thenBy { it.key.infoHash }).take(limit)
     }
 
-    private fun classify(
-        term: String, source: MediaContentMember, candidate: MediaContentMember
-    ): MediaRelationEvidence? {
+    private fun classify(term: String, source: MediaContentMember,
+                         candidate: MediaContentMember): MediaRelationEvidence? {
         val type = term.substringBefore(':')
         val identifier = term.substringAfter(':')
         val relation = when (type) {
