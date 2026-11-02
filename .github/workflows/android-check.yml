@@ -122,4 +122,6 @@ jobs:
           path: |
             app/build/outputs/apk/debug/chunks-debug.apk
             app/build/outputs/apk/debug/CHUNKS-BUILD-SHA256.txt
-          retention-days: 7
+          # Automatic PR builds churn rapidly; owner-requested test builds remain
+          # available for seven days from publish-debug-apk.yml.
+          retention-days: 3
