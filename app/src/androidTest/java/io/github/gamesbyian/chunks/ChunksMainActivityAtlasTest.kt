@@ -412,6 +412,10 @@ class ChunksMainActivityAtlasTest {
         // merely composing the lazy item does not guarantee an unobscured hit.
         rule.onNodeWithText("More details").performScrollTo()
             .assertIsDisplayed().performClick()
+        // Regression: before reserving the footer's viewport, this real tap
+        // landed on the overlapping + Add footer and navigated away instead
+        // of expanding the exact transfer.
+        rule.onNodeWithText("Add a download to this server").assertDoesNotExist()
         try {
             rule.waitUntil(10_000) {
                 rule.onAllNodesWithText("Hide details").fetchSemanticsNodes().isNotEmpty()
