@@ -1,5 +1,10 @@
 # Chunks specification coverage and acceptance map
 
+## Planned cross-environment transfer sharing (2026-11-01)
+
+NOT IMPLEMENTED / NOT ACCEPTED. Requirements in [TRANSFER-SHARING](TRANSFER-SHARING.md): local and native rTorrent magnet generation, conditional verified .torrent export, private passkey warning, Sharesheet, v1/v2/hybrid metadata fidelity and actual independent-client proof. P1 after current P0 work.
+
+
 ## Current 0D unified navigation qualification (2026-11-01)
 
 **MERGED #975 + #986:** precise Combined-header phone/server Back and phone-screen Back-to-Combined, connected-session full existing phone adapter, phone-only absence of phantom saved-server Add guidance. Source heads `1aed53c5` and `907eac1f`, merges `a7bdacaf` and `6f03702e`, each passed exact-head foundation, installed API35 native Add, installed visual atlas and R8. [Evidence ledger](QUALITY-LEDGER.md#2026-11-01-0d-final-head-navigation-regressions-and-compose-teardown-receipt). Transient navigation origin is saveable without persisting mutation/session authority; restored old remote sessions are not authenticated by Back. **MERGED test-only #981:** API35 private-torrent refusal wait-for-completion passed, while intermittent Compose thread-affinity issue #901 remains open.
