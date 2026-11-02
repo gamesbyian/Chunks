@@ -13,10 +13,27 @@
 ### Audited properties of the 100
 
 - **100 unique infohashes and 100 matching magnet lines**, no duplicate hashes, sizes strictly above zero and **at most 555,000,000 bytes** each; actual range **11,234 to 460,947,956 bytes**.
-- Sources: **30 LinuxTracker torrents**, whose site displayed positive seed counts at collection, and **70 Internet Archive torrents**, CC/public-domain metadata checked by the existing collector.
+- Sources: **30 LinuxTracker torrents**, whose site displayed positive seed counts at collection, and **70 Internet Archive torrents**, with source-asserted CC/public-domain labels recorded but rights not independently established.
 - Media types: software **42**, audio **6**, movies **8**, images **18**, data **18**, texts **8**.
 - **Eight distinct sanitized tracker hosts**; tracker paths are strictly `/announce` (no passkey/path tokens, URL queries or embedded credentials). Multiple tracker hosts do not imply multiple independently healthy swarms.
 - **Seeder and transferred-byte verification is still open**. LinuxTracker's reported seeder counts are hints, not direct rTorrent observations. Internet Archive relies on webseeds for some torrents; rTorrent may need actual peers. Per-release Linux distribution licences need appropriate human review before any content redistribution.
+
+## License-claim evidence audit (2026-11-02)
+
+The catalog's **100 source-derived infohashes** are genuine provenance evidence, but a successful torrent hash does not establish a reusable content license or a currently healthy swarm. The *existing checked-in* 100-entry snapshot has these source-supplied labels:
+
+| Source-side license claim | Records | What it establishes |
+| --- | ---: | --- |
+| Named Creative Commons license URI | 15 | An uploader/record asserted a specific CC license; rights-holder authority and conditions remain unverified |
+| CC0 public-domain dedication URI | 6 | A purported dedication, not proof that the submitter held the rights |
+| Creative Commons Public Domain Mark | 43 | An **informational public-domain status mark**, not a grant of rights or a verified worldwide determination |
+| Legacy `/licenses/publicdomain/` | 6 | Redirects to a **retired US-specific certification tool**; requires particular legal/provenance review before content redistribution |
+| Linux distribution releases | 30 | Public-source distribution identities; relevant license terms need release-by-release review |
+| **Total** | **100** | **No entry has independent rights-holder or peer-byte proof from this metadata alone** |
+
+The six legacy records are flagged rather than silently converted to CC0 or modern PDM. Creative Commons [documents its retired tool and jurisdiction limits](https://creativecommons.org/licenses/publicdomain/) and [explains why PDM and CC0 have different legal meanings](https://creativecommons.org/public-domain/). The source corpus was harvested **before** the BEP 27 private-flag admission check and strict CC URI origin verification were introduced: its existing JSON contains no per-item independent BEP 27 flag attestation. New-source collection applies those stricter checks; do **not** infer they retroactively revalidated this old catalog. Re-fetch and verify exact original source metainfo before promoting a legacy candidate to a manually authorized public-peer test, and review rights independently before sharing actual media.
+
+`python3 tools/validate_public_magnet_catalog.py` now emits a `license_claim_evidence_tiers` count based on the actual manifest labels, alongside the existing source/tracker identity checks. It does **not** reject historic legitimate source hashes solely because their license claims need review, and does **not** mutate any source, server, or download.
 
 ## Collect / validate / refresh
 
