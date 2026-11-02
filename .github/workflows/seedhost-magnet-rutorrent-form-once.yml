@@ -1,0 +1,53 @@
+name: P0 protected ruTorrent-form magnet reference control
+
+# Same SHA-derived Ubuntu magnet + host as exact two-argument control, but
+# ruTorrent's actual Add form. One non-replayed POST, exact session cleanup.
+on:
+  pull_request:
+    paths:
+      - "tools/seedhost_magnet_rutorrent_form_once.py"
+      - ".github/workflows/seedhost-magnet-rutorrent-form-once.yml"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/seedhost-magnet-rutorrent-form-once.yml"
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: "Authorize one public-source ruTorrent magnet Add with exact-hash session-only cleanup"
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chunks-android-seedhost-scope-mutation
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m py_compile tools/seedhost_magnet_readonly_forensics.py tools/seedhost_magnet_twoarg_control_once.py tools/seedhost_magnet_rutorrent_form_once.py
+
+  live-rutorrent-reference:
+    if: >-
+      ${{ github.ref == 'refs/heads/main' && github.run_attempt == 1 &&
+          ((github.event_name == 'workflow_dispatch' && inputs.apply) ||
+           (github.event_name == 'push' &&
+            contains(github.event.head_commit.message, 'one-time Seedhost ruTorrent form magnet control (#1011)'))) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      CHUNKS_LIVE_RTORRENT_USER: ${{ secrets.rtorrent_user }}
+      CHUNKS_LIVE_RTORRENT_PASS: ${{ secrets.rtorrent_pass }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile fixed-scope safe runner
+        run: python3 -m py_compile tools/seedhost_magnet_readonly_forensics.py tools/seedhost_magnet_twoarg_control_once.py tools/seedhost_magnet_rutorrent_form_once.py
+      - name: ruTorrent live magnet reference with exact-hash peer and piece evidence
+        run: python3 tools/seedhost_magnet_rutorrent_form_once.py
