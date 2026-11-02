@@ -60,7 +60,7 @@ def parse(raw, exit_code, env=None):
         if line in ("INSTRUMENTATION_STATUS_CODE: 0", "INSTRUMENTATION_STATUS_CODE: -2", "INSTRUMENTATION_STATUS_CODE: -3"):
             cases.append(current_case)
             case_results.append({"class": current_class, "name": current_case, "outcome": "passed" if line.endswith(": 0") else "failed"})
-        app_stage = re.fullmatch(r"INSTRUMENTATION_STATUS: chunks_real_add_app_stage=(runner-ready|connect-submitted|queue|add-open-requested|add-open|magnet-entered|place-ready|add-review|add-submitted|add-registered|metadata-already-resolved)", line)
+        app_stage = re.fullmatch(r"INSTRUMENTATION_STATUS: chunks_real_add_app_stage=(runner-ready|connect-click-attempt|connect-submitted|queue|add-open-requested|add-open|magnet-entered|place-ready|add-review|add-submitted|add-registered|metadata-already-resolved)", line)
         if app_stage:
             app_stages.append(app_stage.group(1))
         negative_stage = re.fullmatch(r"INSTRUMENTATION_STATUS: chunks_real_add_negative_stage=(preflight|registered|add-ui-truthful|transfers-ui-truthful|removed)", line)
