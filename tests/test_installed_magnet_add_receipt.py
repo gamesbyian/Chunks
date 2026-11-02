@@ -105,6 +105,29 @@ class InstalledMagnetReceiptTests(unittest.TestCase):
         self.assertNotEqual("passed", parse(data.replace("chunks_real_add_stage=magnet-peer-progress",
                                                        "arbitrary_early_metadata=1"), 0, env)["result"])
 
+    def test_live_precompleted_payload_is_classified_without_acceptance(self):
+        env = dict(self.env, CHUNKS_CONTROLLED_PEER="1", CHUNKS_DISPOSABLE="0")
+        raw = self.controlled_log().replace(
+            "chunks_real_add_traffic_magnet_initial=300000,262144,1000000,1,10000",
+            "chunks_real_add_traffic_magnet_initial=0,1000000,1000000,1,0"
+        )
+        failed = parse(raw, 1, env)
+        self.assertEqual("failed-or-inconclusive", failed["result"])
+        self.assertEqual(
+            "already-complete-without-new-ingress",
+            failed["sources"]["magnet"]["fresh_ingress_blocker"]
+        )
+        self.assertIsNone(failed["sources"]["magnet2"]["fresh_ingress_blocker"])
+        # Even counterfeited successful JUnit/result markers cannot turn
+        # this zero-ingress specimen into installed magnet acceptance.
+        self.assertNotEqual("passed", parse(raw, 0, env)["result"])
+        # A fully verified but freshly downloaded source is distinct.
+        downloaded = raw.replace(
+            "chunks_real_add_traffic_magnet_initial=0,1000000,1000000,1,0",
+            "chunks_real_add_traffic_magnet_initial=1000000,1000000,1000000,1,0"
+        )
+        self.assertIsNone(parse(downloaded, 1, env)["sources"]["magnet"]["fresh_ingress_blocker"])
+
     def test_connect_click_attempt_does_not_claim_authenticated_submit(self):
         raw = ("INSTRUMENTATION_STATUS: chunks_real_add_app_stage=runner-ready\n"
                "INSTRUMENTATION_STATUS: chunks_real_add_app_stage=connect-click-attempt\n"
