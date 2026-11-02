@@ -130,6 +130,20 @@ class MediaRelationIndexTest {
         assertTrue(index.similar(wood,setOf(wood)).isEmpty())
     }
 
+    @Test fun sharedContributorAcrossManyMembersProducesOneEvidenceAndAccurateCoverage() {
+        val source = key("Wood", 30); val collection = key("Stone", 31)
+        val writer = credit("wd:Q1351554", MediaCreditRole.WRITER, "Peter David")
+        val index = MediaRelationIndex.build(listOf(
+            MediaTransferMembers(source, (1..10).map { member("episode" + it, credits = setOf(writer)) }),
+            MediaTransferMembers(collection, (331..340).map { member("issue" + it, credits = setOf(writer)) })
+        ))
+        val result = index.similar(source, setOf(source, collection)).single()
+        assertEquals(MediaRelationKind.SHARED_WRITER, result.strongestRelation)
+        assertEquals(1, result.evidence.size) // many issues, one explanation
+        assertEquals(10, result.matchedMembers)
+        assertEquals(10, result.observedMembers)
+    }
+
     @Test fun invalidIdentifiersOrDuplicateMembersFailClosed() {
         assertThrows(IllegalArgumentException::class.java) { member("a",work="uncategorized title") }
         assertThrows(IllegalArgumentException::class.java) { member("a",season=1) }
