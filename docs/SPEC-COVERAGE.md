@@ -1,5 +1,10 @@
 # Chunks specification coverage and acceptance map
 
+## 2026-11-02 remote magnet acceptance delta
+
+Host/JVM real BEP9 and 512 KiB verified peer bytes now pass [41380769579](https://github.com/gamesbyian/Chunks/actions/runs/41380769579), exact `ca57b0c0aa9512b6327be6b03e966fc3276ee8b8`, with prior failed hash absent and exact cleanup. Installed `.torrent` positive remains [41363266446](https://github.com/gamesbyian/Chunks/actions/runs/41363266446). Multiple installed Android magnets, UI Stop/Start with further pieces, peerless metadata truth, exact APK qualification and physical/OEM remain open #4 until their actual receipts exist. The full native baseline is 334 reported / 306 executed / 28 skipped / zero failed / 24 PNGs; [41376884289](https://github.com/gamesbyian/Chunks/actions/runs/41376884289) accepted those quantities, not live transfers. [Acceptance contract](REAL-TRANSFER-ACCEPTANCE.md), [evidence ledger](QUALITY-LEDGER.md).
+
+
 ## Current 0D unified navigation qualification (2026-11-01)
 
 **MERGED #975 + #986:** precise Combined-header phone/server Back and phone-screen Back-to-Combined, connected-session full existing phone adapter, phone-only absence of phantom saved-server Add guidance. Source heads `1aed53c5` and `907eac1f`, merges `a7bdacaf` and `6f03702e`, each passed exact-head foundation, installed API35 native Add, installed visual atlas and R8. [Evidence ledger](QUALITY-LEDGER.md#2026-11-01-0d-final-head-navigation-regressions-and-compose-teardown-receipt). Transient navigation origin is saveable without persisting mutation/session authority; restored old remote sessions are not authenticated by Back. **MERGED test-only #981:** API35 private-torrent refusal wait-for-completion passed, while intermittent Compose thread-affinity issue #901 remains open.

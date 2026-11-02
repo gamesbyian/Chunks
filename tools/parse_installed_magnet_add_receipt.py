@@ -13,7 +13,7 @@ import re
 SOURCES = ("magnet", "magnet2")
 PHASES = ("preflight", "review", "ui-verified", "registered",
           "readback-error", "metadata", "peer-progress", "bytes-verified",
-          "restarted", "passed", "uncertain")
+          "ui-progress", "stopped", "restarted", "resumed-traffic", "ui-controls", "passed", "uncertain")
 FAILURE_TYPES = {
     "AssertionError", "IllegalStateException", "IllegalArgumentException",
     "SocketTimeoutException", "ConnectException", "IOException",
@@ -24,12 +24,43 @@ def parse(raw, exit_code, env=None):
     env = os.environ if env is None else env
     phases = {source: {name: 0 for name in PHASES} for source in SOURCES}
     observed_hashes = {source: set() for source in SOURCES}
+    traffic = {source: {} for source in SOURCES}
+    current_case = None
+    cases = []
+    case_results = []
+    peerless_hashes = set()
+    peerless = 0
+    terminal_count = 0
+    controlled = env.get("CHUNKS_CONTROLLED_PEER") == "1"
+    expected_cases = {
+        "installedMagnetAddResolvesMetadataAndReceivesVerifiedPeerBytes",
+        "installedAlternateMagnetResolvesMetadataAndReceivesVerifiedPeerBytes",
+    }
     runner = {"started_tests": 0, "passed_tests": 0, "failed_tests": 0,
               "total_test_end_codes": 0, "runner_finished": False,
               "exception_classes": []}
     allow = re.compile(r"^INSTRUMENTATION_STATUS: chunks_real_add_stage=(magnet2|magnet)-([a-z-]+)$")
     hashes = re.compile(r"^INSTRUMENTATION_STATUS: chunks_real_add_hash_(magnet2|magnet)=([a-f0-9]{40})$")
     for line in raw.splitlines():
+        if line.startswith("INSTRUMENTATION_STATUS: test="):
+            candidate = line.split("test=", 1)[1]
+            current_case = candidate if candidate in expected_cases else None
+        if line in ("INSTRUMENTATION_STATUS_CODE: 0", "INSTRUMENTATION_STATUS_CODE: -2", "INSTRUMENTATION_STATUS_CODE: -3"):
+            cases.append(current_case)
+            case_results.append({"name": current_case, "outcome": "passed" if line.endswith(": 0") else "failed"})
+        negative_hash = re.fullmatch(r"INSTRUMENTATION_STATUS: chunks_real_add_hash_negative=([a-f0-9]{40})", line)
+        if negative_hash:
+            peerless_hashes.add(negative_hash.group(1))
+        if line == "INSTRUMENTATION_STATUS: chunks_real_add_negative=peerless-ui-and-cleanup-passed":
+            peerless += 1
+        if line == "INSTRUMENTATION_CODE: -1":
+            terminal_count += 1
+        sample = re.fullmatch(r"INSTRUMENTATION_STATUS: chunks_real_add_traffic_(magnet2|magnet)_(initial|resumed)=([0-9,]{1,120})", line)
+        if sample:
+            values = sample.group(3).split(",")
+            if len(values) == 5 and all(v.isdecimal() and 0 <= int(v) < 2**63 for v in values):
+                traffic[sample.group(1)][sample.group(2)] = dict(zip(
+                    ("received", "verified", "expected", "peers", "rate"), map(int, values)))
         identity = hashes.fullmatch(line)
         if identity:
             observed_hashes[identity.group(1)].add(identity.group(2))
@@ -55,9 +86,13 @@ def parse(raw, exit_code, env=None):
     for source in SOURCES:
         counts = phases[source]
         per_source[source] = {
-            "source_id": "ubuntu-25.10-live-server" if source == "magnet"
-                         else "ubuntu-25.10-desktop",
+            "source_id": (("debian-cdimage" if source == "magnet" else "blender-sintel-webtorrent") if controlled else
+                          ("ubuntu-25.10-live-server" if source == "magnet" else "ubuntu-25.10-desktop")),
+            "traffic": traffic[source],
             "phase_counts": counts,
+            "first_unverified_checkpoint": next((stage for stage in
+                ("preflight", "review", "ui-verified", "registered", "metadata", "peer-progress", "bytes-verified", "restarted", "passed")
+                if counts[stage] != 1), None),
             "exact_infohash": next(iter(observed_hashes[source])) if len(observed_hashes[source]) == 1 else None,
             "hash_receipt": "confirmed" if len(observed_hashes[source]) == 1 else
                             "missing" if not observed_hashes[source] else "conflicting",
@@ -79,8 +114,22 @@ def parse(raw, exit_code, env=None):
                     and x["metadata_verified"] and x["real_peer_received"]
                     and x["cleanup"] == "verified-by-test"
                     for x in per_source.values()))
+    if controlled:
+        complete = complete and peerless == 1 and terminal_count == 1 and set(cases) == expected_cases and len(cases) == 2
+        for source in SOURCES:
+            initial, resumed = (traffic[source].get(phase, {}) for phase in ("initial", "resumed"))
+            complete = complete and all(phases[source][stage] == 1 for stage in
+                ("ui-progress", "stopped", "resumed-traffic", "ui-controls")) and bool(initial and resumed)
+            if initial and resumed:
+                complete = complete and (0 < initial["verified"] < initial["expected"] == resumed["expected"] and
+                    0 < initial["received"] < resumed["received"] and initial["verified"] < resumed["verified"])
     return {
         "schema_version": 1, "source_sha": env.get("GITHUB_SHA"),
+        "controlled_real_peer": controlled, "peerless_negative_passed": peerless == 1,
+        "actual_case_identities": cases, "actual_case_results": case_results, "terminal_count": terminal_count,
+        "peerless_negative_hash": next(iter(peerless_hashes)) if len(peerless_hashes) == 1 else None,
+        "environment": "disposable" if env.get("CHUNKS_DISPOSABLE") == "1" else "approved-development-Seedhost",
+        "runtime_seconds": env.get("CHUNKS_ACCEPTANCE_RUNTIME_SECONDS"),
         "run_id": env.get("GITHUB_RUN_ID"), "tier": "API35-installed-emulator-live-rTorrent",
         "result": "passed" if complete else "failed-or-inconclusive",
         "runner": runner, "sources": per_source,

@@ -221,17 +221,21 @@ def archive_fixture(identifier, max_total_bytes):
            "nonsecret_fixture": True, "download_payload": False}
     return out, safe
 
-def debian_fixture(max_total_bytes):
-    """The one current official amd64 netinst torrent, verified by SHA256SUMS."""
-    index = fetch(DEBIAN_BT_CD, MAX_META).decode("utf-8", errors="replace")
-    names = sorted(set(m.group(0) for m in DEBIAN_NETINST.finditer(index)))
+def debian_fixture(max_total_bytes, architecture="amd64"):
+    """One current official netinst torrent, verified by SHA256SUMS."""
+    if architecture not in ("amd64", "arm64"):
+        raise ValueError("Unsupported official Debian architecture")
+    base = DEBIAN_BT_CD.replace("/amd64/", "/" + architecture + "/")
+    pattern = re.compile(DEBIAN_NETINST.pattern.replace("amd64", architecture))
+    index = fetch(base, MAX_META).decode("utf-8", errors="replace")
+    names = sorted(set(m.group(0) for m in pattern.finditer(index)))
     if len(names) != 1:
-        raise ValueError("Expected exactly one current Debian amd64 netinst torrent")
+        raise ValueError("Expected exactly one current official Debian netinst torrent")
     name = names[0]
-    sums = fetch(DEBIAN_BT_CD + "SHA256SUMS", MAX_META).decode("ascii", errors="strict")
+    sums = fetch(base + "SHA256SUMS", MAX_META).decode("ascii", errors="strict")
     published = dict((line.split()[1], line.split()[0]) for line in sums.splitlines()
                      if len(line.split()) == 2 and re.fullmatch(r"[0-9a-f]{64}", line.split()[0]))
-    url = DEBIAN_BT_CD + name
+    url = base + name
     raw = fetch(url, MAX_TORRENT)
     if published.get(name) != hashlib.sha256(raw).hexdigest():
         raise ValueError("Debian torrent does not match the published SHA256SUMS")
@@ -240,7 +244,7 @@ def debian_fixture(max_total_bytes):
     if details["file_count"] != 1 or details["name"] != iso or not details["tracker_retained"]:
         raise ValueError("Unexpected Debian torrent layout or tracker")
     out = {"schema": "chunks.public-fixture.v1", "source": "debian-cdimage",
-           "source_url": DEBIAN_BT_CD, "torrent_url": url,
+           "source_url": base, "torrent_url": url,
            "license": "Debian, DFSG-free and redistributable (https://www.debian.org/social_contract)",
            "creator": "Debian Project", "torrent": details,
            "published_sha256": {"torrent": published[name], "iso": published.get(iso)},

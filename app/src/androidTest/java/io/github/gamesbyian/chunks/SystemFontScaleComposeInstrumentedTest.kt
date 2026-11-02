@@ -72,7 +72,7 @@ class SystemFontScaleComposeInstrumentedTest {
         "<value><array><data>" + rows.joinToString("") + "</data></array></value>"
     private fun row(fields: List<String>) = array(fields)
 
-    private fun inventory(view: String): String {
+    private fun inventory(view: String, metadataOnly: Boolean = false): String {
         val rows = listOf(
             listOf(str("ab".repeat(20)), str("Public.Example.Long.Named.Archive.S01E01.mkv"),
                 num(1073741824), num(524288000), num(1), str("/home/dev/TV"),
@@ -90,7 +90,7 @@ class SystemFontScaleComposeInstrumentedTest {
             "stopped" -> listOf(rows[1])
             else -> rows
         }
-        return array(shown.map(::row))
+        return array(shown.map { row(if (metadataOnly) listOf(it[0], num(0)) else it) })
     }
 
     private fun files(): String = array((0 until 85).map { i ->
@@ -113,7 +113,7 @@ class SystemFontScaleComposeInstrumentedTest {
                     request.contains("<string>stopped</string>") -> "stopped"
                     else -> "main"
                 }
-                inventory(view)
+                inventory(view, request.contains("<string>d.is_meta=</string>"))
             }
             "f.multicall" -> files()
             else -> error("Unexpected command in read-only installed-app atlas: $method")

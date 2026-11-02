@@ -33,10 +33,12 @@ data class RemoteTransfer(
     val directory: String,
     val downBytesPerSecond: Long? = null,
     val upBytesPerSecond: Long? = null,
-    val ratioThousandths: Long? = null
+    val ratioThousandths: Long? = null,
+    /** rTorrent d.is_meta, never inferred from a small positive size. */
+    val metadataPending: Boolean? = null
 ) {
     val fractionComplete: Float
-        get() = if (sizeBytes > 0) (completedBytes.toDouble() / sizeBytes).coerceIn(0.0, 1.0).toFloat() else 0f
+        get() = if (metadataPending != true && sizeBytes > 0) (completedBytes.toDouble() / sizeBytes).coerceIn(0.0, 1.0).toFloat() else 0f
 }
 
 data class RemoteFile(val path: String, val sizeBytes: Long, val priority: Int)
@@ -266,6 +268,38 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             require(row.size == fields) { "Incompatible rTorrent field layout" }
             transferFromRow(row, rich)
         })
+    }
+
+    /** Production inventory includes actual metadata state, including after
+     * app restart. Keep the older minimum/rate-only adapter contract intact. */
+    internal suspend fun listTransfersWithMetadata(view: String = "main"): List<RemoteTransfer> {
+        val transfers = listTransfers(view)
+        if (transfers.isEmpty()) return transfers
+        val rows = try {
+            try {
+                extractRows(call("d.multicall2", listOf("", view, "d.hash=", "d.is_meta=")))
+                    .map { it as? List<*> ?: error("Invalid metadata state row") }
+            } catch (_: RpcReplyTooLarge) {
+                pagedRowsWithinLimit(transfers.map { it.hash }, listOf("d.hash", "d.is_meta"))
+            }
+        } catch (fault: RpcFault) {
+            if (!fault.isUnsupportedOptionalGetter()) throw fault
+            return transfers
+        }
+        val flags = LinkedHashMap<String, Boolean>()
+        for (row in rows) {
+            require(row.size == 2) { "Invalid metadata state fields" }
+            val hash = (row[0] as? String)?.lowercase(java.util.Locale.ROOT)
+                ?: error("Invalid metadata state identity")
+            require(identityPattern.matches(hash) && hash !in flags) { "Ambiguous metadata state identity" }
+            val flag = number(row[1])
+            require(flag in 0L..1L) { "Invalid metadata state flag" }
+            flags[hash] = flag == 1L
+        }
+        require(flags.keys == transfers.map { it.hash.lowercase(java.util.Locale.ROOT) }.toSet()) {
+            "Torrent inventory changed while reading metadata; refresh"
+        }
+        return transfers.map { it.copy(metadataPending = flags.getValue(it.hash.lowercase(java.util.Locale.ROOT))) }
     }
 
     /**
@@ -536,6 +570,49 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             return RemoteAddAndStart.StartNotVerified(hash, null)
         }
         return awaitNativeStartedReadback(plan)
+    }
+
+    /**
+     * Explicit read-only recovery for the original native Add-with-Start
+     * intent after a lost ACK, timeout or pending activation. The original
+     * reviewed identity and Place must agree; no mutation is attempted.
+     * Never use stopped-Add reconciliation for an already active torrent.
+     */
+    internal suspend fun reconcileStartedAdd(plan: StoppedRemoteAddPlan): RemoteAddAndStart =
+        awaitNativeStartedReadback(plan)
+
+    /** Read only, scoped to the submitted hash and reviewed server parent. */
+    internal suspend fun readAddProgress(plan: StoppedRemoteAddPlan): RemoteAddProgress {
+        val hash = plan.expectedInfoHash
+        try {
+            val name = lookupName(hash) ?: return RemoteAddProgress(registered = false)
+            if (readVerifiedAddDirectory(hash, plan.destination, name) == null) {
+                if (lookupName(hash) != name) return RemoteAddProgress(registered = true)
+                error("The registered torrent is outside the reviewed destination")
+            }
+            suspend fun metadataFlag(): Boolean? = try {
+                val flag = number(call("d.is_meta", listOf(hash)))
+                require(flag in 0L..1L) { "Invalid metadata flag" }
+                flag == 1L
+            } catch (fault: RpcFault) {
+                if (!fault.isUnsupportedOptionalGetter()) throw fault
+                null
+            }
+            val pending = metadataFlag()
+            val traffic = readTrafficSample(hash)
+            val state = number(call("d.state", listOf(hash)))
+            require(state in 0L..1L) { "Invalid started flag" }
+            // Metadata promotion replaces a placeholder with a new full job.
+            // Never combine its tiny metadata size with payload counters.
+            if (pending != metadataFlag()) return RemoteAddProgress(registered = true)
+            check((call("d.hash", listOf(hash)) as? String)?.equals(hash, true) == true)
+            return RemoteAddProgress(true, pending, state == 1L, traffic)
+        } catch (fault: RpcFault) {
+            if (!fault.isUnknownInfoHash()) throw fault
+            // Upstream process_meta_download temporarily erases the exact
+            // placeholder while recreating the full download. No write retry.
+            return RemoteAddProgress(registered = false)
+        }
     }
 
     /**
@@ -1450,7 +1527,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             if (method in DIRECT_READ_METHODS) return true
             if (method == "d.multicall2") {
                 return params.size in 3..(2 + EXTENDED_FIELDS.size) &&
-                    params.drop(2).all { it is String && it in EXTENDED_FIELDS }
+                    params.drop(2).all { it is String && (it in EXTENDED_FIELDS || it == "d.is_meta=") }
             }
             if (method == "f.multicall" || method == "t.multicall") {
                 val allowed = if (method == "f.multicall") FILE_READ_FIELDS else TRACKER_READ_FIELDS

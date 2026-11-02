@@ -32,6 +32,44 @@ class InstalledMagnetReceiptTests(unittest.TestCase):
             self.assertEqual("verified-by-test", result["sources"][label]["cleanup"])
         self.assertFalse(result["physical_device_proven"])
 
+    def controlled_log(self):
+        data = self.success_log()
+        names = ("installedMagnetAddResolvesMetadataAndReceivesVerifiedPeerBytes",
+                 "installedAlternateMagnetResolvesMetadataAndReceivesVerifiedPeerBytes")
+        for label, name in zip(SOURCES, names):
+            marker = "INSTRUMENTATION_STATUS: chunks_real_add_hash_" + label + "="
+            data = data.replace(marker, "INSTRUMENTATION_STATUS: test=" + name + "\n" + marker)
+            extra = "".join("INSTRUMENTATION_STATUS: chunks_real_add_stage=" + label + "-" + s + "\n"
+                            for s in ("ui-progress", "stopped", "resumed-traffic", "ui-controls"))
+            extra += "INSTRUMENTATION_STATUS: chunks_real_add_traffic_" + label + "_initial=300000,262144,1000000,1,10000\n"
+            extra += "INSTRUMENTATION_STATUS: chunks_real_add_traffic_" + label + "_resumed=600000,524288,1000000,1,10000\n"
+            data = data.replace("INSTRUMENTATION_STATUS: chunks_real_add_stage=" + label + "-passed", extra +
+                                "INSTRUMENTATION_STATUS: chunks_real_add_stage=" + label + "-passed")
+        return data.replace("INSTRUMENTATION_CODE: -1",
+            "INSTRUMENTATION_STATUS: chunks_real_add_hash_negative=" + "c" * 40 + "\n" +
+            "INSTRUMENTATION_STATUS: chunks_real_add_negative=peerless-ui-and-cleanup-passed\nINSTRUMENTATION_CODE: -1")
+
+    def test_controlled_gate_requires_actual_ui_restart_growth_and_peerless_truth(self):
+        env = dict(self.env, CHUNKS_CONTROLLED_PEER="1", CHUNKS_DISPOSABLE="1")
+        data = self.controlled_log()
+        self.assertEqual("passed", parse(data, 0, env)["result"])
+        self.assertNotEqual("passed", parse(data.replace(
+            "chunks_real_add_negative=peerless-ui-and-cleanup-passed", "unknown=ignored"), 0, env)["result"])
+        self.assertNotEqual("passed", parse(data.replace(
+            "_resumed=600000,524288", "_resumed=300000,262144"), 0, env)["result"])
+        self.assertNotEqual("passed", parse(data.replace(
+            "installedAlternateMagnetResolvesMetadataAndReceivesVerifiedPeerBytes",
+            "installedMagnetAddResolvesMetadataAndReceivesVerifiedPeerBytes"), 0, env)["result"])
+        self.assertNotEqual("passed", parse(data + "\nINSTRUMENTATION_CODE: -1", 0, env)["result"])
+
+    def test_actual_pass_is_preserved_when_other_case_fails(self):
+        data = self.controlled_log().replace(
+            "INSTRUMENTATION_STATUS_CODE: 0\nINSTRUMENTATION_STATUS: chunks_real_add_hash_negative=",
+            "INSTRUMENTATION_STATUS_CODE: -2\nINSTRUMENTATION_STATUS: chunks_real_add_hash_negative=")
+        result = parse(data, 0, dict(self.env, CHUNKS_CONTROLLED_PEER="1"))
+        self.assertNotEqual("passed", result["result"])
+        self.assertEqual(["passed", "failed"], [x["outcome"] for x in result["actual_case_results"]])
+
     def test_missing_exact_hash_blocks_otherwise_green_completion(self):
         data = self.success_log().replace(
             "INSTRUMENTATION_STATUS: chunks_real_add_hash_magnet2=" + "b" * 40 + "\n", "")
