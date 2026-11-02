@@ -16,8 +16,12 @@ concurrency:
 
 jobs:
   public-metadata:
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [legacy, modern]
     runs-on: ubuntu-latest
-    timeout-minutes: 6
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
       - name: Prepare real disposable rTorrent and libtorrent
@@ -25,6 +29,8 @@ jobs:
           sudo timeout 120s apt-get update -qq
           sudo timeout 120s env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq rtorrent nginx python3-libtorrent
           mkdir -p "$RUNNER_TEMP/probe-data" "$RUNNER_TEMP/probe-session"
+          daemon_mode=true
+          if [ "${{ matrix.engine }}" = modern ]; then daemon_mode=false; fi
           cat > "$RUNNER_TEMP/probe.rc" <<EOF
           directory.default.set = $RUNNER_TEMP/probe-data
           session.path.set = $RUNNER_TEMP/probe-session
@@ -34,9 +40,17 @@ jobs:
           throttle.global_down.max_rate.set_kb = 256
           dht.mode.set = auto
           protocol.pex.set = yes
-          system.daemon.set = true
+          system.daemon.set = $daemon_mode
           EOF
-          nohup rtorrent -n -o "import=$RUNNER_TEMP/probe.rc" > "$RUNNER_TEMP/probe-rtorrent.log" 2>&1 < /dev/null &
+          if [ "${{ matrix.engine }}" = legacy ]; then
+            nohup rtorrent -n -o "import=$RUNNER_TEMP/probe.rc" > "$RUNNER_TEMP/probe-rtorrent.log" 2>&1 < /dev/null &
+          else
+            docker run -dit --name chunks-public-rtorrent --network host \
+              -v "$RUNNER_TEMP/probe.rc:/chunks.rc:ro" \
+              -v "$RUNNER_TEMP/probe-data:$RUNNER_TEMP/probe-data" \
+              -v "$RUNNER_TEMP/probe-session:$RUNNER_TEMP/probe-session" \
+              archlinux:latest sh -c 'pacman -Sy --noconfirm rtorrent >/dev/null && exec rtorrent -n -o import=/chunks.rc'
+          fi
           cat > "$RUNNER_TEMP/probe-nginx.conf" <<EOF
           worker_processes 1;
           pid $RUNNER_TEMP/probe-nginx.pid;
@@ -52,7 +66,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: chunks-public-magnet-discovery
+          name: chunks-public-magnet-discovery-${{ matrix.engine }}
           path: |
             ${{ runner.temp }}/chunks-public-metadata-probe/RECEIPT.json
             ${{ runner.temp }}/chunks-public-metadata-probe/TEST-public-magnets.xml

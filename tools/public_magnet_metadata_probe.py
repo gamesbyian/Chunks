@@ -30,7 +30,15 @@ def main():
     sessions = []
     before = None
     try:
-        before = set(rpc.download_list())
+        ready_until = time.monotonic() + 100
+        while True:
+            try:
+                before = set(rpc.download_list())
+                break
+            except (OSError, xmlrpc.client.ProtocolError):
+                if time.monotonic() >= ready_until:
+                    raise
+                time.sleep(1)
         if before:
             raise ValueError("Disposable server must start empty")
         manifest, debian = debian_fixture(2 * 1024**3)
@@ -139,18 +147,22 @@ def main():
             item["first_unproven"] = next((key for key in ("registered", "rtorrent_metadata", "rtorrent_received", "rtorrent_verified",
                 "libtorrent_metadata", "libtorrent_received", "libtorrent_verified") if not item[key]), None)
         valid = len(sessions) == 2 and all(item.get("passed") and item["cleanup"] == "session-absent" for _, _, item in sessions)
-        restored = before is not None and set(rpc.download_list()) == before
+        try:
+            restored = before is not None and set(rpc.download_list()) == before
+            version = rpc.system.client_version()
+        except Exception:
+            restored, version = False, None
         receipt = {"source_sha": os.getenv("GITHUB_SHA"), "run_id": os.getenv("GITHUB_RUN_ID"),
-            "runtime_seconds": round(time.monotonic() - started, 2), "rtorrent": rpc.system.client_version(),
+            "runtime_seconds": round(time.monotonic() - started, 2), "rtorrent": version,
             "libtorrent": lt.version, "result": "passed" if valid and restored else "failed-or-inconclusive",
             "entry_path": "direct disposable XML-RPC; no installed Android claim", "fixtures": results,
             "unrelated_inventory_restored": restored, "webseeds": False, "supplied_peers": False}
         (root / "RECEIPT.json").write_text(json.dumps(receipt, indent=2) + "\n")
         suite = ET.Element("testsuite", name="real-public-magnet-discovery", tests="2",
-                           failures=str(sum(not item.get("passed", False) for _, _, item in sessions) + (2 - len(sessions))), errors="0", skipped="0")
+                           failures=str(sum(not results.get(label, {}).get("passed", False) or results.get(label, {}).get("cleanup") != "session-absent" for label in ("debian", "sintel"))), errors="0", skipped="0")
         for label in ("debian", "sintel"):
             case = ET.SubElement(suite, "testcase", classname="PublicMagnetDiscovery", name=label)
-            if not results.get(label, {}).get("passed"):
+            if not results.get(label, {}).get("passed") or results.get(label, {}).get("cleanup") != "session-absent":
                 ET.SubElement(case, "failure", type="PublicMetadataOrPeerUnavailable", message=results.get(label, {}).get("first_unproven") or "not-executed")
         ET.ElementTree(suite).write(root / "TEST-public-magnets.xml", encoding="utf-8", xml_declaration=True)
         print("CHUNKS_PUBLIC_MAGNET_PROBE: " + receipt["result"], flush=True)
