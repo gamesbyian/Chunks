@@ -38,6 +38,35 @@ def event_block(on, event):
     return ""
 
 
+def explicitly_targets_main(push_scope):
+    """Recognize explicit main in inline and multiline push branch filters.
+
+    Wildcards and negative filters remain unclassified for manual review;
+    this is an inventory of possible duplication, not a dispatch simulator.
+    """
+    match = re.search(
+        r"(?m)^    branches:[ \t]*(?:\[([^\]\n]*)\])?[ \t]*(?:#.*)?$",
+        push_scope,
+    )
+    if not match:
+        return False
+    if match.group(1) is not None:
+        names = [value.strip().strip("\"'") for value in match.group(1).split(",")]
+        return "main" in names
+    for line in push_scope[match.end():].splitlines():
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        if len(line) - len(line.lstrip()) <= 4:
+            break
+        item = re.match(
+            r"^      -[ \t]+(['\"]?)([^'\"\s#]+)\1(?:[ \t]*(?:#.*)?)?$",
+            line,
+        )
+        if item and item.group(2) == "main":
+            return True
+    return False
+
+
 def inspect(path, root):
     source = path.read_text(encoding="utf-8")
     clean = "\n".join(line for line in source.splitlines()
@@ -62,7 +91,7 @@ def inspect(path, root):
     self_on_pr = self_path in path_entries(pr_scope)
     # A workflow-only edit is then tested at PR head and re-dispatched after
     # the merge solely because the workflow file itself is in main push paths.
-    main_only_push = bool(re.search(r"(?m)^\s+branches:\s*\[main\]", push_scope))
+    main_only_push = explicitly_targets_main(push_scope)
     duplicate_self_candidate = self_on_push and self_on_pr and main_only_push
     jobs = sorted(set(re.findall(
         r"(?m)^  ([A-Za-z_][\w-]*):\s*$", block(source, "jobs"))))
