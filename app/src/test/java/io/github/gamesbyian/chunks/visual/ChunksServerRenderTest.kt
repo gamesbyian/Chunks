@@ -5,6 +5,7 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
@@ -122,6 +123,10 @@ open class ChunksServerRenderTest {
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Sci Fi Pack (2024)"))
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/chunks-visual/$prefix-scrolled.png")
+        // The authenticated Transfers screen now puts secondary destinations
+        // behind its persistent Options footer. Exercise that actual disclosure
+        // instead of assuming the old permanent tab rail still exists.
+        rule.onNodeWithContentDescription("Options").performClick()
         for (tab in listOf("Places", "Organize", "Server")) {
             rule.onNodeWithText(tab).performClick()
             rule.waitForIdle()
