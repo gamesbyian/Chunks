@@ -115,6 +115,18 @@ class VerifiedMediaRelationshipGraph private constructor(
                     val latest = versions.maxOf { it.revision }
                     versions.filter { it.revision == latest }.distinct().singleOrNull()
                 }
+            // A particular edition has one parent work. Contradictory verified catalog
+            // targets abstain, but one explicit user-confirmed correction takes precedence
+            // over catalog assertions. Conflicting user corrections also fail closed.
+            // Writer, actor and adaptation relationships remain legitimately multi-valued.
+            val acceptedEditionParents = current.asSequence()
+                .filter { it.predicate == MediaGraphPredicate.EDITION_OF &&
+                    (it.state == MediaGraphClaimState.VERIFIED || it.state == MediaGraphClaimState.USER_CONFIRMED) }
+                .groupBy { it.subject }
+                .mapValues { (_, versions) ->
+                    val corrected = versions.filter { it.state == MediaGraphClaimState.USER_CONFIRMED }
+                    (corrected.ifEmpty { versions }).map { it.target }.distinct().singleOrNull()
+                }
             // Contradiction to an exact directed edge suppresses ALL providers' claims about it.
             val byEdge = current.groupBy { Triple(it.subject, it.predicate, it.target) }
             val valid = byEdge.values.filter { values ->
@@ -122,6 +134,8 @@ class VerifiedMediaRelationshipGraph private constructor(
                     values.any { it.state == MediaGraphClaimState.VERIFIED || it.state == MediaGraphClaimState.USER_CONFIRMED }
             }.flatten().filter { it.state == MediaGraphClaimState.VERIFIED || it.state == MediaGraphClaimState.USER_CONFIRMED }
                 .filter { it.predicate != MediaGraphPredicate.ABOUT_TOPIC || it.specificTopic }
+                .filterNot { it.predicate == MediaGraphPredicate.EDITION_OF &&
+                    it.target != acceptedEditionParents[it.subject] }
             return VerifiedMediaRelationshipGraph(valid.groupBy { it.subject }, valid.groupBy { it.target })
         }
 
@@ -168,7 +182,11 @@ class VerifiedMediaRelationshipGraph private constructor(
             direct(claim.predicate)?.let { add(claim.target, MediaGraphExplanation(it, null, listOf(claim))) }
             // Broad, high-degree terms are not useful as a default recommendation signal.
             val peers = incoming[claim.target].orEmpty()
-            if (peers.size <= MAX_SHARED_POSTING) {
+            // Count unique related *works*, not corroborating source assertions. Two
+            // approved catalogs citing 200 works must not trip a 256-work fanout cap.
+            val distinctWorks = peers.asSequence().map { it.subject }.distinct()
+                .take(MAX_SHARED_POSTING + 1).count()
+            if (distinctWorks <= MAX_SHARED_POSTING) {
                 for (peer in peers) {
                     val relation = shared(claim.predicate, peer.predicate) ?: continue
                     add(peer.subject, MediaGraphExplanation(relation, claim.target, listOf(claim, peer)))
@@ -181,7 +199,17 @@ class VerifiedMediaRelationshipGraph private constructor(
             }
         }
         return hits.entries.map { (entity, matches) ->
-            MediaGraphRelatedEntity(entity, matches.distinctBy { Triple(it.relation, it.via, it.reverseOfDirectFact) }
+            // Collapse equivalent recommendation routes without discarding independent
+            // provider assertions. The old distinctBy retained only the first two-claim
+            // pair, making corroborating provider evidence disappear from "Why related?".
+            val combined = matches.groupBy { Triple(it.relation, it.via, it.reverseOfDirectFact) }
+                .values.map { routes ->
+                    routes.first().copy(evidence = routes.flatMap { it.evidence }.distinct()
+                        .sortedWith(compareBy<MediaGraphClaim> { it.provider }
+                            .thenBy { it.recordKey }.thenBy { it.fieldKey }
+                            .thenBy { it.revision }))
+                }
+            MediaGraphRelatedEntity(entity, combined
                 .sortedWith(compareByDescending<MediaGraphExplanation> { it.relation.rank }
                     .thenBy { it.via?.namespace.orEmpty() + ":" + it.via?.id.orEmpty() }))
         }.sortedWith(compareByDescending<MediaGraphRelatedEntity> { it.strongest.rank }
