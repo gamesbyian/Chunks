@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 import unittest
 import sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools'))
 import actions_artifact_housekeeping as m
 
 NOW = datetime(2026, 11, 2, tzinfo=timezone.utc)
