@@ -165,7 +165,9 @@ internal class MainActivityRealMagnetJourney(
         report("chunks_real_add_app_stage", "connect-click-attempt")
         click("Connect to rTorrent")
         report("chunks_real_add_app_stage", "connect-submitted")
-        rule.waitUntil(90_000) { visible("It's all here.") }
+        // The compact authenticated Transfers header replaced the old welcome
+        // slogan. Assert an actual connected list action, not retired copy.
+        rule.waitUntil(90_000) { visible("All environments…") && !visible("Connect to rTorrent") }
         rule.onNodeWithText("Password").assertDoesNotExist()
         report("chunks_real_add_app_stage", "queue")
 
