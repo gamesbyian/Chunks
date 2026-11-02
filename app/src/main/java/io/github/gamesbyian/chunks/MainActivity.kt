@@ -1454,9 +1454,14 @@ private fun TransfersScreen(
     Box(Modifier.fillMaxSize()) {
         LazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxSize(),
-            // Keep the final item reachable above the floating action.
-            contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 8.dp, bottom = 128.dp),
+            // The fixed 60dp-high footer (48dp controls + 6dp top/bottom)
+            // must not overlay the list's pointer hit area. Bottom content
+            // padding alone lets Compose scroll a transfer button *behind*
+            // the footer, where a real tap can accidentally invoke + Add.
+            // Keep the list viewport physically above the footer instead.
+            modifier = Modifier.fillMaxSize().padding(bottom = 64.dp),
+            // Keep the final transfer reachable above floating controls.
+            contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 8.dp, bottom = 64.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
         item {
