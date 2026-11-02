@@ -278,7 +278,8 @@ def torrent_summary(data, max_total_bytes, tracker_hosts=ARCHIVE_TRACKERS):
                     and not parsed.username and not parsed.password
                     and not parsed.query and not parsed.fragment
                     and parsed.path == "/announce"
-                    and parsed.port != 0)
+                    and parsed.port != 0
+                    and (parsed.scheme != "udp" or parsed.port is not None))
         except (UnicodeError, ValueError):
             return False
 
