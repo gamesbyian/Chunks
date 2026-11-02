@@ -62,12 +62,55 @@ def attribution_text(value):
     return " ".join(html.unescape(re.sub(r"<[^>]*>", " ", raw)).split())[:512]
 
 def license_ok(meta):
+    """Recognize an explicit license label or an actual CC license origin.
+
+    Archive/Commons metadata is source-supplied, not independently legally
+    adjudicated. A mere substring (including a lookalike or third-party
+    redirect URL) is not evidence of a reusable Creative Commons license.
+    """
     if isinstance(meta, list):
         meta = meta[0] if meta else ""
-    val = str(meta or "").lower()
-    return ("creativecommons.org/licenses/" in val or
-            "creativecommons.org/publicdomain/" in val or
-            val.strip() in ("public domain", "cc0", "cc-by", "cc-by-sa"))
+    raw = str(meta or "")
+    value = raw.strip()
+    if value.lower() in ("public domain", "cc0", "cc-by", "cc-by-sa"):
+        return True
+    # Do not normalize whitespace around an alleged URI: urlsplit strips
+    # line breaks/tabs in ways downstream tooling and clients may not.
+    if (raw != value or len(value) > 512 or not value
+            or any(char.isspace() or ord(char) < 32 or ord(char) == 127
+                   for char in value)):
+        return False
+    try:
+        url = urllib.parse.urlsplit(value)
+        if (url.scheme not in ("http", "https")
+                or url.hostname not in ("creativecommons.org", "www.creativecommons.org")
+                or url.username is not None or url.password is not None
+                or url.query or url.fragment
+                or url.port not in (None, 443 if url.scheme == "https" else 80)):
+            return False
+    except ValueError:
+        return False
+    segments = url.path.strip("/").split("/")
+    if len(segments) < 3:
+        return False
+    if segments[:2] in (["publicdomain", "zero"], ["publicdomain", "mark"]):
+        return (segments[2] == "1.0" and len(segments) <= 4
+                and (len(segments) == 3 or bool(re.fullmatch(
+                    r"deed\.[a-z]{2,8}", segments[3]))))
+    if (segments[0] != "licenses" or segments[1] not in
+            ("by", "by-sa", "by-nc", "by-nd", "by-nc-sa", "by-nc-nd")
+            or not re.fullmatch(r"[1-4]\.[0-9]+", segments[2])
+            or len(segments) > 5):
+        return False
+    # Older deeds may append a jurisdiction (e.g. /us/) and/or a
+    # translated deed. Arbitrary extra path segments are not license proof.
+    extra = segments[3:]
+    jurisdiction = lambda value: bool(re.fullmatch(
+        r"(?:[a-z]{2,3}|england|scotland|wales)", value))
+    deed = lambda value: bool(re.fullmatch(r"deed\.[a-z]{2,8}", value))
+    return (not extra or
+            (len(extra) == 1 and (jurisdiction(extra[0]) or deed(extra[0]))) or
+            (len(extra) == 2 and jurisdiction(extra[0]) and deed(extra[1])))
 
 def bstr(raw):
     return str(len(raw)).encode("ascii") + b":" + raw

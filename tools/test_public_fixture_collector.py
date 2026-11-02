@@ -220,6 +220,53 @@ class CollectorTest(unittest.TestCase):
         self.assertEqual(original_info, f.parse_bencode(safe)[1])
         self.assertEqual(hashlib.sha1(original_info).hexdigest(), details["infohash_v1"])
 
+    def test_cc_license_url_requires_actual_official_origin_and_license_path(self):
+        accepted = (
+            "https://creativecommons.org/licenses/by/4.0/",
+            "https://creativecommons.org/licenses/by-sa/4.0/deed.en",
+            "http://creativecommons.org/licenses/by-nd/3.0/",
+            "https://creativecommons.org/licenses/by-sa/3.0/us/",
+            "https://creativecommons.org/publicdomain/zero/1.0/",
+            "https://creativecommons.org/publicdomain/mark/1.0/",
+            "CC0", "cc-by", "cc-by-sa", "public domain",
+        )
+        for license_value in accepted:
+            with self.subTest(license_value=license_value):
+                self.assertTrue(f.license_ok(license_value))
+
+    def test_embedded_cc_url_is_not_a_valid_license_claim(self):
+        forged = (
+            "https://evil.example/creativecommons.org/licenses/by/4.0/",
+            "https://evil.example/?next=https://creativecommons.org/licenses/by/4.0/",
+            "https://creativecommons.org.evil.example/licenses/by/4.0/",
+            "https://creativecommons.org@evil.example/licenses/by/4.0/",
+            "https://creativecommons.org/licenses/fake/4.0/",
+            "https://creativecommons.org/licenses/by/not-a-version/",
+            "https://creativecommons.org/licenses/by/4.0/?token=secret",
+            "https://creativecommons.org/licenses/by/4.0/#account",
+            "https://creativecommons.org:8888/licenses/by/4.0/",
+            "creativecommons.org/licenses/by/4.0/",
+            "https://creativecommons.org/publicdomain/notreal/1.0/",
+            "https://creativecommons.org/licenses/by/4.0/secret",
+            "https://creativecommons.org/licenses/by/4.0/\\n",
+            "https://creativecommons.org/licenses/by/4.0/\\t",
+            "",
+        )
+        for license_value in forged:
+            with self.subTest(kind=license_value[:45]):
+                self.assertFalse(f.license_ok(license_value))
+
+    def test_untrusted_embedded_license_cannot_publish_archive_fixture(self):
+        meta = {"metadata": {"title": "Source with deceptive license",
+                 "licenseurl": "https://example.invalid/?license=https://creativecommons.org/licenses/by/4.0/"},
+                "files": [{"name": "public.torrent", "format": "Archive BitTorrent",
+                           "source": "derivative"}]}
+        with patch.object(f, "fetch", return_value=json.dumps(meta).encode()) as mocked:
+            with self.assertRaisesRegex(ValueError, "license"):
+                f.archive_fixture("not-really-cc-licensed", 100)
+        # License rejection must happen before the source .torrent fetch.
+        self.assertEqual(mocked.call_count, 1)
+
     def test_real_archive_metadata_requires_license_and_real_torrent(self):
         metadata = {
             "metadata": {"title": "Public fixture", "licenseurl": self.license_url},
