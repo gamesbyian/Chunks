@@ -68,6 +68,74 @@ class CollectorTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             f.torrent_summary(enc({b"info": bad}), 100)
 
+    def test_v1_file_layout_must_be_exactly_single_or_multi(self):
+        multi = {b"name": b"files", b"piece length": 16384,
+                 b"pieces": bytes(20),
+                 b"files": [{b"path": [b"file.txt"], b"length": 5}]}
+        for info in ({**self.info, b"files": multi[b"files"]},
+                     {key: value for key, value in self.info.items() if key != b"length"},
+                     {**multi, b"files": []},
+                     {**multi, b"files": b"not-a-list"},
+                     {**multi, b"files": [b"not-a-dictionary"]}):
+            with self.subTest(fields=tuple(sorted(info))):
+                with self.assertRaises(ValueError):
+                    f.torrent_summary(enc({b"info": info}), 100)
+
+    def test_v1_repeated_and_file_directory_collisions_are_rejected(self):
+        def file(*path, length=3):
+            return {b"path": [p.encode() for p in path], b"length": length}
+
+        problematic = (
+            [file("A.txt"), file("A.txt", length=4)],
+            [file("Folder"), file("Folder", "child.txt", length=4)],
+            [file("Folder", "child.txt"), file("Folder", length=4)],
+            [file("Folder", "child.txt"), file("Folder", "child.txt", length=4)],
+        )
+        for entries in problematic:
+            info = {b"name": b"Bundle", b"piece length": 16384,
+                    b"pieces": bytes(20), b"files": entries}
+            with self.subTest(paths=tuple(tuple(x[b"path"]) for x in entries)):
+                with self.assertRaisesRegex(ValueError, "path|directory"):
+                    f.torrent_summary(enc({b"info": info}), 100)
+
+    def test_v1_shared_directories_and_zero_byte_members_remain_valid(self):
+        entries = [
+            {b"path": [b"Season", b"Episode1.mkv"], b"length": 3},
+            {b"path": [b"Season", b"Episode2.mkv"], b"length": 4},
+            {b"path": [b"Empty.txt"], b"length": 0},
+            {b"path": [b"Bonus", b"Episode1.mkv"], b"length": 2},
+        ]
+        info = {b"name": b"Bundle", b"piece length": 16384,
+                b"pieces": bytes(20), b"files": entries}
+        source = enc({b"info": info, b"announce": b"https://bt1.archive.org:6969/announce"})
+        safe, meta = f.torrent_summary(source, 100)
+        self.assertEqual(4, meta["file_count"])
+        self.assertEqual(9, meta["total_bytes"])
+        self.assertEqual(["Season/Episode1.mkv", "Season/Episode2.mkv",
+                          "Empty.txt", "Bonus/Episode1.mkv"],
+                         [entry["path"] for entry in meta["files"]])
+        self.assertEqual(f.parse_bencode(source)[1], f.parse_bencode(safe)[1])
+        self.assertEqual(hashlib.sha1(enc(info)).hexdigest(), meta["infohash_v1"])
+
+    def test_v1_rejects_unsafe_name_and_path_component_limits(self):
+        safe_file = {b"name": b"Bundle", b"piece length": 16384,
+                     b"pieces": bytes(20)}
+        components = (b"", b".", b"..", b"bad\\x7fname",
+                      b"bad\\x00name", b"over" * 300,
+                      b"bad/dir", b"bad\\\\dir", bytes([255]))
+        for component in components:
+            with self.subTest(component=repr(component[:24])):
+                multi = {**safe_file,
+                         b"files": [{b"path": [component], b"length": 5}]}
+                single = {**self.info, b"name": component}
+                for info in (single, multi):
+                    with self.assertRaises(ValueError):
+                        f.torrent_summary(enc({b"info": info}), 100)
+        too_deep = {**safe_file,
+                    b"files": [{b"path": [b"nested"] * 65, b"length": 5}]}
+        with self.assertRaisesRegex(ValueError, "path"):
+            f.torrent_summary(enc({b"info": too_deep}), 100)
+
     def test_bencode_guards(self):
         invalid = (b"d4:infod1:a1:beeEXTRA", b"d4:infodi1e1:bee",
                    b"d4:infod1:a1:b1:a1:cee", b"d4:infod1:ai03eee",
