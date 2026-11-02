@@ -30,6 +30,8 @@ jobs:
           if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
             ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
           fi
+      - name: Reclaim unrelated toolchains before allocating emulator userdata
+        run: sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/powershell
       - name: Assert real Android x86_64 hardware acceleration
         run: |
           test -c /dev/kvm
@@ -42,6 +44,7 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_6
+          disk-size: 2048M
           emulator-boot-timeout: 600
           disable-animations: true
           script: bash tools/run_compose_system_font_200pct.sh

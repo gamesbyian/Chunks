@@ -139,6 +139,10 @@ class SeedhostAndroidAddUiInstrumentedTest {
     }
 
     @Test fun installedAppAddsOneSyntheticMagnetAtAVerifiedServerPlace() {
+        if (arg("chunks_controlled_peer") == "authorized") {
+            MainActivityRealMagnetJourney(rule, ::corroboratedParent).run()
+            return
+        }
         assumeTrue("Protected explicit trusted-main Add UI journey only",
             arg("chunks_add_ui_once") == "authorized")
         val url = requireNotNull(decoded("chunks_live_url_b64"))

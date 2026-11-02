@@ -13,7 +13,7 @@ import re
 SOURCES = ("magnet", "magnet2")
 PHASES = ("preflight", "review", "ui-verified", "registered",
           "readback-error", "metadata", "peer-progress", "bytes-verified",
-          "ui-progress", "stopped", "restarted", "resumed-traffic", "ui-controls", "passed", "uncertain")
+          "ui-progress", "stopped", "restarted", "resumed-traffic", "ui-controls", "removed", "passed", "uncertain")
 FAILURE_TYPES = {
     "AssertionError", "IllegalStateException", "IllegalArgumentException",
     "SocketTimeoutException", "ConnectException", "IOException",
@@ -30,12 +30,16 @@ def parse(raw, exit_code, env=None):
     case_results = []
     peerless_hashes = set()
     peerless = 0
+    app_stages, negative_stages = [], []
     terminal_count = 0
     controlled = env.get("CHUNKS_CONTROLLED_PEER") == "1"
-    expected_cases = {
+    expected_cases = {"installedAppAddsOneSyntheticMagnetAtAVerifiedServerPlace"} if controlled else {
         "installedMagnetAddResolvesMetadataAndReceivesVerifiedPeerBytes",
         "installedAlternateMagnetResolvesMetadataAndReceivesVerifiedPeerBytes",
     }
+    known_cases = expected_cases | {"installedMagnetAddResolvesMetadataAndReceivesVerifiedPeerBytes",
+        "installedAlternateMagnetResolvesMetadataAndReceivesVerifiedPeerBytes"}
+    expected_test_count = 1 if controlled else 2
     runner = {"started_tests": 0, "passed_tests": 0, "failed_tests": 0,
               "total_test_end_codes": 0, "runner_finished": False,
               "exception_classes": []}
@@ -44,10 +48,16 @@ def parse(raw, exit_code, env=None):
     for line in raw.splitlines():
         if line.startswith("INSTRUMENTATION_STATUS: test="):
             candidate = line.split("test=", 1)[1]
-            current_case = candidate if candidate in expected_cases else None
+            current_case = candidate if candidate in known_cases else None
         if line in ("INSTRUMENTATION_STATUS_CODE: 0", "INSTRUMENTATION_STATUS_CODE: -2", "INSTRUMENTATION_STATUS_CODE: -3"):
             cases.append(current_case)
             case_results.append({"name": current_case, "outcome": "passed" if line.endswith(": 0") else "failed"})
+        app_stage = re.fullmatch(r"INSTRUMENTATION_STATUS: chunks_real_add_app_stage=(runner-ready|connect-submitted|queue|add-submitted|add-registered)", line)
+        if app_stage:
+            app_stages.append(app_stage.group(1))
+        negative_stage = re.fullmatch(r"INSTRUMENTATION_STATUS: chunks_real_add_negative_stage=(preflight|registered|add-ui-truthful|transfers-ui-truthful|removed)", line)
+        if negative_stage:
+            negative_stages.append(negative_stage.group(1))
         negative_hash = re.fullmatch(r"INSTRUMENTATION_STATUS: chunks_real_add_hash_negative=([a-f0-9]{40})", line)
         if negative_hash:
             peerless_hashes.add(negative_hash.group(1))
@@ -102,12 +112,13 @@ def parse(raw, exit_code, env=None):
             "restarted": counts["restarted"] == 1,
             "passed": counts["passed"] == 1,
             "cleanup": "verified-by-test" if counts["passed"] == 1 else
+                       "verified-by-exact-readback" if counts["removed"] == 1 else
                        "uncertain" if counts["uncertain"] else "not-proven",
         }
     complete = (exit_code == 0 and runner["runner_finished"] and
-                runner["started_tests"] == runner["passed_tests"] == 2 and
+                runner["started_tests"] == runner["passed_tests"] == expected_test_count and
                 runner["failed_tests"] == 0 and
-                runner["total_test_end_codes"] == 2 and
+                runner["total_test_end_codes"] == expected_test_count and
                 len(set.union(*observed_hashes.values())) == len(SOURCES) and
                 all(x["hash_receipt"] == "confirmed" and
                     x["passed"] and x["piece_verified"] and x["restarted"]
@@ -115,17 +126,19 @@ def parse(raw, exit_code, env=None):
                     and x["cleanup"] == "verified-by-test"
                     for x in per_source.values()))
     if controlled:
-        complete = complete and peerless == 1 and terminal_count == 1 and set(cases) == expected_cases and len(cases) == 2
+        complete = complete and peerless == 1 and terminal_count == 1 and set(cases) == expected_cases and len(cases) == expected_test_count
         for source in SOURCES:
             initial, resumed = (traffic[source].get(phase, {}) for phase in ("initial", "resumed"))
             complete = complete and all(phases[source][stage] == 1 for stage in
-                ("ui-progress", "stopped", "resumed-traffic", "ui-controls")) and bool(initial and resumed)
+                ("ui-progress", "stopped", "resumed-traffic", "ui-controls", "removed")) and bool(initial and resumed)
             if initial and resumed:
                 complete = complete and (0 < initial["verified"] < initial["expected"] == resumed["expected"] and
                     0 < initial["received"] < resumed["received"] and initial["verified"] < resumed["verified"])
     return {
         "schema_version": 1, "source_sha": env.get("GITHUB_SHA"),
+        "entry_path": "actual MainActivity Connect, Add, Transfers lifecycle and Remove" if controlled else "production Add composable",
         "controlled_real_peer": controlled, "peerless_negative_passed": peerless == 1,
+        "app_stage_evidence": app_stages, "negative_stage_evidence": negative_stages,
         "actual_case_identities": cases, "actual_case_results": case_results, "terminal_count": terminal_count,
         "peerless_negative_hash": next(iter(peerless_hashes)) if len(peerless_hashes) == 1 else None,
         "environment": "disposable" if env.get("CHUNKS_DISPOSABLE") == "1" else "approved-development-Seedhost",

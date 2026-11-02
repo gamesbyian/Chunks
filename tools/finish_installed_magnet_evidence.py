@@ -50,12 +50,12 @@ def main():
     # The two test identities and outcomes come from AndroidJUnitRunner, not
     # from successful RPC acknowledgements or invented "passed" XML cases.
     passed = receipt["result"] == "passed"
-    suite = ET.Element("testsuite", name="installed-real-rtorrent-magnets", tests="2",
+    expected_cases = ("installedAppAddsOneSyntheticMagnetAtAVerifiedServerPlace",)
+    suite = ET.Element("testsuite", name="installed-real-rtorrent-magnets", tests=str(len(expected_cases)),
                        failures="0", errors="0", skipped="0", time=runtime if runtime.isdecimal() else "0")
     failures, errors = 0, 0
-    for name in ("installedMagnetAddResolvesMetadataAndReceivesVerifiedPeerBytes",
-                 "installedAlternateMagnetResolvesMetadataAndReceivesVerifiedPeerBytes"):
-        case = ET.SubElement(suite, "testcase", classname="io.github.gamesbyian.chunks.SeedhostAndroidRealTransferAddInstrumentedTest", name=name)
+    for name in expected_cases:
+        case = ET.SubElement(suite, "testcase", classname="io.github.gamesbyian.chunks.SeedhostAndroidAddUiInstrumentedTest", name=name)
         actual = [c for c in receipt["actual_case_results"] if c["name"] == name]
         if len(actual) != 1:
             errors += 1
@@ -67,7 +67,7 @@ def main():
         errors += 1
         ET.SubElement(ET.SubElement(suite, "testcase", name="independentAcceptanceEvidence"),
             "error", type="AcceptanceIncomplete", message="Required independent peer or negative evidence missing")
-        suite.set("tests", "3")
+        suite.set("tests", str(len(expected_cases) + 1))
     suite.set("failures", str(failures)); suite.set("errors", str(errors))
     ET.ElementTree(suite).write(a.output / "TEST-installed-magnets.xml", encoding="utf-8", xml_declaration=True)
     raw_path = a.runner_temp / "chunks-installed-magnets.raw"

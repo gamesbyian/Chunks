@@ -81,8 +81,9 @@ class RemoteAddProgressTest {
             fun str(v: String) = "<value><string>$v</string></value>"
             fun num(v: Long) = "<value><i8>$v</i8></value>"
             fun array(v: String) = "<value><array><data>$v</data></array></value>"
-            val row = if (xml.contains("<string>d.is_meta=</string>")) str(hash) + num(1)
-                else str(hash) + str("$hash.meta") + num(1) + num(1) + num(1) + str("/downloads") + num(0) + num(0) + num(0)
+            check(xml.contains("<string>d.is_meta=</string>"))
+            val row = str(hash) + str("$hash.meta") + num(1) + num(1) + num(1) + str("/downloads") +
+                num(0) + num(0) + num(0) + num(1)
             val response = "<methodResponse><params><param>${array(array(row))}</param></params></methodResponse>".toByteArray()
             exchange.sendResponseHeaders(200, response.size.toLong())
             exchange.responseBody.use { it.write(response) }
@@ -98,7 +99,7 @@ class RemoteAddProgressTest {
             assertNull(common.sizeBytes)
             assertNull(common.progressPpm)
             assertEquals(true, common.metadataPending)
-            assertEquals(listOf("d.multicall2", "d.multicall2"), commands)
+            assertEquals(listOf("d.multicall2"), commands)
         } finally { server.stop(0) }
     }
 }

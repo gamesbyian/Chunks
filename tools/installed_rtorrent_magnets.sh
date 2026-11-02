@@ -34,7 +34,7 @@ unset installed_package
 acceptance_started=$(date +%s)
 set +e
 adb shell am instrument -w -r \
-  -e class io.github.gamesbyian.chunks.SeedhostAndroidRealTransferAddInstrumentedTest#installedMagnetAddResolvesMetadataAndReceivesVerifiedPeerBytes,io.github.gamesbyian.chunks.SeedhostAndroidRealTransferAddInstrumentedTest#installedAlternateMagnetResolvesMetadataAndReceivesVerifiedPeerBytes \
+  -e class io.github.gamesbyian.chunks.SeedhostAndroidAddUiInstrumentedTest#installedAppAddsOneSyntheticMagnetAtAVerifiedServerPlace \
   -e chunks_real_add authorized -e chunks_live_url_b64 "$url64" "${args[@]}" \
   io.github.gamesbyian.chunks.preview.test/androidx.test.runner.AndroidJUnitRunner \
   > "$RUNNER_TEMP/chunks-installed-magnets.raw" 2>&1

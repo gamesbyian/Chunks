@@ -270,36 +270,31 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         })
     }
 
-    /** Production inventory includes actual metadata state, including after
-     * app restart. Keep the older minimum/rate-only adapter contract intact. */
+    /** Read metadata state in the same rTorrent row as size/progress. A
+     * second request could combine a replaced placeholder with payload flags. */
     internal suspend fun listTransfersWithMetadata(view: String = "main"): List<RemoteTransfer> {
-        val transfers = listTransfers(view)
-        if (transfers.isEmpty()) return transfers
-        val rows = try {
+        require(Regex("[A-Za-z][A-Za-z0-9_-]{0,39}").matches(view)) { "Invalid view" }
+        return try {
             try {
-                extractRows(call("d.multicall2", listOf("", view, "d.hash=", "d.is_meta=")))
-                    .map { it as? List<*> ?: error("Invalid metadata state row") }
+                val rows = extractRows(call("d.multicall2", listOf("", view) + EXTENDED_FIELDS + "d.is_meta="))
+                require(rows.size <= MAX_TRANSFERS)
+                requireUniqueIdentities(rows.map { raw ->
+                    transferWithMetadata(raw as? List<*> ?: error("Invalid metadata row"))
+                })
             } catch (_: RpcReplyTooLarge) {
-                pagedRowsWithinLimit(transfers.map { it.hash }, listOf("d.hash", "d.is_meta"))
+                listTransfersPaged(view, includeMetadata = true)
             }
         } catch (fault: RpcFault) {
             if (!fault.isUnsupportedOptionalGetter()) throw fault
-            return transfers
+            listTransfers(view)
         }
-        val flags = LinkedHashMap<String, Boolean>()
-        for (row in rows) {
-            require(row.size == 2) { "Invalid metadata state fields" }
-            val hash = (row[0] as? String)?.lowercase(java.util.Locale.ROOT)
-                ?: error("Invalid metadata state identity")
-            require(identityPattern.matches(hash) && hash !in flags) { "Ambiguous metadata state identity" }
-            val flag = number(row[1])
-            require(flag in 0L..1L) { "Invalid metadata state flag" }
-            flags[hash] = flag == 1L
-        }
-        require(flags.keys == transfers.map { it.hash.lowercase(java.util.Locale.ROOT) }.toSet()) {
-            "Torrent inventory changed while reading metadata; refresh"
-        }
-        return transfers.map { it.copy(metadataPending = flags.getValue(it.hash.lowercase(java.util.Locale.ROOT))) }
+    }
+
+    private fun transferWithMetadata(row: List<*>): RemoteTransfer {
+        require(row.size == EXTENDED_FIELDS.size + 1) { "Invalid metadata field layout" }
+        val flag = number(row.last())
+        require(flag in 0L..1L) { "Invalid metadata state flag" }
+        return transferFromRow(row.dropLast(1), true).copy(metadataPending = flag == 1L)
     }
 
     /**
@@ -308,10 +303,10 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
      * example a torrent erased mid-read) fails the whole snapshot closed rather
      * than publishing a partial or mixed list. Read-only; never retried here.
      */
-    internal suspend fun listTransfersPaged(view: String): List<RemoteTransfer> {
+    internal suspend fun listTransfersPaged(view: String, includeMetadata: Boolean = false): List<RemoteTransfer> {
         require(Regex("[A-Za-z][A-Za-z0-9_-]{0,39}").matches(view)) { "Invalid view" }
         val minimum = MINIMUM_FIELDS
-        val extended = EXTENDED_FIELDS
+        val extended = if (includeMetadata) EXTENDED_FIELDS + "d.is_meta=" else EXTENDED_FIELDS
         val hashes = readViewIdentities(view)
         if (hashes.isEmpty()) {
             // Even an empty first read is not a stable snapshot: a server
@@ -329,7 +324,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         } catch (fault: RpcFault) {
             // Large-list paging must not turn a transient operational error
             // into thousands of additional credentialed field reads.
-            if (!fault.isUnsupportedOptionalGetter()) throw fault
+            if (includeMetadata || !fault.isUnsupportedOptionalGetter()) throw fault
             false
         }
         val fields = getters(if (rich) extended else minimum)
@@ -337,7 +332,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         for (page in hashes.chunked(PAGE_SIZE)) {
             val rows = pagedRowsWithinLimit(page, fields)
             for ((index, row) in rows.withIndex()) {
-                val transfer = transferFromRow(row, rich)
+                val transfer = if (includeMetadata) transferWithMetadata(row) else transferFromRow(row, rich)
                 require(transfer.hash.equals(page[index], ignoreCase = true)) {
                     "rTorrent returned a different torrent than requested"
                 }
@@ -1526,7 +1521,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         private fun isReadOnlyRpcMethod(method: String, params: List<Any>): Boolean {
             if (method in DIRECT_READ_METHODS) return true
             if (method == "d.multicall2") {
-                return params.size in 3..(2 + EXTENDED_FIELDS.size) &&
+                return params.size in 3..(3 + EXTENDED_FIELDS.size) &&
                     params.drop(2).all { it is String && (it in EXTENDED_FIELDS || it == "d.is_meta=") }
             }
             if (method == "f.multicall" || method == "t.multicall") {
@@ -1538,7 +1533,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                 val nested = params.singleOrNull() as? List<*> ?: return false
                 // Production paging emits one exact-hash getter per entry.
                 // Refuse nested multicall recursion and unrecognized methods.
-                return nested.isNotEmpty() && nested.size <= PAGE_SIZE * EXTENDED_FIELDS.size &&
+                return nested.isNotEmpty() && nested.size <= PAGE_SIZE * (EXTENDED_FIELDS.size + 1) &&
                     nested.all { item ->
                         val fields = item as? Map<*, *> ?: return@all false
                         val name = fields["methodName"] as? String ?: return@all false

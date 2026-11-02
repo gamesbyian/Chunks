@@ -33,21 +33,20 @@ class InstalledMagnetReceiptTests(unittest.TestCase):
         self.assertFalse(result["physical_device_proven"])
 
     def controlled_log(self):
-        data = self.success_log()
-        names = ("installedMagnetAddResolvesMetadataAndReceivesVerifiedPeerBytes",
-                 "installedAlternateMagnetResolvesMetadataAndReceivesVerifiedPeerBytes")
-        for label, name in zip(SOURCES, names):
-            marker = "INSTRUMENTATION_STATUS: chunks_real_add_hash_" + label + "="
-            data = data.replace(marker, "INSTRUMENTATION_STATUS: test=" + name + "\n" + marker)
-            extra = "".join("INSTRUMENTATION_STATUS: chunks_real_add_stage=" + label + "-" + s + "\n"
-                            for s in ("ui-progress", "stopped", "resumed-traffic", "ui-controls"))
-            extra += "INSTRUMENTATION_STATUS: chunks_real_add_traffic_" + label + "_initial=300000,262144,1000000,1,10000\n"
-            extra += "INSTRUMENTATION_STATUS: chunks_real_add_traffic_" + label + "_resumed=600000,524288,1000000,1,10000\n"
-            data = data.replace("INSTRUMENTATION_STATUS: chunks_real_add_stage=" + label + "-passed", extra +
-                                "INSTRUMENTATION_STATUS: chunks_real_add_stage=" + label + "-passed")
-        return data.replace("INSTRUMENTATION_CODE: -1",
-            "INSTRUMENTATION_STATUS: chunks_real_add_hash_negative=" + "c" * 40 + "\n" +
-            "INSTRUMENTATION_STATUS: chunks_real_add_negative=peerless-ui-and-cleanup-passed\nINSTRUMENTATION_CODE: -1")
+        lines = ["INSTRUMENTATION_STATUS: test=installedAppAddsOneSyntheticMagnetAtAVerifiedServerPlace",
+                 "INSTRUMENTATION_STATUS_CODE: 1"]
+        for label in SOURCES:
+            lines.append("INSTRUMENTATION_STATUS: chunks_real_add_hash_" + label + "=" +
+                         ("a" * 40 if label == "magnet" else "b" * 40))
+            for stage in ("preflight", "review", "ui-verified", "registered", "metadata", "peer-progress",
+                          "bytes-verified", "ui-progress", "stopped", "restarted", "resumed-traffic", "ui-controls", "removed", "passed"):
+                lines.append("INSTRUMENTATION_STATUS: chunks_real_add_stage=" + label + "-" + stage)
+            lines.append("INSTRUMENTATION_STATUS: chunks_real_add_traffic_" + label + "_initial=300000,262144,1000000,1,10000")
+            lines.append("INSTRUMENTATION_STATUS: chunks_real_add_traffic_" + label + "_resumed=600000,524288,1000000,1,10000")
+        lines += ["INSTRUMENTATION_STATUS: chunks_real_add_hash_negative=" + "c" * 40,
+                  "INSTRUMENTATION_STATUS: chunks_real_add_negative=peerless-ui-and-cleanup-passed",
+                  "INSTRUMENTATION_STATUS_CODE: 0", "INSTRUMENTATION_CODE: -1"]
+        return "\n".join(lines)
 
     def test_controlled_gate_requires_actual_ui_restart_growth_and_peerless_truth(self):
         env = dict(self.env, CHUNKS_CONTROLLED_PEER="1", CHUNKS_DISPOSABLE="1")
@@ -58,15 +57,18 @@ class InstalledMagnetReceiptTests(unittest.TestCase):
         self.assertNotEqual("passed", parse(data.replace(
             "_resumed=600000,524288", "_resumed=300000,262144"), 0, env)["result"])
         self.assertNotEqual("passed", parse(data.replace(
-            "installedAlternateMagnetResolvesMetadataAndReceivesVerifiedPeerBytes",
+            "installedAppAddsOneSyntheticMagnetAtAVerifiedServerPlace",
             "installedMagnetAddResolvesMetadataAndReceivesVerifiedPeerBytes"), 0, env)["result"])
         self.assertNotEqual("passed", parse(data + "\nINSTRUMENTATION_CODE: -1", 0, env)["result"])
 
     def test_actual_pass_is_preserved_when_other_case_fails(self):
-        data = self.controlled_log().replace(
-            "INSTRUMENTATION_STATUS_CODE: 0\nINSTRUMENTATION_STATUS: chunks_real_add_hash_negative=",
-            "INSTRUMENTATION_STATUS_CODE: -2\nINSTRUMENTATION_STATUS: chunks_real_add_hash_negative=")
-        result = parse(data, 0, dict(self.env, CHUNKS_CONTROLLED_PEER="1"))
+        data = self.success_log()
+        for label, name in zip(SOURCES, ("installedMagnetAddResolvesMetadataAndReceivesVerifiedPeerBytes",
+                                        "installedAlternateMagnetResolvesMetadataAndReceivesVerifiedPeerBytes")):
+            marker = "INSTRUMENTATION_STATUS: chunks_real_add_hash_" + label + "="
+            data = data.replace(marker, "INSTRUMENTATION_STATUS: test=" + name + "\n" + marker)
+        before, after = data.rsplit("INSTRUMENTATION_STATUS_CODE: 0", 1)
+        result = parse(before + "INSTRUMENTATION_STATUS_CODE: -2" + after, 0, self.env)
         self.assertNotEqual("passed", result["result"])
         self.assertEqual(["passed", "failed"], [x["outcome"] for x in result["actual_case_results"]])
 

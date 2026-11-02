@@ -5,13 +5,6 @@ import android.os.SystemClock
 import android.util.Base64
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.runtime.key
-import androidx.compose.ui.test.performScrollTo
-import io.github.gamesbyian.chunks.rpc.RpcFault
-import io.github.gamesbyian.chunks.rpc.isUnknownInfoHash
-import java.security.MessageDigest
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -61,7 +54,7 @@ class SeedhostAndroidRealTransferAddInstrumentedTest {
         Base64.decode(requireNotNull(argument(key)), Base64.NO_WRAP), Charsets.UTF_8)
 
     private fun report(stage: String) {
-        require(stage.matches(Regex("(file|magnet|magnet2)-(preflight|review|ui-verified|registered|readback-error|metadata|peer-progress|bytes-verified|ui-progress|stopped|restarted|resumed-traffic|ui-controls|passed|uncertain)")))
+        require(stage.matches(Regex("(file|magnet|magnet2)-(preflight|review|ui-verified|registered|readback-error|metadata|peer-progress|bytes-verified|restarted|passed|uncertain)")))
         InstrumentationRegistry.getInstrumentation().sendStatus(
             2, Bundle().apply { putString("chunks_real_add_stage", stage) })
     }
@@ -132,17 +125,12 @@ class SeedhostAndroidRealTransferAddInstrumentedTest {
             argument("chunks_real_add") == "authorized")
         val url = secret("chunks_live_url_b64")
         val endpoint = URI(url)
-        if (argument("chunks_disposable") == "authorized") {
-            require(argument("chunks_controlled_peer") == "authorized" &&
-                url == "http://127.0.0.1:18080/RPC2")
-        } else require(endpoint.scheme == "https" &&
+        require(endpoint.scheme == "https" &&
             endpoint.host == "ianseeds.wood.seedhost.eu" &&
             endpoint.port == -1 && endpoint.path == "/rutorrent/" &&
             endpoint.userInfo == null && endpoint.query == null && endpoint.fragment == null)
-        val disposable = argument("chunks_disposable") == "authorized"
-        return RTorrentRemote(RemoteCredentials(url,
-            if (disposable) "" else secret("chunks_live_user_b64"),
-            if (disposable) "" else secret("chunks_live_pass_b64")))
+        return RTorrentRemote(RemoteCredentials(url, secret("chunks_live_user_b64"),
+            secret("chunks_live_pass_b64")))
     }
 
     private suspend fun reviewedParent(remote: RTorrentRemote, original: List<RemoteTransfer>): String {
@@ -367,246 +355,8 @@ class SeedhostAndroidRealTransferAddInstrumentedTest {
         }
     }
 
-    private fun reportTraffic(label: String, phase: String, traffic: io.github.gamesbyian.chunks.rpc.RemoteTrafficSample) {
-        require(label in setOf("magnet", "magnet2") && phase in setOf("initial", "resumed"))
-        val values = listOf(traffic.receivedBytes, traffic.verifiedBytes, traffic.expectedBytes,
-            traffic.peers, traffic.rateBytesPerSecond)
-        require(values.all { it != null && it >= 0L })
-        InstrumentationRegistry.getInstrumentation().sendStatus(2, Bundle().apply {
-            putString("chunks_real_add_traffic_${label}_$phase", values.joinToString(","))
-        })
-    }
-
-    private fun controller(path: String, port: Long? = null): ByteArray {
-        require(path.matches(Regex("/(magnet2?|ready)(\\.torrent|/(metadata|payload|resume))?")))
-        val connection = URL("http://127.0.0.1:18081$path").openConnection() as HttpURLConnection
-        connection.connectTimeout = 5_000
-        connection.readTimeout = 60_000
-        connection.instanceFollowRedirects = false
-        try {
-            if (port != null) {
-                require(port in 1L..65535L)
-                connection.requestMethod = "POST"
-                connection.doOutput = true
-                connection.setRequestProperty("Content-Type", "application/json")
-                connection.outputStream.use { it.write("{\"port\":$port}".toByteArray()) }
-                check(connection.responseCode == 204) { "Real peer phase unavailable" }
-                return ByteArray(0)
-            }
-            check(connection.responseCode == 200) { "Real peer source unavailable" }
-            return connection.inputStream.use { it.readNBytes(2_097_153) }.also {
-                require(it.size <= 2_097_152)
-            }
-        } finally { connection.disconnect() }
-    }
-
-    private fun checkpoint(seconds: Int = 45, predicate: () -> Boolean) {
-        val deadline = SystemClock.elapsedRealtime() + seconds * 1_000L
-        while (SystemClock.elapsedRealtime() < deadline) {
-            try { if (predicate()) return } catch (fault: RpcFault) {
-                if (!fault.isUnknownInfoHash()) throw fault
-            }
-            Thread.sleep(300)
-        }
-        fail("Required real transfer checkpoint missing")
-    }
-
-    /** Same compiled production Add/lifecycle/Remove composables and adapter,
-     * with real publicly sourced metainfo served by a known reachable peer. */
-    private fun controlledJourney(alternative: Boolean) {
-        val label = if (alternative) "magnet2" else "magnet"
-        val remote = remote()
-        val metainfo = controller("/$label.torrent")
-        val preview = TorrentMetainfoReader.preview(metainfo)
-        val hash = preview.infoHashV1
-        reportExactPublicHash(label, hash)
-        val before = runBlocking { remote.listTransfers("main") }
-        val identities = before.map { it.hash.lowercase() }.toSet()
-        val parent = runBlocking { reviewedParent(remote, before) }
-        require(hash !in identities && runBlocking { remote.lookupName(hash) } == null)
-        report("$label-preflight")
-        var link by mutableStateOf("magnet:?xt=urn:btih:$hash&tr=http%3A%2F%2F127.0.0.1%3A1%2Fannounce")
-        var folder by mutableStateOf(parent)
-        var presentation by mutableStateOf(0)
-        var controlRow by mutableStateOf<RemoteTransfer?>(null)
-        var revision by mutableStateOf(0L)
-        var settled by mutableStateOf(false)
-        rule.setContent {
-            MaterialTheme {
-                key(presentation) {
-                    val row = controlRow
-                    if (row == null) VerifiedAddScreen(remote, link, folder,
-                        onMagnet = { link = it }, onDestination = { folder = it },
-                        onBack = {}, onComplete = {}, onMutationStarted = { true }, onMutationSettled = {},
-                        finishInOrderScope = null, environmentLabel = "rTorrent transfer acceptance")
-                    else LazyColumn {
-                        item { TransferLifecycleControl(remote, row, false, { true },
-                            { settled = true }, snapshotRevision = revision) }
-                        item { TransferSessionRemoveControl(remote, row, false, true, { true },
-                            { settled = true }) }
-                    }
-                }
-            }
-        }
-        fun click(text: String) {
-            runCatching { scroll(text) }
-            rule.onNodeWithText(text).performScrollTo().performClick()
-        }
-        fun row(target: String) = runBlocking {
-            remote.listTransfers("main").singleOrNull { it.hash.equals(target, true) }
-        }
-        fun refreshControls(target: String) {
-            val fresh = requireNotNull(row(target))
-            rule.runOnIdle { controlRow = fresh; revision++; settled = false }
-        }
-        fun lifecycle(target: String, start: Boolean) {
-            refreshControls(target)
-            click(if (start) "Start transfer…" else "Stop transfer…")
-            click(if (start) "Confirm start" else "Confirm stop")
-            rule.waitUntil(45_000) { settled }
-            checkpoint { row(target)?.started == start &&
-                runBlocking { remote.readActivity(target).active } == start }
-        }
-        fun remove(target: String) {
-            if (row(target)?.started == true) lifecycle(target, false)
-            refreshControls(target)
-            click("Remove from rTorrent…")
-            click("Confirm remove")
-            rule.waitUntil(45_000) { settled }
-            assertTrue("Production Remove did not independently verify session absence",
-                visible("Verified: this exact infohash is absent from rTorrent's session."))
-            assertNull(runBlocking { remote.lookupName(target) })
-        }
-        fun add(target: String) {
-            rule.waitUntil(30_000) {
-                runCatching { scroll("Custom server folder (optional)") }
-                visible("Using custom Place.")
-            }
-            scroll("Review Add"); click("Review Add")
-            scroll("Confirm: add then start")
-            assertTrue(visible("Infohash: $target"))
-            click("Confirm: add then start")
-            rule.waitUntil(45_000) {
-                runCatching { scroll("Operation outcome") }; visible("Operation outcome")
-            }
-            assertTrue(visible("Verified: added and started on rTorrent."))
-        }
-        var submitted = false
-        var removed = false
-        var placeholderName: String? = null
-        try {
-            report("$label-review")
-            submitted = true
-            add(hash)
-            report("$label-ui-verified")
-            val placeholder = requireNotNull(row(hash))
-            placeholderName = placeholder.name
-            assertEquals(parent, placeholder.directory)
-            assertTrue(placeholder.started)
-            assertEquals(true, runBlocking { remote.readActivity(hash).active })
-            report("$label-registered")
-            val peer = runBlocking { remote.peerSource(hash) }
-            val expectedHost = if (argument("chunks_disposable") == "authorized") "127.0.0.1" else "5.79.112.219"
-            require(peer.boundAddress == expectedHost ||
-                (expectedHost == "127.0.0.1" && peer.rpcHost == expectedHost))
-            controller("/$label/metadata", peer.listenPort)
-            checkpoint(90) {
-                val observed = row(hash)
-                observed?.name == preview.name && observed.sizeBytes == preview.sizeBytes &&
-                    (runBlocking { remote.call("d.is_meta", listOf(hash)) } as? Number)?.toInt() == 0
-            }
-            report("$label-metadata")
-            controller("/$label/payload", peer.listenPort)
-            checkpoint(90) {
-                val traffic = runBlocking { remote.readTrafficSample(hash) }
-                traffic.active == true && (traffic.peers ?: 0L) > 0L &&
-                    (traffic.receivedBytes ?: 0L) > 0L && (traffic.verifiedBytes ?: 0L) > 0L &&
-                    traffic.expectedBytes == preview.sizeBytes
-            }
-            reportTraffic(label, "initial", runBlocking { remote.readTrafficSample(hash) })
-            report("$label-peer-progress"); report("$label-bytes-verified")
-            rule.waitUntil(15_000) {
-                runCatching { scroll("Operation outcome") }
-                visible("Payload:") && visible("Downloading payload from peers.")
-            }
-            report("$label-ui-progress")
-            val full = requireNotNull(row(hash))
-            assertEquals(if (preview.fileCount > 1) "$parent/${preview.name}" else parent, full.directory)
-            assertTrue(full.completedBytes in 1 until full.sizeBytes)
-            lifecycle(hash, false)
-            report("$label-stopped")
-            val stopped = runBlocking { remote.readTrafficSample(hash) }
-            lifecycle(hash, true)
-            controller("/$label/resume", peer.listenPort)
-            checkpoint(90) {
-                val resumed = runBlocking { remote.readTrafficSample(hash) }
-                (resumed.receivedBytes ?: 0L) > (stopped.receivedBytes ?: 0L) &&
-                    (resumed.verifiedBytes ?: 0L) > (stopped.verifiedBytes ?: 0L)
-            }
-            reportTraffic(label, "resumed", runBlocking { remote.readTrafficSample(hash) })
-            report("$label-restarted"); report("$label-resumed-traffic")
-            remove(hash)
-            removed = true
-            assertEquals(identities, runBlocking { remote.listTransfers("main") }.map { it.hash.lowercase() }.toSet())
-            report("$label-ui-controls"); report("$label-passed")
-        } finally {
-            if (submitted && !removed) {
-                // Error-only recovery remains exact-hash scoped. Never depend
-                // on the original name while rTorrent still holds a .meta job.
-                val current = row(hash)
-                if (current != null && current.name in setOf(preview.name, placeholderName) &&
-                    current.directory in setOf(parent, "$parent/${preview.name}")) {
-                    if (current.started) runBlocking { remote.setStarted(hash, false) }
-                    checkpoint { row(hash)?.started == false && runBlocking { remote.readActivity(hash).active } == false }
-                    val fresh = requireNotNull(row(hash))
-                    check(runBlocking { remote.eraseFromSession(hash, fresh.name, fresh.directory) } is SessionEraseOutcome.VerifiedRemoved)
-                }
-                report("$label-uncertain")
-            }
-        }
-        if (alternative) {
-            // Negative real-server control in the same installed test, keeping
-            // the full native-suite identities and intentional skip baseline.
-            val run = requireNotNull(argument("chunks_acceptance_run"))
-            require(run.matches(Regex("[0-9]{5,20}")))
-            val negative = MessageDigest.getInstance("SHA-1").digest("chunks-peerless-$run".toByteArray())
-                .joinToString("") { "%02x".format(it.toInt() and 255) }
-            require(runBlocking { remote.lookupName(negative) } == null)
-            InstrumentationRegistry.getInstrumentation().sendStatus(2, Bundle().apply {
-                putString("chunks_real_add_hash_negative", negative) })
-            rule.runOnIdle {
-                link = "magnet:?xt=urn:btih:$negative&tr=http%3A%2F%2F127.0.0.1%3A1%2Fannounce"
-                controlRow = null; presentation++
-            }
-            try {
-                add(negative)
-                rule.waitUntil(15_000) {
-                    runCatching { scroll("Operation outcome") }
-                    visible("Fetching magnet metadata. Waiting for peers.")
-                }
-                assertFalse(visible("Downloading payload from peers."))
-                assertFalse(visible("Download complete."))
-                val traffic = runBlocking { remote.readTrafficSample(negative) }
-                assertEquals(0L, traffic.receivedBytes)
-                assertEquals(0L, traffic.verifiedBytes)
-                assertEquals(1, (runBlocking { remote.call("d.is_meta", listOf(negative)) } as Number).toInt())
-            } finally {
-                if (row(negative) != null) remove(negative)
-                assertNull(runBlocking { remote.lookupName(negative) })
-            }
-            assertEquals(identities, runBlocking { remote.listTransfers("main") }.map { it.hash.lowercase() }.toSet())
-            InstrumentationRegistry.getInstrumentation().sendStatus(2, Bundle().apply {
-                putString("chunks_real_add_negative", "peerless-ui-and-cleanup-passed") })
-        }
-    }
-
     @Test fun installedTorrentFileAddReceivesVerifiedPeerBytes() = journey(true)
-    @Test fun installedMagnetAddResolvesMetadataAndReceivesVerifiedPeerBytes() {
-        if (argument("chunks_controlled_peer") == "authorized") controlledJourney(false)
-        else journey(false)
-    }
-    @Test fun installedAlternateMagnetResolvesMetadataAndReceivesVerifiedPeerBytes() {
-        if (argument("chunks_controlled_peer") == "authorized") controlledJourney(true)
-        else journey(false, alternative = true)
-    }
+    @Test fun installedMagnetAddResolvesMetadataAndReceivesVerifiedPeerBytes() = journey(false)
+    @Test fun installedAlternateMagnetResolvesMetadataAndReceivesVerifiedPeerBytes() =
+        journey(false, alternative = true)
 }
