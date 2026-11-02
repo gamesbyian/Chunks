@@ -1,5 +1,10 @@
 # Unified local and remote experience (owner contract, 2026-10-28)
 
+## Transfer sharing across environments (planned)
+
+Use the same Details > Share interface for phone and native rTorrent profiles, with visible source color/name in Combined views. Magnet sharing uses available infohash; .torrent file sharing requires validated metadata access and never assumes ruTorrent. See [TRANSFER-SHARING](TRANSFER-SHARING.md).
+
+
 **Normative principle:** Chunks is one torrent manager with interchangeable local-phone and rTorrent-backed environments. User-facing workflows, layout, terminology, information hierarchy, navigation and control placement MUST be shared wherever the verified capabilities allow. A divergence requires a concrete engine/server/security/storage capability reason; different implementation technologies alone are not an excuse to create separate applications.
 
 ## Environment colours and combined Transfers views (owner contract, 2026-10-29)
