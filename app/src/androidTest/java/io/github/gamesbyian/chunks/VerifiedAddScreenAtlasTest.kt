@@ -176,7 +176,7 @@ class VerifiedAddScreenAtlasTest {
         rule.onNodeWithText("Confirm removal from rTorrent").assertExists()
         rule.onNodeWithText("Infohash: " + "ab".repeat(20)).assertExists()
         rule.onNodeWithText("Current directory: /home/dev/chunks-public-test").assertExists()
-        rule.onNodeWithText("Confirm remove").assertExists()
+        rule.onNodeWithText("Remove transfer, keep data").assertExists()
         save("remove-confirmation-real-compose")
     }
 
