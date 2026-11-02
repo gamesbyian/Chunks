@@ -118,6 +118,7 @@ def inspect(path, root):
     self_path = path.relative_to(root).as_posix()
     push_scope = event_block(on, "push")
     pr_scope = event_block(on, "pull_request")
+    pr_target_scope = event_block(on, "pull_request_target")
     def path_entries(block):
         return set(re.findall(r"(?m)^\s+-\s+['\"]?(\.github/workflows/[^'\"\s]+)", block))
     self_on_push = self_path in path_entries(push_scope)
@@ -161,7 +162,8 @@ def inspect(path, root):
         "self_trigger_on_pr": self_on_pr,
         "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
         "events": events, "jobs": jobs,
-        "pr_paths_filter": bool(re.search(r"(?m)^    paths(?:-ignore)?:", on)),
+        "pr_paths_filter": any(re.search(r"(?m)^    paths(?:-ignore)?:", scope)
+                               for scope in (pr_scope, pr_target_scope)),
         "concurrency": concurrent,
         "cancel_in_progress": bool(re.search(
             r"(?m)^\s*cancel-in-progress:\s*(?:true|[$])", clean)),
