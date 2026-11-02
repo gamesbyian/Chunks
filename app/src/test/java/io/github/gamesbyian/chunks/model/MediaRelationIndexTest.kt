@@ -56,7 +56,7 @@ class MediaRelationIndexTest {
         assertEquals(0, index.similar(wood, setOf(wood, stone, phone), sameEnvironmentOnly = true).size)
         assertEquals(listOf(stone), index.similar(wood, setOf(wood, stone)).map { it.key })
         assertTrue(index.similar(wood, setOf(stone)).isEmpty()) // privacy-locked source
-        assertEquals(MediaRelationKind.SAME_WORK,
+        assertEquals(MediaRelationKind.SAME_TORRENT,
             index.similar(wood, setOf(wood, stone)).single().strongestRelation)
     }
 
@@ -114,6 +114,20 @@ class MediaRelationIndexTest {
             MediaTransferMembers(c,listOf(member("Carrie",topics=setOf("topic:artificial-intelligence"))))
         ))
         assertEquals(listOf(c),index.similar(a,setOf(a,b,c)).map { it.key })
+    }
+
+    @Test fun exactTorrentAcrossEnvironmentsMatchesWithoutMediaMetadata() {
+        val wood=key("Wood",99); val stone=key("Stone",99); val unrelated=key("Phone",100)
+        val index=MediaRelationIndex.build(listOf(
+            MediaTransferMembers(wood,emptyList()),
+            MediaTransferMembers(stone,emptyList()),
+            MediaTransferMembers(unrelated,emptyList())
+        ))
+        assertEquals(listOf(stone),index.similar(wood,setOf(wood,stone,unrelated)).map { it.key })
+        assertEquals(MediaRelationKind.SAME_TORRENT,
+            index.similar(wood,setOf(wood,stone)).single().strongestRelation)
+        assertTrue(index.similar(wood,setOf(wood,stone),sameEnvironmentOnly=true).isEmpty())
+        assertTrue(index.similar(wood,setOf(wood)).isEmpty())
     }
 
     @Test fun invalidIdentifiersOrDuplicateMembersFailClosed() {
