@@ -12,7 +12,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasSetTextAction
-import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -54,8 +53,10 @@ class ClearableTransferSearchFieldInstrumentedTest {
         rule.waitForIdle()
         assertEquals("", query)
         rule.onNodeWithContentDescription("Clear search").assertDoesNotExist()
-        rule.onNode(hasSetTextAction()).assert(
-            SemanticsMatcher.expectValue(SemanticsProperties.Focused, true)
+        assertEquals(
+            true,
+            rule.onNode(hasSetTextAction()).fetchSemanticsNode()
+                .config[SemanticsProperties.Focused]
         )
         rule.onNode(hasSetTextAction()).performTextInput("Debian")
         assertEquals("Debian", query)
