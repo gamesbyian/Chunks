@@ -1,5 +1,10 @@
 # Chunks canonical product contract
 
+## Optional Expository Transfer integration (planned, not shipped)
+
+With explicit linking of an exact Chunks server environment and an Expository Transfer FTP/FTPS/SFTP root, Chunks should make a read-only, credential-free, permission-protected snapshot of observed torrent file membership and state available locally to Expository. This enables visible seeding/downloading/stopped labels and guarded cleanup/Smart Merge without server-side file markings, continuous polling or assuming unknown files are safe. Identity/path ambiguity and incomplete/stale snapshots must be conspicuous. See [binding future integration design](EXPOSITORY-FILE-ASSOCIATIONS.md); current real-transfer and safety gates retain priority.
+
+
 ## Existing torrent payloads in a chosen directory (binding owner correction, 2026-10-31)
 
 The chosen or accepted **Save to** directory permits ordinary BitTorrent piece verification, reuse and replacement of existing regular files at the exact torrent-declared relative paths. An unfamiliar same-name file is not a reason to block a download or mandate an exclusive proprietary writer. Do not affect unrelated siblings, traverse/escape the selected Place, follow payload symlinks or delete source files through a job-only Remove. Keep concurrent writer exclusions and true Android access/permission integrity. Existing data is checked against actual torrent hashes before Chunks claims verification or seeding. [Normative collision and acceptance policy](LOCAL-TORRENT-COLLISION-POLICY.md) · [D-LOCAL-COLLISIONS-20261031](DECISIONS.md).
