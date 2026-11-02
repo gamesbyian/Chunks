@@ -1,5 +1,8 @@
 # Chunks documentation index
 
+- [Transfer sharing](TRANSFER-SHARING.md): planned local/rTorrent magnet and conditional .torrent metadata export, UX, security and real-client acceptance.
+
+
 - [External destination delivery](EXTERNAL-DESTINATION-DELIVERY.md): optional verified local-torrent delivery to Google Drive/SAF or independently authorized FTP-family storage, staged copy, recovery and no implicit cloud seeding (planned).
 
 
