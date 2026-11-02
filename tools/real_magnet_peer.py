@@ -93,7 +93,8 @@ def prepare(root):
             "hash": str(ti.info_hashes().v1), "name": ti.name(), "size": total,
             "prefix_bytes": budget, "source": source, "license": license_text,
             "metainfo_sha256": hashlib.sha256(raw).hexdigest(),
-            "peer_connections": 0, "payload_uploaded_bytes": 0,
+            "peer_connections": 0, "peer_disconnects": 0,
+            "peer_error_alerts": 0, "payload_uploaded_bytes": 0,
             "stages": [], "native_verified_bytes": 0,
         }
     return fixtures
@@ -175,6 +176,10 @@ class Peer:
                     for alert in session.pop_alerts():
                         if isinstance(alert, lt.peer_connect_alert):
                             self.fixtures[label]["peer_connections"] += 1
+                        elif isinstance(alert, lt.peer_disconnected_alert):
+                            self.fixtures[label]["peer_disconnects"] += 1
+                        elif isinstance(alert, lt.peer_error_alert):
+                            self.fixtures[label]["peer_error_alerts"] += 1
 
     def close(self):
         self.stopping.set()
