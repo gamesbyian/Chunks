@@ -72,8 +72,21 @@ def validate(path, magnets_path, allow_partial=False):
             raise ValueError(f"Unexpected source at {i}")
         sources[source.hostname] += 1
         for tr in params.get("tr", []):
+            # urlsplit silently removes embedded CR/LF/TAB; check the
+            # decoded raw parameter before normalization or a bad tracker
+            # may pass validation and behave differently in another client.
+            if (not 1 <= len(tr) <= 2048
+                    or any(ord(char) < 32 or ord(char) == 127 for char in tr)):
+                raise ValueError(f"Unsafe tracker text at {i}")
             p = urllib.parse.urlsplit(tr)
-            if p.scheme not in ("http", "https", "udp") or not p.hostname or p.username or p.password or p.query or p.fragment or p.path != "/announce":
+            try:
+                port = p.port
+            except ValueError:
+                raise ValueError(f"Invalid tracker port at {i}") from None
+            if (p.scheme not in ("http", "https", "udp") or not p.hostname
+                    or p.username or p.password or p.query or p.fragment
+                    or p.path != "/announce" or port == 0
+                    or (p.scheme == "udp" and port is None)):
                 raise ValueError(f"Unsafe tracker at {i}")
             trackers.add(p.hostname)
     print(json.dumps({"count": len(fixtures), "sources": sources,
