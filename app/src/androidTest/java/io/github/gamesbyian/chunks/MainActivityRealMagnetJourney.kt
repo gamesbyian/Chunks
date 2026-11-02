@@ -133,14 +133,13 @@ internal class MainActivityRealMagnetJourney(
             click("+ Add torrent")
             rule.waitUntil(30_000) { visible("Add a download to this server") }
             report("chunks_real_add_app_stage", "add-open")
-            // Live hosts and explicitly public-discovery tests keep every
-            // original upstream tracker. Disposable controlled-peer tests
-            // retain a deliberately unreachable tracker to isolate and
-            // verify the real supplied libtorrent metadata/payload path.
-            // The peerless negative also remains intentionally unreachable.
-            val link = if (label != null && (publicDiscovery || !disposable))
+            // The real Seedhost must receive the actual publisher magnet, including
+            // its original tracker list. The disposable controlled test keeps
+            // the deliberate dead tracker to isolate the supplied peer.
+            val link = if ((publicDiscovery || !disposable) && label != null)
                 String(controller("/$label.magnet"), Charsets.UTF_8)
                 else "magnet:?xt=urn:btih:$hash&tr=http%3A%2F%2F127.0.0.1%3A1%2Fannounce"
+            if (!disposable && label != null) require("&tr=" in link) { "Original source trackers missing" }
             require(StoppedRemoteAddPlan.fromMagnet(link, parent).expectedInfoHash == hash)
             type("Magnet link", link)
             report("chunks_real_add_app_stage", "magnet-entered")
@@ -191,10 +190,9 @@ internal class MainActivityRealMagnetJourney(
                 stage(label, "ui-verified")
                 val placeholder = requireNotNull(row(hash))
                 assertTrue(placeholder.directory in setOf(parent, "$parent/${preview.name}"))
-                // Genuine public trackers may deliver metadata before this
-                // immediate readback. Both 1 (fetching) and 0 (resolved)
-                // are valid; the original name/size and real pieces must
-                // still pass independently below.
+                // Public trackers may resolve metadata before this read.
+                // Both states are transiently valid; exact original metadata,
+                // pieces and resumed bytes are still mandatory below.
                 assertTrue(
                     (runBlocking { remote.call("d.is_meta", listOf(hash)) } as Number)
                         .toInt() in 0..1
@@ -243,17 +241,16 @@ internal class MainActivityRealMagnetJourney(
                 val completeBeforeRestart = publicDiscovery && stopped.verifiedBytes == stopped.expectedBytes
                 if (!completeBeforeRestart) {
                     try {
-                        // Reopening a partially populated torrent can require
-                        // hashing and a fresh tracker announce. Never equate
-                        // merely active=true with resumed data transfer.
+                        // Reopening a partially populated torrent may require
+                        // hashing and tracker discovery. Merely active=true
+                        // must not be accepted as actual resumed traffic.
                         await(180) {
                             val sample = runBlocking { remote.readTrafficSample(hash) }
                             (sample.receivedBytes ?: 0L) > (stopped.receivedBytes ?: 0L) &&
                                 (sample.verifiedBytes ?: 0L) > (stopped.verifiedBytes ?: 0L)
                         }
                     } finally {
-                        // Retain the exact post-restart peer/rate/byte sample
-                        // even when the bounded resume test fails.
+                        // Persist peer/rate/received/verified sample on failure.
                         traffic(label, "resumed", runBlocking { remote.readTrafficSample(hash) })
                     }
                 } else traffic(label, "resumed", runBlocking { remote.readTrafficSample(hash) })

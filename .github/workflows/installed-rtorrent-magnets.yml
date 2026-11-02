@@ -55,7 +55,7 @@ jobs:
             (github.ref == 'refs/heads/main' && inputs.apply && github.run_attempt == 1))) ||
           (github.event_name == 'push' && github.ref == 'refs/heads/main' &&
            github.run_attempt == 1 &&
-           contains(github.event.head_commit.message, 'one-time original-tracker Seedhost installed magnet proof 20261102')) }}
+           contains(github.event.head_commit.message, 'one-time post-early-metadata public Seedhost magnet proof 20261102')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 24
     env:
