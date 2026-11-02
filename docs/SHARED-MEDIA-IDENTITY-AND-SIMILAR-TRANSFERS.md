@@ -30,3 +30,75 @@ Reuse each environment's named user-defined palette colour in a narrow visible a
 - Never rename, move, publish, remove or modify active seeding paths merely on normalization/identification; existing rename capability and transactional proof gates apply.
 
 **Priority:** product/spec integration now, implementation behind current P0 actual .torrent/magnet Add/Start verification and durability work. Acceptance is evidence-based on installed Android and real supported remote environments.
+
+
+## Typed local media graph: shared across Chunks smart systems
+
+**Authority:** This section owns relationship semantics and scoring. [MEDIA-PROVIDER-REGISTRY](MEDIA-PROVIDER-REGISTRY.md) is the researched provider adapter matrix; [TRANSFER-ARTWORK](TRANSFER-ARTWORK.md) owns existing external-enrichment privacy, artwork and provider fallback. The graph is an **incrementally populated SQLite index over Chunks' already-known, authorized transfer inventory**, not a new torrent catalog, remote media scanner, backend service or LLM.
+
+### Canonical entity kinds and ID boundaries
+
+- `TransferInstance` has immutable `environmentId + profileId + infohashVersion/hash` identity and last-observed freshness. The same infohash on two servers produces **two TransferInstances**, and no source is implicitly current while disconnected.
+- `TransferContentMember` models an individual file, episode, issue, chapter, disc/track, volume, item or uncertain member within a transfer. It binds the stable file index/path evidence to a `MediaEntity`, not directly to arbitrary filename strings. A 100-issue comic folder is one transfer with many constituent works, not one fictional single issue.
+- `MediaEntity` kinds: `work` (abstract novel, film, original TV show, musical work, comic story), `expression/adaptation` (TV, movie, audiobook etc), `edition/release` (cut, format, language, book ISBN, comic issue/variant, album release), `series`, `season`, `episode`, `comic_issue`, `comic_story`, `chapter`, `album`, `track/recording`, `game`, `software_release`, `periodical_issue`, `person`, `group/organization`, `character`, `topic`, `event`, `place`. Keep subtype extensible; never coerce book, film and TV title with the same name into one identity.
+- `ExternalIdentifier` binds **(provider, entity type, raw ID)** to exactly one confirmed local entity, with confidence, verification state, retrieval version and provenance. Numeric TMDB TV-show ID 42 cannot collide with TMDB person ID 42; MB recording UUID cannot be treated as an MB release UUID. Wikidata QID is an optional bridge, not a universal truth source.
+- `Evidence` records source namespace, assertion path/record, observation time, confidence/review status, legal/persistence constraints and any scope constraints. `PersonCredit` is `personId + role + creditedWorkId + attribution/provenance` so actor, screenwriter, producer, composer, illustrator, script writer etc are different.
+- `Relation` is a directed typed `subject + predicate + object + evidence[] + confidence` with optional temporal interval and edition/issue/role qualifiers. Maintain inverse indexes; distinguish verified, inferred, ambiguous, contradicted and user-confirmed. Example predicates: `PART_OF, EPISODE_OF, ISSUE_OF, MEMBER_OF_COLLECTION, SEQUEL_OF, ADAPTATION_OF, BASED_ON, BIOGRAPHICAL_SUBJECT, PERFORMED_BY, CREDITED_WRITER, CREDITED_ACTOR, DIRECTED_BY, SAME_WORK_AS, VARIANT_OF, COVER_OF, TOPIC_OF, SET_IN, REMAKE_OF`. No symmetric claim when predicate is directional; derived shared-actor/shared-topic edges can be computed from existing edges rather than stored repeatedly.
+
+SQLite sketch (logical, no demanded filenames): `entities(pk,kind,label,locale,...)`, `external_ids(provider,kind,raw_id,entity_pk,status,...)`, `transfer_members(env_id,profile_id,hash,file_id,entity_pk,coverage_status,...)`, `credits(work_pk,person_pk,role,issue_range,source_id,...)`, `relations(subject_pk,predicate,object_pk,evidence_pk,confidence,...)`, `evidence(source,field_path,observed_at,license,...)`, `normalized_tokens(raw_object_key,version,tokens,spans,...)`, plus **indexes** on identifiers, member/source keys, relation subject/object/predicate and credit person/role. FTS can assist candidate retrieval but must not create identity by title alone.
+
+### Discovery pipeline and matching discipline
+
+1. From the normal shared transfer observation, asynchronously parse transfer name, file tree names and safely accessible embedded tags. Keep **lossless raw strings and token spans**; build a deterministic `MediaNameInterpretation` once per version. Handle Unicode normalization, punctuation, scripts, transliteration candidates, number/title ambiguity, release group, codecs, volumes, multiple episodes/issue ranges without stripping original data.
+2. Classify likely content and member granularity; parse **explicit ranges** into candidate constituent members with bounded expansion (do not turn a year range or issue range into a certainty that every issue exists). Prefer exact user-confirmed IDs, native embedded IDs, hashes/ISBN/DOI/ISSN/MBIDs, then already cached provider records; otherwise sanitized title candidates subject to **existing consent**.
+3. Provider-specific adapters normalize external records to typed entities/credits/edges and field-by-field provenance. Reconcile identities through **exact crosswalk IDs**, multiple independent identifiers, or strong corroborating name+type+year+context; identical spelling is never sufficient to merge people, characters or editions. Ambiguity must survive into matching.
+4. On new/edited metadata, incrementally update only affected members, entities and inverse indexes in an independent derived-data transaction. Keep media cache lifecycle distinct from transfer engine/session state. Throttle/enqueue external lookups with quotas; opening Similar Transfers does not initiate external network traffic, scan a seedbox or re-read large payloads.
+5. Query the neighborhood of the selected transfer's identified members and their indexed edges. Candidate generation is bounded by indexed exact work/series/creator/topic membership; do **not** compute every pair among all transfers. A two-hop edge is permitted only when its intervening node is meaningful (e.g. a person credited for both, or a parent work with two adaptations). Do not recursively recommend through generic `film`, `fiction`, `actor` or `music` categories or arbitrary chains.
+6. Deduplicate **candidate results by exact transfer instance** while keeping multiple source environments and different torrent hashes separate. Union several evidence paths into an explainable label (e.g. `Same writer: Peter David`, `Both AI stories`, `Both music biographies`). User's manually corrected identities take precedence without changing files or torrent metainfo.
+7. Respect disabled Similar Transfers, per-environment-only scope, selected environment subsets where explicitly intended, private/locked content, user exclusion and source freshness. An offline/stale transfer may be visible **as cached**, never as definitely active.
+
+### Confidence, interestingness and explanations
+
+Store distinct scores for **entity resolution confidence**, **relationship evidence confidence**, **collection coverage/confidence**, and **user-facing relevance**. A verified shared writer ID can have high evidence confidence but lower default relevance than the next episode of the same show. High-frequency shared contributors (e.g. actor credited in hundreds of works) and generic topic tags should receive less weight than precise adaptations, a specific credited writer, or an exact biographical subject. One source statement is not two independent corroborations. A user can optionally view 'Why related?' with source + evidence granularity, and correct/ignore an erroneous association.
+
+Rank by semantic class then relevance, with confidence as an eligibility gate: exact same torrent in another environment; same work/different edition; next/nearby episodes/issues; adaptation/sequel/series; specific cross-format subject, maker or credited creative role; common subjects/themes; broad cast/genre overlap. **No fabricated numeric certainty**. Weak/generic-only results do not populate the default five; optional `Explore related` can expose less direct, clearly labelled connections. When offline, cached derived graph works with accurate age/limits.
+
+### Collections, issue-level evidence and proportional aggregation
+
+A transfer titled `The Incredible Hulk (1987–1998)` suggests a collection spanning that period; it **does not prove** contents, exclusive authorship or completeness. First enumerate known CBZ/CBR filenames, ComicInfo.xml, issue numbers, dates and other safe metadata. Then query permitted issue-level catalog records. Attribute `Peter David (writer)` to the **verified issue/story subset**, preserving variant/reprint distinctions and unspecified credits. Maintain `coveredIssues / identifiedIssues` separately from `identifiedIssues / claimedRange`; missing issues and unknown credits must not be counted as Peter David material. A collection-level connection is ranked according to supported member proportion, not invented 100% coverage. Do not query all 137 issues eagerly on a metered connection; bounded batched on-demand fetches and negative caching.
+
+For the canonical cross-media fixture:
+`Babylon 5` **S02E07 `Soul Mates`** → validated episode-specific **writer** credit → verified local `Person` **Peter David** → validated comic **script/writer** credits for *Incredible Hulk* issues actually present in the 1987–1998 transfer → Similar Transfers relationship **"Shared writer: Peter David"**. Expected strong match only if **both role credits are exposed by approved providers and resolved to the same person**, not merely a high text-name similarity. Otherwise preserve `likely / needs confirmation` and do not invent a strong link. Source fact exemplars: https://www.tvmaze.com/episodes/43454/babylon-5-2x07-soul-mates ; https://www.marvel.com/comics/issue/9142 ; https://www.comics.org/issue/42860/ .
+
+### Other cross-domain golden paths
+
+| Left | Right | Minimum supporting evidence | Expected relation |
+| --- | --- | --- | --- |
+| *Walk the Line* film | Johnny Cash FLAC albums | Film biographical subject = resolved Johnny Cash person; album recording/performer = same person ID | `About the artist` / `Artist featured`; don't infer from title alone |
+| *Walk the Line* | *Ray* | Both confidently classified as musical biographical films, optionally with specific biographical subject and profession | `Both music biographies` (thematic, not same work) |
+| *Ray* | *Stealth* | Identical credited actor person ID Jamie Foxx on both films | `Featuring Jamie Foxx` |
+| *Stealth* | *Her* | Verified high-specificity `artificial intelligence` topic/theme in both, not generic sci-fi-only overlap | `Artificial intelligence theme` |
+| *Walk the Line* | *Her* | Identical cast person ID Joaquin Phoenix | `Featuring Joaquin Phoenix` |
+| *Carrie* novel | *Carrie* TV adaptation | Verified adapted-from/source-work edge or reliable crosswalk, different media/edition entities | `Adaptation of the same work` |
+| *Babylon 5* S02E07 | Hulk 1987–1998 collection | Episode writer + at least one verified member issue writer + cross-provider same person | `Shared writer: Peter David`, with subset coverage disclosed |
+
+Negative controls: distinct unrelated people named Peter David; generic AI keyword in metadata unrelated to plot; `Ray` title collision; Hulk issues outside the credited interval; comic-collection title matching issue period without actual files; competing episode ordering; two separate remakes with same title; sequel numbers in release technical tokens; service returns only writer *text* with no corroborating identifier; private locked server not leaking its titles via unrelated environment.
+
+### UX and acceptance contract
+
+- Collapsed normal view is compact and transfer-focused, with environment-colour accent **and visible name**, relationship explanation, progress/status and exact scoped navigation. No suggestions if zero eligible matches; no perpetual spinner on provider outage. Options → Transfer Details: Similar Transfers on/off, all configured active environments vs same environment, default five then Show all; secondary `Explore related` action can show weaker relationships without cluttering core details. Screen-reader labels include relationship, environment and stale status.
+- Opening details is an indexed local query **without network I/O**; reconciliation is asynchronous and bounded with battery/data budgets. Define measurable instrumentation acceptance on a representative collection, e.g. 10k transfer instances/100k member-entity edges: 95th percentile cached suggestion query under **100 ms** on a reference mid-range Android device after warm DB, no O(N²) startup scan and no noticeable list scrolling regression. This is a *target to measure*, not a claim of current performance.
+- Provider tests use small legal scrubbed recorded fixtures: confirmed success, missing crew, absent comic credits, duplicate character/person names, mismatch and ambiguity; license and opt-in; bad cache and version migrations; manual overrides; 404/429/503; physical API29/API35 accessibility and offline. No need for a full scan of distant provider catalogs.
+- No media inferences authorize physical rename, move, deletion, share, cross-seeding or engine commands. Smart/Bulk Rename receive identical parsed/identity evidence but require their own preview, explicit target and unchanged transactional capability checks. A low-confidence suggestion must never mutate bytes.
+
+## Implementation sequencing (post-P0)
+
+**Stage A:** Freeze canonical typed DTOs, provenance, parser/identifier namespaces, schema migrations and indexed inventory integration; create deterministic multilingual, collection and collision fixtures; prove no torrent or path mutations.
+
+**Stage B:** Implement a low-cost, fully offline Similar Transfers baseline using strong structural relations, episode/issue structure and cached metadata. Run benchmark and cross-environment accessibility tests.
+
+**Stage C:** Add provider adapters in the [provider registry](MEDIA-PROVIDER-REGISTRY.md) by legally cleared consented category, begin with usable episode cast/crew and comics issue credits plus Wikidata crosswalk; capture actual response fixtures, terms and cost. Integrate existing artwork flows, not a second media lookup queue.
+
+**Stage D:** Add cross-format relationship traversal, explainability, collection coverage and user corrections; integrate shared identity facts with Smart/Bulk Rename and Plex repair, maintaining smallest-change and action safety. Explore related UI only after confidence/precision metrics support it.
+
+All stages are **planned/unimplemented** until exact-source code, device/API, provider-contract and positive/negative evidence are recorded in SPEC-COVERAGE and QUALITY-LEDGER.
