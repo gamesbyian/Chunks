@@ -7,6 +7,7 @@ on:
   pull_request:
     paths:
       - "app/src/test/java/io/github/gamesbyian/chunks/interop/SeedhostExactMagnetPeerBytesOnceTest.kt"
+      - "tools/parse_real_magnet_peer_receipt.py"
       - ".github/workflows/seedhost-exact-magnet-peer-once.yml"
   push:
     branches: [main]
@@ -57,7 +58,7 @@ jobs:
            (github.event_name == 'push' &&
             contains(github.event.head_commit.message, 'one-time controlled real magnet peer proof (#1013)'))) }}
     runs-on: ubuntu-latest
-    timeout-minutes: 28
+    timeout-minutes: 22
     env:
       CHUNKS_HOST_PEER_MAGNET_PROOF: authorized
       CHUNKS_LIVE_RUTORRENT_URL: "https://ianseeds.wood.seedhost.eu/rutorrent/"
@@ -76,15 +77,16 @@ jobs:
           if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
             ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
           fi
-      - name: Real magnet metadata extension and peer piece acceptance
+      - name: Run real BEP9 magnet and preserve a private Gradle status
         env:
-          CHUNKS_LIVE_RUTORRENT_USER: ${{ secrets.rtorrent_user }}
-          CHUNKS_LIVE_RTORRENT_PASS: ${{ secrets.rtorrent_pass }}
+          CHUNKS_LIVE_RTORRENT_USER: ${ secrets.rtorrent_user }}
+          CHUNKS_LIVE_RTORRENT_PASS: ${ secrets.rtorrent_pass }}
+          CHUNKS_MAGNET_RECEIPT_PATH: ${ runner.temp }}/chunks-magnet-peer-stages.txt
         run: |
           set -euo pipefail
           test "$GITHUB_REF" = "refs/heads/main"
           test "$GITHUB_RUN_ATTEMPT" = 1
-          test -n "$CHUNKS_LIVE_RUTORRENT_USER"
+          test -n "$CHUNKS_LIVE_RTORRENT_USER"
           test -n "$CHUNKS_LIVE_RTORRENT_PASS"
           private_log=$(mktemp)
           trap 'rm -f "$private_log"' EXIT
@@ -94,57 +96,21 @@ jobs:
             > "$private_log" 2>&1
           gradle_status=$?
           set -e
-          python3 - "$gradle_status" <<'PY'
-          import pathlib, re, sys, xml.etree.ElementTree as ET
-          report = pathlib.Path("app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.interop.SeedhostExactMagnetPeerBytesOnceTest.xml")
-          if not report.is_file():
-              print("CHUNKS_REAL_MAGNET_PEER: receipt=missing")
-              sys.exit(1)
-          try:
-              root = ET.parse(report).getroot()
-              lines = [line for node in root.findall(".//system-out") for line in (node.text or "").splitlines()]
-          except (OSError, ET.ParseError):
-              print("CHUNKS_REAL_MAGNET_PEER: receipt=invalid")
-              sys.exit(1)
-          allowed = {"preflight", "destination", "peer", "seed-ready", "added-started",
-                     "started", "metadata-verified", "bytes-verified", "stopped", "removed",
-                     "inventory-restored", "manual-reconciliation-required"}
-          stages, identity = [], None
-          for line in lines:
-              if line.startswith("CHUNKS_HOST_BYTES_STAGE: "):
-                  value = line.partition(": ")[2]
-                  if value in allowed:
-                      stages.append(value)
-              elif line.startswith("CHUNKS_HOST_BYTES_HASH: "):
-                  value = line.partition(": ")[2]
-                  if re.fullmatch(r"[a-f0-9]{40}", value):
-                      identity = value
-          # Read fixed, non-sensitive failure categories only.
-          allowed_errors = {"AssertionError", "IllegalStateException",
-                            "IllegalArgumentException", "SocketTimeoutException",
-                            "ConnectException", "IOException"}
-          categories = []
-          for testcase in root.findall(".//testcase"):
-              failure = testcase.find("failure")
-              if failure is None:
-                  failure = testcase.find("error")
-              if failure is not None:
-                  category = failure.attrib.get("type", "").rsplit(".", 1)[-1]
-                  categories.append(category if category in allowed_errors else "OtherFailure")
-          print("CHUNKS_REAL_MAGNET_PEER: tests=" + str(root.attrib.get("tests", "unknown")) +
-                " failures=" + str(root.attrib.get("failures", "unknown")) +
-                " errors=" + str(root.attrib.get("errors", "unknown")) +
-                " skipped=" + str(root.attrib.get("skipped", "unknown")) +
-                " failure_categories=" + ",".join(categories[:4]))
-          if identity:
-              print("CHUNKS_REAL_MAGNET_PEER: synthetic_hash=" + identity)
-          print("CHUNKS_REAL_MAGNET_PEER: last_stage=" + (stages[-1] if stages else "unavailable"))
-          accepted = (int(sys.argv[1]) == 0 and root.attrib.get("tests") == "3" and
-                      all(root.attrib.get(key) == "0" for key in ("failures", "errors", "skipped")) and
-                      "metadata-verified" in stages and "bytes-verified" in stages and
-                      stages[-1:] == ["inventory-restored"])
-          if not accepted:
-              print("CHUNKS_REAL_MAGNET_PEER: no_acceptance manual_exact_hash_reconciliation_if_needed")
-              sys.exit(1)
-          print("CHUNKS_REAL_MAGNET_PEER: PASS real_BEP9_metadata=true received_and_verified_peer_pieces=true exact_session_removed=true unrelated_inventory_untouched=true")
-          PY
+          printf '%s\n' "$gradle_status" > "$RUNNER_TEMP/chunks-magnet-peer-gradle-exit.txt"
+          echo "CHUNKS_REAL_MAGNET_PEER: gradle_test_process_completed=true"
+      - name: Always publish structured, secret-free acceptance or failure receipt
+        if: always()
+        run: |
+          python3 tools/parse_real_magnet_peer_receipt.py \
+            --junit app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.interop.SeedhostExactMagnetPeerBytesOnceTest.xml \
+            --sidecar "$RUNNER_TEMP/chunks-magnet-peer-stages.txt" \
+            --exit-file "$RUNNER_TEMP/chunks-magnet-peer-gradle-exit.txt" \
+            --output "$RUNNER_TEMP/chunks-real-magnet-peer-receipt.json"
+      - name: Upload structured receipt even after test, compiler or setup failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-real-magnet-peer-receipt
+          path: ${ runner.temp }}/chunks-real-magnet-peer-receipt.json
+          retention-days: 14
+          if-no-files-found: error
