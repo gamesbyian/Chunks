@@ -21,7 +21,7 @@ concurrency:
 
 jobs:
   installed-add-ui:
-    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.apply_add && github.run_attempt == 1 }}
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.apply_add }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
@@ -29,6 +29,11 @@ jobs:
       CHUNKS_LIVE_RTORRENT_USER: ${{ secrets.rtorrent_user }}
       CHUNKS_LIVE_RTORRENT_PASS: ${{ secrets.rtorrent_pass }}
     steps:
+      - name: Refuse replay of a mutation dispatch
+        if: ${{ github.run_attempt != 1 }}
+        run: |
+          echo '::error::A rerun cannot repeat protected mutations; inspect the prior run and dispatch a new explicitly scoped operation if appropriate.'
+          exit 1
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with:

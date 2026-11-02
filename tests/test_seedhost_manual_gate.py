@@ -18,6 +18,15 @@ PUBLIC_WORKFLOW = ".github/workflows/seedhost-public-add-smoke.yml"
 
 
 class SeedhostManualOnlyGates(unittest.TestCase):
+    def assert_first_step_refuses_replay(self, text, job_name, guard):
+        job = text.split(f"  {job_name}:", 1)[1]
+        steps = job.split("    steps:\n", 1)[1]
+        first = steps.split("      - name: Refuse replay of a mutation dispatch", 1)
+        self.assertEqual("", first[0])
+        gate = first[1].split("      - ", 1)[0]
+        self.assertIn(guard, gate)
+        self.assertIn("exit 1", gate)
+
     def test_protected_mutations_require_manual_apply_on_main(self):
         for path in TARGETS:
             with self.subTest(path=path):
@@ -50,7 +59,7 @@ class SeedhostManualOnlyGates(unittest.TestCase):
         self.assertIn("inputs.apply_mutation", text)
         self.assertIn("        default: false", text)
         job = text.split("  exact-hash-start:", 1)[1].split("    runs-on:", 1)[0]
-        self.assertIn("github.run_attempt == 1", job)
+        self.assert_first_step_refuses_replay(text, "exact-hash-start", "github.run_attempt != 1")
         self.assertIn("three synthetic transfers", text)
 
     def test_installed_add_requires_first_manual_attempt(self):
@@ -61,8 +70,9 @@ class SeedhostManualOnlyGates(unittest.TestCase):
             self.assertNotIn(f"  {event}:", trigger)
         job = text.split("  installed-add-ui:", 1)[1].split("    runs-on:", 1)[0]
         for guard in ("github.event_name == 'workflow_dispatch'", "github.ref == 'refs/heads/main'",
-                      "inputs.apply_add", "github.run_attempt == 1"):
+                      "inputs.apply_add"):
             self.assertIn(guard, job)
+        self.assert_first_step_refuses_replay(text, "installed-add-ui", "github.run_attempt != 1")
 
     def test_adapter_retries_cannot_replay_mutations_and_scope_is_explicit(self):
         text = (ROOT / ADAPTER_WORKFLOW).read_text(encoding="utf-8")
@@ -71,9 +81,10 @@ class SeedhostManualOnlyGates(unittest.TestCase):
         for event in ("push", "pull_request", "schedule"):
             self.assertNotIn(f"  {event}:", trigger)
         job = text.split("  read-only-native-adapter:", 1)[1].split("    runs-on:", 1)[0]
-        for guard in ("github.event_name == 'workflow_dispatch'", "github.ref == 'refs/heads/main'",
-                      "(!inputs.apply_mutation || github.run_attempt == 1)"):
+        for guard in ("github.event_name == 'workflow_dispatch'", "github.ref == 'refs/heads/main'"):
             self.assertIn(guard, job)
+        self.assert_first_step_refuses_replay(text, "read-only-native-adapter",
+                                             "inputs.apply_mutation && github.run_attempt != 1")
         self.assertIn("three synthetic Adds", text)
         self.assertIn("mutation comparison is disabled", text)
         gate = text.split("      - name: Refuse unsafe diagnostic mutation mode", 1)[1].split("      - uses:", 1)[0]
@@ -91,9 +102,10 @@ class SeedhostManualOnlyGates(unittest.TestCase):
     def test_public_fixture_apply_is_not_replayed_or_run_by_pr(self):
         text = (ROOT / PUBLIC_WORKFLOW).read_text(encoding="utf-8")
         job = text.split("  manual-seedhost-add:", 1)[1].split("    needs:", 1)[0]
-        for guard in ("github.event_name == 'workflow_dispatch'", "github.ref == 'refs/heads/main'",
-                      "(!inputs.apply || github.run_attempt == 1)"):
+        for guard in ("github.event_name == 'workflow_dispatch'", "github.ref == 'refs/heads/main'"):
             self.assertIn(guard, job)
+        self.assert_first_step_refuses_replay(text, "manual-seedhost-add",
+                                             "inputs.apply && github.run_attempt != 1")
         self.assertIn("github.event_name == 'workflow_dispatch' && 'chunks-android-seedhost-scope-mutation'", text)
         self.assertIn("cancel-in-progress: ${{ github.event_name == 'pull_request' }}", text)
 

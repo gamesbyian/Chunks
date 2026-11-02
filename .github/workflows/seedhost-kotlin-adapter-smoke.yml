@@ -28,10 +28,15 @@ concurrency:
 
 jobs:
   read-only-native-adapter:
-    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && (!inputs.apply_mutation || github.run_attempt == 1) }}
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
+      - name: Refuse replay of a mutation dispatch
+        if: ${{ inputs.apply_mutation && github.run_attempt != 1 }}
+        run: |
+          echo '::error::A rerun cannot repeat protected mutations; inspect the prior run and dispatch a new explicitly scoped operation if appropriate.'
+          exit 1
       - name: Refuse unsafe diagnostic mutation mode
         if: ${{ inputs.apply_mutation && inputs.diagnose_add }}
         run: |

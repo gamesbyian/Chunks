@@ -58,11 +58,16 @@ jobs:
           python3 -m unittest discover -s tools -p 'test_seedhost_secret_route_policy.py' -v
 
   manual-seedhost-add:
-    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && (!inputs.apply || github.run_attempt == 1) }}
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' }}
     needs: offline-validation
     runs-on: ubuntu-latest
     timeout-minutes: 6
     steps:
+      - name: Refuse replay of a mutation dispatch
+        if: ${{ inputs.apply && github.run_attempt != 1 }}
+        run: |
+          echo '::error::A rerun cannot repeat protected mutations; inspect the prior run and dispatch a new explicitly scoped operation if appropriate.'
+          exit 1
       - uses: actions/checkout@v4
       - name: Preview, or confirm and verify ONE stopped Add
         env:
