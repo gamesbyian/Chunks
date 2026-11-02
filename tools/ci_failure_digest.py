@@ -7,6 +7,7 @@ in GitHub Actions; this is an index and an honest evidence-execution receipt.
 """
 import argparse
 import glob
+import hashlib
 import json
 import math
 import os
@@ -21,6 +22,8 @@ def make_digest(paths, status, suite, env=None):
     env = os.environ if env is None else env
     tests = failures = skipped = 0
     failed_cases = []
+    test_cases = []
+    seen_test_ids = set()
     invalid = []
     reports = 0
     timed_cases = 0
@@ -35,6 +38,16 @@ def make_digest(paths, status, suite, env=None):
             reports += 1
             for case in cases:
                 tests += 1
+                identity = (case.get("classname") or "") + "\\0" + (case.get("name") or "")
+                test_id = hashlib.sha256(identity.encode("utf-8")).hexdigest()
+                outcome = ("skipped" if case.find("skipped") is not None else
+                           "failed" if case.find("failure") is not None else
+                           "error" if case.find("error") is not None else "passed")
+                if len(test_cases) < 2500:
+                    test_cases.append({"id_sha256": test_id, "outcome": outcome})
+                if test_id in seen_test_ids:
+                    invalid.append({"report": "duplicate-junit-identity", "problem": "DuplicateTestIdentity"})
+                seen_test_ids.add(test_id)
                 # Timing is advisory and separate from acceptance. A missing or
                 # nonfinite JUnit duration cannot invent an executed test.
                 duration_text = case.get("time")
@@ -118,6 +131,9 @@ def make_digest(paths, status, suite, env=None):
         "junit": {"reports": reports, "tests": tests, "failed": failures,
                   "skipped": skipped, "executed": tests - skipped},
         "failed_cases": failed_cases,
+        "test_cases": test_cases,
+        "test_identity_count": len(seen_test_ids),
+        "test_identity_coverage_complete": len(test_cases) == tests,
         "invalid_reports": invalid[:20],
         "timing": timing,
         "classification_confidence": "observed" if failures or invalid else "unclassified",
