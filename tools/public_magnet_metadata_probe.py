@@ -41,7 +41,7 @@ def main():
                 time.sleep(1)
         if before:
             raise ValueError("Disposable server must start empty")
-        manifest, debian = debian_fixture(2 * 1024**3)
+        manifest, debian = debian_fixture(2 * 1024**3, architecture="arm64")
         with urllib.request.urlopen("https://webtorrent.io/torrents/sintel.torrent", timeout=20) as response:
             sintel = response.read(2_097_153)
         if len(sintel) > 2_097_152:
