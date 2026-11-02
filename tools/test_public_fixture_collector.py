@@ -452,6 +452,7 @@ class CollectorTest(unittest.TestCase):
         candidates = (
             b"https://bt1.archive.org:6969/announce/session-token",
             b"https://bt1.archive.org:6969/announce?passkey=redacted",
+            b"udp://bt1.archive.org/announce",
             b"https://bt1.archive.org:invalid/announce",
             b"http://[bad/announce",
             b"https://bt1.archive.org:6969/announce#secret",
@@ -512,6 +513,7 @@ class LinuxTrackerBep12Test(unittest.TestCase):
                  [[b"https://tracker.linuxtracker.org/announce?passkey=redacted"]],
                  [[b"https://tracker.linuxtracker.org:bad/announce"]],
                  [[b"https://tracker.linuxtracker.org:0/announce"]],
+                 [[b"udp://tracker.linuxtracker.org/announce"]],
                  [[b"https://tracker.linuxtracker.org:99999/announce"]],
                  [[self.primary + b"\\x00"]],
                  [[self.primary + b"x" * 2049]])
@@ -519,6 +521,13 @@ class LinuxTrackerBep12Test(unittest.TestCase):
             with self.subTest(shape=type(tiers).__name__):
                 self.assertEqual([], linux.safe_trackers(
                     {b"announce": self.primary, b"announce-list": tiers}))
+
+    def test_valid_http_default_port_stays_accepted_while_udp_requires_explicit_port(self):
+        self.assertEqual(["https://tracker.linuxtracker.org/announce"],
+                         linux.safe_trackers(
+                             {b"announce": b"https://tracker.linuxtracker.org/announce"}))
+        self.assertEqual([], linux.safe_trackers(
+            {b"announce": b"udp://tracker.linuxtracker.org/announce"}))
 
     def test_single_announce_fallback_remains_usable_without_list(self):
         self.assertEqual([self.primary.decode()],
