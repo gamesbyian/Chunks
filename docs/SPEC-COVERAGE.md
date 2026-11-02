@@ -1,5 +1,12 @@
 # Chunks specification coverage and acceptance map
 
+## Planned transfer sharing and cross-app file associations (not implemented)
+
+**Transfer sharing:** [TRANSFER-SHARING](TRANSFER-SHARING.md) specifies v1/v2/hybrid magnet export, optional verified original metadata `.torrent` export, source-labelled native Android sharing and actual second-client import/peer acceptance. **No feature implementation, installed UI or real import receipt is claimed.**
+
+**Expository association feed:** [EXPOSITORY-FILE-ASSOCIATIONS](EXPOSITORY-FILE-ASSOCIATIONS.md) specifies explicit pairing, exact remote profile, completeness/freshness and permission-protected, read-only metadata publication. **No Android provider, cross-app installed acceptance or safe-file-delete guarantee is claimed.** Both remain P1 after core P0 work.
+
+
 ## Owner device acceptance scope update (2026-11-02)
 
 **Supported primary daily-use target:** Pixel 6 Pro physical handset. Exact real-device user journeys and ordinary readable, touchable, accessible operation there are P0. The owner explicitly deprioritized screens smaller than Pixel 6-class 1080×2400/20:9 and broad screen-resolution support. Installed 320×700 / 412×892 / actual 200%-font dual-viewport matrices remain optional **P1 compatibility** evidence, including open [#992](https://github.com/gamesbyian/Chunks/pull/992); they are not outstanding P0 gates. Preserve truthful historical green/red results and do not reinterpret small-screen coverage as accepted. Other ordinary device accessibility principles and safe responsive behavior remain intact. See the [canonical UX contract](UX.md#primary-handset-and-acceptance-scope-owner-correction-2026-11-02).
