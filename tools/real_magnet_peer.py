@@ -94,6 +94,10 @@ def prepare(root):
             "prefix_bytes": budget, "source": source, "license": license_text,
             "metainfo_sha256": hashlib.sha256(raw).hexdigest(),
             "peer_connections": 0, "payload_uploaded_bytes": 0,
+            # Numeric, aggregated libtorrent failure signals only. Never log
+            # peer IPs, arbitrary alert messages, URLs or host responses.
+            "peer_disconnect_codes": {}, "peer_error_codes": {},
+            "max_connected_peers": 0,
             "stages": [], "native_verified_bytes": 0,
         }
     return fixtures
@@ -168,13 +172,37 @@ class Peer:
                 handle.connect_peer((self.target_host, port))
             self.save()
 
+    @staticmethod
+    def safe_error_code(alert):
+        # Only libtorrent's integer error-code taxonomy is persisted; freeform
+        # alert descriptions can contain sensitive endpoint information.
+        try:
+            code = int(alert.error.value())
+            return str(code) if 0 <= code <= 4095 else "other"
+        except (AttributeError, ValueError, TypeError):
+            return "unavailable"
+
     def monitor(self):
         while not self.stopping.wait(.1):
             with self.lock:
                 for label, (session, handle) in self.active.items():
+                    item = self.fixtures[label]
+                    try:
+                        item["max_connected_peers"] = max(
+                            item["max_connected_peers"], int(handle.status().num_peers))
+                    except (AttributeError, ValueError, TypeError):
+                        pass
                     for alert in session.pop_alerts():
                         if isinstance(alert, lt.peer_connect_alert):
-                            self.fixtures[label]["peer_connections"] += 1
+                            item["peer_connections"] += 1
+                        elif isinstance(alert, lt.peer_disconnected_alert):
+                            code = self.safe_error_code(alert)
+                            codes = item["peer_disconnect_codes"]
+                            codes[code] = codes.get(code, 0) + 1
+                        elif isinstance(alert, lt.peer_error_alert):
+                            code = self.safe_error_code(alert)
+                            codes = item["peer_error_codes"]
+                            codes[code] = codes.get(code, 0) + 1
 
     def close(self):
         self.stopping.set()
